@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lucy — A Little World</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div><span class="eyebrow">WELCOME TO</span><h1>Lucy <span>✦</span></h1></div>
+      <p>A little world to wander.</p>
+    </header>
+    <section class="layout" aria-label="Virtual world">
+      <div class="world-wrap">
+        <canvas id="world" width="800" height="560" aria-label="Map of Lucy's world"></canvas>
+        <div class="controls" aria-label="Movement controls">
+          <button data-move="up" aria-label="Move up">↑</button>
+          <div><button data-move="left" aria-label="Move left">←</button><button data-move="down" aria-label="Move down">↓</button><button data-move="right" aria-label="Move right">→</button></div>
+        </div>
+      </div>
+      <aside>
+        <div class="card"><span class="eyebrow">YOUR JOURNEY</span><h2 id="place">The Meadow</h2><p id="description">A quiet place to begin. Wander with the arrow keys, WASD, or the buttons.</p></div>
+        <div class="card"><span class="eyebrow">FIELD NOTES</span><p id="message" role="status">Find the glowing places and step onto them.</p><p class="hint">Your position is saved in this browser.</p></div>
+        <button id="reset" class="reset">Start over ↺</button>
+      </aside>
+    </section>
+    <footer>Made for wandering · Lucy v0.1</footer>
+  </main>
+  <script type="module" src="/world.js"></script>
+</body>
+</html>
