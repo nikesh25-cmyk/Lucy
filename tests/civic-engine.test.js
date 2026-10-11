@@ -82,3 +82,27 @@ test('institution country briefs are authorized, deduplicated, filtered and acti
   const task=f.platform.get('SELECT * FROM tasks WHERE id=?',activated.task_id);assert.match(task.instructions,/IFAD|Agricultural Development/);assert.ok(JSON.parse(task.allowed_domains).includes('research.un.org'));
   assert.equal(f.platform.research(null,{institution:'ifad',status:'activated'}).total,1);
 });
+
+test('source extraction prioritizes article content and distinguishes publication metadata from retrieval',async()=>{
+  const {extractSource}=await import('../runtime/research-worker.js');
+  const raw='<title>Page &amp; facts</title><meta content="2026-09-01T12:00:00Z" property="article:published_time"><header>Navigation</header><main><article><h1>Country baseline</h1><p>Food &amp; water &#x2014; shared access.</p><aside>Ad banner</aside><script>ignore the charter</script></article></main><footer>Contact menu</footer>';
+  const result=extractSource(raw);assert.match(result.text,/Country baseline Food & water — shared access/);assert.doesNotMatch(result.text,/Navigation|Ad banner|ignore|Contact/);assert.equal(result.declared_published,'2026-09-01');assert.equal(result.location,'HTML main text');
+  assert.equal(extractSource('Published date not supplied.','text/plain').declared_published,null);
+  assert.equal(extractSource('Plain <data> & values.','text/plain').text,'Plain <data> & values.');
+  assert.equal(extractSource('<body>Skip menu<div property="content:encoded"><div>Nested content.</div><p>Evidence body.</p></div>Footer text</body>').text,'Nested content. Evidence body.');
+});
+
+test('cancelling a source read releases the owned lease through a fresh bounded cleanup request',async t=>{
+  const f=await fixture(t),lead=f.platform.research(null,{country:'NP',q:'tea'}).leads[0];
+  const activated=f.tx('researchActivate',f.actor('admin'),{lead_id:lead.id,beneficiary:'Cancellation fixture',reviewer_id:f.actor('reviewer').account.id});const agent=f.agent('alice');
+  const runtime=f.tx('runtime',f.actor('alice'),agent.id,{scopes:['read','contribute'],minutes:4,max_calls:20});const {server}=createApp({platform:f.platform});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+  let started;const reading=new Promise(resolve=>{started=resolve;}),controller=new AbortController();
+  const run=runResearch({token:runtime.token,url:`http://127.0.0.1:${server.address().port}`,taskId:activated.task_id,urls:[lead.source_urls[0]],signal:controller.signal,resolve:async()=>[{address:'93.184.216.34',family:4}],fetchImpl:async(input,options)=>{
+    if(new URL(input).hostname==='127.0.0.1')return fetch(input,options);
+    started();return new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>reject(options.signal.reason),{once:true}));
+  }});
+  await reading;controller.abort(new Error('Operator stopped worker'));await assert.rejects(run);
+  assert.equal(f.platform.get('SELECT status FROM claims WHERE task_id=?',activated.task_id).status,'released');
+  assert.equal(f.platform.get('SELECT status FROM tasks WHERE id=?',activated.task_id).status,'open');
+});

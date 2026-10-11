@@ -42,3 +42,33 @@ test('local AI startup skips missing installations and refuses forged install re
   await writeFile(join(root, '.runtime', 'ai', 'verified.json'), '{}');
   await assert.rejects(startLocalAI(root), /receipt|Apple Silicon/);
 });
+
+test('shared inference bounds waiting work, removes cancelled entries and never dispatches them', async () => {
+  const {boundedModel}=await import('../runtime/model.js');
+  const starts=[];let release,active=0,peak=0;
+  const model=boundedModel(async input=>{starts.push(input.prompt);active++;peak=Math.max(peak,active);try{if(input.prompt==='first')await new Promise(resolve=>{release=resolve;});return input.prompt;}finally{active--;}},{maxWaiting:1});
+  const first=model({prompt:'first'}),controller=new AbortController();
+  const cancelled=model({prompt:'cancelled',signal:controller.signal});
+  await assert.rejects(model({prompt:'overflow'}),/busy/);
+  assert.deepEqual(model.status(),{active:1,waiting:1,max_waiting:1});
+  controller.abort(new Error('Operator cancelled'));await assert.rejects(cancelled,/cancelled/);
+  const next=model({prompt:'next'});release();
+  assert.deepEqual(await Promise.all([first,next]),['first','next']);assert.deepEqual(starts,['first','next']);assert.equal(peak,1);
+  assert.deepEqual(model.status(),{active:0,waiting:0,max_waiting:1});
+});
+
+test('shared inference recovers after model failure and rejects expired work before calling the model', async () => {
+  const {boundedModel}=await import('../runtime/model.js');let calls=0;
+  const model=boundedModel(async()=>{calls++;if(calls===1)throw new Error('Backend failed');return 'recovered';});
+  await assert.rejects(model({prompt:'test'}),/failed/);assert.equal(await model({prompt:'retry'}),'recovered');
+  const controller=new AbortController();controller.abort(new Error('Expired'));
+  await assert.rejects(model({prompt:'expired',signal:controller.signal}),/Expired/);assert.equal(calls,2);
+});
+
+test('queued inference rechecks authority immediately before dispatch',async()=>{
+  const {boundedModel}=await import('../runtime/model.js');let release,calls=0,allowed=true;
+  const model=boundedModel(async()=>{calls++;if(calls===1)await new Promise(resolve=>{release=resolve;});return 'ok';});
+  const first=model({prompt:'first'});
+  const queued=model({prompt:'queued',beforeDispatch:()=>{if(!allowed)throw new Error('Session revoked');}});
+  allowed=false;release();await first;await assert.rejects(queued,/revoked/);assert.equal(calls,1);
+});

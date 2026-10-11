@@ -1,5 +1,41 @@
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
+// A shared local model has finite compute. Bound waiting work outside the model.
+export function boundedModel(model, { maxWaiting = 8 } = {}) {
+  if (typeof model !== 'function' || !Number.isInteger(maxWaiting) || maxWaiting < 0 || maxWaiting > 20) throw new Error('Invalid model queue configuration.');
+  const queue = [];
+  let active = false;
+  const next = async () => {
+    if (active || !queue.length) return;
+    active = true;
+    const entry = queue.shift();
+    entry.signal?.removeEventListener('abort', entry.cancel);
+    try {
+      entry.signal?.throwIfAborted();
+      if (entry.input.beforeDispatch) await entry.input.beforeDispatch();
+      entry.signal?.throwIfAborted();
+      const answer = await model(entry.input);
+      entry.signal?.throwIfAborted();
+      entry.resolve(answer);
+    } catch (error) { entry.reject(error); }
+    finally { active = false; void next(); }
+  };
+  const run = input => new Promise((resolve, reject) => {
+    const signal = input?.signal;
+    if (signal?.aborted) return reject(signal.reason);
+    if (active && queue.length >= maxWaiting) return reject(new Error('Local model is busy. Try again after the current work finishes.'));
+    const entry = { input, signal, resolve, reject };
+    entry.cancel = () => {
+      const index = queue.indexOf(entry);
+      if (index >= 0) { queue.splice(index, 1); reject(signal.reason); }
+    };
+    signal?.addEventListener('abort', entry.cancel, { once: true });
+    queue.push(entry); void next();
+  });
+  run.status = () => ({ active: Number(active), waiting: queue.length, max_waiting: maxWaiting });
+  return run;
+}
+
 export function localModelUrl(value = 'http://127.0.0.1:11434') {
   const url = new URL(value);
   if (url.protocol !== 'http:' || !LOOPBACK_HOSTS.has(url.hostname) || url.username || url.password || url.search || url.hash || (url.pathname !== '/' && url.pathname !== '')) {
