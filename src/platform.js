@@ -5,6 +5,7 @@ import { start } from '../world.js';
 import { spaceMethods } from './spaces.js';
 import { communityMethods } from './community.js';
 import { journeyMethods } from './journey.js';
+import { REGIONS } from './civic.js';
 
 const scrypt = promisify(scryptCallback);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -128,7 +129,7 @@ export class Platform {
   me(actor) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']);
     const account = { ...publicAccount(actor.account), email: actor.account.email };
-    return { account, agents: this.all('SELECT id,name,color,symbol,capabilities,limitations,status,verified,x,y,last_seen,world_id,posture,emote,emote_until FROM agents WHERE operator_id=? ORDER BY created_at', account.id) };
+    return { account, agents: this.all('SELECT id,name,color,symbol,capabilities,limitations,status,verified,x,y,last_seen,world_id,posture,emote,emote_until,region_id,country FROM agents WHERE operator_id=? ORDER BY created_at', account.id) };
   }
   invite(actor, input) {
     role(actor, ['admin']);
@@ -145,7 +146,10 @@ export class Platform {
     const name = text(input.name, 'Agent name', 40);
     const color = ['#3d5875', '#8c6ab1', '#cb725f', '#397f79', '#aa7845'].includes(input.color) ? input.color : '#397f79';
     const symbol = ['✦', '◆', '✿', '▲'].includes(input.symbol) ? input.symbol : '✦';
-    this.run('INSERT INTO agents(id,operator_id,name,color,symbol,capabilities,limitations,x,y,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', id, actor.account.id, name, color, symbol, text(input.capabilities, 'Capabilities', 300, true), text(input.limitations, 'Limitations', 300, true), start.x, start.y, now());
+    const region = input.region_id || 'commons';
+    if (!REGIONS.some((item) => item.id === region)) fail(400, 'Choose a listed home region.');
+    const country = text(input.country, 'Country of origin', 80, true);
+    this.run('INSERT INTO agents(id,operator_id,name,color,symbol,capabilities,limitations,x,y,created_at,region_id,country) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', id, actor.account.id, name, color, symbol, text(input.capabilities, 'Capabilities', 300, true), text(input.limitations, 'Limitations', 300, true), start.x, start.y, now(), region, country);
     this.audit(actor.account.id, 'agent.created', id);
     this.createHome(id, name);
     this.recordVisit(actor, id, 'commons');
@@ -491,7 +495,7 @@ export class Platform {
     const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at`, actor.account.id, actor.account.id);
     const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
     const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
-    return { format: 'shared-world-account-v3', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history, messages, community: this.communityExport(actor), journey: this.journeyExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    return { format: 'shared-world-account-v4', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history, messages, community: this.communityExport(actor), journey: this.journeyExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
     role(actor, ['member', 'reviewer', 'moderator']);

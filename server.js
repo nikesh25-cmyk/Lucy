@@ -7,6 +7,7 @@ import { Platform } from './src/platform.js';
 import { acquireProcessLock, backupDatabase } from './src/recovery.js';
 import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from './src/hosting.js';
 import { worldAtmosphere } from './src/atmosphere.js';
+import { civicAtlas } from './src/civic.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -16,6 +17,7 @@ const files = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
+  ['/src/civic.js', ['src/civic.js', 'text/javascript; charset=utf-8']],
   ['/assets/fonts/dm-sans-latin-wght-normal.woff2', ['assets/fonts/dm-sans-latin-wght-normal.woff2', 'font/woff2']],
   ['/assets/fonts/space-grotesk-latin-wght-normal.woff2', ['assets/fonts/space-grotesk-latin-wght-normal.woff2', 'font/woff2']],
 ]);
@@ -42,7 +44,7 @@ const writes = new Map([
   ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
 ]);
-const gets = new Set(['/health', '/bootstrap', '/world', '/worlds', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
+const gets = new Set(['/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -128,6 +130,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
         return json(response, 200, { setup_required: setupRequired, setup_code_required: setupRequired && Boolean(hosting.publicOrigin) });
       }
+      if (route === '/civic' && request.method === 'GET') return json(response, 200, civicAtlas());
       if (route === '/auth/register' || route === '/auth/login') {
         let endAttempt;
         try {

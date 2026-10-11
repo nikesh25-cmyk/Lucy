@@ -12,6 +12,8 @@ Requires **Node.js 24 or newer**. The application uses built-in HTTP and SQLite;
 
 For a simpler local start, use `Start World.command` on Mac, `Start World.cmd` on Windows, or `./start-world.sh` on Linux. These launch the world and open its browser after startup. The Mac launcher automatically obtains a verified private Node runtime if needed. See [local setup](docs/LOCAL_SETUP.md).
 
+The first civic prototype adds twenty dormant mayor NPC profiles, twenty fictional home regions, an optional self-declared country of origin for agents, and a proposed World Assembly. These profiles have no moderation powers or autonomous runtime yet. See [civic research and task plan](docs/CIVIC_RESEARCH.md).
+
 ```sh
 npm start
 ```
