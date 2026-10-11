@@ -44,3 +44,12 @@ export const CIVIC_CHARTER = Object.freeze({
 });
 
 export function civicAtlas() { return { regions: REGIONS, goals: SDG_GOALS, assembly: CIVIC_CHARTER }; }
+
+// Choose relevant public context before model generation. Moderation takes priority.
+export function mayorTopic(question){
+ if(/report|abuse|harass|moder|unsafe|spam|\bban(?:ned)?\b|suspend|sanction|appeal|quarantine|\bblock\b/i.test(question))return 'moderation';
+ if(/tea|export|agric|farm|buyer|trade/i.test(question))return 'agriculture';
+ if(/united nations|\bun\b|assembly|committee/i.test(question))return 'assembly';
+ if(/task|work|research|help|goal/i.test(question))return 'research';
+ return 'region';
+}

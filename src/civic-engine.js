@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { agricultureSources, STATISTICS_LICENSE } from './statistics.js';
-import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './civic.js';
+import { REGIONS, SDG_GOALS, CIVIC_CHARTER, mayorTopic } from './civic.js';
 import { getWorldDefinition, move } from '../world.js';
 const catalog = name => JSON.parse(readFileSync(new URL(`../catalog/${name}.json`,import.meta.url),'utf8'));
 export const COUNTRIES=catalog('countries'), PROGRAMMES=catalog('programmes'), PILOT=catalog('agriculture-pilot');
@@ -124,12 +124,12 @@ export const civicMethods={
   mayorTalk(actor,input){
     human(actor,['admin','member','moderator','reviewer']);this.active();const mayor=this.get("SELECT * FROM npc_mayors WHERE id=? AND status='active'",input.npc_id);if(!mayor)fail(404,'Active mayor not found.');
     const last=this.get('SELECT created_at FROM mayor_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 1',actor.account.id);if(last&&this.clock()-Date.parse(last.created_at)<1500)fail(429,'Please allow the mayor to finish.');
-    const question=text(input.question,500,'Question'),region=REGIONS.find(region=>region.id===mayor.region_id);
+    const question=text(input.question,500,'Question'),region=REGIONS.find(region=>region.id===mayor.region_id),topic=mayorTopic(question);
     let answer=`I’m ${mayor.name}, the civic guide for ${region.name}. Our focus is ${region.mayor.focus.toLowerCase()}. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.`;
-    if(/report|abuse|harass|moder|unsafe|spam/i.test(question))answer='Use the Safety desk to report a specific message or resident. Human moderators review evidence, decide actions, and provide an appeal route. I can guide you through the process; I cannot impose sanctions.';
-    else if(/tea|export|agric|farm|buyer|trade/i.test(question))answer='Our first agriculture pilot studies Nepal tea exports to India. Verify the newest Tea Board India directive, product standards, buyer demand and shipment costs before recommending a route. The Assembly desk has ten source records and six research proposals. No buyer or trade outcome is confirmed.';
-    else if(/united nations|\bun\b|assembly|committee/i.test(question))answer=`World Assembly is an independent Lucy institution. Its reference desk contains ${PROGRAMMES.institutions.length} records covering principal organs, General Assembly committees, ECOSOC commissions, specialized agency groups, funds and other entities. It does not enumerate every UN programme or subsidiary body. UN sources inform Lucy proposals; Lucy has no UN endorsement.`;
-    else if(/task|work|research|help|goal/i.test(question))answer=`Start with a proposed country research task, define a beneficiary and reviewer, then activate it as a mission. Contributors claim one task, attach sources and limitations, and submit for independent human review. ${this.get('SELECT COUNT(*) AS n FROM research_leads').n} proposals are currently in the research catalog.`;
+    if(topic==='moderation')answer='Use the Safety desk to report a specific message or resident. Human moderators review evidence, decide actions, and provide an appeal route. I can guide you through the process; I cannot impose sanctions.';
+    else if(topic==='agriculture')answer='Our first agriculture pilot studies Nepal tea exports to India. Verify the newest Tea Board India directive, product standards, buyer demand and shipment costs before recommending a route. The Assembly desk has ten source records and six research proposals. No buyer or trade outcome is confirmed.';
+    else if(topic==='assembly')answer=`World Assembly is an independent Lucy institution. Its reference desk contains ${PROGRAMMES.institutions.length} records covering principal organs, General Assembly committees, ECOSOC commissions, specialized agency groups, funds and other entities. It does not enumerate every UN programme or subsidiary body. UN sources inform Lucy proposals; Lucy has no UN endorsement.`;
+    else if(topic==='research')answer=`Start with a proposed country research task, define a beneficiary and reviewer, then activate it as a mission. Contributors claim one task, attach sources and limitations, and submit for independent human review. ${this.get('SELECT COUNT(*) AS n FROM research_leads').n} proposals are currently in the research catalog.`;
     const id=randomUUID(),created_at=new Date(this.clock()).toISOString();this.run('INSERT INTO mayor_conversations(id,account_id,npc_id,question,answer,created_at) VALUES(?,?,?,?,?,?)',id,actor.account.id,mayor.id,question,answer,created_at);
     this.run('DELETE FROM mayor_conversations WHERE account_id=? AND id NOT IN (SELECT id FROM mayor_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 100)',actor.account.id,actor.account.id);
     return {id,npc_id:mayor.id,question,answer,created_at,mode:'rules'};

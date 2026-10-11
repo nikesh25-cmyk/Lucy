@@ -98,6 +98,8 @@ export function mayorDraft(value, sourceUrls = []) {
   if(/\b(?:official|authorized|representative|on behalf of)[\s\S]{0,50}\b(?:United Nations|UN)\b/i.test(answer)
     ||/\b(?:I|we)\s+(?:am|are|represent|work for|speak for)[\s\S]{0,60}\b(?:United Nations|UN)\b/i.test(answer)
     ||/\b(?:sanction|endorsed|approved shipment)\b|\bshipment (?:is|has been) approved\b|\bI (?:have )?(?:approved|approve|authorize)\b/i.test(answer)
+    ||/\b(?:latest|current|newest|up.to.date)\b[^.!?\n]{0,160}\b20\d{2}\b/i.test(answer)
+    ||/\b(?:funded|financed|paid)\b|\b(?:I|we)\s+(?:have\s+)?(?:banned|suspended|deleted|sent|contacted)\b/i.test(answer)
     ||/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(answer))throw new Error('Mayor draft exceeds advisory authority.');
   for(const url of answer.match(/https?:\/\/[^\s<>"']+/g)||[])if(!sourceUrls.includes(url.replace(/[.,;)]+$/,'')))throw new Error('Mayor draft invents a contact or source.');
   return answer.trim();

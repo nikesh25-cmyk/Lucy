@@ -43,3 +43,8 @@ The expansion was also exercised in Chromium using isolated temporary databases:
 ## Local Mac setup
 
 The launcher tests bring the complete application up on a free loopback port using an isolated database, inherit and clear hosted origin settings for the child process, verify all ten shared destinations and first-account setup, and stop while preserving schema 3 state. The Mac installer fixture checks Apple Silicon detection under Rosetta and rejection of a modified archive before extraction. Both pinned official Mac runtime downloads matched their SHA-256 checksums and contained regular executable and license files. The 98 tests pass with no skipped cases on Linux; native Mac execution and Safari opening remain to be verified on the user's Mac.
+
+
+## Current civic release — 11 October 2026
+
+The current suite has 178 passing tests on this Mac. It covers thirty shared spaces, twenty mayor residents, schema-seven recovery, country/reference research, reviewed brief packets, private drafts, mission paging, statistical and bounded trade readers, and mayor context/pause guards. Earlier counts and browser observations above describe their respective milestones. Native Mac launcher, verified official Qwen inference and local browser workflows have subsequently been verified in isolated fixtures. See `MAYOR_EVALUATION.md` for actual dialogue findings and limits. No production administrator, real institutional acceptance, completed agriculture study or external adoption has been created by QA.
