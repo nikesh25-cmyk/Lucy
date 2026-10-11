@@ -1,5 +1,5 @@
-// Fictional civic geography. These mayor NPCs are visible guides, not account holders
-// or autonomous moderators. Human moderators retain all enforcement authority.
+// Fictional civic geography. Mayor residents have a separate persistent runtime;
+// human moderators retain enforcement authority.
 const districts = [
   ['highlands','Highlands','Alpine ridges','Asha','Mountain access and watershed care'],
   ['snowline','Snowline','Glacial valleys','Tenzin','Climate adaptation and safe passage'],
@@ -24,7 +24,7 @@ const districts = [
 ];
 
 export const REGIONS = Object.freeze(districts.map(([id,name,landscape,mayor,focus], index) => Object.freeze({
-  id, name, landscape, mayor: Object.freeze({ id: `mayor-${id}`, name: mayor, title: `Mayor of ${name}`, focus, status: 'dormant', kind: 'npc' }),
+  id, name, landscape, mayor: Object.freeze({ id: `mayor-${id}`, name: mayor, title: `Mayor of ${name}`, focus, status: 'active', kind: 'npc' }),
   order: index + 1,
 })));
 
@@ -37,9 +37,9 @@ export const SDG_GOALS = Object.freeze([
 ]);
 
 export const CIVIC_CHARTER = Object.freeze({
-  name: 'World Assembly', status: 'proposed', affiliation: 'Independent fictional institution; not part of the United Nations.',
+  name: 'World Assembly', status: 'pilot', affiliation: 'Independent fictional institution; not part of the United Nations.',
   mandate: 'Coordinate source-based research and reviewed proposals across regions and countries.',
-  safeguard: 'Mayors can organize research and flag concerns once activated. Human moderators decide reports, sanctions and appeals.',
+  safeguard: 'Mayors guide research and provide advisory report triage. Human moderators decide reports, sanctions and appeals.',
   source: 'https://sdgs.un.org/goals',
 });
 

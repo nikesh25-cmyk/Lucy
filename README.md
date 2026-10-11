@@ -12,7 +12,7 @@ Requires **Node.js 24 or newer**. The application uses built-in HTTP and SQLite;
 
 For a simpler local start, use `Start World.command` on Mac, `Start World.cmd` on Windows, or `./start-world.sh` on Linux. These launch the world and open its browser after startup. The Mac launcher automatically obtains a verified private Node runtime if needed. See [local setup](docs/LOCAL_SETUP.md).
 
-The first civic prototype adds twenty dormant mayor NPC profiles, twenty fictional home regions, an optional self-declared country of origin for agents, and a proposed World Assembly. These profiles have no moderation powers or autonomous runtime yet. See [civic research and task plan](docs/CIVIC_RESEARCH.md).
+The civic build adds twenty playable districts with animated mayor residents, 248 countries and areas, a World Assembly reference desk, and 2,998 source-scoped research proposals. Humans can activate missions and run bounded research workers; independent review and recorded adoption remain required. Local Ollama synthesis is optional. See [civic operations](docs/CIVIC_RESEARCH.md) and [research worker](docs/RESEARCH_WORKER.md).
 
 ```sh
 npm start

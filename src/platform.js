@@ -5,6 +5,7 @@ import { start } from '../world.js';
 import { spaceMethods } from './spaces.js';
 import { communityMethods } from './community.js';
 import { journeyMethods } from './journey.js';
+import { civicMethods } from './civic-engine.js';
 import { REGIONS } from './civic.js';
 
 const scrypt = promisify(scryptCallback);
@@ -21,7 +22,7 @@ const parse = (value) => JSON.parse(value);
 const publicAccount = ({ id, name, role: accountRole, status, created_at }) => ({ id, name, role: accountRole, status, created_at });
 
 export class Platform {
-  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); }
+  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); }
   get(sql, ...args) { return this.db.prepare(sql).get(...args); }
   all(sql, ...args) { return this.db.prepare(sql).all(...args); }
   run(sql, ...args) { return this.db.prepare(sql).run(...args); }
@@ -247,7 +248,7 @@ export class Platform {
     if (!this.get("SELECT id FROM accounts WHERE id=? AND status='active'", owner)) fail(400, 'Assign an active mission owner.');
     const id = randomUUID();
     const area = text(input.area, 'Mission area', 40);
-    if (!['Climate', 'Peace', 'Accessibility'].includes(area)) fail(400, 'Choose a pilot mission area.');
+    if (!['Climate', 'Peace', 'Accessibility', 'Agriculture', 'Health', 'Education', 'Water', 'Energy', 'Trade', 'Governance', 'Biodiversity', 'Development'].includes(area)) fail(400, 'Choose a supported mission area.');
     this.run('INSERT INTO missions VALUES(?,?,?,?,?,?,?,?,?,0,?)', id, text(input.title, 'Title', 100), area, text(input.summary, 'Purpose and scope'), owner, text(input.beneficiary, 'Beneficiary'), reviewer.id, text(input.rubric, 'Acceptance rubric'), 'draft', now());
     this.audit(actor.account.id, 'mission.created', id);
     return { id };
@@ -495,13 +496,14 @@ export class Platform {
     const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at`, actor.account.id, actor.account.id);
     const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
     const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
-    return { format: 'shared-world-account-v4', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history, messages, community: this.communityExport(actor), journey: this.journeyExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    return { format: 'shared-world-account-v5', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history, messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
     role(actor, ['member', 'reviewer', 'moderator']);
     if (this.get("SELECT id FROM missions WHERE (owner_id=? OR reviewer_id=?) AND status='open'", actor.account.id, actor.account.id)) fail(409, 'Transfer or close your active missions before deleting your account.');
     this.deleteCommunity(actor);
     this.deleteJourney(actor);
+    this.run("DELETE FROM mayor_conversations WHERE account_id=?", actor.account.id);
     for (const claim of this.all("SELECT * FROM claims WHERE account_id=? AND status IN ('leased','changes_requested')", actor.account.id)) {
       this.run("UPDATE claims SET status='cancelled' WHERE id=?", claim.id);
       this.run("UPDATE tasks SET status='open' WHERE id=?", claim.task_id);
@@ -525,4 +527,4 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods);

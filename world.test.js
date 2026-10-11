@@ -106,7 +106,7 @@ test('personal cottage portals connect the garden and furnished house', () => {
 
 test('new scenic regions retain reachable outdoor doorways and deterministic terrain', () => {
   const commons = getWorldDefinition('commons');
-  strictEqual(sharedWorldIds.length, 10);
+  strictEqual(sharedWorldIds.length, 30);
   for (const [id, facts] of Object.entries(regionFacts)) {
     const entrance = commons.portals.find((gate) => gate.targetWorldId === id);
     deepStrictEqual({ x: entrance.x, y: entrance.y }, facts.door);

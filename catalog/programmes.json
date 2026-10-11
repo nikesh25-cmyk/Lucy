@@ -1,0 +1,479 @@
+{
+  "schemaVersion": 1,
+  "researchedOn": "2026-10-11",
+  "status": "independent-research-reference",
+  "scope": "Six principal organs, six General Assembly main committees and six selected operational entities. This is a starter catalog, not an exhaustive UN system directory.",
+  "affiliation": "Lucy has no UN affiliation, mandate or endorsement. Task suggestions and SDG mappings are Lucy editorial proposals, not UN instructions.",
+  "institutions": [
+    {
+      "id": "general-assembly",
+      "name": "General Assembly",
+      "type": "principal-organ",
+      "mandate": "Universal deliberation and recommendations across the UN agenda.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a published resolution with document symbol and date",
+        "Compare country voluntary national review priorities"
+      ]
+    },
+    {
+      "id": "security-council",
+      "name": "Security Council",
+      "type": "principal-organ",
+      "mandate": "Primary responsibility for international peace and security.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize published peacebuilding recommendations",
+        "Map civilian resilience needs from public reports"
+      ]
+    },
+    {
+      "id": "ecosoc",
+      "name": "Economic and Social Council",
+      "type": "principal-organ",
+      "mandate": "Coordinates economic, social and environmental policy dialogue and development work.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        1,
+        8,
+        10,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare development indicators for two countries",
+        "Prepare a sourced policy options brief"
+      ]
+    },
+    {
+      "id": "trusteeship-council",
+      "name": "Trusteeship Council",
+      "type": "principal-organ",
+      "mandate": "Supervised trust territories; operations suspended on 1 November 1994.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Build a historical timeline from official records",
+        "Explain historical institutional mandate"
+      ]
+    },
+    {
+      "id": "icj",
+      "name": "International Court of Justice",
+      "type": "principal-organ",
+      "mandate": "Settles disputes submitted by states and gives opinions requested by authorized bodies.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a public judgment with case citation",
+        "Explain institution jurisdiction using official materials"
+      ]
+    },
+    {
+      "id": "secretariat",
+      "name": "United Nations Secretariat",
+      "type": "principal-organ",
+      "mandate": "Carries out day-to-day work mandated by UN principal bodies.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Locate public reports and document symbols",
+        "Build a dated evidence register"
+      ]
+    },
+    {
+      "id": "first-committee",
+      "name": "First Committee: Disarmament and International Security",
+      "type": "ga-main-committee",
+      "mandate": "Examines disarmament and international security agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a public resolution on confidence building",
+        "Map peace education resources"
+      ]
+    },
+    {
+      "id": "second-committee",
+      "name": "Second Committee: Economic and Financial",
+      "type": "ga-main-committee",
+      "mandate": "Examines economic and financial development agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        1,
+        8,
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare LDC trade constraints",
+        "Draft a sourced structural transformation brief"
+      ]
+    },
+    {
+      "id": "third-committee",
+      "name": "Third Committee: Social, Humanitarian and Cultural",
+      "type": "ga-main-committee",
+      "mandate": "Examines social, humanitarian and cultural agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        3,
+        4,
+        5,
+        10,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Audit accessibility of a public service",
+        "Compare inclusive education evidence"
+      ]
+    },
+    {
+      "id": "fourth-committee",
+      "name": "Fourth Committee: Special Political and Decolonization",
+      "type": "ga-main-committee",
+      "mandate": "Examines special political and decolonization agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize official decolonization documentation",
+        "Create a historical source bibliography"
+      ]
+    },
+    {
+      "id": "fifth-committee",
+      "name": "Fifth Committee: Administrative and Budgetary",
+      "type": "ga-main-committee",
+      "mandate": "Examines administrative and budgetary agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        16,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Explain a published budget category",
+        "Compare public budget and performance documentation"
+      ]
+    },
+    {
+      "id": "sixth-committee",
+      "name": "Sixth Committee: Legal",
+      "type": "ga-main-committee",
+      "mandate": "Examines legal questions in the General Assembly agenda.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        16,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map published treaty resources",
+        "Explain a legal committee report with citations"
+      ]
+    },
+    {
+      "id": "fao",
+      "name": "Food and Agriculture Organization",
+      "type": "specialized-agency",
+      "mandate": "Works toward hunger reduction, food security and sustainable agriculture.",
+      "sourceUrl": "https://www.fao.org/about/about-fao",
+      "sdgs": [
+        1,
+        2,
+        6,
+        12,
+        15
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal12",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "suggestedTaskTypes": [
+        "Build a crop production baseline with units and year",
+        "Compare postharvest loss interventions"
+      ]
+    },
+    {
+      "id": "undp",
+      "name": "United Nations Development Programme",
+      "type": "programme",
+      "mandate": "Supports poverty reduction, resilience, governance and sustainable development.",
+      "sourceUrl": "https://www.undp.org/about-us",
+      "sdgs": [
+        1,
+        5,
+        8,
+        10,
+        13,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Compare municipal service delivery gaps",
+        "Create a public policy implementation options brief"
+      ]
+    },
+    {
+      "id": "unep",
+      "name": "United Nations Environment Programme",
+      "type": "programme",
+      "mandate": "Supports environmental action on climate change, nature loss, pollution and waste.",
+      "sourceUrl": "https://www.unep.org/who-we-are/about-us",
+      "sdgs": [
+        6,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal12",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal14",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "suggestedTaskTypes": [
+        "Compare waste management options",
+        "Map public ecosystem restoration evidence"
+      ]
+    },
+    {
+      "id": "wfp",
+      "name": "World Food Programme",
+      "type": "programme",
+      "mandate": "Provides emergency food assistance and supports food security and resilience.",
+      "sourceUrl": "https://www.wfp.org/who-we-are",
+      "sdgs": [
+        2,
+        3,
+        13,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare food market monitoring reports",
+        "Research smallholder procurement requirements"
+      ]
+    },
+    {
+      "id": "itc",
+      "name": "International Trade Centre",
+      "type": "joint-agency",
+      "mandate": "Joint UN and WTO agency supporting small businesses to participate in international trade.",
+      "sourceUrl": "https://open.intracen.org/",
+      "sdgs": [
+        8,
+        9,
+        10,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare candidate destination markets for a defined product",
+        "Verify published tariffs, origin rules and buyer contact routes"
+      ]
+    },
+    {
+      "id": "unctad",
+      "name": "UN Trade and Development (UNCTAD)",
+      "type": "secretariat-body",
+      "mandate": "Supports developing countries through analysis, technical assistance and trade policy dialogue.",
+      "sourceUrl": "https://unctad.org/about",
+      "sdgs": [
+        8,
+        9,
+        10,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Research LDC export diversification",
+        "Compare border facilitation and digital trade policy options"
+      ]
+    }
+  ],
+  "frameworks": [
+    {
+      "id": "sdgs",
+      "name": "2030 Agenda and 17 Sustainable Development Goals",
+      "sourceUrl": "https://sdgs.un.org/goals",
+      "focus": "Use target-level references and national priorities to define research questions; outcome claims require measured evidence."
+    },
+    {
+      "id": "dpoa",
+      "name": "Doha Programme of Action for LDCs, 2022\u20132031",
+      "sourceUrl": "https://www.un.org/ldc5/doha-programme-of-action",
+      "focusAreas": [
+        "People and capacity",
+        "Science, technology and innovation",
+        "Structural transformation",
+        "International trade and regional integration",
+        "Climate and resilience",
+        "Partnerships and sustainable graduation"
+      ],
+      "suggestedTaskTypes": [
+        "Verify current country LDC and graduation status before assessing preferences",
+        "Compare a crop value chain and identify processing constraints",
+        "Prepare a national export support brief with evidence gaps"
+      ]
+    }
+  ],
+  "dataSources": [
+    {
+      "id": "faostat",
+      "name": "FAOSTAT",
+      "sourceUrl": "https://www.fao.org/faostat/",
+      "documentationUrl": "https://www.fao.org/statistics/en/",
+      "purpose": "Food and agriculture statistics; record dataset, year, country, unit and missing-value flags."
+    },
+    {
+      "id": "itc-tools",
+      "name": "ITC Market Analysis Tools",
+      "sourceUrl": "https://marketanalysis.intracen.org/en",
+      "purpose": "Trade statistics, market access, rules of origin and modeled export potential. Access and registration conditions vary by tool; projections are not confirmed buyer demand."
+    },
+    {
+      "id": "sdg17",
+      "name": "SDG 17 official targets",
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "purpose": "Targets 17.11 and 17.12 concern developing-country exports and LDC market access. Preserve original target dates; do not treat expired target dates as new deadlines."
+    }
+  ],
+  "agricultureTradePilot": {
+    "status": "proposed-template-not-completed-research",
+    "dimensions": [
+      "Origin country",
+      "Municipality or producer group",
+      "Defined agricultural product",
+      "HS classification with edition",
+      "Destination country",
+      "Reference period"
+    ],
+    "steps": [
+      {
+        "type": "production-baseline",
+        "deliverable": "Five-year production, yield and export series with source, units, missing years and dates."
+      },
+      {
+        "type": "market-screen",
+        "deliverable": "Three destination candidates compared by import trend, competition and available logistics; distinguish observed trade from projections."
+      },
+      {
+        "type": "market-access",
+        "deliverable": "Dated tariff, preferences, origin rules, SPS, packaging and certification checklist from official authorities."
+      },
+      {
+        "type": "buyer-verification",
+        "deliverable": "Verified importer identities, company source URL and public contact route; observed role and contact date; no inferred demand."
+      },
+      {
+        "type": "route-costing",
+        "deliverable": "Shipment scenario with quantity, Incoterm, transport, storage, loss and compliance costs; label estimates."
+      },
+      {
+        "type": "public-authority-brief",
+        "deliverable": "Recipient-specific municipality or agriculture ministry draft: evidence, obstacles, options, responsible office, budget assumptions and requested decision."
+      }
+    ],
+    "completionCriteria": [
+      "Primary sources and dates for material claims",
+      "Country and product specific evidence",
+      "Explicit uncertainties and conflicting data",
+      "Human review before publishing recommendations",
+      "Explicit user authorization before outreach"
+    ],
+    "scaleRule": "Generate parameterized research briefs only. Each country-product-market task starts queued or proposed; it becomes completed only after evidence collection and review."
+  }
+}
