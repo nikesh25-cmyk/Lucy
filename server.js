@@ -1,3 +1,4 @@
+import {researchOutput} from './runtime/research-brief.js';
 import { deliveryPacketHTML, deliveryPacketFilename } from './src/delivery-packet.js';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -260,6 +261,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         researchRuns.get(actor.account.id)?.controller.abort();return json(response,200,{stopping:researchRuns.has(actor.account.id)});
       }
       if(route==='/research/run'){
+        const configuration=researchOutput(input,Boolean(civicModel));
         if(actor.kind!=='session')fail(403,'Human operator required.');
         if(activeWorker(actor.account.id))fail(409,'Your worker is already running. Stop it before starting another.');
         if(researchRuns.size>=researchConcurrency)fail(429,'Research workers are at capacity. Try again after a running job finishes.');
@@ -273,7 +275,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)',id,input.agent_id,'running','Bounded research source read; human review required.',new Date().toISOString());platform.audit(actor.account.id,'research.worker.started',id);return session;
         });
         researchRuns.set(actor.account.id,{id,agent_id:input.agent_id,controller});
-        const promise=researchRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,taskId:task.id,urls:input.urls,modelFn:civicModel||undefined,signal:controller.signal}).then(result=>{
+        const promise=researchRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,taskId:task.id,urls:input.urls,output:configuration.output,briefContext:configuration.briefContext,reportJob:false,modelFn:civicModel||undefined,signal:controller.signal}).then(result=>{
           platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?','completed',`Submitted ${result.source_count} source records; ${result.mode}; review pending.`,id);platform.audit(actor.account.id,'research.worker.submitted',id);});
         }).catch(()=>{
           platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',controller.signal.aborted?'stopped':'failed','Worker stopped; source availability, scopes or model evidence formatting needs attention. Check contributions before retrying.',id);platform.audit(actor.account.id,'research.worker.stopped',id);});
