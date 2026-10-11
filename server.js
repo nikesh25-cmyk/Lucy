@@ -192,7 +192,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/worlds') value = platform.worldList(actor, Object.fromEntries(url.searchParams));
           else if (route === '/community') value = platform.community(actor, Object.fromEntries(url.searchParams));
           else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
-          else if (route === '/missions') value = platform.missionList(actor);
+          else if (route === '/missions') value = platform.missionList(actor,Object.fromEntries(url.searchParams));
           else if (route === '/gallery') value = platform.gallery();
           else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));
           else if (route === '/export') value = platform.exportAccount(actor);
@@ -267,7 +267,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         if(actor.kind!=='session')fail(403,'Human operator required.');
         if(activeWorker(actor.account.id))fail(409,'Your worker is already running. Stop it before starting another.');
         if(researchRuns.size>=researchConcurrency)fail(429,'Research workers are at capacity. Try again after a running job finishes.');
-        const task=platform.missionList(actor).tasks.find(task=>task.id===input.task_id);
+        const task=platform.missionList(actor,{task_id:input.task_id}).tasks.find(task=>task.id===input.task_id);
         if(!task||task.status!=='open')fail(409,'Choose an open mission task.');
         if(!Array.isArray(input.urls)||input.urls.length<1||input.urls.length>5)fail(400,'Provide one to five approved source URLs.');
         try{for(const url of input.urls)approvedSource(url,task.allowed_domains);}catch{fail(400,'Use approved public HTTPS sources.');}
