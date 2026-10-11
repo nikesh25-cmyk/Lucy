@@ -142,4 +142,9 @@ test('worker run history stays private to its operator and runtime agent, and re
   assert.equal(f.tx('recoverWorkerJobs'),1);assert.equal(f.tx('recoverWorkerJobs'),0);
   const bob=f.platform.history(f.actor('bob')).jobs;assert.equal(bob.length,1);assert.equal(bob[0].status,'stopped');assert.match(bob[0].detail,/Check contributions before retrying/);
   assert.equal(f.platform.get("SELECT COUNT(*) AS n FROM audit WHERE event='research.worker.interrupted'").n,1);assert.equal(f.platform.verifyAudit(),true);
+  f.platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)','restart-worker',b.id,'running','Interrupted run',new Date().toISOString());
+  f.platform.close();
+  const {Platform}=await import('../src/platform.js');const reopened=new Platform(f.database);t.after(()=>reopened.close());
+  assert.equal(reopened.get('SELECT status FROM jobs WHERE id=?','restart-worker').status,'stopped');
+  assert.equal(reopened.get("SELECT COUNT(*) AS n FROM audit WHERE event='research.worker.interrupted'").n,2);assert.equal(reopened.verifyAudit(),true);
 });

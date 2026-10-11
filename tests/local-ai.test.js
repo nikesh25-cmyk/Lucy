@@ -72,3 +72,18 @@ test('queued inference rechecks authority immediately before dispatch',async()=>
   const queued=model({prompt:'queued',beforeDispatch:()=>{if(!allowed)throw new Error('Session revoked');}});
   allowed=false;release();await first;await assert.rejects(queued,/revoked/);assert.equal(calls,1);
 });
+
+
+test('structured research claims require actual source numbers and preserve per-claim citations and gaps',()=>{
+  const brief=researchDraft({claims:[{text:'A source-based finding.',sources:[1,1]},{text:'Another finding.',sources:[2]}],gaps:['Country applicability remains unknown.']},2);
+  assert.match(brief,/finding\. \[Source 1\]/);assert.match(brief,/Another finding\. \[Source 2\]/);assert.match(brief,/Evidence gaps/);
+  for(const sources of [[],[0],[3],['1']])assert.throws(()=>researchDraft({claims:[{text:'Unsupported.',sources}],gaps:['Unknown.']},2),/source/);
+  assert.throws(()=>researchDraft({claims:[{text:'Finding.',sources:[1]}],gaps:[]},1),/gaps/);
+});
+
+test('mayor draft authority and invented contacts fall back to published guidance',async()=>{
+  const {mayorDraft}=await import('../runtime/model.js');
+  assert.equal(mayorDraft({answer:'Buyer demand and shipment costs need verification.'}),'Buyer demand and shipment costs need verification.');
+  for(const answer of ['As an official United Nations mayor, I cannot approve this shipment.','I represent the UN.','The shipment is approved.','Contact buyer@example.com.','Read https://invented.example/report'])assert.throws(()=>mayorDraft({answer}),/authority|contact/);
+  assert.equal(mayorDraft({answer:'Read https://www.un.org/.'},['https://www.un.org/']),'Read https://www.un.org/.');
+});

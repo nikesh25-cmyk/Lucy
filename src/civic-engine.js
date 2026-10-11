@@ -32,7 +32,7 @@ END;
 export const civicMethods={
   initCivic(){
     this.transaction(()=>{
-      this.run("UPDATE jobs SET status='stopped',detail='Server restarted; prior worker interrupted. Review leases before retrying.' WHERE status='running'");
+      this.recoverWorkerJobs();
       REGIONS.forEach((region,index)=>this.run('INSERT OR IGNORE INTO npc_mayors(id,region_id,world_id,name,sprite,x,y) VALUES(?,?,?,?,?,?,?)',region.mayor.id,region.id,`district:${region.id}`,region.mayor.name,roster[index],24,18));
       for(const country of COUNTRIES.entries.filter(country=>country.ldc))this.seedCountryResearch(country);
       for(const [index,task] of (PILOT.tasks||[]).entries()){
