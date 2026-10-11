@@ -44,10 +44,19 @@ export function backupDatabase(db, destination) {
     return { path };
   } catch (error) { unlinkSync(path); throw error; }
 }
+
+function processIdentity(pid) {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+    const fields = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
+    return { boot: readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim(), start: fields[19] };
+  } catch { return null; }
+}
+
 export function acquireProcessLock(lockPath) {
   const path = resolve(lockPath);
   privateDirectory(dirname(path));
-  const marker = { pid: process.pid, nonce: randomUUID() };
+  const marker = { pid: process.pid, nonce: randomUUID(), identity: processIdentity(process.pid) };
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       writeFileSync(path, JSON.stringify(marker), { flag: 'wx', mode: 0o600 });
@@ -59,8 +68,12 @@ export function acquireProcessLock(lockPath) {
       let stored;
       try { stored = JSON.parse(readFileSync(path, 'utf8')); } catch { throw new Error('Unrecognized process lock; inspect it before recovery.'); }
       if (!Number.isSafeInteger(stored.pid) || stored.pid <= 0 || !stored.nonce) throw new Error('Unrecognized process lock; inspect it before recovery.');
-      try { process.kill(stored.pid, 0); throw new Error('The world server or another recovery operation is running. Stop it before recovery.'); }
-      catch (error) { if (error.code !== 'ESRCH') throw error; }
+      const currentIdentity = processIdentity(stored.pid);
+      const reusedPid = stored.identity && currentIdentity && (stored.identity.boot !== currentIdentity.boot || stored.identity.start !== currentIdentity.start);
+      if (!reusedPid) {
+        try { process.kill(stored.pid, 0); throw new Error('The world server or another recovery operation is running. Stop it before recovery.'); }
+        catch (error) { if (error.code !== 'ESRCH') throw error; }
+      }
       // The content must still match before reclaiming a stale lock.
       if (readFileSync(path, 'utf8') === JSON.stringify(stored)) unlinkSync(path);
     }

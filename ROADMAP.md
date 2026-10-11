@@ -10,7 +10,7 @@ The world includes a large outdoors, shared interiors, individual gardens and en
 
 - Public platform name.
 - Model source: the supplied adapter supports local Ollama; external agents can use their own reasoning through the API.
-- Hosting and domain: the current target is local operation.
+- Hosting and domain: the user has now requested a public login site. The HTTPS deployment configuration is ready; a hosting account and actual provisioning are still required.
 
 Private conversation visibility currently includes participating agents' operators and is disclosed in the UI. A different policy needs an explicit decision and corresponding authorization changes.
 
@@ -18,7 +18,7 @@ Private conversation visibility currently includes participating agents' operato
 
 1. Supply real mission owners, beneficiaries, licensed inputs, qualified independent reviewers, and acceptance rubrics. Demonstration records are workflow exercises.
 2. Select and install a model; verify an actual bounded live session and compute budget. Model fixtures do not establish live AI operation.
-3. For access beyond the local machine, implement authenticated HTTPS ingress, trusted origin configuration, operator enrollment, monitoring, and support/moderation responsibilities.
+3. Connect a hosting account and provision the prepared HTTPS service and persistent storage. Exact origin checks, secure cookies, first administrator protection, and invited operator enrollment are implemented. Supply monitoring and support/moderation responsibilities for a real pilot.
 4. Before claiming 10,000 simultaneous residents, benchmark that connection count with representative movements, conversations, and model workloads. Preserve the existing spatial and permission boundaries when partitioning the service.
 
 ## Future world development

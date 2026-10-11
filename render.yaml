@@ -1,0 +1,24 @@
+# Review Render's current prices before approving this Blueprint deployment.
+# The persistent disk requires a paid instance. SQLite uses one instance.
+services:
+  - type: web
+    name: shared-world-seed
+    runtime: node
+    plan: starter
+    numInstances: 1
+    buildCommand: npm run check
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: LUCY_BIND_HOST
+        value: 0.0.0.0
+      - key: LUCY_DATABASE
+        value: /var/data/world.sqlite
+      - key: LUCY_SETUP_CODE
+        generateValue: true
+    disk:
+      name: shared-world-data
+      mountPath: /var/data
+      sizeGB: 1

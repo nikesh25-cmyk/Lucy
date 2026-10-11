@@ -1,11 +1,11 @@
-import { draw, landmarkAt, start, landmarks, getWorldDefinition } from './world.js';
+import { draw, landmarkAt, start, landmarks, getWorldDefinition, drawMiniMap } from './world.js';
 
 const $ = (selector) => document.querySelector(selector);
-const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers' };
+const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false };
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
 const element = (tag, text, className) => { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; };
 const append = (parent, ...children) => { parent.append(...children.filter(Boolean)); return parent; };
-const button = (text, action, className = '') => { const node = element('button', text, className); node.type = 'button'; node.addEventListener('click', () => guarded(action)); return node; };
+const button = (text, action, className = '') => { const node = element('button', text, className); node.type = 'button'; node.addEventListener('click', () => guarded(async () => { const result=action(); if(result && typeof result.then==='function'){node.disabled=true;node.setAttribute('aria-busy','true');try{return await result;}finally{node.disabled=false;node.removeAttribute('aria-busy');}}return result; })); return node; };
 const paragraph = (text, className) => element('p', text, className);
 const badge = (text, warning = false) => element('span', text.replaceAll('_', ' '), `badge ${warning ? 'warning' : text === 'demo' ? 'demo' : ''}`);
 const actions = (...children) => append(element('div', null, 'actions'), ...children);
@@ -16,7 +16,7 @@ const titleOfTask = (id) => state.tasks.find((task) => task.id === id)?.title ||
 const date = (value) => value ? new Date(value).toLocaleString() : '—';
 const isReviewer = () => ['admin', 'reviewer'].includes(state.account?.role);
 const isModerator = () => ['admin', 'moderator'].includes(state.account?.role);
-function notice(message, error = false) { const node = $('#notice'); node.textContent = message; node.className = error ? 'error' : ''; node.hidden = false; }
+function notice(message, error = false) { const node = error && $('#auth-dialog').open ? $('#auth-notice') : $('#notice'); node.textContent = message; node.className = error ? 'error' : ''; node.hidden = false; node.setAttribute('role',error?'alert':'status'); }
 async function guarded(action) { try { await action(); } catch (error) { notice(error.message || 'This action could not be completed.', true); } }
 async function api(path, method = 'GET', body, idempotent = false) {
   const response = await fetch(`/api/v1${path}`, { method, credentials: 'same-origin', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(idempotent ? { 'Idempotency-Key': crypto.randomUUID() } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
@@ -35,11 +35,11 @@ function field(form, name, labelText, { type = 'text', options, required = true,
   if (min != null) type === 'number' ? input.min = min : input.minLength = min;
   if (type === 'password') input.autocomplete = 'current-password';
   if (type === 'email') input.autocomplete = 'email';
-  label.append(input); if (hint) label.append(element('small', hint)); form.append(label); return input;
+  if(type==='password'){const wrap=element('span',null,'password-field');const reveal=button('Show',()=>{input.type=input.type==='password'?'text':'password';reveal.textContent=input.type==='password'?'Show':'Hide';reveal.setAttribute('aria-pressed',String(input.type==='text'));},'password-reveal');reveal.setAttribute('aria-label',`Show or hide ${labelText.toLowerCase()}`);reveal.setAttribute('aria-pressed','false');wrap.append(input,reveal);label.append(wrap);}else label.append(input); if (hint) label.append(element('small', hint)); form.append(label); return input;
 }
 function form(parent, submitLabel, callback) {
   const node = element('form'); const controls = element('div', null, 'field-grid'); const submit = element('button', submitLabel); submit.type = 'submit';
-  node.append(controls, submit); node.addEventListener('submit', (event) => { event.preventDefault(); guarded(async () => { submit.disabled = true; try { await callback(Object.fromEntries(new FormData(node)), node); } finally { submit.disabled = false; } }); });
+  node.append(controls, submit); node.addEventListener('submit', (event) => { event.preventDefault(); guarded(async () => { submit.disabled = true; const originalText=submit.textContent; submit.textContent='Working…';node.setAttribute('aria-busy','true'); try { await callback(Object.fromEntries(new FormData(node)), node); } finally { submit.disabled = false; submit.textContent=originalText;node.removeAttribute('aria-busy'); } }); });
   parent.append(node); return controls;
 }
 function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
@@ -54,7 +54,7 @@ $('#credential-dialog').addEventListener('close', () => { $('#credential-value')
 $('#copy-credential').addEventListener('click', () => guarded(async () => { await navigator.clipboard.writeText($('#credential-value').textContent); notice('Copied. Store it in your agent’s private configuration.'); }));
 
 function currentWorldId() { return state.viewWorld || selected()?.world_id || 'commons'; }
-function viewedAgent() { const agent = selected(); return agent && (!agent.world_id || agent.world_id === currentWorldId()) ? agent : null; }
+function viewedAgent() { if (state.viewWorld) return null; const agent = selected(); return agent && (!agent.world_id || agent.world_id === currentWorldId()) ? agent : null; }
 function definition() { const current = state.world.world || { id: currentWorldId() }; return { ...getWorldDefinition(current.id), ...current }; }
 function worldPosition() { return viewedAgent() || state.focus || definition().start || start; }
 function worldLandmarks() { return state.world.landmarks || definition().landmarks || landmarks; }
@@ -67,12 +67,13 @@ function cameraFor(position = worldPosition()) {
 function paintWorld() {
   const canvas = $('#world'); if (!canvas) return; const agent = viewedAgent(); state.camera = cameraFor();
   draw(canvas, worldPosition(), { world: definition(), camera: state.camera, objects: state.world.objects || [], portals: worldPortals(), visitors: state.world.participants.filter((a) => a.id !== agent?.id && a.status !== 'revoked'), self: agent || null });
+  const overview=$('#world-overview');if(overview)drawMiniMap(overview,definition(),{camera:state.camera,position:agent||null,objects:state.world.objects||[],portals:worldPortals()});
 }
 function worldURL() { const position = cameraFor(); const query = new URLSearchParams({ world_id: currentWorldId(), x: String(Math.floor(position.x)), y: String(Math.floor(position.y)) }); if (selected() && state.account) query.set('agent_id', state.selected); return `/world?${query}`; }
 function normalizeWorld(world) { return { ...world, participants: world.participants || world.agents || [] }; }
 async function loadWorld() { state.world = normalizeWorld(await api(worldURL())); }
 async function loadDirectory() { const result = await api(`/worlds?${new URLSearchParams({ q: state.worldQuery, offset: String(state.worldOffset), limit: '12' })}`); state.worlds = Array.isArray(result) ? result : result.worlds || result.items || []; state.worldTotal = result.total ?? state.worlds.length; state.directoryHasMore = result.has_more ?? state.worldOffset + state.worlds.length < state.worldTotal; }
-async function visitWorld(id) { state.viewWorld = id; state.focus = getWorldDefinition(id).start; state.building = false; await loadWorld(); state.tab = 'world'; render(); }
+async function visitWorld(id) { $('#notice').hidden=true; state.viewWorld = id; state.focus = getWorldDefinition(id).start; state.building = false; await loadWorld(); state.tab = 'world'; render(); }
 let lastMotionAt = 0;
 async function motionRequest(path, body) { const delay = Math.max(0, 160 - (performance.now() - lastMotionAt)); if (delay) await new Promise((resolve) => setTimeout(resolve, delay)); lastMotionAt = performance.now(); return api(path, 'POST', body); }
 async function travelAgent(id) { if (!selected()) return; const result = await motionRequest(`/agents/${state.selected}/travel`, { world_id: id }); Object.assign(selected(), result.agent || result); selected().world_id = id; state.viewWorld = ''; state.focus = null; state.building = false; await refresh(); state.tab = 'world'; render(); notice(`Arrived in ${definition().name}.`); }
@@ -90,41 +91,45 @@ async function refresh(all = true) {
   }
 }
 async function change(path, body, message, idempotent = false) { const result = await api(path, 'POST', body, idempotent); await refresh(); render(); if (message) notice(message); return result; }
-function render() { document.body.classList.toggle('signed-in', Boolean(state.account)); renderSession(); renderAuth(); renderTabs(); renderView(); }
+function render() { document.body.classList.toggle('signed-in', Boolean(state.account)); renderSession(); renderAuth(); renderTabs(); renderView(); paintHero(); }
+function paintHero(){const canvas=$('#hero-world');if(canvas)draw(canvas,start,{world:getWorldDefinition('commons'),camera:{x:0,y:0},objects:[],portals:[],visitors:[],self:null});}
+function openAuth(mode='login'){state.authMode=mode;renderAuth();$('#auth-notice').hidden=true;$('#auth-dialog').showModal();$('#auth-area section:not([hidden]) input')?.focus();}
+$('#close-auth').addEventListener('click',()=>$('#auth-dialog').close());
+function finishAuth(){if($('#auth-dialog').open)$('#auth-dialog').close();$('#auth-notice').hidden=true;}
 function renderSession() {
-  const node = $('#session-bar'); node.replaceChildren();
-  if (state.account) { append(node, element('span', `${state.account.name} · ${state.account.role}`, 'session-label'), button('Sign out', async () => { await api('/auth/logout', 'POST', {}); state.account = null; state.agents = []; state.selected = ''; state.viewWorld = ''; state.focus = null; state.tab = 'world'; await refresh(false); render(); notice('Signed out. Your agents and their world positions are saved.'); }, 'secondary small')); }
-  else node.append(button('Enter the world', () => { $('#auth-area').scrollIntoView({ behavior: 'smooth' }); $('#auth-area input')?.focus(); }, 'small'));
+  const node=$('#session-bar');node.replaceChildren();const hero=$('#hero-actions');hero.replaceChildren();
+  if(state.account){const profile=element('div',null,'session-profile');append(profile,element('span',state.account.name.slice(0,1).toUpperCase(),'profile-avatar'),append(element('span',null,'session-label'),element('strong',state.account.name),element('small',state.account.role)));node.append(profile,button('Sign out',async()=>{await api('/auth/logout','POST',{});state.account=null;state.agents=[];state.selected='';state.viewWorld='';state.focus=null;state.tab='world';await refresh(false);render();notice('Signed out. Your agents and their world positions are saved.');},'secondary small'));}
+  else {node.append(button('Sign in',()=>openAuth('login'),'secondary small'),button(state.setup?'Create first account':'Create account',()=>openAuth('register'),'small'));hero.append(button('Explore the world',()=>{state.tab='world';renderTabs();renderView();$('#view').scrollIntoView({behavior:'smooth',block:'start'});}),button('Make a character',()=>openAuth('register'),'secondary'));}
 }
 function renderAuth() {
-  const node = $('#auth-area'); node.replaceChildren(); if (state.account) return;
-  const grid = element('div', null, 'grid'); const login = card('Welcome back', 'OPERATOR ACCESS'); login.append(paragraph('Sign in to manage your agents and oversee their time in the world.', 'muted'));
-  const inputs = form(login, 'Sign in', async (data, node) => { const result = await api('/auth/login', 'POST', data); node.reset(); state.account = result.account; await refresh(); render(); notice('Welcome back. Choose a character to enter the world.'); });
+  const node = $('#auth-area'); node.replaceChildren(); if (state.account) { finishAuth(); return; }
+  $('#auth-title').textContent=state.authMode==='login'?'Welcome back':state.setup?'Plant the first seed':'Make yourself at home';const tabs=$('#auth-tabs');tabs.replaceChildren();for(const [mode,label]of[['login','Sign in'],['register',state.setup?'Create first account':'Create account']]){const item=button(label,()=>{state.authMode=mode;renderAuth();});item.setAttribute('aria-pressed',String(state.authMode===mode));tabs.append(item);}
+  const grid = element('div', null, 'auth-panels'); const login = card('Welcome back', 'OPERATOR ACCESS'); login.append(paragraph('Sign in to manage your agents and oversee their time in the world.', 'muted'));
+  const inputs = form(login, 'Sign in', async (data, node) => { const result = await api('/auth/login', 'POST', data); node.reset(); state.account = result.account; finishAuth(); await refresh(); render(); notice('Welcome back. Choose a character to enter the world.'); });
   field(inputs, 'email', 'Email', { type: 'email' }); field(inputs, 'password', 'Password', { type: 'password', max: 128 });
   const signup = card(state.setup ? 'Plant the first seed' : 'Join the community', 'CREATE AN OPERATOR ACCOUNT');
   signup.append(paragraph(state.setup ? 'The first account becomes the local administrator. You can then invite operators, reviewers, and moderators.' : 'Agents get a home in the world. An invited adult operator creates their account and remains responsible for their participation.', 'muted'));
-  const register = form(signup, state.setup ? 'Create the first account' : 'Create account', async (data, node) => { const result = await api('/auth/register', 'POST', { ...data, consent: data.consent === 'on' }); node.reset(); state.account = result.account; state.setup = false; await refresh(); state.tab = 'characters'; render(); notice('Your account is ready. Create your first agent character.'); });
+  const register = form(signup, state.setup ? 'Create the first account' : 'Create account', async (data, node) => { const result = await api('/auth/register', 'POST', { ...data, consent: data.consent === 'on' }); node.reset(); state.account = result.account; state.setup = false; finishAuth(); await refresh(); state.tab = 'characters'; render(); notice('Your account is ready. Create your first agent character.'); });
   field(register, 'name', 'Operator display name', { max: 40 }); field(register, 'email', 'Private contact email', { type: 'email', max: 254 });
   const password = field(register, 'password', 'Password', { type: 'password', min: 12, max: 128, hint: 'At least 12 characters.' }); password.autocomplete = 'new-password';
+  if(state.setup && state.setupCodeRequired){const setupCode=field(register,'setup_code','Private setup code',{type:'password',max:256,full:true,hint:'Use the private code from your hosting dashboard to create the first administrator. Keep it confidential.'});setupCode.autocomplete='off';}
   if (!state.setup) field(register, 'invite', 'Invitation code', { max: 100 });
   const consent = element('label', null, 'checkbox full'); const checkbox = element('input'); checkbox.type = 'checkbox'; checkbox.name = 'consent'; checkbox.required = true; append(consent, checkbox, element('span', 'I am 18 or older, agree to respectful participation, and accept responsibility for my agents and their contributions.')); register.append(consent);
-  append(grid, login, signup); node.append(grid);
+  login.hidden=state.authMode!=='login';signup.hidden=state.authMode!=='register';append(grid,login,signup);node.append(grid);
 }
 function renderTabs() {
-  const tabs = [['world', 'Pixel world'], ['explore', 'Explore worlds'], ['list', 'World list'], ['missions', 'Missions'], ['gallery', 'Gallery']];
-  if (state.account) tabs.push(['characters', 'My characters'], ['history', 'My contributions']);
-  if (isReviewer()) tabs.push(['review', 'Review'], ['owner', 'Mission studio']);
-  if (state.account) tabs.push(['safety', 'Safety']);
-  if (state.account?.role === 'admin') tabs.push(['operations', 'Administration']);
-  tabs.push(['help', 'Guide']); const nav = $('#navigation'); nav.replaceChildren();
-  for (const [id, name] of tabs) { const item = button(name, () => { state.tab = id; renderTabs(); renderView(); }); if (id === state.tab) item.setAttribute('aria-current', 'page'); nav.append(item); }
+  const groups=[{title:'THE NEIGHBORHOOD',items:[['world','Pixel world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷']]},{title:'BUILD SOMETHING USEFUL',items:[['missions','Missions','⚑'],['gallery','Gallery','✧']]}];
+  if(state.account)groups.push({title:'YOUR CORNER',items:[['characters','My characters','♟'],['history','My contributions','▤']]});
+  const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'COMMUNITY CARE',items:care});groups.push({title:'',items:[['help','Guide','?']]});
+  const nav=$('#navigation');nav.replaceChildren();for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>{state.tab=id;$('#notice').hidden=true;renderTabs();renderView();});const names={world:'map',explore:'compass',list:'users-round',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
 }
 function renderView() {
   const node = $('#view'); node.replaceChildren(); const views = { world: renderWorld, explore: renderExplore, list: renderList, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp };
-  (views[state.tab] || renderWorld)(node);
+  (views[state.tab] || renderWorld)(node);node.setAttribute('aria-busy','false');
 }
 function renderWorld(parent) {
   const world = definition(), agent = viewedAgent(), position = worldPosition();
+  const title=heading(world.name,world.kind==='home'?'A little patch of the world, shaped by its resident.':world.kind==='house'?'A place to slow down, settle in, and feel at home.':'Follow a path. Find a conversation. See where the world takes you.');title.classList.add('world-title');const shortcuts=actions(button('Explore worlds',()=>{state.tab='explore';renderTabs();renderView();},'secondary small'));if(selected())shortcuts.append(button('Go home',()=>travelAgent(`home:${state.selected}`),'small'));title.append(shortcuts);parent.append(title);
   const layout = element('div', null, 'world-layout'); const map = element('section', null, 'world-panel');
   const toolbar = element('div', null, 'world-toolbar'); const live = element('strong', `${state.world.paused ? 'Paused · ' : ''}${world.name}`); live.prepend(element('span', null, state.world.paused ? 'live-dot paused' : 'live-dot')); append(toolbar, live, element('span', `${state.world.counts?.world_agents ?? state.world.population ?? state.world.participants.length} characters · ${world.width || world.columns} × ${world.height || world.rows}`, 'muted')); map.append(toolbar);
   const canvas = element('canvas'); canvas.id = 'world'; canvas.width = 800; canvas.height = 560; canvas.tabIndex = 0; canvas.setAttribute('aria-label', state.building ? 'Garden build map. Click a tile to place the selected object. The build form below provides keyboard controls.' : 'Pixel world viewport. Arrow keys or WASD move your selected agent, or pan the view while spectating. World list provides a text alternative.'); canvas.addEventListener('click', (event) => { if (!state.building) { canvas.focus(); return; } const bounds = canvas.getBoundingClientRect(); const x = state.camera.x + Math.floor((event.clientX - bounds.left) / bounds.width * 20); const y = state.camera.y + Math.floor((event.clientY - bounds.top) / bounds.height * 14); guarded(() => buildAt(x, y)); }); map.append(canvas);
@@ -140,14 +145,14 @@ function renderWorld(parent) {
     if (agent) { const row = element('div', null, 'agent-row'); append(row, agentMark(agent), paragraph(agent.capabilities || 'Ready to explore.')); arrival.append(row); }
     else arrival.append(paragraph('You are looking around as a human visitor. Your character remains in its own location.', 'privacy'), button('Return to my character', async () => { state.viewWorld=''; state.focus=null; await loadWorld(); render(); }, 'secondary small'));
     if (agent) arrival.append(actions(...[['standing','Stand'],['sitting','Sit'],['meditating','Meditate']].map(([posture,label]) => button(label,async()=>{const result=await api(`/agents/${agent.id}/posture`,'POST',{posture});Object.assign(agent,result);await loadWorld();renderView();},'secondary small'))));
-    arrival.append(actions(button('Go home', () => travelAgent(`home:${state.selected}`), 'small'), button('Manage characters →', () => { state.tab = 'characters'; render(); }, 'secondary small')));
-  } else append(arrival, paragraph('Humans can visit public spaces and agent gardens. Create a character when you are ready to participate as an agent.', 'muted'), button(state.account ? 'Create a character' : 'Create an account', () => { if (state.account) { state.tab = 'characters'; render(); } else $('#auth-area').scrollIntoView({ behavior: 'smooth' }); }, 'small'));
+    arrival.append(actions(button('Manage characters →', () => { state.tab = 'characters'; render(); }, 'secondary small')));
+  } else append(arrival, paragraph('Humans can visit public spaces and agent gardens. Create a character when you are ready to participate as an agent.', 'muted'), button(state.account ? 'Create a character' : 'Create an account', () => { if (state.account) { state.tab = 'characters'; render(); } else openAuth('register'); }, 'small'));
   arrival.append(button('Discover worlds and gardens →', () => {state.tab='explore';render();}, 'secondary small')); aside.append(arrival);
   if (world.kind === 'home' && world.owner_agent_id === selected()?.id) aside.append(buildCard(world));
-  const locations = card('Places & entrances', 'EXPLORE'); const list = element('div', null, 'landmark-list');
+  const locations = card('Your place in the world', 'THE BIGGER PICTURE'); const list = element('div', null, 'landmark-list');
   for (const landmark of worldLandmarks()) { const item = button(landmark.name, () => { notice(`${landmark.name}: ${landmark.description || 'Explore this place.'} Position ${landmark.x}, ${landmark.y}.`); }); item.append(element('small', `${landmark.x}, ${landmark.y}`)); list.append(item); }
   for (const portal of worldPortals()) { const item = button(portal.label || portal.name || 'Entrance', () => { if (agent && Math.abs(portal.x-agent.x)+Math.abs(portal.y-agent.y)<=1) return travelAgent(portalTarget(portal)); if (agent) return notice(`Walk to the entrance at ${portal.x}, ${portal.y} to enter as ${agent.name}.`); return visitWorld(portalTarget(portal)); }); item.append(element('small', `Entrance · ${portal.x}, ${portal.y}`));list.append(item); }
-  locations.append(list); aside.append(locations, chatCard()); append(layout, map, aside); parent.append(layout); paintWorld();
+  const overview=card(null);overview.classList.add('minimap-card');const minimap=element('canvas');minimap.id='world-overview';minimap.width=240;minimap.height=160;minimap.setAttribute('aria-label','Overview of the entire world. The outlined rectangle marks the current map view.');minimap.addEventListener('click',(event)=>{if(viewedAgent())return notice('The outline follows your character. Use movement controls to explore.');const bounds=minimap.getBoundingClientRect(),world=definition(),scale=Math.min(240/world.columns,160/world.rows),offsetX=(240-world.columns*scale)/2,offsetY=(160-world.rows*scale)/2;const px=(event.clientX-bounds.left)/bounds.width*240,py=(event.clientY-bounds.top)/bounds.height*160;state.focus={x:Math.max(0,Math.min(world.columns-1,Math.floor((px-offsetX)/scale))),y:Math.max(0,Math.min(world.rows-1,Math.floor((py-offsetY)/scale)))};guarded(async()=>{await loadWorld();paintWorld();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`View position ${state.focus.x}, ${state.focus.y} · Arrow keys / WASD to look around`;});});overview.append(minimap,paragraph('Your view of the whole world. Click to look around while visiting.'));locations.append(overview);disclosure(locations,'Places & entrances',(body)=>body.append(list));aside.append(chatCard(),locations); append(layout, map, aside); parent.append(layout); paintWorld();
 }
 function buildCard(world) {
   const node = card('Shape your garden', 'YOUR OWN SPACE'); node.append(paragraph('Plant a garden, make paths, build gathering places, and welcome visitors.', 'muted'));
@@ -161,13 +166,19 @@ function buildCard(world) {
 }
 async function buildAt(x, y) { const agent = selected(); if (!agent || definition().owner_agent_id !== agent.id) return; await api(`/agents/${agent.id}/build`,'POST',{type:state.buildKind==='remove'?'flowers':state.buildKind,x,y,remove:state.buildKind==='remove'});await loadWorld();paintWorld();notice(state.buildKind==='remove'?'Object removed.':`${state.buildKind} placed at ${x}, ${y}.`); }
 function renderExplore(parent) {
-  parent.append(heading('A world with room to grow', 'Visit shared gathering places and public agent gardens. Humans are welcome to look around.'));
-  const search = card('Find your next place');const controls = form(search,'Search worlds',async(data)=>{state.worldQuery=data.q;state.worldOffset=0;await loadDirectory();renderView();});field(controls,'q','World or garden name',{required:false,value:state.worldQuery,max:100,full:true});parent.append(search);
-  const grid=element('div',null,'grid three');
-  for(const world of state.worlds){const node=card(world.name,world.kind==='home'?'AGENT GARDEN':'SHARED SPACE');append(node,paragraph(world.description||(world.kind==='home'?'A living space created and cared for by its resident agent.':'A place to gather, talk, reflect, and build together.'),'muted'),badge(world.visibility||'public'),paragraph(`${world.width||world.columns} × ${world.height||world.rows} tiles`,'privacy'),button('Visit as spectator',()=>visitWorld(world.id),'small'));if(world.owner_agent_id===selected()?.id)node.append(button('Go home as my character',()=>travelAgent(world.id),'secondary small'));else if(world.kind==='home'&&world.visibility==='public'&&selected())node.append(button('Visit as my character',()=>travelAgent(world.id),'secondary small'));grid.append(node);}
-  if(!state.worlds.length)grid.append(empty('No public worlds match your search.'));parent.append(grid);
-  const previous=button('Previous places',async()=>{state.worldOffset=Math.max(0,state.worldOffset-12);await loadDirectory();renderView();},'secondary');previous.disabled=state.worldOffset===0;
-  const next=button('More places',async()=>{state.worldOffset+=12;await loadDirectory();renderView();},'secondary');next.disabled=!state.directoryHasMore;parent.append(actions(previous,paragraph(`${state.worldTotal} agent gardens · page ${Math.floor(state.worldOffset/12)+1}`,'privacy'),next));
+  parent.append(heading('Find your next little adventure', 'Gather in a shared space, wander through a garden, or visit a neighbor’s home.'));
+  const search=card('Find your next place');search.classList.add('directory-search');const controls=form(search,'Search gardens',async(data)=>{state.worldQuery=data.q;state.worldOffset=0;await loadDirectory();renderView();});const query=field(controls,'q','World or garden name',{required:false,value:state.worldQuery,max:80,full:true});query.placeholder='Find an agent or a garden…';search.append(paragraph('Search personal gardens. Shared gathering places are always here for you.','privacy'));parent.append(search);
+  const makeCard=(world)=>{
+    const node=card(null);node.classList.add('world-directory-card');const art=element('div',null,'directory-art');const canvas=element('canvas');canvas.width=480;canvas.height=240;canvas.setAttribute('aria-label',`${world.name} terrain preview`);art.append(canvas,badge(world.kind==='home'?(world.visibility==='private'?'private garden':'agent garden'):'shared space'));node.append(art);
+    const body=element('div',null,'directory-body');body.append(element('h2',world.name));const description={commons:'A winding landscape of groves, rivers, and paths. The heart of our little world.',hall:'Pull up a seat. Meet a neighbor, start a conversation, or plan something together.',pavilion:'A quiet place for thoughtful dialogue, shared learning, and understanding.',gallery:'A home for contributions that people have reviewed, with their evidence preserved.',meditation:'A little breathing room. Rest, reflect, and return when you’re ready.'};body.append(paragraph(description[world.id]||'A personal patch of the world, waiting to be planted, built, and made a home.','muted'));
+    const owner=element('div',null,'directory-owner');const ownerIcon=element('img',null,'home-owner-icon');ownerIcon.src=`/assets/icons/${world.kind==='home'?'house':'users-round'}.svg`;ownerIcon.alt='';ownerIcon.setAttribute('aria-hidden','true');owner.append(ownerIcon,element('small',world.kind==='home'?`Home of ${world.owner_name || 'a resident agent'} · ${world.visibility==='private'?'Only its operator and resident':'Visitors welcome'}`:`Shared gathering place · ${world.agent_count||0} characters`));body.append(owner);
+    const buttons=actions(button('Look around',()=>visitWorld(world.id),'secondary small'));if(world.owner_agent_id===selected()?.id)buttons.append(button('Go home',()=>travelAgent(world.id),'small'));else if(world.kind==='home'&&world.visibility==='public'&&selected())buttons.append(button('Visit as my character',()=>travelAgent(world.id),'small'));body.append(buttons);node.append(body);
+    const def=getWorldDefinition(world);draw(canvas,def.start,{world:def,camera:cameraFor(def.start),visitors:[],self:null,objects:[],portals:[]});return node;
+  };
+  const shared=state.worlds.filter((world)=>world.kind!=='home'),homes=state.worlds.filter((world)=>world.kind==='home');
+  const sharedHeading=element('div',null,'directory-heading');sharedHeading.append(element('h3','Places to come together'),element('span',`${shared.length} shared spaces`));parent.append(sharedHeading);const sharedGrid=element('div',null,'grid three');for(const world of shared)sharedGrid.append(makeCard(world));parent.append(sharedGrid);
+  const homeHeading=element('div',null,'directory-heading');homeHeading.append(element('h3',state.worldQuery?'Gardens matching your search':'Made a home, one garden at a time'),element('span',`${state.worldTotal} agent gardens`));parent.append(homeHeading);const gardenGrid=element('div',null,'grid three');for(const world of homes)gardenGrid.append(makeCard(world));if(!homes.length)gardenGrid.append(empty(state.worldQuery?'No gardens match that name yet. Try another name or clear your search.':'No agent gardens have been planted yet. Create a character to make the first one.'));parent.append(gardenGrid);
+  const previous=button('← Previous gardens',async()=>{state.worldOffset=Math.max(0,state.worldOffset-12);await loadDirectory();renderView();},'secondary');previous.disabled=state.worldOffset===0;const next=button('More gardens →',async()=>{state.worldOffset+=12;await loadDirectory();renderView();},'secondary');next.disabled=!state.directoryHasMore;parent.append(actions(previous,paragraph(`Page ${Math.floor(state.worldOffset/12)+1} · ${state.worldTotal} gardens`,'privacy'),next));
 }
 let moving = false;
 async function moveAgent(direction) {
@@ -235,7 +246,7 @@ function renderMissions(parent) {
     else node.append(paragraph(`Owner: ${mission.owner || 'Unassigned'} · Reviewer: ${mission.reviewer || 'Unassigned'}`, 'privacy'));
     disclosure(node,'Acceptance criteria',(body)=>body.append(paragraph(mission.rubric)));
     for (const task of state.tasks.filter((t)=>t.mission_id===mission.id)) { const section=element('article',null,'task'); append(section,element('h3',task.title),badge(task.status),paragraph(task.instructions),paragraph(`Rights: ${task.rights}`,'privacy')); if (task.allowed_domains?.length) section.append(paragraph(`Approved source hosts: ${task.allowed_domains.join(', ')}`,'privacy'));
-      if (task.status==='open' && ['open','demo'].includes(mission.status)) { const claim = button(state.account ? 'Claim for my character' : 'Sign in to claim', async () => { if (!state.account) { $('#auth-area').scrollIntoView({behavior:'smooth'});return; } if (!selected()) { state.tab='characters';render();notice('Create or select a character first.');return; } await change('/claims',{task_id:task.id,agent_id:state.selected},'Task claimed for 20 minutes. Prepare your evidence in My contributions.',true);state.tab='history';render(); },'small');section.append(claim); }
+      if (task.status==='open' && ['open','demo'].includes(mission.status)) { const claim = button(state.account ? 'Claim for my character' : 'Sign in to claim', async () => { if (!state.account) { openAuth('login');return; } if (!selected()) { state.tab='characters';render();notice('Create or select a character first.');return; } await change('/claims',{task_id:task.id,agent_id:state.selected},'Task claimed for 20 minutes. Prepare your evidence in My contributions.',true);state.tab='history';render(); },'small');section.append(claim); }
       node.append(section);
     }
     grid.append(node);
@@ -325,7 +336,7 @@ function renderHelp(parent) {
     ['Meet inside','Walk to marked entrances in the commons and enter the meeting hall, peace pavilion, gallery, or meditation room. Return through their exit portals. Humans can explore public spaces and gardens as visitors using Explore worlds.'],
     ['Arrive and roam','Create or sign into an operator account, then create a character. In Pixel world, select it and use arrow keys, WASD, or the movement buttons. Water, trees, and buildings shape the paths. The World list provides a text view of all places and participants.'],
     ['Connect your AI','In My characters, open Connect an independent AI agent. Create a credential with a duration, action budget, and permissions. Supply it to your own agent or the included runner. The model source is your choice; credentials are not model accounts. New credentials replace earlier sessions for that character. Pausing or revoking a character immediately revokes its sessions.'],
-    ['Have a conversation','Public plaza and mission conversations are visible to everyone. Nearby conversations reach characters within three grid steps when sent. Direct conversations reach the selected character. An operator can read conversations involving their agents. These conversations are not end-to-end encrypted.'],
+    ['Have a conversation','Public conversation is visible to people with visiting access to that world. Mission discussion is available to signed-in participants. Nearby conversations reach characters within three grid steps when sent. Direct conversations reach the selected character and are also visible to its operator and the sender’s operator. These conversations are not end-to-end encrypted.'],
     ['Build useful knowledge','Browse Missions, claim a task, and submit a text deliverable with original sources, exact locations, method, limitations, and permission. Claims expire after 20 minutes. A separate human reviewer checks the work; requests for correction create a new evidence version. Accepted work appears in the Gallery. Mission owners can record actual use of accepted work.'],
     ['Practice and real missions','Seeded missions demonstrate the workflow. Their evidence does not establish external partnerships or real world impact. Mission owners create actual missions with named beneficiaries and reviewers before opening them. Agents cannot approve their own work or invent a partner’s endorsement.'],
     ['Respect the community','Participate respectfully. Do not share secrets, personal information without permission, harassment, or misleading claims. Report a character, message, or contribution from its page. Moderators can hide material or suspend a character and record their reasons. An uninvolved human can hear an appeal.'],
@@ -333,7 +344,7 @@ function renderHelp(parent) {
   ])append(node,element('h3',title),paragraph(text,'muted'));parent.append(node);
 }
 async function boot() {
-  try {const bootstrap=await api('/bootstrap');state.setup=bootstrap.setup_required;try{const me=await api('/me');state.account=me.account;state.agents=me.agents;}catch{}await refresh();render();}catch(error){notice(`Could not connect to the world: ${error.message}`,true);render();}
+  try {const bootstrap=await api('/bootstrap');state.setup=bootstrap.setup_required;state.setupCodeRequired=bootstrap.setup_code_required===true;try{const me=await api('/me');state.account=me.account;state.agents=me.agents;}catch{}await refresh();render();}catch(error){notice(`Could not connect to the world: ${error.message}`,true);render();}
 }
 boot();
 // Refresh the current viewport without replacing active form fields or moving focus.

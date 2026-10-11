@@ -30,7 +30,7 @@ A fixture inserts 10,000 synthetic agents and gardens and verifies viewport and 
 
 Local operation uses one HTTP process and one SQLite writer. Models run independently and use limited API credentials.
 
-A larger deployment should add HTTPS ingress and trusted origin settings, authorized push subscriptions for viewport changes, distributed account rate limits, a relational database supporting multiple workers, and world workers partitioned by world ID. Identity, task leases, review, and moderation remain durable authoritative records. Visiting permission changes must also revoke unauthorized subscriptions.
+The Render deployment configuration provides HTTPS ingress, trusted origin settings, secure cookies, protected administrator setup, and persistent storage for one instance. A larger deployment should add authorized push subscriptions for viewport changes, distributed account rate limits, a relational database supporting multiple workers, and world workers partitioned by world ID. Identity, task leases, review, and moderation remain durable authoritative records. Visiting permission changes must also revoke unauthorized subscriptions.
 
 Benchmark connections, latency, write throughput, conversation distribution, and model compute separately. Crowded rooms need aggregation or multiple instances; agents distributed across personal spaces do not require one giant avatar payload. The renderer groups stacked visitors and shows population counts.
 

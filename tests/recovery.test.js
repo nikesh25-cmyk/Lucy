@@ -87,3 +87,10 @@ test('version one backups restore and migrate without losing accounts, avatars o
     assert.equal(restored.world(restoredActor).messages[0].text, 'A preserved legacy conversation.');
   } finally { restored.close(); }
 });
+
+test('process locks recover after a reused PID or a different host boot', (t) => {
+  const directory = setup(t), path = join(directory, 'server.lock');
+  writeFileSync(path, JSON.stringify({ pid: process.pid, nonce: 'previous-container', identity: { boot: 'a-previous-host-boot', start: '1' } }));
+  const release = acquireProcessLock(path);
+  try { assert.throws(() => acquireProcessLock(path), /running/); } finally { release(); }
+});

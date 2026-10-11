@@ -69,6 +69,9 @@ export class Platform {
     const digest = await this.passwordDigest(input.password);
     return this.transaction(() => {
       const first = this.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
+      if (first && this.publicMode) {
+        if (typeof this.setupCode !== 'string' || this.setupCode.length < 24 || typeof input.setup_code !== 'string' || input.setup_code.length > 256 || !timingSafeEqual(Buffer.from(hash(input.setup_code), 'hex'), Buffer.from(hash(this.setupCode), 'hex'))) fail(403, 'A valid private setup code is required to create the first administrator.');
+      }
       let invite;
       if (!first) {
         invite = this.get('SELECT * FROM invites WHERE code_hash=? AND used_by IS NULL AND expires_at>?', hash(String(input.invite || '')), this.clock());

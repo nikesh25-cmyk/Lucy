@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Platform } from './src/platform.js';
 import { acquireProcessLock, backupDatabase } from './src/recovery.js';
+import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from './src/hosting.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -14,7 +15,12 @@ const files = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
+  ['/assets/fonts/dm-sans-latin-wght-normal.woff2', ['assets/fonts/dm-sans-latin-wght-normal.woff2', 'font/woff2']],
+  ['/assets/fonts/space-grotesk-latin-wght-normal.woff2', ['assets/fonts/space-grotesk-latin-wght-normal.woff2', 'font/woff2']],
 ]);
+for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout', 'book-open', 'shield-check', 'settings', 'log-in', 'menu', 'clipboard-list', 'sparkles', 'chevron-right', 'x']) {
+  files.set(`/assets/icons/${name}.svg`, [`assets/icons/${name}.svg`, 'image/svg+xml']);
+}
 const writes = new Map([
   ['/invites', ['invite', null]], ['/agents', ['createAgent', null]],
   ['/agents/control', ['agentControl', null]], ['/runtime/start', ['runtime', null]],
@@ -30,7 +36,8 @@ const writes = new Map([
 ]);
 const gets = new Set(['/health', '/bootstrap', '/world', '/worlds', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status']);
 
-function headers(response) {
+function headers(response, hosting) {
+  if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('Referrer-Policy', 'no-referrer');
   response.setHeader('X-Frame-Options', 'DENY');
@@ -45,11 +52,15 @@ async function body(request) {
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers['content-type'] || '')) fail(415, 'Use application/json.');
   if (Number(request.headers['content-length']) > 65536) fail(413, 'Request exceeds 64 KiB.');
   const chunks = []; let length = 0;
-  for await (const chunk of request) {
-    length += chunk.length;
-    if (length > 65536) fail(413, 'Request exceeds 64 KiB.');
-    chunks.push(chunk);
-  }
+  const deadline = setTimeout(() => request.destroy(Object.assign(new Error('Request body deadline exceeded.'), { status: 408 })), 15_000);
+  deadline.unref();
+  try {
+    for await (const chunk of request) {
+      length += chunk.length;
+      if (length > 65536) fail(413, 'Request exceeds 64 KiB.');
+      chunks.push(chunk);
+    }
+  } finally { clearTimeout(deadline); }
   let input;
   try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { fail(400, 'Expected a JSON object.'); }
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail(400, 'Expected a JSON object.');
@@ -64,26 +75,21 @@ function tokenFrom(request) {
   const cookie = request.headers.cookie?.split(';').map((item) => item.trim()).find((item) => item.startsWith('world_session='));
   return cookie?.slice(14);
 }
-function cookie(response, token, expires) {
-  response.setHeader('Set-Cookie', `world_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.max(0, Math.floor((expires - Date.now()) / 1000))}`);
-}
-function checkRequest(request, server) {
-  const host = request.headers.host;
-  let origin;
-  try { origin = new URL(`http://${host}`); } catch { fail(403, 'A loopback Host header is required.'); }
-  if (!host || !['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) fail(403, 'This local server requires a loopback Host header.');
-  const port = server.address()?.port;
-  if (port && Number(origin.port || 80) !== port) fail(403, 'Host port does not match this server.');
-  if (request.headers.origin && request.headers.origin !== origin.origin) fail(403, 'Cross-origin requests are rejected.');
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !request.headers.origin && !request.headers.authorization && request.headers['x-api-client'] !== 'operator') fail(403, 'Browser writes require the same Origin; API clients must identify themselves.');
+function cookie(response, token, expires, hosting) {
+  response.setHeader('Set-Cookie', `world_session=${token}; Path=/; HttpOnly; SameSite=Strict${hosting.publicOrigin ? '; Secure' : ''}; Max-Age=${Math.max(0, Math.floor((expires - Date.now()) / 1000))}`);
 }
 
-export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups') } = {}) {
-  const authAttempts = new Map();
+export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE } = {}) {
+  const hosting = hostingConfiguration({ LUCY_PUBLIC_ORIGIN: publicOrigin, LUCY_SETUP_CODE: setupCode });
+  const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
+  if (hosting.publicOrigin && setupRequired && !hosting.setupCode) throw new Error('Set the private LUCY_SETUP_CODE before starting a public server with no administrator.');
+  platform.publicMode = Boolean(hosting.publicOrigin);
+  platform.setupCode = hosting.setupCode;
+  const authLimiter = createAuthenticationLimiter({ publicMode: Boolean(hosting.publicOrigin) });
   const server = createServer(async (request, response) => {
-    headers(response);
+    headers(response, hosting);
     try {
-      checkRequest(request, server);
+      validateRequestOrigin(request, server, hosting);
       const url = new URL(request.url, 'http://localhost');
       const path = url.pathname;
       if (!path.startsWith('/api/')) {
@@ -110,19 +116,24 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         platform.get('SELECT 1');
         return json(response, 200, { status: 'ok', storage: 'sqlite', model_configured: Boolean(process.env.LUCY_MODEL_NAME) });
       }
-      if (route === '/bootstrap') return json(response, 200, { setup_required: platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0 });
+      if (route === '/bootstrap') {
+        const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
+        return json(response, 200, { setup_required: setupRequired, setup_code_required: setupRequired && Boolean(hosting.publicOrigin) });
+      }
       if (route === '/auth/register' || route === '/auth/login') {
-        const ip = request.socket.remoteAddress;
-        const timestamp = Date.now();
-        if (authAttempts.size > 1000) for (const [key, value] of authAttempts) if (timestamp - value.start >= 60000) authAttempts.delete(key);
-        let attempt = authAttempts.get(ip);
-        if (!attempt || timestamp - attempt.start >= 60000) { attempt = { start: timestamp, count: 0 }; authAttempts.set(ip, attempt); }
-        if (++attempt.count > 15) { response.setHeader('Retry-After', '60'); fail(429, 'Too many authentication attempts; wait a minute.'); }
-        const input = await body(request);
-        const result = await platform[route.endsWith('register') ? 'register' : 'login'](input);
-        cookie(response, result.token, result.expires_at);
-        const { token, ...safe } = result;
-        return json(response, route.endsWith('register') ? 201 : 200, request.headers['x-api-client'] === 'operator' ? result : safe);
+        let endAttempt;
+        try {
+          endAttempt = authLimiter.begin(request.socket.remoteAddress);
+          const input = await body(request);
+          authLimiter.account(input.email);
+          const result = await platform[route.endsWith('register') ? 'register' : 'login'](input);
+          cookie(response, result.token, result.expires_at, hosting);
+          const { token, ...safe } = result;
+          return json(response, route.endsWith('register') ? 201 : 200, request.headers['x-api-client'] === 'operator' ? result : safe);
+        } catch (error) {
+          if (error.status === 429) response.setHeader('Retry-After', '60');
+          throw error;
+        } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
       const publicRoute = ['/world', '/worlds', '/missions', '/gallery'].includes(route) && request.method === 'GET';
@@ -146,7 +157,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       }
       if (request.method === 'DELETE') {
         const result = platform.transaction(() => platform.deleteAccount(actor));
-        cookie(response, '', 0);
+        cookie(response, '', 0, hosting);
         return json(response, 200, result);
       }
       const input = await body(request);
@@ -175,7 +186,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         platform.charge(actor);
         return value;
       });
-      if (route === '/auth/logout') cookie(response, '', 0);
+      if (route === '/auth/logout') cookie(response, '', 0, hosting);
       return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs'].includes(route) ? 201 : 200, result);
     } catch (error) {
       if (!error.status) console.error('HTTP request failed:', error.code || error.name || 'UnknownError');
@@ -190,17 +201,24 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const databasePath = process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite');
-  const releaseLock = acquireProcessLock(join(dirname(databasePath), 'server.lock'));
-  const { server, platform } = createApp({ platform: new Platform(databasePath), backupDir: join(dirname(databasePath), 'backups') });
-  let closing = false;
-  const close = () => {
-    if (closing) return;
-    closing = true;
-    server.close(() => { platform.close(); releaseLock(); });
-    server.closeIdleConnections();
-  };
-  process.once('SIGINT', close); process.once('SIGTERM', close);
-  server.once('error', (error) => { platform.close(); releaseLock(); console.error(error.message); process.exitCode = 1; });
-  server.listen(Number(process.env.PORT || 3000), '127.0.0.1', () => console.log(`Shared World is ready at http://127.0.0.1:${server.address().port}`));
+  let platform, releaseLock, server;
+  try {
+    const hosting = hostingConfiguration();
+    const databasePath = process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite');
+    releaseLock = acquireProcessLock(join(dirname(databasePath), 'server.lock'));
+    platform = new Platform(databasePath);
+    ({ server } = createApp({ platform, backupDir: join(dirname(databasePath), 'backups'), publicOrigin: hosting.publicOrigin || '', setupCode: hosting.setupCode }));
+    let closing = false;
+    const close = () => {
+      if (closing) return;
+      closing = true;
+      server.close(() => { platform.close(); releaseLock(); });
+      server.closeIdleConnections();
+    };
+    process.once('SIGINT', close); process.once('SIGTERM', close);
+    server.once('error', (error) => { platform.close(); releaseLock(); console.error(error.message); process.exitCode = 1; });
+    server.listen(Number(process.env.PORT || 3000), hosting.bindHost, () => console.log(`Shared World is ready at ${hosting.publicOrigin || `http://127.0.0.1:${server.address().port}`}`));
+  } catch (error) {
+    platform?.close(); releaseLock?.(); console.error(error.message); process.exitCode = 1;
+  }
 }

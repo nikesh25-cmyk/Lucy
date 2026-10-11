@@ -226,6 +226,7 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
   const chosenCamera = options.camera || cameraFor(position, world.id === 'legacy' ? { id: 'commons', columns: COLS, rows: ROWS } : world);
   const camera = { x: Math.max(0, Math.min(world.columns - COLS, Math.floor(chosenCamera.x || 0))), y: Math.max(0, Math.min(world.rows - ROWS, Math.floor(chosenCamera.y || 0))) };
   const tiles = world.terrain;
+  const theme = world.id === 'pavilion' ? { floor: '#d0c8b5', rug: '#a0b2b6', seam: '#82999e', border: '#dedcc8' } : world.id === 'gallery' ? { floor: '#d8c5aa', rug: '#b6ad90', seam: '#999174', border: '#eee1ba' } : world.id.startsWith('house:') ? { floor: '#dcc7a6', rug: '#a7b9ad', seam: '#8b9e92', border: '#e9dec3' } : { floor: '#d7c6ae', rug: '#baa4ae', seam: '#a58d99', border: '#eee0c0' };
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   ctx.save();
@@ -251,7 +252,8 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     rect(x + 2, y + 1, 2, 2, '#fff2bb');
   };
   const tree = (x, y, flowering = false) => {
-    rect(x - 16, y + 13, 34, 7, '#426f5433');
+    rect(x - 12, y + 11, 33, 8, '#426f5433');
+    rect(x - 7, y + 15, 29, 5, '#426f5422');
     rect(x - 4, y - 6, 8, 24, '#795744');
     rect(x + 1, y - 5, 3, 22, '#a97b4f');
     rect(x - 17, y - 24, 34, 20, '#2e674d');
@@ -266,7 +268,9 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
   };
   const window = (x, y) => {
     rect(x, y, 15, 18, '#4a5065');
-    rect(x + 2, y + 2, 11, 13, '#89c8d0');
+    rect(x + 2, y + 2, 11, 13, '#7aadb7');
+    rect(x + 3, y + 3, 4, 5, '#abd4d3');
+    rect(x + 9, y + 10, 3, 4, '#aedbd7');
     rect(x + 7, y + 2, 2, 13, '#e4e0c7');
     rect(x + 2, y + 8, 11, 2, '#e4e0c7');
     rect(x - 2, y + 17, 19, 3, '#b48765');
@@ -279,6 +283,7 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     rect(x, y + 6, 24, 4, '#d2a87a');
   };
   const lamp = (x, y) => {
+    rect(x - 11, y - 28, 22, 22, '#f7e4a810');
     rect(x - 2, y - 18, 4, 28, '#576557');
     rect(x - 6, y - 24, 12, 12, '#5b6859');
     rect(x - 3, y - 22, 6, 7, '#f7e4a8');
@@ -292,16 +297,27 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
       const py = y * TILE;
       const n = (x * 47 + y * 91 + x * y * 13) % 19;
       const type = tiles[y][x];
-      rect(px, py, TILE, TILE, ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
+      rect(px, py, TILE, TILE, world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
       if (type === 'water') {
         rect(px, py, TILE, TILE, n % 2 ? '#6baab1' : '#71b4bc');
         rect(px + 5 + n % 8, py + 11, 12, 2, '#a6d0ca');
         rect(px + 16, py + 29, 14, 2, '#4e95a2');
+        rect(px + 11, py + 14, 8, 1, '#bedbd2');
+        if (n === 6 || n === 12) {
+          rect(px + 22, py + 21, 10, 5, '#698e61');
+          rect(px + 25, py + 20, 5, 2, '#a5bd76');
+          if (n === 12) blossom(px + 25, py + 19, '#ebc3c6');
+        }
         for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           const adjacent = tiles[y + dy]?.[x + dx];
           if (adjacent && adjacent !== 'water' && adjacent !== 'bridge') {
-            if (dx) rect(px + (dx > 0 ? 35 : 0), py, 5, TILE, '#b2c995');
-            else rect(px, py + (dy > 0 ? 35 : 0), TILE, 5, '#b2c995');
+            if (dx) {
+              rect(px + (dx > 0 ? 32 : 0), py, 8, TILE, '#5c97a177');
+              rect(px + (dx > 0 ? 36 : 0), py, 4, TILE, '#b2c995');
+            } else {
+              rect(px, py + (dy > 0 ? 32 : 0), TILE, 8, '#5c97a177');
+              rect(px, py + (dy > 0 ? 36 : 0), TILE, 4, '#b2c995');
+            }
           }
         }
       } else if (type === 'wall') {
@@ -310,9 +326,19 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
         rect(px + 1, py + 23, TILE - 2, 15, '#89919e');
         rect(px + 19, py + 4, 2, 15, '#abb0b7');
       } else if (type === 'floor' || type === 'rug') {
-        rect(px, py, TILE, TILE, type === 'rug' ? '#b3a7ba' : '#d8c6ac');
-        rect(px + 1, py + 19, TILE - 2, 1, type === 'rug' ? '#c9bed0' : '#bda98e');
-        rect(px + 19, py + 1, 1, 18, type === 'rug' ? '#c9bed0' : '#bda98e');
+        rect(px, py, TILE, TILE, type === 'rug' ? theme.rug : theme.floor);
+        if (type === 'rug') {
+          if (n % 4 === 0) { rect(px + 17, py + 17, 6, 6, theme.border + '55'); rect(px + 19, py + 15, 2, 10, theme.border + '55'); }
+          for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) if (tiles[y + dy]?.[x + dx] !== 'rug') {
+            if (dx) { rect(px + (dx > 0 ? 32 : 0), py, 8, TILE, theme.border); rect(px + (dx > 0 ? 30 : 8), py, 2, TILE, theme.seam); }
+            else { rect(px, py + (dy > 0 ? 32 : 0), TILE, 8, theme.border); rect(px, py + (dy > 0 ? 30 : 8), TILE, 2, theme.seam); }
+          }
+        } else {
+          rect(px + 1, py + 19, TILE - 2, 1, '#bda98e');
+          rect(px + 19, py + 1, 1, 18, '#bda98e');
+          if (tiles[y - 1]?.[x] === 'wall') rect(px, py, TILE, 5, '#56615a20');
+          if (tiles[y]?.[x - 1] === 'wall') rect(px, py, 5, TILE, '#56615a20');
+        }
       } else if (type === 'path' || type === 'plaza') {
         rect(px, py, TILE, TILE, type === 'plaza' ? '#ddceb0' : '#d3c49c');
         rect(px + 2, py + 2, 35, 2, '#e7d9ba');
@@ -328,8 +354,18 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
         rect(px + 5 + n % 10, py + 9, 2, 4, '#729d76');
         rect(px + 26, py + 28, 2, 4, '#7da67c');
         rect(px + 28, py + 26, 2, 3, '#7da67c');
-        if (n === 2 || n === 15 || type === 'garden') blossom(px + 11, py + 24, type === 'garden' ? '#e1b5a6' : '#f6e6b0');
-        if (type === 'garden') blossom(px + 27, py + 11, '#f2d69b');
+        if (n === 8 && type === 'meadow' && !world.id.startsWith('home:')) {
+          rect(px + 13, py + 21, 9, 4, '#879983'); rect(px + 15, py + 19, 5, 2, '#c0c5a6');
+        }
+        if (n === 2 || n === 15 || (type === 'garden' && world.id !== 'meditation')) blossom(px + 11, py + 24, type === 'garden' ? '#e1b5a6' : '#f6e6b0');
+        if (type === 'garden' && world.id !== 'meditation') blossom(px + 27, py + 11, '#f2d69b');
+        if (type === 'garden' && world.id === 'meditation') {
+          if (n === 6 || n === 10) { rect(px + 14, py + 24, 11, 5, '#8b9988'); rect(px + 16, py + 21, 7, 4, '#c6cbb0'); }
+          for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) if (tiles[y + dy]?.[x + dx] !== 'garden') {
+            if (dx) rect(px + (dx > 0 ? 36 : 0), py, 4, TILE, '#c4c8ab');
+            else rect(px, py + (dy > 0 ? 36 : 0), TILE, 4, '#c4c8ab');
+          }
+        }
       }
     }
   }
@@ -495,17 +531,23 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
         rect(x - 15, y + 10, 30, 5, '#c7b093');
         break;
       case 'cushion':
+        rect(x - 13, y + 10, 28, 6, '#47645633');
         rect(x - 12, y + 4, 24, 10, '#9b849f');
         rect(x - 9, y + 1, 18, 11, '#c3a9c5');
         rect(x - 6, y + 4, 12, 2, '#e0c9d8');
+        rect(x - 4, y + 7, 8, 3, '#b598ba');
         break;
     }
   };
   if (world.kind === 'interior' || world.id.startsWith('house:')) {
     for (const col of [3, 7, 12, 16]) window(col * TILE + 12, 10);
-    rect(314, 42, 174, 28, '#9a8170');
-    rect(317, 45, 168, 22, '#e1d5bb');
-    pixelText(world.name, 401, 57, '#52645d', 11);
+    const title = String(world.name).slice(0, 38);
+    ctx.font = '600 11px ui-monospace, monospace';
+    const titleWidth = Math.max(174, ctx.measureText(title).width + 24);
+    rect(400 - titleWidth / 2 + 2, 44, titleWidth, 28, '#344e4533');
+    rect(400 - titleWidth / 2, 42, titleWidth, 28, '#9a8170');
+    rect(403 - titleWidth / 2, 45, titleWidth - 6, 22, '#e1d5bb');
+    pixelText(title, 400, 57, '#52645d', 11);
     for (const [col, row] of [[2, 3], [17, 3], [2, 8], [17, 8]]) {
       rect(col * TILE + 10, row * TILE + 10, 18, 15, '#b28c73');
       blossom(col * TILE + 14, row * TILE + 4, '#e8c5b2');
@@ -525,6 +567,14 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     rect(250, 181, 27, 51, '#ae865f');
     rect(271, 211, 4, 4, '#ecd2a4');
     rect(237, 240, 53, 7, '#e2cfad');
+    rect(241, 247, 45, 3, '#baa488');
+    rect(296, 100, 13, 25, '#b08b80');
+    rect(293, 96, 19, 6, '#dbc2aa');
+    for (const x of [142, 205, 315]) {
+      rect(x - 2, 187, 26, 9, '#997554');
+      rect(x - 4, 186, 30, 4, '#c89d70');
+      blossom(x + 3, 181, '#e4b5bf'); blossom(x + 12, 182, '#f0d6a7');
+    }
   }
   for (const object of world.objects || []) drawObject(object);
   for (const object of options.objects || []) drawObject(object);
@@ -537,29 +587,19 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     rect(x - 14, y - 12, 3, 25, '#c6bde6');
     rect(x + 11, y - 12, 3, 25, '#c6bde6');
     pixelText('↟', x, y, '#64577c', 19);
-    if (world.id !== 'commons' && world.id !== 'legacy') pixelText(gate.name || 'Portal', x, y + 28, '#374f50', 9);
+    if (world.id !== 'commons' && world.id !== 'legacy' && !(world.landmarks || []).some((place) => place.x === gate.x && place.y === gate.y)) {
+      const text = gate.name || 'Portal';
+      ctx.font = '600 9px ui-monospace, monospace';
+      const width = ctx.measureText(text).width + 12;
+      const labelX = Math.max(camera.x * TILE + width / 2 + 4, Math.min((camera.x + COLS) * TILE - width / 2 - 4, x));
+      rect(labelX - width / 2, y + 20, width, 16, '#eee3cded');
+      pixelText(text, labelX, y + 28, '#374f50', 9);
+    }
   }
 
   // Corner boundaries frame the world without adding invisible collision.
   rect(0, 0, world.columns * TILE, 3, '#648369');
   rect(0, world.rows * TILE - 3, world.columns * TILE, 3, '#648369');
-
-  for (const place of world.landmarks || []) {
-    if (place.x < camera.x - 2 || place.x > camera.x + COLS + 2 || place.y < camera.y - 2 || place.y > camera.y + ROWS + 2) continue;
-    const x = (place.x + 0.5) * TILE;
-    const y = (place.y + 0.5) * TILE;
-    const active = position?.x === place.x && position?.y === place.y && Boolean(self?.name || self?.id);
-    rect(x - 14, y - 12, 28, 27, active ? '#fff0c377' : '#ffffff24');
-    if (active) {
-      rect(x - 14, y + 14, 28, 2, '#fff3c5');
-      rect(x - 14, y - 12, 28, 2, '#fff3c5');
-    }
-    const labelY = place.name === 'Welcome Plaza' ? y + 42 : place.name === 'Mission Board' ? y - 47 : y + 28;
-    ctx.font = '600 10px ui-monospace, monospace';
-    const width = ctx.measureText(place.name).width + 12;
-    rect(x - width / 2, labelY - 8, width, 17, '#294b43e6');
-    pixelText(place.name, x, labelY + 1, '#f7ecd1');
-  }
 
   const visible = visitors.filter((avatar) => avatar.x >= camera.x - 1 && avatar.x < camera.x + COLS + 1 && avatar.y >= camera.y - 1 && avatar.y < camera.y + ROWS + 1);
   const crowd = new Map();
@@ -572,7 +612,59 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
   }
   if ((self?.id || self?.name) && position) avatars.push({ ...self, x: position.x, y: position.y, isSelf: true });
   avatars.sort((a, b) => a.y - b.y || a.x - b.x);
+  const labelBoxes = [];
+  const avatarBoxes = avatars.flatMap((avatar) => {
+    const x = (avatar.x + 0.5) * TILE; const y = (avatar.y + 0.5) * TILE;
+    ctx.font = '600 9px ui-monospace, monospace';
+    const width = ctx.measureText(String(avatar.name || 'Agent').slice(0, 18)).width + 12;
+    return [{ x: x - width / 2, y: y - 40, width, height: 18 }, { x: x - 15, y: y - 21, width: 30, height: 39 }];
+  });
+  const overlaps = (a, b) => a.x < b.x + b.width + 3 && a.x + a.width + 3 > b.x && a.y < b.y + b.height + 3 && a.y + a.height + 3 > b.y;
+  const landmarkLabel = (text, x, y, preferredY) => {
+    ctx.font = '600 10px ui-monospace, monospace';
+    const width = ctx.measureText(text).width + 14;
+    const candidates = [[x, preferredY], [x, y - 47], [x, y + 31], [x - width / 2 - 22, y], [x + width / 2 + 22, y], [x, y + 51]];
+    for (const [candidateX, candidateY] of candidates) {
+      const labelX = Math.max(camera.x * TILE + width / 2 + 4, Math.min((camera.x + COLS) * TILE - width / 2 - 4, candidateX));
+      const labelY = Math.max(camera.y * TILE + 12, Math.min((camera.y + ROWS) * TILE - 12, candidateY));
+      const box = { x: labelX - width / 2, y: labelY - 9, width, height: 18 };
+      if (avatarBoxes.some((other) => overlaps(box, other)) || labelBoxes.some((other) => overlaps(box, other))) continue;
+      labelBoxes.push(box);
+      rect(box.x + 1, box.y + 2, width, 18, '#203d3633');
+      rect(box.x, box.y, width, 18, '#294b43ed');
+      rect(box.x, box.y, 2, 18, '#d6c69a');
+      pixelText(text, labelX, labelY + 1, '#f7ecd1');
+      return;
+    }
+    // Busy locations remain available in the accompanying accessible place list.
+  };
+
+  for (const place of world.landmarks || []) {
+    if (place.x < camera.x - 2 || place.x > camera.x + COLS + 2 || place.y < camera.y - 2 || place.y > camera.y + ROWS + 2) continue;
+    const x = (place.x + 0.5) * TILE;
+    const y = (place.y + 0.5) * TILE;
+    const active = position?.x === place.x && position?.y === place.y && Boolean(self?.name || self?.id);
+    rect(x - 14, y - 12, 28, 27, active ? '#fff0c377' : '#ffffff24');
+    if (active) {
+      rect(x - 14, y + 14, 28, 2, '#fff3c5');
+      rect(x - 14, y - 12, 28, 2, '#fff3c5');
+    }
+    const indoorTitle = world.kind === 'interior' || world.id.startsWith('house:');
+    if (!indoorTitle) {
+      const labelY = place.name === 'Welcome Plaza' ? y + 42 : place.name === 'Mission Board' || (world.id.startsWith('home:') && place.name === 'Garden Cottage') ? y - 47 : y + 28;
+      landmarkLabel(place.name, x, y, labelY);
+    }
+  }
+
   const occupancy = new Map();
+  const nameBoxes = [];
+  if ((self?.name || self?.id) && position) {
+    ctx.font = '600 9px ui-monospace, monospace';
+    const width = ctx.measureText(String(self.name || 'Agent').slice(0, 18)).width + 8;
+    const x = Math.min((camera.x + COLS) * TILE - width / 2 - 3, Math.max(camera.x * TILE + width / 2 + 3, (position.x + 0.5) * TILE));
+    const y = Math.max(camera.y * TILE + 9, (position.y + 0.5) * TILE - 30);
+    nameBoxes.push({ x: x - width / 2, y: y - 7, width, height: 14, reservedSelf: true });
+  }
   for (const avatar of avatars) {
     if (!Number.isFinite(avatar.x) || !Number.isFinite(avatar.y)) continue;
     const cell = `${avatar.x},${avatar.y}`;
@@ -609,9 +701,18 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     ctx.font = '600 9px ui-monospace, monospace';
     const width = ctx.measureText(name).width + 8;
     const labelX = Math.min((camera.x + COLS) * TILE - width / 2 - 3, Math.max(camera.x * TILE + width / 2 + 3, x));
-    const labelY = Math.max(camera.y * TILE + 9, y - 30 - stack * 12);
-    rect(labelX - width / 2, labelY - 7, width, 14, avatar.isSelf ? '#354f67ed' : '#28493feb');
-    pixelText(name, labelX, labelY, '#fff4d8', 9);
+    const defaultLabelY = Math.max(camera.y * TILE + 9, y - 30 - (avatar.isSelf ? 0 : stack * 12));
+    let nameBox;
+    for (const candidateY of [defaultLabelY, defaultLabelY - 16, defaultLabelY - 32, y + 29]) {
+      const labelY = Math.max(camera.y * TILE + 9, Math.min((camera.y + ROWS) * TILE - 9, candidateY));
+      const box = { x: labelX - width / 2, y: labelY - 7, width, height: 14 };
+      if (nameBoxes.some((other) => !(avatar.isSelf && other.reservedSelf) && overlaps(box, other)) || labelBoxes.some((other) => overlaps(box, other))) continue;
+      nameBox = box; nameBoxes.push(box); break;
+    }
+    if (nameBox) {
+      rect(nameBox.x, nameBox.y, width, 14, avatar.isSelf ? '#354f67ed' : '#28493feb');
+      pixelText(name, labelX, nameBox.y + 7, '#fff4d8', 9);
+    }
     ctx.globalAlpha = 1;
   }
   for (const [key, count] of crowd) {
@@ -624,5 +725,60 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     rect(x - width / 2, y - 7, width, 14, '#28493fe8');
     pixelText(label, x, y, '#fff2cf', 9);
   }
+  ctx.restore();
+}
+
+const miniMapCache = new WeakMap();
+
+/** A terrain overview; the outline is the viewport and the cream dot is the character. */
+export function drawMiniMap(canvas, world = 'commons', options = {}) {
+  const definition = getWorldDefinition(world);
+  const ctx = canvas.getContext('2d');
+  if (!ctx || !canvas.width || !canvas.height) return;
+  const scale = Math.min(canvas.width / definition.columns, canvas.height / definition.rows);
+  const offsetX = (canvas.width - definition.columns * scale) / 2;
+  const offsetY = (canvas.height - definition.rows * scale) / 2;
+  const palette = { meadow: '#98b886', garden: '#b8bf83', tree: '#527857', water: '#729fab', path: '#dbbd8c', plaza: '#e5ca9e', bridge: '#b58a62', building: '#a28586', fountain: '#adc9c9', floor: '#d7c3a3', rug: '#a79ba8', wall: '#747c88' };
+  const background = (target) => {
+    target.fillStyle = '#273e35';
+    target.fillRect(0, 0, canvas.width, canvas.height);
+    for (let y = 0; y < definition.rows; y++) for (let x = 0; x < definition.columns; x++) {
+      target.fillStyle = palette[definition.terrain[y][x]] || palette.meadow;
+      const left = Math.round(offsetX + x * scale); const top = Math.round(offsetY + y * scale);
+      target.fillRect(left, top, Math.ceil(scale), Math.ceil(scale));
+    }
+  };
+  let cached = miniMapCache.get(canvas);
+  if (!cached || cached.terrain !== definition.terrain || cached.width !== canvas.width || cached.height !== canvas.height) {
+    const layer = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(canvas.width, canvas.height) : canvas.ownerDocument?.createElement('canvas');
+    if (layer) {
+      layer.width = canvas.width; layer.height = canvas.height;
+      background(layer.getContext('2d'));
+      cached = { terrain: definition.terrain, width: canvas.width, height: canvas.height, layer };
+      miniMapCache.set(canvas, cached);
+    } else cached = null;
+  }
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (cached) ctx.drawImage(cached.layer, 0, 0);
+  else background(ctx);
+  const marker = (x, y, color, size) => {
+    ctx.fillStyle = '#2c403a';
+    ctx.fillRect(offsetX + (x + 0.5) * scale - size / 2 - 1, offsetY + (y + 0.5) * scale - size / 2 - 1, size + 2, size + 2);
+    ctx.fillStyle = color;
+    ctx.fillRect(offsetX + (x + 0.5) * scale - size / 2, offsetY + (y + 0.5) * scale - size / 2, size, size);
+  };
+  for (const object of options.objects || []) marker(object.x, object.y, palette[object.type] || '#b69376', Math.max(2, scale * 0.65));
+  for (const place of definition.landmarks || []) marker(place.x, place.y, '#eee4c0', Math.max(3, scale));
+  for (const gate of options.portals || definition.portals || []) marker(gate.x, gate.y, '#d3b6d2', Math.max(3, scale));
+  if (options.camera) {
+    const camera = options.camera;
+    const x = offsetX + camera.x * scale; const y = offsetY + camera.y * scale;
+    const width = Math.min(COLS, definition.columns - camera.x) * scale;
+    const height = Math.min(ROWS, definition.rows - camera.y) * scale;
+    ctx.lineWidth = 3; ctx.strokeStyle = '#314439'; ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+    ctx.lineWidth = 1; ctx.strokeStyle = '#fff0b4'; ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+  }
+  if (Number.isFinite(options.position?.x) && Number.isFinite(options.position?.y)) marker(options.position.x, options.position.y, '#fff7d3', Math.max(5, scale * 0.7));
   ctx.restore();
 }

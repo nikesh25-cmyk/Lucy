@@ -1,0 +1,88 @@
+{
+  "sources": {
+    "fonts": "Fontsource variable5.3.0",
+    "icons": "lucide-static1.55.0"
+  },
+  "files": [
+    {
+      "path": "fonts/LICENSE-dm-sans.txt",
+      "sha256": "6fbd040a29c2037a765dfb9f2561e9965b5c95c6dcb5dce516089d63d5f17af7"
+    },
+    {
+      "path": "fonts/LICENSE-space-grotesk.txt",
+      "sha256": "18a4de52385f6b988782639d5d0cc1326e5a8c2de9a7f01d7b20d9aedcc60943"
+    },
+    {
+      "path": "fonts/dm-sans-latin-wght-normal.woff2",
+      "sha256": "9fea608a947e67020c33cad9a6fe3d60c54119dfb8cff87768a8117a15ed7543"
+    },
+    {
+      "path": "fonts/space-grotesk-latin-wght-normal.woff2",
+      "sha256": "0640890476fc1198ab4de571fb658de443c4d85b66466ec09534a8737ab1ce9d"
+    },
+    {
+      "path": "icons/LICENSE.txt",
+      "sha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57"
+    },
+    {
+      "path": "icons/book-open.svg",
+      "sha256": "f61ffc0b57af752c72e9c87c4accec9c231fcefedc54b331ec3c06985cb596f4"
+    },
+    {
+      "path": "icons/chevron-right.svg",
+      "sha256": "5498d2d7e15efeafe7d536450801e979b97cfc3bf0f1a5872eb40e5153d4b5ba"
+    },
+    {
+      "path": "icons/clipboard-list.svg",
+      "sha256": "fa1ea7635506fbdc13a115fdc5bc1ebad3a194ce047ee73d82ce2800cc1ca117"
+    },
+    {
+      "path": "icons/compass.svg",
+      "sha256": "245f188f0797473de7f07302a3441a54cfef1a53f3b729196f11f1d8e3f8e443"
+    },
+    {
+      "path": "icons/earth.svg",
+      "sha256": "ea8df7be80bc94a5eddc41799c61b2137452a0daebc206eadfe9d013892aa3e6"
+    },
+    {
+      "path": "icons/house.svg",
+      "sha256": "1b21fc39326afca78e65e6c66bf6d6fe5f99d697bc880dae6e6cad92aa5ef50c"
+    },
+    {
+      "path": "icons/log-in.svg",
+      "sha256": "5468bfa7b858707448c339c5d626ee872cece69d10723aa4f246420e7de9173d"
+    },
+    {
+      "path": "icons/map.svg",
+      "sha256": "66d04aaa63182a86d57c656e0a9138766fae368fdf13e3cc9865ae4182b8c691"
+    },
+    {
+      "path": "icons/menu.svg",
+      "sha256": "4acfecd14634eec76d017929274d325b2997647419dafd7f25e8684a97a8e1dc"
+    },
+    {
+      "path": "icons/settings.svg",
+      "sha256": "4d6c0b1031459994a9db34f3caed818d69e39b3459ec65b4b9d7048f229280a1"
+    },
+    {
+      "path": "icons/shield-check.svg",
+      "sha256": "87de9d464170ad70df85fcc35efecef6c9fbce850d9ce1c7c9a0d75e4dc7b08f"
+    },
+    {
+      "path": "icons/sparkles.svg",
+      "sha256": "e3395ef58e7f9a709d5c52b80e16eb6fe7fa1449cca2934cce7fb0311f3d462d"
+    },
+    {
+      "path": "icons/sprout.svg",
+      "sha256": "0556029acbe5769ff262ff11e83f2d0d0ddc5f0c55280691435e65b1bd28d9f0"
+    },
+    {
+      "path": "icons/users-round.svg",
+      "sha256": "b38de749b5afc5e7acbbf91256532f04f589cbca37aaa7a6b18e9198ee069509"
+    },
+    {
+      "path": "icons/x.svg",
+      "sha256": "65b78d9fa306e2b6386fb9f3a9f10e1ba8067fa0d079046e1050db84f18f31f6"
+    }
+  ]
+}
