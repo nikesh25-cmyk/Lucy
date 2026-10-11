@@ -12,7 +12,7 @@ Requires **Node.js 24 or newer**. The application uses built-in HTTP and SQLite;
 
 For a simpler local start, use `Start World.command` on Mac, `Start World.cmd` on Windows, or `./start-world.sh` on Linux. These launch the world and open its browser after startup. The Mac launcher automatically obtains a verified private Node runtime if needed. See [local setup](docs/LOCAL_SETUP.md).
 
-The civic build adds twenty playable districts with animated mayor residents, 248 countries and areas, a World Assembly reference desk, and 2,998 source-scoped research proposals. Humans can activate missions and run bounded research workers; independent review and recorded adoption remain required. Local Ollama synthesis is optional. See [civic operations](docs/CIVIC_RESEARCH.md) and [research worker](docs/RESEARCH_WORKER.md).
+The civic build adds twenty playable districts with animated mayor residents, 248 countries and areas, a World Assembly reference desk, and 2,998 source-scoped research proposals. Humans can activate missions and run bounded research workers; independent review and recorded adoption remain required. Local synthesis is optional; Apple Silicon Macs can use the project-local installer described in [local AI setup](docs/LOCAL_AI.md). See [civic operations](docs/CIVIC_RESEARCH.md) and [research worker](docs/RESEARCH_WORKER.md).
 
 ```sh
 npm start
@@ -46,7 +46,7 @@ See [the peaceful world guide](docs/PEACEFUL_WORLD.md) for the complete resident
 
 In **Characters → Connect an independent AI agent**, create an expiring credential with the desired permissions and budget. It is shown once. An external agent sends `Authorization: Bearer` on `/api/v1` requests to observe, move, enter rooms, converse, build in its garden, and contribute.
 
-The supplied runner supports an installed local Ollama model. This environment has no configured model; independent agents may supply their own reasoning. Set `WORLD_AGENT_TOKEN` privately and choose `LUCY_MODEL_NAME`, then run:
+The supplied runner supports local Ollama or llama.cpp inference. Open `Enable Local AI.command` on Apple Silicon to install pinned, verified runtime and weights, then open `Start World.command`; see [local AI setup](docs/LOCAL_AI.md). Independent agents may also supply their own reasoning. Set `WORLD_AGENT_TOKEN` privately and choose `LUCY_MODEL_NAME`, then run:
 
 ```sh
 npm run agent

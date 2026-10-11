@@ -232,6 +232,8 @@ function makeDistrict(id) {
   }
   road(grid,{x:24,y:32},{x:24,y:5});road(grid,{x:8,y:18},{x:42,y:18});
   paintGrid(grid,18,12,13,12,'plaza');
+  // Road and plaza construction clears scenery as well as collision tiles.
+  for (let index = objects.length - 1; index >= 0; index--) if (grid[objects[index].y][objects[index].x] !== 'tree') objects.splice(index, 1);
   for(const [x,y] of [[18,13],[30,13],[18,22],[30,22]])objects.push({type:'lantern',x,y});
   objects.push({type:region.id==='cities'?'civic-building':'shelter',x:24,y:10},{type:'bench',x:20,y:20},{type:'bench',x:28,y:20},{type:'flowers',x:22,y:14});
   for(let x=10;x<40;x+=6)objects.push({type:region.id==='farmlands'||region.id==='gardens'?'farm':'cottage',x,y:27});
@@ -551,8 +553,9 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
   }
   for (const [x, y] of [[552, 440], [586, 440], [544, 461], [578, 471], [729, 279], [743, 293]]) blossom(x, y, '#d9bac6');
   }
+  const sceneryTiles = new Set((world.objects || []).filter(object => ['tree', 'mountain', 'cactus', 'palm'].includes(object.type)).map(object => `${object.x},${object.y}`));
   for (let y = camera.y; y < Math.min(world.rows, camera.y + ROWS + 1); y++) for (let x = camera.x; x < Math.min(world.columns, camera.x + COLS + 1); x++) {
-    if (tiles[y][x] === 'tree') tree((x + 0.5) * TILE, (y + 0.5) * TILE + 6, (x + y) % 4 === 0);
+    if (tiles[y][x] === 'tree' && !sceneryTiles.has(`${x},${y}`)) tree((x + 0.5) * TILE, (y + 0.5) * TILE + 6, (x + y) % 4 === 0);
   }
   const drawObject = (object) => {
     if (object.x < camera.x - 2 || object.x > camera.x + COLS + 2 || object.y < camera.y - 2 || object.y > camera.y + ROWS + 2) return;

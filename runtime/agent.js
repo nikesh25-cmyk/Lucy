@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { createOllamaModel } from './model.js';
+import { createLocalModel } from './model.js';
 
 let running = false;
 const DIRECTIONS = new Set(['up', 'down', 'left', 'right']);
@@ -279,7 +279,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.once('SIGINT', () => controller.abort());
   process.once('SIGTERM', () => controller.abort());
   try {
-    const modelFn = createOllamaModel({ url: process.env.LUCY_MODEL_URL, name: process.env.LUCY_MODEL_NAME });
+    const modelFn = createLocalModel({ url: process.env.LUCY_MODEL_URL, name: process.env.LUCY_MODEL_NAME });
     const result = await runAgent({ token: process.env.WORLD_AGENT_TOKEN, url: process.env.WORLD_URL,
       modelFn, durationMs: process.env.WORLD_AGENT_DURATION_MS, maxCalls: process.env.WORLD_AGENT_MAX_CALLS,
       signal: controller.signal });

@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { startLocalAI } from './local-ai.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const host = '127.0.0.1';
@@ -35,9 +36,22 @@ async function launch() {
   while (port < basePort + 10 && !await availablePort(port)) port++;
   if (port === basePort + 10) throw new Error('No available local port. Close another application or set PORT to a different number.');
   let url = `http://${host}:${port}`;
+  const controller = new AbortController();
+  const cancelStartup = () => controller.abort();
+  process.once('SIGINT', cancelStartup);
+  process.once('SIGTERM', cancelStartup);
+  let localAI;
+  try { localAI = await startLocalAI(root, { signal: controller.signal }); }
+  catch (error) {
+    if (controller.signal.aborted) return;
+    console.error(`Local AI unavailable: ${error.message} World guides will use their rules.`);
+  } finally {
+    process.removeListener('SIGINT', cancelStartup);
+    process.removeListener('SIGTERM', cancelStartup);
+  }
   const child = spawn(process.execPath, [join(root, 'server.js')], {
     cwd: root, stdio: ['inherit', 'pipe', 'inherit'], shell: false,
-    env: { ...process.env, PORT: String(port), LUCY_BIND_HOST: host, LUCY_PUBLIC_ORIGIN: '', RENDER_EXTERNAL_URL: '', LUCY_LOCAL_PORT_FALLBACK: '1' },
+    env: { ...process.env, ...localAI?.env, PORT: String(port), LUCY_BIND_HOST: host, LUCY_PUBLIC_ORIGIN: '', RENDER_EXTERNAL_URL: '', LUCY_LOCAL_PORT_FALLBACK: '1' },
   });
   let ready = false;
   let buffer = '';
@@ -51,13 +65,15 @@ async function launch() {
       void openBrowser(url);
     }
   });
-  const stop = () => { if (child.exitCode === null) child.kill('SIGTERM'); };
+  const stop = () => { if (child.exitCode === null) child.kill('SIGTERM'); localAI?.stop(); };
+  if (localAI) localAI.child.once('exit', () => console.log('Local AI stopped. Restart the launcher to restore model responses.'));
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   try {
     const [code, signal] = await once(child, 'exit');
     process.exitCode = code ?? (signal === 'SIGTERM' || signal === 'SIGINT' ? 0 : 1);
   } finally {
+    localAI?.stop();
     process.removeListener('SIGINT', stop);
     process.removeListener('SIGTERM', stop);
   }
