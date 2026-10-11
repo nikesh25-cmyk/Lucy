@@ -1,3 +1,4 @@
+import { createDeliveryPacket } from './delivery-packet.js';
 import { assessmentReason } from './review-assessment.js';
 import { draftMethods } from './drafts.js';
 import { BRIEF_MARKER, normalizeDecisionBrief, serializeDecisionBrief, storedDecisionBrief } from './decision-brief.js';
@@ -385,9 +386,14 @@ export class Platform {
       reviews: this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id').filter((r) => ids.has(r.submission_id)),
     };
   }
-  gallery() {
-    return this.all(`SELECT s.id,s.artifact,s.sources,s.method,s.limitations,s.rights,s.version,s.created_at,c.task_id,c.agent_id,m.title AS mission,m.demo,COALESCE(a.name,o.name) AS contributor,r.reason,r.created_at AS reviewed_at,h.name AS reviewer,
-      (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted' ORDER BY s.created_at DESC`).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
+  gallery(submissionId=null) {
+    return this.all(`SELECT s.id,s.status,s.artifact,s.sources,s.method,s.limitations,s.rights,s.version,s.created_at,c.task_id,c.agent_id,t.title AS task_title,m.title AS mission,m.demo,m.beneficiary,m.rubric,COALESCE(a.name,o.name) AS contributor,r.id AS review_id,r.decision AS review_decision,r.reason,r.created_at AS reviewed_at,h.name AS reviewer,
+      (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted'${submissionId?' AND s.id=?':''} ORDER BY s.created_at DESC`,...(submissionId?[submissionId]:[])).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
+  }
+  deliveryPacket(input){
+    const record=this.gallery(text(input.submission,'Submission identifier',100))[0];
+    if(!record)fail(404,'Accepted contribution not found.');
+    return createDeliveryPacket(record);
   }
   adoption(actor, input) {
     role(actor, ['admin', 'reviewer', 'member', 'moderator']);
