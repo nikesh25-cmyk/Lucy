@@ -93,7 +93,8 @@ function cookie(response, token, expires, hosting) {
   response.setHeader('Set-Cookie', `world_session=${token}; Path=/; HttpOnly; SameSite=Strict${hosting.publicOrigin ? '; Secure' : ''}; Max-Age=${Math.max(0, Math.floor((expires - Date.now()) / 1000))}`);
 }
 
-export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, researchRunner = runResearch, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null } = {}) {
+export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, researchRunner = runResearch, researchConcurrency = 4, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null } = {}) {
+  if(!Number.isInteger(researchConcurrency)||researchConcurrency<1||researchConcurrency>8)throw new Error('Research concurrency must be between one and eight.');
   const hosting = hostingConfiguration({ LUCY_PUBLIC_ORIGIN: publicOrigin, LUCY_SETUP_CODE: setupCode });
   const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
   if (hosting.publicOrigin && setupRequired && !hosting.setupCode) throw new Error('Set the private LUCY_SETUP_CODE before starting a public server with no administrator.');
@@ -130,7 +131,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       }
       if (route === '/health') {
         platform.get('SELECT 1');
-        return json(response, 200, { status: 'ok', storage: 'sqlite', model_configured: Boolean(civicModel), model_queue: civicModel?.status() || null });
+        return json(response, 200, { status: 'ok', storage: 'sqlite', model_configured: Boolean(civicModel), model_queue: civicModel?.status() || null, research_workers:{active:researchRuns.size,limit:researchConcurrency} });
       }
       if (route === '/bootstrap') {
         const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
@@ -201,6 +202,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       if(route==='/research/run'){
         if(actor.kind!=='session')fail(403,'Human operator required.');
         if(researchRuns.has(actor.account.id))fail(409,'Your research worker is already running.');
+        if(researchRuns.size>=researchConcurrency)fail(429,'Research workers are at capacity. Try again after a running job finishes.');
         const task=platform.missionList(actor).tasks.find(task=>task.id===input.task_id);
         if(!task||task.status!=='open')fail(409,'Choose an open mission task.');
         if(!Array.isArray(input.urls)||input.urls.length<1||input.urls.length>5)fail(400,'Provide one to five approved source URLs.');
