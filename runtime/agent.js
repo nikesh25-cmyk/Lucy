@@ -167,7 +167,7 @@ function promptFor(view, status) {
 }
 
 export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fetch, now = Date.now,
-  durationMs, maxCalls, modelTimeoutMs, stepDelayMs = 1500, signal } = {}) {
+  durationMs, maxCalls, modelTimeoutMs, stepDelayMs = 1500, signal, reportJob = true } = {}) {
   if (running) throw new Error('Only one runtime may run in this process.');
   if (typeof token !== 'string' || !token || /[\r\n]/.test(token)) throw new Error('WORLD_AGENT_TOKEN is required.');
   if (typeof modelFn !== 'function') throw new Error('A local model adapter is required.');
@@ -176,6 +176,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
   const calls = limit(maxCalls, 10, 20, 'model calls');
   const timeout = limit(modelTimeoutMs, 30000, 30000, 'model timeout');
   if (!Number.isInteger(stepDelayMs) || stepDelayMs < 0 || stepDelayMs > 2000) throw new Error('Invalid step delay.');
+  if(typeof reportJob!=='boolean')throw new Error('Invalid job reporting option.');
   running = true;
   const began = now();
   const deadline = began + duration;
@@ -264,7 +265,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
     signal?.removeEventListener('abort', cancel);
     summary.duration_ms = Math.max(0, now() - began);
     // Receipts contain counters only. A rejected receipt never retries a run.
-    if (canReport && !runController.signal.aborted && now() < deadline) {
+    if (reportJob && canReport && !runController.signal.aborted && now() < deadline) {
       try { await request('/jobs', { status: summary.status,
         detail: `Local runtime: ${summary.model_calls} model calls, ${summary.action_count} actions, ${summary.duration_ms} ms; ${summary.stop_reason}.` }); }
       catch { /* Optional contribution scope may be absent. */ }

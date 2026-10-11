@@ -66,7 +66,7 @@ test('operator worker controls start a scoped job and model failures fall back w
   const call=async(path,input,account='alice')=>{const response=await fetch(`http://127.0.0.1:${server.address().port}/api/v1${path}`,{method:'POST',headers:{Authorization:`Bearer ${f.credentials[account].token}`,'Content-Type':'application/json'},body:JSON.stringify(input)});return {status:response.status,data:await response.json()};};
   assert.equal((await call('/research/run',{task_id:activated.task_id,agent_id:agent.id,urls:['https://127.0.0.1']})).status,400);
   const result=await call('/research/run',{task_id:activated.task_id,agent_id:agent.id,urls:[lead.source_urls[0]]});assert.equal(result.status,202);assert.ok(observed);
-  const runtime=f.platform.authenticate(observed.token,'contribute');assert.equal(runtime.agent.id,agent.id);assert.deepEqual(JSON.parse(runtime.credential.scopes),['read','contribute']);assert.equal(f.platform.get('SELECT status FROM jobs WHERE id=?',result.data.job_id).status,'completed');
+  const runtime=f.platform.get("SELECT * FROM tokens WHERE agent_id=? AND kind='runtime'",agent.id);assert.equal(runtime.revoked,1);assert.deepEqual(JSON.parse(runtime.scopes),['read','contribute']);assert.throws(()=>f.platform.authenticate(observed.token),{status:401});assert.equal(f.platform.get('SELECT status FROM jobs WHERE id=?',result.data.job_id).status,'completed');
   const answer=await call('/mayors/talk',{npc_id:'mayor-highlands',question:'Help with tasks'});assert.equal(answer.status,200);assert.equal(answer.data.mode,'rules');assert.equal(answer.data.model_fallback,true);assert.equal(f.platform.mayors(f.actor('bob')).conversations.length,0);
 });
 

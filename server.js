@@ -2,13 +2,14 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { Platform } from './src/platform.js';
 import { acquireProcessLock, backupDatabase } from './src/recovery.js';
 import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from './src/hosting.js';
 import { worldAtmosphere } from './src/atmosphere.js';
 import { runResearch, approvedSource } from './runtime/research-worker.js';
 import { createLocalModel, boundedModel, mayorDraft } from './runtime/model.js';
+import { runAgent } from './runtime/agent.js';
 import { civicAtlas } from './src/civic.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,7 @@ for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout',
 }
 for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22])for(const kind of ['characters','facesets'])files.set(`/assets/mayors/${kind}/${id}.png`,[`assets/mayors/${kind}/${id}.png`,'image/png']);
 const writes = new Map([
+  ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]],
   ['/research/run', ['researchRun', null]], ['/research/cancel', ['researchCancel', null]], ['/mayors/talk', ['mayorTalk', 'chat']], ['/mayors/control', ['mayorControl', null]], ['/research/generate', ['researchGenerate', null]], ['/research/activate', ['researchActivate', null]],
   ['/invites', ['invite', null]], ['/agents', ['createAgent', null]],
   ['/agents/control', ['agentControl', null]], ['/runtime/start', ['runtime', null]],
@@ -48,7 +50,7 @@ const writes = new Map([
   ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
 ]);
-const gets = new Set(['/countries', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
+const gets = new Set(['/workers','/countries', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -93,14 +95,16 @@ function cookie(response, token, expires, hosting) {
   response.setHeader('Set-Cookie', `world_session=${token}; Path=/; HttpOnly; SameSite=Strict${hosting.publicOrigin ? '; Secure' : ''}; Max-Age=${Math.max(0, Math.floor((expires - Date.now()) / 1000))}`);
 }
 
-export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, researchRunner = runResearch, researchConcurrency = 4, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null } = {}) {
+export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, residentRunner = runAgent, researchRunner = runResearch, researchConcurrency = 4, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null } = {}) {
   if(!Number.isInteger(researchConcurrency)||researchConcurrency<1||researchConcurrency>8)throw new Error('Research concurrency must be between one and eight.');
   const hosting = hostingConfiguration({ LUCY_PUBLIC_ORIGIN: publicOrigin, LUCY_SETUP_CODE: setupCode });
   const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
   if (hosting.publicOrigin && setupRequired && !hosting.setupCode) throw new Error('Set the private LUCY_SETUP_CODE before starting a public server with no administrator.');
   platform.publicMode = Boolean(hosting.publicOrigin);
   platform.setupCode = hosting.setupCode;
-  const researchRuns=new Map();
+  const researchRuns=new Map(),residentRuns=new Map();
+  const revokeWorker = credential => platform.run("UPDATE tokens SET revoked=1 WHERE hash=? AND kind='runtime'",createHash('sha256').update(credential.token).digest('hex'));
+  const activeWorker = accountId => researchRuns.has(accountId)||residentRuns.has(accountId);
   const civicModel=mayorModel?boundedModel(mayorModel):null;
   const authLimiter = createAuthenticationLimiter({ publicMode: Boolean(hosting.publicOrigin) });
   const server = createServer(async (request, response) => {
@@ -131,7 +135,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       }
       if (route === '/health') {
         platform.get('SELECT 1');
-        return json(response, 200, { status: 'ok', storage: 'sqlite', model_configured: Boolean(civicModel), model_queue: civicModel?.status() || null, research_workers:{active:researchRuns.size,limit:researchConcurrency} });
+        return json(response, 200, { status: 'ok', storage: 'sqlite', model_configured: Boolean(civicModel), model_queue: civicModel?.status() || null, research_workers:{active:researchRuns.size,limit:researchConcurrency},resident_workers:{active:residentRuns.size,limit:1} });
       }
       if (route === '/bootstrap') {
         const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
@@ -157,11 +161,12 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       const publicRoute = ['/countries', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/community'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor = token ? platform.authenticate(token, scope) : publicRoute ? null : platform.authenticate(token, scope);
-      if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
+      if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/workers', '/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
       if (request.method === 'GET') {
         const result = platform.transaction(() => {
           let value;
-          if (route === '/countries') value=platform.countries(actor,Object.fromEntries(url.searchParams));
+          if(route==='/workers'){const view=run=>run?{job_id:run.id,agent_id:run.agent_id,status:'running'}:null;value={research:view(researchRuns.get(actor.account.id)),resident:view(residentRuns.get(actor.account.id))};}
+          else if (route === '/countries') value=platform.countries(actor,Object.fromEntries(url.searchParams));
           else if (route === '/assembly') value=platform.assembly();
           else if (route === '/research') value=platform.research(actor,Object.fromEntries(url.searchParams));
           else if (route === '/mayors') value=platform.mayors(actor,Object.fromEntries(url.searchParams));
@@ -195,13 +200,42 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         platform.transaction(() => platform.audit(actor.account.id, 'backup.created', filename));
         return json(response, 201, { filename });
       }
+      if(route==='/runtime/start'&&activeWorker(actor.account.id))fail(409,'Stop your active worker before issuing another connection credential.');
+      if(route==='/residents/cancel'){
+        if(actor.kind!=='session')fail(403,'Human operator required.');
+        residentRuns.get(actor.account.id)?.controller.abort();return json(response,200,{stopping:residentRuns.has(actor.account.id)});
+      }
+      if(route==='/residents/run'){
+        if(actor.kind!=='session')fail(403,'Human operator required.');
+        if(!civicModel)fail(409,'Configure a local model before running a resident.');
+        if(activeWorker(actor.account.id))fail(409,'Stop your active worker before starting another.');
+        if(residentRuns.size)fail(429,'The local resident worker is at capacity. Try again after it finishes.');
+        const minutes=Number(input.minutes??2),calls=Number(input.model_calls??5),permission=input.permission||'explore';
+        if(!Number.isInteger(minutes)||minutes<1||minutes>20||!Number.isInteger(calls)||calls<1||calls>20||!['observe','explore','creative'].includes(permission))fail(400,'Choose 1–20 minutes, 1–20 model decisions and a listed permission mode.');
+        const scopes=permission==='observe'?['read']:permission==='explore'?['read','move','chat']:['read','move','chat','contribute','build'];
+        const id=randomUUID(),controller=new AbortController();
+        const credential=platform.transaction(()=>{
+          const session=platform.runtime(actor,input.agent_id,{minutes,max_calls:calls*8+4,scopes});
+          platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)',id,input.agent_id,'running',`Local resident: up to ${calls} model decisions, ${minutes} ${minutes===1?'minute':'minutes'}; ${permission} permissions.`,new Date().toISOString());platform.audit(actor.account.id,'resident.worker.started',id);return session;
+        });
+        residentRuns.set(actor.account.id,{id,agent_id:input.agent_id,controller});
+        const modelFn=input=>civicModel({...input,beforeDispatch:()=>{platform.authenticate(credential.token,'read');platform.active();controller.signal.throwIfAborted();}});
+        const promise=Promise.resolve().then(()=>residentRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,modelFn,durationMs:minutes*60000,maxCalls:calls,signal:controller.signal,reportJob:false})).then(result=>{
+          if(!['completed','failed','stopped'].includes(result.status)||!Number.isInteger(result.model_calls)||!Number.isInteger(result.action_count)||result.model_calls<0||result.model_calls>calls||result.action_count<0||result.action_count>result.model_calls)throw new Error('Invalid resident receipt');
+          const status=controller.signal.aborted?'stopped':result.status;
+          platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',status,`Local resident: ${result.model_calls} model decisions, ${result.action_count} actions; ${status}. No research acceptance or adoption is implied.`,id);platform.audit(actor.account.id,'resident.worker.'+status,id);});
+        }).catch(()=>{platform.transaction(()=>{const status=controller.signal.aborted?'stopped':'failed';platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',status,'Local resident stopped; check model availability, permissions and run history before retrying.',id);platform.audit(actor.account.id,'resident.worker.'+status,id);});})
+          .finally(()=>{platform.transaction(()=>revokeWorker(credential));residentRuns.delete(actor.account.id);});
+        residentRuns.get(actor.account.id).promise=promise;
+        return json(response,202,{job_id:id,status:'running',model_calls:calls,minutes,permission});
+      }
       if(route==='/research/cancel'){
         if(actor.kind!=='session')fail(403,'Human operator required.');
         researchRuns.get(actor.account.id)?.controller.abort();return json(response,200,{stopping:researchRuns.has(actor.account.id)});
       }
       if(route==='/research/run'){
         if(actor.kind!=='session')fail(403,'Human operator required.');
-        if(researchRuns.has(actor.account.id))fail(409,'Your research worker is already running.');
+        if(activeWorker(actor.account.id))fail(409,'Your worker is already running. Stop it before starting another.');
         if(researchRuns.size>=researchConcurrency)fail(429,'Research workers are at capacity. Try again after a running job finishes.');
         const task=platform.missionList(actor).tasks.find(task=>task.id===input.task_id);
         if(!task||task.status!=='open')fail(409,'Choose an open mission task.');
@@ -212,12 +246,12 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           const session=platform.runtime(actor,input.agent_id,{minutes:4,max_calls:20,scopes:['read','contribute']});
           platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)',id,input.agent_id,'running','Bounded research source read; human review required.',new Date().toISOString());platform.audit(actor.account.id,'research.worker.started',id);return session;
         });
-        researchRuns.set(actor.account.id,{id,controller});
+        researchRuns.set(actor.account.id,{id,agent_id:input.agent_id,controller});
         const promise=researchRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,taskId:task.id,urls:input.urls,modelFn:civicModel||undefined,signal:controller.signal}).then(result=>{
           platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?','completed',`Submitted ${result.source_count} source records; ${result.mode}; review pending.`,id);platform.audit(actor.account.id,'research.worker.submitted',id);});
         }).catch(()=>{
           platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',controller.signal.aborted?'stopped':'failed','Worker stopped; source availability, scopes or model evidence formatting needs attention. Check contributions before retrying.',id);platform.audit(actor.account.id,'research.worker.stopped',id);});
-        }).finally(()=>researchRuns.delete(actor.account.id));
+        }).finally(()=>{platform.transaction(()=>revokeWorker(credential));researchRuns.delete(actor.account.id);});
         researchRuns.get(actor.account.id).promise=promise;
         return json(response,202,{job_id:id,status:'running'});
       }
@@ -258,10 +292,10 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   });
   let mayorTimer;
   server.once('listening',()=>{mayorTimer=setInterval(()=>{try{platform.transaction(()=>platform.tickMayors());}catch{/* A shutdown may have closed storage. */}},3000);mayorTimer.unref();});
-  server.once('close',()=>{clearInterval(mayorTimer);for(const run of researchRuns.values())run.controller.abort();});
+  server.once('close',()=>{clearInterval(mayorTimer);for(const run of [...researchRuns.values(),...residentRuns.values()])run.controller.abort();});
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
-  return { server, platform, stopWorkers:async()=>{const runs=[...researchRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));} };
+  return { server, platform, stopWorkers:async()=>{const runs=[...researchRuns.values(),...residentRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));} };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
