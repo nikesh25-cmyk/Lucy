@@ -1,3 +1,4 @@
+import { draftMethods } from './drafts.js';
 import { BRIEF_MARKER, normalizeDecisionBrief, serializeDecisionBrief, storedDecisionBrief } from './decision-brief.js';
 import { randomBytes, randomUUID, createHash, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
@@ -340,6 +341,7 @@ export class Platform {
     const id = randomUUID();
     this.run('INSERT INTO submissions VALUES(?,?,?,?,?,?,?,?,?,?,?)', id, claim.id, version, artifact, JSON.stringify(normalized), text(input.method, 'Method'), text(input.limitations, 'Limitations'), text(input.rights, 'Rights or permission statement'), 'pending_review', key, now());
     this.run("UPDATE claims SET status='submitted' WHERE id=?", claim.id);
+    this.run('UPDATE claim_drafts SET archived=1 WHERE claim_id=?',claim.id);
     this.run("UPDATE tasks SET status='under_review' WHERE id=?", claim.task_id);
     this.audit(actor.account.id, 'submission.created', id);
     return { id, version, status: 'pending_review',...(brief?{brief}:{} ) };
@@ -356,6 +358,7 @@ export class Platform {
     this.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', id, submission.id, actor.account.id, input.decision, text(input.reason, 'Review reason'), now());
     this.run('UPDATE submissions SET status=? WHERE id=?', input.decision, submission.id);
     this.run('UPDATE claims SET status=?,expires_at=? WHERE id=?', input.decision, this.clock() + 20 * 60_000, submission.claim_id);
+    if(input.decision==='changes_requested')this.run('UPDATE claim_drafts SET archived=0 WHERE claim_id=?',submission.claim_id);
     this.run('UPDATE tasks SET status=? WHERE id=?', input.decision === 'rejected' ? 'open' : input.decision, submission.task_id);
     this.audit(actor.account.id, `review.${input.decision}`, id);
     return { id, decision: input.decision };
@@ -376,6 +379,7 @@ export class Platform {
     return {
       claims: this.all('SELECT * FROM claims WHERE account_id=? ORDER BY created_at DESC', actor.account.id).filter((c) => actor.kind !== 'runtime' || c.agent_id === actor.agent.id),
       submissions,
+      drafts:actor.kind==='session'?this.drafts(actor):[],
       jobs: this.all(`SELECT j.*,a.name AS agent_name FROM jobs j JOIN agents a ON a.id=j.agent_id WHERE a.operator_id=?${actor.kind === 'runtime' ? ' AND j.agent_id=?' : ''} ORDER BY j.created_at DESC LIMIT 100`, actor.account.id, ...(actor.kind === 'runtime' ? [actor.agent.id] : [])),
       reviews: this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id').filter((r) => ids.has(r.submission_id)),
     };
@@ -500,11 +504,12 @@ export class Platform {
     const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at`, actor.account.id, actor.account.id);
     const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
     const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
-    return { format: 'shared-world-account-v5', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history, messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    return { format: 'shared-world-account-v6', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history,drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
     role(actor, ['member', 'reviewer', 'moderator']);
     if (this.get("SELECT id FROM missions WHERE (owner_id=? OR reviewer_id=?) AND status='open'", actor.account.id, actor.account.id)) fail(409, 'Transfer or close your active missions before deleting your account.');
+    this.run('DELETE FROM claim_drafts WHERE claim_id IN (SELECT id FROM claims WHERE account_id=?)',actor.account.id);
     this.deleteCommunity(actor);
     this.deleteJourney(actor);
     this.run("DELETE FROM mayor_conversations WHERE account_id=?", actor.account.id);
@@ -540,3 +545,5 @@ export class Platform {
   close() { this.db.close(); }
 }
 Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods);
+
+Object.assign(Platform.prototype,draftMethods);

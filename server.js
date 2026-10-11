@@ -31,6 +31,7 @@ for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout',
 }
 for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22])for(const kind of ['characters','facesets'])files.set(`/assets/mayors/${kind}/${id}.png`,[`assets/mayors/${kind}/${id}.png`,'image/png']);
 const writes = new Map([
+  ['/drafts', ['draftSave', null]], ['/drafts/resume', ['draftResume', null]], ['/drafts/archive', ['draftArchive', null]],
   ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]],
   ['/research/run', ['researchRun', null]], ['/research/cancel', ['researchCancel', null]], ['/mayors/talk', ['mayorTalk', 'chat']], ['/mayors/control', ['mayorControl', null]], ['/research/generate', ['researchGenerate', null]], ['/research/activate', ['researchActivate', null]],
   ['/invites', ['invite', null]], ['/agents', ['createAgent', null]],
@@ -52,7 +53,7 @@ const writes = new Map([
   ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
 ]);
-const gets = new Set(['/workers','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
+const gets = new Set(['/drafts','/workers','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -163,11 +164,12 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       const publicRoute = ['/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/community'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor = token ? platform.authenticate(token, scope) : publicRoute ? null : platform.authenticate(token, scope);
-      if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/workers', '/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
+      if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/drafts','/workers', '/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
       if (request.method === 'GET') {
         const result = platform.transaction(() => {
           let value;
           if(route==='/workers'){const view=run=>run?{job_id:run.id,agent_id:run.agent_id,status:'running'}:null;value={research:view(researchRuns.get(actor.account.id)),resident:view(residentRuns.get(actor.account.id))};}
+          else if(route==='/drafts')value={drafts:platform.drafts(actor,{archived:url.searchParams.get('archived')==='1'})};
           else if (route === '/countries') value=platform.countries(actor,Object.fromEntries(url.searchParams));
           else if (route === '/country-evidence') value=platform.countryEvidence(actor,Object.fromEntries(url.searchParams));
           else if (route === '/assembly') value=platform.assembly();
@@ -270,7 +272,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         else if (route === '/operations/pause') {
           if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
           value = platform.pause(actor, input.paused);
-        } else if (['/claims', '/submissions'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        } else if (['/claims', '/submissions', '/drafts/resume'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
         else value = platform[method](actor, input);
         platform.charge(actor);
         return value;

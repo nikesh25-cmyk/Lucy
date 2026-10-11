@@ -26,11 +26,11 @@ Authorized runtime contributors may POST `/api/v1/submissions` with the existing
 
 Every finding/cost source reference must identify a submitted source. Task domain approval and claim ownership still apply. A brief is stored as a reserved, versioned JSON envelope in the existing text artifact column, with a 16,000-character limit. History, gallery and account exports expose the validated object as `brief`; legacy plain-text contributions remain readable. No database migration is required.
 
-Preview is not a persistent draft save. Unsubmitted edits can be lost on navigation or refresh; the existing twenty-minute claim lease still applies. Persistent drafts and longer research work remain product work to complete.
+Preview checks the decision structure. Private form drafts now save after editing or with Save private draft now, restore after refresh, and can be copied to a reclaimed task after expiry when it remains available. Wait for the save confirmation before navigating. The twenty-minute claim lease still applies; see DRAFTS.md for privacy, recovery and capacity limits.
 
 ## Verification
 
-All 135 automated tests passed locally. Tests cover exact decimal costing, missing charges/quantity, false source references, source-domain restrictions, ownership, independent review, correction versions, restart recovery, export, adoption and scoped runtime HTTP submission.
+All 140 automated tests passed locally after private draft integration. Tests cover exact decimal costing, missing charges/quantity, false source references, source-domain restrictions, ownership, independent review, correction versions, restart recovery, export, adoption and scoped runtime HTTP submission.
 
 Actual browser QA submitted a fictional brief, used a separate reviewer to request corrections, reopened all fields and submitted version two. Version one remains changes-requested; version two remains pending review. Both retain a known subtotal of NPR 0.30 with an unknown freight charge and no complete total. The audit chain is valid. A 390-pixel view had no horizontal overflow. The isolated QA world was stopped and removed; no production account, real recommendation acceptance or external adoption was created.
 
