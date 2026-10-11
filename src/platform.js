@@ -1,3 +1,4 @@
+import { BRIEF_MARKER, normalizeDecisionBrief, serializeDecisionBrief, storedDecisionBrief } from './decision-brief.js';
 import { randomBytes, randomUUID, createHash, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { openDatabase } from './database.js';
@@ -314,14 +315,15 @@ export class Platform {
     this.active(); this.expireClaims(); text(key, 'Idempotency key', 100);
     const claim = this.ownedClaim(actor, input.claim_id);
     const previous = this.get('SELECT * FROM submissions WHERE claim_id=? AND idempotency_key=?', claim.id, key);
-    if (previous) return { ...previous, sources: parse(previous.sources) };
+    if (previous) return { ...previous, sources: parse(previous.sources), brief:storedDecisionBrief(previous.artifact,parse(previous.sources).length) };
     if (!['leased', 'changes_requested'].includes(claim.status)) fail(409, 'Claim has expired or already been submitted.');
     const count = this.get("SELECT COUNT(*) AS n FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE c.account_id=? AND date(s.created_at)=date('now')", actor.account.id).n;
     if (count >= 10) fail(429, 'The operator daily submission limit is ten.');
     const task = this.get('SELECT t.*,m.status AS mission_status FROM tasks t JOIN missions m ON m.id=t.mission_id WHERE t.id=?', claim.task_id);
     if (!['demo', 'open'].includes(task.mission_status)) fail(409, 'This mission is paused or closed.');
     this.reviewCapacity(task.mission_id);
-    const artifact = text(input.artifact, 'Plain text deliverable', 16000);
+    let artifact;
+    if(!input.brief){artifact=text(input.artifact,'Plain text deliverable',16000);if(artifact.startsWith(BRIEF_MARKER))fail(400,'Submit structured decision briefs using the brief field.');}
     if (input.mime && !['text/plain', 'application/json'].includes(input.mime)) fail(400, 'Only plain text or JSON evidence is supported. Active uploads are rejected.');
     const sources = input.sources;
     if (!Array.isArray(sources) || sources.length < 1 || sources.length > 10) fail(400, 'Provide 1–10 sources with exact locations.');
@@ -333,13 +335,14 @@ export class Platform {
       if (domains.length && !domains.includes(url.hostname)) fail(400, 'This source is outside the task approved domains.');
       return { url: url.href, location: text(source.location, 'Source page or section', 300), date: text(source.date, 'Source date', 100, true) };
     });
+    const brief=input.brief?normalizeDecisionBrief(input.brief,{sourceCount:normalized.length}):null;if(brief)artifact=serializeDecisionBrief(brief);
     const version = this.get('SELECT COALESCE(MAX(version),0)+1 AS n FROM submissions WHERE claim_id=?', claim.id).n;
     const id = randomUUID();
     this.run('INSERT INTO submissions VALUES(?,?,?,?,?,?,?,?,?,?,?)', id, claim.id, version, artifact, JSON.stringify(normalized), text(input.method, 'Method'), text(input.limitations, 'Limitations'), text(input.rights, 'Rights or permission statement'), 'pending_review', key, now());
     this.run("UPDATE claims SET status='submitted' WHERE id=?", claim.id);
     this.run("UPDATE tasks SET status='under_review' WHERE id=?", claim.task_id);
     this.audit(actor.account.id, 'submission.created', id);
-    return { id, version, status: 'pending_review' };
+    return { id, version, status: 'pending_review',...(brief?{brief}:{} ) };
   }
   review(actor, input) {
     role(actor, ['admin', 'reviewer']); this.active();
@@ -368,7 +371,7 @@ export class Platform {
     const reviewer = actor.kind === 'session' && ['admin', 'reviewer'].includes(actor.account.role);
     const predicate = reviewer ? '(m.demo=1 OR m.reviewer_id=? OR ?=1 OR c.account_id=?)' : 'c.account_id=?';
     const args = reviewer ? [actor.account.id, actor.account.role === 'admin' ? 1 : 0, actor.account.id] : [actor.account.id];
-    const submissions = this.all(`SELECT s.*,c.task_id,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC`, ...args).filter((s) => actor.kind !== 'runtime' || s.agent_id === actor.agent.id).map((s) => ({ ...s, sources: parse(s.sources) }));
+    const submissions = this.all(`SELECT s.*,c.task_id,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC`, ...args).filter((s) => actor.kind !== 'runtime' || s.agent_id === actor.agent.id).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
     const ids = new Set(submissions.map((s) => s.id));
     return {
       claims: this.all('SELECT * FROM claims WHERE account_id=? ORDER BY created_at DESC', actor.account.id).filter((c) => actor.kind !== 'runtime' || c.agent_id === actor.agent.id),
@@ -379,7 +382,7 @@ export class Platform {
   }
   gallery() {
     return this.all(`SELECT s.id,s.artifact,s.sources,s.method,s.limitations,s.rights,s.version,s.created_at,c.task_id,c.agent_id,m.title AS mission,m.demo,COALESCE(a.name,o.name) AS contributor,r.reason,r.created_at AS reviewed_at,h.name AS reviewer,
-      (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted' ORDER BY s.created_at DESC`).map((s) => ({ ...s, sources: parse(s.sources) }));
+      (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted' ORDER BY s.created_at DESC`).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
   }
   adoption(actor, input) {
     role(actor, ['admin', 'reviewer', 'member', 'moderator']);

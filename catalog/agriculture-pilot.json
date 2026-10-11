@@ -148,9 +148,9 @@
     },
     {
       "institution": "Tea Board India",
-      "role": "Tea import licence and Tea Council workflow; operative June directive needs reading",
+      "role": "Tea import licence and Tea Council workflow; the June edition has been visually reviewed, but shipment-specific applicability remains unverified",
       "url": "https://teacouncil.teaauction.gov.in",
-      "sourceId": "tea-directive-01",
+      "sourceId": "tea-directive-02",
       "contactStatus": "published-route-current-workflow-unverified"
     },
     {
@@ -227,7 +227,7 @@
       "Cost sensitivities and decision options reviewed"
     ],
     "unresolved": [
-      "Operative June 2026 import directive not yet read",
+      "Shipment-date applicability, corrected issue date and any subsequent amendments remain unverified",
       "Specific producer/municipality and product grade unknown",
       "Latest five-year tea trade series not extracted",
       "No buyer interest or contact deliverability established",
