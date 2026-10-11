@@ -1,3 +1,4 @@
+import { DRAFT_SCHEMA } from './drafts.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -8,7 +9,7 @@ import { JOURNEY_SCHEMA } from './journey.js';
 export function openDatabase(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
-  if (db.prepare('PRAGMA user_version').get().user_version > 5) { db.close(); throw new Error('Unsupported database schema version.'); }
+  if (db.prepare('PRAGMA user_version').get().user_version > 6) { db.close(); throw new Error('Unsupported database schema version.'); }
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', consent_at TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS invites(code_hash TEXT PRIMARY KEY, role TEXT NOT NULL, expires_at INTEGER NOT NULL, used_by TEXT);
@@ -45,6 +46,7 @@ export function openDatabase(path) {
     db.exec(COMMUNITY_SCHEMA);
     db.exec(JOURNEY_SCHEMA);
     db.exec(CIVIC_SCHEMA);
+    db.exec(DRAFT_SCHEMA);
     if(!db.prepare('PRAGMA table_info(mayor_conversations)').all().some(column=>column.name==='mode'))db.exec("ALTER TABLE mayor_conversations ADD COLUMN mode TEXT NOT NULL DEFAULT 'rules'");
     db.exec(`CREATE INDEX IF NOT EXISTS agents_spatial ON agents(world_id,x,y);
       CREATE INDEX IF NOT EXISTS agents_operator ON agents(operator_id);
@@ -55,7 +57,7 @@ export function openDatabase(path) {
       CREATE INDEX IF NOT EXISTS objects_world ON world_objects(world_id);
       CREATE INDEX IF NOT EXISTS claims_agent ON claims(agent_id);
       CREATE INDEX IF NOT EXISTS submissions_claim ON submissions(claim_id,status);
-      PRAGMA user_version=5; COMMIT;`);
+      PRAGMA user_version=6; COMMIT;`);
   } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
   if (path !== ':memory:') chmodSync(path, 0o600);
   return db;
