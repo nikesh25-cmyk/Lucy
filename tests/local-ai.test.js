@@ -5,6 +5,14 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createLlamaModel, createLocalModel } from '../runtime/model.js';
 import { startLocalAI } from '../scripts/local-ai.mjs';
+import { researchDraft } from '../runtime/research-worker.js';
+
+test('research drafts cannot cite missing or unretrieved source numbers', () => {
+  assert.throws(() => researchDraft({ brief: 'An uncited assertion.' }, 2), /cite/);
+  assert.throws(() => researchDraft({ brief: 'Invented evidence [Source 3].' }, 2), /cite/);
+  assert.throws(() => researchDraft({ brief: 'No evidence [Source 0].' }, 2), /cite/);
+  assert.equal(researchDraft({ brief: 'A provisional summary [Source 2]. Applicability needs review.' }, 2), 'A provisional summary [Source 2]. Applicability needs review.');
+});
 
 test('llama adapter restricts requests to loopback and rejects incomplete model output', async () => {
   assert.throws(() => createLlamaModel({ url: 'https://example.org' }), /local HTTP/);
