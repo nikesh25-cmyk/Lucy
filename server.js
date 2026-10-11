@@ -20,6 +20,7 @@ const files = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
+  ['/src/statistics.js', ['src/statistics.js', 'text/javascript; charset=utf-8']],
   ['/src/civic.js', ['src/civic.js', 'text/javascript; charset=utf-8']],
   ['/assets/fonts/dm-sans-latin-wght-normal.woff2', ['assets/fonts/dm-sans-latin-wght-normal.woff2', 'font/woff2']],
   ['/assets/fonts/space-grotesk-latin-wght-normal.woff2', ['assets/fonts/space-grotesk-latin-wght-normal.woff2', 'font/woff2']],
@@ -50,7 +51,7 @@ const writes = new Map([
   ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
 ]);
-const gets = new Set(['/workers','/countries', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
+const gets = new Set(['/workers','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -158,7 +159,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/countries', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/community'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/community'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor = token ? platform.authenticate(token, scope) : publicRoute ? null : platform.authenticate(token, scope);
       if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/workers', '/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
@@ -167,6 +168,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           let value;
           if(route==='/workers'){const view=run=>run?{job_id:run.id,agent_id:run.agent_id,status:'running'}:null;value={research:view(researchRuns.get(actor.account.id)),resident:view(residentRuns.get(actor.account.id))};}
           else if (route === '/countries') value=platform.countries(actor,Object.fromEntries(url.searchParams));
+          else if (route === '/country-evidence') value=platform.countryEvidence(actor,Object.fromEntries(url.searchParams));
           else if (route === '/assembly') value=platform.assembly();
           else if (route === '/research') value=platform.research(actor,Object.fromEntries(url.searchParams));
           else if (route === '/mayors') value=platform.mayors(actor,Object.fromEntries(url.searchParams));
@@ -183,6 +185,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           if (actor && route !== '/runtime/status') platform.charge(actor);
           return value;
         });
+        if(route==='/country-evidence'&&url.searchParams.get('download')==='1')response.setHeader('Content-Disposition',`attachment; filename="lucy-${result.country.iso3}-agriculture-evidence.json"`);
         return json(response, 200, result);
       }
       if (request.method === 'DELETE') {

@@ -1,0 +1,527 @@
+{
+  "metadata": {
+    "provider": "World Bank World Development Indicators, API v2, source 2",
+    "retrieved_on": "2026-10-11",
+    "scope": "Six annual series for Nepal and Bangladesh; observations within 2015–2026. Country routes elsewhere are research starting points, not retrieved findings.",
+    "unavailable": [
+      {
+        "country": "Zambia",
+        "reason": "Three source requests timed out on 2026-10-11; no verified snapshot."
+      }
+    ],
+    "api_documentation": "https://datahelpdesk.worldbank.org/knowledgebase/articles/898581",
+    "limitations": "Sector context cannot establish crop demand, buyer interest, export eligibility or investment returns. Provider footnotes were not requested; consult indicator and country metadata."
+  },
+  "countries": [
+    {
+      "country_code": "NP",
+      "country": "Nepal",
+      "series": [
+        {
+          "country_code": "NP",
+          "country_iso3": "NPL",
+          "country": "Nepal",
+          "indicator": "NV.AGR.TOTL.ZS",
+          "name": "Agriculture, forestry, and fishing, value added (% of GDP)",
+          "unit": "% of GDP",
+          "publisher": "World Bank WDI; national accounts and staff estimates",
+          "qualifier": "Sector value added includes forestry and fishing; it is not crop revenue or export earnings.",
+          "dataset_updated": "2026-10-08",
+          "window": {
+            "start": 2015,
+            "end": 2026
+          },
+          "points": [
+            {
+              "year": 2025,
+              "value": 21.5578137957376,
+              "observation_status": null
+            },
+            {
+              "year": 2024,
+              "value": 21.6736520881574,
+              "observation_status": null
+            },
+            {
+              "year": 2023,
+              "value": 21.2987131119062,
+              "observation_status": null
+            },
+            {
+              "year": 2022,
+              "value": 20.9143699815129,
+              "observation_status": null
+            },
+            {
+              "year": 2021,
+              "value": 22.0214522788058,
+              "observation_status": null
+            },
+            {
+              "year": 2020,
+              "value": 22.1800901927916,
+              "observation_status": null
+            },
+            {
+              "year": 2019,
+              "value": 21.583372760027,
+              "observation_status": null
+            },
+            {
+              "year": 2018,
+              "value": 22.3346720502565,
+              "observation_status": null
+            },
+            {
+              "year": 2017,
+              "value": 23.6995484588973,
+              "observation_status": null
+            },
+            {
+              "year": 2016,
+              "value": 25.5178753726064,
+              "observation_status": null
+            },
+            {
+              "year": 2015,
+              "value": 26.518508431071,
+              "observation_status": null
+            }
+          ],
+          "license": {
+            "name": "CC BY 4.0",
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "terms": "https://data.worldbank.org/summary-terms-of-use",
+            "attribution": "World Bank, World Development Indicators; original providers identified per indicator."
+          },
+          "limitations": "Annual sector context only. Missing values are not zero. Dataset update is not a publication or observation date. Provider footnotes were not requested; inspect indicator metadata and country documentation before applying findings.",
+          "url": "https://api.worldbank.org/v2/country/NPL/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+          "retrieved_on": "2026-10-11",
+          "sha256": "97f63f8a276a8b93749055ea6fe8bd817d7b6d11d2d1e5bbddd0d03d741d96be",
+          "raw_file": "catalog/statistics/NPL-NV.AGR.TOTL.ZS.json"
+        },
+        {
+          "country_code": "NP",
+          "country_iso3": "NPL",
+          "country": "Nepal",
+          "indicator": "SL.AGR.EMPL.ZS",
+          "name": "Employment in agriculture (% of total employment) (modeled ILO estimate)",
+          "unit": "% of total employment",
+          "publisher": "ILO modelled estimates, distributed through World Bank WDI",
+          "qualifier": "Modeled ILO estimate. It is not a count of farmers or a substitute for a national census.",
+          "dataset_updated": "2026-10-08",
+          "window": {
+            "start": 2015,
+            "end": 2026
+          },
+          "points": [
+            {
+              "year": 2025,
+              "value": 22.9119744042875,
+              "observation_status": null
+            },
+            {
+              "year": 2024,
+              "value": 23.4839369800344,
+              "observation_status": null
+            },
+            {
+              "year": 2023,
+              "value": 23.9506972536467,
+              "observation_status": null
+            },
+            {
+              "year": 2022,
+              "value": 24.3207154496029,
+              "observation_status": null
+            },
+            {
+              "year": 2021,
+              "value": 24.9920844414884,
+              "observation_status": null
+            },
+            {
+              "year": 2020,
+              "value": 24.9527582140169,
+              "observation_status": null
+            },
+            {
+              "year": 2019,
+              "value": 23.7731934205369,
+              "observation_status": null
+            },
+            {
+              "year": 2018,
+              "value": 24.5065585520617,
+              "observation_status": null
+            },
+            {
+              "year": 2017,
+              "value": 25.4358134676363,
+              "observation_status": null
+            },
+            {
+              "year": 2016,
+              "value": 26.0984451264464,
+              "observation_status": null
+            },
+            {
+              "year": 2015,
+              "value": 26.3365108741251,
+              "observation_status": null
+            }
+          ],
+          "license": {
+            "name": "CC BY 4.0",
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "terms": "https://data.worldbank.org/summary-terms-of-use",
+            "attribution": "World Bank, World Development Indicators; original providers identified per indicator."
+          },
+          "limitations": "Annual sector context only. Missing values are not zero. Dataset update is not a publication or observation date. Provider footnotes were not requested; inspect indicator metadata and country documentation before applying findings.",
+          "url": "https://api.worldbank.org/v2/country/NPL/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+          "retrieved_on": "2026-10-11",
+          "sha256": "3b2903ee146884344a1044313d5c5cc1fc98b6e4f69935f91aba212c5c02985f",
+          "raw_file": "catalog/statistics/NPL-SL.AGR.EMPL.ZS.json"
+        },
+        {
+          "country_code": "NP",
+          "country_iso3": "NPL",
+          "country": "Nepal",
+          "indicator": "AG.LND.ARBL.ZS",
+          "name": "Arable land (% of land area)",
+          "unit": "% of land area",
+          "publisher": "FAO, distributed through World Bank WDI",
+          "qualifier": "Land classification is not evidence of available farmland, tenure, soil quality or irrigation.",
+          "dataset_updated": "2026-10-08",
+          "window": {
+            "start": 2015,
+            "end": 2026
+          },
+          "points": [
+            {
+              "year": 2025,
+              "value": null,
+              "observation_status": null
+            },
+            {
+              "year": 2024,
+              "value": 12.5831880013952,
+              "observation_status": null
+            },
+            {
+              "year": 2023,
+              "value": 12.5831880013952,
+              "observation_status": null
+            },
+            {
+              "year": 2022,
+              "value": 12.5831880013952,
+              "observation_status": null
+            },
+            {
+              "year": 2021,
+              "value": 12.8108126961981,
+              "observation_status": null
+            },
+            {
+              "year": 2020,
+              "value": 13.0383676316707,
+              "observation_status": null
+            },
+            {
+              "year": 2019,
+              "value": 13.2659923264737,
+              "observation_status": null
+            },
+            {
+              "year": 2018,
+              "value": 13.4936170212766,
+              "observation_status": null
+            },
+            {
+              "year": 2017,
+              "value": 13.7212417160795,
+              "observation_status": null
+            },
+            {
+              "year": 2016,
+              "value": 13.9487966515521,
+              "observation_status": null
+            },
+            {
+              "year": 2015,
+              "value": 14.1764213463551,
+              "observation_status": null
+            }
+          ],
+          "license": {
+            "name": "CC BY 4.0",
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "terms": "https://data.worldbank.org/summary-terms-of-use",
+            "attribution": "World Bank, World Development Indicators; original providers identified per indicator."
+          },
+          "limitations": "Annual sector context only. Missing values are not zero. Dataset update is not a publication or observation date. Provider footnotes were not requested; inspect indicator metadata and country documentation before applying findings.",
+          "url": "https://api.worldbank.org/v2/country/NPL/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+          "retrieved_on": "2026-10-11",
+          "sha256": "c7929f77eac0f7461589d5433f046f3425c97d0ca621588d62649fbe3cb5d5b1",
+          "raw_file": "catalog/statistics/NPL-AG.LND.ARBL.ZS.json"
+        }
+      ]
+    },
+    {
+      "country_code": "BD",
+      "country": "Bangladesh",
+      "series": [
+        {
+          "country_code": "BD",
+          "country_iso3": "BGD",
+          "country": "Bangladesh",
+          "indicator": "NV.AGR.TOTL.ZS",
+          "name": "Agriculture, forestry, and fishing, value added (% of GDP)",
+          "unit": "% of GDP",
+          "publisher": "World Bank WDI; national accounts and staff estimates",
+          "qualifier": "Sector value added includes forestry and fishing; it is not crop revenue or export earnings.",
+          "dataset_updated": "2026-10-08",
+          "window": {
+            "start": 2015,
+            "end": 2026
+          },
+          "points": [
+            {
+              "year": 2025,
+              "value": 11.4240222467121,
+              "observation_status": null
+            },
+            {
+              "year": 2024,
+              "value": 11.1648014276903,
+              "observation_status": null
+            },
+            {
+              "year": 2023,
+              "value": 11.0036900209598,
+              "observation_status": null
+            },
+            {
+              "year": 2022,
+              "value": 11.2176010351595,
+              "observation_status": null
+            },
+            {
+              "year": 2021,
+              "value": 11.6328584271282,
+              "observation_status": null
+            },
+            {
+              "year": 2020,
+              "value": 11.9996868602485,
+              "observation_status": null
+            },
+            {
+              "year": 2019,
+              "value": 11.9753231358984,
+              "observation_status": null
+            },
+            {
+              "year": 2018,
+              "value": 12.4800771856196,
+              "observation_status": null
+            },
+            {
+              "year": 2017,
+              "value": 12.9572760433733,
+              "observation_status": null
+            },
+            {
+              "year": 2016,
+              "value": 13.4647923176039,
+              "observation_status": null
+            },
+            {
+              "year": 2015,
+              "value": 14.7829964369364,
+              "observation_status": null
+            }
+          ],
+          "license": {
+            "name": "CC BY 4.0",
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "terms": "https://data.worldbank.org/summary-terms-of-use",
+            "attribution": "World Bank, World Development Indicators; original providers identified per indicator."
+          },
+          "limitations": "Annual sector context only. Missing values are not zero. Dataset update is not a publication or observation date. Provider footnotes were not requested; inspect indicator metadata and country documentation before applying findings.",
+          "url": "https://api.worldbank.org/v2/country/BGD/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+          "retrieved_on": "2026-10-11",
+          "sha256": "7f93b61a161722d78ddf67a5afccd68a91e8b314aabbb0645f2b1fcf8aa6eda0",
+          "raw_file": "catalog/statistics/BGD-NV.AGR.TOTL.ZS.json"
+        },
+        {
+          "country_code": "BD",
+          "country_iso3": "BGD",
+          "country": "Bangladesh",
+          "indicator": "SL.AGR.EMPL.ZS",
+          "name": "Employment in agriculture (% of total employment) (modeled ILO estimate)",
+          "unit": "% of total employment",
+          "publisher": "ILO modelled estimates, distributed through World Bank WDI",
+          "qualifier": "Modeled ILO estimate. It is not a count of farmers or a substitute for a national census.",
+          "dataset_updated": "2026-10-08",
+          "window": {
+            "start": 2015,
+            "end": 2026
+          },
+          "points": [
+            {
+              "year": 2025,
+              "value": 44.2601251126533,
+              "observation_status": null
+            },
+            {
+              "year": 2024,
+              "value": 44.7360340472385,
+              "observation_status": null
+            },
+            {
+              "year": 2023,
+              "value": 45.3663393707013,
+              "observation_status": null
+            },
+            {
+              "year": 2022,
+              "value": 43.6687012820915,
+              "observation_status": null
+            },
+            {
+              "year": 2021,
+              "value": 43.4657157854774,
+              "observation_status": null
+            },
+            {
+              "year": 2020,
+              "value": 42.5476764075219,
+              "observation_status": null
+            },
+            {
+              "year": 2019,
+              "value": 40.84013231722,
+              "observation_status": null
+            },
+            {
+              "year": 2018,
+              "value": 40.7657978851531,
+              "observation_status": null
+            },
+            {
+              "year": 2017,
+              "value": 40.5973044110147,
+              "observation_status": null
+            },
+            {
+              "year": 2016,
+              "value": 42.6647464152912,
+              "observation_status": null
+            },
+            {
+              "year": 2015,
+              "value": 43.542342342038,
+              "observation_status": null
+            }
+          ],
+          "license": {
+            "name": "CC BY 4.0",
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "terms": "https://data.worldbank.org/summary-terms-of-use",
+            "attribution": "World Bank, World Development Indicators; original providers identified per indicator."
+          },
+          "limitations": "Annual sector context only. Missing values are not zero. Dataset update is not a publication or observation date. Provider footnotes were not requested; inspect indicator metadata and country documentation before applying findings.",
+          "url": "https://api.worldbank.org/v2/country/BGD/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+          "retrieved_on": "2026-10-11",
+          "sha256": "0df82c8529684ce355b106f4bf0282fdc14711a5c1ae634e157300991f5cba9b",
+          "raw_file": "catalog/statistics/BGD-SL.AGR.EMPL.ZS.json"
+        },
+        {
+          "country_code": "BD",
+          "country_iso3": "BGD",
+          "country": "Bangladesh",
+          "indicator": "AG.LND.ARBL.ZS",
+          "name": "Arable land (% of land area)",
+          "unit": "% of land area",
+          "publisher": "FAO, distributed through World Bank WDI",
+          "qualifier": "Land classification is not evidence of available farmland, tenure, soil quality or irrigation.",
+          "dataset_updated": "2026-10-08",
+          "window": {
+            "start": 2015,
+            "end": 2026
+          },
+          "points": [
+            {
+              "year": 2025,
+              "value": null,
+              "observation_status": null
+            },
+            {
+              "year": 2024,
+              "value": 60.5131750787432,
+              "observation_status": null
+            },
+            {
+              "year": 2023,
+              "value": 61.1430590765921,
+              "observation_status": null
+            },
+            {
+              "year": 2022,
+              "value": 61.4636091265269,
+              "observation_status": null
+            },
+            {
+              "year": 2021,
+              "value": 61.1295843896443,
+              "observation_status": null
+            },
+            {
+              "year": 2020,
+              "value": 61.1580471690866,
+              "observation_status": null
+            },
+            {
+              "year": 2019,
+              "value": 60.336798033341,
+              "observation_status": null
+            },
+            {
+              "year": 2018,
+              "value": 59.7039256357072,
+              "observation_status": null
+            },
+            {
+              "year": 2017,
+              "value": 59.9205500499347,
+              "observation_status": null
+            },
+            {
+              "year": 2016,
+              "value": 60.4593992471384,
+              "observation_status": null
+            },
+            {
+              "year": 2015,
+              "value": 59.7415456710456,
+              "observation_status": null
+            }
+          ],
+          "license": {
+            "name": "CC BY 4.0",
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "terms": "https://data.worldbank.org/summary-terms-of-use",
+            "attribution": "World Bank, World Development Indicators; original providers identified per indicator."
+          },
+          "limitations": "Annual sector context only. Missing values are not zero. Dataset update is not a publication or observation date. Provider footnotes were not requested; inspect indicator metadata and country documentation before applying findings.",
+          "url": "https://api.worldbank.org/v2/country/BGD/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+          "retrieved_on": "2026-10-11",
+          "sha256": "8ea11e29075df974541d141e3c90a4db4364f02dd301ee23687dbddbff491be7",
+          "raw_file": "catalog/statistics/BGD-AG.LND.ARBL.ZS.json"
+        }
+      ]
+    }
+  ]
+}
