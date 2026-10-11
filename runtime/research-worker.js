@@ -4,7 +4,7 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { request as httpsRequest } from 'node:https';
 import { worldUrl } from './agent.js';
-import { createOllamaModel } from './model.js';
+import { createLocalModel } from './model.js';
 
 // Network reads are limited to approved public source hosts; redirects are not followed.
 export function approvedSource(value,domains){
@@ -65,5 +65,5 @@ export async function runResearch({token,url,taskId,urls,modelFn,fetchImpl=fetch
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
   const controller=new AbortController();process.once('SIGINT',()=>controller.abort());process.once('SIGTERM',()=>controller.abort());
-  try{const modelFn=process.env.LUCY_MODEL_NAME?createOllamaModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}):undefined;const result=await runResearch({token:process.env.WORLD_AGENT_TOKEN,url:process.env.WORLD_URL,taskId:process.env.WORLD_TASK_ID,urls:JSON.parse(process.env.WORLD_SOURCE_URLS||'[]'),modelFn,signal:controller.signal});console.log(JSON.stringify(result));}catch{console.error('Research worker stopped. Check task, scopes, approved public sources and local model configuration.');process.exitCode=1;}
+  try{const modelFn=process.env.LUCY_MODEL_NAME?createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}):undefined;const result=await runResearch({token:process.env.WORLD_AGENT_TOKEN,url:process.env.WORLD_URL,taskId:process.env.WORLD_TASK_ID,urls:JSON.parse(process.env.WORLD_SOURCE_URLS||'[]'),modelFn,signal:controller.signal});console.log(JSON.stringify(result));}catch{console.error('Research worker stopped. Check task, scopes, approved public sources and local model configuration.');process.exitCode=1;}
 }

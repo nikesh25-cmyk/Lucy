@@ -41,3 +41,7 @@ A Codex cloud task runs on its cloud machine. Commands there do not install soft
 ## Verification
 
 The launcher was exercised on the Linux cloud computer with an isolated database, browser opening disabled, a deliberately occupied port, and inherited hosted-origin settings. It selected a free loopback port, served all ten shared worlds, exposed first-account registration in local mode, and stopped cleanly. Both official Mac archives were downloaded and matched the pinned checksums. On 11 October 2026, native macOS launch, browser response, schema 5 migration, thirty shared spaces, and the 106-test suite were verified locally. Windows execution still needs checking on Windows.
+
+## Enable local inference
+
+On Apple Silicon, open **Enable Local AI.command** to download and verify the optional 2.5 GB model, then restart **Start World.command**. See [local AI setup](LOCAL_AI.md) for resources, provenance, recovery and model limits. The world remains usable during installation.
