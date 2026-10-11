@@ -39,6 +39,7 @@ export function deliveryPacketHTML(packet){
     }
     body.push(section('Evidence still needed',paragraph(brief.evidence_gaps)+paragraph(brief.boundary)));
   }else body.push(section('Evidence contribution',paragraph(packet.content.text)));
+  if(brief?.source_records?.length)body.push(section('Retained retrieval notes',brief.source_records.map(record=>`<article><h3>Source ${record.source_number} · ${escape(record.kind)}</h3>${paragraph(record.summary)}${paragraph(record.publication_note)}${paragraph('Retrieved: '+record.retrieved+' · SHA256: '+record.sha256)}</article>`).join('')+paragraph('Contributor-retained notes; source access does not certify substantive claims or permissions.')));
   body.push(section('Source register',`<ol class="sources">${packet.sources.map(source=>`<li id="source-${source.number}"><h3>Source ${source.number}</h3><a href="${escape(source.url)}" rel="noreferrer">${escape(source.url)}</a>${paragraph('Supporting location: '+source.location)}${paragraph('Contributor-recorded date (publication or retrieval): '+source.recorded_date)}</li>`).join('')}</ol>`));
   body.push(section('Method, limitations and permissions',`<dl>${definition('Method',packet.method)}${definition('Limitations',packet.limitations)}${definition('Contributor rights statement',packet.rights_statement)}</dl>`));
   body.push(section('Human review record',`<dl>${definition('Reviewer',packet.review.reviewer)}${definition('Review date',packet.review.reviewed_at)}${definition('Review criteria',packet.mission.criteria)}</dl>`+paragraph(packet.review.explanation)));
