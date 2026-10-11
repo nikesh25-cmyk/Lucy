@@ -1,3 +1,4 @@
+import {parseResearchFailure} from './src/research-failure.js';
 import { ASSESSMENT_RESULTS } from './src/review-assessment.js';
 import { clearOperatorState } from './src/browser-session.js';
 import { normalizeDecisionBrief, serializeDecisionBrief, decisionBriefText } from './src/decision-brief.js';
@@ -416,7 +417,8 @@ function renderHistory(parent) {
   if(state.workers.resident)runs.append(button('Stop my local resident',async()=>{const result=await api('/residents/cancel','POST',{});notice(result.stopping?'Stop requested. Refresh runs after cleanup completes.':'No local resident is running.');},'secondary small'));
   if(state.workers.research)runs.append(button('Stop my research worker',async()=>{const result=await api('/research/cancel','POST',{});notice(result.stopping?'Stop requested. Refresh runs after cleanup completes.':'No research worker is running.');},'secondary small'));
   if(!(state.history.jobs||[]).length)runs.append(empty('No agent runs have been recorded for your characters.'));
-  for(const job of state.history.jobs||[])runs.append(append(element('article',null,'record'),element('h3',job.agent_name||'Your agent'),badge(job.status),paragraph(job.detail),paragraph(date(job.created_at),'privacy')));
+  for(const job of state.history.jobs||[]){const failure=parseResearchFailure(job.detail),item=append(element('article',null,'record'),element('h3',job.agent_name||'Your agent'),badge(job.status));
+    if(failure)item.append(paragraph(`${failure.label}${failure.source_number?` · Source ${failure.source_number}`:''}`),paragraph(titleOfTask(failure.task_id)),paragraph(failure.action),paragraph(failure.claim_note,'privacy'),button('Open mission tasks',()=>openSection('missions'),'secondary small'));else item.append(paragraph(job.detail));item.append(paragraph(date(job.created_at),'privacy'));runs.append(item);}
   parent.append(runs);
   const drafts=card('Your private research drafts');drafts.append(paragraph('Saved work survives refresh and claim expiry. Reclaiming follows the current task availability and requirements.','privacy'),button('Show archived drafts',async()=>{const result=await api('/drafts?archived=1');state.history.drafts=result.drafts;renderView();},'secondary small'));
   for(const draft of state.history.drafts||[]){const item=element('article',null,'record');item.append(element('h3',draft.task_title||titleOfTask(draft.task_id)),paragraph(`${draft.archived?'Archived':'Private'} · Revision ${draft.revision} · ${date(draft.updated_at)}`,'privacy'));
@@ -487,7 +489,7 @@ function renderOperations(parent) {
   const record=card('World record');append(record,paragraph(operations.audit_valid?'The audit record is consistent.':'The audit record needs investigation.',operations.audit_valid?'muted':'error'));const numbers=element('div',null,'numbers');for(const [count,label]of[[operations.accounts.length,'accounts'],[operations.jobs.length,'recorded runs'],[operations.runtime_budgets.length,'connection sessions']]){const number=element('div');append(number,element('strong',String(count)),element('small',label));numbers.append(number);}record.append(numbers);
   disclosure(record,'Recent activity',(body)=>{for(const audit of operations.audit.slice(0,40))body.append(paragraph(`${date(audit.created_at)} · ${audit.event} · ${audit.record_id||'world'}`,'privacy'));});
   disclosure(record,'Connection budgets',(body)=>{for(const runtime of operations.runtime_budgets)body.append(paragraph(`${state.world.participants.find((a)=>a.id===runtime.agent_id)?.name||runtime.agent_id} · ${runtime.used_calls}/${runtime.max_calls} calls · expires ${date(runtime.expires_at)}${runtime.revoked?' · revoked':''}`,'privacy'));});
-  disclosure(record,'Recorded agent runs',(body)=>{if(!operations.jobs.length)body.append(empty('No agent runs have been recorded.'));for(const job of operations.jobs)body.append(paragraph(`${job.status}: ${job.detail} · ${date(job.created_at)}`,'privacy'));});parent.append(record);
+  disclosure(record,'Recorded agent runs',(body)=>{if(!operations.jobs.length)body.append(empty('No agent runs have been recorded.'));for(const job of operations.jobs){const failure=parseResearchFailure(job.detail);body.append(paragraph(`${job.status}: ${failure?`${failure.label}${failure.source_number?` · Source ${failure.source_number}`:''}. ${failure.action} ${failure.claim_note}`:job.detail} · ${date(job.created_at)}`,'privacy'));}});parent.append(record);
 }
 function renderHelp(parent) {
   const node=card('A guide to the shared world','START HERE');node.classList.add('help-copy');
