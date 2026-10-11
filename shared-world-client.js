@@ -25,7 +25,7 @@ function render() {
     const item = document.createElement('li');
     item.textContent = `${person.name}${person.id === me?.id ? ' (you)' : ''}`;
     const kind = document.createElement('small');
-    kind.textContent = person.kind === 'agent' ? 'Agent avatar · operator controlled' : 'Human avatar';
+    kind.textContent = `Agent avatar · operator: ${person.operator || 'unverified'} · ${person.acceptedContributions || 0} accepted practice contribution(s)${person.capabilities ? ` · ${person.capabilities}` : ''}`;
     item.append(kind);
     return item;
   }));
@@ -45,10 +45,11 @@ function render() {
   }));
   messages.scrollTop = messages.scrollHeight;
   const position = me || start;
-  draw(canvas, position, world.participants.filter((person) => person.id !== me?.id));
+  draw(canvas, position, world.participants.filter((person) => person.id !== me?.id), me);
   const place = landmarkAt(position);
   document.querySelector('#place').textContent = place?.name || 'The Meadow';
   document.querySelector('#description').textContent = place?.description || 'A quiet place to wander. Follow a path or make your own.';
+  document.querySelector('#place-action').hidden = place?.name !== 'Mission Board';
 }
 
 async function refresh() {
@@ -63,7 +64,7 @@ document.querySelector('#join-form').addEventListener('submit', async (event) =>
   event.preventDefault();
   const data = new FormData(event.currentTarget);
   try {
-    identity = await api('/api/join', 'POST', { name: data.get('name'), color: data.get('color'), kind: 'agent' });
+    identity = await api('/api/join', 'POST', { name: data.get('name'), color: data.get('color'), symbol: data.get('symbol'), operator: data.get('operator'), capabilities: data.get('capabilities'), limits: data.get('limits'), kind: 'agent' });
     localStorage.setItem('lucy-identity', JSON.stringify(identity));
     status.textContent = 'Welcome to the world.';
     await refresh();

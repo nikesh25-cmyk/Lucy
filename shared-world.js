@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { move, COLS, ROWS, start } from './world.js';
 
 const colors = new Set(['#3d5875', '#8c6ab1', '#cb725f', '#397f79', '#aa7845']);
+const symbols = new Set(['✦', '◆', '✿', '▲']);
 const empty = () => ({ participants: [], messages: [] });
 const hash = (token) => createHash('sha256').update(token).digest('hex');
 const cleanName = (name) => typeof name === 'string' ? name.trim().slice(0, 24) : '';
@@ -33,7 +34,7 @@ export class SharedWorld {
     let viewer;
     if (token) viewer = this.authenticate(token);
     return {
-      participants: this.state.participants.map(({ id, name, kind, color, x, y }) => ({ id, name, kind, color, x, y })),
+      participants: this.state.participants.map(({ id, name, kind, color, symbol, operator, capabilities, limits, x, y }) => ({ id, name, kind, color, symbol, operator, capabilities, limits, x, y })),
       messages: this.state.messages.filter((message) => message.channel === 'public' || (viewer && message.recipients.includes(viewer.id))),
       bounds: { columns: COLS, rows: ROWS },
     };
@@ -47,7 +48,11 @@ export class SharedWorld {
     const token = randomBytes(32).toString('hex');
     const id = randomBytes(8).toString('hex');
     const color = colors.has(input?.color) ? input.color : '#3d5875';
-    this.state.participants.push({ id, tokenHash: hash(token), name, kind: input.kind, color, ...start, lastMove: 0, lastMessage: 0 });
+    const symbol = symbols.has(input?.symbol) ? input.symbol : '✦';
+    const operator = cleanName(input?.operator) || 'Unverified operator';
+    const capabilities = typeof input?.capabilities === 'string' ? input.capabilities.trim().slice(0, 120) : '';
+    const limits = typeof input?.limits === 'string' ? input.limits.trim().slice(0, 120) : '';
+    this.state.participants.push({ id, tokenHash: hash(token), name, kind: input.kind, color, symbol, operator, capabilities, limits, ...start, lastMove: 0, lastMessage: 0 });
     return { id, token };
   }
 

@@ -2,10 +2,12 @@ export const TILE = 40;
 export const COLS = 20;
 export const ROWS = 14;
 export const landmarks = [
-  { x: 4, y: 3, name: 'Starlight Grove', description: 'The trees hum softly under a sky full of impossible stars.', color: '#b58ad8', symbol: '✦' },
-  { x: 15, y: 3, name: 'Sunrise House', description: 'A warm little house with a light always on for travelers.', color: '#efaa75', symbol: '⌂' },
-  { x: 10, y: 10, name: 'Moonwell', description: 'A still pool reflects a moon that seems to be here even by day.', color: '#8dbdd1', symbol: '☾' },
-  { x: 16, y: 10, name: 'The Garden', description: 'Every flower has a story. The wind tells a different one each visit.', color: '#db9bb3', symbol: '✿' },
+  { x: 10, y: 6, name: 'Welcome Plaza', description: 'The shared center of the world. Meet other avatars and choose where to explore.', color: '#d9a36d', symbol: '✧' },
+  { x: 11, y: 6, name: 'Mission Board', description: 'Explore available practice missions in the accessible mission list.', color: '#637f69', symbol: '▤' },
+  { x: 4, y: 3, name: 'Climate Grove', description: 'A place for careful climate evidence and practical environmental learning.', color: '#64a87e', symbol: '✿' },
+  { x: 15, y: 3, name: 'Peace Pavilion', description: 'A quiet space for nonpartisan learning resources and thoughtful dialogue.', color: '#8b91c9', symbol: '☮' },
+  { x: 10, y: 10, name: 'Contribution Gallery', description: 'Accepted practice work can be recognized here after human review.', color: '#8dbdd1', symbol: '☆' },
+  { x: 16, y: 10, name: 'Help Point', description: 'Read how to participate, what is visible, and how to stop an avatar.', color: '#db9bb3', symbol: '?' },
 ];
 export const start = { x: 10, y: 6 };
 
@@ -23,7 +25,7 @@ export function landmarkAt(position) {
   return landmarks.find((place) => place.x === position.x && place.y === position.y);
 }
 
-export function draw(canvas, position, visitors = []) {
+export function draw(canvas, position, visitors = [], self = {}) {
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#b7d6af';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -40,7 +42,7 @@ export function draw(canvas, position, visitors = []) {
       }
     }
   }
-  // A winding path gives the four places a shared center.
+  // Paths lead from the plaza to each part of the world.
   ctx.strokeStyle = '#e6d5aa';
   ctx.lineWidth = 18;
   ctx.lineCap = 'round';
@@ -52,6 +54,11 @@ export function draw(canvas, position, visitors = []) {
   ctx.quadraticCurveTo(380, 390, 420, 420);
   ctx.quadraticCurveTo(540, 470, 660, 420);
   ctx.stroke();
+  ctx.fillStyle = '#eee1bd';
+  ctx.fillRect(378, 218, 85, 86);
+  ctx.strokeStyle = '#f9efd9';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(378, 218, 85, 86);
   for (const place of landmarks) {
     const px = (place.x + .5) * TILE;
     const py = (place.y + .5) * TILE;
@@ -63,6 +70,11 @@ export function draw(canvas, position, visitors = []) {
     ctx.font = 'bold 25px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(place.symbol, px, py + 1);
+    if (!['Welcome Plaza', 'Mission Board'].includes(place.name)) {
+      ctx.font = 'bold 11px system-ui';
+      ctx.fillStyle = '#344458';
+      ctx.fillText(place.name, px, py + 37);
+    }
   }
   for (const visitor of visitors) {
     if (visitor.x === position.x && visitor.y === position.y) continue;
@@ -73,16 +85,19 @@ export function draw(canvas, position, visitors = []) {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 13px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(visitor.kind === 'agent' ? '✦' : '●', vx, vy);
+    ctx.fillText(visitor.symbol || '✦', vx, vy);
   }
   const px = (position.x + .5) * TILE;
   const py = (position.y + .5) * TILE;
   ctx.fillStyle = '#38546b55';
   ctx.beginPath(); ctx.ellipse(px, py + 16, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#3d5875';
+  ctx.fillStyle = self.color || '#3d5875';
   ctx.beginPath(); ctx.arc(px, py, 15, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#f6d7b7';
   ctx.beginPath(); ctx.arc(px, py - 5, 10, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#334454';
   ctx.beginPath(); ctx.arc(px, py - 9, 10, Math.PI, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px system-ui';
+  ctx.fillText(self.symbol || '✦', px, py + 4);
 }

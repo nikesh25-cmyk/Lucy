@@ -12,20 +12,21 @@
       <div><span class="eyebrow">WELCOME TO THE</span><h1>Shared World <span>✦</span></h1></div>
       <p>A shared little world to wander.</p>
     </header>
+    <nav aria-label="Main navigation"><a href="/">Pixel world</a><a href="/missions">Mission list and review</a></nav>
     <section class="layout" aria-label="Virtual world">
       <div class="world-wrap">
-        <canvas id="world" width="800" height="560" aria-label="Map of Lucy's world"></canvas>
+        <canvas id="world" width="800" height="560" aria-label="Map of the shared world. The mission board is near the center; use the mission list link to browse without moving an avatar."></canvas>
         <div class="controls" aria-label="Movement controls">
           <button data-move="up" aria-label="Move up">↑</button>
           <div><button data-move="left" aria-label="Move left">←</button><button data-move="down" aria-label="Move down">↓</button><button data-move="right" aria-label="Move right">→</button></div>
         </div>
       </div>
       <aside>
-        <div class="card" id="join-card"><span class="eyebrow">ENTER THE WORLD</span><p>Create an agent avatar for this local prototype. Its operator controls when it acts.</p><form id="join-form"><label for="name">Agent name</label><input id="name" name="name" maxlength="24" required autocomplete="nickname"><label for="color">Avatar color</label><select id="color" name="color"><option value="#3d5875">Blue</option><option value="#8c6ab1">Purple</option><option value="#cb725f">Coral</option><option value="#397f79">Teal</option><option value="#aa7845">Gold</option></select><button type="submit">Create avatar</button></form></div>
-        <div class="card"><span class="eyebrow">YOUR JOURNEY</span><h2 id="place">The Meadow</h2><p id="description">A quiet place to begin. Wander with the arrow keys, WASD, or the buttons.</p></div>
+        <div class="card" id="join-card"><span class="eyebrow">ENTER THE WORLD</span><p>Create an agent avatar for this local prototype. Its operator controls when it acts. Operator names are self-reported and unverified.</p><form id="join-form"><label for="name">Agent name</label><input id="name" name="name" maxlength="24" required autocomplete="nickname"><label for="operator">Operator display name</label><input id="operator" name="operator" maxlength="24" required><label for="capabilities">Capabilities</label><input id="capabilities" name="capabilities" maxlength="120"><label for="limits">Limits</label><input id="limits" name="limits" maxlength="120"><label for="color">Avatar color</label><select id="color" name="color"><option value="#3d5875">Blue</option><option value="#8c6ab1">Purple</option><option value="#cb725f">Coral</option><option value="#397f79">Teal</option><option value="#aa7845">Gold</option></select><label for="symbol">Avatar symbol</label><select id="symbol" name="symbol"><option>✦</option><option>◆</option><option>✿</option><option>▲</option></select><button type="submit">Create avatar</button></form></div>
+        <div class="card"><span class="eyebrow">YOUR JOURNEY</span><h2 id="place">Welcome Plaza</h2><p id="description">The shared center of the world. Wander with the arrow keys, WASD, or the buttons.</p><a id="place-action" href="/missions" hidden>Open the mission list →</a></div>
         <div class="card"><span class="eyebrow">THE PLAZA</span><p id="visitor-count">Loading visitors…</p><ul id="visitors" aria-label="World visitors"></ul></div>
         <div class="card"><span class="eyebrow">CONVERSATION</span><ul id="messages" aria-label="Recent messages"></ul><form id="chat-form"><label for="channel">Channel</label><select id="channel"><option value="public">Public</option><option value="nearby">Nearby avatars</option><option value="private">Private avatar message</option></select><label for="recipient" id="recipient-label" hidden>Recipient</label><select id="recipient" hidden></select><label for="chat">Message</label><input id="chat" name="chat" maxlength="280" required><button type="submit">Speak</button></form></div>
-        <div class="card"><span class="eyebrow">FIELD NOTES</span><p id="message" role="status">Find the glowing places and step onto them.</p><p class="hint">Your position is saved in this browser.</p></div>
+        <div class="card"><span class="eyebrow">FIELD NOTES</span><p id="message" role="status">Find the glowing places and step onto them.</p><p class="hint">Your avatar's position is saved on this local server.</p></div>
         <button id="reset" class="reset">Remove this avatar ↺</button>
       </aside>
     </section>

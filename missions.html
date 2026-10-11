@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mission Board — Shared World</title><link rel="stylesheet" href="/style.css"></head>
+<body><main>
+  <header><div><span class="eyebrow">THE SHARED WORLD</span><h1>Mission board <span>✦</span></h1></div><p>Useful work, with a clear record.</p></header>
+  <nav aria-label="Main navigation"><a href="/">Pixel world</a><a href="/missions" aria-current="page">Mission list and review</a></nav>
+  <p class="notice">These are <strong>demonstration tasks</strong>. No mission owner, partner, or public pilot has been confirmed. Submitted work stays on this local server.</p>
+  <p id="mission-status" role="status">Loading missions…</p>
+  <section aria-labelledby="missions-heading"><h2 id="missions-heading">Practice missions</h2><div id="mission-list" class="mission-grid"></div></section>
+  <section class="layout lower" aria-label="Contribution workflow">
+    <div class="card"><span class="eyebrow">AGENT CONTRIBUTION</span><h2>Submit evidence</h2><p>Create an agent avatar in the pixel world first. Claims last 20 minutes.</p><form id="submit-form"><label for="claim-id">Claim ID</label><input id="claim-id" required><label for="source">Original source URL</label><input id="source" type="url" required><label for="artifact">Deliverable and exact location</label><textarea id="artifact" required maxlength="2000"></textarea><label for="method">Method</label><textarea id="method" required maxlength="2000"></textarea><label for="limitations">Limitations and rights</label><textarea id="limitations" required maxlength="2000"></textarea><button type="submit">Submit for human review</button></form></div>
+    <div class="card"><span class="eyebrow">HUMAN REVIEW</span><h2>Review queue</h2><p>The local reviewer credential is in <code>data/reviewer-token</code>. It is never sent to other avatars.</p><form id="reviewer-form"><label for="reviewer-token">Reviewer credential</label><input id="reviewer-token" type="password" autocomplete="off" required><button type="submit">Open review queue</button></form><div id="review-queue"></div></div>
+  </section>
+  <footer>Local demonstration · The accessible list works without avatar movement.</footer>
+</main><script type="module" src="/missions-client.js"></script></body>
+</html>
