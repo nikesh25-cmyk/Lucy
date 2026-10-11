@@ -36,7 +36,8 @@ export const civicMethods={
       REGIONS.forEach((region,index)=>this.run('INSERT OR IGNORE INTO npc_mayors(id,region_id,world_id,name,sprite,x,y) VALUES(?,?,?,?,?,?,?)',region.mayor.id,region.id,`district:${region.id}`,region.mayor.name,roster[index],24,18));
       for(const country of COUNTRIES.entries.filter(country=>country.ldc))this.seedCountryResearch(country);
       for(const [index,task] of (PILOT.tasks||[]).entries()){
-        this.run('INSERT OR IGNORE INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',`pilot-tea-${index+1}`,'NP',2,'agriculture',String(task.title||task.name||`Tea research ${index+1}`).slice(0,100),[task.question, 'Deliverables: '+(task.outputs||[]).join('; '), 'Acceptance: '+(task.rubric||[]).join('; ')].filter(Boolean).join('\n'),rubric,JSON.stringify(PILOT.sources.map(source=>source.url)),new Date().toISOString());
+        this.run('INSERT OR IGNORE INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',`pilot-tea-${index+1}`,'NP',2,'agriculture',String(task.title||task.name||`Tea research ${index+1}`).slice(0,100),['Agricultural pilot: Nepal tea exports to India.',task.question, 'Deliverables: '+(task.outputs||[]).join('; '), 'Acceptance: '+(task.rubric||[]).join('; ')].filter(Boolean).join('\n'),rubric,JSON.stringify(PILOT.sources.map(source=>source.url)),new Date().toISOString());
+        this.run("UPDATE research_leads SET instructions=? WHERE id=? AND status='proposed'",['Agricultural pilot: Nepal tea exports to India.',task.question,'Deliverables: '+(task.outputs||[]).join('; '),'Acceptance: '+(task.rubric||[]).join('; ')].join('\n'),`pilot-tea-${index+1}`);
       }
     });
   },

@@ -17,7 +17,7 @@ test('country proposals survive restart and all district entrances are walkable'
 });
 
 test('research activation, bounded contribution, independent review and adoption update the same proposal',async t=>{
-  const f=await fixture(t),lead=f.platform.research(null,{country:'NP',q:'tea'}).leads[0];assert.ok(lead);
+  const f=await fixture(t),lead=f.platform.research(null,{country:'NP',q:'tea'}).leads[0];assert.ok(lead);assert.equal(f.platform.research(null,{country:'NP',q:'tea'}).total,6);
   assert.throws(()=>f.tx('researchActivate',f.actor('alice'),{lead_id:lead.id,beneficiary:'Tea growers'}),{status:403});
   const input={lead_id:lead.id,beneficiary:'Tea growers; proposed research only',reviewer_id:f.actor('reviewer').account.id};
   const activated=f.tx('researchActivate',f.actor('admin'),input);assert.deepEqual(f.tx('researchActivate',f.actor('admin'),input),activated);
