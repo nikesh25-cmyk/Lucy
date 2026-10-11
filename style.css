@@ -39,3 +39,7 @@ img.home-owner-icon{padding:4px;opacity:.65}
 body:has([aria-current="page"][aria-label="Research desk"]) .hero,body:has([aria-current="page"][aria-label="World Assembly"]) .hero,body:has([aria-current="page"][aria-label="Countries & areas"]) .hero{display:none}
 @media(max-width:650px){.research-metrics{grid-template-columns:1fr}.mayor-dialog{padding:16px}.mayor-dialog .actions{flex-wrap:wrap}}
 .inner-section .welcome{display:none}.inner-section #view{padding-top:20px}
+
+/* Movement remains usable with touch and limited pointer precision. */
+.movement{grid-template-columns:repeat(3,44px)}.movement button{min-width:44px;min-height:44px}
+@media(max-width:560px){.world-bottom{flex-wrap:wrap}.movement{margin-left:auto}}
