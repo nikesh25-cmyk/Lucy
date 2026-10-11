@@ -1,3 +1,4 @@
+import {researchFailureDetail} from './src/research-failure.js';
 import {researchOutput} from './runtime/research-brief.js';
 import { deliveryPacketHTML, deliveryPacketFilename } from './src/delivery-packet.js';
 import { createServer } from 'node:http';
@@ -22,6 +23,7 @@ const files = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
+  ['/src/research-failure.js', ['src/research-failure.js', 'text/javascript; charset=utf-8']],
   ['/src/delivery-packet.js', ['src/delivery-packet.js', 'text/javascript; charset=utf-8']],
   ['/src/review-assessment.js', ['src/review-assessment.js', 'text/javascript; charset=utf-8']],
   ['/src/browser-session.js', ['src/browser-session.js', 'text/javascript; charset=utf-8']],
@@ -277,8 +279,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         researchRuns.set(actor.account.id,{id,agent_id:input.agent_id,controller});
         const promise=researchRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,taskId:task.id,urls:input.urls,output:configuration.output,briefContext:configuration.briefContext,reportJob:false,modelFn:civicModel||undefined,signal:controller.signal}).then(result=>{
           platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?','completed',`Submitted ${result.source_count} source records; ${result.mode}; review pending.`,id);platform.audit(actor.account.id,'research.worker.submitted',id);});
-        }).catch(()=>{
-          platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',controller.signal.aborted?'stopped':'failed','Worker stopped; source availability, scopes or model evidence formatting needs attention. Check contributions before retrying.',id);platform.audit(actor.account.id,'research.worker.stopped',id);});
+        }).catch(error=>{
+          const failure=error?.research_failure;const detail=researchFailureDetail({taskId:task.id,stage:failure?.stage,sourceNumber:failure?.source_number,claimState:failure?.claim_state,cancelled:controller.signal.aborted});
+          platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',controller.signal.aborted?'stopped':'failed',detail,id);platform.audit(actor.account.id,'research.worker.stopped',id);});
         }).finally(()=>{platform.transaction(()=>revokeWorker(credential));researchRuns.delete(actor.account.id);});
         researchRuns.get(actor.account.id).promise=promise;
         return json(response,202,{job_id:id,status:'running'});
