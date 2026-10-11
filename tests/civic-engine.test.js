@@ -40,7 +40,8 @@ test('mayor conversations are private, exported, erased and cannot exercise mode
 
 test('source worker refuses private hosts, redirects, binaries and oversized content',async()=>{
   assert.throws(()=>approvedSource('http://fao.org',['fao.org']));assert.throws(()=>approvedSource('https://127.0.0.1',['127.0.0.1']));assert.throws(()=>approvedSource('https://example.org',['un.org']));
-  for(const address of ['127.0.0.1','10.1.2.3','192.168.1.2','169.254.1.1','::1','fc00::1','::ffff:127.0.0.1'])assert.equal(publicAddress(address),false);
+  for(const address of ['127.0.0.1','10.1.2.3','192.168.1.2','169.254.1.1','::1','fc00::1','::ffff:127.0.0.1','192.0.2.1','198.18.0.1','198.51.100.1','203.0.113.1','ff02::1','64:ff9b::a00:1','2002:0a00:0001::1','3fff::1','2001:0db8::1'])assert.equal(publicAddress(address),false);
+  assert.equal(publicAddress('2606:4700:4700::1111'),true);assert.equal(publicAddress('2001:4860:4860::8888'),true);
   const resolve=async()=>[{address:'93.184.216.34',family:4}];
   await assert.rejects(readSource('https://example.org',['example.org'],{resolve:async()=>[{address:'127.0.0.1',family:4}],fetchImpl:()=>{throw new Error('must never fetch');}}),/private/);
   await assert.rejects(readSource('https://example.org',['example.org'],{resolve,fetchImpl:async()=>new Response('pdf',{headers:{'content-type':'application/pdf'}})}),/HTML/);
