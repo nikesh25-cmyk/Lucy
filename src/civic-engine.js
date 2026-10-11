@@ -58,6 +58,10 @@ export const civicMethods={
   research(actor,input={}){
     const params=[],where=[];
     for(const [key,column] of [['country','country_code'],['goal','goal'],['status','status']])if(input[key]){where.push(`${column}=?`);params.push(String(input[key]).slice(0,40));}
+    if(input.institution){
+      const institution=PROGRAMMES.institutions.find(item=>item.id===input.institution);if(!institution)fail(400,'Choose a catalog institution.');
+      where.push('id LIKE ?');params.push(`programme-${institution.id}-%`);
+    }
     if(input.q){where.push('(instr(lower(title),lower(?))>0 OR instr(lower(instructions),lower(?))>0)');params.push(String(input.q).slice(0,100),String(input.q).slice(0,100));}
     const clause=where.length?' WHERE '+where.join(' AND '):'',offset=integer(input.offset,0,1000000),limit=integer(input.limit,24,50);if(!limit)fail(400,'Page size must be positive.');
     const total=this.get('SELECT COUNT(*) AS n FROM research_leads'+clause,...params).n;
@@ -66,6 +70,18 @@ export const civicMethods={
   },
   researchGenerate(actor,input){
     human(actor,['admin','reviewer']);this.active();const country=COUNTRIES.entries.find(country=>country.iso2===input.country_code);if(!country)fail(400,'Choose a catalog country or area.');
+    if(input.institution_id){
+      const institution=PROGRAMMES.institutions.find(item=>item.id===input.institution_id);if(!institution)fail(400,'Choose a catalog institution.');
+      let added=0;const goal=institution.sdgs[0];
+      for(const stage of [stages[0],stages[3]]){
+        const id=`programme-${institution.id}-${country.iso2}-${stage.id}`;
+        const sources=[institution.sourceUrl,...institution.sdgLinks];
+        const instructions=`${stage.output} Country: ${country.name}. Institution reference: ${institution.name}; focus: ${institution.mandate}. Proposed research: ${institution.suggestedTaskTypes.join('; ')}. Find current country evidence, latest official programme documents, responsible national institutions and a practical delivery route. Check geographic coverage, eligibility and programme dates. The source framework does not prove country findings, funding, recipient interest, consent or endorsement. Lucy proposes this work independently.`;
+        added+=this.run('INSERT OR IGNORE INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',id,country.iso2,goal,`programme-${stage.id}`,`${country.name}: ${stage.name} · ${institution.name}`.slice(0,100),instructions,rubric,JSON.stringify(sources),new Date().toISOString()).changes;
+      }
+      this.audit(actor.account.id,'research.programme_generated',institution.id+':'+country.iso2);
+      return {country:country.name,institution:institution.name,added};
+    }
     const before=this.get('SELECT COUNT(*) AS n FROM research_leads WHERE country_code=?',country.iso2).n;this.seedCountryResearch(country);this.audit(actor.account.id,'research.generated',country.iso2);
     return {country:country.name,added:this.get('SELECT COUNT(*) AS n FROM research_leads WHERE country_code=?',country.iso2).n-before};
   },
@@ -100,7 +116,7 @@ export const civicMethods={
     let answer=`I’m ${mayor.name}, the civic guide for ${region.name}. Our focus is ${region.mayor.focus.toLowerCase()}. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.`;
     if(/report|abuse|harass|moder|unsafe|spam/i.test(question))answer='Use the Safety desk to report a specific message or resident. Human moderators review evidence, decide actions, and provide an appeal route. I can guide you through the process; I cannot impose sanctions.';
     else if(/tea|export|agric|farm|buyer|trade/i.test(question))answer='Our first agriculture pilot studies Nepal tea exports to India. Verify the newest Tea Board India directive, product standards, buyer demand and shipment costs before recommending a route. The Assembly desk has ten source records and six research proposals. No buyer or trade outcome is confirmed.';
-    else if(/united nations|\bun\b|assembly|committee/i.test(question))answer='World Assembly is an independent Lucy institution. Its reference desk covers six UN principal organs, six General Assembly committees and six selected operational entities. UN mandates and sources inform proposed work; Lucy has no UN endorsement.';
+    else if(/united nations|\bun\b|assembly|committee/i.test(question))answer=`World Assembly is an independent Lucy institution. Its reference desk contains ${PROGRAMMES.institutions.length} records covering principal organs, General Assembly committees, ECOSOC commissions, specialized agency groups, funds and other entities. It does not enumerate every UN programme or subsidiary body. UN sources inform Lucy proposals; Lucy has no UN endorsement.`;
     else if(/task|work|research|help|goal/i.test(question))answer=`Start with a proposed country research task, define a beneficiary and reviewer, then activate it as a mission. Contributors claim one task, attach sources and limitations, and submit for independent human review. ${this.get('SELECT COUNT(*) AS n FROM research_leads').n} proposals are currently in the research catalog.`;
     const id=randomUUID(),created_at=new Date(this.clock()).toISOString();this.run('INSERT INTO mayor_conversations(id,account_id,npc_id,question,answer,created_at) VALUES(?,?,?,?,?,?)',id,actor.account.id,mayor.id,question,answer,created_at);
     this.run('DELETE FROM mayor_conversations WHERE account_id=? AND id NOT IN (SELECT id FROM mayor_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 100)',actor.account.id,actor.account.id);

@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "researchedOn": "2026-10-11",
   "status": "independent-research-reference",
-  "scope": "Six principal organs, six General Assembly main committees and six selected operational entities. This is a starter catalog, not an exhaustive UN system directory.",
+  "scope": "54 records: six principal organs, six General Assembly main committees, eight ECOSOC functional commissions including the UN Forum on Forests, five regional commissions, fifteen specialized agency groups including the World Bank Group, and fourteen funds, programmes and other entities. This does not enumerate every subsidiary body, treaty body or programme.",
   "affiliation": "Lucy has no UN affiliation, mandate or endorsement. Task suggestions and SDG mappings are Lucy editorial proposals, not UN instructions.",
   "institutions": [
     {
@@ -22,7 +22,8 @@
       "suggestedTaskTypes": [
         "Summarize a published resolution with document symbol and date",
         "Compare country voluntary national review priorities"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "security-council",
@@ -39,7 +40,8 @@
       "suggestedTaskTypes": [
         "Summarize published peacebuilding recommendations",
         "Map civilian resilience needs from public reports"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "ecosoc",
@@ -62,7 +64,8 @@
       "suggestedTaskTypes": [
         "Compare development indicators for two countries",
         "Prepare a sourced policy options brief"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "trusteeship-council",
@@ -79,7 +82,8 @@
       "suggestedTaskTypes": [
         "Build a historical timeline from official records",
         "Explain historical institutional mandate"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "icj",
@@ -96,7 +100,8 @@
       "suggestedTaskTypes": [
         "Summarize a public judgment with case citation",
         "Explain institution jurisdiction using official materials"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "secretariat",
@@ -115,7 +120,8 @@
       "suggestedTaskTypes": [
         "Locate public reports and document symbols",
         "Build a dated evidence register"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "first-committee",
@@ -132,7 +138,8 @@
       "suggestedTaskTypes": [
         "Summarize a public resolution on confidence building",
         "Map peace education resources"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "second-committee",
@@ -155,7 +162,8 @@
       "suggestedTaskTypes": [
         "Compare LDC trade constraints",
         "Draft a sourced structural transformation brief"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "third-committee",
@@ -180,7 +188,8 @@
       "suggestedTaskTypes": [
         "Audit accessibility of a public service",
         "Compare inclusive education evidence"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "fourth-committee",
@@ -197,7 +206,8 @@
       "suggestedTaskTypes": [
         "Summarize official decolonization documentation",
         "Create a historical source bibliography"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "fifth-committee",
@@ -216,7 +226,8 @@
       "suggestedTaskTypes": [
         "Explain a published budget category",
         "Compare public budget and performance documentation"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "sixth-committee",
@@ -235,7 +246,8 @@
       "suggestedTaskTypes": [
         "Map published treaty resources",
         "Explain a legal committee report with citations"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "fao",
@@ -260,12 +272,13 @@
       "suggestedTaskTypes": [
         "Build a crop production baseline with units and year",
         "Compare postharvest loss interventions"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "undp",
       "name": "United Nations Development Programme",
-      "type": "programme",
+      "type": "fund-programme",
       "mandate": "Supports poverty reduction, resilience, governance and sustainable development.",
       "sourceUrl": "https://www.undp.org/about-us",
       "sdgs": [
@@ -287,12 +300,13 @@
       "suggestedTaskTypes": [
         "Compare municipal service delivery gaps",
         "Create a public policy implementation options brief"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "unep",
       "name": "United Nations Environment Programme",
-      "type": "programme",
+      "type": "fund-programme",
       "mandate": "Supports environmental action on climate change, nature loss, pollution and waste.",
       "sourceUrl": "https://www.unep.org/who-we-are/about-us",
       "sdgs": [
@@ -312,12 +326,13 @@
       "suggestedTaskTypes": [
         "Compare waste management options",
         "Map public ecosystem restoration evidence"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "wfp",
       "name": "World Food Programme",
-      "type": "programme",
+      "type": "fund-programme",
       "mandate": "Provides emergency food assistance and supports food security and resilience.",
       "sourceUrl": "https://www.wfp.org/who-we-are",
       "sdgs": [
@@ -335,12 +350,13 @@
       "suggestedTaskTypes": [
         "Compare food market monitoring reports",
         "Research smallholder procurement requirements"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "itc",
       "name": "International Trade Centre",
-      "type": "joint-agency",
+      "type": "other-entity",
       "mandate": "Joint UN and WTO agency supporting small businesses to participate in international trade.",
       "sourceUrl": "https://open.intracen.org/",
       "sdgs": [
@@ -358,12 +374,13 @@
       "suggestedTaskTypes": [
         "Compare candidate destination markets for a defined product",
         "Verify published tariffs, origin rules and buyer contact routes"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "unctad",
       "name": "UN Trade and Development (UNCTAD)",
-      "type": "secretariat-body",
+      "type": "other-entity",
       "mandate": "Supports developing countries through analysis, technical assistance and trade policy dialogue.",
       "sourceUrl": "https://unctad.org/about",
       "sdgs": [
@@ -381,7 +398,742 @@
       "suggestedTaskTypes": [
         "Research LDC export diversification",
         "Compare border facilitation and digital trade policy options"
-      ]
+      ],
+      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "statistical-commission",
+      "name": "Statistical Commission",
+      "type": "functional-commission",
+      "mandate": "Official statistics and measurement",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Audit indicator definitions and missing country data",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "population-development",
+      "name": "Commission on Population and Development",
+      "type": "functional-commission",
+      "mandate": "Population and development",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        3,
+        5,
+        10
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "suggestedTaskTypes": [
+        "Compare demographic evidence and service access",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "social-development",
+      "name": "Commission for Social Development",
+      "type": "functional-commission",
+      "mandate": "Social development",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        1,
+        8,
+        10
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "suggestedTaskTypes": [
+        "Map exclusion and social protection evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "status-women",
+      "name": "Commission on the Status of Women",
+      "type": "functional-commission",
+      "mandate": "Gender equality",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        5
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal5"
+      ],
+      "suggestedTaskTypes": [
+        "Compare barriers to women’s participation",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "narcotic-drugs",
+      "name": "Commission on Narcotic Drugs",
+      "type": "functional-commission",
+      "mandate": "Drug policy",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        3,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize public prevention evidence and evidence gaps",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "crime-justice",
+      "name": "Commission on Crime Prevention and Criminal Justice",
+      "type": "functional-commission",
+      "mandate": "Crime prevention and justice",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Map public justice access indicators",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "science-development",
+      "name": "Commission on Science and Technology for Development",
+      "type": "functional-commission",
+      "mandate": "Science and technology for development",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare digital access and technology transfer barriers",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "forum-forests",
+      "name": "United Nations Forum on Forests",
+      "type": "functional-commission",
+      "mandate": "Forest policy",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        13,
+        15
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "suggestedTaskTypes": [
+        "Assess public forest monitoring and restoration evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "eca",
+      "name": "Economic Commission for Africa",
+      "type": "regional-commission",
+      "mandate": "Regional development in Africa",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        8,
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare African regional trade and infrastructure evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "ece",
+      "name": "Economic Commission for Europe",
+      "type": "regional-commission",
+      "mandate": "Regional development in Europe",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        9,
+        11,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map regional standards and infrastructure sources",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "eclac",
+      "name": "Economic Commission for Latin America and the Caribbean",
+      "type": "regional-commission",
+      "mandate": "Regional development in Latin America and the Caribbean",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        8,
+        10,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare regional inequality and productive development evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "escap",
+      "name": "Economic and Social Commission for Asia and the Pacific",
+      "type": "regional-commission",
+      "mandate": "Regional development in Asia and the Pacific",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        9,
+        13,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map regional connectivity and resilience evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "escwa",
+      "name": "Economic and Social Commission for Western Asia",
+      "type": "regional-commission",
+      "mandate": "Regional development in Western Asia",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        6,
+        8,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare regional water and livelihood evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "icao",
+      "name": "International Civil Aviation Organization",
+      "type": "specialized-agency",
+      "mandate": "Civil aviation",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        13
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal13"
+      ],
+      "suggestedTaskTypes": [
+        "Map published aviation access and emissions evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "ifad",
+      "name": "International Fund for Agricultural Development",
+      "type": "specialized-agency",
+      "mandate": "Agricultural development",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        1,
+        2,
+        8
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal8"
+      ],
+      "suggestedTaskTypes": [
+        "Map smallholder market access and financing prerequisites",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "ilo",
+      "name": "International Labour Organization",
+      "type": "specialized-agency",
+      "mandate": "Labour",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        8,
+        10
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "suggestedTaskTypes": [
+        "Compare decent work indicators and labour standards sources",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "imf",
+      "name": "International Monetary Fund",
+      "type": "specialized-agency",
+      "mandate": "Monetary cooperation",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        8,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize macroeconomic assumptions from dated public reports",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "imo",
+      "name": "International Maritime Organization",
+      "type": "specialized-agency",
+      "mandate": "Maritime affairs",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        13,
+        14
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal14"
+      ],
+      "suggestedTaskTypes": [
+        "Map public shipping safety and environmental standards",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "itu",
+      "name": "International Telecommunication Union",
+      "type": "specialized-agency",
+      "mandate": "Telecommunications",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map rural connectivity gaps and technical standards",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unesco",
+      "name": "United Nations Educational, Scientific and Cultural Organization",
+      "type": "specialized-agency",
+      "mandate": "Education, science and culture",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        4,
+        11,
+        15
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "suggestedTaskTypes": [
+        "Compare public learning access and cultural preservation evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unido",
+      "name": "United Nations Industrial Development Organization",
+      "type": "specialized-agency",
+      "mandate": "Industrial development",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        8,
+        9,
+        12
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal12"
+      ],
+      "suggestedTaskTypes": [
+        "Assess processing capacity and resource efficiency prerequisites",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "un-tourism",
+      "name": "UN Tourism",
+      "type": "specialized-agency",
+      "mandate": "Tourism",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        8,
+        12
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal12"
+      ],
+      "suggestedTaskTypes": [
+        "Assess local tourism livelihoods and carrying capacity evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "upu",
+      "name": "Universal Postal Union",
+      "type": "specialized-agency",
+      "mandate": "Postal cooperation",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map postal access and small exporter delivery barriers",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "who",
+      "name": "World Health Organization",
+      "type": "specialized-agency",
+      "mandate": "Health",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        3
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize population health indicators; no individual medical advice",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "wipo",
+      "name": "World Intellectual Property Organization",
+      "type": "specialized-agency",
+      "mandate": "Intellectual property",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map public IP information and technology access barriers",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "wmo",
+      "name": "World Meteorological Organization",
+      "type": "specialized-agency",
+      "mandate": "Meteorology",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        6,
+        13
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal13"
+      ],
+      "suggestedTaskTypes": [
+        "Compare public weather information and warning access",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "world-bank-group",
+      "name": "World Bank Group",
+      "type": "specialized-agency-group",
+      "mandate": "Development finance",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        1,
+        8,
+        9
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9"
+      ],
+      "suggestedTaskTypes": [
+        "Map published country diagnostics and project eligibility; presume no funding",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unfpa",
+      "name": "United Nations Population Fund",
+      "type": "fund-programme",
+      "mandate": "Population",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        3,
+        5
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal5"
+      ],
+      "suggestedTaskTypes": [
+        "Map population and reproductive health service access evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "un-habitat",
+      "name": "United Nations Human Settlements Programme",
+      "type": "fund-programme",
+      "mandate": "Human settlements",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        11
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal11"
+      ],
+      "suggestedTaskTypes": [
+        "Compare housing, accessibility and public space indicators",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unicef",
+      "name": "United Nations Children’s Fund",
+      "type": "fund-programme",
+      "mandate": "Children",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        3,
+        4,
+        6
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal6"
+      ],
+      "suggestedTaskTypes": [
+        "Assess public child service access indicators without personal records",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "ohchr",
+      "name": "Office of the High Commissioner for Human Rights",
+      "type": "other-entity",
+      "mandate": "Human rights",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        10,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Map published human rights recommendations and follow-up evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unaids",
+      "name": "Joint United Nations Programme on HIV/AIDS",
+      "type": "other-entity",
+      "mandate": "HIV and AIDS",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        3
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize population-level service access indicators",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unhcr",
+      "name": "Office of the United Nations High Commissioner for Refugees",
+      "type": "other-entity",
+      "mandate": "Refugees",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        10,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Map public displacement and service access evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unops",
+      "name": "United Nations Office for Project Services",
+      "type": "other-entity",
+      "mandate": "Project services",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map transparent procurement and infrastructure delivery prerequisites",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unrwa",
+      "name": "United Nations Relief and Works Agency for Palestine Refugees in the Near East",
+      "type": "other-entity",
+      "mandate": "Palestine refugee services",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        3,
+        4,
+        10
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize public education and service access evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "un-women",
+      "name": "UN Women",
+      "type": "other-entity",
+      "mandate": "Gender equality and women’s empowerment",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        5
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal5"
+      ],
+      "suggestedTaskTypes": [
+        "Compare public gender equality commitments with delivery evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     }
   ],
   "frameworks": [
@@ -393,7 +1145,7 @@
     },
     {
       "id": "dpoa",
-      "name": "Doha Programme of Action for LDCs, 2022\u20132031",
+      "name": "Doha Programme of Action for LDCs, 2022–2031",
       "sourceUrl": "https://www.un.org/ldc5/doha-programme-of-action",
       "focusAreas": [
         "People and capacity",
@@ -475,5 +1227,20 @@
       "Explicit user authorization before outreach"
     ],
     "scaleRule": "Generate parameterized research briefs only. Each country-product-market task starts queued or proposed; it becomes completed only after evidence collection and review."
+  },
+  "coverage": {
+    "principal-organ": 6,
+    "ga-main-committee": 6,
+    "functional-commission": 8,
+    "regional-commission": 5,
+    "specializedAgencyGroups": 15,
+    "fundsProgrammesOtherEntities": 14,
+    "worldBankCounting": "The World Bank Group is one catalog group; the UN guide notes IBRD, IFC and IDA as three specialized agencies. Do not infer fifteen legal entities.",
+    "exclusions": [
+      "Subsidiary and expert bodies outside the listed categories",
+      "Treaty bodies",
+      "Every project, programme and agenda",
+      "Historical and abolished institutions"
+    ]
   }
 }

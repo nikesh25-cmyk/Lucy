@@ -19,7 +19,7 @@ async function run(command, args) {
 }
 async function download(url, path, expectedHash) {
   try { if (await sha256(path) === expectedHash) return; } catch (error) { if (error.code !== 'ENOENT') throw error; }
-  await run('curl', ['--fail', '--location', '--proto', '=https', '--proto-redir', '=https', '--tlsv1.2', '--retry', '3', '--continue-at', '-', '--max-time', '1800', url, '-o', path]);
+  await run('curl', ['--fail', '--location', '--proto', '=https', '--proto-redir', '=https', '--tlsv1.2', '--http1.1', '--speed-limit', '1024', '--speed-time', '90', '--retry', '3', '--continue-at', '-', '--max-time', '1800', url, '-o', path]);
   if (await sha256(path) !== expectedHash) throw new Error('Downloaded checksum does not match the official release. No model will be enabled. Remove the corrupt download and retry.');
 }
 async function install() {
