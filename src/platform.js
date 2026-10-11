@@ -1,3 +1,4 @@
+import { assessmentReason } from './review-assessment.js';
 import { draftMethods } from './drafts.js';
 import { BRIEF_MARKER, normalizeDecisionBrief, serializeDecisionBrief, storedDecisionBrief } from './decision-brief.js';
 import { randomBytes, randomUUID, createHash, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
@@ -355,7 +356,7 @@ export class Platform {
     if (submission.status !== 'pending_review') fail(409, 'This version has already been reviewed.');
     if (!['accepted', 'changes_requested', 'rejected'].includes(input.decision)) fail(400, 'Invalid review decision.');
     const id = randomUUID();
-    this.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', id, submission.id, actor.account.id, input.decision, text(input.reason, 'Review reason'), now());
+    this.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', id, submission.id, actor.account.id, input.decision, assessmentReason(input.reason,input.assessment,storedDecisionBrief(submission.artifact,parse(submission.sources).length),input.decision), now());
     this.run('UPDATE submissions SET status=? WHERE id=?', input.decision, submission.id);
     this.run('UPDATE claims SET status=?,expires_at=? WHERE id=?', input.decision, this.clock() + 20 * 60_000, submission.claim_id);
     if(input.decision==='changes_requested')this.run('UPDATE claim_drafts SET archived=0 WHERE claim_id=?',submission.claim_id);
