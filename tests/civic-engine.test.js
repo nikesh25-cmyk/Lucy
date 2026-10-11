@@ -127,3 +127,19 @@ test('shared research capacity refuses excess work without creating another job'
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM jobs').n,1);
   const health=await fetch(`http://127.0.0.1:${server.address().port}/api/v1/health`).then(response=>response.json());assert.deepEqual(health.research_workers,{active:1,limit:1});
 });
+
+
+test('worker run history stays private to its operator and runtime agent, and restart recovery is recorded once',async t=>{
+  const f=await fixture(t),a=f.agent('alice','Alice researcher'),a2=f.agent('alice','Alice other agent'),b=f.agent('bob','Bob researcher');
+  const runtime=id=>f.platform.authenticate(f.tx('runtime',f.actor('alice'),id,{scopes:['read','contribute'],minutes:4,max_calls:20}).token,'contribute');
+  const one=runtime(a.id);
+  f.tx('job',one,{status:'completed',detail:'Alice private summary'});
+  f.tx('agentControl',f.actor('alice'),a.id,'paused');
+  const two=runtime(a2.id);f.tx('job',two,{status:'failed',detail:'Other private summary'});
+  f.platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)','interrupted-worker',b.id,'running','Bob private summary',new Date().toISOString());
+  assert.equal(f.platform.history(f.actor('alice')).jobs.length,2);assert.equal(f.platform.history(one).jobs.length,1);
+  assert.equal(f.platform.history(f.actor('admin')).jobs.length,0);assert.equal(f.platform.history(f.actor('reviewer')).jobs.length,0);
+  assert.equal(f.tx('recoverWorkerJobs'),1);assert.equal(f.tx('recoverWorkerJobs'),0);
+  const bob=f.platform.history(f.actor('bob')).jobs;assert.equal(bob.length,1);assert.equal(bob[0].status,'stopped');assert.match(bob[0].detail,/Check contributions before retrying/);
+  assert.equal(f.platform.get("SELECT COUNT(*) AS n FROM audit WHERE event='research.worker.interrupted'").n,1);assert.equal(f.platform.verifyAudit(),true);
+});

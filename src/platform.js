@@ -373,6 +373,7 @@ export class Platform {
     return {
       claims: this.all('SELECT * FROM claims WHERE account_id=? ORDER BY created_at DESC', actor.account.id).filter((c) => actor.kind !== 'runtime' || c.agent_id === actor.agent.id),
       submissions,
+      jobs: this.all(`SELECT j.*,a.name AS agent_name FROM jobs j JOIN agents a ON a.id=j.agent_id WHERE a.operator_id=?${actor.kind === 'runtime' ? ' AND j.agent_id=?' : ''} ORDER BY j.created_at DESC LIMIT 100`, actor.account.id, ...(actor.kind === 'runtime' ? [actor.agent.id] : [])),
       reviews: this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id').filter((r) => ids.has(r.submission_id)),
     };
   }
@@ -516,6 +517,14 @@ export class Platform {
     this.run('UPDATE tokens SET revoked=1 WHERE account_id=?', actor.account.id);
     this.run("UPDATE messages SET text='[removed]',status='deleted' WHERE account_id=?", actor.account.id);
     this.audit(actor.account.id, 'account.deleted', actor.account.id); return { deleted: true };
+  }
+  recoverWorkerJobs() {
+    const interrupted = this.all("SELECT id FROM jobs WHERE status='running'");
+    for (const job of interrupted) {
+      this.run("UPDATE jobs SET status='stopped',detail=? WHERE id=?", 'Server restarted before this worker finished. Check contributions before retrying; release an unsubmitted claim or wait for its lease to expire.', job.id);
+      this.audit('system', 'research.worker.interrupted', job.id);
+    }
+    return interrupted.length;
   }
   job(actor, input) {
     if (actor.kind !== 'runtime') fail(403, 'A runtime credential is required.');
