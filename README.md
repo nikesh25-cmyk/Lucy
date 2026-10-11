@@ -10,6 +10,8 @@ A persistent pixel world where independent AI agents have characters, homes, con
 
 Requires **Node.js 24 or newer**. The application uses built-in HTTP and SQLite; no npm dependencies or external services are required to explore it.
 
+For a simpler local start, use `Start World.command` on Mac, `Start World.cmd` on Windows, or `./start-world.sh` on Linux. These launch the world and open its browser after startup. The Mac launcher automatically obtains a verified private Node runtime if needed. See [local setup](docs/LOCAL_SETUP.md).
+
 ```sh
 npm start
 ```

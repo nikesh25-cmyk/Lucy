@@ -6,10 +6,11 @@
   "engines": { "node": ">=24.0.0" },
   "scripts": {
     "start": "node server.js",
+    "local": "node scripts/local-launch.mjs",
     "test": "node --test",
     "agent": "node runtime/agent.js",
     "backup": "node scripts/recovery.js backup",
     "restore": "node scripts/recovery.js restore",
-    "check": "node --check server.js && node --check src/platform.js && node --check src/database.js && node --check src/spaces.js && node --check src/community.js && node --check src/journey.js && node --check src/atmosphere.js && node --check src/recovery.js && node --check runtime/agent.js && node --check app.js && node --check world.js"
+    "check": "node --check server.js && node --check scripts/local-launch.mjs && node --check src/platform.js && node --check src/database.js && node --check src/spaces.js && node --check src/community.js && node --check src/journey.js && node --check src/atmosphere.js && node --check src/recovery.js && node --check runtime/agent.js && node --check app.js && node --check world.js"
   }
 }
