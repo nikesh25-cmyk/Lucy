@@ -1,91 +1,206 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { SharedWorld } from './shared-world.js';
-import { MissionBoard } from './mission-board.js';
+import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
+import { Platform } from './src/platform.js';
+import { acquireProcessLock, backupDatabase } from './src/recovery.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const world = new SharedWorld(process.env.LUCY_DATA_FILE || join(root, 'data', 'world.json'));
-await world.load();
-const missions = new MissionBoard(process.env.LUCY_MISSIONS_FILE || join(root, 'data', 'missions.json'), process.env.LUCY_REVIEW_TOKEN_FILE || join(root, 'data', 'reviewer-token'));
-await missions.load();
-const files = {
-  '/': ['index.html', 'text/html; charset=utf-8'],
-  '/style.css': ['style.css', 'text/css; charset=utf-8'],
-  '/world.js': ['world.js', 'text/javascript; charset=utf-8'],
-  '/shared-world-client.js': ['shared-world-client.js', 'text/javascript; charset=utf-8'],
-  '/missions': ['missions.html', 'text/html; charset=utf-8'],
-  '/missions-client.js': ['missions-client.js', 'text/javascript; charset=utf-8'],
-};
+const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
+const files = new Map([
+  ['/', ['index.html', 'text/html; charset=utf-8']],
+  ['/missions', ['index.html', 'text/html; charset=utf-8']],
+  ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
+  ['/style.css', ['style.css', 'text/css; charset=utf-8']],
+  ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
+]);
+const writes = new Map([
+  ['/invites', ['invite', null]], ['/agents', ['createAgent', null]],
+  ['/agents/control', ['agentControl', null]], ['/runtime/start', ['runtime', null]],
+  ['/move', ['moveAgent', 'move']], ['/messages', ['message', 'chat']],
+  ['/missions', ['createMission', null]], ['/missions/status', ['missionStatus', null]],
+  ['/tasks', ['createTask', null]], ['/claims', ['claim', 'contribute']],
+  ['/claims/release', ['releaseClaim', 'contribute']], ['/submissions', ['submit', 'contribute']],
+  ['/reviews', ['review', null]], ['/adoptions', ['adoption', null]],
+  ['/reports', ['report', 'contribute']], ['/moderation', ['moderate', null]],
+  ['/appeals', ['appeal', null]], ['/appeals/decide', ['decideAppeal', null]],
+  ['/operations/pause', ['pause', null]], ['/operations/accounts', ['accountControl', null]],
+  ['/jobs', ['job', 'contribute']], ['/auth/logout', ['logout', null]],
+]);
+const gets = new Set(['/health', '/bootstrap', '/world', '/worlds', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status']);
 
+function headers(response) {
+  response.setHeader('X-Content-Type-Options', 'nosniff');
+  response.setHeader('Referrer-Policy', 'no-referrer');
+  response.setHeader('X-Frame-Options', 'DENY');
+  response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+}
 function json(response, status, value) {
-  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }).end(JSON.stringify(value));
+  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  response.end(JSON.stringify(value));
 }
-
 async function body(request) {
-  let input = '';
+  if (!/^application\/json(?:\s*;|$)/i.test(request.headers['content-type'] || '')) fail(415, 'Use application/json.');
+  if (Number(request.headers['content-length']) > 65536) fail(413, 'Request exceeds 64 KiB.');
+  const chunks = []; let length = 0;
   for await (const chunk of request) {
-    input += chunk;
-    if (input.length > 12000) throw Object.assign(new Error('Request too large.'), { status: 413 });
+    length += chunk.length;
+    if (length > 65536) fail(413, 'Request exceeds 64 KiB.');
+    chunks.push(chunk);
   }
-  try { return JSON.parse(input); }
-  catch { throw Object.assign(new Error('Expected JSON.'), { status: 400 }); }
+  let input;
+  try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { fail(400, 'Expected a JSON object.'); }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) fail(400, 'Expected a JSON object.');
+  return input;
+}
+function tokenFrom(request) {
+  const authorization = request.headers.authorization;
+  if (authorization) {
+    if (!/^Bearer [a-f0-9]{64}$/.test(authorization)) fail(401, 'Invalid authorization header.');
+    return authorization.slice(7);
+  }
+  const cookie = request.headers.cookie?.split(';').map((item) => item.trim()).find((item) => item.startsWith('world_session='));
+  return cookie?.slice(14);
+}
+function cookie(response, token, expires) {
+  response.setHeader('Set-Cookie', `world_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.max(0, Math.floor((expires - Date.now()) / 1000))}`);
+}
+function checkRequest(request, server) {
+  const host = request.headers.host;
+  let origin;
+  try { origin = new URL(`http://${host}`); } catch { fail(403, 'A loopback Host header is required.'); }
+  if (!host || !['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) fail(403, 'This local server requires a loopback Host header.');
+  const port = server.address()?.port;
+  if (port && Number(origin.port || 80) !== port) fail(403, 'Host port does not match this server.');
+  if (request.headers.origin && request.headers.origin !== origin.origin) fail(403, 'Cross-origin requests are rejected.');
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !request.headers.origin && !request.headers.authorization && request.headers['x-api-client'] !== 'operator') fail(403, 'Browser writes require the same Origin; API clients must identify themselves.');
 }
 
-export const server = createServer(async (request, response) => {
-  const path = new URL(request.url, 'http://localhost').pathname;
-  if (path.startsWith('/api/')) {
+export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups') } = {}) {
+  const authAttempts = new Map();
+  const server = createServer(async (request, response) => {
+    headers(response);
     try {
-      if (path === '/api/world' && request.method === 'GET') {
-        const view = world.view(request.headers.authorization?.replace(/^Bearer /, ''));
-        const counts = missions.acceptedCounts();
-        view.participants = view.participants.map((person) => ({ ...person, acceptedContributions: counts[person.id] || 0 }));
-        return json(response, 200, view);
+      checkRequest(request, server);
+      const url = new URL(request.url, 'http://localhost');
+      const path = url.pathname;
+      if (!path.startsWith('/api/')) {
+        const file = files.get(path);
+        if (!file) return json(response, 404, { error: 'Not found.' });
+        if (!['GET', 'HEAD'].includes(request.method)) { response.setHeader('Allow', 'GET, HEAD'); return json(response, 405, { error: 'Method not allowed.' }); }
+        const data = await readFile(join(root, file[0]));
+        response.writeHead(200, { 'Content-Type': file[1], 'Cache-Control': 'no-cache' });
+        return response.end(request.method === 'HEAD' ? undefined : data);
       }
-      if (path === '/api/missions' && request.method === 'GET') return json(response, 200, missions.list());
-      if (path === '/api/history' && request.method === 'GET') {
-        const token = request.headers.authorization?.replace(/^Bearer /, '');
-        if (request.headers['x-reviewer-token']) return json(response, 200, missions.history(null, request.headers['x-reviewer-token']));
-        return json(response, 200, missions.history(world.authenticate(token).id));
+      if (!path.startsWith('/api/v1/')) return json(response, 404, { error: 'Not found.' });
+      const route = path.slice(7);
+      const match = /^\/agents\/([^/]+)\/(travel|build|home|heartbeat|posture)$/.exec(route);
+      let agentId;
+      if (match) { try { agentId = decodeURIComponent(match[1]); } catch { fail(400, 'Invalid agent identifier.'); } }
+      const dynamic = match ? { id: agentId, action: match[2], method: match[2] === 'home' ? 'PATCH' : 'POST', scope: { travel: 'move', build: 'build', home: 'build', heartbeat: 'read', posture: 'move' }[match[2]] } : null;
+      const specialWrite = ['/auth/register', '/auth/login', '/operations/backup'].includes(route);
+      if (!gets.has(route) && !writes.has(route) && !specialWrite && !dynamic) return json(response, 404, { error: 'Not found.' });
+      if (!(request.method === 'GET' && gets.has(route)) && !(request.method === 'POST' && (writes.has(route) || specialWrite)) && !(request.method === 'DELETE' && route === '/me') && !(dynamic && request.method === dynamic.method)) {
+        response.setHeader('Allow', [gets.has(route) ? 'GET' : null, writes.has(route) || specialWrite ? 'POST' : null, route === '/me' ? 'DELETE' : null, dynamic?.method].filter(Boolean).join(', '));
+        return json(response, 405, { error: 'Method not allowed.' });
       }
-      if (path === '/api/participants/me' && request.method === 'DELETE') return json(response, 200, await world.transact(() => world.leave(request.headers.authorization?.replace(/^Bearer /, ''))));
-      if (request.method === 'POST' && ['/api/claims', '/api/claims/release', '/api/submissions', '/api/reviews'].includes(path)) {
+      if (route === '/health') {
+        platform.get('SELECT 1');
+        return json(response, 200, { status: 'ok', storage: 'sqlite', model_configured: Boolean(process.env.LUCY_MODEL_NAME) });
+      }
+      if (route === '/bootstrap') return json(response, 200, { setup_required: platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0 });
+      if (route === '/auth/register' || route === '/auth/login') {
+        const ip = request.socket.remoteAddress;
+        const timestamp = Date.now();
+        if (authAttempts.size > 1000) for (const [key, value] of authAttempts) if (timestamp - value.start >= 60000) authAttempts.delete(key);
+        let attempt = authAttempts.get(ip);
+        if (!attempt || timestamp - attempt.start >= 60000) { attempt = { start: timestamp, count: 0 }; authAttempts.set(ip, attempt); }
+        if (++attempt.count > 15) { response.setHeader('Retry-After', '60'); fail(429, 'Too many authentication attempts; wait a minute.'); }
         const input = await body(request);
-        if (path === '/api/reviews') return json(response, 201, await missions.transact(() => missions.review(input?.submissionId, input?.decision, input?.reason, request.headers['x-reviewer-token'])));
-        const actor = world.authenticate(request.headers.authorization?.replace(/^Bearer /, ''));
-        if (path === '/api/claims') return json(response, 201, await missions.transact(() => missions.claim(input?.taskId, actor)));
-        if (path === '/api/claims/release') return json(response, 200, await missions.transact(() => missions.release(input?.claimId, actor)));
-        return json(response, 201, await missions.transact(() => missions.submit(input?.claimId, actor, input)));
+        const result = await platform[route.endsWith('register') ? 'register' : 'login'](input);
+        cookie(response, result.token, result.expires_at);
+        const { token, ...safe } = result;
+        return json(response, route.endsWith('register') ? 201 : 200, request.headers['x-api-client'] === 'operator' ? result : safe);
       }
-      const actions = { '/api/join': 'join', '/api/move': 'move', '/api/messages': 'message' };
-      if (request.method !== 'POST' || !actions[path]) return json(response, 404, { error: 'Not found' });
+      const token = tokenFrom(request);
+      const publicRoute = ['/world', '/worlds', '/missions', '/gallery'].includes(route) && request.method === 'GET';
+      const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
+      let actor = token ? platform.authenticate(token, scope) : publicRoute ? null : platform.authenticate(token, scope);
+      if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
+      if (request.method === 'GET') {
+        const result = platform.transaction(() => {
+          let value;
+          if (route === '/world') value = platform.world(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/worlds') value = platform.worldList(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/missions') value = platform.missionList(actor);
+          else if (route === '/gallery') value = platform.gallery();
+          else if (route === '/export') value = platform.exportAccount(actor);
+          else if (route === '/runtime/status') value = platform.runtimeStatus(actor);
+          else value = platform[route.slice(1)](actor);
+          if (actor && route !== '/runtime/status') platform.charge(actor);
+          return value;
+        });
+        return json(response, 200, result);
+      }
+      if (request.method === 'DELETE') {
+        const result = platform.transaction(() => platform.deleteAccount(actor));
+        cookie(response, '', 0);
+        return json(response, 200, result);
+      }
       const input = await body(request);
-      const token = request.headers.authorization?.replace(/^Bearer /, '');
-      const result = await world.transact(() => {
-        if (path === '/api/join') return world.join(input);
-        if (path === '/api/move') return world.move(token, input?.direction);
-        return world.message(token, input?.text, input?.channel, input?.recipientId);
+      // Parsing yields to other requests: check revocation and budgets again before writing.
+      actor = platform.authenticate(token, scope);
+      if (route === '/operations/backup') {
+        platform.operations(actor); // Role check before touching any files.
+        const filename = `world-${Date.now()}-${randomUUID()}.sqlite`;
+        backupDatabase(platform.db, join(backupDir, filename));
+        platform.transaction(() => platform.audit(actor.account.id, 'backup.created', filename));
+        return json(response, 201, { filename });
+      }
+      const [method] = writes.get(route) || [];
+      const result = platform.transaction(() => {
+        let value;
+        if (dynamic) value = platform[{ travel: 'travel', build: 'build', home: 'homeSettings', heartbeat: 'heartbeat', posture: 'posture' }[dynamic.action]](actor, dynamic.id, input);
+        else if (route === '/agents/control') value = platform.agentControl(actor, input.agent_id, input.status);
+        else if (route === '/runtime/start') value = platform.runtime(actor, input.agent_id, input);
+        else if (route === '/missions/status') value = platform.missionStatus(actor, input.mission_id, input.status);
+        else if (route === '/claims/release') value = platform.releaseClaim(actor, input.claim_id);
+        else if (route === '/operations/pause') {
+          if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
+          value = platform.pause(actor, input.paused);
+        } else if (['/claims', '/submissions'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        else value = platform[method](actor, input);
+        platform.charge(actor);
+        return value;
       });
-      return json(response, path === '/api/join' ? 201 : 200, result);
-    } catch (error) { return json(response, error.status || 500, { error: error.status ? error.message : 'Server error' }); }
-  }
-  if (request.method !== 'GET') return response.writeHead(405).end('Method not allowed');
-  const route = files[path];
-  if (!route) {
-    response.writeHead(404).end('Not found');
-    return;
-  }
-  try {
-    const contents = await readFile(join(root, route[0]));
-    response.writeHead(200, { 'Content-Type': route[1], 'Cache-Control': 'no-cache' }).end(contents);
-  } catch {
-    response.writeHead(500).end('Unable to load world');
-  }
-});
+      if (route === '/auth/logout') cookie(response, '', 0);
+      return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs'].includes(route) ? 201 : 200, result);
+    } catch (error) {
+      if (!error.status) console.error('HTTP request failed:', error.code || error.name || 'UnknownError');
+      const status = error.status || (error.code === 'ERR_SQLITE_ERROR' && /constraint/i.test(error.message) ? 409 : 500);
+      if (!response.headersSent) json(response, status, { error: status === 500 ? 'Server error.' : status === 409 && !error.status ? 'This record conflicts with an existing record.' : error.message });
+      else response.end();
+    }
+  });
+  server.requestTimeout = 15_000;
+  server.headersTimeout = 10_000;
+  return { server, platform };
+}
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  server.listen(Number(process.env.PORT || 3000), '127.0.0.1', () => {
-    console.log(`Shared World is ready on port ${server.address().port}`);
-  });
+  const databasePath = process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite');
+  const releaseLock = acquireProcessLock(join(dirname(databasePath), 'server.lock'));
+  const { server, platform } = createApp({ platform: new Platform(databasePath), backupDir: join(dirname(databasePath), 'backups') });
+  let closing = false;
+  const close = () => {
+    if (closing) return;
+    closing = true;
+    server.close(() => { platform.close(); releaseLock(); });
+    server.closeIdleConnections();
+  };
+  process.once('SIGINT', close); process.once('SIGTERM', close);
+  server.once('error', (error) => { platform.close(); releaseLock(); console.error(error.message); process.exitCode = 1; });
+  server.listen(Number(process.env.PORT || 3000), '127.0.0.1', () => console.log(`Shared World is ready at http://127.0.0.1:${server.address().port}`));
 }

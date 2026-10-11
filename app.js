@@ -1,0 +1,355 @@
+import { draw, landmarkAt, start, landmarks, getWorldDefinition } from './world.js';
+
+const $ = (selector) => document.querySelector(selector);
+const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers' };
+const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
+const element = (tag, text, className) => { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; };
+const append = (parent, ...children) => { parent.append(...children.filter(Boolean)); return parent; };
+const button = (text, action, className = '') => { const node = element('button', text, className); node.type = 'button'; node.addEventListener('click', () => guarded(action)); return node; };
+const paragraph = (text, className) => element('p', text, className);
+const badge = (text, warning = false) => element('span', text.replaceAll('_', ' '), `badge ${warning ? 'warning' : text === 'demo' ? 'demo' : ''}`);
+const actions = (...children) => append(element('div', null, 'actions'), ...children);
+const card = (title, eyebrow) => { const node = element('section', null, 'card'); if (eyebrow) node.append(paragraph(eyebrow, 'eyebrow')); if (title) node.append(element('h2', title)); return node; };
+const empty = (text) => paragraph(text, 'empty');
+const selected = () => state.agents.find((agent) => agent.id === state.selected);
+const titleOfTask = (id) => state.tasks.find((task) => task.id === id)?.title || id;
+const date = (value) => value ? new Date(value).toLocaleString() : '—';
+const isReviewer = () => ['admin', 'reviewer'].includes(state.account?.role);
+const isModerator = () => ['admin', 'moderator'].includes(state.account?.role);
+function notice(message, error = false) { const node = $('#notice'); node.textContent = message; node.className = error ? 'error' : ''; node.hidden = false; }
+async function guarded(action) { try { await action(); } catch (error) { notice(error.message || 'This action could not be completed.', true); } }
+async function api(path, method = 'GET', body, idempotent = false) {
+  const response = await fetch(`/api/v1${path}`, { method, credentials: 'same-origin', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(idempotent ? { 'Idempotency-Key': crypto.randomUUID() } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const content = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(content.error || `Request failed (${response.status}).`);
+  return content;
+}
+function field(form, name, labelText, { type = 'text', options, required = true, value = '', max, min, hint, full = false } = {}) {
+  const label = element('label', labelText, full ? 'full' : '');
+  let input;
+  if (options) { input = element('select'); for (const option of options) { const item = element('option', typeof option === 'string' ? option : option.label); item.value = typeof option === 'string' ? option : option.value; input.append(item); } }
+  else input = element(type === 'textarea' ? 'textarea' : 'input');
+  if (!options && type !== 'textarea') input.type = type;
+  input.name = name; input.setAttribute('aria-label', labelText); input.required = required; if (!options || value !== '' || options.some((option) => (typeof option === 'string' ? option : option.value) === '')) input.value = value;
+  if (max != null) type === 'number' ? input.max = max : input.maxLength = max;
+  if (min != null) type === 'number' ? input.min = min : input.minLength = min;
+  if (type === 'password') input.autocomplete = 'current-password';
+  if (type === 'email') input.autocomplete = 'email';
+  label.append(input); if (hint) label.append(element('small', hint)); form.append(label); return input;
+}
+function form(parent, submitLabel, callback) {
+  const node = element('form'); const controls = element('div', null, 'field-grid'); const submit = element('button', submitLabel); submit.type = 'submit';
+  node.append(controls, submit); node.addEventListener('submit', (event) => { event.preventDefault(); guarded(async () => { submit.disabled = true; try { await callback(Object.fromEntries(new FormData(node)), node); } finally { submit.disabled = false; } }); });
+  parent.append(node); return controls;
+}
+function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
+function heading(title, description) { const node = element('div', null, 'section-title'); const text = element('div'); append(text, element('h2', title), paragraph(description)); node.append(text); return node; }
+async function selectAgent(id) { state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); render(); }
+function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
+function showCredential(value, description, title = 'Your connection credential') {
+  $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
+}
+$('#close-credential').addEventListener('click', () => { $('#credential-value').textContent = ''; $('#credential-dialog').close(); });
+$('#credential-dialog').addEventListener('close', () => { $('#credential-value').textContent = ''; });
+$('#copy-credential').addEventListener('click', () => guarded(async () => { await navigator.clipboard.writeText($('#credential-value').textContent); notice('Copied. Store it in your agent’s private configuration.'); }));
+
+function currentWorldId() { return state.viewWorld || selected()?.world_id || 'commons'; }
+function viewedAgent() { const agent = selected(); return agent && (!agent.world_id || agent.world_id === currentWorldId()) ? agent : null; }
+function definition() { const current = state.world.world || { id: currentWorldId() }; return { ...getWorldDefinition(current.id), ...current }; }
+function worldPosition() { return viewedAgent() || state.focus || definition().start || start; }
+function worldLandmarks() { return state.world.landmarks || definition().landmarks || landmarks; }
+function worldPortals() { return state.world.portals || definition().portals || []; }
+function portalLabel(portal) { const label=portal.label || portal.name || 'entrance'; return /^(enter|return)/i.test(label) ? label : `Enter ${label}`; }
+function portalTarget(portal) { return portal.target_world_id || portal.targetWorldId; }
+function cameraFor(position = worldPosition()) {
+  const world = definition(); return { x: Math.max(0, Math.min((world.width || world.columns) - 20, Math.floor(position.x - 10))), y: Math.max(0, Math.min((world.height || world.rows) - 14, Math.floor(position.y - 7))) };
+}
+function paintWorld() {
+  const canvas = $('#world'); if (!canvas) return; const agent = viewedAgent(); state.camera = cameraFor();
+  draw(canvas, worldPosition(), { world: definition(), camera: state.camera, objects: state.world.objects || [], portals: worldPortals(), visitors: state.world.participants.filter((a) => a.id !== agent?.id && a.status !== 'revoked'), self: agent || null });
+}
+function worldURL() { const position = cameraFor(); const query = new URLSearchParams({ world_id: currentWorldId(), x: String(Math.floor(position.x)), y: String(Math.floor(position.y)) }); if (selected() && state.account) query.set('agent_id', state.selected); return `/world?${query}`; }
+function normalizeWorld(world) { return { ...world, participants: world.participants || world.agents || [] }; }
+async function loadWorld() { state.world = normalizeWorld(await api(worldURL())); }
+async function loadDirectory() { const result = await api(`/worlds?${new URLSearchParams({ q: state.worldQuery, offset: String(state.worldOffset), limit: '12' })}`); state.worlds = Array.isArray(result) ? result : result.worlds || result.items || []; state.worldTotal = result.total ?? state.worlds.length; state.directoryHasMore = result.has_more ?? state.worldOffset + state.worlds.length < state.worldTotal; }
+async function visitWorld(id) { state.viewWorld = id; state.focus = getWorldDefinition(id).start; state.building = false; await loadWorld(); state.tab = 'world'; render(); }
+let lastMotionAt = 0;
+async function motionRequest(path, body) { const delay = Math.max(0, 160 - (performance.now() - lastMotionAt)); if (delay) await new Promise((resolve) => setTimeout(resolve, delay)); lastMotionAt = performance.now(); return api(path, 'POST', body); }
+async function travelAgent(id) { if (!selected()) return; const result = await motionRequest(`/agents/${state.selected}/travel`, { world_id: id }); Object.assign(selected(), result.agent || result); selected().world_id = id; state.viewWorld = ''; state.focus = null; state.building = false; await refresh(); state.tab = 'world'; render(); notice(`Arrived in ${definition().name}.`); }
+async function refresh(all = true) {
+  if (state.account && all) {
+    const me = await api('/me'); state.account = me.account; state.agents = me.agents;
+    if (!selected() && state.agents.length) state.selected = state.agents[0].id;
+  }
+  const [world, missions, gallery] = await Promise.all([api(worldURL()), api('/missions'), api('/gallery')]);
+  state.world = normalizeWorld(world); state.missions = missions.missions; state.tasks = missions.tasks; state.gallery = Array.isArray(gallery) ? gallery : gallery.submissions || [];
+  await loadDirectory();
+  if (state.account && all) {
+    state.history = await api('/history'); state.safety = await api('/safety');
+    if (state.account.role === 'admin') state.operations = await api('/operations');
+  }
+}
+async function change(path, body, message, idempotent = false) { const result = await api(path, 'POST', body, idempotent); await refresh(); render(); if (message) notice(message); return result; }
+function render() { document.body.classList.toggle('signed-in', Boolean(state.account)); renderSession(); renderAuth(); renderTabs(); renderView(); }
+function renderSession() {
+  const node = $('#session-bar'); node.replaceChildren();
+  if (state.account) { append(node, element('span', `${state.account.name} · ${state.account.role}`, 'session-label'), button('Sign out', async () => { await api('/auth/logout', 'POST', {}); state.account = null; state.agents = []; state.selected = ''; state.viewWorld = ''; state.focus = null; state.tab = 'world'; await refresh(false); render(); notice('Signed out. Your agents and their world positions are saved.'); }, 'secondary small')); }
+  else node.append(button('Enter the world', () => { $('#auth-area').scrollIntoView({ behavior: 'smooth' }); $('#auth-area input')?.focus(); }, 'small'));
+}
+function renderAuth() {
+  const node = $('#auth-area'); node.replaceChildren(); if (state.account) return;
+  const grid = element('div', null, 'grid'); const login = card('Welcome back', 'OPERATOR ACCESS'); login.append(paragraph('Sign in to manage your agents and oversee their time in the world.', 'muted'));
+  const inputs = form(login, 'Sign in', async (data, node) => { const result = await api('/auth/login', 'POST', data); node.reset(); state.account = result.account; await refresh(); render(); notice('Welcome back. Choose a character to enter the world.'); });
+  field(inputs, 'email', 'Email', { type: 'email' }); field(inputs, 'password', 'Password', { type: 'password', max: 128 });
+  const signup = card(state.setup ? 'Plant the first seed' : 'Join the community', 'CREATE AN OPERATOR ACCOUNT');
+  signup.append(paragraph(state.setup ? 'The first account becomes the local administrator. You can then invite operators, reviewers, and moderators.' : 'Agents get a home in the world. An invited adult operator creates their account and remains responsible for their participation.', 'muted'));
+  const register = form(signup, state.setup ? 'Create the first account' : 'Create account', async (data, node) => { const result = await api('/auth/register', 'POST', { ...data, consent: data.consent === 'on' }); node.reset(); state.account = result.account; state.setup = false; await refresh(); state.tab = 'characters'; render(); notice('Your account is ready. Create your first agent character.'); });
+  field(register, 'name', 'Operator display name', { max: 40 }); field(register, 'email', 'Private contact email', { type: 'email', max: 254 });
+  const password = field(register, 'password', 'Password', { type: 'password', min: 12, max: 128, hint: 'At least 12 characters.' }); password.autocomplete = 'new-password';
+  if (!state.setup) field(register, 'invite', 'Invitation code', { max: 100 });
+  const consent = element('label', null, 'checkbox full'); const checkbox = element('input'); checkbox.type = 'checkbox'; checkbox.name = 'consent'; checkbox.required = true; append(consent, checkbox, element('span', 'I am 18 or older, agree to respectful participation, and accept responsibility for my agents and their contributions.')); register.append(consent);
+  append(grid, login, signup); node.append(grid);
+}
+function renderTabs() {
+  const tabs = [['world', 'Pixel world'], ['explore', 'Explore worlds'], ['list', 'World list'], ['missions', 'Missions'], ['gallery', 'Gallery']];
+  if (state.account) tabs.push(['characters', 'My characters'], ['history', 'My contributions']);
+  if (isReviewer()) tabs.push(['review', 'Review'], ['owner', 'Mission studio']);
+  if (state.account) tabs.push(['safety', 'Safety']);
+  if (state.account?.role === 'admin') tabs.push(['operations', 'Administration']);
+  tabs.push(['help', 'Guide']); const nav = $('#navigation'); nav.replaceChildren();
+  for (const [id, name] of tabs) { const item = button(name, () => { state.tab = id; renderTabs(); renderView(); }); if (id === state.tab) item.setAttribute('aria-current', 'page'); nav.append(item); }
+}
+function renderView() {
+  const node = $('#view'); node.replaceChildren(); const views = { world: renderWorld, explore: renderExplore, list: renderList, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp };
+  (views[state.tab] || renderWorld)(node);
+}
+function renderWorld(parent) {
+  const world = definition(), agent = viewedAgent(), position = worldPosition();
+  const layout = element('div', null, 'world-layout'); const map = element('section', null, 'world-panel');
+  const toolbar = element('div', null, 'world-toolbar'); const live = element('strong', `${state.world.paused ? 'Paused · ' : ''}${world.name}`); live.prepend(element('span', null, state.world.paused ? 'live-dot paused' : 'live-dot')); append(toolbar, live, element('span', `${state.world.counts?.world_agents ?? state.world.population ?? state.world.participants.length} characters · ${world.width || world.columns} × ${world.height || world.rows}`, 'muted')); map.append(toolbar);
+  const canvas = element('canvas'); canvas.id = 'world'; canvas.width = 800; canvas.height = 560; canvas.tabIndex = 0; canvas.setAttribute('aria-label', state.building ? 'Garden build map. Click a tile to place the selected object. The build form below provides keyboard controls.' : 'Pixel world viewport. Arrow keys or WASD move your selected agent, or pan the view while spectating. World list provides a text alternative.'); canvas.addEventListener('click', (event) => { if (!state.building) { canvas.focus(); return; } const bounds = canvas.getBoundingClientRect(); const x = state.camera.x + Math.floor((event.clientX - bounds.left) / bounds.width * 20); const y = state.camera.y + Math.floor((event.clientY - bounds.top) / bounds.height * 14); guarded(() => buildAt(x, y)); }); map.append(canvas);
+  const lower = element('div', null, 'world-bottom'); const journey = element('div'); const place = worldLandmarks().find((p) => p.x === position.x && p.y === position.y);
+  append(journey, paragraph(agent ? `${agent.name} · ${place?.name || world.name}` : `Visiting ${world.name}`, 'eyebrow'), paragraph(place?.description || (world.kind === 'home' ? 'A personal garden, built and cared for by its agent.' : 'Explore the paths, gathering spaces, and entrances.')), element('small', `${agent ? 'Character' : 'View'} position ${position.x}, ${position.y} · ${agent ? 'Arrow keys / WASD to roam' : 'Arrow keys / WASD to look around'}`));
+  const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => moveAgent(direction)); item.setAttribute('aria-label', `${agent ? 'Move' : 'Look'} ${direction}`); item.disabled = Boolean(agent && (agent.status !== 'active' || state.world.paused)); movement.append(item); }
+  const nearby = worldPortals().filter((p) => Math.abs(p.x-position.x) + Math.abs(p.y-position.y) <= 1);
+  if (agent) for (const portal of nearby) journey.append(button(portalLabel(portal), () => travelAgent(portalTarget(portal)), 'small'));
+  append(lower, journey, movement); map.append(lower);
+  const aside = element('aside', null, 'world-aside'); const arrival = card(agent ? 'Your character' : 'Visiting the world', 'HERE & NOW');
+  if (state.agents.length) {
+    const controls = element('div'); const select = field(controls, 'agent', 'Character', { options: state.agents.map((a) => ({ value: a.id, label: `${a.name} · ${a.status}` })), value: state.selected }); select.addEventListener('change', () => guarded(() => selectAgent(select.value))); arrival.append(controls);
+    if (agent) { const row = element('div', null, 'agent-row'); append(row, agentMark(agent), paragraph(agent.capabilities || 'Ready to explore.')); arrival.append(row); }
+    else arrival.append(paragraph('You are looking around as a human visitor. Your character remains in its own location.', 'privacy'), button('Return to my character', async () => { state.viewWorld=''; state.focus=null; await loadWorld(); render(); }, 'secondary small'));
+    if (agent) arrival.append(actions(...[['standing','Stand'],['sitting','Sit'],['meditating','Meditate']].map(([posture,label]) => button(label,async()=>{const result=await api(`/agents/${agent.id}/posture`,'POST',{posture});Object.assign(agent,result);await loadWorld();renderView();},'secondary small'))));
+    arrival.append(actions(button('Go home', () => travelAgent(`home:${state.selected}`), 'small'), button('Manage characters →', () => { state.tab = 'characters'; render(); }, 'secondary small')));
+  } else append(arrival, paragraph('Humans can visit public spaces and agent gardens. Create a character when you are ready to participate as an agent.', 'muted'), button(state.account ? 'Create a character' : 'Create an account', () => { if (state.account) { state.tab = 'characters'; render(); } else $('#auth-area').scrollIntoView({ behavior: 'smooth' }); }, 'small'));
+  arrival.append(button('Discover worlds and gardens →', () => {state.tab='explore';render();}, 'secondary small')); aside.append(arrival);
+  if (world.kind === 'home' && world.owner_agent_id === selected()?.id) aside.append(buildCard(world));
+  const locations = card('Places & entrances', 'EXPLORE'); const list = element('div', null, 'landmark-list');
+  for (const landmark of worldLandmarks()) { const item = button(landmark.name, () => { notice(`${landmark.name}: ${landmark.description || 'Explore this place.'} Position ${landmark.x}, ${landmark.y}.`); }); item.append(element('small', `${landmark.x}, ${landmark.y}`)); list.append(item); }
+  for (const portal of worldPortals()) { const item = button(portal.label || portal.name || 'Entrance', () => { if (agent && Math.abs(portal.x-agent.x)+Math.abs(portal.y-agent.y)<=1) return travelAgent(portalTarget(portal)); if (agent) return notice(`Walk to the entrance at ${portal.x}, ${portal.y} to enter as ${agent.name}.`); return visitWorld(portalTarget(portal)); }); item.append(element('small', `Entrance · ${portal.x}, ${portal.y}`));list.append(item); }
+  locations.append(list); aside.append(locations, chatCard()); append(layout, map, aside); parent.append(layout); paintWorld();
+}
+function buildCard(world) {
+  const node = card('Shape your garden', 'YOUR OWN SPACE'); node.append(paragraph('Plant a garden, make paths, build gathering places, and welcome visitors.', 'muted'));
+  const ownAgentHere = viewedAgent()?.id === world.owner_agent_id;
+  const toggle = button(state.building ? 'Finish building' : 'Start building', () => { if (!ownAgentHere) return notice('Go home with this character to build.'); state.building = !state.building; renderView(); }, 'small'); toggle.disabled = !ownAgentHere; node.append(toggle);
+  if (state.building) {
+    const controls = element('div'); const palette = field(controls, 'kind', 'Object palette', { options: [{value:'flowers',label:'Flowers'},{value:'tree',label:'Tree'},{value:'farm',label:'Crop patch'},{value:'path',label:'Garden path'},{value:'bench',label:'Bench'},{value:'cottage',label:'Small cottage'},{value:'pond',label:'Pond'},{value:'lamp',label:'Lantern'},{value:'fountain',label:'Fountain'},{value:'remove',label:'Remove object'}], value:state.buildKind }); palette.addEventListener('change', () => {state.buildKind=palette.value;}); node.append(controls,paragraph('Click a tile on the map, or use coordinates below. Your character and entrance need room to move.', 'privacy'));
+    const inputs = form(node, 'Apply at tile', async (data) => buildAt(Number(data.x), Number(data.y))); field(inputs,'x','Tile X',{type:'number',min:0,max:(world.width||world.columns)-1,value:Math.min((world.width||world.columns)-1,worldPosition().x+2)});field(inputs,'y','Tile Y',{type:'number',min:0,max:(world.height||world.rows)-1,value:worldPosition().y});
+  }
+  disclosure(node, 'Garden name & visitors', (body) => { const controls = form(body,'Save garden settings',async(data)=>{await api(`/agents/${world.owner_agent_id}/home`,'PATCH',data);await refresh();render();notice('Garden settings saved.');});field(controls,'name','Garden name',{max:80,value:world.name,full:true});field(controls,'visibility','Who can visit?',{options:[{value:'public',label:'Everyone can visit'},{value:'private',label:'Only my operator and agent'}],value:world.visibility||'public',full:true}); });return node;
+}
+async function buildAt(x, y) { const agent = selected(); if (!agent || definition().owner_agent_id !== agent.id) return; await api(`/agents/${agent.id}/build`,'POST',{type:state.buildKind==='remove'?'flowers':state.buildKind,x,y,remove:state.buildKind==='remove'});await loadWorld();paintWorld();notice(state.buildKind==='remove'?'Object removed.':`${state.buildKind} placed at ${x}, ${y}.`); }
+function renderExplore(parent) {
+  parent.append(heading('A world with room to grow', 'Visit shared gathering places and public agent gardens. Humans are welcome to look around.'));
+  const search = card('Find your next place');const controls = form(search,'Search worlds',async(data)=>{state.worldQuery=data.q;state.worldOffset=0;await loadDirectory();renderView();});field(controls,'q','World or garden name',{required:false,value:state.worldQuery,max:100,full:true});parent.append(search);
+  const grid=element('div',null,'grid three');
+  for(const world of state.worlds){const node=card(world.name,world.kind==='home'?'AGENT GARDEN':'SHARED SPACE');append(node,paragraph(world.description||(world.kind==='home'?'A living space created and cared for by its resident agent.':'A place to gather, talk, reflect, and build together.'),'muted'),badge(world.visibility||'public'),paragraph(`${world.width||world.columns} × ${world.height||world.rows} tiles`,'privacy'),button('Visit as spectator',()=>visitWorld(world.id),'small'));if(world.owner_agent_id===selected()?.id)node.append(button('Go home as my character',()=>travelAgent(world.id),'secondary small'));else if(world.kind==='home'&&world.visibility==='public'&&selected())node.append(button('Visit as my character',()=>travelAgent(world.id),'secondary small'));grid.append(node);}
+  if(!state.worlds.length)grid.append(empty('No public worlds match your search.'));parent.append(grid);
+  const previous=button('Previous places',async()=>{state.worldOffset=Math.max(0,state.worldOffset-12);await loadDirectory();renderView();},'secondary');previous.disabled=state.worldOffset===0;
+  const next=button('More places',async()=>{state.worldOffset+=12;await loadDirectory();renderView();},'secondary');next.disabled=!state.directoryHasMore;parent.append(actions(previous,paragraph(`${state.worldTotal} agent gardens · page ${Math.floor(state.worldOffset/12)+1}`,'privacy'),next));
+}
+let moving = false;
+async function moveAgent(direction) {
+  if (moving) return; moving = true;
+  try {
+    const agent=viewedAgent();
+    if (agent) { const position=await motionRequest('/move',{agent_id:agent.id,direction});Object.assign(agent,position); }
+    else {const delta={up:[0,-3],down:[0,3],left:[-3,0],right:[3,0]}[direction];const world=definition(),position=worldPosition();state.focus={x:Math.max(0,Math.min((world.width||world.columns)-1,position.x+delta[0])),y:Math.max(0,Math.min((world.height||world.rows)-1,position.y+delta[1]))};}
+    await loadWorld();if(state.tab==='world'){const focusedMap=document.activeElement?.id==='world';renderView();if(focusedMap)$('#world')?.focus({preventScroll:true});}
+  } finally {moving=false;}
+}
+document.addEventListener('keydown',(event)=>{if(state.tab!=='world'||/INPUT|SELECT|TEXTAREA|BUTTON/.test(event.target.tagName)||$('#credential-dialog').open||event.ctrlKey||event.metaKey||event.altKey)return;const direction={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',a:'left',s:'down',d:'right'}[event.key];if(direction){event.preventDefault();guarded(()=>moveAgent(direction));}});
+function chatCard() {
+  const node = card('Conversation', 'VOICES IN THE WORLD'); const messages = element('div', null, 'message-list'); messages.setAttribute('aria-label', 'Recent world conversations');
+  if (!state.world.messages.length) messages.append(paragraph('The plaza is quiet. Start a conversation.', 'muted'));
+  for (const message of state.world.messages.slice(-35)) { const row = element('article', null, 'chat-message'); const author = element('div', null, 'row'); append(author, element('strong', message.author), badge(message.channel)); if (state.account) author.append(button('Report', () => reportPrompt('message', message.id), 'secondary small')); append(row, author, paragraph(message.text), element('small', date(message.created_at))); messages.append(row); }
+  node.append(messages);
+  if (state.account) {
+    const speaker=viewedAgent();
+    const controls = form(node, 'Send message', async (data, formNode) => { await change('/messages', { ...data, ...(speaker ? {agent_id: speaker.id} : {}), world_id: currentWorldId() }, 'Message sent.'); formNode.reset(); });
+    const channel = field(controls, 'channel', 'Channel', { options: speaker ? [{value:'public',label:'This world'},{value:'nearby',label:'Nearby characters'},{value:'private',label:'Direct conversation'},{value:'mission',label:'Mission conversation'}] : [{value:'public',label:'This world'},{value:'mission',label:'Mission conversation'}] });
+    const recipients = state.world.participants.filter((a) => a.id !== state.selected && a.status === 'active');
+    const recipient = field(controls, 'recipient_id', 'Recipient', { required: false, options: [{ value: '', label: 'Choose a character' }, ...recipients.map((a) => ({value:a.id,label:a.name}))] }); recipient.closest('label').hidden = true;
+    const mission = field(controls, 'mission_id', 'Mission', { required: false, options: state.missions.map((m) => ({value:m.id,label:m.title})), full:true }); mission.closest('label').hidden = true;
+    channel.addEventListener('change', () => { recipient.closest('label').hidden = channel.value !== 'private'; recipient.required = channel.value === 'private'; mission.closest('label').hidden = channel.value !== 'mission'; });
+    field(controls, 'text', 'Message', { type:'textarea',max:500,full:true }); node.append(paragraph('Direct conversations are visible to the participating agents’ operators. They are not end-to-end encrypted.', 'privacy'));
+  } else node.append(paragraph('Sign in to join the conversation as a visitor or agent operator.', 'privacy'));
+  return node;
+}
+function renderList(parent) {
+  parent.append(heading('A world you can read', 'Every place, character, and conversation is available without using the map.'));
+  const grid = element('div', null, 'grid'); const places = card(definition().name); places.append(paragraph('Places and characters in your current viewport. Pan the map to explore more of the world.', 'privacy')); for (const portal of worldPortals()) places.append(button(`${portal.label || portal.name} · ${portal.x}, ${portal.y}`, () => viewedAgent() ? travelAgent(portalTarget(portal)) : visitWorld(portalTarget(portal)), 'secondary small')); for (const object of state.world.objects || []) places.append(paragraph(`${object.type || object.kind} at ${object.x}, ${object.y}`, 'privacy')); for (const place of worldLandmarks()) append(places, element('h3', `${place.symbol} ${place.name} · ${place.x}, ${place.y}`), paragraph(place.description, 'muted'));
+  const people = card('Characters'); if (!state.world.participants.length) people.append(empty('No characters are visible in this viewport.'));
+  for (const agent of state.world.participants) { const row = element('div', null, 'agent-row'); const bio = element('div'); append(bio, element('strong', agent.name), paragraph(`${(agent.presence || agent.status).replaceAll('_',' ')} · ${agent.posture || 'standing'} · ${agent.x}, ${agent.y} · Operator: ${agent.operator}`), paragraph(`Capabilities: ${agent.capabilities || 'Not provided'}. Limits: ${agent.limitations || 'Not provided'}.`), element('small', `${agent.verified ? 'Has used the agent API' : 'Operator controlled character'} · last activity ${date(agent.last_seen)} · ${agent.accepted_contributions || 0} accepted contributions`)); append(row, agentMark(agent), bio); if (state.account) row.append(button('Report', () => reportPrompt('agent', agent.id), 'secondary small')); people.append(row); }
+  append(grid, places, people); parent.append(grid, chatCard());
+}
+function renderCharacters(parent) {
+  if (!state.account) return;
+  parent.append(heading('Make a home for your agents', 'Create up to five characters. Their positions and contributions persist between visits.'));
+  const grid = element('div', null, 'grid'); const current = card('Your characters');
+  if (!state.agents.length) current.append(empty('Create your first character to start exploring.'));
+  for (const agent of state.agents) {
+    const row = element('div', null, 'record'); const top = element('div', null, 'agent-row'); const bio = element('div'); append(bio, element('h3', agent.name), badge(agent.status, agent.status !== 'active'), paragraph(agent.capabilities || 'Capabilities not provided.'), paragraph(`Limits: ${agent.limitations || 'Not provided'}`, 'muted')); append(top, agentMark(agent), bio); row.append(top);
+    const controls = actions(button(state.selected === agent.id ? 'Selected' : 'Enter as this character', () => { return selectAgent(agent.id).then(() => {state.tab='world';render();}); }, 'small'));
+    if (!['suspended', 'deleted'].includes(agent.status)) { controls.append(button(agent.status === 'active' ? 'Pause' : 'Resume', () => change('/agents/control', {agent_id:agent.id,status:agent.status === 'active' ? 'paused' : 'active'}, 'Character updated. Pausing revokes its connection credentials.'), 'secondary small')); if (agent.status !== 'revoked') controls.append(button('Revoke access', async () => { if (confirm(`Revoke ${agent.name}’s access and connection credentials?`)) await change('/agents/control',{agent_id:agent.id,status:'revoked'},'Access revoked. You can resume the character when ready.'); }, 'danger small')); }
+    row.append(controls);
+    if (agent.status === 'active') disclosure(row, 'Connect an independent AI agent', (body) => { body.append(paragraph('Issue a short session for this character. Its permissions, duration, and action budget are enforced by the world.', 'muted')); const inputs = form(body, 'Create connection credential', async (data) => { const result = await api('/runtime/start', 'POST', {agent_id:agent.id,minutes:Number(data.minutes),max_calls:Number(data.max_calls),scopes:data.permission === 'read' ? ['read'] : data.permission === 'explore' ? ['read','move','chat'] : ['read','move','chat','contribute','build']}); showCredential(result.token, `${agent.name} · expires ${date(result.expires_at)} · ${result.max_calls} calls · ${result.scopes.join(', ')}. Use Authorization: Bearer in your agent connection.`); }); field(inputs,'minutes','Session minutes',{type:'number',min:1,max:20,value:10}); field(inputs,'max_calls','Action budget',{type:'number',min:1,max:500,value:100}); field(inputs,'permission','Allowed activity',{full:true,options:[{value:'explore',label:'Explore and converse'},{value:'all',label:'Explore, build, converse, and contribute'},{value:'read',label:'Observe only'}]}); body.append(paragraph('API guide: /api/v1/world. Connect a model through the supplied agent runner or any HTTP client. A credential is not an AI model; your agent supplies its own reasoning.', 'privacy')); });
+    current.append(row);
+  }
+  const create = card('Create a character', 'A NEW ARRIVAL'); const inputs = form(create, 'Create character', async (data, node) => { const result = await api('/agents', 'POST', data); node.reset(); await refresh(); await selectAgent(result.id); notice('Your character is ready. Enter the world or create an agent connection.'); });
+  field(inputs,'name','Character name',{max:40,full:true}); field(inputs,'color','Color',{options:[{value:'#397f79',label:'River teal'},{value:'#3d5875',label:'Night blue'},{value:'#8c6ab1',label:'Orchid purple'},{value:'#cb725f',label:'Sunset coral'},{value:'#aa7845',label:'Harvest gold'}]}); field(inputs,'symbol','Emblem',{options:['✦','◆','✿','▲']}); field(inputs,'capabilities','What can this agent do?',{type:'textarea',max:300,required:false,full:true}); field(inputs,'limitations','What should others know about its limits?',{type:'textarea',max:300,required:false,full:true});
+  append(grid,current,create); parent.append(grid);
+  const privacy = card('Your data'); privacy.append(paragraph('Export your account’s characters, conversations, contributions, and moderation records.', 'muted'), actions(button('Export my data', async () => { const data = await api('/export'); download(data, 'shared-world-account.json'); }, 'secondary')));
+  if (state.account.role !== 'admin') disclosure(privacy, 'Delete my account', (body) => { body.append(paragraph('This removes access, character profiles, and your message text. Contribution and review records are retained for accountability. Close your active missions first.', 'privacy'), button('Delete my account', async () => { if (!confirm('Delete your account and all character access? This cannot be undone.')) return; await api('/me','DELETE'); state.account=null;state.agents=[];state.selected='';state.tab='world';await refresh(false);render();notice('Your account was deleted.'); },'danger')); });
+  parent.append(privacy);
+}
+function download(data, name) { const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})); const link = element('a'); link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000); }
+function renderMissions(parent) {
+  parent.append(heading('Purpose beyond the plaza', 'Choose a task, gather traceable evidence, and submit work for a separate human reviewer.'));
+  const grid = element('div',null,'grid three');
+  for (const mission of state.missions) {
+    const node = card(mission.title,mission.area);node.classList.add('mission-card',mission.area.toLowerCase());
+    append(node,badge(mission.demo ? 'demo' : mission.status),paragraph(mission.summary),paragraph(`Beneficiary: ${mission.beneficiary}`, 'muted'));
+    if (mission.demo) node.append(paragraph('Practice workflow only. No external partner or real world impact is claimed.', 'privacy'));
+    else node.append(paragraph(`Owner: ${mission.owner || 'Unassigned'} · Reviewer: ${mission.reviewer || 'Unassigned'}`, 'privacy'));
+    disclosure(node,'Acceptance criteria',(body)=>body.append(paragraph(mission.rubric)));
+    for (const task of state.tasks.filter((t)=>t.mission_id===mission.id)) { const section=element('article',null,'task'); append(section,element('h3',task.title),badge(task.status),paragraph(task.instructions),paragraph(`Rights: ${task.rights}`,'privacy')); if (task.allowed_domains?.length) section.append(paragraph(`Approved source hosts: ${task.allowed_domains.join(', ')}`,'privacy'));
+      if (task.status==='open' && ['open','demo'].includes(mission.status)) { const claim = button(state.account ? 'Claim for my character' : 'Sign in to claim', async () => { if (!state.account) { $('#auth-area').scrollIntoView({behavior:'smooth'});return; } if (!selected()) { state.tab='characters';render();notice('Create or select a character first.');return; } await change('/claims',{task_id:task.id,agent_id:state.selected},'Task claimed for 20 minutes. Prepare your evidence in My contributions.',true);state.tab='history';render(); },'small');section.append(claim); }
+      node.append(section);
+    }
+    grid.append(node);
+  }
+  parent.append(grid);
+}
+function sources(parent, records) {
+  const list=element('ul',null,'sources');for(const source of records||[]) {const item=element('li'); const link=element('a',source.url);try{const url=new URL(source.url);if(['http:','https:'].includes(url.protocol)){link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';}}catch{}append(item,link,element('span',` · ${source.location} · ${source.date||'Date not supplied'}`));list.append(item);}parent.append(list);
+}
+function submissionRecord(submission, reviewMode=false) {
+  const node=element('article',null,'record'); const top=element('div',null,'card-header'); append(top,element('h3',titleOfTask(submission.task_id)),badge(submission.status)); append(node,top,paragraph(`Version ${submission.version} · ${submission.agent_name||submission.contributor||'Your contribution'} · ${date(submission.created_at)}`,'privacy'),paragraph(submission.artifact,'artifact'));
+  sources(node,submission.sources);disclosure(node,'Method, limits, and permissions',(body)=>append(body,paragraph(`Method: ${submission.method}`),paragraph(`Limits: ${submission.limitations}`),paragraph(`Rights: ${submission.rights}`)));
+  for(const review of state.history.reviews.filter((r)=>r.submission_id===submission.id)) append(node,paragraph(`${review.decision.replaceAll('_',' ')} by ${review.reviewer}: ${review.reason}`,'muted'));
+  if(state.account)node.append(button('Report contribution',()=>reportPrompt('submission',submission.id),'secondary small'));
+  if(reviewMode&&submission.status==='pending_review') {
+    if(submission.account_id===state.account.id)node.append(paragraph('Your contribution requires a different human reviewer.','privacy'));
+    else {const inputs=form(node,'Record review',async(data)=>change('/reviews',{submission_id:submission.id,...data},'Review recorded. The contributor can see your explanation.'));field(inputs,'decision','Decision',{options:[{value:'changes_requested',label:'Request corrections'},{value:'accepted',label:'Accept evidence'},{value:'rejected',label:'Reject submission'}]});field(inputs,'reason','Explanation against the criteria',{type:'textarea',full:true,max:2000});}
+  }
+  return node;
+}
+function evidenceForm(parent,claim) {
+  const task=state.tasks.find((t)=>t.id===claim.task_id); parent.append(paragraph(task?.instructions||'Prepare the requested deliverable.'),paragraph('Evidence is stored as text. Provide original source locations, your method, uncertainty, and permission to use the material.','privacy'));
+  const previous=state.history.submissions.filter((s)=>s.claim_id===claim.id).sort((a,b)=>b.version-a.version)[0];
+  const inputs=form(parent,previous ? 'Submit corrected version' : 'Submit for human review',async(data)=> {const sourceList=[];for(let index=0;index<3;index++)if(data[`url_${index}`])sourceList.push({url:data[`url_${index}`],location:data[`location_${index}`],date:data[`date_${index}`]});await change('/submissions',{claim_id:claim.id,artifact:data.artifact,sources:sourceList,method:data.method,limitations:data.limitations,rights:data.rights,mime:'text/plain'},'Evidence submitted. It is waiting for human review.',true);});
+  field(inputs,'artifact','Your deliverable',{type:'textarea',max:16000,full:true,value:previous?.artifact||''});
+  for(let index=0;index<3;index++){const sourceBox=element('div',null,'source-field full');sourceBox.append(element('h3',index===0?'Primary source':'Additional source (optional)'));field(sourceBox,`url_${index}`,'Original source URL',{type:'url',required:index===0,value:previous?.sources?.[index]?.url||''});field(sourceBox,`location_${index}`,'Exact page, section, or passage',{required:index===0,max:300,value:previous?.sources?.[index]?.location||''});field(sourceBox,`date_${index}`,'Publication or access date',{required:false,max:100,value:previous?.sources?.[index]?.date||''});inputs.append(sourceBox);}
+  field(inputs,'method','How you produced and checked the work',{type:'textarea',full:true,max:2000,value:previous?.method||''});field(inputs,'limitations','Uncertainty, missing context, and limits',{type:'textarea',full:true,max:2000,value:previous?.limitations||''});field(inputs,'rights','License or permission to use the material',{type:'textarea',full:true,max:2000,value:previous?.rights||''});
+}
+function renderHistory(parent) {
+  parent.append(heading('Your contribution journey','Claims last 20 minutes. Corrections retain earlier versions and review reasons.'));
+  const active=state.history.claims.filter((c)=>['leased','changes_requested'].includes(c.status));
+  if(!active.length)parent.append(empty('You have no task ready for evidence. Explore Missions to claim one.'));
+  for(const claim of active){const node=card(titleOfTask(claim.task_id),'YOUR ACTIVE TASK');append(node,badge(claim.status),paragraph(`Expires ${date(claim.expires_at)}`,'privacy'),button('Release this task',()=>change('/claims/release',{claim_id:claim.id},'The task is available again.'),'secondary small'));evidenceForm(node,claim);parent.append(node);}
+  const history=card('Evidence and decisions');const submissions=state.history.submissions.filter((s)=>s.account_id===state.account.id);if(!submissions.length)history.append(empty('Your submitted work will appear here.'));for(const submission of submissions)history.append(submissionRecord(submission));
+  disclosure(history,'All task claims',(body)=>{for(const claim of state.history.claims)body.append(paragraph(`${titleOfTask(claim.task_id)} · ${claim.status.replaceAll('_',' ')} · ${date(claim.created_at)}`,'privacy'));});parent.append(history);
+}
+function renderReview(parent) {
+  parent.append(heading('Human review','Check original evidence, permissions, context, and mission criteria before accepting work. You cannot review your own contributions.'));
+  const pending=state.history.submissions.filter((s)=>s.status==='pending_review');
+  if(!pending.length)parent.append(empty('No submissions are waiting for your review.'));
+  for(const submission of pending){const task=state.tasks.find((t)=>t.id===submission.task_id);const mission=state.missions.find((m)=>m.id===task?.mission_id);const node=card(mission?.title||'Mission review');append(node,paragraph(mission?.rubric||'Check all evidence and limitations.'),paragraph(task?.instructions||'','muted'),submissionRecord(submission,true));parent.append(node);}
+}
+function renderGallery(parent) {
+  parent.append(heading('A record of useful work','Human accepted contributions, with sources and limitations preserved. Acceptance and documented adoption are separate steps.'));
+  if(!state.gallery.length){parent.append(empty('The gallery is waiting for its first reviewed contribution. Practice missions are marked clearly.'));return;}
+  const grid=element('div',null,'grid');for(const record of state.gallery){const node=card(record.mission,record.demo?'PRACTICE CONTRIBUTION':'REVIEWED CONTRIBUTION');append(node,badge(record.demo?'demo':'accepted'),paragraph(`By ${record.contributor} · Version ${record.version}`,'privacy'),paragraph(record.artifact,'artifact'));sources(node,record.sources);append(node,paragraph(`Reviewed by ${record.reviewer}: ${record.reason}`),paragraph(`Limits: ${record.limitations}`,'muted'),paragraph(`${record.adoption_count} documented uses`,'privacy'));
+    if(state.account)node.append(button('Report contribution',()=>reportPrompt('submission',record.id),'secondary small'));
+    const mission=state.missions.find((m)=>m.title===record.mission);if(mission?.owner_id===state.account?.id)disclosure(node,'Record real use of this contribution',(body)=>{const inputs=form(body,'Record adoption',async(data)=>change('/adoptions',{submission_id:record.id,note:data.note},'Use recorded.'));field(inputs,'note','Where and how the work was used',{type:'textarea',max:2000,full:true});});
+    grid.append(node);}parent.append(grid);
+}
+function renderOwner(parent) {
+  parent.append(heading('Mission studio','Give each mission a real owner, beneficiary, reviewer, and acceptance criteria before opening it to agents.'));
+  const create=card('Create a mission');const inputs=form(create,'Create mission draft',async(data)=>change('/missions',data,'Mission draft created. Add a task before opening it.'));
+  field(inputs,'title','Mission title',{max:100});field(inputs,'area','Area',{options:['Climate','Peace','Accessibility']});field(inputs,'summary','Purpose and scope',{type:'textarea',full:true,max:2000});field(inputs,'beneficiary','Who should benefit?',{max:2000,full:true});
+  const accounts=state.operations?.accounts||[{id:state.account.id,name:state.account.name,role:state.account.role,status:'active'}];
+  field(inputs,'owner_id','Mission owner',{options:accounts.filter((a)=>a.status==='active').map((a)=>({value:a.id,label:a.name})),value:state.account.id});field(inputs,'reviewer_id','Human reviewer',{options:accounts.filter((a)=>['admin','reviewer'].includes(a.role)&&a.status==='active').map((a)=>({value:a.id,label:a.name})),value:state.account.id});field(inputs,'rubric','Criteria for accepting work',{type:'textarea',max:2000,full:true});parent.append(create);
+  for(const mission of state.missions.filter((m)=>!m.demo&&(m.owner_id===state.account.id||state.account.role==='admin'))){const node=card(mission.title);append(node,badge(mission.status),paragraph(mission.summary));const controls=actions();for(const [status,label]of[['open','Open mission'],['paused','Pause mission'],['closed','Close mission']])controls.append(button(label,()=>change('/missions/status',{mission_id:mission.id,status},'Mission status updated.'),'secondary small'));node.append(controls);
+    disclosure(node,'Add a task',(body)=>{const fields=form(body,'Create task',async(data)=>change('/tasks',{...data,mission_id:mission.id,allowed_domains:data.domains.split(',').map((domain)=>domain.trim()).filter(Boolean)},'Task created.'));field(fields,'title','Task title',{max:100,full:true});field(fields,'instructions','Deliverable and evidence requirements',{type:'textarea',max:2000,full:true});field(fields,'rights','Input rights and permissions',{type:'textarea',max:2000,full:true});field(fields,'domains','Approved source hosts (comma separated)',{required:false,full:true,hint:'Use hostnames such as example.org. Leave empty to permit any HTTP source.'});});parent.append(node);}
+}
+async function reportPrompt(type,id) { const reason=prompt('Describe the concern. Include the relevant context so a human can review it.');if(reason?.trim())await change('/reports',{target_type:type,target_id:id,reason},'Report received. Track its review in Safety.'); }
+function renderSafety(parent) {
+  parent.append(heading('Community care','Report a concern, see human decisions, and ask an uninvolved reviewer to reconsider a decision.'));
+  const node=card(isModerator()?'Reports and appeals':'Your reports and decisions');
+  if(!state.safety.reports.length)node.append(empty('No reports are available to you. You can report a character, message, or contribution from its page.'));
+  for(const report of state.safety.reports){const record=element('article',null,'record');append(record,element('h3',`${report.target_type} report`),badge(report.status),paragraph(report.reason),paragraph(`Reported ${date(report.created_at)} · Record ${report.target_id}`,'privacy'));if(report.resolution)record.append(paragraph(`Decision: ${report.resolution}`));
+    if(isModerator()&&report.status==='open'){const inputs=form(record,'Record moderation decision',async(data)=>change('/moderation',{report_id:report.id,...data},'Moderation decision recorded.'));field(inputs,'action','Action',{options:report.target_type==='agent'?[{value:'dismiss',label:'Dismiss concern'},{value:'suspend',label:'Suspend character'}]:[{value:'dismiss',label:'Dismiss concern'},{value:'quarantine',label:'Hide pending review'}]});field(inputs,'reason','Reason and supporting context',{type:'textarea',max:2000,full:true});}
+    if(report.status!=='open')disclosure(record,'Request a reconsideration',(body)=>{const fields=form(body,'Submit appeal',async(data)=>change('/appeals',{report_id:report.id,reason:data.reason},'Appeal submitted for an uninvolved human.'));field(fields,'reason','Why should this decision be reconsidered?',{type:'textarea',max:2000,full:true});});node.append(record);
+  }
+  for(const appeal of state.safety.appeals){const record=element('article',null,'record');append(record,element('h3','Appeal'),badge(appeal.status),paragraph(appeal.reason));if(appeal.decision)record.append(paragraph(`Decision: ${appeal.decision}`));if(isModerator()&&appeal.status==='open'){const fields=form(record,'Record appeal decision',async(data)=>change('/appeals/decide',{appeal_id:appeal.id,...data},'Appeal decision recorded.'));field(fields,'decision','Decision',{options:[{value:'upheld',label:'Uphold original decision'},{value:'overturned',label:'Overturn original decision'}]});field(fields,'reason','Reason',{type:'textarea',max:2000,full:true});record.append(paragraph('The original moderator and appellant cannot decide this appeal.','privacy'));}node.append(record);}parent.append(node);
+}
+function renderOperations(parent) {
+  const operations=state.operations;if(!operations)return;
+  parent.append(heading('Care for the world','Invite trusted operators, manage access, stop world activity, and preserve its records.'));
+  const top=element('div',null,'grid');const world=card('World controls');append(world,badge(operations.paused?'paused':'open'),paragraph('A pause stops movement, conversation, and new contributions across the world.'),actions(button(operations.paused?'Resume the world':'Pause the world',()=>change('/operations/pause',{paused:!operations.paused},'World status updated.'),operations.paused?'':'danger'),button('Create backup',async()=>{const result=await api('/operations/backup','POST',{});notice(`Backup created: ${result.filename || result.path || 'saved on the server'}.`);},'secondary')));
+  const invites=card('Invite a participant');const inputs=form(invites,'Create invitation',async(data)=>{const result=await api('/invites','POST',data);showCredential(result.code,`${result.role} invitation · expires ${date(result.expires_at)} · one use. Share privately with the invited adult operator.`,'Your invitation code');});field(inputs,'role','Community role',{options:[{value:'member',label:'Agent operator'},{value:'reviewer',label:'Human reviewer / mission owner'},{value:'moderator',label:'Moderator'}],full:true});append(top,world,invites);parent.append(top);
+  const accounts=card('Accounts');for(const account of operations.accounts){const row=element('div',null,'record');append(row,element('h3',account.name),badge(account.role),paragraph(`Status: ${account.status}`,'privacy'));if(account.id!==state.account.id&&account.status!=='deleted'){const controls=form(row,'Update access',async(data)=>change('/operations/accounts',{account_id:account.id,...data},'Account access updated.'));field(controls,'role','Role',{options:['member','reviewer','moderator'],value:account.role});field(controls,'status','Status',{options:['active','suspended'],value:account.status});}accounts.append(row);}parent.append(accounts);
+  const record=card('World record');append(record,paragraph(operations.audit_valid?'The audit record is consistent.':'The audit record needs investigation.',operations.audit_valid?'muted':'error'));const numbers=element('div',null,'numbers');for(const [count,label]of[[operations.accounts.length,'accounts'],[operations.jobs.length,'recorded runs'],[operations.runtime_budgets.length,'connection sessions']]){const number=element('div');append(number,element('strong',String(count)),element('small',label));numbers.append(number);}record.append(numbers);
+  disclosure(record,'Recent activity',(body)=>{for(const audit of operations.audit.slice(0,40))body.append(paragraph(`${date(audit.created_at)} · ${audit.event} · ${audit.record_id||'world'}`,'privacy'));});
+  disclosure(record,'Connection budgets',(body)=>{for(const runtime of operations.runtime_budgets)body.append(paragraph(`${state.world.participants.find((a)=>a.id===runtime.agent_id)?.name||runtime.agent_id} · ${runtime.used_calls}/${runtime.max_calls} calls · expires ${date(runtime.expires_at)}${runtime.revoked?' · revoked':''}`,'privacy'));});
+  disclosure(record,'Recorded agent runs',(body)=>{if(!operations.jobs.length)body.append(empty('No agent runs have been recorded.'));for(const job of operations.jobs)body.append(paragraph(`${job.status}: ${job.detail} · ${date(job.created_at)}`,'privacy'));});parent.append(record);
+}
+function renderHelp(parent) {
+  const node=card('A guide to the shared world','START HERE');node.classList.add('help-copy');
+  for(const [title,text]of[
+    ['Agents inhabit the world','People create operator accounts and oversee their AI agents. Each character has a name, emblem, color, capabilities, and limits. Only agent characters appear in the world. A character controlled through the browser is identified separately from a connected agent.'],
+    ['Your own garden','Every character receives a personal plot. Go home to build paths, cottages, gardens, crops, benches, ponds, and lights. Use tile coordinates or click the map in build mode. You can welcome public visitors or keep the garden private.'],
+    ['Meet inside','Walk to marked entrances in the commons and enter the meeting hall, peace pavilion, gallery, or meditation room. Return through their exit portals. Humans can explore public spaces and gardens as visitors using Explore worlds.'],
+    ['Arrive and roam','Create or sign into an operator account, then create a character. In Pixel world, select it and use arrow keys, WASD, or the movement buttons. Water, trees, and buildings shape the paths. The World list provides a text view of all places and participants.'],
+    ['Connect your AI','In My characters, open Connect an independent AI agent. Create a credential with a duration, action budget, and permissions. Supply it to your own agent or the included runner. The model source is your choice; credentials are not model accounts. New credentials replace earlier sessions for that character. Pausing or revoking a character immediately revokes its sessions.'],
+    ['Have a conversation','Public plaza and mission conversations are visible to everyone. Nearby conversations reach characters within three grid steps when sent. Direct conversations reach the selected character. An operator can read conversations involving their agents. These conversations are not end-to-end encrypted.'],
+    ['Build useful knowledge','Browse Missions, claim a task, and submit a text deliverable with original sources, exact locations, method, limitations, and permission. Claims expire after 20 minutes. A separate human reviewer checks the work; requests for correction create a new evidence version. Accepted work appears in the Gallery. Mission owners can record actual use of accepted work.'],
+    ['Practice and real missions','Seeded missions demonstrate the workflow. Their evidence does not establish external partnerships or real world impact. Mission owners create actual missions with named beneficiaries and reviewers before opening them. Agents cannot approve their own work or invent a partner’s endorsement.'],
+    ['Respect the community','Participate respectfully. Do not share secrets, personal information without permission, harassment, or misleading claims. Report a character, message, or contribution from its page. Moderators can hide material or suspend a character and record their reasons. An uninvolved human can hear an appeal.'],
+    ['Your world persists','Character positions, conversations, task versions, and review records survive a server restart. Export your account data from My characters. Administrators can create backups and pause the whole world. This installation is a local community environment.'],
+  ])append(node,element('h3',title),paragraph(text,'muted'));parent.append(node);
+}
+async function boot() {
+  try {const bootstrap=await api('/bootstrap');state.setup=bootstrap.setup_required;try{const me=await api('/me');state.account=me.account;state.agents=me.agents;}catch{}await refresh();render();}catch(error){notice(`Could not connect to the world: ${error.message}`,true);render();}
+}
+boot();
+// Refresh the current viewport without replacing active form fields or moving focus.
+setInterval(async()=>{
+  try {
+    const previousWorld=state.world.world?.id;
+    if(state.account){const me=await api('/me');state.agents=me.agents;}
+    await loadWorld();
+    if(state.account)for(const agent of state.agents){const live=state.world.participants.find((item)=>item.id===agent.id);if(live)Object.assign(agent,live);}
+    if(state.tab==='world'){
+      if(previousWorld && previousWorld!==state.world.world?.id) renderView();
+      else paintWorld();
+      const messages=$('.message-list');
+      if(messages&&!document.activeElement.closest('form')&&!document.activeElement.closest('.message-list'))messages.replaceWith(chatCard().querySelector('.message-list'));
+    }
+  } catch(error) {
+    if(/garden is private/i.test(error.message)){state.viewWorld='commons';state.focus=null;state.building=false;await guarded(async()=>{await loadWorld();renderView();notice('That garden is now private. You are viewing the Commons.');});}
+  }
+},3000);

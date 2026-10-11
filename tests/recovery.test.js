@@ -1,0 +1,89 @@
+import test from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { Platform } from '../src/platform.js';
+import { acquireProcessLock, backupDatabase, restoreDatabase, validateDatabase } from '../src/recovery.js';
+
+const setup = (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'world-recovery-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  return directory;
+};
+test('SQLite backups recover durable changes and preserve the previous database', (t) => {
+  const directory = setup(t), path = join(directory, 'world.sqlite'), backup = join(directory, 'backup.sqlite');
+  const platform = new Platform(path);
+  platform.transaction(() => platform.audit('system', 'test.original'));
+  backupDatabase(platform.db, backup);
+  assert.equal(statSync(backup).mode & 0o777, 0o600);
+  platform.transaction(() => platform.audit('system', 'test.later'));
+  platform.close();
+  const result = restoreDatabase(backup, path);
+  assert.ok(result.preserved_original);
+  assert.equal(validateDatabase(path).schema_version, 2);
+  const restored = new Platform(path), preserved = new Platform(result.preserved_original);
+  try {
+    assert.equal(restored.all('SELECT event FROM audit').length, 1);
+    assert.equal(preserved.all('SELECT event FROM audit').length, 2);
+    assert.equal(restored.verifyAudit(), true);
+  } finally { restored.close(); preserved.close(); }
+});
+test('restore rejects active server locks and malformed backups', (t) => {
+  const directory = setup(t), path = join(directory, 'world.sqlite'), backup = join(directory, 'backup.sqlite');
+  const platform = new Platform(path); backupDatabase(platform.db, backup); platform.close();
+  const release = acquireProcessLock(join(directory, 'server.lock'));
+  try { assert.throws(() => restoreDatabase(backup, path), /running/); } finally { release(); }
+  writeFileSync(join(directory, 'bad.sqlite'), 'not a database');
+  assert.throws(() => restoreDatabase(join(directory, 'bad.sqlite'), path));
+  assert.equal(validateDatabase(path).schema_version, 2);
+});
+test('stale process locks are reclaimed and released safely', (t) => {
+  const directory = setup(t), path = join(directory, 'server.lock');
+  writeFileSync(path, JSON.stringify({ pid: 2147483647, nonce: 'previous' }));
+  const release = acquireProcessLock(path);
+  assert.throws(() => acquireProcessLock(path), /running/);
+  release();
+  const releaseAgain = acquireProcessLock(path); releaseAgain();
+});
+
+test('a validated backup restores over a corrupt original without discarding its bytes', (t) => {
+  const directory = setup(t), path = join(directory, 'world.sqlite'), backup = join(directory, 'backup.sqlite');
+  const platform = new Platform(path); backupDatabase(platform.db, backup); platform.close();
+  writeFileSync(path, 'damaged original');
+  const result = restoreDatabase(backup, path);
+  assert.equal(validateDatabase(path).schema_version, 2);
+  assert.equal(statSync(result.preserved_original).size, 'damaged original'.length);
+});
+
+test('version one backups restore and migrate without losing accounts, avatars or messages', async (t) => {
+  const directory = setup(t), source = join(directory, 'legacy.sqlite'), destination = join(directory, 'restored.sqlite');
+  const platform = new Platform(source);
+  const credentials = await platform.register({ name: 'Original owner', email: 'owner@example.org', password: 'legacy-test-password', consent: true });
+  const actor = platform.authenticate(credentials.token);
+  const agent = platform.transaction(() => platform.createAgent(actor, { name: 'Original avatar' }));
+  platform.transaction(() => platform.message(actor, { agent_id: agent.id, text: 'A preserved legacy conversation.' }));
+  platform.close();
+  // Remove precisely the v2 additions to recreate the previous supported schema.
+  const legacy = new DatabaseSync(source);
+  legacy.exec(`DROP TABLE world_objects; DROP TABLE worlds;
+    DROP INDEX agents_spatial; DROP INDEX messages_world;
+    ALTER TABLE agents DROP COLUMN world_id;
+    ALTER TABLE agents DROP COLUMN posture;
+    ALTER TABLE messages DROP COLUMN world_id;
+    PRAGMA user_version=1;`);
+  legacy.close();
+  assert.equal(validateDatabase(source).schema_version, 1);
+  assert.equal(restoreDatabase(source, destination).schema_version, 1);
+  const restored = new Platform(destination);
+  try {
+    assert.equal(validateDatabase(destination).schema_version, 2);
+    const restoredActor = restored.authenticate(credentials.token);
+    assert.equal(restored.me(restoredActor).account.name, 'Original owner');
+    assert.equal(restored.me(restoredActor).agents[0].name, 'Original avatar');
+    assert.equal(restored.get('SELECT world_id FROM agents WHERE id=?', agent.id).world_id, 'commons');
+    assert.ok(restored.get('SELECT id FROM worlds WHERE owner_agent_id=?', agent.id));
+    assert.equal(restored.world(restoredActor).messages[0].text, 'A preserved legacy conversation.');
+  } finally { restored.close(); }
+});

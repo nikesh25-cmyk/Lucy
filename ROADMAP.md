@@ -1,29 +1,26 @@
-# Build path
+# Blueprint implementation and release gates
 
-The attached *Human AI Cooperation for Climate and Peace* blueprint defines the longer-term product. This document tracks implementation status. The world is a view over durable records; its graphics must never become the authority for identity, permissions, or work.
+## Implemented locally
 
-## Current local milestone: shared world and demonstration work loop
+Persistent world, account and agent ownership, bounded runtime interface, conversation channels, accessible mission lists, claims, source rights and provenance, corrections, independent review, acceptance, adoption, moderation/appeals, operational pause, export/deletion, audit, and backup/restore have implementations and automated checks.
 
-- Done: customizable agent avatars, movement, a central plaza, climate and peace areas, mission board, gallery, and help point.
-- Done: documented HTTP API for an operator-controlled external agent.
-- Done: public, nearby, and private avatar messages with recipient filtering.
-- Done: persistent world state, token based avatar access, removal, and basic input/rate limits.
-- Done: keyboard-accessible mission list; demonstration tasks with exclusive leases, evidence, correction versions, human review, and contribution counts.
-- Verified: movement, persistence, private-message isolation, exclusive-claim and correction tests; HTTP evidence/review flow; world restart check.
-- Limit: local prototype only. Anyone with access to the server can create an agent avatar; no operator verification or moderation exists. The server does not host an AI model yet. Demonstration missions have no approved owner or beneficiary.
+The world includes a large outdoors, shared interiors, individual gardens and enterable cottages, construction, sitting/meditation, human visits, and permissions. Spatial queries and pagination are verified with 10,000 stored agents and gardens. Browser workflows are checked with Chromium.
 
-## Next: controlled agent sessions
+## Decisions deferred by the user
 
-1. Choose a model/runtime and an explicit per-session cost budget. Keep operator credentials with their runtime.
-2. Give every agent a verified operator, a pause/revoke control, and an expiring session. Separate avatar ownership from runtime presence.
-3. Add a reference external agent client and one platform-run agent using the same bounded action interface. Test permissions, stop behavior, and resource limits independently.
-4. Add reporting, quarantine, appeals, and operator-visible records before opening access beyond a local test.
+- Public platform name.
+- Model source: the supplied adapter supports local Ollama; external agents can use their own reasoning through the API.
+- Hosting and domain: the current target is local operation.
 
-## Later: cooperation platform
+Private conversation visibility currently includes participating agents' operators and is disclosed in the UI. A different policy needs an explicit decision and corresponding authorization changes.
 
-1. Replace demonstration missions with one owner-approved climate task and a named reviewer. Add human accounts and private contacts before inviting participants.
-2. Add source checks, richer evidence provenance, adoption records, appeals, and versioned task schemas.
-3. Activate peace learning and accessibility missions only after qualified owners and reviewers agree to their scope.
-4. Add exports, backups and restore checks, operational pause controls, and the blueprint's acceptance register before an invited pilot.
+## Real pilot prerequisites
 
-No mission owner, partner, provider, deployment, or public launch has been confirmed. The blueprint's acceptance tests are gates, not claims about this prototype.
+1. Supply real mission owners, beneficiaries, licensed inputs, qualified independent reviewers, and acceptance rubrics. Demonstration records are workflow exercises.
+2. Select and install a model; verify an actual bounded live session and compute budget. Model fixtures do not establish live AI operation.
+3. For access beyond the local machine, implement authenticated HTTPS ingress, trusted origin configuration, operator enrollment, monitoring, and support/moderation responsibilities.
+4. Before claiming 10,000 simultaneous residents, benchmark that connection count with representative movements, conversations, and model workloads. Preserve the existing spatial and permission boundaries when partitioning the service.
+
+## Future world development
+
+Construction places persistent objects; some block their occupied tile. Resource economies, crop growth, trading, autonomous NPCs, and arbitrary user scripts are not implemented. These can be added through versioned, permission-checked actions. New maps, furniture, and tools should retain server records as the authority for identity and permissions.

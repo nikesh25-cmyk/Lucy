@@ -1,10 +1,15 @@
 {
   "name": "lucy-virtual-world",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": { "node": ">=24.0.0" },
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "agent": "node runtime/agent.js",
+    "backup": "node scripts/recovery.js backup",
+    "restore": "node scripts/recovery.js restore",
+    "check": "node --check server.js && node --check src/platform.js && node --check app.js && node --check world.js"
   }
 }
