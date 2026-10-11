@@ -11,3 +11,5 @@ Existing `LUCY_MODEL_NAME` configuration takes priority over automatic startup. 
 Mayors return provisional conversational guidance. Research workers return provisional source-grounded briefs with an evidence register. Model output is never independent review, a government decision or proof of an outcome. Invalid or timed-out mayor responses fall back to scripted guidance. A failed research synthesis releases its claim when its credential remains usable; it does not silently submit fabricated work.
 
 Installation and generation are distinct verification steps. The local installation can be incomplete while the world remains usable. Runtime executable verification does not establish model quality. Test a real bounded mayor conversation and a primary-source research submission after weights finish downloading, and keep the independent review stage.
+
+The application bounds its shared inference queue to one active request and eight waiting requests. Queue depth is reported by the health API without prompts or credentials. Browser mayor deadlines and overall worker deadlines still apply while queued.
