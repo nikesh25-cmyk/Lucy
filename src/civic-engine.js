@@ -56,13 +56,15 @@ export const civicMethods={
   countries(actor,input={}){
     const q=String(input.q||'').trim().toLowerCase().slice(0,80),group=String(input.group||'');
     if(group&&!['ldc','lldc','sids'].includes(group))fail(400,'Unknown country grouping.');
-    const entries=COUNTRIES.entries.filter(country=>(!group||country[group])&&(!q||`${country.name} ${country.iso2} ${country.iso3} ${country.region} ${country.subregion}`.toLowerCase().includes(q)));
+    const evidence=String(input.evidence||'');if(evidence&&!['retained','partial','none'].includes(evidence))fail(400,'Unknown evidence coverage filter.');
+    const enriched=COUNTRIES.entries.map(country=>{const series=STATISTICS.countries.find(item=>item.country_code===country.iso2)?.series||[];return {...country,evidence:{status:series.length===3?'retained':series.length?'partial':'none',series_count:series.length,nonmissing_series:series.filter(s=>s.points.some(p=>p.value!==null)).length}};});
+    const entries=enriched.filter(country=>(!evidence||country.evidence.status===evidence)&&(!group||country[group])&&(!q||`${country.name} ${country.iso2} ${country.iso3} ${country.region} ${country.subregion}`.toLowerCase().includes(q)));
     const offset=integer(input.offset,0,100000),limit=integer(input.limit,30,248);if(!limit)fail(400,'Page size must be positive.');
-    return {metadata:COUNTRIES.metadata,entries:entries.slice(offset,offset+limit),total:entries.length,offset,limit,has_more:offset+limit<entries.length};
+    return {metadata:COUNTRIES.metadata,evidence_coverage:{retained:enriched.filter(c=>c.evidence.status==='retained').length,partial:enriched.filter(c=>c.evidence.status==='partial').length,none:enriched.filter(c=>c.evidence.status==='none').length},entries:entries.slice(offset,offset+limit),total:entries.length,offset,limit,has_more:offset+limit<entries.length};
   },
   countryEvidence(actor,input={}){
     const country=COUNTRIES.entries.find(item=>item.iso2===input.country);if(!country)fail(400,'Choose a catalog country or area.');
-    return {country,routes:agricultureSources(country),license:STATISTICS_LICENSE,metadata:STATISTICS.metadata,snapshot:STATISTICS.countries.find(item=>item.country_code===country.iso2)||null};
+    return {country,routes:agricultureSources(country),license:STATISTICS_LICENSE,metadata:STATISTICS.metadata,collection_gaps:(STATISTICS.metadata.unavailable||[]).filter(item=>item.country_code===country.iso2||item.country===country.name),snapshot:STATISTICS.countries.find(item=>item.country_code===country.iso2)||null};
   },
   assembly(){return {charter:CIVIC_CHARTER,goals:SDG_GOALS,programmes:PROGRAMMES,pilot:PILOT,stages,rubric};},
   research(actor,input={}){

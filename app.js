@@ -565,7 +565,7 @@ function renderCountryEvidence(parent){
   panel.append(paragraph('Annual sector context for scoping research. These indicators do not establish crop demand, buyers, export eligibility, available farmland or returns.'));
   panel.append(actions(button('Close evidence',()=>{state.countryEvidence=null;renderView();},'secondary small'),button('Open country research',async()=>{state.researchQuery={country:data.country.iso2,goal:'2'};await loadResearch();openSection('research');},'small')));
   if(data.snapshot){
-    panel.append(paragraph(`Retained snapshot retrieved ${data.metadata.retrieved_on}. Dataset updates and observation years are shown separately. This view does not refresh source data automatically.`,'privacy'));
+    panel.append(paragraph(`Catalog last assembled ${date(data.metadata.last_collection_at||data.metadata.retrieved_on)}. Each series shows its own retrieval date; dataset updates and observation years are separate. This view does not refresh source data automatically.`,'privacy'));
     const grid=element('div',null,'grid three');
     for(const series of data.snapshot.series){
       const latest=series.points.find(point=>point.value!==null),node=card(series.name,series.unit);
@@ -581,17 +581,21 @@ function renderCountryEvidence(parent){
     panel.append(paragraph('No retained statistics for this country. These official API routes are research starting points; availability and values have not been verified here.','empty'));
     for(const route of data.routes)panel.append(sourceLink(route.url,route.name),paragraph(route.qualifier,'privacy'));
   }
+  const missing=data.routes.filter(route=>!data.snapshot?.series.some(series=>series.indicator===route.id));if(data.snapshot&&missing.length){panel.append(paragraph('Partial coverage: the following series have no retained record.','privacy'));for(const route of missing)panel.append(sourceLink(route.url,route.name));}
+  if(data.collection_gaps?.length)disclosure(panel,'Latest collection gaps',body=>{for(const gap of data.collection_gaps)body.append(paragraph(`${gap.indicator||'Country collection'} · ${gap.reason} · ${gap.attempted_at||'Previous collection attempt'}`,'privacy'));});
   panel.append(paragraph(data.metadata.limitations,'privacy'),sourceLink(data.license.terms,'World Bank data terms'),paragraph(`${data.license.name} · ${data.license.attribution}`,'privacy'));parent.append(panel);
 }
 function renderCountries(parent){
   parent.append(heading('Countries & areas','Find geographic context, choose an origin, and open country research. Catalog: UN M49, retrieved 11 October 2026.'));
-  const filters=form(parent,'Find countries',async data=>{state.countryQuery=data.q;state.countryGroup=data.group;state.countryPage=0;renderView();});
+  const filters=form(parent,'Find countries',async data=>{state.countryQuery=data.q;state.countryGroup=data.group;state.countryCoverage=data.evidence;state.countryPage=0;renderView();});
   field(filters,'q','Name, code or region',{value:state.countryQuery,required:false,max:80});field(filters,'group','Development grouping',{value:state.countryGroup,options:[{value:'',label:'All countries & areas'},{value:'ldc',label:'Least developed countries'},{value:'lldc',label:'Landlocked developing countries'},{value:'sids',label:'Small island developing states'}],required:false});
+  field(filters,'evidence','Agriculture evidence coverage',{value:state.countryCoverage||'',required:false,options:[{value:'',label:'All coverage'},{value:'retained',label:'All three series retained'},{value:'partial',label:'Partial retained coverage'},{value:'none',label:'No retained series'}]});
   renderCountryEvidence(parent);
-  const q=state.countryQuery.toLowerCase(),countries=state.countries.filter(country=>(!state.countryGroup||country[state.countryGroup])&&`${country.name} ${country.iso2} ${country.iso3} ${country.region} ${country.subregion}`.toLowerCase().includes(q));
+  const q=state.countryQuery.toLowerCase(),countries=state.countries.filter(country=>(!state.countryCoverage||country.evidence?.status===state.countryCoverage)&&(!state.countryGroup||country[state.countryGroup])&&`${country.name} ${country.iso2} ${country.iso3} ${country.region} ${country.subregion}`.toLowerCase().includes(q));
   parent.append(paragraph(`${countries.length} entries · statistical geography; classifications do not establish sovereignty or affiliation.`, 'privacy'));
   const grid=element('div',null,'grid three');for(const country of countries.slice(state.countryPage*24,state.countryPage*24+24)){
     const node=card(country.name,country.iso3+' · '+country.m49);node.append(paragraph([country.region,country.subregion].filter(Boolean).join(' / '),'muted'),actions(...['ldc','lldc','sids'].filter(key=>country[key]).map(key=>badge(key.toUpperCase()))),button('Country research',async()=>{state.researchQuery={country:country.iso2};await loadResearch();openSection('research');},'secondary small'));
+    node.append(paragraph(`${country.evidence?.series_count||0} of 3 agriculture series retained · ${country.evidence?.nonmissing_series||0} with reported values`,'privacy'));
     node.append(button('Agriculture evidence',async()=>{state.countryEvidence=await api('/country-evidence?country='+country.iso2);renderView();$('#country-evidence').focus();$('#country-evidence').scrollIntoView({block:'start'});},'secondary small'));
     if(isReviewer())node.append(button('Generate 68 proposals',async()=>{const result=await api('/research/generate','POST',{country_code:country.iso2});notice(`${result.added} proposals added for ${country.name}.`);},'small'));
     grid.append(node);
