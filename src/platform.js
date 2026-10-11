@@ -242,7 +242,7 @@ export class Platform {
     this.expireClaims();
     const missions = this.all('SELECT m.*,o.name AS owner,r.name AS reviewer FROM missions m LEFT JOIN accounts o ON o.id=m.owner_id LEFT JOIN accounts r ON r.id=m.reviewer_id').filter((mission) => mission.status !== 'draft' || (actor?.kind === 'session' && (actor.account.role === 'admin' || [mission.owner_id, mission.reviewer_id].includes(actor.account.id))));
     const ids = new Set(missions.map((mission) => mission.id));
-    return { missions, tasks: this.all('SELECT * FROM tasks').filter((task) => ids.has(task.mission_id)).map((task) => ({ ...task, allowed_domains: parse(task.allowed_domains), allowed_actions: ['read-approved-sources', 'submit-evidence'], risk: 'low', lease_minutes: 20 })) };
+    return { missions, tasks: this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id').filter((task) => ids.has(task.mission_id)).map((task) => ({ ...task, allowed_domains: parse(task.allowed_domains), allowed_actions: ['read-approved-sources', 'submit-evidence'], risk: 'low', lease_minutes: 20 })) };
   }
   createMission(actor, input) {
     role(actor, ['admin', 'reviewer']); this.active();
@@ -278,6 +278,21 @@ export class Platform {
     this.run('INSERT INTO tasks(id,mission_id,title,instructions,rights,allowed_domains) VALUES(?,?,?,?,?,?)', id, mission.id, text(input.title, 'Task title', 100), text(input.instructions, 'Deliverable and evidence requirements'), text(input.rights, 'Input rights and permissions'), JSON.stringify(domains));
     this.audit(actor.account.id, 'task.created', id);
     return { id };
+  }
+  createFollowUp(actor,input,key){
+    role(actor,['admin','reviewer']);this.active();text(key,'Idempotency key',100);
+    const origin=this.get('SELECT s.id,s.status,s.version,t.mission_id,(SELECT COUNT(*) FROM reviews r WHERE r.submission_id=s.id AND r.decision=\'accepted\') AS accepted_reviews FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id WHERE s.id=?',input.submission_id||'');
+    if(!origin)fail(404,'Source contribution not found.');
+    const mission=this.get('SELECT * FROM missions WHERE id=?',origin.mission_id);
+    if(actor.account.role!=='admin'&&mission.owner_id!==actor.account.id)fail(403,'Mission owner permission required.');
+    if(origin.status!=='accepted'||!origin.accepted_reviews)fail(409,'The source contribution must still be accepted.');
+    if(!['open','demo'].includes(mission.status))fail(409,'Open the mission before creating follow-up work.');
+    const normalized={submission_id:origin.id,title:text(input.title,'Follow-up title',100),instructions:text(input.instructions,'Follow-up deliverable and evidence requirements'),rights:text(input.rights,'Follow-up rights and permissions'),allowed_domains:input.allowed_domains};
+    const fingerprint=hash(JSON.stringify(normalized)),previous=this.get('SELECT * FROM task_followups WHERE creator_id=? AND idempotency_key=?',actor.account.id,key);
+    if(previous){if(previous.fingerprint!==fingerprint)fail(409,'This follow-up key was used for different work.');return {id:previous.task_id,mission_id:mission.id,origin_submission_id:origin.id,origin_version:origin.version,repeated:true};}
+    const task=this.createTask(actor,{...normalized,mission_id:mission.id});
+    this.run('INSERT INTO task_followups VALUES(?,?,?,?,?,?)',task.id,origin.id,actor.account.id,key,fingerprint,now());this.audit(actor.account.id,'task.followup_created',task.id);
+    return {id:task.id,mission_id:mission.id,origin_submission_id:origin.id,origin_version:origin.version,repeated:false};
   }
   claim(actor, input, key) {
     this.active(); this.expireClaims();
@@ -511,7 +526,7 @@ export class Platform {
     const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at`, actor.account.id, actor.account.id);
     const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
     const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
-    return { format: 'shared-world-account-v6', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history,drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    return { format: 'shared-world-account-v7', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=?',actor.account.id).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
     role(actor, ['member', 'reviewer', 'moderator']);

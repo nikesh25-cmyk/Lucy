@@ -42,7 +42,7 @@ const writes = new Map([
   ['/agents/control', ['agentControl', null]], ['/runtime/start', ['runtime', null]],
   ['/move', ['moveAgent', 'move']], ['/messages', ['message', 'chat']],
   ['/missions', ['createMission', null]], ['/missions/status', ['missionStatus', null]],
-  ['/tasks', ['createTask', null]], ['/claims', ['claim', 'contribute']],
+  ['/tasks', ['createTask', null]], ['/tasks/follow-up', ['createFollowUp', null]], ['/claims', ['claim', 'contribute']],
   ['/claims/release', ['releaseClaim', 'contribute']], ['/submissions', ['submit', 'contribute']],
   ['/reviews', ['review', null]], ['/adoptions', ['adoption', null]],
   ['/reports', ['report', 'contribute']], ['/moderation', ['moderate', null]],
@@ -292,7 +292,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         else if (route === '/operations/pause') {
           if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
           value = platform.pause(actor, input.paused);
-        } else if (['/claims', '/submissions', '/drafts/resume'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
         else value = platform[method](actor, input);
         platform.charge(actor);
         return value;
@@ -308,7 +308,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         }catch{result.mode='rules';result.model_fallback=true;}
       }
       if (route === '/auth/logout') cookie(response, '', 0, hosting);
-      return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs'].includes(route) ? 201 : 200, result);
+      return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/tasks/follow-up', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs'].includes(route) ? 201 : 200, result);
     } catch (error) {
       if (!error.status) console.error('HTTP request failed:', error.code || error.name || 'UnknownError');
       const status = error.status || (error.code === 'ERR_SQLITE_ERROR' && /constraint/i.test(error.message) ? 409 : 500);
