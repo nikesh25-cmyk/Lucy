@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { agricultureSources, STATISTICS_LICENSE } from './statistics.js';
 import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './civic.js';
 import { getWorldDefinition, move } from '../world.js';
 const catalog = name => JSON.parse(readFileSync(new URL(`../catalog/${name}.json`,import.meta.url),'utf8'));
 export const COUNTRIES=catalog('countries'), PROGRAMMES=catalog('programmes'), PILOT=catalog('agriculture-pilot');
+const STATISTICS=catalog('agriculture-statistics');
 const roster=[1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
 const stages=[
   {id:'baseline',name:'Establish the baseline',output:'A dated country baseline with indicators, geography, definitions and evidence gaps.'},
@@ -44,7 +46,11 @@ export const civicMethods={
   seedCountryResearch(country){
     for(let goal=1;goal<=17;goal++)for(const stage of stages){
       const id=`${country.iso2}-${goal}-${stage.id}`;
-      this.run('INSERT OR IGNORE INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',id,country.iso2,goal,stage.id,`${country.name}: ${stage.name} · SDG ${goal}`.slice(0,100),`${stage.output} Scope: ${country.name}; SDG ${goal}, ${SDG_GOALS[goal-1]}. Begin with the official SDG framework, then find current country-specific primary evidence. Framework links alone do not establish country findings.`,rubric,JSON.stringify([`https://sdgs.un.org/goals/goal${goal}`,COUNTRIES.metadata.sourceUrl]),new Date().toISOString());
+      const statistical=goal===2&&stage.id==='baseline';
+      const sources=[`https://sdgs.un.org/goals/goal${goal}`,COUNTRIES.metadata.sourceUrl,...(statistical?agricultureSources(country).map(item=>item.url):[])];
+      const instructions=`${stage.output} Scope: ${country.name}; SDG ${goal}, ${SDG_GOALS[goal-1]}. Begin with the official SDG framework, then find current country-specific primary evidence. Framework links alone do not establish country findings.`+(statistical?' Use the registered World Bank annual agriculture series for sector context, preserving observation years, percentage units, missing values and the modeled ILO employment qualifier. Dataset update is not publication. These indicators cannot establish crop demand, buyers, export eligibility, available farmland or returns. Inspect provider metadata and footnotes; identify crop-specific evidence and delivery gaps.':'');
+      this.run('INSERT OR IGNORE INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',id,country.iso2,goal,stage.id,`${country.name}: ${stage.name} · SDG ${goal}`.slice(0,100),instructions,rubric,JSON.stringify(sources),new Date().toISOString());
+      if(statistical)this.run("UPDATE research_leads SET instructions=?,source_urls=? WHERE id=? AND status='proposed' AND task_id IS NULL",instructions,JSON.stringify(sources),id);
     }
   },
   countries(actor,input={}){
@@ -53,6 +59,10 @@ export const civicMethods={
     const entries=COUNTRIES.entries.filter(country=>(!group||country[group])&&(!q||`${country.name} ${country.iso2} ${country.iso3} ${country.region} ${country.subregion}`.toLowerCase().includes(q)));
     const offset=integer(input.offset,0,100000),limit=integer(input.limit,30,248);if(!limit)fail(400,'Page size must be positive.');
     return {metadata:COUNTRIES.metadata,entries:entries.slice(offset,offset+limit),total:entries.length,offset,limit,has_more:offset+limit<entries.length};
+  },
+  countryEvidence(actor,input={}){
+    const country=COUNTRIES.entries.find(item=>item.iso2===input.country);if(!country)fail(400,'Choose a catalog country or area.');
+    return {country,routes:agricultureSources(country),license:STATISTICS_LICENSE,metadata:STATISTICS.metadata,snapshot:STATISTICS.countries.find(item=>item.country_code===country.iso2)||null};
   },
   assembly(){return {charter:CIVIC_CHARTER,goals:SDG_GOALS,programmes:PROGRAMMES,pilot:PILOT,stages,rubric};},
   research(actor,input={}){

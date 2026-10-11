@@ -491,14 +491,40 @@ async function talkMayor(id){
   field(controls,'question','Your question',{max:500,full:true,hint:'Ask about research, agriculture, the Assembly, or reporting a concern.'});
   dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();controls.querySelector('input').focus();
 }
+function renderCountryEvidence(parent){
+  const data=state.countryEvidence;if(!data)return;
+  const panel=card(`${data.country.name} · agriculture evidence`,'COUNTRY EVIDENCE');panel.id='country-evidence';panel.tabIndex=-1;
+  panel.append(paragraph('Annual sector context for scoping research. These indicators do not establish crop demand, buyers, export eligibility, available farmland or returns.'));
+  panel.append(actions(button('Close evidence',()=>{state.countryEvidence=null;renderView();},'secondary small'),button('Open country research',async()=>{state.researchQuery={country:data.country.iso2,goal:'2'};await loadResearch();openSection('research');},'small')));
+  if(data.snapshot){
+    panel.append(paragraph(`Retained snapshot retrieved ${data.metadata.retrieved_on}. Dataset updates and observation years are shown separately. This view does not refresh source data automatically.`,'privacy'));
+    const grid=element('div',null,'grid three');
+    for(const series of data.snapshot.series){
+      const latest=series.points.find(point=>point.value!==null),node=card(series.name,series.unit);
+      node.append(paragraph(latest?`${latest.value.toLocaleString(undefined,{maximumFractionDigits:2})}% · ${latest.year}`:'No reported value','statistic-value'),paragraph(series.qualifier),paragraph(`Dataset updated: ${series.dataset_updated} · retrieved: ${series.retrieved_on}`,'privacy'),sourceLink(series.url,'World Bank API record'),paragraph(series.publisher,'privacy'),sourceLink(data.routes.find(route=>route.id===series.indicator).definition_url,'Indicator definition and provider'));
+      disclosure(node,'Annual records and provenance',body=>{
+        const table=element('table',null,'evidence-table');table.append(element('caption',`${series.indicator} · values rounded to two decimals for display`));
+        const head=element('thead'),row=element('tr');for(const label of ['Year',series.unit,'Status']){const cell=element('th',label);cell.scope='col';row.append(cell);}head.append(row);table.append(head);
+        const rows=element('tbody');for(const point of series.points){const row=element('tr');row.append(element('td',String(point.year)),element('td',point.value===null?'Missing':point.value.toLocaleString(undefined,{maximumFractionDigits:2})),element('td',point.observation_status||'—'));rows.append(row);}table.append(rows);body.append(table,paragraph(`Raw JSON SHA256: ${series.sha256}`,'source-hash'),paragraph(series.limitations,'privacy'));
+      });grid.append(node);
+    }panel.append(grid);
+    const download=element('a','Download evidence JSON','evidence-download');download.href=`/api/v1/country-evidence?country=${data.country.iso2}&download=1`;download.download=`lucy-${data.country.iso3}-agriculture-evidence.json`;panel.append(actions(download));
+  }else{
+    panel.append(paragraph('No retained statistics for this country. These official API routes are research starting points; availability and values have not been verified here.','empty'));
+    for(const route of data.routes)panel.append(sourceLink(route.url,route.name),paragraph(route.qualifier,'privacy'));
+  }
+  panel.append(paragraph(data.metadata.limitations,'privacy'),sourceLink(data.license.terms,'World Bank data terms'),paragraph(`${data.license.name} · ${data.license.attribution}`,'privacy'));parent.append(panel);
+}
 function renderCountries(parent){
   parent.append(heading('Countries & areas','Find geographic context, choose an origin, and open country research. Catalog: UN M49, retrieved 11 October 2026.'));
   const filters=form(parent,'Find countries',async data=>{state.countryQuery=data.q;state.countryGroup=data.group;state.countryPage=0;renderView();});
   field(filters,'q','Name, code or region',{value:state.countryQuery,required:false,max:80});field(filters,'group','Development grouping',{value:state.countryGroup,options:[{value:'',label:'All countries & areas'},{value:'ldc',label:'Least developed countries'},{value:'lldc',label:'Landlocked developing countries'},{value:'sids',label:'Small island developing states'}],required:false});
+  renderCountryEvidence(parent);
   const q=state.countryQuery.toLowerCase(),countries=state.countries.filter(country=>(!state.countryGroup||country[state.countryGroup])&&`${country.name} ${country.iso2} ${country.iso3} ${country.region} ${country.subregion}`.toLowerCase().includes(q));
   parent.append(paragraph(`${countries.length} entries · statistical geography; classifications do not establish sovereignty or affiliation.`, 'privacy'));
   const grid=element('div',null,'grid three');for(const country of countries.slice(state.countryPage*24,state.countryPage*24+24)){
     const node=card(country.name,country.iso3+' · '+country.m49);node.append(paragraph([country.region,country.subregion].filter(Boolean).join(' / '),'muted'),actions(...['ldc','lldc','sids'].filter(key=>country[key]).map(key=>badge(key.toUpperCase()))),button('Country research',async()=>{state.researchQuery={country:country.iso2};await loadResearch();openSection('research');},'secondary small'));
+    node.append(button('Agriculture evidence',async()=>{state.countryEvidence=await api('/country-evidence?country='+country.iso2);renderView();$('#country-evidence').focus();$('#country-evidence').scrollIntoView({block:'start'});},'secondary small'));
     if(isReviewer())node.append(button('Generate 68 proposals',async()=>{const result=await api('/research/generate','POST',{country_code:country.iso2});notice(`${result.added} proposals added for ${country.name}.`);},'small'));
     grid.append(node);
   }parent.append(grid);const previous=button('Previous',()=>{state.countryPage--;renderView();},'secondary');previous.disabled=state.countryPage===0;const next=button('Next',()=>{state.countryPage++;renderView();},'secondary');next.disabled=(state.countryPage+1)*24>=countries.length;parent.append(actions(previous,paragraph(`Page ${state.countryPage+1}`),next),sourceLink('https://unstats.un.org/unsd/methodology/m49/overview/','UN M49 source and methodology'));
