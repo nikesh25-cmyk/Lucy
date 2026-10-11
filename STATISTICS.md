@@ -6,7 +6,7 @@ Lucy exposes three registered World Bank WDI annual series for country research:
 - Employment in agriculture (% of total employment), **modeled ILO estimate**.
 - Arable land (% of land area).
 
-The retained 11 October 2026 snapshot contains six series for Nepal and Bangladesh, with 66 annual records in the 2015–2026 request window. The latest nonmissing observations are from 2025 for sector value added and employment, and 2024 for arable land. Missing values remain null. Zambia's initial requests timed out; no Zambia snapshot is claimed. Other countries have official research routes without retrieved findings.
+The retained 11 October 2026 catalog contains 132 series and 1,452 annual records for 44 countries: 43 of the 44 LDCs in the dated UN M49 catalog, plus India. All covered countries retain all three series; this does not mean every annual value is reported. Senegal's three requests timed out in the initial LDC batch and one retry, so no Senegal snapshot is claimed. Other countries have official research routes without retained findings. Country coverage filters and cards distinguish retained series from those with nonmissing observations.
 
 Each snapshot includes observation years, units, provider-declared dataset update, retrieval day, original provider, reuse terms, raw-response SHA256 and retained raw JSON. Dataset update is **not** publication or observation date. Country views show values rounded to two decimals; JSON exports retain exact normalized values. World Bank identifies these indicator datasets as CC BY 4.0; attribution identifies WDI and the original providers. See https://data.worldbank.org/summary-terms-of-use and the linked indicator definitions.
 
@@ -22,8 +22,8 @@ Exact statistical observations are rendered from validated records. Model prose 
 
 ## Evidence limits
 
-These series describe national sector context. They do not establish crop demand, buyer interest, export eligibility, available farmland, tenure, soil quality, irrigation, returns or shipment approval. The employment series is a modeled estimate. Provider footnotes were not requested; indicator and country metadata require further review. The catalog is a dated snapshot, not a live data service.
+These series describe national sector context. They do not establish crop demand, buyer interest, export eligibility, available farmland, tenure, soil quality, irrigation, returns or shipment approval. The employment series is a modeled estimate. Provider footnotes were not requested; indicator and country metadata require further review. The catalog is a dated snapshot, not a live data service. A curator collection command stages bounded source reads, raw files, exact checksums and collection gaps; failed refreshes retain previous verified data. Each series has its own retrieval date. See docs/STATISTICS_COLLECTION.md.
 
 Live verification retrieved all three Nepal series through the secured source reader. A separate actual Qwen3-4B worker run reached pending review in an isolated QA world with three live sources and a valid audit chain. The model draft was unusable and withheld; exact statistical observations were retained. No production account, independent acceptance, adoption or outbound contact was created by that verification.
 
-Verification: 131 automated tests passed; the expanded statistics integration also verifies the unusable-draft fallback. Browser verification covers dated figures and a missing observation in the annual table.
+Verification: 144 automated tests passed; the expanded statistics integration also verifies the unusable-draft fallback. Browser verification covers dated figures and a missing observation in the annual table.

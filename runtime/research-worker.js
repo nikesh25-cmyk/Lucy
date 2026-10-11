@@ -67,8 +67,12 @@ async function pinnedSource(url,addresses,signal,{limit=1_000_000,pdf=false,json
   });
 }
 
-export async function readSource(value,domains,{fetchImpl=fetch,resolve=lookup,signal}={}){
-  const url=approvedSource(value,domains),addresses=await resolve(url.hostname,{all:true});
+function sourceAwait(promise,signal){
+ if(!signal)return promise;
+ return new Promise((resolve,reject)=>{const aborted=()=>reject(signal.reason||new Error('Source request aborted.'));signal.addEventListener('abort',aborted,{once:true});if(signal.aborted)aborted();Promise.resolve(promise).then(value=>{signal.removeEventListener('abort',aborted);resolve(value);},error=>{signal.removeEventListener('abort',aborted);reject(error);});});
+}
+export async function readSource(value,domains,{fetchImpl=fetch,resolve=lookup,signal,retainRaw=false}={}){
+  signal?.throwIfAborted();const url=approvedSource(value,domains),addresses=await sourceAwait(resolve(url.hostname,{all:true}),signal);
   if(!addresses.length||addresses.some(item=>!publicAddress(item.address)))throw new Error('Source resolves to a private or reserved address.');
   const spec=statisticsRequest(url),json=Boolean(spec),pdf=url.href===pdfReview.sourceUrl,limit=pdf?pdfReview.downloadBytes:1_000_000;
   const response=fetchImpl===globalThis.fetch?await pinnedSource(url,addresses,signal,{limit,pdf,json}):await fetchImpl(url,{redirect:'error',signal,headers:{Accept:pdf?'application/pdf':json?'application/json':'text/html,text/plain','User-Agent':'Lucy-Research/1.0'}});
@@ -78,7 +82,7 @@ export async function readSource(value,domains,{fetchImpl=fetch,resolve=lookup,s
   let size=0;const chunks=[];for await(const chunk of response.body){size+=chunk.length;if(size>limit)throw new Error(pdf?'PDF exceeds its reviewed edition size.':'Source exceeds one megabyte.');chunks.push(chunk);}
   if(pdf)return {url:url.href,retrieved:new Date().toISOString(),...reviewedPdf(Buffer.concat(chunks))};
   const raw=Buffer.concat(chunks).toString('utf8');
-  if(spec)return {url:url.href,retrieved:new Date().toISOString(),sha256:createHash('sha256').update(Buffer.concat(chunks)).digest('hex'),...normalizeStatistics(raw,spec)};
+  if(spec)return {url:url.href,retrieved:new Date().toISOString(),sha256:createHash('sha256').update(Buffer.concat(chunks)).digest('hex'),...normalizeStatistics(raw,spec),...(retainRaw?{raw_json:raw}:{})};
   const title=(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(raw)?.[1]||url.hostname).replace(/<[^>]+>/g,'').trim().slice(0,200);
   const extracted=extractSource(raw,type);if(!extracted.text)throw new Error('Source contains no readable text.');
   return {url:url.href,title:readableEntities(title),sha256:createHash('sha256').update(raw).digest('hex'),retrieved:new Date().toISOString(),text:extracted.text.slice(0,8000),quote:extracted.text.split(/\s+/).slice(0,24).join(' '),location:extracted.location,declared_published:extracted.declared_published};

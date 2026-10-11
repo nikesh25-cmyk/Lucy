@@ -29,7 +29,7 @@ test('typed JSON reader shares source host, DNS and byte limits; arbitrary JSON 
   await assert.rejects(readSource(url,['api.worldbank.org'],{resolve,fetchImpl:async()=>new Response(raw,{headers:{'content-type':'application/json','content-length':'1000001'}})}),/megabyte/);
 });
 test('snapshots reconcile to raw hashes and country baseline updates preserve activated tasks',async t=>{
-  const f=await fixture(t),snapshot=f.platform.countryEvidence(null,{country:'NP'});assert.equal(snapshot.snapshot.series.length,3);assert.equal(f.platform.countryEvidence(null,{country:'ZM'}).snapshot,null);assert.throws(()=>f.platform.countryEvidence(null,{country:'XX'}),{status:400});
+  const f=await fixture(t),snapshot=f.platform.countryEvidence(null,{country:'NP'});assert.equal(snapshot.snapshot.series.length,3);assert.equal(f.platform.countryEvidence(null,{country:'AQ'}).snapshot,null);assert.throws(()=>f.platform.countryEvidence(null,{country:'XX'}),{status:400});
   const catalog=JSON.parse(readFileSync(new URL('../catalog/agriculture-statistics.json',import.meta.url)));
   for(const country of catalog.countries)for(const series of country.series){const bytes=readFileSync(new URL('../'+series.raw_file,import.meta.url));assert.equal(series.sha256,createHash('sha256').update(bytes).digest('hex'));assert.deepEqual(series.points,normalizeStatistics(bytes.toString('utf8'),statisticsRequest(new URL(series.url))).structured_data.points);}
   const lead=f.platform.research(null,{country:'NP',goal:2,stage:'baseline',q:'Establish'}).leads.find(item=>item.id==='NP-2-baseline');assert.equal(lead.source_urls.length,5);
