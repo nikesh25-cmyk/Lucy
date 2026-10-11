@@ -33,9 +33,9 @@ async function recoverBrowserSession(){
  clearBrowserOperator();notice('Your session ended. Sign in again to continue; saved drafts remain available.');
  sessionRecovery=(async()=>{try{await refresh(false);render();notice('Your session ended. Sign in again to continue; saved drafts remain available.');}catch{notice('Your session ended. Public pages could not refresh; try again when the world is reachable.',true);}finally{sessionRecovery=null;}})();return sessionRecovery;
 }
-async function api(path, method = 'GET', body, idempotent = false) {
+async function api(path, method = 'GET', body, idempotent = false, requestKey=null) {
   const sessionEpoch=state.sessionEpoch||0;const operator=state.account?.id;
-  const response = await fetch(`/api/v1${path}`, { method, credentials: 'same-origin', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(idempotent ? { 'Idempotency-Key': crypto.randomUUID() } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const response = await fetch(`/api/v1${path}`, { method, credentials: 'same-origin', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...((idempotent||requestKey) ? { 'Idempotency-Key': requestKey||crypto.randomUUID() } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const content = await response.json().catch(() => ({}));
   if(sessionEpoch!==(state.sessionEpoch||0))throw Object.assign(new Error('The operator session changed while this request was pending.'),{status:401,sessionEnded:true});
   if(operator&&(response.status===401||response.headers.get('X-Lucy-Session')==='expired')&&!path.startsWith('/auth/')){await recoverBrowserSession();throw Object.assign(new Error('Your session ended.'),{status:401,sessionEnded:true});}
@@ -291,6 +291,7 @@ function renderMissions(parent) {
     else node.append(paragraph(`Owner: ${mission.owner || 'Unassigned'} · Reviewer: ${mission.reviewer || 'Unassigned'}`, 'privacy'));
     disclosure(node,'Acceptance criteria',(body)=>body.append(paragraph(mission.rubric)));
     for (const task of state.tasks.filter((t)=>t.mission_id===mission.id)) { const section=element('article',null,'task'); append(section,element('h3',task.title),badge(task.status),paragraph(task.instructions),paragraph(`Rights: ${task.rights}`,'privacy')); if (task.allowed_domains?.length) section.append(paragraph(`Approved source hosts: ${task.allowed_domains.join(', ')}`,'privacy'));
+      if(task.origin_submission_id){section.append(paragraph(`Follow-up to submission ${task.origin_submission_id} · Version ${task.origin_version} · Source status: ${task.origin_status.replaceAll('_',' ')}`,'privacy'));if(task.origin_status==='accepted'){const link=element('a','Download source briefing','evidence-download');link.href=`/api/v1/briefing?submission=${encodeURIComponent(task.origin_submission_id)}&format=html`;link.download='';section.append(link);}}
       if (task.status==='open' && ['open','demo'].includes(mission.status)) { const claim = button(state.account ? 'Claim for my character' : 'Sign in to claim', async () => { if (!state.account) { openAuth('login');return; } if (!selected()) { state.tab='characters';render();notice('Create or select a character first.');return; } await change('/claims',{task_id:task.id,agent_id:state.selected},'Task claimed for 20 minutes. Prepare your evidence in My contributions.',true);state.tab='history';render(); },'small');section.append(claim); }
       node.append(section);
     }
@@ -438,8 +439,21 @@ function renderGallery(parent) {
   const grid=element('div',null,'grid');for(const record of state.gallery){const node=card(record.mission,record.demo?'PRACTICE CONTRIBUTION':'REVIEWED CONTRIBUTION');append(node,badge(record.demo?'demo':'accepted'),paragraph(`By ${record.contributor} · Version ${record.version}`,'privacy'),record.brief?decisionBriefView(record.brief,true):paragraph(record.artifact,'artifact'));sources(node,record.sources);append(node,reviewReasonView(`Reviewed by ${record.reviewer}`,record.reason),paragraph(`Limits: ${record.limitations}`,'muted'),paragraph(`${record.adoption_count} documented uses`,'privacy'));
     const packetLinks=['html','json'].map(format=>{const link=element('a',format==='html'?'Download readable briefing':'Download briefing JSON','secondary small evidence-download');link.href=`/api/v1/briefing?submission=${encodeURIComponent(record.id)}&format=${format}`;link.download='';return link;});node.append(actions(...packetLinks),paragraph('The readable file opens in a browser and can be printed. Sources, review and remaining gaps stay with the recommendation.','privacy'));
     if(state.account)node.append(button('Report contribution',()=>reportPrompt('submission',record.id),'secondary small'));
-    const mission=state.missions.find((m)=>m.title===record.mission);if(mission?.owner_id===state.account?.id)disclosure(node,'Record real use of this contribution',(body)=>{const inputs=form(body,'Record adoption',async(data)=>change('/adoptions',{submission_id:record.id,note:data.note},'Use recorded.'));field(inputs,'note','Where and how the work was used',{type:'textarea',max:2000,full:true});});
+    const sourceTask=state.tasks.find(task=>task.id===record.task_id),mission=state.missions.find(item=>item.id===sourceTask?.mission_id);if(mission&&isReviewer()&&(state.account.role==='admin'||mission.owner_id===state.account.id)&&['open','demo'].includes(mission.status))followUpForm(node,record,sourceTask,mission);if(mission?.owner_id===state.account?.id)disclosure(node,'Record real use of this contribution',(body)=>{const inputs=form(body,'Record adoption',async(data)=>change('/adoptions',{submission_id:record.id,note:data.note},'Use recorded.'));field(inputs,'note','Where and how the work was used',{type:'textarea',max:2000,full:true});});
     grid.append(node);}parent.append(grid);
+}
+function followUpForm(node,record,sourceTask,mission){
+ disclosure(node,'Create follow-up work from this evidence',body=>{
+  body.append(paragraph(`The new task stays in ${mission.title}, with its existing beneficiary, independent reviewer and acceptance criteria. Source version ${record.version} is retained. Specify one deliverable and the evidence needed; the gap itself is not an instruction to contact anyone.`,'privacy'));
+  const key=crypto.randomUUID(),inputs=form(body,'Create linked follow-up task',async data=>{
+   await api('/tasks/follow-up','POST',{submission_id:record.id,title:data.title,instructions:data.instructions,rights:data.rights,allowed_domains:data.domains.split(',').map(value=>value.trim()).filter(Boolean)},false,key);
+   await refresh();state.tab='missions';render();notice('Linked follow-up task created. It follows this mission’s review criteria.');
+  });
+  field(inputs,'title','Follow-up task title',{max:100,value:'Resolve evidence gap: '+(record.brief?.title||sourceTask.title).slice(0,75),full:true});
+  field(inputs,'instructions','Follow-up deliverable and evidence requirements',{type:'textarea',max:2000,value:record.brief?`Evidence to resolve: ${record.brief.evidence_gaps}`.slice(0,2000):'',full:true,hint:'Replace broad gaps with a scoped deliverable, source locations, applicability checks and uncertainty requirements.'});
+  field(inputs,'rights','Follow-up rights and permissions',{type:'textarea',max:2000,value:sourceTask.rights,full:true});
+  field(inputs,'domains','Follow-up approved source hosts',{required:!mission.demo,max:1000,value:sourceTask.allowed_domains.join(', '),full:true,hint:'Comma-separated exact hostnames. Confirm any additional authority before including its sources.'});
+ });
 }
 function renderOwner(parent) {
   parent.append(heading('Mission studio','Give each mission a real owner, beneficiary, reviewer, and acceptance criteria before opening it to agents.'));
