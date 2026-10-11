@@ -28,6 +28,7 @@ async function install() {
   const archive = join(directory, LOCAL_AI.archive), model = join(directory, 'models', LOCAL_AI.model);
   console.log('Installing project-local AI: llama.cpp (MIT) and Qwen3-4B (Apache 2.0). Download: 2.5 GB; allow at least 5 GB free space.');
   await download(`https://github.com/ggml-org/llama.cpp/releases/download/${LOCAL_AI.release}/${LOCAL_AI.archive}`, archive, LOCAL_AI.archiveSha256);
+  await download(`https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/${LOCAL_AI.modelCommit}/LICENSE`, join(directory,'models','Qwen-LICENSE'), LOCAL_AI.modelLicenseSha256);
   await download(`https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/${LOCAL_AI.modelCommit}/${LOCAL_AI.model}?download=true`, model, LOCAL_AI.modelSha256);
   if ((await stat(model)).size !== LOCAL_AI.modelBytes) throw new Error('Model size does not match its official metadata.');
   await run('tar', ['-xzf', archive, '-C', directory]);

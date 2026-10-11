@@ -13,6 +13,7 @@ export const LOCAL_AI = Object.freeze({
   model: 'Qwen3-4B-Q4_K_M.gguf',
   modelCommit: 'bc640142c66e1fdd12af0bd68f40445458f3869b',
   modelSha256: '7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5',
+  modelLicenseSha256: '5de36594c10839788a8c589443a8ef9d8b8d17c65a1b5807206ae037fc36c6bd',
   modelBytes: 2497280256,
 });
 
