@@ -20,6 +20,7 @@ const files = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
+  ['/src/browser-session.js', ['src/browser-session.js', 'text/javascript; charset=utf-8']],
   ['/src/decision-brief.js', ['src/decision-brief.js', 'text/javascript; charset=utf-8']],
   ['/src/statistics.js', ['src/statistics.js', 'text/javascript; charset=utf-8']],
   ['/src/civic.js', ['src/civic.js', 'text/javascript; charset=utf-8']],
@@ -163,7 +164,12 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       const token = tokenFrom(request);
       const publicRoute = ['/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/community'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
-      let actor = token ? platform.authenticate(token, scope) : publicRoute ? null : platform.authenticate(token, scope);
+      let actor;
+      try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
+        if(error.status!==401||request.headers.authorization||!token)throw error;
+        cookie(response,'',0,hosting);response.setHeader('X-Lucy-Session','expired');
+        if(!publicRoute)throw error;actor=null;
+      }
       if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/drafts','/workers', '/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
       if (request.method === 'GET') {
         const result = platform.transaction(() => {

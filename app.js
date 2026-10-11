@@ -1,3 +1,4 @@
+import { clearOperatorState } from './src/browser-session.js';
 import { normalizeDecisionBrief, serializeDecisionBrief, decisionBriefText } from './src/decision-brief.js';
 import { draw, landmarkAt, start, landmarks, getWorldDefinition, drawMiniMap } from './world.js';
 import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
@@ -21,11 +22,23 @@ const date = (value) => value ? new Date(value).toLocaleString() : '—';
 const isReviewer = () => ['admin', 'reviewer'].includes(state.account?.role);
 const isModerator = () => ['admin', 'moderator'].includes(state.account?.role);
 function notice(message, error = false) { const node = error && $('#auth-dialog').open ? $('#auth-notice') : $('#notice'); node.textContent = message; node.className = error ? 'error' : ''; node.hidden = false; node.setAttribute('role',error?'alert':'status'); }
-async function guarded(action) { try { await action(); } catch (error) { notice(error.message || 'This action could not be completed.', true); } }
+async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
+let sessionRecovery=null;
+function clearBrowserOperator(){
+ clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();render();
+}
+async function recoverBrowserSession(){
+ if(sessionRecovery)return sessionRecovery;
+ clearBrowserOperator();notice('Your session ended. Sign in again to continue; saved drafts remain available.');
+ sessionRecovery=(async()=>{try{await refresh(false);render();notice('Your session ended. Sign in again to continue; saved drafts remain available.');}catch{notice('Your session ended. Public pages could not refresh; try again when the world is reachable.',true);}finally{sessionRecovery=null;}})();return sessionRecovery;
+}
 async function api(path, method = 'GET', body, idempotent = false) {
+  const sessionEpoch=state.sessionEpoch||0;const operator=state.account?.id;
   const response = await fetch(`/api/v1${path}`, { method, credentials: 'same-origin', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(idempotent ? { 'Idempotency-Key': crypto.randomUUID() } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const content = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(content.error || `Request failed (${response.status}).`);
+  if(sessionEpoch!==(state.sessionEpoch||0))throw Object.assign(new Error('The operator session changed while this request was pending.'),{status:401,sessionEnded:true});
+  if(operator&&(response.status===401||response.headers.get('X-Lucy-Session')==='expired')&&!path.startsWith('/auth/')){await recoverBrowserSession();throw Object.assign(new Error('Your session ended.'),{status:401,sessionEnded:true});}
+  if (!response.ok) throw Object.assign(new Error(content.error || `Request failed (${response.status}).`),{status:response.status});
   return content;
 }
 function field(form, name, labelText, { type = 'text', options, required = true, value = '', max, min, hint, full = false } = {}) {
@@ -105,18 +118,18 @@ $('#close-auth').addEventListener('click',()=>$('#auth-dialog').close());
 function finishAuth(){if($('#auth-dialog').open)$('#auth-dialog').close();$('#auth-notice').hidden=true;}
 function renderSession() {
   const node=$('#session-bar');node.replaceChildren();const hero=$('#hero-actions');hero.replaceChildren();
-  if(state.account){const profile=element('div',null,'session-profile');append(profile,element('span',state.account.name.slice(0,1).toUpperCase(),'profile-avatar'),append(element('span',null,'session-label'),element('strong',state.account.name),element('small',state.account.role)));node.append(profile,button('Sign out',async()=>{await api('/auth/logout','POST',{});state.account=null;state.agents=[];state.selected='';state.viewWorld='';state.focus=null;state.tab='world';await refresh(false);render();notice('Signed out. Your agents and their world positions are saved.');},'secondary small'));}
+  if(state.account){const profile=element('div',null,'session-profile');append(profile,element('span',state.account.name.slice(0,1).toUpperCase(),'profile-avatar'),append(element('span',null,'session-label'),element('strong',state.account.name),element('small',state.account.role)));node.append(profile,button('Sign out',async()=>{try{await api('/auth/logout','POST',{});}catch(error){if(error.status!==401)throw error;}clearBrowserOperator();await refresh(false);render();notice('Signed out. Your agents and their world positions are saved.');},'secondary small'));}
   else {node.append(button('Sign in',()=>openAuth('login'),'secondary small'),button(state.setup?'Create first account':'Create account',()=>openAuth('register'),'small'));hero.append(button('Explore the world',()=>{state.tab='world';renderTabs();renderView();$('#view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}),button('Make a character',()=>openAuth('register'),'secondary'));}
 }
 function renderAuth() {
   const node = $('#auth-area'); node.replaceChildren(); if (state.account) { finishAuth(); return; }
   $('#auth-title').textContent=state.authMode==='login'?'Welcome back':state.setup?'Plant the first seed':'Make yourself at home';const tabs=$('#auth-tabs');tabs.replaceChildren();for(const [mode,label]of[['login','Sign in'],['register',state.setup?'Create first account':'Create account']]){const item=button(label,()=>{state.authMode=mode;renderAuth();});item.setAttribute('aria-pressed',String(state.authMode===mode));tabs.append(item);}
   const grid = element('div', null, 'auth-panels'); const login = card('Welcome back', 'OPERATOR ACCESS'); login.append(paragraph('Sign in to manage your agents and oversee their time in the world.', 'muted'));
-  const inputs = form(login, 'Sign in', async (data, node) => { const result = await api('/auth/login', 'POST', data); node.reset(); state.account = result.account; finishAuth(); await refresh(); render(); notice('Welcome back. Choose a character to enter the world.'); });
+  const inputs = form(login, 'Sign in', async (data, node) => { const result = await api('/auth/login', 'POST', data); node.reset();state.sessionEpoch=(state.sessionEpoch||0)+1; state.account = result.account; finishAuth(); await refresh(); render(); notice('Welcome back. Choose a character to enter the world.'); });
   field(inputs, 'email', 'Email', { type: 'email' }); field(inputs, 'password', 'Password', { type: 'password', max: 128 });
   const signup = card(state.setup ? 'Plant the first seed' : 'Join the community', 'CREATE AN OPERATOR ACCOUNT');
   signup.append(paragraph(state.setup ? 'The first account becomes the local administrator. You can then invite operators, reviewers, and moderators.' : 'Agents get a home in the world. An invited adult operator creates their account and remains responsible for their participation.', 'muted'));
-  const register = form(signup, state.setup ? 'Create the first account' : 'Create account', async (data, node) => { const result = await api('/auth/register', 'POST', { ...data, consent: data.consent === 'on' }); node.reset(); state.account = result.account; state.setup = false; finishAuth(); await refresh(); state.tab = 'characters'; render(); notice('Your account is ready. Create your first agent character.'); });
+  const register = form(signup, state.setup ? 'Create the first account' : 'Create account', async (data, node) => { const result = await api('/auth/register', 'POST', { ...data, consent: data.consent === 'on' }); node.reset();state.sessionEpoch=(state.sessionEpoch||0)+1; state.account = result.account; state.setup = false; finishAuth(); await refresh(); state.tab = 'characters'; render(); notice('Your account is ready. Create your first agent character.'); });
   field(register, 'name', 'Operator display name', { max: 40 }); field(register, 'email', 'Private contact email', { type: 'email', max: 254 });
   const password = field(register, 'password', 'Password', { type: 'password', min: 12, max: 128, hint: 'At least 12 characters.' }); password.autocomplete = 'new-password';
   if(state.setup && state.setupCodeRequired){const setupCode=field(register,'setup_code','Private setup code',{type:'password',max:256,full:true,hint:'Use the private code from your hosting dashboard to create the first administrator. Keep it confidential.'});setupCode.autocomplete='off';}
