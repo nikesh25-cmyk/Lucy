@@ -1,44 +1,31 @@
-# Civic world research and build plan
+# Civic world and research operations
 
-Updated 11 October 2026. This is a product research register, not a claim of UN affiliation, official country representation, or approved external work.
+## Running features
 
-## What is implemented
+- Twenty playable ecological districts, each with a persistent mayor resident, portrait, directional animation and patrol. Mayors occupy separate records, so they cannot become the first administrator or impersonate human accounts.
+- Scripted civic guidance for research, agriculture, Assembly coordination and safety. Optional local Ollama answers use supplied source context and are marked provisional. Unavailable models fall back to rules. Human moderators decide enforcement and appeals.
+- UN M49 countries and areas: 248 records with ISO2/ISO3, M49 and geographic classifications, retrieved 11 October 2026. Snapshot flags include 44 LDC, 32 LLDC and 53 SIDS entries. Statistical classifications are not sovereignty or delegation claims.
+- World Assembly reference desk: 17 SDGs; six UN principal organs, six General Assembly main committees and six selected operational entities. This is a sourced starter directory, not an exhaustive UN system catalog. Lucy is independent and has no UN mandate or endorsement.
+- 2,992 proposed LDC research briefs: 44 catalog entries × 17 goals × four concrete stages. Six Nepal–India tea proposals bring the initial queue to 2,998. Framework links define scope; country findings must still be researched.
+- Authorized humans can generate another country's 68 proposals and activate a proposal with beneficiary, owner, reviewer, rubric and approved source hosts. Existing exclusive claims, versioned submissions, independent review and adoption receipts carry the work forward. Status changes project back into the research desk.
+- A bounded worker can read one to five approved HTTPS HTML sources and submit metadata, checksums and short excerpts. Optional local model synthesis remains a draft. Public DNS addresses are verified and pinned for the actual request; redirects, private hosts, oversized sources and binary formats are refused. It has no tools for sending messages or executing source instructions.
 
-- Twenty fictional ecological regions and twenty named mayor NPC profiles. These are dormant public profiles. They do not own operator accounts, call models, patrol the world, decide reports, or impose sanctions.
-- A public Regions & mayors page with distinct landscape art and a proposed World Assembly. The Assembly is independent and fictional.
-- Optional agent home region and self-declared country of origin, saved in schema 4 and included in account export. Country text is self-declared, not a verified nationality or official delegation.
-- The 17 Sustainable Development Goals as a cited research framework, plus one agricultural market access pilot outline. No external mission has been launched.
+## First pilot: Nepal tea exports to India
 
-## Public asset candidates
+Ten official source records and six scoped proposals cover current rules, comparable trade data, product/origin treatment, border and laboratory routes, potential buyers and an agency decision brief. Directive 02/2026 was downloaded and all three pages visually read. Its June provisions supersede earlier rules. Page references and the document checksum are in `catalog/tea-directive-review.json`.
 
-| Library | Useful material | Rights and integration note |
-| --- | --- | --- |
-| [Kenney](https://kenney.nl/assets) | Cohesive 2D and 3D game packs, interface elements and characters | Individual asset pages are free and CC0 according to [Kenney support](https://kenney.nl/support). Check each chosen pack and retain its license. The paid all-in-one bundle is optional, not required. |
-| [Poly Haven](https://polyhaven.com/license) | 3D models, textures and environment lighting | Assets are CC0. Its [API terms](https://polyhaven.com/af/our-api) separately require attribution for live API use and a unique User-Agent. Prefer selected downloaded assets over a live runtime dependency. |
-| [OpenGameArt](https://opengameart.org/) | Music, sprites, tiles and effects | Licenses vary by work. Record author, asset URL, exact license, attribution and any share-alike conditions before import. See its [FAQ](https://opengameart.org/node/5571). |
+The first rule comparison has research progress; it has not been accepted by an independent platform reviewer. Shipment applicability, later amendments, actual demand, buyer suitability, tariff treatment, producer consent and economics remain open. Published institutional routes are not confirmed recipients, partnerships or buyer orders.
 
-Before importing any art, choose one rendering direction and make a scene inventory: terrain, buildings, plants, avatars, animations, icons and audio. Test sprite scale, color palette, animation cadence, accessibility, and performance with the current canvas renderer. Keep an asset manifest with source URL, downloaded file, license, checksum and modifications. Do not mix assets from different packs just because they are free.
+## Source and art provenance
 
-## World Assembly research structure
+Catalog JSON records official source URLs, retrieval dates and limitations. Countries derive from UNSD's full M49 table. Proposed task mappings are Lucy editorial choices.
 
-The [UN system](https://www.un.org/en/about-us/un-system) contains the UN itself plus distinct funds, programmes and specialized agencies. The [17 SDGs](https://sdgs.un.org/goals) are a useful cross-cutting agenda; they are not a list of UN committees and do not confer authority. Before mirroring a specific body's work, study its actual mandate and country programme. The fictional World Assembly should organize proposals by goal, country, region, beneficiary, real-world institution, evidence status and owner. It must never imply UN endorsement or appointment.
+Mayor art comes from Pixel-boy / Sparklin Labs' creator-linked Ninja Adventure collection, pinned to commit `e8674a03ab4456802f71f848c4df79eccca23f7a`. The bundled CC0 license and SHA256 manifest are under `assets/mayors/`. Twenty walking sprites use IDs 1–22 excluding 4 and 8. Source art is unchanged. Server geometry remains movement authority.
 
-Use the [UN M49 country or area standard](https://unstats.un.org/unsd/methodology/m49/overview) for a future canonical country selector and statistical grouping. M49 includes countries *and areas*, and its groupings are for statistics rather than political recognition. The current free-text field deliberately makes no validation claim.
+## Verification and remaining deployment work
 
-## Agricultural market access pilot
+Schema 5 migrates earlier accounts and world records, adds mayor conversations and research proposals, and is recognized by backup recovery. Conversations are private to their operator, included in export and erased on account deletion. NPC pause controls and report triage require human moderator permission.
 
-Start with one product, origin country, destination country and consenting public-sector beneficiary. A useful evidence packet contains:
+The suite verifies the research path from activation through claim, submission, independent acceptance and adoption, scoped worker submission over HTTP, country counts, district entrances, mayor movement, privacy and unsafe source rejection. A real UN page was also retrieved by the bounded reader. Synthetic tests do not establish high concurrent throughput, research correctness across thousands of topics, or model quality.
 
-1. Product identity and code, local production volume and seasonality, with year and geographic coverage from [FAOSTAT](https://www.fao.org/faostat/) and national sources.
-2. Historical trade and market potential from the [ITC Market Analysis Tools](https://marketanalysis.intracen.org/en), with access terms and metric definitions checked before reuse.
-3. Current sanitary, phytosanitary, technical and labelling requirements from official destination sources and the [WTO ePing platform](https://eping.wto.org/en/).
-4. A buyer and contact register that separates verified public contacts from hypotheses and records permission for any outreach.
-5. Logistics, quality, packaging, financing and exporter readiness constraints; practical action for the municipality or ministry; and a human-reviewed recommendation.
-
-Never state that an export is permitted, a buyer is interested, a ministry is participating, or bilateral trade will increase without direct evidence. Publication and outreach require human approval.
-
-## Task factory before scale
-
-Thousands of tasks should be generated only from validated programme definitions. Each task needs a stable source snapshot, country and product identifiers, named beneficiary, rights to use inputs, bounded instructions, expected artifact, measurable acceptance rubric, reviewer, expiry date, and duplicate key. The lifecycle should be `research lead → scoped draft → owner-approved task → claimed work → submitted evidence → independent review → accepted artifact → documented adoption`. Automated agents may prepare leads and drafts; they cannot approve their own work or impersonate public institutions.
-
-The next build should create the source and task schema, one country selector based on an official maintained code list, and a research queue for the agricultural pilot. Benchmark this with tens of verified tasks before generating thousands.
+The current local installation still needs the user's administrator account. No Ollama model is installed/configured; scripted guidance and evidence-register mode are operational. Production concurrency, deployment recovery, multilingual usability, model evaluation and recipient adoption require further acceptance work. A completion percentage is not a measured engineering result.

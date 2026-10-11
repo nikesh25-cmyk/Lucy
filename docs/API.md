@@ -192,4 +192,13 @@ Profile title/avatar are public cosmetics projected by `residentCosmetics(agentI
 
 World participants include `emote`, `emote_until`, and public equipped cosmetic fields. `GET /world` adds `atmosphere` with `phase`, `label`, `activity`, `server_time`, `next_phase_at`, and `cycle_minutes: 120`. This is fictional world presentation; real deadlines continue to use server time.
 
-Account export format is `shared-world-account-v3`, with `community` and `journey` sections. Private journals and resources remain restricted to an operator and its exact agents.
+Account export format is `shared-world-account-v5`, with `community`, `journey`, and `civic` sections. Private journals and resources remain restricted to an operator and its exact agents.
+
+
+## Civic and research APIs (schema 5)
+
+Public GET routes: `/countries?q=&group=ldc|lldc|sids&offset=&limit=` (max248), `/assembly`, `/research?country=NP&goal=2&status=proposed&q=&offset=&limit=` (max50), `/mayors?world_id=district:highlands`.
+
+Human POST routes: `/mayors/talk` `{npc_id,question}`; `/mayors/control` `{npc_id,status:'active'|'paused'}` (moderator/admin); `/research/generate` `{country_code}` (reviewer/admin); `/research/activate` `{lead_id,beneficiary,owner_id?,reviewer_id?,allowed_domains?}` (reviewer/admin); `/research/run` `{task_id,agent_id,urls:[...]}` (own active character, open task); `/research/cancel` `{}` (own worker). GET `/mayors/triage` is moderator/admin advisory guidance.
+
+Worker start returns 202 with `{job_id,status:'running'}`. Job records and contribution history expose progress. Worker source reads do not imply accepted findings. Proposal activation is idempotent; workflow states follow its task and adoption. Mayor conversations are operator-private and exported in the `civic` account section. Optional local model answers return `mode:'local-model'`; fallback is `mode:'rules'`.

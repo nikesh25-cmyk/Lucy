@@ -34,10 +34,10 @@ async function launch() {
   let port = basePort;
   while (port < basePort + 10 && !await availablePort(port)) port++;
   if (port === basePort + 10) throw new Error('No available local port. Close another application or set PORT to a different number.');
-  const url = `http://${host}:${port}`;
+  let url = `http://${host}:${port}`;
   const child = spawn(process.execPath, [join(root, 'server.js')], {
     cwd: root, stdio: ['inherit', 'pipe', 'inherit'], shell: false,
-    env: { ...process.env, PORT: String(port), LUCY_BIND_HOST: host, LUCY_PUBLIC_ORIGIN: '', RENDER_EXTERNAL_URL: '' },
+    env: { ...process.env, PORT: String(port), LUCY_BIND_HOST: host, LUCY_PUBLIC_ORIGIN: '', RENDER_EXTERNAL_URL: '', LUCY_LOCAL_PORT_FALLBACK: '1' },
   });
   let ready = false;
   let buffer = '';
@@ -46,6 +46,7 @@ async function launch() {
     buffer = (buffer + chunk.toString()).slice(-2048);
     if (!ready && buffer.includes('Shared World is ready at ')) {
       ready = true;
+      url = /Shared World is ready at (http:\/\/127\.0\.0\.1:\d+)/.exec(buffer)?.[1] || url;
       console.log(`\nYour world: ${url}\nKeep this window open. Press Ctrl+C to stop; your world is saved.\nCreate your administrator account in the browser on first launch.\n`);
       void openBrowser(url);
     }

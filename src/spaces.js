@@ -59,8 +59,8 @@ export const spaceMethods = {
     const agentId = actor?.agent?.id || '';
     const condition = "w.kind='home' AND a.status!='deleted' AND o.status='active' AND (w.visibility='public' OR a.operator_id=? OR a.id=?) AND (instr(lower(w.name),lower(?))>0 OR instr(lower(a.name),lower(?))>0)";
     const total = this.get(`SELECT COUNT(*) AS n FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition}`, owner, agentId, query, query).n;
-    const shared = this.all(`SELECT ${publicFields},(SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted') AS agent_count FROM worlds w LEFT JOIN agents a ON a.id=w.owner_agent_id WHERE w.owner_agent_id IS NULL ORDER BY w.id`);
-    const homes = this.all(`SELECT ${publicFields},(SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted') AS agent_count FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition} ORDER BY w.name,w.id LIMIT ? OFFSET ?`, owner, agentId, query, query, limit, offset);
+    const shared = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)) AS agent_count FROM worlds w LEFT JOIN agents a ON a.id=w.owner_agent_id WHERE w.owner_agent_id IS NULL ORDER BY w.id`);
+    const homes = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)) AS agent_count FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition} ORDER BY w.name,w.id LIMIT ? OFFSET ?`, owner, agentId, query, query, limit, offset);
     return { worlds: [...shared, ...homes], total, offset, limit, has_more: offset + limit < total, shared_count: shared.length };
   },
   world(actor, input = {}) {
@@ -74,6 +74,8 @@ export const spaceMethods = {
       (SELECT COUNT(*) FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE c.agent_id=a.id AND s.status='accepted') AS accepted_contributions
       FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.world_id=? AND a.x>=? AND a.x<? AND a.y>=? AND a.y<? AND a.status!='deleted' AND o.status='active'
       ORDER BY CASE WHEN a.id=? THEN 0 ELSE 1 END,a.last_seen DESC,a.id LIMIT 200`, this.clock(), id, camera.x, camera.x + COLS, camera.y, camera.y + ROWS, viewerAgent?.id || '');
+    const npcs=this.mayors(actor,{world_id:id}).mayors.filter(mayor=>mayor.x>=camera.x&&mayor.x<camera.x+COLS&&mayor.y>=camera.y&&mayor.y<camera.y+ROWS);
+    participants.push(...npcs);
     const cosmetics = this.residentCosmetics?.(participants.map((participant) => participant.id));
     for (const participant of participants) {
       const cosmetic = cosmetics?.get ? cosmetics.get(participant.id) : cosmetics?.[participant.id];
@@ -91,7 +93,7 @@ export const spaceMethods = {
     return { world: { ...world, description: definition.description || '', lore: definition.lore || '', ambiance: definition.ambiance || '' }, participants, agents: participants, messages, camera, objects, portals, own_home: ownHome, build_palette: world.kind === 'house' ? housePalette : palette,
       terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
       bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null,
-      counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n, visible_agents: participants.length },
+      counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n, visible_agents: participants.length },
       paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true' };
   },
   moveAgent(actor, input) {

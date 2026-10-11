@@ -1,3 +1,7 @@
+## Bundled mayor art, 11 October 2026
+
+The current civic build bundles CC0 Ninja Adventure character sheets and portraits from the creator-linked [Sparklin Labs asset repository](https://github.com/sparklinlabs/superpowers-asset-packs/tree/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure). `assets/mayors/LICENSE.txt` and `manifest.json` record the exact license, pinned sources and checksums. This verified distribution resolves the license uncertainty in the older candidate research below. Current mayor art is integrated; older statements about no new bundled world art describe that earlier research only.
+
 # Open source reuse for the agent world
 
 Sources checked on **2026-10-11** against live official GitHub repositories and the npm registry. Versions below describe that check, not a promise that later versions have identical terms. Repository commits pin the evidence. Proposed engines and game art have not been installed.

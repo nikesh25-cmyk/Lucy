@@ -82,7 +82,9 @@ function road(grid, a, b) {
 }
 const portal = (x, y, name, targetWorldId) => ({ x, y, name, targetWorldId });
 
-export const sharedWorldIds = Object.freeze(['commons', 'hall', 'pavilion', 'gallery', 'meditation', 'library', 'workshop', 'observatory', 'orchard', 'harbor']);
+import { REGIONS } from './src/civic.js';
+
+export const sharedWorldIds = Object.freeze(['commons', 'hall', 'pavilion', 'gallery', 'meditation', 'library', 'workshop', 'observatory', 'orchard', 'harbor', ...REGIONS.map(region => `district:${region.id}`)]);
 export const regionFacts = Object.freeze({
   library: { name: 'The Lantern Library', columns: 28, rows: 20, kind: 'interior', door: { x: 62, y: 7 }, description: 'A warm library of reading alcoves, shared tables, and a quiet courtyard of ideas.', lore: 'Beside the river, inhabitants built a library around a simple promise: every useful idea should have a place to rest and be found again.', ambiance: 'Warm wood, amber lamps, and quiet reading nooks.' },
   workshop: { name: 'The Makers’ Workshop', columns: 28, rows: 20, kind: 'interior', door: { x: 35, y: 24 }, description: 'An open studio for sketching, sharing experiments, and working together around large tables.', lore: 'The theatre’s old scenery shed became a workshop. Its doors stay open for patient makers, unfinished ideas, and people willing to learn together.', ambiance: 'Terracotta tiles, work tables, and green trellises.' },
@@ -215,7 +217,29 @@ function makeCommons() {
     if (!['water', 'tree', 'building', 'fountain'].includes(grid[y][x]) && !seen.has(`${x},${y}`)) grid[y][x] = 'tree';
   }
   return { id: 'commons', name: 'The Commons', kind: 'outdoors', columns, rows, start, terrain: grid, landmarks: [...sites, ...Object.values(regionFacts).filter((facts) => !sites.some((site) => site.x === facts.door.x && site.y === facts.door.y)).map((facts) => ({ ...facts.door, name: facts.name, description: facts.description, color: '#abc2b9', symbol: '✧' }))], objects: outdoorObjects,
-    portals: [portal(11, 6, 'Meeting Hall', 'hall'), portal(15, 3, 'Peace Pavilion', 'pavilion'), portal(10, 10, 'Contribution Gallery', 'gallery'), portal(4, 3, 'Meditation Grove', 'meditation'), ...Object.entries(regionFacts).map(([id, facts]) => portal(facts.door.x, facts.door.y, facts.name, id))] };
+    portals: [portal(11, 6, 'Meeting Hall', 'hall'), portal(15, 3, 'Peace Pavilion', 'pavilion'), portal(10, 10, 'Contribution Gallery', 'gallery'), portal(4, 3, 'Meditation Grove', 'meditation'), ...Object.entries(regionFacts).map(([id, facts]) => portal(facts.door.x, facts.door.y, facts.name, id)), ...REGIONS.map((region,index) => portal(25, 15+index*2, region.name, `district:${region.id}`))] };
+}
+
+function makeDistrict(id) {
+  const region = REGIONS.find(region => id === `district:${region.id}`);
+  const columns=48, rows=36, grid=makeGrid(columns,rows,'meadow'), objects=[];
+  const dry=['drylands','desert','savanna'].includes(region.id);
+  const snowy=['highlands','snowline'].includes(region.id);
+  const wet=['coast','islands','harbor','wetlands','lakes','riverlands'].includes(region.id);
+  for(let y=0;y<rows;y++)for(let x=0;x<columns;x++) {
+    if(wet && (x<5 || (region.id==='islands' && x>42)))grid[y][x]='water';
+    else if((x*17+y*31+region.order*7)%19===0 && x>7 && y>3) {grid[y][x]='tree';objects.push({type:snowy?'mountain':dry?'cactus':['coast','islands'].includes(region.id)?'palm':'tree',x,y});}
+  }
+  road(grid,{x:24,y:32},{x:24,y:5});road(grid,{x:8,y:18},{x:42,y:18});
+  paintGrid(grid,18,12,13,12,'plaza');
+  for(const [x,y] of [[18,13],[30,13],[18,22],[30,22]])objects.push({type:'lantern',x,y});
+  objects.push({type:region.id==='cities'?'civic-building':'shelter',x:24,y:10},{type:'bench',x:20,y:20},{type:'bench',x:28,y:20},{type:'flowers',x:22,y:14});
+  for(let x=10;x<40;x+=6)objects.push({type:region.id==='farmlands'||region.id==='gardens'?'farm':'cottage',x,y:27});
+  return {id,name:region.name,kind:'district',columns,rows,start:{x:24,y:24},terrain:grid,objects,
+    groundColor: snowy?'#dce8e8':dry?'#d8c692':region.id==='cities'?'#b8c1b6':region.id==='rainforest'?'#67987b':'#a4ba8c',
+    description:region.landscape+' · '+region.mayor.focus, ambiance:region.landscape,
+    landmarks:[{x:24,y:16,name:region.mayor.title+' · Civic square',description:region.mayor.focus,symbol:'✦',color:'#e9d4a1'}],
+    portals:[portal(24,31,'Return to the Commons','commons')]};
 }
 
 function makeInterior(id) {
@@ -278,6 +302,7 @@ export function getWorldDefinition(world = 'commons') {
     if (id === 'commons') definition = makeCommons();
     else if (['hall', 'pavilion', 'gallery', 'meditation'].includes(id)) definition = makeInterior(id);
     else if (Object.hasOwn(regionFacts, id)) definition = makeRegion(id);
+    else if (id.startsWith('district:') && REGIONS.some(region => id === `district:${region.id}`)) definition = makeDistrict(id);
     else if (id.startsWith('home:')) definition = makeHome(id);
     else if (id.startsWith('house:')) definition = makeHouse(id);
     else throw new RangeError(`Unknown world: ${id}`);
@@ -377,7 +402,7 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
       const py = y * TILE;
       const n = (x * 47 + y * 91 + x * y * 13) % 19;
       const type = tiles[y][x];
-      rect(px, py, TILE, TILE, world.kind === 'interior' && type === 'building' ? theme.floor : world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : world.id === 'harbor' ? ['#90b5a0', '#98bba5', '#a0c2ac'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
+      rect(px, py, TILE, TILE, world.groundColor ? world.groundColor : world.kind === 'interior' && type === 'building' ? theme.floor : world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : world.id === 'harbor' ? ['#90b5a0', '#98bba5', '#a0c2ac'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
       if (type === 'water') {
         rect(px, py, TILE, TILE, n % 2 ? '#6baab1' : '#71b4bc');
         rect(px + 5 + n % 8, py + 11, 12, 2, '#a6d0ca');
@@ -573,6 +598,15 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
         rect(x - 15, y - 5, 18, 9, '#ecdfc3'); rect(x - 11, y - 2, 10, 1, '#94a7a4');
         rect(x + 10, y - 4, 3, 11, '#7c9ca0'); rect(x + 7, y - 5, 10, 3, '#afc3bd');
         break;
+      case 'mountain':
+        for(let band=0;band<7;band++)rect(x-7-band*5,y-50+band*9,14+band*10,10,band<2?'#f2f6ed':band<4?'#a3b5b8':'#7d999d');
+        rect(x-28,y+11,56,6,'#617e8744');break;
+      case 'cactus':
+        rect(x-4,y-29,8,47,'#688b68');rect(x-17,y-12,13,7,'#688b68');rect(x-17,y-26,7,21,'#688b68');rect(x+4,y-3,12,7,'#75966c');rect(x+10,y-17,6,20,'#75966c');rect(x-2,y-26,2,35,'#a9b984');break;
+      case 'palm':
+        rect(x-3,y-21,7,43,'#aa8c69');rect(x-25,y-29,50,9,'#5f9575');rect(x-16,y-38,34,9,'#77aa7b');rect(x-33,y-20,20,9,'#77aa7b');rect(x+14,y-20,20,9,'#5f9575');break;
+      case 'civic-building':
+        rect(x-38,y-53,76,74,'#d3d0bd');rect(x-43,y-57,86,8,'#6f8490');for(let row=0;row<3;row++)for(let col=0;col<4;col++){rect(x-30+col*17,y-44+row*17,10,12,'#7797a0');rect(x-28+col*17,y-43+row*17,4,4,'#c0d7d2');}rect(x-8,y+3,16,18,'#526a6d');break;
       case 'telescope':
         rect(x - 2, y - 7, 4, 24, '#5d6f82');
         rect(x - 13, y + 16, 11, 3, '#5d6f82'); rect(x + 2, y + 16, 11, 3, '#5d6f82');
@@ -830,6 +864,11 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
       rect(x - 13, y + 14, 3, 3, '#ffefb6');
       rect(x + 11, y + 14, 3, 3, '#ffefb6');
     }
+    const sprite=options.sprites?.get(avatar.sprite);
+    if(avatar.kind==='npc' && sprite?.complete && sprite.naturalWidth){
+      ctx.imageSmoothingEnabled=false; const column={down:0,up:1,left:2,right:3}[avatar.direction]||0;
+      ctx.drawImage(sprite,column*16,(avatar.status==='active'?Math.floor(now/220)%4:0)*16,16,16,x-20,y-25,40,40);
+    }else{
     // Friendly agent sprite, customizable clothes and chest emblem.
     rect(x - 8, y - 2, 16, 14, color);
     rect(x - 11, y, 3, 10, color);
@@ -854,6 +893,7 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     rect(x + 3, y - 12, 2, 2, '#374952');
     rect(x - 2, y - 7, 4, 1, '#ba8d72');
     pixelText(avatar.symbol || '✦', x, y + 5, '#fff0d4', 9);
+    }
     const emote = { wave: '⌁', bow: '↧', cheer: '✦', think: '…', heart: '♥' }[avatar.emote];
     if (emote && Number(avatar.emote_until) > now) {
       rect(x + 11, y - 30, 20, 20, '#fff0d8'); rect(x + 11, y - 11, 4, 4, '#fff0d8');
