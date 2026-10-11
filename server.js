@@ -271,6 +271,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const databasePath = process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite');
     releaseLock = acquireProcessLock(join(dirname(databasePath), 'server.lock'));
     platform = new Platform(databasePath);
+    platform.transaction(() => platform.recoverWorkerJobs());
     ({ server, stopWorkers } = createApp({ platform, backupDir: join(dirname(databasePath), 'backups'), publicOrigin: hosting.publicOrigin || '', setupCode: hosting.setupCode }));
     let closing = false;
     const close = () => {
