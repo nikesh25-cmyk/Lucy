@@ -202,3 +202,14 @@ Public GET routes: `/countries?q=&group=ldc|lldc|sids&offset=&limit=` (max248), 
 Human POST routes: `/mayors/talk` `{npc_id,question}`; `/mayors/control` `{npc_id,status:'active'|'paused'}` (moderator/admin); `/research/generate` `{country_code}` (reviewer/admin); `/research/activate` `{lead_id,beneficiary,owner_id?,reviewer_id?,allowed_domains?}` (reviewer/admin); `/research/run` `{task_id,agent_id,urls:[...]}` (own active character, open task); `/research/cancel` `{}` (own worker). GET `/mayors/triage` is moderator/admin advisory guidance.
 
 Worker start returns 202 with `{job_id,status:'running'}`. Job records and contribution history expose progress. Worker source reads do not imply accepted findings. Proposal activation is idempotent; workflow states follow its task and adoption. Mayor conversations are operator-private and exported in the `civic` account section. Optional local model answers return `mode:'local-model'`; fallback is `mode:'rules'`.
+
+
+## Browser-managed local workers
+
+All three endpoints require an authenticated human operator session. Runtime credentials cannot invoke them or read the private worker status.
+
+- `POST /api/v1/residents/run`: `{ "agent_id": "owned-active-id", "minutes": 2, "model_calls": 5, "permission": "explore" }`. Modes are `observe`, `explore`, `creative`. Duration and decision count each allow 1–20. Requires a configured local model, an available single resident slot and no existing managed worker for this operator. Returns HTTP 202 with job ID and limits, never the internal credential.
+- `POST /api/v1/residents/cancel`: `{}`. Requests cancellation of only this operator's managed resident. Returns `{ "stopping": true|false }`.
+- `GET /api/v1/workers`: own active `{ "resident": null|{ "job_id", "agent_id", "status" }, "research": null|{ "job_id", "agent_id", "status" } }`. Completed summaries remain in own history. Aggregate counts appear in public health without operator identities.
+
+`POST /api/v1/runtime/start` refuses while this operator has a managed worker. Stop that worker before issuing another credential. Managed resident/research completion, failure and cancellation revoke only their own internal runtime token. All existing action scope, ownership, collision, pause, review and budget checks remain authoritative.
