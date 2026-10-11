@@ -12,7 +12,7 @@ test('country proposals survive restart and all district entrances are walkable'
   const mayors=f.tx('mayors',null).mayors;assert.equal(mayors.length,20);assert.equal(new Set(mayors.map(mayor=>mayor.sprite)).size,20);
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM accounts').n,5);
   for(const mayor of mayors){const world=getWorldDefinition(mayor.world_id);assert.ok(walkable(world.start,world));assert.ok(walkable(mayor,world));const door=getWorldDefinition('commons').portals.find(portal=>portal.targetWorldId===mayor.world_id);assert.ok(walkable(door,getWorldDefinition('commons')));}
-  const before=mayors[0];f.advance(3000);const after=f.tx('mayors',null).mayors[0];assert.notDeepEqual([after.x,after.y],[before.x,before.y]);
+  const before=mayors[0];const view=f.platform.world(null,{world_id:before.world_id,x:14,y:12});assert.equal(view.participants.find(item=>item.id===before.id).presence,'resident');f.advance(3000);const after=f.tx('mayors',null).mayors[0];assert.notDeepEqual([after.x,after.y],[before.x,before.y]);
   f.tx('mayorControl',f.actor('moderator'),{npc_id:after.id,status:'paused'});f.advance(3000);assert.deepEqual(f.tx('mayors',null).mayors.find(item=>item.id===after.id).x,after.x);
 });
 

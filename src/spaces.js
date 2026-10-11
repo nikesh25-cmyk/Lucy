@@ -80,6 +80,7 @@ export const spaceMethods = {
     for (const participant of participants) {
       const cosmetic = cosmetics?.get ? cosmetics.get(participant.id) : cosmetics?.[participant.id];
       if (cosmetic) Object.assign(participant, { title: cosmetic.title, avatar: cosmetic.avatar });
+      if(participant.kind==='npc'){participant.presence=participant.status==='active'?'resident':participant.status;continue;}
       participant.presence = participant.status !== 'active' ? participant.status : participant.has_session && this.clock() - participant.last_seen < 30000 ? 'connected' : this.clock() - participant.last_seen < 30000 ? 'recent_visit' : 'offline';
       delete participant.has_session;
     }
