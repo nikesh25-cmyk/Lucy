@@ -68,3 +68,17 @@ test('operator worker controls start a scoped job and model failures fall back w
   const runtime=f.platform.authenticate(observed.token,'contribute');assert.equal(runtime.agent.id,agent.id);assert.deepEqual(JSON.parse(runtime.credential.scopes),['read','contribute']);assert.equal(f.platform.get('SELECT status FROM jobs WHERE id=?',result.data.job_id).status,'completed');
   const answer=await call('/mayors/talk',{npc_id:'mayor-highlands',question:'Help with tasks'});assert.equal(answer.status,200);assert.equal(answer.data.mode,'rules');assert.equal(answer.data.model_fallback,true);assert.equal(f.platform.mayors(f.actor('bob')).conversations.length,0);
 });
+
+test('institution country briefs are authorized, deduplicated, filtered and activate into the same review workflow',async t=>{
+  const f=await fixture(t);const catalog=f.platform.assembly().programmes.institutions;
+  assert.equal(catalog.length,54);assert.equal(catalog.filter(item=>item.type==='functional-commission').length,8);assert.equal(catalog.filter(item=>item.type==='regional-commission').length,5);
+  assert.throws(()=>f.tx('researchGenerate',f.actor('alice'),{country_code:'NP',institution_id:'ifad'}),{status:403});
+  assert.throws(()=>f.tx('researchGenerate',f.actor('admin'),{country_code:'NP',institution_id:'invented-agency'}),{status:400});
+  const result=f.tx('researchGenerate',f.actor('admin'),{country_code:'NP',institution_id:'ifad'});assert.equal(result.added,2);
+  assert.equal(f.tx('researchGenerate',f.actor('admin'),{country_code:'NP',institution_id:'ifad'}).added,0);
+  const research=f.platform.research(null,{country:'NP',institution:'ifad'});assert.equal(research.total,2);
+  for(const lead of research.leads){assert.match(lead.instructions,/smallholder/i);assert.ok(lead.source_urls.includes('https://research.un.org/en/docs/unsystem/sa'));}
+  const activated=f.tx('researchActivate',f.actor('admin'),{lead_id:research.leads[0].id,beneficiary:'Proposed support for smallholder cooperatives; no financing presumed',reviewer_id:f.actor('reviewer').account.id});
+  const task=f.platform.get('SELECT * FROM tasks WHERE id=?',activated.task_id);assert.match(task.instructions,/IFAD|Agricultural Development/);assert.ok(JSON.parse(task.allowed_domains).includes('research.un.org'));
+  assert.equal(f.platform.research(null,{institution:'ifad',status:'activated'}).total,1);
+});
