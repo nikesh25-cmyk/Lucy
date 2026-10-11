@@ -1,3 +1,4 @@
+import { deliveryPacketHTML, deliveryPacketFilename } from './src/delivery-packet.js';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -20,6 +21,7 @@ const files = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
+  ['/src/delivery-packet.js', ['src/delivery-packet.js', 'text/javascript; charset=utf-8']],
   ['/src/review-assessment.js', ['src/review-assessment.js', 'text/javascript; charset=utf-8']],
   ['/src/browser-session.js', ['src/browser-session.js', 'text/javascript; charset=utf-8']],
   ['/src/decision-brief.js', ['src/decision-brief.js', 'text/javascript; charset=utf-8']],
@@ -55,7 +57,7 @@ const writes = new Map([
   ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
 ]);
-const gets = new Set(['/drafts','/workers','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
+const gets = new Set(['/drafts','/workers','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -163,7 +165,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/community'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
@@ -189,12 +191,23 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
           else if (route === '/missions') value = platform.missionList(actor);
           else if (route === '/gallery') value = platform.gallery();
+          else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));
           else if (route === '/export') value = platform.exportAccount(actor);
           else if (route === '/runtime/status') value = platform.runtimeStatus(actor);
           else value = platform[route.slice(1)](actor);
           if (actor && route !== '/runtime/status') platform.charge(actor);
           return value;
         });
+        if(route==='/briefing'){
+          const format=url.searchParams.get('format')||'html';
+          if(!['html','json'].includes(format))fail(400,'Choose HTML or JSON for the briefing packet.');
+          response.setHeader('Content-Disposition',`attachment; filename="${deliveryPacketFilename(result,format)}"`);
+          if(format==='json')return json(response,200,result);
+          response.setHeader('Content-Type','text/html; charset=utf-8');
+          response.setHeader('Cache-Control','no-store');
+          response.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'");
+          response.writeHead(200);return response.end(deliveryPacketHTML(result));
+        }
         if(route==='/country-evidence'&&url.searchParams.get('download')==='1')response.setHeader('Content-Disposition',`attachment; filename="lucy-${result.country.iso3}-agriculture-evidence.json"`);
         return json(response, 200, result);
       }
