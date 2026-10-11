@@ -72,7 +72,7 @@ test('operator worker controls start a scoped job and model failures fall back w
 
 test('institution country briefs are authorized, deduplicated, filtered and activate into the same review workflow',async t=>{
   const f=await fixture(t);const catalog=f.platform.assembly().programmes.institutions;
-  assert.equal(catalog.length,54);assert.equal(catalog.filter(item=>item.type==='functional-commission').length,8);assert.equal(catalog.filter(item=>item.type==='regional-commission').length,5);
+  assert.equal(catalog.length,70);assert.equal(catalog.filter(item=>item.type==='functional-commission').length,8);assert.equal(catalog.filter(item=>item.type==='regional-commission').length,5);
   assert.throws(()=>f.tx('researchGenerate',f.actor('alice'),{country_code:'NP',institution_id:'ifad'}),{status:403});
   assert.throws(()=>f.tx('researchGenerate',f.actor('admin'),{country_code:'NP',institution_id:'invented-agency'}),{status:400});
   const result=f.tx('researchGenerate',f.actor('admin'),{country_code:'NP',institution_id:'ifad'});assert.equal(result.added,2);

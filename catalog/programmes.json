@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "researchedOn": "2026-10-11",
   "status": "independent-research-reference",
-  "scope": "54 records: six principal organs, six General Assembly main committees, eight ECOSOC functional commissions including the UN Forum on Forests, five regional commissions, fifteen specialized agency groups including the World Bank Group, and fourteen funds, programmes and other entities. This does not enumerate every subsidiary body, treaty body or programme.",
+  "scope": "70 reference records: principal organs, General Assembly main committees, ECOSOC functional and regional commissions, specialized agency groups, funds/programmes and other entities, ten human rights treaty bodies, the Human Rights Council, two human rights review mechanisms and three UNFCCC constituted bodies. This does not enumerate every subsidiary body, mandate, treaty procedure or programme; reference bodies and mechanisms are distinct categories.",
   "affiliation": "Lucy has no UN affiliation, mandate or endorsement. Task suggestions and SDG mappings are Lucy editorial proposals, not UN instructions.",
   "institutions": [
     {
@@ -1134,6 +1134,500 @@
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
       "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "cerd",
+      "name": "Committee on the Elimination of Racial Discrimination",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning racial discrimination.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        10,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cescr",
+      "name": "Committee on Economic, Social and Cultural Rights",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning economic, social and cultural rights.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal8"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "ccpr",
+      "name": "Human Rights Committee",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning civil and political rights.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cedaw",
+      "name": "Committee on the Elimination of Discrimination against Women",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning discrimination against women.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        5,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cat",
+      "name": "Committee against Torture",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning torture.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "crc",
+      "name": "Committee on the Rights of the Child",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning children’s rights.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        3,
+        4,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cmw",
+      "name": "Committee on Migrant Workers",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning migrant workers’ rights.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        8,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "spt",
+      "name": "Subcommittee on Prevention of Torture",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning detention safeguards under the Optional Protocol against Torture.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "crpd",
+      "name": "Committee on the Rights of Persons with Disabilities",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning disability rights.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        4,
+        8,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "ced",
+      "name": "Committee on Enforced Disappearances",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning enforced disappearance.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "human-rights-council",
+      "name": "Human Rights Council",
+      "type": "charter-based-body",
+      "mandate": "Intergovernmental forum for the promotion and protection of human rights.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        16,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Trace a published resolution and country implementation evidence",
+        "Map a public policy recommendation to responsible national institutions"
+      ],
+      "countryResearchChecks": [
+        "Identify the relevant published resolution, mandate, scope and date.",
+        "Verify country applicability and implementation evidence; do not infer treaty obligations from Council membership."
+      ],
+      "relatedSourceUrls": [
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Charter-Based and Treaty-Based Bodies; Human Rights Council",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "universal-periodic-review",
+      "name": "Universal Periodic Review",
+      "type": "human-rights-review-mechanism",
+      "mandate": "State peer review of UN Member States’ human rights records under the Human Rights Council.",
+      "sourceUrl": "https://uhri.ohchr.org/en/about",
+      "sdgs": [
+        16,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Map country review recommendations and response status",
+        "Propose a public policy follow-up with evidence gaps"
+      ],
+      "countryResearchChecks": [
+        "Locate the latest country review report, government response and recommendation identifiers.",
+        "Distinguish supported and noted recommendations from independently evidenced implementation."
+      ],
+      "relatedSourceUrls": [
+        "https://europe.ohchr.org/human-rights/human-rights-mechanism"
+      ],
+      "evidenceLocator": "Universal Periodic Review mechanism description",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "special-procedures",
+      "name": "Special Procedures of the Human Rights Council",
+      "type": "human-rights-review-mechanism",
+      "mandate": "Independent experts with thematic or country-specific reporting and advisory mandates.",
+      "sourceUrl": "https://uhri.ohchr.org/en/about",
+      "sdgs": [
+        16,
+        2,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Review published right-to-food recommendations with country scope",
+        "Map thematic policy recommendations to existing country evidence"
+      ],
+      "countryResearchChecks": [
+        "Identify the exact mandate, report period and geographical scope.",
+        "Locate public country-visit or thematic reports; check whether a recommendation actually addresses the selected country."
+      ],
+      "relatedSourceUrls": [
+        "https://europe.ohchr.org/human-rights/human-rights-mechanism"
+      ],
+      "evidenceLocator": "Special Procedures description and limits of UHRI country-visit coverage",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "ldc-expert-group",
+      "name": "Least Developed Countries Expert Group",
+      "type": "climate-constituted-body",
+      "mandate": "Technical guidance for LDC adaptation planning and implementation.",
+      "sourceUrl": "https://unfccc.int/LEG",
+      "sdgs": [
+        13,
+        2,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map agricultural adaptation needs to a published national plan",
+        "Propose a bounded adaptation implementation research package"
+      ],
+      "countryResearchChecks": [
+        "Verify current LDC status and applicable support criteria.",
+        "Locate the latest official national adaptation plan and agricultural priorities, responsible institutions and evidence gaps.",
+        "Check the actual access route and requirements of any proposed funding mechanism; technical guidance is not project finance."
+      ],
+      "evidenceLocator": "About the LEG: national adaptation plans, NAPAs and LDC work programme",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "standing-committee-finance",
+      "name": "Standing Committee on Finance",
+      "type": "climate-constituted-body",
+      "mandate": "Climate-finance assessment, needs reporting and guidance work under the UNFCCC process.",
+      "sourceUrl": "https://unfccc.int/SCF",
+      "sdgs": [
+        13,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Reconcile reported national adaptation financing needs and gaps",
+        "Compare public climate-finance definitions and evidence quality"
+      ],
+      "countryResearchChecks": [
+        "Locate relevant dated needs and finance-flow reports with definitions and country scope.",
+        "Separate assessed needs, allocations, approvals and actual disbursement; do not treat a committee report as a funding offer."
+      ],
+      "evidenceLocator": "Activities: biennial assessment, needs reports and guidance",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "technology-executive-committee",
+      "name": "Technology Executive Committee",
+      "type": "climate-constituted-body",
+      "mandate": "Policy work on developing and transferring low-emission and climate-resilient technologies.",
+      "sourceUrl": "https://unfccc.int/ttclear/tec",
+      "sdgs": [
+        9,
+        13,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Compare country technology needs with public adaptation priorities",
+        "Propose evidence gathering for an agricultural technology pilot"
+      ],
+      "countryResearchChecks": [
+        "Find current country technology needs assessments or action plans and the responsible designated entity.",
+        "Verify local maintenance, capacity, beneficiary demand and cost evidence before proposing technology delivery."
+      ],
+      "evidenceLocator": "Overview and mandate: policy arm of the Technology Mechanism",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     }
   ],
   "frameworks": [
@@ -1242,5 +1736,10 @@
       "Every project, programme and agenda",
       "Historical and abolished institutions"
     ]
-  }
+  },
+  "coverageGaps": [
+    "Individual Special Procedures mandates and country coverage are not enumerated.",
+    "UNFCCC constituted bodies, treaty secretariats and funding mechanisms remain partially covered.",
+    "Current country treaty participation, legal procedures, reporting cycles and programme eligibility require task-specific verification."
+  ]
 }
