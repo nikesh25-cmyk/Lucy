@@ -1,3 +1,4 @@
+import { ASSESSMENT_RESULTS } from './src/review-assessment.js';
 import { clearOperatorState } from './src/browser-session.js';
 import { normalizeDecisionBrief, serializeDecisionBrief, decisionBriefText } from './src/decision-brief.js';
 import { draw, landmarkAt, start, landmarks, getWorldDefinition, drawMiniMap } from './world.js';
@@ -303,13 +304,35 @@ function sources(parent, records) {
 function submissionRecord(submission, reviewMode=false) {
   const node=element('article',null,'record'); const top=element('div',null,'card-header'); append(top,element('h3',titleOfTask(submission.task_id)),badge(submission.status)); append(node,top,paragraph(`Version ${submission.version} · ${submission.agent_name||submission.contributor||'Your contribution'} · ${date(submission.created_at)}`,'privacy'),submission.brief?decisionBriefView(submission.brief):paragraph(submission.artifact,'artifact'));
   sources(node,submission.sources);disclosure(node,'Method, limits, and permissions',(body)=>append(body,paragraph(`Method: ${submission.method}`),paragraph(`Limits: ${submission.limitations}`),paragraph(`Rights: ${submission.rights}`)));
-  for(const review of state.history.reviews.filter((r)=>r.submission_id===submission.id)) append(node,paragraph(`${review.decision.replaceAll('_',' ')} by ${review.reviewer}: ${review.reason}`,'muted'));
+  for(const review of state.history.reviews.filter((r)=>r.submission_id===submission.id)) append(node,reviewReasonView(`${review.decision.replaceAll('_',' ')} by ${review.reviewer}`,review.reason));
   if(state.account)node.append(button('Report contribution',()=>reportPrompt('submission',submission.id),'secondary small'));
   if(reviewMode&&submission.status==='pending_review') {
     if(submission.account_id===state.account.id)node.append(paragraph('Your contribution requires a different human reviewer.','privacy'));
-    else {const inputs=form(node,'Record review',async(data)=>change('/reviews',{submission_id:submission.id,...data},'Review recorded. The contributor can see your explanation.'));field(inputs,'decision','Decision',{options:[{value:'changes_requested',label:'Request corrections'},{value:'accepted',label:'Accept evidence'},{value:'rejected',label:'Reject submission'}]});field(inputs,'reason','Explanation against the criteria',{type:'textarea',full:true,max:2000});}
+    else reviewForm(node,submission);
   }
   return node;
+}
+function reviewReasonView(title,reason){
+ const node=element('section',null,'review-assessment');node.append(element('h4',title));for(const part of reason.split('\n\n'))node.append(paragraph(part,'artifact'));return node;
+}
+function reviewForm(node,submission){
+ const inputs=form(node,'Record review',async data=>{
+  const payload={submission_id:submission.id,decision:data.decision,reason:data.reason};
+  if(submission.brief)payload.assessment={findings:submission.brief.findings.map((finding,index)=>({finding_number:index+1,result:data[`assessment_${index}_result`],checked_source_numbers:data[`assessment_${index}_sources`].trim()?data[`assessment_${index}_sources`].split(',').map(value=>Number(value.trim())):[],notes:data[`assessment_${index}_notes`]})),scope_notes:data.assessment_scope,rights_notes:data.assessment_rights,cost_notes:data.assessment_costs};
+  await change('/reviews',payload,'Review recorded with this submission version. The contributor can see your assessment.');
+ });
+ field(inputs,'decision','Decision',{options:[{value:'changes_requested',label:'Request corrections'},{value:'accepted',label:'Accept contribution'},{value:'rejected',label:'Reject submission'}]});field(inputs,'reason','Explanation against the criteria',{type:'textarea',full:true,max:2000});
+ if(!submission.brief)return;
+ const guide=element('section',null,'full');guide.append(element('h4','Finding-by-finding evidence assessment'),paragraph('Open the cited source and its supporting location. Record what you checked and why it supports or fails to support the finding. Accept only when all findings are supported within their stated scope. Unknown costs can remain explicit.','privacy'));inputs.append(guide);
+ submission.brief.findings.forEach((finding,index)=>{
+  const group=element('fieldset',null,'full');group.append(element('legend',`Finding ${index+1}`),paragraph(finding.text),paragraph(`Qualification: ${finding.qualification}`,'privacy'),paragraph(`Cited sources: ${finding.source_numbers.map(number=>`[Source ${number}]`).join(', ')}`,'privacy'));
+  field(group,`assessment_${index}_result`,`Finding ${index+1} assessment`,{options:ASSESSMENT_RESULTS,full:true});
+  field(group,`assessment_${index}_sources`,`Finding ${index+1} checked source numbers`,{required:false,max:40,full:true,hint:'Comma-separated numbers from this finding’s citations. Leave empty only when not checked.'});
+  field(group,`assessment_${index}_notes`,`Finding ${index+1} reviewer explanation`,{type:'textarea',max:800,full:true,hint:'Describe the supporting passage, date and scope, or the specific correction needed.'});inputs.append(group);
+ });
+ field(inputs,'assessment_scope','Applicability to the proposed recipient and beneficiaries',{type:'textarea',max:800,full:true,hint:'Record geographic, temporal and practical limits; proposed roles remain unconfirmed.'});
+ field(inputs,'assessment_rights','Attribution and permissions assessment',{type:'textarea',max:800,full:true});
+ if(submission.brief.cost_scenario)field(inputs,'assessment_costs','Cost assumptions assessment',{type:'textarea',max:800,full:true,hint:'Distinguish estimates, source-backed amounts and unknown costs. Acceptance does not approve a budget.'});
 }
 function draftFor(claim){return (state.history.drafts||[]).find(d=>d.claim_id===claim.id);}
 function attachDraftSaving(inputs,claim,format,counts=null){
@@ -338,7 +361,7 @@ function evidenceForm(parent,claim) {
 function decisionBriefView(brief){
   const node=element('section',null,'decision-brief');node.append(paragraph('PROPOSED DECISION · INDEPENDENT REVIEW REQUIRED','eyebrow'),element('h3',brief.title));
   const decision=element('div',null,'brief-decision');decision.append(paragraph(`Proposed recipient: ${brief.recipient}`,'privacy'),paragraph(brief.requested_decision),paragraph(`Intended beneficiaries: ${brief.beneficiaries}`,'muted'));node.append(decision,paragraph(brief.problem));
-  const findings=element('div',null,'brief-findings');findings.append(element('h3','Supported findings'));for(const finding of brief.findings)findings.append(paragraph(finding.text+' '+finding.source_numbers.map(number=>`[Source ${number}]`).join(' ')),paragraph(finding.qualification,'privacy'));node.append(findings);
+  const findings=element('div',null,'brief-findings');findings.append(element('h3','Findings and cited evidence'));for(const finding of brief.findings)findings.append(paragraph(finding.text+' '+finding.source_numbers.map(number=>`[Source ${number}]`).join(' ')),paragraph(finding.qualification,'privacy'));node.append(findings);
   const options=element('div',null,'grid');brief.options.forEach((option,index)=>{const item=element('article',null,'card brief-option');item.append(paragraph(index+1===brief.recommended_option?'RECOMMENDED FOR REVIEW':'ALTERNATIVE','eyebrow'),element('h4',`${index+1}. ${option.title}`));item.append(paragraph(option.action),paragraph(`Proposed role: ${option.owner}`,'privacy'));disclosure(item,'Costs, prerequisites and risks',body=>body.append(paragraph(option.cost_basis),paragraph(`Prerequisites: ${option.dependencies}`),paragraph(`Risks: ${option.risks}`)));options.append(item);});node.append(element('h3','Decision options'),options,paragraph(brief.recommendation_reason,'brief-rationale'));
   disclosure(node,'Proposed delivery milestones',body=>{const list=element('ol');for(const milestone of brief.milestones)list.append(append(element('li'),element('strong',milestone.deliverable),paragraph(`${milestone.owner} · ${milestone.timing}`,'privacy'),paragraph(milestone.measure)));body.append(list);});
   if(brief.cost_scenario){const cost=brief.cost_scenario,panel=element('section',null,'brief-costs');panel.append(element('h3','Planning cost register'),paragraph(`${cost.currency} · ${cost.precision} decimal costing precision · ${cost.quantity_kg??'Unknown'} kg`,'privacy'));const table=element('table',null,'evidence-table');table.append(element('caption','Contributor-entered amounts and classifications; source-backed entries still require review.'));const head=element('thead'),row=element('tr');for(const title of ['Item','Line amount','Basis']){const cell=element('th',title);cell.scope='col';row.append(cell);}head.append(row);table.append(head);const rows=element('tbody');for(const item of cost.rows){const row=element('tr');row.append(element('td',item.item),element('td',item.amount===null?'Unknown':item.amount+' '+cost.currency),element('td',item.basis+(item.source_number?` · Source ${item.source_number}`:'')));rows.append(row);}table.append(rows);panel.append(table,paragraph(`Known subtotal: ${cost.known_subtotal} ${cost.currency}`,'brief-subtotal'),badge(cost.unknown_count?`${cost.unknown_count} unknown item${cost.unknown_count===1?'':'s'} · total incomplete`:'All entered lines have amounts',Boolean(cost.unknown_count)),paragraph(`Total: ${cost.total===null?'Incomplete':cost.total+' '+cost.currency} · Cost/kg: ${cost.cost_per_kg===null?'Not established':cost.cost_per_kg+' '+cost.currency}`));disclosure(panel,'Cost assumptions and missing evidence',body=>{for(const item of cost.rows)body.append(element('h3',item.item),paragraph(item.assumption),paragraph(`Date or period: ${item.as_of}`,'privacy'));body.append(paragraph(cost.limitations,'privacy'));});node.append(panel);}
@@ -412,7 +435,7 @@ function renderReview(parent) {
 function renderGallery(parent) {
   parent.append(heading('A record of useful work','Human accepted contributions, with sources and limitations preserved. Acceptance and documented adoption are separate steps.'));
   if(!state.gallery.length){parent.append(empty('The gallery is waiting for its first reviewed contribution. Practice missions are marked clearly.'));return;}
-  const grid=element('div',null,'grid');for(const record of state.gallery){const node=card(record.mission,record.demo?'PRACTICE CONTRIBUTION':'REVIEWED CONTRIBUTION');append(node,badge(record.demo?'demo':'accepted'),paragraph(`By ${record.contributor} · Version ${record.version}`,'privacy'),record.brief?decisionBriefView(record.brief):paragraph(record.artifact,'artifact'));sources(node,record.sources);append(node,paragraph(`Reviewed by ${record.reviewer}: ${record.reason}`),paragraph(`Limits: ${record.limitations}`,'muted'),paragraph(`${record.adoption_count} documented uses`,'privacy'));
+  const grid=element('div',null,'grid');for(const record of state.gallery){const node=card(record.mission,record.demo?'PRACTICE CONTRIBUTION':'REVIEWED CONTRIBUTION');append(node,badge(record.demo?'demo':'accepted'),paragraph(`By ${record.contributor} · Version ${record.version}`,'privacy'),record.brief?decisionBriefView(record.brief):paragraph(record.artifact,'artifact'));sources(node,record.sources);append(node,reviewReasonView(`Reviewed by ${record.reviewer}`,record.reason),paragraph(`Limits: ${record.limitations}`,'muted'),paragraph(`${record.adoption_count} documented uses`,'privacy'));
     if(state.account)node.append(button('Report contribution',()=>reportPrompt('submission',record.id),'secondary small'));
     const mission=state.missions.find((m)=>m.title===record.mission);if(mission?.owner_id===state.account?.id)disclosure(node,'Record real use of this contribution',(body)=>{const inputs=form(body,'Record adoption',async(data)=>change('/adoptions',{submission_id:record.id,note:data.note},'Use recorded.'));field(inputs,'note','Where and how the work was used',{type:'textarea',max:2000,full:true});});
     grid.append(node);}parent.append(grid);
