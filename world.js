@@ -82,6 +82,83 @@ function road(grid, a, b) {
 }
 const portal = (x, y, name, targetWorldId) => ({ x, y, name, targetWorldId });
 
+export const sharedWorldIds = Object.freeze(['commons', 'hall', 'pavilion', 'gallery', 'meditation', 'library', 'workshop', 'observatory', 'orchard', 'harbor']);
+export const regionFacts = Object.freeze({
+  library: { name: 'The Lantern Library', columns: 28, rows: 20, kind: 'interior', door: { x: 62, y: 7 }, description: 'A warm library of reading alcoves, shared tables, and a quiet courtyard of ideas.', lore: 'Beside the river, inhabitants built a library around a simple promise: every useful idea should have a place to rest and be found again.', ambiance: 'Warm wood, amber lamps, and quiet reading nooks.' },
+  workshop: { name: 'The Makers’ Workshop', columns: 28, rows: 20, kind: 'interior', door: { x: 35, y: 24 }, description: 'An open studio for sketching, sharing experiments, and working together around large tables.', lore: 'The theatre’s old scenery shed became a workshop. Its doors stay open for patient makers, unfinished ideas, and people willing to learn together.', ambiance: 'Terracotta tiles, work tables, and green trellises.' },
+  observatory: { name: 'The Quiet Observatory', columns: 32, rows: 24, kind: 'interior', door: { x: 84, y: 53 }, description: 'A blue sky atrium with a telescope, viewing benches, and small reflection corners.', lore: 'On the eastern ridge, the world’s first inhabitants chose to build an observatory before a tower. They wanted a place to look outward and wonder.', ambiance: 'Indigo stone, a star mural, and a sky viewing platform.' },
+  orchard: { name: 'Sunmeadow Orchard', columns: 40, rows: 28, kind: 'outdoors', door: { x: 30, y: 9 }, description: 'Winding paths through fruit trees, a gathering terrace, and a gardener’s open shelter.', lore: 'The orchard began as a handful of cuttings shared between neighbours. Its paths are kept wide so every visitor can find a seat beneath the branches.', ambiance: 'Soft green shade, flowers, warm paths, and a communal picnic terrace.' },
+  harbor: { name: 'Stillwater Harbor', columns: 40, rows: 28, kind: 'outdoors', door: { x: 46, y: 36 }, description: 'A sheltered island joined by a long bridge, with waterside seats and a peaceful harbor pavilion.', lore: 'At a bend in the river, a small crossing grew into a harbor. The boats are reminders that a world is made richer by visitors arriving with their own stories.', ambiance: 'Blue water, weathered boardwalks, and a quiet island garden.' },
+});
+
+function makeRegion(id) {
+  const facts = regionFacts[id];
+  const { columns, rows, kind } = facts;
+  const grid = makeGrid(columns, rows, kind === 'interior' ? 'floor' : 'meadow');
+  const objects = [];
+  let arrival;
+  const places = [];
+  const addPlace = (x, y, name, description, symbol = '✧') => places.push({ x, y, name, description, symbol, color: '#bda79a' });
+  if (kind === 'interior') {
+    paintGrid(grid, 0, 0, columns, 1, 'wall'); paintGrid(grid, 0, rows - 1, columns, 1, 'wall');
+    paintGrid(grid, 0, 0, 1, rows, 'wall'); paintGrid(grid, columns - 1, 0, 1, rows, 'wall');
+    paintGrid(grid, 3, 3, columns - 6, rows - 7, 'rug');
+    arrival = { x: Math.floor(columns / 2), y: rows - 3 };
+    if (id === 'library') {
+      for (const y of [3, 8]) for (const left of [3, 19]) for (let x = left; x < left + 6; x += 2) {
+        grid[y][x] = 'building'; objects.push({ type: 'bookshelf', x, y });
+      }
+      for (const x of [6, 14, 22]) {
+        objects.push({ type: 'table', x, y: 12 }, { type: 'bench', x: x - 1, y: 13 }, { type: 'bench', x: x + 1, y: 13 }, { type: 'lantern', x, y: 11 });
+      }
+      objects.push({ type: 'sculpture', x: 14, y: 5 }, { type: 'cushion', x: 3, y: 15 }, { type: 'cushion', x: 24, y: 15 });
+      addPlace(14, 6, 'Shared Reading Room', 'Take a seat, read slowly, and share a useful question.', '▤');
+      addPlace(4, 15, 'Quiet Reading Nook', 'A quiet corner beside the bookshelves.', '✧');
+    } else if (id === 'workshop') {
+      for (const x of [5, 13, 21]) for (const y of [5, 11]) objects.push({ type: 'workbench', x, y }, { type: 'bench', x, y: y + 1 });
+      for (const x of [3, 24]) objects.push({ type: 'trellis', x, y: 3 }, { type: 'flowers', x, y: 15 });
+      objects.push({ type: 'display', x: 13, y: 2 }, { type: 'sculpture', x: 23, y: 14 });
+      addPlace(13, 7, 'Ideas Table', 'Share a sketch, compare approaches, or work on a mission together.', '◆');
+      addPlace(5, 14, 'Makers’ Nook', 'A seat for reflecting on what you are building.', '✿');
+    } else {
+      paintGrid(grid, 11, 4, 10, 8, 'plaza');
+      objects.push({ type: 'telescope', x: 16, y: 7 }, { type: 'sculpture', x: 16, y: 3 });
+      for (const x of [7, 24]) for (const y of [9, 14]) objects.push({ type: 'bench', x, y }, { type: 'lantern', x: x + 1, y: y - 1 });
+      for (const x of [6, 25]) objects.push({ type: 'cushion', x, y: 18 });
+      addPlace(16, 9, 'Sky Viewing Platform', 'Look outward, pause, and let a new question take shape.', '☆');
+      addPlace(6, 18, 'Reflection Corner', 'A quiet place to sit or meditate beneath the star mural.', '☮');
+    }
+    for (const x of [2, columns - 3]) for (const y of [2, rows - 4]) objects.push({ type: 'lantern', x, y });
+  } else if (id === 'orchard') {
+    arrival = { x: 20, y: 24 };
+    for (let y = 2; y <= 19; y += 3) for (let x = 3; x <= 35; x += 4) {
+      if (x >= 14 && x <= 26 && y >= 7 && y <= 15) continue;
+      grid[y][x] = 'tree'; objects.push({ type: 'fruit', x, y });
+    }
+    road(grid, arrival, { x: 20, y: 4 }); road(grid, { x: 3, y: 12 }, { x: 36, y: 12 });
+    road(grid, { x: 5, y: 22 }, { x: 34, y: 22 });
+    paintGrid(grid, 14, 8, 13, 8, 'plaza');
+    for (const x of [16, 24]) objects.push({ type: 'table', x, y: 11 }, { type: 'bench', x, y: 12 }, { type: 'trellis', x, y: 8 });
+    objects.push({ type: 'shelter', x: 31, y: 20 }, { type: 'fountain', x: 20, y: 9 });
+    for (const x of [12, 28]) for (const y of [9, 15]) objects.push({ type: 'flowers', x, y });
+    addPlace(20, 14, 'Orchard Gathering Terrace', 'A communal picnic terrace beneath the fruit trees.', '✿');
+    addPlace(31, 22, 'Gardeners’ Shelter', 'An open shelter for resting, conversations, and practical growing ideas.', '⌂');
+  } else {
+    // The approach and island are connected by a genuine walkable boardwalk.
+    for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) grid[y][x] = 'water';
+    paintGrid(grid, 0, 9, 8, 13, 'meadow'); paintGrid(grid, 18, 4, 19, 20, 'meadow');
+    paintGrid(grid, 5, 15, 18, 2, 'bridge'); paintGrid(grid, 24, 8, 9, 11, 'plaza');
+    arrival = { x: 3, y: 16 };
+    objects.push({ type: 'shelter', x: 28, y: 9 }, { type: 'boat', x: 17, y: 19 }, { type: 'boat', x: 37, y: 12 });
+    for (const [x, y] of [[20, 6], [33, 6], [20, 21], [34, 21]]) { grid[y][x] = 'tree'; objects.push({ type: 'lantern', x: x + 1, y }); }
+    for (const y of [13, 17]) objects.push({ type: 'bench', x: 26, y }, { type: 'flowers', x: 32, y });
+    objects.push({ type: 'sculpture', x: 29, y: 20 });
+    addPlace(28, 15, 'Harbor Pavilion', 'Sit beside the sheltered water and welcome arriving travellers.', '⌂');
+    addPlace(10, 16, 'The Long Crossing', 'A wooden bridge linking the riverbank to a small, quiet island.', '✧');
+  }
+  return { id, ...facts, start: arrival, terrain: grid, objects, landmarks: places, portals: [portal(arrival.x, arrival.y, 'Return to the Commons', 'commons')] };
+}
+
 function makeCommons() {
   const columns = 96;
   const rows = 64;
@@ -106,7 +183,7 @@ function makeCommons() {
     { x: 63, y: 44, name: 'Reflection Garden', description: 'A peaceful outdoor meditation space beside the southern river.', symbol: '☮', color: '#ad96b6' },
     { x: 84, y: 53, name: 'Home District', description: 'Visit personal gardens and homes created by the inhabitants.', symbol: '⌂', color: '#d1ac8b' },
   ];
-  const outdoorObjects = [];
+  const outdoorObjects = Object.entries(regionFacts).map(([id, facts]) => ({ type: 'gateway', region: id, name: facts.name, x: facts.door.x, y: facts.door.y }));
   for (const site of sites.slice(6)) {
     paintGrid(grid, site.x - 3, site.y - 3, 7, 7, 'meadow');
     paintGrid(grid, site.x - 2, site.y - 2, 5, 5, 'plaza');
@@ -137,8 +214,8 @@ function makeCommons() {
   for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
     if (!['water', 'tree', 'building', 'fountain'].includes(grid[y][x]) && !seen.has(`${x},${y}`)) grid[y][x] = 'tree';
   }
-  return { id: 'commons', name: 'The Commons', kind: 'outdoors', columns, rows, start, terrain: grid, landmarks: sites, objects: outdoorObjects,
-    portals: [portal(11, 6, 'Meeting Hall', 'hall'), portal(15, 3, 'Peace Pavilion', 'pavilion'), portal(10, 10, 'Contribution Gallery', 'gallery'), portal(4, 3, 'Meditation Grove', 'meditation')] };
+  return { id: 'commons', name: 'The Commons', kind: 'outdoors', columns, rows, start, terrain: grid, landmarks: [...sites, ...Object.values(regionFacts).filter((facts) => !sites.some((site) => site.x === facts.door.x && site.y === facts.door.y)).map((facts) => ({ ...facts.door, name: facts.name, description: facts.description, color: '#abc2b9', symbol: '✧' }))], objects: outdoorObjects,
+    portals: [portal(11, 6, 'Meeting Hall', 'hall'), portal(15, 3, 'Peace Pavilion', 'pavilion'), portal(10, 10, 'Contribution Gallery', 'gallery'), portal(4, 3, 'Meditation Grove', 'meditation'), ...Object.entries(regionFacts).map(([id, facts]) => portal(facts.door.x, facts.door.y, facts.name, id))] };
 }
 
 function makeInterior(id) {
@@ -200,6 +277,7 @@ export function getWorldDefinition(world = 'commons') {
   if (!definition) {
     if (id === 'commons') definition = makeCommons();
     else if (['hall', 'pavilion', 'gallery', 'meditation'].includes(id)) definition = makeInterior(id);
+    else if (Object.hasOwn(regionFacts, id)) definition = makeRegion(id);
     else if (id.startsWith('home:')) definition = makeHome(id);
     else if (id.startsWith('house:')) definition = makeHouse(id);
     else throw new RangeError(`Unknown world: ${id}`);
@@ -227,6 +305,8 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
   const camera = { x: Math.max(0, Math.min(world.columns - COLS, Math.floor(chosenCamera.x || 0))), y: Math.max(0, Math.min(world.rows - ROWS, Math.floor(chosenCamera.y || 0))) };
   const tiles = world.terrain;
   const theme = world.id === 'pavilion' ? { floor: '#d0c8b5', rug: '#a0b2b6', seam: '#82999e', border: '#dedcc8' } : world.id === 'gallery' ? { floor: '#d8c5aa', rug: '#b6ad90', seam: '#999174', border: '#eee1ba' } : world.id.startsWith('house:') ? { floor: '#dcc7a6', rug: '#a7b9ad', seam: '#8b9e92', border: '#e9dec3' } : { floor: '#d7c6ae', rug: '#baa4ae', seam: '#a58d99', border: '#eee0c0' };
+  const regionThemes = { library: { floor: '#d6c096', rug: '#a4b79e', seam: '#889979', border: '#ebe0b9', wall: '#8b806f' }, workshop: { floor: '#cfa98a', rug: '#c1b9a1', seam: '#a49b83', border: '#eadcc0', wall: '#977f70' }, observatory: { floor: '#9ca6b8', rug: '#7e8aa3', seam: '#66758e', border: '#bdc6ce', wall: '#5e6d83' } };
+  Object.assign(theme, regionThemes[world.id] || {});
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   ctx.save();
@@ -297,7 +377,7 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
       const py = y * TILE;
       const n = (x * 47 + y * 91 + x * y * 13) % 19;
       const type = tiles[y][x];
-      rect(px, py, TILE, TILE, world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
+      rect(px, py, TILE, TILE, world.kind === 'interior' && type === 'building' ? theme.floor : world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : world.id === 'harbor' ? ['#90b5a0', '#98bba5', '#a0c2ac'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
       if (type === 'water') {
         rect(px, py, TILE, TILE, n % 2 ? '#6baab1' : '#71b4bc');
         rect(px + 5 + n % 8, py + 11, 12, 2, '#a6d0ca');
@@ -321,7 +401,7 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
           }
         }
       } else if (type === 'wall') {
-        rect(px, py, TILE, TILE, '#727a89');
+        rect(px, py, TILE, TILE, theme.wall || '#727a89');
         rect(px + 1, py + 3, TILE - 2, 17, '#9299a5');
         rect(px + 1, py + 23, TILE - 2, 15, '#89919e');
         rect(px + 19, py + 4, 2, 15, '#abb0b7');
@@ -340,7 +420,7 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
           if (tiles[y]?.[x - 1] === 'wall') rect(px, py, 5, TILE, '#56615a20');
         }
       } else if (type === 'path' || type === 'plaza') {
-        rect(px, py, TILE, TILE, type === 'plaza' ? '#ddceb0' : '#d3c49c');
+        rect(px, py, TILE, TILE, type === 'plaza' ? world.id === 'observatory' ? '#b3beca' : '#ddceb0' : '#d3c49c');
         rect(px + 2, py + 2, 35, 2, '#e7d9ba');
         rect(px + 2, py + 22, 35, 1, '#c0af91');
         rect(px + (y % 2 ? 11 : 26), py + 3, 1, 19, '#c5b594');
@@ -461,6 +541,63 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
         break;
       case 'bench': bench(x - 12, y); break;
       case 'lamp': lamp(x, y + 10); break;
+      case 'lantern':
+        rect(x - 12, y - 12, 24, 24, '#f1d99419');
+        rect(x - 7, y - 7, 14, 16, '#806f59');
+        rect(x - 4, y - 4, 8, 10, '#f4e2ac');
+        rect(x - 8, y - 10, 16, 4, '#586e5d');
+        rect(x - 5, y - 14, 10, 4, '#586e5d');
+        rect(x - 9, y + 10, 18, 3, '#665d50');
+        break;
+      case 'sculpture':
+        rect(x - 13, y + 11, 28, 6, '#436b5b33');
+        rect(x - 12, y + 5, 24, 10, '#a7a998');
+        rect(x - 8, y - 1, 16, 7, '#d1d0b9');
+        rect(x - 5, y - 16, 10, 15, '#bdc8bb');
+        rect(x - 3, y - 23, 6, 8, '#e1e0c5');
+        rect(x + 1, y - 20, 7, 5, '#d2d7c2');
+        break;
+      case 'trellis':
+        rect(x - 15, y - 24, 3, 40, '#937958');
+        rect(x + 12, y - 24, 3, 40, '#937958');
+        for (const dy of [-22, -10, 2]) rect(x - 15, y + dy, 30, 3, '#bb9e75');
+        for (const dx of [-7, 4]) rect(x + dx, y - 23, 2, 35, '#bd9c71');
+        for (const [dx, dy] of [[-12, -18], [3, -9], [-7, 1], [10, -19]]) { rect(x + dx, y + dy, 7, 6, '#63926b'); blossom(x + dx + 2, y + dy, '#e4bdc6'); }
+        break;
+      case 'fruit':
+        for (const [dx, dy] of [[-7, -19], [6, -15], [-1, -29]]) { rect(x + dx, y + dy, 4, 4, '#d6a76f'); rect(x + dx + 1, y + dy - 2, 2, 2, '#c9d09a'); }
+        break;
+      case 'workbench':
+        rect(x - 23, y + 6, 5, 15, '#86674d'); rect(x + 18, y + 6, 5, 15, '#86674d');
+        rect(x - 27, y - 7, 54, 15, '#b89870'); rect(x - 24, y - 5, 48, 3, '#d1b48b');
+        rect(x - 15, y - 5, 18, 9, '#ecdfc3'); rect(x - 11, y - 2, 10, 1, '#94a7a4');
+        rect(x + 10, y - 4, 3, 11, '#7c9ca0'); rect(x + 7, y - 5, 10, 3, '#afc3bd');
+        break;
+      case 'telescope':
+        rect(x - 2, y - 7, 4, 24, '#5d6f82');
+        rect(x - 13, y + 16, 11, 3, '#5d6f82'); rect(x + 2, y + 16, 11, 3, '#5d6f82');
+        rect(x - 19, y - 11, 18, 12, '#70849b'); rect(x - 7, y - 18, 18, 12, '#a4b5c5');
+        rect(x + 5, y - 24, 17, 12, '#849bb0'); rect(x + 17, y - 27, 8, 16, '#d1d9da');
+        rect(x + 22, y - 23, 4, 7, '#4c687e');
+        break;
+      case 'shelter':
+        rect(x - 35, y - 6, 4, 42, '#ab906c'); rect(x + 31, y - 6, 4, 42, '#ab906c');
+        rect(x - 39, y - 13, 78, 9, '#607f75'); rect(x - 32, y - 23, 64, 11, '#86a18b');
+        rect(x - 22, y - 30, 44, 8, '#a0b79c');
+        bench(x - 12, y + 19);
+        break;
+      case 'boat':
+        rect(x - 26, y + 4, 50, 3, '#4d8d9b66');
+        rect(x - 23, y - 5, 46, 8, '#ad825a'); rect(x - 18, y - 9, 36, 5, '#d0ac7d');
+        rect(x - 13, y - 8, 26, 5, '#80644d'); rect(x - 4, y - 25, 3, 20, '#c5b494');
+        rect(x - 1, y - 23, 14, 13, '#e1d5b7');
+        break;
+      case 'gateway':
+        rect(x - 19, y - 26, 4, 43, '#b6ac90'); rect(x + 15, y - 26, 4, 43, '#b6ac90');
+        rect(x - 24, y - 32, 48, 8, object.region === 'observatory' ? '#7887a5' : object.region === 'harbor' ? '#648d96' : '#75917b');
+        rect(x - 18, y - 39, 36, 8, '#afbfa4');
+        pixelText(({library:'▤',workshop:'◆',observatory:'☆',orchard:'✿',harbor:'≈'})[object.region] || '✧', x, y - 28, '#f4e5c3', 11);
+        break;
       case 'farm':
         rect(x - 17, y - 17, 34, 34, '#967a53');
         for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
@@ -540,19 +677,25 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     }
   };
   if (world.kind === 'interior' || world.id.startsWith('house:')) {
-    for (const col of [3, 7, 12, 16]) window(col * TILE + 12, 10);
+    for (let col = 3; col < world.columns - 2; col += 5) window(col * TILE + 12, 10);
     const title = String(world.name).slice(0, 38);
     ctx.font = '600 11px ui-monospace, monospace';
     const titleWidth = Math.max(174, ctx.measureText(title).width + 24);
-    rect(400 - titleWidth / 2 + 2, 44, titleWidth, 28, '#344e4533');
-    rect(400 - titleWidth / 2, 42, titleWidth, 28, '#9a8170');
-    rect(403 - titleWidth / 2, 45, titleWidth - 6, 22, '#e1d5bb');
-    pixelText(title, 400, 57, '#52645d', 11);
-    for (const [col, row] of [[2, 3], [17, 3], [2, 8], [17, 8]]) {
+    rect(world.columns * TILE / 2 - titleWidth / 2 + 2, 44, titleWidth, 28, '#344e4533');
+    rect(world.columns * TILE / 2 - titleWidth / 2, 42, titleWidth, 28, '#9a8170');
+    rect(world.columns * TILE / 2 + 3 - titleWidth / 2, 45, titleWidth - 6, 22, '#e1d5bb');
+    pixelText(title, world.columns * TILE / 2, 57, '#52645d', 11);
+    for (const [col, row] of [[2, 3], [world.columns - 3, 3], [2, world.rows - 6], [world.columns - 3, world.rows - 6]]) {
       rect(col * TILE + 10, row * TILE + 10, 18, 15, '#b28c73');
       blossom(col * TILE + 14, row * TILE + 4, '#e8c5b2');
       blossom(col * TILE + 20, row * TILE, '#dbb6c4');
     }
+  }
+  if (world.id === 'observatory') {
+    rect(8 * TILE, 2 * TILE, 16 * TILE, TILE + 12, '#657590');
+    rect(8 * TILE + 5, 2 * TILE + 5, 16 * TILE - 10, TILE + 2, '#465b78');
+    for (let col = 9; col < 24; col++) { const n = cellNoise(col, 2); rect(col * TILE + n % 23, 2 * TILE + 10 + n % 28, 2 + n % 2, 2, '#d6dccc'); }
+    rect(17 * TILE, 2 * TILE + 12, 10, 10, '#ede1bc'); rect(17 * TILE + 3, 2 * TILE + 10, 7, 8, '#465b78');
   }
   // Homes have a permanent cottage plus the inhabitant's own garden objects.
   if (world.id.startsWith('home:')) {
@@ -601,6 +744,9 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
   rect(0, 0, world.columns * TILE, 3, '#648369');
   rect(0, world.rows * TILE - 3, world.columns * TILE, 3, '#648369');
 
+  const phase = options.dayPhase || options.atmosphere?.phase || 'day';
+  const tint = { dawn: '#e8c59916', dusk: '#a88dbe20', night: '#30466538' }[phase];
+  if (tint) rect(camera.x * TILE, camera.y * TILE, COLS * TILE, ROWS * TILE, tint);
   const visible = visitors.filter((avatar) => avatar.x >= camera.x - 1 && avatar.x < camera.x + COLS + 1 && avatar.y >= camera.y - 1 && avatar.y < camera.y + ROWS + 1);
   const crowd = new Map();
   const avatars = [];
@@ -612,12 +758,13 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
   }
   if ((self?.id || self?.name) && position) avatars.push({ ...self, x: position.x, y: position.y, isSelf: true });
   avatars.sort((a, b) => a.y - b.y || a.x - b.x);
+  const characterLabel = (avatar) => `${String(avatar.name || 'Agent').slice(0, 18)}${avatar.title && avatar.title !== 'Resident' ? ` · ${String(avatar.title).slice(0, 12)}` : ''}`;
   const labelBoxes = [];
   const avatarBoxes = avatars.flatMap((avatar) => {
     const x = (avatar.x + 0.5) * TILE; const y = (avatar.y + 0.5) * TILE;
     ctx.font = '600 9px ui-monospace, monospace';
-    const width = ctx.measureText(String(avatar.name || 'Agent').slice(0, 18)).width + 12;
-    return [{ x: x - width / 2, y: y - 40, width, height: 18 }, { x: x - 15, y: y - 21, width: 30, height: 39 }];
+    const width = ctx.measureText(characterLabel(avatar)).width + 12;
+    return [{ x: x - width / 2, y: y - 49, width, height: 19 }, { x: x - 15, y: y - 29, width: 30, height: 46 }];
   });
   const overlaps = (a, b) => a.x < b.x + b.width + 3 && a.x + a.width + 3 > b.x && a.y < b.y + b.height + 3 && a.y + a.height + 3 > b.y;
   const landmarkLabel = (text, x, y, preferredY) => {
@@ -649,20 +796,21 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
       rect(x - 14, y + 14, 28, 2, '#fff3c5');
       rect(x - 14, y - 12, 28, 2, '#fff3c5');
     }
-    const indoorTitle = world.kind === 'interior' || world.id.startsWith('house:');
+    const indoorTitle = (world.kind === 'interior' || world.id.startsWith('house:')) && (world.landmarks || []).length === 1;
     if (!indoorTitle) {
       const labelY = place.name === 'Welcome Plaza' ? y + 42 : place.name === 'Mission Board' || (world.id.startsWith('home:') && place.name === 'Garden Cottage') ? y - 47 : y + 28;
       landmarkLabel(place.name, x, y, labelY);
     }
   }
 
+  const now = typeof options.clock === 'function' ? options.clock() : Number.isFinite(options.clock) ? options.clock : Date.now();
   const occupancy = new Map();
   const nameBoxes = [];
   if ((self?.name || self?.id) && position) {
     ctx.font = '600 9px ui-monospace, monospace';
-    const width = ctx.measureText(String(self.name || 'Agent').slice(0, 18)).width + 8;
+    const width = ctx.measureText(characterLabel(self)).width + 8;
     const x = Math.min((camera.x + COLS) * TILE - width / 2 - 3, Math.max(camera.x * TILE + width / 2 + 3, (position.x + 0.5) * TILE));
-    const y = Math.max(camera.y * TILE + 9, (position.y + 0.5) * TILE - 30);
+    const y = Math.max(camera.y * TILE + 9, (position.y + 0.5) * TILE - 39);
     nameBoxes.push({ x: x - width / 2, y: y - 7, width, height: 14, reservedSelf: true });
   }
   for (const avatar of avatars) {
@@ -690,18 +838,33 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     rect(x + 2, y + 12, resting ? 8 : 5, 4, '#3d4857');
     rect(x - 8, y - 17, 16, 14, '#ecd1a6');
     rect(x - 9, y - 20, 18, 6, '#404e56');
+    if (['sprout', 'leaf', 'flower_crown', 'flower'].includes(avatar.avatar)) {
+      if (avatar.avatar === 'flower_crown') {
+        for (const dx of [-7, -1, 5]) { rect(x + dx, y - 22, 5, 4, '#ddb9bf'); rect(x + dx + 2, y - 22, 1, 2, '#fff2c0'); }
+      } else {
+        rect(x - 1, y - 28, 2, 9, '#61855b'); rect(x - 7, y - 27, 7, 4, '#8eac74'); rect(x + 1, y - 30, 6, 4, '#afc98d');
+        if (avatar.avatar === 'flower') blossom(x - 2, y - 29, '#e6bbc4');
+      }
+    } else if (avatar.avatar === 'star') pixelText('✦', x, y - 25, '#ecd99b', 10);
+    else if (['woven_banner', 'explorer_banner'].includes(avatar.avatar)) { rect(x - 12, y - 5, 4, 22, avatar.avatar === 'explorer_banner' ? '#89aeb5' : '#af91b1'); rect(x + 8, y - 5, 4, 22, avatar.avatar === 'explorer_banner' ? '#9abac0' : '#bda2ba'); rect(x - 12, y + 8, 4, 3, '#e4ccab'); }
+    else if (avatar.avatar === 'garden_lantern') { rect(x + 12, y + 4, 9, 10, '#9e8563'); rect(x + 14, y + 6, 5, 6, '#f3deb1'); rect(x + 14, y + 1, 5, 3, '#7c715b'); }
     rect(x - 9, y - 16, 3, 5, '#404e56');
     rect(x + 6, y - 16, 3, 5, '#404e56');
     rect(x - 5, y - 12, 2, 2, '#374952');
     rect(x + 3, y - 12, 2, 2, '#374952');
     rect(x - 2, y - 7, 4, 1, '#ba8d72');
     pixelText(avatar.symbol || '✦', x, y + 5, '#fff0d4', 9);
+    const emote = { wave: '⌁', bow: '↧', cheer: '✦', think: '…', heart: '♥' }[avatar.emote];
+    if (emote && Number(avatar.emote_until) > now) {
+      rect(x + 11, y - 30, 20, 20, '#fff0d8'); rect(x + 11, y - 11, 4, 4, '#fff0d8');
+      pixelText(emote, x + 21, y - 20, avatar.emote === 'heart' ? '#b57486' : '#6c8379', 14);
+    }
     if (avatar.status === 'active' || avatar.status === 'online') rect(x + 9, y - 21, 4, 4, '#a6dda3');
-    const name = String(avatar.name || 'Agent').slice(0, 18);
+    const name = characterLabel(avatar);
     ctx.font = '600 9px ui-monospace, monospace';
     const width = ctx.measureText(name).width + 8;
     const labelX = Math.min((camera.x + COLS) * TILE - width / 2 - 3, Math.max(camera.x * TILE + width / 2 + 3, x));
-    const defaultLabelY = Math.max(camera.y * TILE + 9, y - 30 - (avatar.isSelf ? 0 : stack * 12));
+    const defaultLabelY = Math.max(camera.y * TILE + 9, y - 39 - (avatar.isSelf ? 0 : stack * 12));
     let nameBox;
     for (const candidateY of [defaultLabelY, defaultLabelY - 16, defaultLabelY - 32, y + 29]) {
       const labelY = Math.max(camera.y * TILE + 9, Math.min((camera.y + ROWS) * TILE - 9, candidateY));

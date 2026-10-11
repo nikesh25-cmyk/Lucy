@@ -295,3 +295,58 @@ test('deleting a home owner clears construction and safely evacuates garden and 
   assert.equal(f.platform.get('SELECT world_id FROM agents WHERE id=?', cottageVisitor.id).world_id, `home:${cottageVisitor.id}`);
   assert.equal(f.platform.verifyAudit(), true);
 });
+
+test('ten shared worlds expose scenic region metadata and doorway travel returns to the correct district', async (t) => {
+  const f = await fixture(t);
+  const agent = f.agent('alice');
+  const listing = f.platform.worldList(f.actor('alice'));
+  assert.equal(listing.shared_count, 10);
+  const commons = getWorldDefinition('commons');
+  for (const id of ['library', 'workshop', 'observatory', 'orchard', 'harbor']) {
+    assert.ok(listing.worlds.some((world) => world.id === id));
+    const entrance = commons.portals.find((gate) => gate.targetWorldId === id);
+    f.advance();
+    f.platform.run("UPDATE agents SET world_id='commons',x=10,y=6 WHERE id=?", agent.id);
+    denied(() => f.tx('travel', f.actor('alice'), agent.id, { world_id: id }), [409]);
+    f.platform.run('UPDATE agents SET x=?,y=? WHERE id=?', entrance.x, entrance.y, agent.id);
+    f.tx('travel', f.actor('alice'), agent.id, { world_id: id });
+    const inside = f.platform.world(f.actor('alice'), { agent_id: agent.id });
+    assert.equal(inside.world.id, id);
+    assert.ok(inside.world.description && inside.world.lore && inside.world.ambiance);
+    assert.ok(walkable(avatars(inside).find((candidate) => candidate.id === agent.id), id));
+    f.advance();
+    const returned = f.tx('travel', f.actor('alice'), agent.id, { world_id: 'commons' });
+    assert.deepEqual({ x: returned.x, y: returned.y }, { x: entrance.x, y: entrance.y });
+  }
+  assert.equal(f.platform.verifyAudit(), true);
+});
+
+test('garden decorations and safe cottage furnishing preserve ownership and clear doorways', async (t) => {
+  const f = await fixture(t);
+  const owner = f.agent('alice'); const visitor = f.agent('bob');
+  const homeId = `home:${owner.id}`; const houseId = `house:${owner.id}`;
+  f.tx('travel', f.actor('alice'), owner.id, { world_id: homeId });
+  for (const [index, type] of ['bookshelf', 'table', 'lantern', 'sculpture', 'trellis', 'cushion'].entries()) {
+    f.tx('build', f.actor('alice'), owner.id, { type, x: 8 + index, y: 18 });
+  }
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', homeId).n, 6);
+  f.advance();
+  f.tx('travel', f.actor('alice'), owner.id, { world_id: houseId });
+  const view = f.platform.world(f.actor('alice'), { agent_id: owner.id });
+  assert.ok(view.build_palette.includes('bookshelf'));
+  assert.equal(view.build_palette.includes('pond'), false);
+  for (const [index, type] of ['bookshelf', 'table', 'lantern', 'sculpture', 'cushion'].entries()) {
+    f.tx('build', f.actor('alice'), owner.id, { type, x: 6 + index, y: 8 });
+  }
+  denied(() => f.tx('build', f.actor('alice'), owner.id, { type: 'farm', x: 12, y: 9 }), [400]);
+  denied(() => f.tx('build', f.actor('alice'), owner.id, { type: 'bench', x: 4, y: 4 }), [409]);
+  denied(() => f.tx('build', f.actor('alice'), owner.id, { type: 'table', x: 10, y: 11 }), [409]);
+  denied(() => f.tx('build', f.actor('bob'), owner.id, { type: 'table', x: 12, y: 8 }));
+  f.tx('travel', f.actor('bob'), visitor.id, { world_id: homeId }); f.advance();
+  f.tx('travel', f.actor('bob'), visitor.id, { world_id: houseId });
+  denied(() => f.tx('build', f.actor('bob'), visitor.id, { type: 'table', x: 12, y: 8 }), [403]);
+  assert.equal(f.platform.world(f.actor('alice'), { agent_id: owner.id }).objects.length, 5);
+  f.advance();
+  f.tx('travel', f.actor('alice'), owner.id, { world_id: homeId });
+  assert.equal(f.platform.world(f.actor('alice'), { agent_id: owner.id }).objects.length, 6);
+});

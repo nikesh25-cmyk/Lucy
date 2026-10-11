@@ -3,6 +3,8 @@ import { promisify } from 'node:util';
 import { openDatabase } from './database.js';
 import { start } from '../world.js';
 import { spaceMethods } from './spaces.js';
+import { communityMethods } from './community.js';
+import { journeyMethods } from './journey.js';
 
 const scrypt = promisify(scryptCallback);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -18,7 +20,7 @@ const parse = (value) => JSON.parse(value);
 const publicAccount = ({ id, name, role: accountRole, status, created_at }) => ({ id, name, role: accountRole, status, created_at });
 
 export class Platform {
-  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); }
+  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); }
   get(sql, ...args) { return this.db.prepare(sql).get(...args); }
   all(sql, ...args) { return this.db.prepare(sql).all(...args); }
   run(sql, ...args) { return this.db.prepare(sql).run(...args); }
@@ -126,7 +128,7 @@ export class Platform {
   me(actor) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']);
     const account = { ...publicAccount(actor.account), email: actor.account.email };
-    return { account, agents: this.all('SELECT id,name,color,symbol,capabilities,limitations,status,verified,x,y,last_seen,world_id,posture FROM agents WHERE operator_id=? ORDER BY created_at', account.id) };
+    return { account, agents: this.all('SELECT id,name,color,symbol,capabilities,limitations,status,verified,x,y,last_seen,world_id,posture,emote,emote_until FROM agents WHERE operator_id=? ORDER BY created_at', account.id) };
   }
   invite(actor, input) {
     role(actor, ['admin']);
@@ -146,12 +148,23 @@ export class Platform {
     this.run('INSERT INTO agents(id,operator_id,name,color,symbol,capabilities,limitations,x,y,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', id, actor.account.id, name, color, symbol, text(input.capabilities, 'Capabilities', 300, true), text(input.limitations, 'Limitations', 300, true), start.x, start.y, now());
     this.audit(actor.account.id, 'agent.created', id);
     this.createHome(id, name);
+    this.recordVisit(actor, id, 'commons');
     return this.get('SELECT id,name,status FROM agents WHERE id=?', id);
   }
   ownedAgent(actor, id) {
     const agent = this.get('SELECT * FROM agents WHERE id=?', id);
     if (!agent || (actor.kind === 'runtime' ? actor.agent.id !== id : agent.operator_id !== actor.account.id)) fail(404, 'Agent not found.');
     return agent;
+  }
+  emote(actor, input) {
+    this.active();
+    const agent = this.ownedAgent(actor, input.agent_id || actor.agent?.id);
+    if (agent.status !== 'active') fail(403, 'The agent is paused.');
+    if (!['wave', 'bow', 'cheer', 'think', 'heart', 'none'].includes(input.emote)) fail(400, 'Choose wave, bow, cheer, think, heart, or none.');
+    if (input.emote !== 'none' && this.clock() - agent.last_emote < 5000) fail(429, 'Allow five seconds between expressions.');
+    const until = input.emote === 'none' ? 0 : this.clock() + 10000;
+    this.run('UPDATE agents SET emote=?,emote_until=?,last_emote=?,last_seen=? WHERE id=?', input.emote, until, this.clock(), this.clock(), agent.id);
+    return { agent_id: agent.id, emote: input.emote, emote_until: until };
   }
   agentControl(actor, id, status) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']); this.ownedAgent(actor, id);
@@ -478,11 +491,13 @@ export class Platform {
     const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at`, actor.account.id, actor.account.id);
     const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
     const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
-    return { format: 'shared-world-account-v2', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history, messages, moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    return { format: 'shared-world-account-v3', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history, messages, community: this.communityExport(actor), journey: this.journeyExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
     role(actor, ['member', 'reviewer', 'moderator']);
     if (this.get("SELECT id FROM missions WHERE (owner_id=? OR reviewer_id=?) AND status='open'", actor.account.id, actor.account.id)) fail(409, 'Transfer or close your active missions before deleting your account.');
+    this.deleteCommunity(actor);
+    this.deleteJourney(actor);
     for (const claim of this.all("SELECT * FROM claims WHERE account_id=? AND status IN ('leased','changes_requested')", actor.account.id)) {
       this.run("UPDATE claims SET status='cancelled' WHERE id=?", claim.id);
       this.run("UPDATE tasks SET status='open' WHERE id=?", claim.task_id);
@@ -506,4 +521,4 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods);

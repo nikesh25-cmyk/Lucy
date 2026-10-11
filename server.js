@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { Platform } from './src/platform.js';
 import { acquireProcessLock, backupDatabase } from './src/recovery.js';
 import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from './src/hosting.js';
+import { worldAtmosphere } from './src/atmosphere.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -33,8 +34,15 @@ const writes = new Map([
   ['/appeals', ['appeal', null]], ['/appeals/decide', ['decideAppeal', null]],
   ['/operations/pause', ['pause', null]], ['/operations/accounts', ['accountControl', null]],
   ['/jobs', ['job', 'contribute']], ['/auth/logout', ['logout', null]],
+  ['/emotes', ['emote', 'move']],
+  ['/circles', ['createCircle', 'contribute']], ['/circles/membership', ['circleMembership', 'contribute']],
+  ['/projects', ['createProject', 'contribute']], ['/projects/pledges', ['projectPledge', 'contribute']], ['/projects/milestones', ['projectMilestone', 'contribute']],
+  ['/events', ['createEvent', 'contribute']], ['/events/rsvp', ['eventRSVP', 'contribute']], ['/thanks', ['giveThanks', 'contribute']],
+  ['/community/manage', ['manageCommunity', null]],
+  ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
+  ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
 ]);
-const gets = new Set(['/health', '/bootstrap', '/world', '/worlds', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status']);
+const gets = new Set(['/health', '/bootstrap', '/world', '/worlds', '/missions', '/gallery', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -136,15 +144,17 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/world', '/worlds', '/missions', '/gallery'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/world', '/worlds', '/missions', '/gallery', '/community'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor = token ? platform.authenticate(token, scope) : publicRoute ? null : platform.authenticate(token, scope);
       if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
       if (request.method === 'GET') {
         const result = platform.transaction(() => {
           let value;
-          if (route === '/world') value = platform.world(actor, Object.fromEntries(url.searchParams));
+          if (route === '/world') { value = platform.world(actor, Object.fromEntries(url.searchParams)); value.atmosphere = worldAtmosphere(platform.clock()); }
           else if (route === '/worlds') value = platform.worldList(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/community') value = platform.community(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
           else if (route === '/missions') value = platform.missionList(actor);
           else if (route === '/gallery') value = platform.gallery();
           else if (route === '/export') value = platform.exportAccount(actor);

@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Platform } from '../src/platform.js';
 import { acquireProcessLock, backupDatabase, restoreDatabase, validateDatabase } from '../src/recovery.js';
+import { COMMUNITY_TABLES } from '../src/community.js';
+import { JOURNEY_TABLES } from '../src/journey.js';
 
 const setup = (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'world-recovery-'));
@@ -22,7 +24,7 @@ test('SQLite backups recover durable changes and preserve the previous database'
   platform.close();
   const result = restoreDatabase(backup, path);
   assert.ok(result.preserved_original);
-  assert.equal(validateDatabase(path).schema_version, 2);
+  assert.equal(validateDatabase(path).schema_version, 3);
   const restored = new Platform(path), preserved = new Platform(result.preserved_original);
   try {
     assert.equal(restored.all('SELECT event FROM audit').length, 1);
@@ -37,7 +39,7 @@ test('restore rejects active server locks and malformed backups', (t) => {
   try { assert.throws(() => restoreDatabase(backup, path), /running/); } finally { release(); }
   writeFileSync(join(directory, 'bad.sqlite'), 'not a database');
   assert.throws(() => restoreDatabase(join(directory, 'bad.sqlite'), path));
-  assert.equal(validateDatabase(path).schema_version, 2);
+  assert.equal(validateDatabase(path).schema_version, 3);
 });
 test('stale process locks are reclaimed and released safely', (t) => {
   const directory = setup(t), path = join(directory, 'server.lock');
@@ -53,7 +55,7 @@ test('a validated backup restores over a corrupt original without discarding its
   const platform = new Platform(path); backupDatabase(platform.db, backup); platform.close();
   writeFileSync(path, 'damaged original');
   const result = restoreDatabase(backup, path);
-  assert.equal(validateDatabase(path).schema_version, 2);
+  assert.equal(validateDatabase(path).schema_version, 3);
   assert.equal(statSync(result.preserved_original).size, 'damaged original'.length);
 });
 
@@ -67,10 +69,15 @@ test('version one backups restore and migrate without losing accounts, avatars o
   platform.close();
   // Remove precisely the v2 additions to recreate the previous supported schema.
   const legacy = new DatabaseSync(source);
+  legacy.exec('PRAGMA foreign_keys=OFF');
+  for (const table of [...COMMUNITY_TABLES, ...JOURNEY_TABLES]) legacy.exec(`DROP TABLE ${table}`);
   legacy.exec(`DROP TABLE world_objects; DROP TABLE worlds;
     DROP INDEX agents_spatial; DROP INDEX messages_world;
     ALTER TABLE agents DROP COLUMN world_id;
     ALTER TABLE agents DROP COLUMN posture;
+    ALTER TABLE agents DROP COLUMN emote;
+    ALTER TABLE agents DROP COLUMN emote_until;
+    ALTER TABLE agents DROP COLUMN last_emote;
     ALTER TABLE messages DROP COLUMN world_id;
     PRAGMA user_version=1;`);
   legacy.close();
@@ -78,7 +85,7 @@ test('version one backups restore and migrate without losing accounts, avatars o
   assert.equal(restoreDatabase(source, destination).schema_version, 1);
   const restored = new Platform(destination);
   try {
-    assert.equal(validateDatabase(destination).schema_version, 2);
+    assert.equal(validateDatabase(destination).schema_version, 3);
     const restoredActor = restored.authenticate(credentials.token);
     assert.equal(restored.me(restoredActor).account.name, 'Original owner');
     assert.equal(restored.me(restoredActor).agents[0].name, 'Original avatar');
@@ -86,6 +93,34 @@ test('version one backups restore and migrate without losing accounts, avatars o
     assert.ok(restored.get('SELECT id FROM worlds WHERE owner_agent_id=?', agent.id));
     assert.equal(restored.world(restoredActor).messages[0].text, 'A preserved legacy conversation.');
   } finally { restored.close(); }
+});
+
+test('version two state upgrades atomically and version three recovery requires resident tables', async (t) => {
+  const directory = setup(t), path = join(directory, 'v2.sqlite'), backup = join(directory, 'v3-backup.sqlite');
+  const original = new Platform(path);
+  const credentials = await original.register({ name: 'Garden owner', email: 'garden@example.org', password: 'migration-password-2026', consent: true });
+  const actor = original.authenticate(credentials.token);
+  const avatar = original.transaction(() => original.createAgent(actor, { name: 'Preserved resident' }));
+  original.close();
+  const legacy = new DatabaseSync(path);
+  legacy.exec('PRAGMA foreign_keys=OFF');
+  for (const table of [...COMMUNITY_TABLES, ...JOURNEY_TABLES]) legacy.exec(`DROP TABLE ${table}`);
+  legacy.exec('ALTER TABLE agents DROP COLUMN emote; ALTER TABLE agents DROP COLUMN emote_until; ALTER TABLE agents DROP COLUMN last_emote; PRAGMA user_version=2');
+  legacy.close();
+  assert.equal(validateDatabase(path).schema_version, 2);
+  const upgraded = new Platform(path);
+  try {
+    assert.equal(validateDatabase(path).schema_version, 3);
+    const nextActor = upgraded.authenticate(credentials.token);
+    assert.equal(upgraded.me(nextActor).agents[0].id, avatar.id);
+    assert.equal(upgraded.journey(nextActor, { agent_id: avatar.id }).discoveries[0].world_id, 'commons');
+    assert.ok(upgraded.space(nextActor, `home:${avatar.id}`));
+    assert.equal(upgraded.verifyAudit(), true);
+    backupDatabase(upgraded.db, backup);
+  } finally { upgraded.close(); }
+  const incomplete = new DatabaseSync(backup);
+  incomplete.exec('DROP TABLE journey_journal'); incomplete.close();
+  assert.throws(() => validateDatabase(backup), /complete Shared World/);
 });
 
 test('process locks recover after a reused PID or a different host boot', (t) => {

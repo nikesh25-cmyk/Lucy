@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { getWorldDefinition, move, walkable, COLS, ROWS } from '../world.js';
+import { getWorldDefinition, move, walkable, sharedWorldIds, COLS, ROWS } from '../world.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
-const palette = Object.freeze(['cottage', 'tree', 'flowers', 'bench', 'farm', 'pond', 'lamp', 'path', 'fountain']);
+const palette = Object.freeze(['cottage', 'tree', 'flowers', 'bench', 'farm', 'pond', 'lamp', 'path', 'fountain', 'bookshelf', 'table', 'lantern', 'sculpture', 'trellis', 'cushion']);
+const housePalette = Object.freeze(['bookshelf', 'table', 'lantern', 'sculpture', 'cushion', 'bench', 'flowers']);
 const publicFields = 'w.id,w.name,w.kind,w.owner_agent_id,w.visibility,w.width,w.height,a.name AS owner_name';
 const date = () => new Date().toISOString();
-const sharedIds = ['commons', 'hall', 'pavilion', 'gallery', 'meditation'];
+const sharedIds = sharedWorldIds;
 const quantity = (value, fallback, maximum) => {
   if (value == null || value === '') return fallback;
   const number = Number(value);
@@ -68,12 +69,15 @@ export const spaceMethods = {
     const world = this.space(actor, id), definition = getWorldDefinition(world);
     const center = viewerAgent?.world_id === id ? viewerAgent : definition.start;
     const camera = { x: Math.min(Math.max(0, world.width - COLS), quantity(input.x, Math.max(0, center.x - Math.floor(COLS / 2)), world.width)), y: Math.min(Math.max(0, world.height - ROWS), quantity(input.y, Math.max(0, center.y - Math.floor(ROWS / 2)), world.height)) };
-    const participants = this.all(`SELECT a.id,a.name,a.operator_id,o.name AS operator,a.color,a.symbol,a.capabilities,a.limitations,a.status,a.verified,a.x,a.y,a.world_id,a.posture,a.last_seen,
+    const participants = this.all(`SELECT a.id,a.name,a.operator_id,o.name AS operator,a.color,a.symbol,a.capabilities,a.limitations,a.status,a.verified,a.x,a.y,a.world_id,a.posture,a.last_seen,a.emote,a.emote_until,
       EXISTS(SELECT 1 FROM tokens t WHERE t.agent_id=a.id AND t.kind='runtime' AND t.revoked=0 AND t.expires_at>? AND t.used_calls<t.max_calls) AS has_session,
       (SELECT COUNT(*) FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE c.agent_id=a.id AND s.status='accepted') AS accepted_contributions
       FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.world_id=? AND a.x>=? AND a.x<? AND a.y>=? AND a.y<? AND a.status!='deleted' AND o.status='active'
       ORDER BY CASE WHEN a.id=? THEN 0 ELSE 1 END,a.last_seen DESC,a.id LIMIT 200`, this.clock(), id, camera.x, camera.x + COLS, camera.y, camera.y + ROWS, viewerAgent?.id || '');
+    const cosmetics = this.residentCosmetics?.(participants.map((participant) => participant.id));
     for (const participant of participants) {
+      const cosmetic = cosmetics?.get ? cosmetics.get(participant.id) : cosmetics?.[participant.id];
+      if (cosmetic) Object.assign(participant, { title: cosmetic.title, avatar: cosmetic.avatar });
       participant.presence = participant.status !== 'active' ? participant.status : participant.has_session && this.clock() - participant.last_seen < 30000 ? 'connected' : this.clock() - participant.last_seen < 30000 ? 'recent_visit' : 'offline';
       delete participant.has_session;
     }
@@ -84,7 +88,7 @@ export const spaceMethods = {
     const objects = this.all('SELECT id,type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', id).map((object) => ({ ...object, kind: object.type }));
     const portals = (definition.portals || []).map((portal) => ({ ...portal, target_world_id: portal.targetWorldId || portal.target_world_id, label: portal.name || portal.label }));
     const ownHome = viewerAgent ? this.get("SELECT id,name,visibility FROM worlds WHERE owner_agent_id=? AND kind='home'", viewerAgent.id) : null;
-    return { world, participants, agents: participants, messages, camera, objects, portals, own_home: ownHome, build_palette: palette,
+    return { world: { ...world, description: definition.description || '', lore: definition.lore || '', ambiance: definition.ambiance || '' }, participants, agents: participants, messages, camera, objects, portals, own_home: ownHome, build_palette: world.kind === 'house' ? housePalette : palette,
       terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
       bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null,
       counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n, visible_agents: participants.length },
@@ -114,24 +118,26 @@ export const spaceMethods = {
     const arrival = exit ? { x: exit.x, y: exit.y } : position;
     this.run("UPDATE agents SET world_id=?,x=?,y=?,posture='standing',last_move=?,last_seen=? WHERE id=?", target.id, arrival.x, arrival.y, this.clock(), this.clock(), agent.id);
     this.audit(actor.account.id, 'world.entered', target.id);
+    this.recordVisit?.(actor, agent.id, target.id);
     return { ...arrival, world_id: target.id, posture: 'standing' };
   },
   build(actor, agentId, input) {
     this.active(); const agent = this.ownedAgent(actor, agentId);
     if (agent.status !== 'active') fail(403, 'The agent is paused.');
     const world = this.space(actor, agent.world_id);
-    if (world.owner_agent_id !== agent.id || world.kind !== 'home') fail(403, 'Build inside your own garden.');
+    if (world.owner_agent_id !== agent.id || !['home', 'house'].includes(world.kind)) fail(403, 'Build inside your own garden or cottage.');
     const position = { x: input.x, y: input.y }, definition = getWorldDefinition(world);
     if (!Number.isInteger(position.x) || !Number.isInteger(position.y) || !walkable(position, definition)) fail(400, 'Choose a buildable tile inside your garden.');
     if (Math.abs(position.x - definition.start.x) + Math.abs(position.y - definition.start.y) <= 1 || (definition.portals || []).some((p) => Math.abs(p.x - position.x) + Math.abs(p.y - position.y) <= 1)) fail(409, 'Keep the arrival and exit clear.');
+    if (world.kind === 'house' && (definition.objects || []).some((object) => object.x === position.x && object.y === position.y)) fail(409, 'Keep the original cottage furniture clear.');
     if (input.remove === true) this.run('DELETE FROM world_objects WHERE world_id=? AND x=? AND y=?', world.id, position.x, position.y);
     else {
       const type = input.type || input.kind;
-      if (!palette.includes(type)) fail(400, 'Choose an item from the building palette.');
-      if (!this.get('SELECT id FROM world_objects WHERE world_id=? AND x=? AND y=?', world.id, position.x, position.y) && this.get('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', world.id).n >= 200) fail(429, 'A garden holds 200 placed items.');
+      if (!(world.kind === 'house' ? housePalette : palette).includes(type)) fail(400, 'Choose an item from the building palette.');
+      if (!this.get('SELECT id FROM world_objects WHERE world_id=? AND x=? AND y=?', world.id, position.x, position.y) && this.get('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', world.id).n >= 200) fail(429, 'A home holds 200 placed items.');
       this.run('INSERT INTO world_objects(id,world_id,type,x,y,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(world_id,x,y) DO UPDATE SET type=excluded.type', randomUUID(), world.id, type, position.x, position.y, date());
     }
-    this.audit(actor.account.id, input.remove === true ? 'garden.removed' : 'garden.built', world.id);
+    this.audit(actor.account.id, input.remove === true ? `${world.kind === 'house' ? 'cottage' : 'garden'}.removed` : `${world.kind === 'house' ? 'cottage' : 'garden'}.built`, world.id);
     return { world_id: world.id, x: position.x, y: position.y, removed: input.remove === true };
   },
   homeSettings(actor, agentId, input) {
