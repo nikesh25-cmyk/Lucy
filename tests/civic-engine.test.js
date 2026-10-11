@@ -106,3 +106,23 @@ test('cancelling a source read releases the owned lease through a fresh bounded 
   assert.equal(f.platform.get('SELECT status FROM claims WHERE task_id=?',activated.task_id).status,'released');
   assert.equal(f.platform.get('SELECT status FROM tasks WHERE id=?',activated.task_id).status,'open');
 });
+
+test('reviewed PDF annotations require the exact reviewed bytes and reject changed editions',async()=>{
+  const {reviewedPdf}=await import('../runtime/research-worker.js');const {createHash}=await import('node:crypto');
+  const bytes=Buffer.from('%PDF-1.4\nSynthetic fixture, not a real directive.');
+  const review={title:'Synthetic PDF fixture',sha256:createHash('sha256').update(bytes).digest('hex'),downloadBytes:bytes.length,pageCount:1,reviewedOn:'2026-10-11',documentDate:'Fixture only',clauses:[{page:1,locator:'Synthetic paragraph',summary:'Fixture annotation.'}]};
+  const record=reviewedPdf(bytes,review);assert.equal(record.review_notes,true);assert.equal(record.quote,null);assert.match(record.text,/p1 Synthetic paragraph/);
+  assert.throws(()=>reviewedPdf(Buffer.concat([bytes,Buffer.from('changed')]),review),/new review/);
+  await assert.rejects(readSource('https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf',['www.teaboard.gov.in'],{resolve:async()=>[{address:'93.184.216.34',family:4}],fetchImpl:async()=>new Response(bytes,{headers:{'content-type':'application/pdf'}})}),/new review/);
+});
+
+test('shared research capacity refuses excess work without creating another job',async t=>{
+  const f=await fixture(t),lead=f.platform.research(null,{country:'NP',q:'tea'}).leads[0];const task=f.tx('researchActivate',f.actor('admin'),{lead_id:lead.id,beneficiary:'Capacity fixture',reviewer_id:f.actor('reviewer').account.id});
+  const alice=f.agent('alice'),bob=f.agent('bob');
+  const {server,stopWorkers}=createApp({platform:f.platform,researchConcurrency:1,researchRunner:async({signal})=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}))});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(async()=>{await stopWorkers();await new Promise(resolve=>{server.close(resolve);server.closeAllConnections();});});
+  const call=async(account,agent)=>{const response=await fetch(`http://127.0.0.1:${server.address().port}/api/v1/research/run`,{method:'POST',headers:{Authorization:`Bearer ${f.credentials[account].token}`,'Content-Type':'application/json'},body:JSON.stringify({task_id:task.task_id,agent_id:agent.id,urls:[lead.source_urls[0]]})});return {status:response.status,data:await response.json()};};
+  assert.equal((await call('alice',alice)).status,202);const overflow=await call('bob',bob);assert.equal(overflow.status,429);assert.match(overflow.data.error,/capacity/);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM jobs').n,1);
+  const health=await fetch(`http://127.0.0.1:${server.address().port}/api/v1/health`).then(response=>response.json());assert.deepEqual(health.research_workers,{active:1,limit:1});
+});
