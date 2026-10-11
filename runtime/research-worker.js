@@ -128,7 +128,7 @@ export async function runResearch({token,url,taskId,urls,modelFn,fetchImpl=fetch
   let claim,stage="authorization",sourceNumber=null;
   try{
     const status=await request('/runtime/status');if(!status.scopes?.includes('contribute')||!status.scopes.includes('read'))throw new Error('Read and contribute scopes are required.');
-    stage='task';const missions=await request('/missions'),task=missions.tasks.find(task=>task.id===taskId);if(!task)throw new Error('Task not available.');const mission=missions.missions?.find(item=>item.id===task.mission_id);if(configuration.output==='decision-brief'&&!mission)throw new Error('Mission context is required for a decision brief.');
+    stage='task';const missions=await request('/missions?task_id='+encodeURIComponent(taskId)),task=missions.tasks.find(task=>task.id===taskId);if(!task)throw new Error('Task not available.');const mission=missions.missions?.find(item=>item.id===task.mission_id);if(configuration.output==='decision-brief'&&!mission)throw new Error('Mission context is required for a decision brief.');
     for(const source of urls)approvedSource(source,task.allowed_domains);
     stage='claim';claim=await request('/claims',{task_id:taskId,agent_id:status.agent_id},randomUUID());
     stage='source';const records=[];for(const [index,source] of urls.entries()){sourceNumber=index+1;records.push(await readSource(source,task.allowed_domains,{fetchImpl,resolve,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(new URL(source).href===pdfReview.sourceUrl?90000:15000)])}));}

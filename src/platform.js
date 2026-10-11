@@ -1,3 +1,4 @@
+import {missionDirectory} from './mission-directory.js';
 import { createDeliveryPacket } from './delivery-packet.js';
 import { assessmentReason } from './review-assessment.js';
 import { draftMethods } from './drafts.js';
@@ -238,8 +239,9 @@ export class Platform {
       this.audit(claim.account_id, 'claim.expired', claim.id);
     }
   }
-  missionList(actor = null) {
+  missionList(actor = null, options = {}) {
     this.expireClaims();
+    if(Object.keys(options).length)return missionDirectory(this,actor,options);
     const missions = this.all('SELECT m.*,o.name AS owner,r.name AS reviewer FROM missions m LEFT JOIN accounts o ON o.id=m.owner_id LEFT JOIN accounts r ON r.id=m.reviewer_id').filter((mission) => mission.status !== 'draft' || (actor?.kind === 'session' && (actor.account.role === 'admin' || [mission.owner_id, mission.reviewer_id].includes(actor.account.id))));
     const ids = new Set(missions.map((mission) => mission.id));
     return { missions, tasks: this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id').filter((task) => ids.has(task.mission_id)).map((task) => ({ ...task, allowed_domains: parse(task.allowed_domains), allowed_actions: ['read-approved-sources', 'submit-evidence'], risk: 'low', lease_minutes: 20 })) };
@@ -391,10 +393,14 @@ export class Platform {
     const reviewer = actor.kind === 'session' && ['admin', 'reviewer'].includes(actor.account.role);
     const predicate = reviewer ? '(m.demo=1 OR m.reviewer_id=? OR ?=1 OR c.account_id=?)' : 'c.account_id=?';
     const args = reviewer ? [actor.account.id, actor.account.role === 'admin' ? 1 : 0, actor.account.id] : [actor.account.id];
-    const submissions = this.all(`SELECT s.*,c.task_id,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC`, ...args).filter((s) => actor.kind !== 'runtime' || s.agent_id === actor.agent.id).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
+    const submissions = this.all(`SELECT s.*,c.task_id,t.title AS task_title,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC`, ...args).filter((s) => actor.kind !== 'runtime' || s.agent_id === actor.agent.id).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
     const ids = new Set(submissions.map((s) => s.id));
+    const claims=this.all('SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=? ORDER BY c.created_at DESC',actor.account.id).filter(c=>actor.kind!=='runtime'||c.agent_id===actor.agent.id);
+    const contextIds=JSON.stringify([...new Set([...claims.map(c=>c.task_id),...submissions.map(s=>s.task_id)])]);
+    const tasks=this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id WHERE t.id IN (SELECT value FROM json_each(?))',contextIds).map(task=>({...task,allowed_domains:parse(task.allowed_domains)}));
+    const missions=this.all('SELECT m.* FROM missions m WHERE m.id IN (SELECT t.mission_id FROM tasks t WHERE t.id IN (SELECT value FROM json_each(?)))',contextIds);
     return {
-      claims: this.all('SELECT * FROM claims WHERE account_id=? ORDER BY created_at DESC', actor.account.id).filter((c) => actor.kind !== 'runtime' || c.agent_id === actor.agent.id),
+      claims,tasks,missions,
       submissions,
       drafts:actor.kind==='session'?this.drafts(actor):[],
       jobs: this.all(`SELECT j.*,a.name AS agent_name FROM jobs j JOIN agents a ON a.id=j.agent_id WHERE a.operator_id=?${actor.kind === 'runtime' ? ' AND j.agent_id=?' : ''} ORDER BY j.created_at DESC LIMIT 100`, actor.account.id, ...(actor.kind === 'runtime' ? [actor.agent.id] : [])),

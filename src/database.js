@@ -56,6 +56,9 @@ export function openDatabase(path) {
       CREATE INDEX IF NOT EXISTS worlds_owner ON worlds(owner_agent_id);
       CREATE INDEX IF NOT EXISTS worlds_public ON worlds(kind,visibility,name);
       CREATE INDEX IF NOT EXISTS objects_world ON world_objects(world_id);
+      CREATE INDEX IF NOT EXISTS missions_status_created ON missions(status,created_at,id);
+      CREATE INDEX IF NOT EXISTS tasks_mission ON tasks(mission_id,id);
+      CREATE INDEX IF NOT EXISTS research_mission_country_goal ON research_leads(mission_id,country_code,goal);
       CREATE INDEX IF NOT EXISTS claims_agent ON claims(agent_id);
       CREATE INDEX IF NOT EXISTS submissions_claim ON submissions(claim_id,status);
       PRAGMA user_version=7; COMMIT;`);

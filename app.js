@@ -7,7 +7,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 
 const $ = (selector) => document.querySelector(selector);
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
-Object.assign(state,{workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
+Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
 const element = (tag, text, className) => { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; };
@@ -19,7 +19,7 @@ const actions = (...children) => append(element('div', null, 'actions'), ...chil
 const card = (title, eyebrow) => { const node = element('section', null, 'card'); if (eyebrow) node.append(paragraph(eyebrow, 'eyebrow')); if (title) node.append(element('h2', title)); return node; };
 const empty = (text) => paragraph(text, 'empty');
 const selected = () => state.agents.find((agent) => agent.id === state.selected);
-const titleOfTask = (id) => state.tasks.find((task) => task.id === id)?.title || id;
+const titleOfTask = (id) => state.tasks.find((task) => task.id === id)?.title || state.history?.claims?.find(c=>c.task_id===id)?.task_title || state.history?.submissions?.find(s=>s.task_id===id)?.task_title || state.gallery?.find(s=>s.task_id===id)?.task_title || id;
 const date = (value) => value ? new Date(value).toLocaleString() : '—';
 const isReviewer = () => ['admin', 'reviewer'].includes(state.account?.role);
 const isModerator = () => ['admin', 'moderator'].includes(state.account?.role);
@@ -101,17 +101,35 @@ async function refresh(all = true) {
     const me = await api('/me'); state.account = me.account; state.agents = me.agents;
     if (!selected() && state.agents.length) state.selected = state.agents[0].id;
   }
-  const [world, missions, gallery] = await Promise.all([api(worldURL()), api('/missions'), api('/gallery')]);
-  state.world = normalizeWorld(world); state.missions = missions.missions; state.tasks = missions.tasks; state.gallery = Array.isArray(gallery) ? gallery : gallery.submissions || [];
+  const [world, missions, gallery] = await Promise.all([api(worldURL()), api('/missions?'+new URLSearchParams({limit:'12',...state.missionQuery})), api('/gallery')]);
+  state.world = normalizeWorld(world); state.missionPage=missions;mergeMissionContext(); state.gallery = Array.isArray(gallery) ? gallery : gallery.submissions || [];
   await loadDirectory();
   if(!state.assembly){const [countries,assembly]=await Promise.all([api('/countries?limit=248'),api('/assembly')]);state.countries=countries.entries;state.assembly=assembly;}
   await loadResearch();state.mayors=(await api('/mayors')).mayors;
   await Promise.all([loadCommunity(), loadJourney()]);
   if (state.account && all) {
-    state.history = await api('/history'); state.workers=await api('/workers'); state.safety = await api('/safety');
+    state.history = await api('/history');mergeMissionContext(); state.workers=await api('/workers'); state.safety = await api('/safety');
     if (state.account.role === 'admin') state.operations = await api('/operations');
   }
 }
+function mergeMissionContext(){
+ state.missions=[...new Map([...(state.history?.missions||[]),...(state.missionPage.missions||[])].map(item=>[item.id,item])).values()];
+ state.tasks=[...new Map([...(state.history?.tasks||[]),...(state.missionPage.tasks||[])].map(item=>[item.id,item])).values()];
+}
+async function loadMissionPage(){state.missionPage=await api('/missions?'+new URLSearchParams({limit:'12',...state.missionQuery}));mergeMissionContext();}
+async function showMissionTask(taskId){state.missionQuery={task_id:taskId};await loadMissionPage();openSection('missions');}
+function missionDirectoryControls(parent){
+ const filters=form(parent,'Search missions',async data=>{state.missionQuery={q:data.q,status:data.status,area:data.area,country:data.country,goal:data.goal,...(data.mine?{mine:data.mine}:{})};await loadMissionPage();renderView();});
+ field(filters,'q','Mission or task title',{required:false,max:100,value:state.missionQuery.q||''});
+ field(filters,'status','Mission status',{required:false,options:[{value:'',label:'All statuses'},...['open','paused','closed','demo','draft']],value:state.missionQuery.status||''});
+ field(filters,'area','Mission area',{required:false,options:[{value:'',label:'All areas'},...['Climate','Peace','Accessibility','Agriculture','Health','Education','Water','Energy','Trade','Governance','Biodiversity','Development']],value:state.missionQuery.area||''});
+ field(filters,'country','Linked country',{required:false,options:[{value:'',label:'All countries'},...state.countries.map(c=>({value:c.iso2,label:c.name}))],value:state.missionQuery.country||''});
+ field(filters,'goal','Linked SDG',{required:false,options:[{value:'',label:'All goals'},...SDG_GOALS.map((name,index)=>({value:String(index+1),label:`SDG ${index+1} · ${name}`}))],value:state.missionQuery.goal||''});
+ if(state.account)field(filters,'mine','Mission responsibility',{required:false,options:[{value:'',label:'All visible missions'},{value:'1',label:'My owned or assigned review missions'}],value:state.missionQuery.mine||''});
+ if(state.missionQuery.task_id)parent.append(paragraph('Showing the mission containing the selected task. Search to return to the wider directory.','privacy'));
+ parent.append(paragraph('Country and SDG filters apply to missions linked to research proposals. Other missions remain available under All countries and All goals.','privacy'));
+}
+function missionDirectoryPages(parent){const page=state.missionPage,previous=button('Previous missions',async()=>{state.missionQuery.offset=String(Math.max(0,page.offset-page.limit));await loadMissionPage();renderView();},'secondary');previous.disabled=!page.offset;const next=button('Next missions',async()=>{state.missionQuery.offset=String(page.offset+page.limit);await loadMissionPage();renderView();},'secondary');next.disabled=!page.has_more;parent.append(actions(previous,paragraph(`Page ${Math.floor(page.offset/page.limit)+1} · ${page.total} matching missions`,'privacy'),next));}
 async function change(path, body, message, idempotent = false) { const result = await api(path, 'POST', body, idempotent); await refresh(); render(); if (message) notice(message); return result; }
 function render() { document.body.classList.toggle('signed-in', Boolean(state.account)); document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons')); renderSession(); renderAuth(); renderTabs(); renderView(); paintHero(); }
 function paintHero(){const canvas=$('#hero-world');if(canvas)draw(canvas,start,{world:getWorldDefinition('commons'),camera:{x:0,y:0},objects:[],portals:[],visitors:[],self:null});}
@@ -267,7 +285,7 @@ function renderCharacters(parent) {
     row.append(controls);
     if(agent.status==='active')disclosure(row,'Run with Lucy’s local AI',body=>{
       body.append(paragraph('Let this character observe, explore, or care for its own home using the installed local model. Choose permissions and a short limit. One local resident runs at a time.','muted'));
-      const inputs=form(body,'Start local resident',async data=>{const result=await api('/residents/run','POST',{agent_id:agent.id,minutes:Number(data.minutes),model_calls:Number(data.model_calls),permission:data.permission});state.history=await api('/history');state.workers=await api('/workers');openSection('history');notice(`Local resident started: up to ${result.model_calls} decisions over ${result.minutes} ${result.minutes===1?'minute':'minutes'}. Refresh runs to check progress.`);});
+      const inputs=form(body,'Start local resident',async data=>{const result=await api('/residents/run','POST',{agent_id:agent.id,minutes:Number(data.minutes),model_calls:Number(data.model_calls),permission:data.permission});state.history=await api('/history');mergeMissionContext();state.workers=await api('/workers');openSection('history');notice(`Local resident started: up to ${result.model_calls} decisions over ${result.minutes} ${result.minutes===1?'minute':'minutes'}. Refresh runs to check progress.`);});
       field(inputs,'minutes','Maximum minutes',{type:'number',min:1,max:20,value:2});field(inputs,'model_calls','Maximum model decisions',{type:'number',min:1,max:20,value:5});field(inputs,'permission','Resident permissions',{full:true,options:[{value:'observe',label:'Observe only'},{value:'explore',label:'Explore and speak publicly'},{value:'creative',label:'Explore, build my home and join activities'}],value:'explore'});
       body.append(button('Stop my local resident',async()=>{const result=await api('/residents/cancel','POST',{});notice(result.stopping?'Stop requested. Refresh run history after cleanup.':'No local resident is running.');},'secondary small'),paragraph('Model decisions use your character’s observed world and bounded permissions. Pausing the character revokes access. Research acceptance and adoption still require people.','privacy'));
     });
@@ -284,8 +302,8 @@ function renderCharacters(parent) {
 function download(data, name) { const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})); const link = element('a'); link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000); }
 function renderMissions(parent) {
   parent.append(heading('Purpose beyond the plaza', 'Choose a task, gather traceable evidence, and submit work for a separate human reviewer.'));
-  const grid = element('div',null,'grid three');
-  for (const mission of state.missions) {
+  missionDirectoryControls(parent);const grid = element('div',null,'grid three');
+  for (const mission of state.missionPage.missions) {
     const node = card(mission.title,mission.area);node.classList.add('mission-card',mission.area.toLowerCase());
     append(node,badge(mission.demo ? 'demo' : mission.status),paragraph(mission.summary),paragraph(`Beneficiary: ${mission.beneficiary}`, 'muted'));
     if (mission.demo) node.append(paragraph('Practice workflow only. No external partner or real world impact is claimed.', 'privacy'));
@@ -299,7 +317,7 @@ function renderMissions(parent) {
     }
     grid.append(node);
   }
-  parent.append(grid);
+  if(!state.missionPage.missions.length)grid.append(empty('No visible missions match these filters.'));parent.append(grid);missionDirectoryPages(parent);
 }
 function sources(parent, records) {
   const list=element('ul',null,'sources');for(const source of records||[]) {const item=element('li'); const link=element('a',source.url);try{const url=new URL(source.url);if(['http:','https:'].includes(url.protocol)){link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';}}catch{}append(item,link,element('span',` · ${source.location} · ${source.date||'Date not supplied'}`));list.append(item);}parent.append(list);
@@ -411,14 +429,14 @@ function decisionBriefForm(parent,claim,previous){
 function renderHistory(parent) {
   parent.append(heading('Your contribution journey','Claims last 20 minutes. Corrections retain earlier versions and review reasons.'));
   const runs=card('Your agent runs');
-  runs.append(button('Refresh runs and contributions',async()=>{state.history=await api('/history');state.workers=await api('/workers');await loadResearch();renderView();},'secondary small'));
+  runs.append(button('Refresh runs and contributions',async()=>{state.history=await api('/history');mergeMissionContext();state.workers=await api('/workers');await loadResearch();renderView();},'secondary small'));
   const running=(state.history.jobs||[]).some(job=>job.status==='running');
   if(running)runs.append(paragraph('A bounded worker is active or waiting for local inference. Refresh to see its current status. Submissions still require human review.'));
   if(state.workers.resident)runs.append(button('Stop my local resident',async()=>{const result=await api('/residents/cancel','POST',{});notice(result.stopping?'Stop requested. Refresh runs after cleanup completes.':'No local resident is running.');},'secondary small'));
   if(state.workers.research)runs.append(button('Stop my research worker',async()=>{const result=await api('/research/cancel','POST',{});notice(result.stopping?'Stop requested. Refresh runs after cleanup completes.':'No research worker is running.');},'secondary small'));
   if(!(state.history.jobs||[]).length)runs.append(empty('No agent runs have been recorded for your characters.'));
   for(const job of state.history.jobs||[]){const failure=parseResearchFailure(job.detail),item=append(element('article',null,'record'),element('h3',job.agent_name||'Your agent'),badge(job.status));
-    if(failure)item.append(paragraph(`${failure.label}${failure.source_number?` · Source ${failure.source_number}`:''}`),paragraph(titleOfTask(failure.task_id)),paragraph(failure.action),paragraph(failure.claim_note,'privacy'),button('Open mission tasks',()=>openSection('missions'),'secondary small'));else item.append(paragraph(job.detail));item.append(paragraph(date(job.created_at),'privacy'));runs.append(item);}
+    if(failure)item.append(paragraph(`${failure.label}${failure.source_number?` · Source ${failure.source_number}`:''}`),paragraph(titleOfTask(failure.task_id)),paragraph(failure.action),paragraph(failure.claim_note,'privacy'),button('Open mission tasks',()=>showMissionTask(failure.task_id),'secondary small'));else item.append(paragraph(job.detail));item.append(paragraph(date(job.created_at),'privacy'));runs.append(item);}
   parent.append(runs);
   const drafts=card('Your private research drafts');drafts.append(paragraph('Saved work survives refresh and claim expiry. Reclaiming follows the current task availability and requirements.','privacy'),button('Show archived drafts',async()=>{const result=await api('/drafts?archived=1');state.history.drafts=result.drafts;renderView();},'secondary small'));
   for(const draft of state.history.drafts||[]){const item=element('article',null,'record');item.append(element('h3',draft.task_title||titleOfTask(draft.task_id)),paragraph(`${draft.archived?'Archived':'Private'} · Revision ${draft.revision} · ${date(draft.updated_at)}`,'privacy'));
@@ -465,7 +483,8 @@ function renderOwner(parent) {
   field(inputs,'title','Mission title',{max:100});field(inputs,'area','Area',{options:['Climate','Peace','Accessibility']});field(inputs,'summary','Purpose and scope',{type:'textarea',full:true,max:2000});field(inputs,'beneficiary','Who should benefit?',{max:2000,full:true});
   const accounts=state.operations?.accounts||[{id:state.account.id,name:state.account.name,role:state.account.role,status:'active'}];
   field(inputs,'owner_id','Mission owner',{options:accounts.filter((a)=>a.status==='active').map((a)=>({value:a.id,label:a.name})),value:state.account.id});field(inputs,'reviewer_id','Human reviewer',{options:accounts.filter((a)=>['admin','reviewer'].includes(a.role)&&a.status==='active').map((a)=>({value:a.id,label:a.name})),value:state.account.id});field(inputs,'rubric','Criteria for accepting work',{type:'textarea',max:2000,full:true});parent.append(create);
-  for(const mission of state.missions.filter((m)=>!m.demo&&(m.owner_id===state.account.id||state.account.role==='admin'))){const node=card(mission.title);append(node,badge(mission.status),paragraph(mission.summary));const controls=actions();for(const [status,label]of[['open','Open mission'],['paused','Pause mission'],['closed','Close mission']])controls.append(button(label,()=>change('/missions/status',{mission_id:mission.id,status},'Mission status updated.'),'secondary small'));node.append(controls);
+  missionDirectoryControls(parent);missionDirectoryPages(parent);
+  for(const mission of state.missionPage.missions.filter((m)=>!m.demo&&(m.owner_id===state.account.id||state.account.role==='admin'))){const node=card(mission.title);append(node,badge(mission.status),paragraph(mission.summary));const controls=actions();for(const [status,label]of[['open','Open mission'],['paused','Pause mission'],['closed','Close mission']])controls.append(button(label,()=>change('/missions/status',{mission_id:mission.id,status},'Mission status updated.'),'secondary small'));node.append(controls);
     disclosure(node,'Add a task',(body)=>{const fields=form(body,'Create task',async(data)=>change('/tasks',{...data,mission_id:mission.id,allowed_domains:data.domains.split(',').map((domain)=>domain.trim()).filter(Boolean)},'Task created.'));field(fields,'title','Task title',{max:100,full:true});field(fields,'instructions','Deliverable and evidence requirements',{type:'textarea',max:2000,full:true});field(fields,'rights','Input rights and permissions',{type:'textarea',max:2000,full:true});field(fields,'domains','Approved source hosts (comma separated)',{required:false,full:true,hint:'Use hostnames such as example.org. Leave empty to permit any HTTP source.'});});parent.append(node);}
 }
 async function reportPrompt(type,id) { const reason=prompt('Describe the concern. Include the relevant context so a human can review it.');if(reason?.trim())await change('/reports',{target_type:type,target_id:id,reason},'Report received. Track its review in Safety.'); }
@@ -684,7 +703,7 @@ function renderAssembly(parent){
 function researchWorkerForm(parent,task,urls){
  disclosure(parent,'Run my research agent',body=>{
   const inputs=form(body,'Start bounded worker',async data=>{
-   await api('/research/run','POST',{task_id:task.id,agent_id:state.selected,urls:data.urls.split('\n').map(value=>value.trim()).filter(Boolean),output:data.output,...(data.output==='decision-brief'?{brief_context:{recipient:data.recipient,requested_decision:data.requested_decision}}:{})});state.history=await api('/history');state.workers=await api('/workers');openSection('history');notice('Research worker started. Refresh runs to see its pending contribution.');
+   await api('/research/run','POST',{task_id:task.id,agent_id:state.selected,urls:data.urls.split('\n').map(value=>value.trim()).filter(Boolean),output:data.output,...(data.output==='decision-brief'?{brief_context:{recipient:data.recipient,requested_decision:data.requested_decision}}:{})});state.history=await api('/history');mergeMissionContext();state.workers=await api('/workers');openSection('history');notice('Research worker started. Refresh runs for results or recovery guidance.');
   });
   field(inputs,'output','Research output',{options:[{value:'evidence-register',label:'Evidence register and provisional synthesis'},{value:'decision-brief',label:'Proposed decision brief (local AI required)'}],full:true});
   field(inputs,'recipient','Proposed briefing recipient',{required:false,max:200,full:true,hint:'Required for a decision brief. Describe a proposed institutional role; consent or appointment is not presumed.'});
@@ -700,7 +719,7 @@ function renderResearch(parent){
   field(filters,'institution','Institution reference',{required:false,value:state.researchQuery.institution||'',options:[{value:'',label:'All institutions and general briefs'},...state.assembly.programmes.institutions.map(item=>({value:item.id,label:item.name}))]});
   parent.append(paragraph(`${research.total||0} matching proposals`, 'privacy'));const grid=element('div',null,'grid two');for(const lead of research.leads){const node=card(lead.title,`${lead.country} · SDG ${lead.goal} · ${lead.stage}`);node.append(badge(lead.status),paragraph(lead.instructions.length>280?lead.instructions.slice(0,280)+'…':lead.instructions));
     disclosure(node,'Deliverable, rubric & sources',body=>{body.append(paragraph(lead.instructions),paragraph(lead.rubric,'muted'));for(const url of lead.source_urls)body.append(paragraph(''),sourceLink(url));});
-    if(lead.task_id){node.append(button('Open mission',()=>openSection('missions'),'secondary small'));if(state.account&&selected()&&lead.status==='activated'){const task=state.tasks.find(item=>item.id===lead.task_id);if(task)researchWorkerForm(node,task,lead.source_urls.filter(url=>task.allowed_domains.includes(new URL(url).hostname)&&(!/\.pdf(?:$|[?#])/i.test(url)||url==='https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf')).slice(0,5));}}
+    if(lead.task_id){node.append(button('Open mission',()=>showMissionTask(lead.task_id),'secondary small'));if(state.account&&selected()&&lead.status==='activated'){const task=state.tasks.find(item=>item.id===lead.task_id);if(task)researchWorkerForm(node,task,lead.source_urls.filter(url=>task.allowed_domains.includes(new URL(url).hostname)&&(!/\.pdf(?:$|[?#])/i.test(url)||url==='https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf')).slice(0,5));}}
     else if(isReviewer())disclosure(node,'Activate a reviewed mission',body=>{const controls=form(body,'Activate mission',async data=>{await api('/research/activate','POST',{lead_id:lead.id,...data,allowed_domains:data.domains?.trim()?data.domains.split(',').map(value=>value.trim()).filter(Boolean):undefined});await refresh();render();notice('Mission activated. Contributors can now claim its task.');});field(controls,'beneficiary','Intended beneficiary',{max:2000,full:true,hint:'Describe the people or institution this work should serve. No consent is presumed.'});field(controls,'reviewer_id','Reviewer account ID',{required:false,max:100,hint:'Defaults to you. Review must be independent of the contributor.'});field(controls,'domains','Approved source hostnames',{required:false,value:[...new Set(lead.source_urls.map(url=>new URL(url).hostname))].join(', '),max:1000,full:true,hint:'Comma-separated exact hosts. Add country agencies only after checking their authority.'});});grid.append(node);
   }if(!research.leads.length)grid.append(empty('No proposals match. Clear filters or generate a country agenda from the country desk.'));parent.append(grid);
   const offset=research.offset||0,previous=button('Previous',async()=>{state.researchQuery.offset=String(Math.max(0,offset-24));await loadResearch();renderView();},'secondary');previous.disabled=offset===0;const next=button('Next',async()=>{state.researchQuery.offset=String(offset+24);await loadResearch();renderView();},'secondary');next.disabled=!research.has_more;parent.append(actions(previous,paragraph(`Page ${Math.floor(offset/24)+1}`),next));
