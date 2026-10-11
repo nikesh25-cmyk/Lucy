@@ -21,8 +21,10 @@ export function approvedSource(value,domains){
   return url;
 }
 export function publicAddress(address){
-  if(address.includes(':'))return !/^(::|fe[89ab]|f[cd]|2001:db8)/i.test(address)&&!address.toLowerCase().includes('ffff:');
-  const p=address.split('.').map(Number);return p.length===4&&p[0]>0&&p[0]!==10&&p[0]!==127&&p[0]<224&&!(p[0]===169&&p[1]===254)&&!(p[0]===172&&p[1]>=16&&p[1]<=31)&&!(p[0]===192&&p[1]===168)&&!(p[0]===100&&p[1]>=64&&p[1]<=127);
+  const family=isIP(address);
+  if(family===6){const groups=address.toLowerCase().split(':'),head=parseInt(groups[0]||'0',16),second=parseInt(groups[1]||'0',16);return head>=0x2000&&head<=0x3fff&&head!==0x2002&&head!==0x3fff&&!(head===0x2001&&(second<0x200||second===0xdb8))&&!address.toLowerCase().includes('ffff:');}
+  if(family!==4)return false;
+  const p=address.split('.').map(Number);return p[0]>0&&p[0]!==10&&p[0]!==127&&p[0]<224&&!(p[0]===169&&p[1]===254)&&!(p[0]===172&&p[1]>=16&&p[1]<=31)&&!(p[0]===192&&(p[1]===168||p[1]===0&&(p[2]===0||p[2]===2)||p[1]===88&&p[2]===99))&&!(p[0]===100&&p[1]>=64&&p[1]<=127)&&!(p[0]===198&&(p[1]===18||p[1]===19||p[1]===51&&p[2]===100))&&!(p[0]===203&&p[1]===0&&p[2]===113);
 }
 function readableEntities(value) {
   const named = { amp: '&', nbsp: ' ', quot: '"', apos: "'", lt: '<', gt: '>' };
