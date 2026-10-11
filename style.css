@@ -20,6 +20,14 @@ aside { display: grid; gap: 16px; }
 h2 { margin: 8px 0 10px; font-size: 1.6rem; }
 .card p { line-height: 1.6; margin-bottom: 0; color: #626c76; }
 .card .hint { font-size: .8rem; color: #939ba1; }
+form { display: grid; gap: 8px; margin-top: 14px; }
+label { font-size: .82rem; font-weight: 700; }
+input, select { width: 100%; padding: 10px; border: 1px solid #d1d8d4; border-radius: 9px; font: inherit; }
+form button { border: 0; border-radius: 9px; padding: 10px; background: #3d5875; color: white; }
+ul { list-style: none; padding: 0; max-height: 150px; overflow: auto; }
+li { padding: 6px 0; border-bottom: 1px solid #eef1ed; font-size: .85rem; }
+li small { display: block; color: #8c938f; }
+#messages { min-height: 70px; }
 .reset { border: 0; background: transparent; color: #6d6b88; text-align: left; padding: 5px 16px; }
 footer { color: #989e9e; font-size: .75rem; margin-top: 26px; }
 @media (max-width: 850px) { .layout { grid-template-columns: 1fr; } aside { grid-template-columns: repeat(2, 1fr); } .reset { grid-column: 1 / -1; } }

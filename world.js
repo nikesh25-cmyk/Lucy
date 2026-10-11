@@ -23,7 +23,7 @@ export function landmarkAt(position) {
   return landmarks.find((place) => place.x === position.x && place.y === position.y);
 }
 
-function draw(canvas, position) {
+export function draw(canvas, position, visitors = []) {
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#b7d6af';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -64,6 +64,17 @@ function draw(canvas, position) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(place.symbol, px, py + 1);
   }
+  for (const visitor of visitors) {
+    if (visitor.x === position.x && visitor.y === position.y) continue;
+    const vx = (visitor.x + .5) * TILE;
+    const vy = (visitor.y + .5) * TILE;
+    ctx.fillStyle = visitor.color;
+    ctx.beginPath(); ctx.arc(vx, vy, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(visitor.kind === 'agent' ? '✦' : '●', vx, vy);
+  }
   const px = (position.x + .5) * TILE;
   const py = (position.y + .5) * TILE;
   ctx.fillStyle = '#38546b55';
@@ -74,35 +85,4 @@ function draw(canvas, position) {
   ctx.beginPath(); ctx.arc(px, py - 5, 10, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#334454';
   ctx.beginPath(); ctx.arc(px, py - 9, 10, Math.PI, Math.PI * 2); ctx.fill();
-}
-
-if (typeof document !== 'undefined') {
-  const canvas = document.querySelector('#world');
-  const placeElement = document.querySelector('#place');
-  const descriptionElement = document.querySelector('#description');
-  const messageElement = document.querySelector('#message');
-  let position = start;
-  try {
-    const saved = JSON.parse(localStorage.getItem('lucy-position'));
-    if (Number.isInteger(saved?.x) && Number.isInteger(saved?.y) && saved.x >= 0 && saved.x < COLS && saved.y >= 0 && saved.y < ROWS) position = saved;
-  } catch { /* Start at the meadow if storage is unavailable. */ }
-
-  function render() {
-    draw(canvas, position);
-    const place = landmarkAt(position);
-    placeElement.textContent = place?.name || 'The Meadow';
-    descriptionElement.textContent = place?.description || 'A quiet place to wander. Follow a path or make your own.';
-    messageElement.textContent = place ? `You discovered ${place.name}!` : 'Find the glowing places and step onto them.';
-    try { localStorage.setItem('lucy-position', JSON.stringify(position)); } catch { /* Storage is optional. */ }
-  }
-
-  function step(direction) { position = move(position, direction); render(); }
-  const keys = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
-  document.addEventListener('keydown', (event) => {
-    const direction = keys[event.key] || keys[event.key.toLowerCase()];
-    if (direction) { event.preventDefault(); step(direction); }
-  });
-  document.querySelectorAll('[data-move]').forEach((button) => button.addEventListener('click', () => step(button.dataset.move)));
-  document.querySelector('#reset').addEventListener('click', () => { position = start; render(); });
-  render();
 }
