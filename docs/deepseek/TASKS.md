@@ -4,6 +4,8 @@ Paste START_HERE.md, then one task. Each task is a separate deliverable; do not 
 
 ## 01 — Country ambassadors replacing regional mayors
 
+Status: reviewed and integrated locally. Retained below as the original task brief. Review corrections are in `docs/reviews/task-01-country-ambassadors.md`. Next: Task 02.
+
 Implement the user's new civic direction: a NemoWorld AI ambassador for every country in `catalog/countries.json`, with one stable identity per catalog entry. The catalog currently contains countries AND areas, so preserve that distinction in labels; do not describe all 248 entries as sovereign states. The region map remains ecological terrain, while country affiliation is the ambassador's research remit.
 
 Inspect `src/civic-engine.js`, `src/civic.js`, `src/mayor-evidence.js`, `src/spaces.js`, `src/database.js`, `src/recovery.js`, `world.js`, `server.js`, `app.js`, `src/vocations.js` and the civic/content/evidence tests. Current NPC storage is `npc_mayors`; conversation history references its IDs. Create an additive, recoverable migration and an explicit compatibility mapping for the old 20 guides. Preserve old conversation records, paused states, receipt hashes and saved world objects. Choose and document a deterministic country venue strategy that works with authoritative movement and world access; do not place 248 avatars at one coordinate or silently invent country land inside the finite frontier.

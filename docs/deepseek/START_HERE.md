@@ -31,6 +31,6 @@ The e2e harness starts and removes its own temporary database. Browser testing u
 
 ## Work order
 
-Start with **Task 01 — country ambassadors**. Deliver and review it before tasks that depend on ambassador identities or country venues. Research and asset tasks can run in parallel with code tasks because their outputs are separate files. One code task should edit a shared backend/UI file at a time.
+**Task 01 — country ambassadors is reviewed.** Start with **Task 02 — first-person physical world coherence**, using the reviewed schema 15 source and its 353-test baseline. Read `docs/reviews/task-01-country-ambassadors.md`; the original Task 01 commit alone omits review fixes. Research and asset tasks can run in parallel with code tasks because their outputs are separate files. One code task should edit a shared backend/UI file at a time.
 
 Detailed copy-and-paste tasks: [TASKS.md](TASKS.md).

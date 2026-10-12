@@ -10,6 +10,7 @@ import { verifyCallingReceipts } from './vocations.js';
 import { REGIONS } from './civic.js';
 import { GARDEN_PALETTE,HOUSE_PALETTE } from './placement-policy.js';
 
+const countryCatalog=JSON.parse(readFileSync(new URL('../catalog/countries.json',import.meta.url),'utf8')).entries;
 const requiredTables = ['accounts', 'invites', 'agents', 'tokens', 'missions', 'tasks', 'claims', 'submissions', 'reviews', 'adoptions', 'messages', 'reports', 'appeals', 'jobs', 'settings', 'audit'];
 const digest = (value) => createHash('sha256').update(value).digest('hex');
 
@@ -78,6 +79,14 @@ export function validateDatabase(path) {
       // One row per catalog entry, addressed by its own iso3, each in its own country venue. The
       // catalog is sealed, so a mismatch means the migration did not complete.
       if(db.prepare("SELECT id FROM npc_ambassadors WHERE id!='amb-'||iso3 OR iso3 NOT GLOB '[A-Z][A-Z][A-Z]' OR iso2 NOT GLOB '[A-Z][A-Z]' OR world_id!='country:'||iso3 OR status NOT IN ('active','paused') OR x<0 OR y<0 OR sprite<0").get()||db.prepare('SELECT iso3 FROM npc_ambassadors GROUP BY iso3 HAVING COUNT(*)>1').get())throw new Error('Database country ambassador identities are invalid.');
+      const ambassadors=db.prepare('SELECT * FROM npc_ambassadors').all();
+      if(ambassadors.length!==countryCatalog.length)throw new Error('Database country ambassador roster is incomplete.');
+      const countries=new Map(countryCatalog.map(country=>[country.iso3,country]));
+      for(const resident of ambassadors){
+        const country=countries.get(resident.iso3),venue=db.prepare('SELECT * FROM worlds WHERE id=?').get(resident.world_id);
+        if(!country||resident.iso2!==country.iso2||resident.m49!==country.m49||resident.name!==country.name||resident.region!==(country.region||'')||resident.subregion!==(country.subregion||'')||['ldc','lldc','sids'].some(key=>resident[key]!==Number(Boolean(country[key]))))throw new Error('Database country ambassador catalog identity is invalid.');
+        if(!venue||venue.kind!=='country'||venue.owner_agent_id!==null||venue.visibility!=='public'||venue.width!==40||venue.height!==28||resident.x>=venue.width||resident.y>=venue.height)throw new Error('Database country ambassador venue is invalid.');
+      }
       // The compatibility mapping must cover every historic regional guide with an existing replacement.
       if(db.prepare('SELECT m.guide_id FROM ambassador_legacy_map m JOIN npc_mayors n ON n.id=m.guide_id LEFT JOIN npc_ambassadors a ON a.id=m.ambassador_id WHERE a.id IS NULL OR m.region_id!=n.region_id').get())throw new Error('Database country ambassador mapping is invalid.');
       if(REGIONS.some(region=>!db.prepare('SELECT guide_id FROM ambassador_legacy_map WHERE guide_id=?').get(region.mayor.id)))throw new Error('Database country ambassador mapping is incomplete.');

@@ -315,6 +315,7 @@ test('the legacy guide routes and the canonical ambassador routes agree over rea
   assert.equal((await call('/ambassadors?group=invented')).status, 400);
   assert.equal((await call('/ambassador')).status, 404);
   assert.equal((await call('/ambassador?id=amb-XXX')).status, 404);
+  assert.equal((await call('/ambassadors/talk',{ambassador_id:'amb-NPL',question:'Agriculture?',context:false},member)).status,400);
   // A successful talk attaches the country context and its source numbers.
   const talk = await call('/ambassadors/talk', { ambassador_id: 'amb-NPL', question: 'Help me research agriculture.' }, member);
   assert.equal(talk.status, 200);
@@ -358,4 +359,19 @@ test('the legacy guide routes and the canonical ambassador routes agree over rea
   const afterPause = await call('/ambassadors?limit=50');
   assert.equal(afterPause.body.entries.some((entry) => entry.id === 'amb-NPL'), false);
   assert.equal(afterPause.body.counts.paused, 1);
+});
+
+test('canonical requests cannot disable country context while the legacy general answer remains compatible',async t=>{
+ const f=await fixture(t);
+ assert.throws(()=>f.tx('ambassadorTalk',f.actor('alice'),{ambassador_id:'amb-NPL',question:'Agriculture?',context:false}),{status:400});
+ const reply=f.tx('ambassadorTalk',f.actor('alice'),{ambassador_id:'amb-NPL',question:'Agriculture?'});assert.equal(reply.country_context.country.iso3,'NPL');
+ f.advance();const legacy=f.tx('mayorTalk',f.actor('alice'),{npc_id:'mayor-snowline',question:'Hello'});assert.equal(legacy.country_context,null);
+});
+test('recovery refuses an incomplete country roster, a substituted country identity, and a broken venue',async t=>{
+ const f=await fixture(t),resident=f.platform.get('SELECT a.* FROM npc_ambassadors a LEFT JOIN ambassador_legacy_map m ON m.ambassador_id=a.id WHERE m.guide_id IS NULL LIMIT 1');
+ f.platform.run('UPDATE npc_ambassadors SET name=? WHERE id=?','Substituted country',resident.id);assert.throws(()=>validateDatabase(f.database),/catalog identity/);
+ f.platform.run('UPDATE npc_ambassadors SET name=? WHERE id=?',resident.name,resident.id);
+ f.platform.run("UPDATE worlds SET visibility='private' WHERE id=?",resident.world_id);assert.throws(()=>validateDatabase(f.database),/venue is invalid/);
+ f.platform.run("UPDATE worlds SET visibility='public' WHERE id=?",resident.world_id);
+ f.platform.run('DELETE FROM npc_ambassadors WHERE id=?',resident.id);assert.throws(()=>validateDatabase(f.database),/roster is incomplete/);
 });

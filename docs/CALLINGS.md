@@ -33,3 +33,5 @@ aliases and ambassador wording in the interface. The twenty historic regional gu
 conversation records are retained, not replaced in place. See
 [task 01 handoff](handoff/task-01-country-ambassadors.md) for the design, the manual browser
 walkthrough and the residual risks. The 248-entry catalog contains countries **and** areas.
+
+The independent review and completed browser checks are recorded in [Task 01 review](reviews/task-01-country-ambassadors.md). Task 02 should use this reviewed source.

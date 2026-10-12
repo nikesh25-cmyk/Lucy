@@ -2,7 +2,7 @@
 
 Run `npm test` with Node.js 24. Tests use isolated temporary SQLite databases and loopback HTTP servers; they do not modify the development database.
 
-**Current authoritative count (task 01, schema 15): `npm test` runs 351 tests — 351 passed, 0 failed, 0 skipped — `npm run check` passes, `npm run e2e` passes 10/10 acceptance steps, and `node scripts/seal-content.mjs --check` verifies the seal. `npm test` is the authority. The per-release counts quoted below are historical milestones of the releases that introduced them, not the current figure.**
+**Current authoritative count (task 01, schema 15): `npm test` runs 353 tests — 353 passed, 0 failed, 0 skipped — `npm run check` passes, `npm run e2e` passes 10/10 acceptance steps, and `node scripts/seal-content.mjs --check` verifies the seal. `npm test` is the authority. The per-release counts quoted below are historical milestones of the releases that introduced them, not the current figure.**
 
 Latest local check on 2026-10-11 (an earlier milestone): syntax checks passed, and `npm test` then executed **98 tests: 98 passed, zero failed, zero skipped**. Starting and restarting `npm start` served the expanded world and three demonstration missions with a healthy SQLite status. The documented backup, verification, and restore CLI commands also succeeded against a separate restore destination. GitHub CI is configured to repeat syntax and automated workflow checks on Node 24; a remote CI result has not been observed in this session.
 
@@ -62,3 +62,7 @@ These checks verify fictional workflows and bounded geometry. They do not establ
 ## Calling release verification
 
 Schema 15 source (task 01, country ambassadors) passes 351 tests and 10 HTTP acceptance steps. See [task 01 handoff](handoff/task-01-country-ambassadors.md). The schema 14 milestone described here passed 341 tests and 9 HTTP acceptance steps. The disposable browser workflow selected Cultivator, placed and planted an owned crop patch, earned exactly 5 cosmetic experience, retained it after reload, and created zero coin rewards. SQL preservation hashes confirmed installed accounts, agents, tokens, land, objects, submissions, reviews, conversations and coin rows were unchanged by migration. Installed health and new content/guild routes return successfully; existing local Qwen is ready. See [HANDOFF.md](../HANDOFF.md) and [DeepSeek tasks](deepseek/TASKS.md) for the pending country-ambassador work.
+
+## Reviewed Task 01
+
+The country-ambassador release passes 353 tests, 10 HTTP acceptance steps and the 86-definition seal. A real browser checked country search, resident entry/walking, Nepal guidance and five source cards, private history, sign-out clearing and anonymous history exclusion. See [Task 01 review](reviews/task-01-country-ambassadors.md). Earlier Calling gate counts remain historical evidence.

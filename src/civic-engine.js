@@ -226,8 +226,9 @@ export const civicMethods={
       legacy:legacy?{...legacy,region_name:REGIONS.find(region=>region.id===legacy.region_id)?.name||null}:null,
       conversations,legacy_conversations,mode:'Scripted country ambassadors; responses follow published rules and catalog evidence.'};
   },
-  ambassadorTalk(actor,input={}){
+  ambassadorTalk(actor,input={}, {legacyWithoutContext=false}={}){
     human(actor,['admin','member','moderator','reviewer']);this.active();
+    if(Object.hasOwn(input,'context'))fail(400,'The assigned country context cannot be overridden.');
     const row=this.get("SELECT * FROM npc_ambassadors WHERE id=? AND status='active'",String(input.ambassador_id||input.id||input.npc_id||''));
     if(!row)fail(404,'Active country ambassador not found.');
     const supplied=String(input.country_code??'').trim().toUpperCase();
@@ -235,8 +236,8 @@ export const civicMethods={
     const last=this.get('SELECT created_at FROM ambassador_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 1',actor.account.id);if(last&&this.clock()-Date.parse(last.created_at)<1500)fail(429,'Please allow the ambassador to finish.');
     const country=COUNTRIES.entries.find(item=>item.iso3===row.iso3),question=text(input.question,500,'Question'),topic=mayorTopic(question),created_at=new Date(this.clock()).toISOString();
     // The canonical route always attaches the ambassador's assigned country context. The legacy alias
-    // passes context:false for a general question, which preserves its historic context-free answer.
-    const withContext=input.context!==false,country_context=withContext?this.ambassadorContext(country,created_at):null;
+    // uses an internal option for a general question; request fields cannot disable context.
+    const withContext=!legacyWithoutContext,country_context=withContext?this.ambassadorContext(country,created_at):null;
     const retained=country_context?country_context.sources.filter(source=>source.status==='retained').length:0;
     let answer=`I’m the NemoWorld country ambassador for ${country.name}. I am a fictional research guide: I do not represent ${country.name}, any government or the United Nations. My remit is source-based research for this country or area.`;
     if(topic==='moderation')answer+=' Use the Safety desk to report a specific message or resident. Human moderators review evidence, decide actions, and provide an appeal route. I can guide you through the process; I cannot impose sanctions.';
@@ -290,7 +291,7 @@ export const civicMethods={
     const mapped=this.get('SELECT ambassador_id FROM ambassador_legacy_map WHERE guide_id=?',guide.id);
     const ambassador=requested?ambassadorId(requested.iso3):mapped?.ambassador_id;
     if(!ambassador)fail(404,'Active ambassador not found.');
-    const result=this.ambassadorTalk(actor,{ambassador_id:ambassador,question:input.question,country_code:requested?requested.iso2:undefined,context:Boolean(requested)});
+    const result=this.ambassadorTalk(actor,{ambassador_id:ambassador,question:input.question,country_code:requested?requested.iso2:undefined},{legacyWithoutContext:!requested});
     return {...result,npc_id:guide.id,legacy_alias:true};
   },
   // Legacy alias: pausing through the historic guide delegates to the ambassador control, which also
