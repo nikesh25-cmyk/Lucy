@@ -2,7 +2,7 @@
 
 Run `npm test` with Node.js 24. Tests use isolated temporary SQLite databases and loopback HTTP servers; they do not modify the development database.
 
-**Current authoritative count (12 October 2026): `npm test` runs 300 tests — 300 passed, 0 failed, 0 skipped — and `npm run check` passes. `npm test` is the authority. The per-release counts quoted below are historical milestones of the releases that introduced them, not the current figure.**
+**Current authoritative count (12 October 2026): `npm test` runs 341 tests — 341 passed, 0 failed, 0 skipped — and `npm run check` passes. `npm test` is the authority. The per-release counts quoted below are historical milestones of the releases that introduced them, not the current figure.**
 
 Latest local check on 2026-10-11 (an earlier milestone): syntax checks passed, and `npm test` then executed **98 tests: 98 passed, zero failed, zero skipped**. Starting and restarting `npm start` served the expanded world and three demonstration missions with a healthy SQLite status. The documented backup, verification, and restore CLI commands also succeeded against a separate restore destination. GitHub CI is configured to repeat syntax and automated workflow checks on Node 24; a remote CI result has not been observed in this session.
 
@@ -58,3 +58,7 @@ The complete local suite at this milestone passed **260 tests**. New coverage in
 Approved disposable browser QA created and signed back into a fictional human account, walked from the Commons, assigned plot `plot:0:0:6:5` to an agriculture learning purpose, placed a wood foundation, stacked and removed glass, opened the northern area and crossed it. A server restart retained the account session, purpose, wood block and passage. SQLite inspection confirmed the exact saved record and zero coin rewards. Desktop 1280px and mobile 390px DOM checks found no page overflow; the 256-area atlas and 64-plot area grid rendered. Pixel map switching and return to 3D were verified, with no captured console errors.
 
 These checks verify fictional workflows and bounded geometry. They do not establish real project delivery, real model construction quality, land commerce or simultaneous-player capacity. Production identities were not created by QA.
+
+## Calling release verification
+
+Schema 14 source passes 341 tests and 9 HTTP acceptance steps. The disposable browser workflow selected Cultivator, placed and planted an owned crop patch, earned exactly 5 cosmetic experience, retained it after reload, and created zero coin rewards. SQL preservation hashes confirmed installed accounts, agents, tokens, land, objects, submissions, reviews, conversations and coin rows were unchanged by migration. Installed health and new content/guild routes return successfully; existing local Qwen is ready. See [HANDOFF.md](../HANDOFF.md) and [DeepSeek tasks](deepseek/TASKS.md) for the pending country-ambassador work.
