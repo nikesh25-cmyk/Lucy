@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "nepal-tea-india",
-  "title": "Nepal tea \u2192 India: sourced starter research pilot",
+  "title": "Nepal tea → India: sourced starter research pilot",
   "researchedOn": "2026-10-11",
   "originCountry": "NP",
   "destinationCountry": "IN",
@@ -22,10 +22,10 @@
     },
     {
       "id": "tea-strategy",
-      "title": "Nepal National Sector Export Strategy: Tea 2017\u20132021",
+      "title": "Nepal National Sector Export Strategy: Tea 2017–2021",
       "publisher": "Government of Nepal / Trade and Export Promotion Centre",
       "url": "https://www.tepc.gov.np/tepc_pub/NepalNationalExportStrategyTea.pdf",
-      "publishedOrPeriod": "Strategy period 2017\u20132021",
+      "publishedOrPeriod": "Strategy period 2017–2021",
       "retrievedOn": "2026-10-11",
       "evidence": "Historical sector strategy identifies food safety and Indian import clearance as constraints for Nepal tea.",
       "limitations": "Historical context only. Its fees and certificate procedures must not be treated current; full PDF fetch timed out, indexed official extract read.",
@@ -92,7 +92,8 @@
       "accessStatus": "full-pdf-visually-reviewed",
       "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included.",
       "indexUrl": "https://teaboard.gov.in/TEABOARDPAGE/MTI%3D",
-      "sha256": "d1dbd415677e52e4d267e7ff195994143140f7fb1f57e7c3edb2300fb2fb8ceb"
+      "sha256": "d1dbd415677e52e4d267e7ff195994143140f7fb1f57e7c3edb2300fb2fb8ceb",
+      "workerReviewedEdition": true
     },
     {
       "id": "tea-labs",
@@ -129,6 +130,17 @@
       "limitations": "Registration and access conditions vary. No tea market data, buyer directory or named buyer demand retrieved; modeled potential is not confirmed sales.",
       "accessStatus": "indexed-official-page",
       "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "buyer-response-notice",
+      "title": "Buyer response notice — not a positive buyer directory",
+      "url": "https://teaboard.gov.in/pdf/Notice_pdf6904.pdf",
+      "publisher": "Tea Board India",
+      "publishedOrPeriod": "Cover printed 22/01/2026; this is a dated document, not a new response deadline.",
+      "evidence": "Covering-page review distinguishes a procedural notice from a current importer directory.",
+      "limitations": "Only page 1 visually reviewed; no annexure names selected, current licensing outcome or demand established.",
+      "quoteRights": "Short attributed paraphrases only; source reuse requires review.",
+      "workerReviewedEdition": true
     }
   ],
   "institutionRoutes": [
@@ -265,7 +277,7 @@
     },
     {
       "id": "NP-TEA-IN-002",
-      "title": "Build a comparable Nepal\u2013India tea trade baseline",
+      "title": "Build a comparable Nepal–India tea trade baseline",
       "question": "How have export quantity and unit value changed over the latest five available complete years?",
       "sourceIds": [
         "ntcdb",
@@ -347,7 +359,8 @@
       "question": "Which publicly registered tea importers have a relevant business role and usable contact route?",
       "sourceIds": [
         "itc-tools",
-        "tea-directive-02"
+        "tea-directive-02",
+        "buyer-response-notice"
       ],
       "outputs": [
         "Up to five candidate companies from official registers or official trade directories",
@@ -358,7 +371,9 @@
         "Named companies backed by official records",
         "Candidate status distinct from confirmed purchasing interest",
         "No scraped personal contacts or guessed email addresses",
-        "Outreach remains a draft until user authorization"
+        "Outreach remains a draft until user authorization",
+        "Distinguish buyer registration from importer authority and current product fit",
+        "A pending notice is neither positive directory evidence nor a final finding; check current status independently"
       ],
       "status": "queued",
       "originCountry": "NP",
