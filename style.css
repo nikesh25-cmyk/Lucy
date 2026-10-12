@@ -65,3 +65,7 @@ body:has([aria-current="page"][aria-label="Research desk"]) .hero,body:has([aria
 .workflow-stages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}.workflow-stage{padding:14px;border:1px solid var(--line);border-radius:12px;min-width:0}.workflow-stage p{margin-bottom:0}.workflow-stage button{max-width:100%;white-space:normal;text-align:left}.workflow-stage button[aria-pressed=true]{background:var(--ink);color:var(--bg)}#research-workflow{scroll-margin-top:20px}@media(max-width:650px){.workflow-stages{grid-template-columns:1fr}}
 
 .evidence-metadata{display:block;margin-top:.5rem}
+
+.start-here{margin-bottom:24px}.start-paths{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:22px 0}.start-path{min-width:0}.start-path>img{width:28px;height:28px;margin-bottom:12px;opacity:.8}.start-path h3{font-size:1.1rem}.start-path>p:not(.privacy){font-size:.85rem;line-height:1.7}.start-path button{max-width:100%;white-space:normal}.guide-steps{padding-left:26px}.guide-steps li{padding-left:8px;margin:18px 0}.guide-steps h3{margin-bottom:6px}#pixel-world-heading{scroll-margin-top:20px}@media(max-width:700px){.start-paths{grid-template-columns:1fr;gap:20px}.start-path+.start-path{border-top:1px solid var(--line);padding-top:20px}}
+
+@media(min-width:1051px){.sidebar{max-height:100vh;overflow-y:auto;position:sticky;top:0;align-self:start}}
