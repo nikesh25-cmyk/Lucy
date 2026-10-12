@@ -1,6 +1,6 @@
 # Paired annual agricultural trade baselines
 
-Verified 12 October 2026. Lucy can prepare and collect an explicit one-to-five-year reporter/mirror trade window. A requested window is not a verified latest or complete reporting period.
+Verified 12 October 2026. NemoWorld can prepare and collect an explicit one-to-five-year reporter/mirror trade window. A requested window is not a verified latest or complete reporting period.
 
 ## Query plan in World Assembly
 

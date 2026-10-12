@@ -2,7 +2,7 @@
 
 The research desk now shows the current workflow for the selected country, goal, institution, SDG target, regional lens and search text. Its totals span all statuses and ignore pagination, so switching stages keeps the context visible. Whole-country programme counts and global catalog totals remain explicitly separate.
 
-Stages: proposed, ready for work (activated), claimed (leased), awaiting review, needs revision, accepted in Lucy, adoption recorded and evidence withheld. Each stage explains the next human or contributor action and links to the matching proposals while preserving search facets and resetting the page offset. Empty stages are visible but disabled; the standard status filter still supports an empty-stage search. Show all workflow stages clears only status and pagination.
+Stages: proposed, ready for work (activated), claimed (leased), awaiting review, needs revision, accepted in NemoWorld, adoption recorded and evidence withheld. Each stage explains the next human or contributor action and links to the matching proposals while preserving search facets and resetting the page offset. Empty stages are visible but disabled; the standard status filter still supports an empty-stage search. Show all workflow stages clears only status and pagination.
 
 The API adds `workflow_summary` with total, nonzero status counts and qualifications. Existing global counts and fields remain compatible. No percentage is presented: task count, accepted review and a declaration of adoption do not establish real-world outcomes. Latest quarantined evidence projects as withheld instead of currently accepted/adopted; historical receipts remain intact. Aggregates expose no beneficiary text, private submission artifact or adoption note.
 

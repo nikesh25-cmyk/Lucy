@@ -26,7 +26,7 @@ local_world_package="node-${local_world_version}-darwin-${local_world_arch}"
 local_world_runtime="$local_world_root/.runtime/$local_world_package"
 local_world_node="$local_world_runtime/node"
 if [ ! -x "$local_world_node" ]; then
-  echo 'Preparing a private Node.js runtime for Shared World. This first download needs Internet access.'
+  echo 'Preparing a private Node.js runtime for NemoWorld. This first download needs Internet access.'
   mkdir -p "$local_world_root/.runtime"
   local_world_stage="$(mktemp -d "$local_world_root/.runtime/install.XXXXXX")"
   trap 'rm -rf "$local_world_stage"' EXIT

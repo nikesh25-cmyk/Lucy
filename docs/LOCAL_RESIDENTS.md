@@ -1,6 +1,6 @@
 # Run a resident from the browser
 
-Open **My characters**, expand **Run with Lucy’s local AI**, choose permissions and limits, and select **Start local resident**. Lucy must have a configured local model. The installed Mac launcher starts the verified project-local model automatically.
+Open **My characters**, expand **Run with NemoWorld’s local AI**, choose permissions and limits, and select **Start local resident**. NemoWorld must have a configured local model. The installed Mac launcher starts the verified project-local model automatically.
 
 Permission modes:
 

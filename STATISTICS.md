@@ -1,6 +1,6 @@
 # Country agriculture evidence
 
-Lucy exposes three registered World Bank WDI annual series for country research:
+NemoWorld exposes three registered World Bank WDI annual series for country research:
 
 - Agriculture, forestry, and fishing value added (% of GDP).
 - Employment in agriculture (% of total employment), **modeled ILO estimate**.

@@ -1,6 +1,6 @@
 # Curating country agriculture evidence
 
-The collection command fetches the three registered World Bank agriculture indicators for selected countries or for the 44 LDCs in Lucy's dated UN M49 catalog. It does not generate recommendations or establish buyer demand, export eligibility, crop productivity, land availability or returns.
+The collection command fetches the three registered World Bank agriculture indicators for selected countries or for the 44 LDCs in NemoWorld's dated UN M49 catalog. It does not generate recommendations or establish buyer demand, export eligibility, crop productivity, land availability or returns.
 
 ```sh
 node scripts/collect-statistics.mjs --countries NP,BD,ZM --output work/candidate-statistics

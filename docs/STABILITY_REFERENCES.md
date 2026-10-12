@@ -2,7 +2,7 @@
 
 Verified 12 October 2026. The World Assembly now contains seventy-four distinct institutional/mechanism reference records. Four additions connect practical civilian stability research to peacebuilding, food systems and disaster risk.
 
-| Reference | Lucy research use | Required qualifications |
+| Reference | NemoWorld research use | Required qualifications |
 | --- | --- | --- |
 | Peacebuilding Commission | Public country priorities, participation and civilian service coordination | Advisory/convening role; country consent and national ownership must be verified. No threat profiling or presumed mandate. |
 | Secretary-General’s Peacebuilding Fund | Public needs baseline and official financing-process map | Distinguish facilities, eligibility periods, review and actual disbursement. No funding offer or approved application is inferred. |
@@ -11,14 +11,14 @@ Verified 12 October 2026. The World Assembly now contains seventy-four distinct 
 
 ## Primary evidence
 
-Six live official pages were read with Lucy’s public DNS-pinned TLS reader. Original-response SHA256, retrieval time, title and extraction size are retained in `stability-source-verification.json`. The new records preserve retrieval proof and source locations. The web reader returned access failures for peacebuilding pages, but the secured direct reader on this Mac successfully retrieved and checked them.
+Six live official pages were read with NemoWorld’s public DNS-pinned TLS reader. Original-response SHA256, retrieval time, title and extraction size are retained in `stability-source-verification.json`. The new records preserve retrieval proof and source locations. The web reader returned access failures for peacebuilding pages, but the secured direct reader on this Mac successfully retrieved and checked them.
 
 - [PBC mandate](https://www.un.org/peacebuilding/en/content/about-the-commission)
 - [PBF overview](https://www.un.org/peacebuilding/en/fund/documents/investments) and [eligibility guidance](https://www.un.org/peacebuilding/en/content/countries-declared-eligible-pbf-secretary-general). The overview includes historical investment totals/plan periods; they are not presented as current finance. Country eligibility/expiry must be checked for the applicable facility and decision date.
 - [CFS](https://www.fao.org/cfs/en/) and [voluntary policy products](https://www.fao.org/cfs/policy-products/voluntary-guidelines-and-policy-recommendations/en).
 - [UNDRR work and Sendai role](https://www.undrr.org/our-work). Global figures are not transferred to local outcome or cost-benefit claims.
 
-Related URLs are official research discovery routes, not proof of country findings. They enter a task’s approved hosts only through human activation. Mapping to SDGs and suggested work are Lucy editorial proposals, not UN instructions, affiliation or endorsement.
+Related URLs are official research discovery routes, not proof of country findings. They enter a task’s approved hosts only through human activation. Mapping to SDGs and suggested work are NemoWorld editorial proposals, not UN instructions, affiliation or endorsement.
 
 ## Verification and limits
 

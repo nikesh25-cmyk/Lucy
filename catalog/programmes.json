@@ -3,7 +3,7 @@
   "researchedOn": "2026-10-12",
   "status": "independent-research-reference",
   "scope": "83 reference records: principal organs, General Assembly main committees, ECOSOC functional and regional commissions, specialized agency groups, funds/programmes and other entities, ten human rights treaty bodies, the Human Rights Council, two human rights review mechanisms, seven UNFCCC constituted bodies and the Santiago technical-assistance network, the Peacebuilding Commission, Peacebuilding Fund and Committee on World Food Security. UNDRR is included among other entities. Coverage does not enumerate every subsidiary body, mandate, treaty procedure or programme; bodies, funds and mechanisms are distinct categories. SDG follow-up, voluntary national review, resident coordination and country cooperation frameworks are included as distinct reference mechanisms.",
-  "affiliation": "Lucy has no UN affiliation, mandate or endorsement. Task suggestions and SDG mappings are Lucy editorial proposals, not UN instructions.",
+  "affiliation": "NemoWorld has no UN affiliation, mandate or endorsement. Task suggestions and SDG mappings are NemoWorld editorial proposals, not UN instructions.",
   "institutions": [
     {
       "id": "general-assembly",
@@ -23,7 +23,7 @@
         "Summarize a published resolution with document symbol and date",
         "Compare country voluntary national review priorities"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "security-council",
@@ -41,7 +41,7 @@
         "Summarize published peacebuilding recommendations",
         "Map civilian resilience needs from public reports"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "ecosoc",
@@ -65,7 +65,7 @@
         "Compare development indicators for two countries",
         "Prepare a sourced policy options brief"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "trusteeship-council",
@@ -83,7 +83,7 @@
         "Build a historical timeline from official records",
         "Explain historical institutional mandate"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "icj",
@@ -101,7 +101,7 @@
         "Summarize a public judgment with case citation",
         "Explain institution jurisdiction using official materials"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "secretariat",
@@ -121,7 +121,7 @@
         "Locate public reports and document symbols",
         "Build a dated evidence register"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "first-committee",
@@ -139,7 +139,7 @@
         "Summarize a public resolution on confidence building",
         "Map peace education resources"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "second-committee",
@@ -163,7 +163,7 @@
         "Compare LDC trade constraints",
         "Draft a sourced structural transformation brief"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "third-committee",
@@ -189,7 +189,7 @@
         "Audit accessibility of a public service",
         "Compare inclusive education evidence"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "fourth-committee",
@@ -207,7 +207,7 @@
         "Summarize official decolonization documentation",
         "Create a historical source bibliography"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "fifth-committee",
@@ -227,7 +227,7 @@
         "Explain a published budget category",
         "Compare public budget and performance documentation"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "sixth-committee",
@@ -247,7 +247,7 @@
         "Map published treaty resources",
         "Explain a legal committee report with citations"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "fao",
@@ -273,7 +273,7 @@
         "Build a crop production baseline with units and year",
         "Compare postharvest loss interventions"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "undp",
@@ -301,7 +301,7 @@
         "Compare municipal service delivery gaps",
         "Create a public policy implementation options brief"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "unep",
@@ -327,7 +327,7 @@
         "Compare waste management options",
         "Map public ecosystem restoration evidence"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "wfp",
@@ -351,7 +351,7 @@
         "Compare food market monitoring reports",
         "Research smallholder procurement requirements"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "itc",
@@ -375,7 +375,7 @@
         "Compare candidate destination markets for a defined product",
         "Verify published tariffs, origin rules and buyer contact routes"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "unctad",
@@ -399,7 +399,7 @@
         "Research LDC export diversification",
         "Compare border facilitation and digital trade policy options"
       ],
-      "mappingStatus": "Lucy editorial task suggestions and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
     },
     {
       "id": "statistical-commission",
@@ -417,7 +417,7 @@
         "Audit indicator definitions and missing country data",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "population-development",
@@ -439,7 +439,7 @@
         "Compare demographic evidence and service access",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "social-development",
@@ -461,7 +461,7 @@
         "Map exclusion and social protection evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "status-women",
@@ -479,7 +479,7 @@
         "Compare barriers to women’s participation",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "narcotic-drugs",
@@ -499,7 +499,7 @@
         "Summarize public prevention evidence and evidence gaps",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "crime-justice",
@@ -517,7 +517,7 @@
         "Map public justice access indicators",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "science-development",
@@ -537,7 +537,7 @@
         "Compare digital access and technology transfer barriers",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "forum-forests",
@@ -557,7 +557,7 @@
         "Assess public forest monitoring and restoration evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "eca",
@@ -579,7 +579,7 @@
         "Compare African regional trade and infrastructure evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "ece",
@@ -601,7 +601,7 @@
         "Map regional standards and infrastructure sources",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "eclac",
@@ -623,7 +623,7 @@
         "Compare regional inequality and productive development evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "escap",
@@ -645,7 +645,7 @@
         "Map regional connectivity and resilience evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "escwa",
@@ -667,7 +667,7 @@
         "Compare regional water and livelihood evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "icao",
@@ -687,7 +687,7 @@
         "Map published aviation access and emissions evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "ifad",
@@ -709,7 +709,7 @@
         "Map smallholder market access and financing prerequisites",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "ilo",
@@ -729,7 +729,7 @@
         "Compare decent work indicators and labour standards sources",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "imf",
@@ -749,7 +749,7 @@
         "Summarize macroeconomic assumptions from dated public reports",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "imo",
@@ -771,7 +771,7 @@
         "Map public shipping safety and environmental standards",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "itu",
@@ -791,7 +791,7 @@
         "Map rural connectivity gaps and technical standards",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "unesco",
@@ -813,7 +813,7 @@
         "Compare public learning access and cultural preservation evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "unido",
@@ -835,7 +835,7 @@
         "Assess processing capacity and resource efficiency prerequisites",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "un-tourism",
@@ -855,7 +855,7 @@
         "Assess local tourism livelihoods and carrying capacity evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "upu",
@@ -875,7 +875,7 @@
         "Map postal access and small exporter delivery barriers",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "who",
@@ -893,7 +893,7 @@
         "Summarize population health indicators; no individual medical advice",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "wipo",
@@ -913,7 +913,7 @@
         "Map public IP information and technology access barriers",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "wmo",
@@ -933,7 +933,7 @@
         "Compare public weather information and warning access",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "world-bank-group",
@@ -955,7 +955,7 @@
         "Map published country diagnostics and project eligibility; presume no funding",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "unfpa",
@@ -975,7 +975,7 @@
         "Map population and reproductive health service access evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "un-habitat",
@@ -993,7 +993,7 @@
         "Compare housing, accessibility and public space indicators",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "unicef",
@@ -1015,7 +1015,7 @@
         "Assess public child service access indicators without personal records",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "ohchr",
@@ -1035,7 +1035,7 @@
         "Map published human rights recommendations and follow-up evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "unaids",
@@ -1053,7 +1053,7 @@
         "Summarize population-level service access indicators",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "unhcr",
@@ -1073,7 +1073,7 @@
         "Map public displacement and service access evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "unops",
@@ -1093,7 +1093,7 @@
         "Map transparent procurement and infrastructure delivery prerequisites",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "unrwa",
@@ -1115,7 +1115,7 @@
         "Summarize public education and service access evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "un-women",
@@ -1133,7 +1133,7 @@
         "Compare public gender equality commitments with delivery evidence",
         "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
       ],
-      "mappingStatus": "Lucy editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
     },
     {
       "id": "cerd",
@@ -1165,7 +1165,7 @@
         "https://sdgs.un.org/goals/goal10",
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "cescr",
@@ -1203,7 +1203,7 @@
         "https://sdgs.un.org/goals/goal4",
         "https://sdgs.un.org/goals/goal8"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "ccpr",
@@ -1233,7 +1233,7 @@
       "sdgLinks": [
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "cedaw",
@@ -1265,7 +1265,7 @@
         "https://sdgs.un.org/goals/goal5",
         "https://sdgs.un.org/goals/goal10"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "cat",
@@ -1295,7 +1295,7 @@
       "sdgLinks": [
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "crc",
@@ -1329,7 +1329,7 @@
         "https://sdgs.un.org/goals/goal4",
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "cmw",
@@ -1361,7 +1361,7 @@
         "https://sdgs.un.org/goals/goal8",
         "https://sdgs.un.org/goals/goal10"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "spt",
@@ -1391,7 +1391,7 @@
       "sdgLinks": [
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "crpd",
@@ -1425,7 +1425,7 @@
         "https://sdgs.un.org/goals/goal8",
         "https://sdgs.un.org/goals/goal10"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "ced",
@@ -1455,7 +1455,7 @@
       "sdgLinks": [
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "human-rights-council",
@@ -1484,7 +1484,7 @@
         "https://sdgs.un.org/goals/goal16",
         "https://sdgs.un.org/goals/goal10"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "universal-periodic-review",
@@ -1513,7 +1513,7 @@
         "https://sdgs.un.org/goals/goal16",
         "https://sdgs.un.org/goals/goal10"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "special-procedures",
@@ -1544,7 +1544,7 @@
         "https://sdgs.un.org/goals/goal2",
         "https://sdgs.un.org/goals/goal10"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "ldc-expert-group",
@@ -1573,7 +1573,7 @@
         "https://sdgs.un.org/goals/goal2",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "standing-committee-finance",
@@ -1599,7 +1599,7 @@
         "https://sdgs.un.org/goals/goal13",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "technology-executive-committee",
@@ -1627,7 +1627,7 @@
         "https://sdgs.un.org/goals/goal13",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "peacebuilding-commission",
@@ -1661,7 +1661,7 @@
         "https://sdgs.un.org/goals/goal16",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "peacebuilding-fund",
@@ -1695,7 +1695,7 @@
         "https://sdgs.un.org/goals/goal16",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "committee-world-food-security",
@@ -1733,7 +1733,7 @@
         "https://sdgs.un.org/goals/goal10",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "undrr",
@@ -1771,7 +1771,7 @@
         "https://sdgs.un.org/goals/goal16",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "adaptation-committee",
@@ -1798,7 +1798,7 @@
         "https://unfccc.int/process-and-meetings/bodies/constituted-bodies/areas-of-work-adaptation-committee"
       ],
       "sourceCheckedOn": "2026-10-12",
-      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
       "sourceVerification": {
         "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
         "directReaderStatus": "collection-gap",
@@ -1810,7 +1810,7 @@
         "https://sdgs.un.org/goals/goal6",
         "https://sdgs.un.org/goals/goal11"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "paris-capacity-building",
@@ -1836,7 +1836,7 @@
         "https://unfccc.int/topics/capacity-building/introduction/introduction-to-capacity-building"
       ],
       "sourceCheckedOn": "2026-10-12",
-      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
       "sourceVerification": {
         "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
         "directReaderStatus": "collection-gap",
@@ -1847,7 +1847,7 @@
         "https://sdgs.un.org/goals/goal4",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "paris-implementation-compliance",
@@ -1874,7 +1874,7 @@
         "https://unfccc.int/PAICC"
       ],
       "sourceCheckedOn": "2026-10-12",
-      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
       "sourceVerification": {
         "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
         "directReaderStatus": "collection-gap",
@@ -1885,7 +1885,7 @@
         "https://sdgs.un.org/goals/goal16",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "wim-executive-committee",
@@ -1913,7 +1913,7 @@
         "https://unfccc.int/topics/adaptation-and-resilience/workstreams/loss-and-damage/warsaw-international-mechanism"
       ],
       "sourceCheckedOn": "2026-10-12",
-      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned a recognized access-check response instead of research content; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned a recognized access-check response instead of research content; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
       "sourceVerification": {
         "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
         "directReaderStatus": "collection-gap",
@@ -1927,7 +1927,7 @@
         "https://sdgs.un.org/goals/goal2",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "santiago-network",
@@ -1954,7 +1954,7 @@
         "https://unfccc.int/santiago-network"
       ],
       "sourceCheckedOn": "2026-10-12",
-      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
       "sourceVerification": {
         "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
         "directReaderStatus": "collection-gap",
@@ -1965,7 +1965,7 @@
         "https://sdgs.un.org/goals/goal11",
         "https://sdgs.un.org/goals/goal17"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "hlpf",
@@ -2002,7 +2002,7 @@
         "https://sdgs.un.org/goals/goal17",
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "voluntary-national-review",
@@ -2040,7 +2040,7 @@
         "https://sdgs.un.org/goals/goal17",
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "resident-coordinator-system",
@@ -2057,7 +2057,7 @@
         "Map a research recommendation to documented national delivery responsibilities"
       ],
       "countryResearchChecks": [
-        "Verify the actual country office, current public role and dated country-team documents; fictional Lucy mayors are not Resident Coordinators or UN representatives.",
+        "Verify the actual country office, current public role and dated country-team documents; fictional NemoWorld mayors are not Resident Coordinators or UN representatives.",
         "Check government ownership, responsible agencies and consent for any proposed engagement; a public office or contact route is not an invitation, partnership or authority to act.",
         "Separate coordinated support plans, commitments and actual delivery; no financing offer is inferred from the system description."
       ],
@@ -2076,7 +2076,7 @@
         "https://sdgs.un.org/goals/goal17",
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     },
     {
       "id": "cooperation-framework",
@@ -2094,7 +2094,7 @@
       ],
       "countryResearchChecks": [
         "Locate the signed country-specific framework and applicable programme period, amendments, results reports and responsible national institutions; generic guidance is not a country agreement.",
-        "Distinguish proposed results, recorded spending and independently evidenced outcomes; a framework is not funding for a Lucy project.",
+        "Distinguish proposed results, recorded spending and independently evidenced outcomes; a framework is not funding for a NemoWorld project.",
         "Check the current Common Country Analysis and country-owned participation process; historic guidance must not be labelled the latest edition without verification."
       ],
       "evidenceLocator": "Cooperation Framework purpose and programme cycle",
@@ -2112,7 +2112,7 @@
         "https://sdgs.un.org/goals/goal17",
         "https://sdgs.un.org/goals/goal16"
       ],
-      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     }
   ],
   "frameworks": [

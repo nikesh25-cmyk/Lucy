@@ -1,6 +1,6 @@
 import {tradeUrl} from './trade.js';
 export function tradeSubmissionDraft(value,allowedDomains){
- if(!value||value.format!=='lucy-trade-submission-draft'||value.version!==1||Object.keys(value).some(key=>!['format','version','submission'].includes(key)))throw Error('Choose a prepared Lucy trade submission draft.');
+ if(!value||value.format!=='lucy-trade-submission-draft'||value.version!==1||Object.keys(value).some(key=>!['format','version','submission'].includes(key)))throw Error('Choose a prepared NemoWorld trade submission draft.');
  const draft=value.submission;if(!draft||typeof draft!=='object'||Object.keys(draft).some(key=>!['artifact','sources','method','limitations','rights'].includes(key)))throw Error('Trade draft contains unsupported fields.');
  for(const [key,max] of [['artifact',16000],['method',2000],['limitations',2000],['rights',2000]])if(typeof draft[key]!=='string'||!draft[key].trim()||draft[key].length>max)throw Error('Trade draft has a missing or oversized text field.');
  if(!Array.isArray(draft.sources)||draft.sources.length<1||draft.sources.length>10||!Array.isArray(allowedDomains)||!allowedDomains.includes('comtradeapi.un.org'))throw Error('This task needs approved Comtrade sources and one to ten retained source records.');
