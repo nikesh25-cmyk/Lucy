@@ -84,16 +84,21 @@ export const civicMethods={
   research(actor,input={}){
     const target=input.target?SDG_TARGETS.entries.find(item=>item.code===input.target):null;if(input.target&&!target)fail(400,'Choose a catalog SDG target.');const params=[],where=[],region=input.region?REGIONS.find(item=>item.id===input.region):null;if(input.region&&!region)fail(400,'Choose a catalog research region.');if(region){where.push(`goal IN (${region.researchGoals.map(()=>'?').join(',')})`);params.push(...region.researchGoals);}
     if(target){where.push('id LIKE ?');params.push(`target-${target.code}-%`);}
-    for(const [key,column] of [['country','country_code'],['goal','goal'],['status','current_status']])if(input[key]){where.push(`${column}=?`);params.push(String(input[key]).slice(0,40));}
+    for(const [key,column] of [['country','country_code'],['goal','goal']])if(input[key]){where.push(`${column}=?`);params.push(String(input[key]).slice(0,40));}
     if(input.institution){
       const institution=PROGRAMMES.institutions.find(item=>item.id===input.institution);if(!institution)fail(400,'Choose a catalog institution.');
       where.push('id LIKE ?');params.push(`programme-${institution.id}-%`);
     }
     if(input.q){where.push('(instr(lower(title),lower(?))>0 OR instr(lower(instructions),lower(?))>0)');params.push(String(input.q).slice(0,100),String(input.q).slice(0,100));}
+    // Status navigation shares every search facet, but excludes its own status and pagination.
+    const scopeClause=where.length?' WHERE '+where.join(' AND '):'';
+    const scopeCounts=this.all('SELECT current_status AS status,COUNT(*) AS count FROM '+researchView+scopeClause+' GROUP BY current_status ORDER BY current_status',...params);
+    const workflowSummary={total:scopeCounts.reduce((sum,row)=>sum+row.count,0),statuses:scopeCounts,qualification:'Current proposal workflow within your country, goal, institution, target, region and text filters; independent of selected status and pagination. Accepted means reviewed inside Lucy. Recorded adoption is a declaration, not verified external implementation. Quarantined latest evidence is withheld from accepted and adopted counts.'};
+    if(input.status){where.push('current_status=?');params.push(String(input.status).slice(0,40));}
     const clause=where.length?' WHERE '+where.join(' AND '):'',offset=integer(input.offset,0,1000000),limit=integer(input.limit,24,50);if(!limit)fail(400,'Page size must be positive.');
     const total=this.get('SELECT COUNT(*) AS n FROM '+researchView+clause,...params).n;
     const leads=this.all('SELECT * FROM '+researchView+clause+' ORDER BY CASE WHEN stage=\'agriculture\' THEN 0 ELSE 1 END,country_code,goal,id LIMIT ? OFFSET ?',...params,limit,offset).map(lead=>({...lead,target_code:/^target-([0-9]{1,2}\.(?:[0-9]{1,2}|[a-z]))-/.exec(lead.id)?.[1]||null,recorded_status:lead.status,status:lead.current_status,country:COUNTRIES.entries.find(country=>country.iso2===lead.country_code)?.name,source_urls:JSON.parse(lead.source_urls)}));
-    return {leads,total,offset,limit,target_context:target?{...target,qualification:SDG_TARGETS.qualification}:null,region_context:region?{id:region.id,name:region.name,focus:region.mayor.focus,goals:region.researchGoals.map(number=>({number,name:SDG_GOALS[number-1]})),qualification:region.researchMapping}:null,has_more:offset+limit<total,country_plan:this.countryResearchPlan(input),counts:this.all('SELECT current_status AS status,COUNT(*) AS count FROM '+researchView+' GROUP BY current_status'),catalog_total:this.get('SELECT COUNT(*) AS n FROM research_leads').n};
+    return {leads,total,offset,limit,workflow_summary:workflowSummary,target_context:target?{...target,qualification:SDG_TARGETS.qualification}:null,region_context:region?{id:region.id,name:region.name,focus:region.mayor.focus,goals:region.researchGoals.map(number=>({number,name:SDG_GOALS[number-1]})),qualification:region.researchMapping}:null,has_more:offset+limit<total,country_plan:this.countryResearchPlan(input),counts:this.all('SELECT current_status AS status,COUNT(*) AS count FROM '+researchView+' GROUP BY current_status'),catalog_total:this.get('SELECT COUNT(*) AS n FROM research_leads').n};
   },
   researchGenerate(actor,input){
     human(actor,['admin','reviewer']);this.active();const country=COUNTRIES.entries.find(country=>country.iso2===input.country_code);if(!country)fail(400,'Choose a catalog country or area.');
