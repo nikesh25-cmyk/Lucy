@@ -28,3 +28,6 @@ All 178 platform tests passed. Added HTTP tests check identity context, moderati
 ## Remaining limits
 
 This is a qualitative English smoke evaluation, not a general accuracy, adversarial robustness, multilingual or production-capacity benchmark. Model prose remains provisional. Country-specific institutions, personal contacts, funding, regulatory applicability, buyer demand, costs and actual adoption need separately reviewed evidence. A mayor provides guidance and advisory triage; human moderators decide enforcement and appeals.
+
+
+The subsequent complete-roster check verified twenty real-model introductions and installed patrol progression; see `MAYOR_ROSTER.md`. This extends the identity evidence to the full roster, while the broader evaluation limits above remain.

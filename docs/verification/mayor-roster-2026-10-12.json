@@ -1,0 +1,352 @@
+{
+  "verified_on": "2026-10-12T05:42:43.583Z",
+  "model": "Official Qwen3-4B Q4_K_M",
+  "environment": "Isolated HTTP fixture; twenty sequential real-model introductions",
+  "production_accounts_created": false,
+  "cases": [
+    {
+      "npc_id": "mayor-highlands",
+      "expected_name": "Asha",
+      "expected_region": "Highlands",
+      "focus": "Mountain access and watershed care",
+      "elapsed_ms": 3086,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "adc236c0-f142-4bed-8a15-a23f5da1ca44",
+        "npc_id": "mayor-highlands",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Asha, the civic guide for Highlands. Our focus is mountain access and watershed care. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:42:46.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-snowline",
+      "expected_name": "Tenzin",
+      "expected_region": "Snowline",
+      "focus": "Climate adaptation and safe passage",
+      "elapsed_ms": 2854,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "a54a91ce-293e-4396-ac97-ce113864a94e",
+        "npc_id": "mayor-snowline",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Tenzin, the civic guide for Snowline. Our focus is climate adaptation and safe passage. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:42:49.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-foothills",
+      "expected_name": "Mira",
+      "expected_region": "Foothills",
+      "focus": "Food systems and hillside livelihoods",
+      "elapsed_ms": 3093,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "515caae5-d0fa-466c-84dc-e01bbe93c53e",
+        "npc_id": "mayor-foothills",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Mira, the civic guide for Foothills. Our focus is food systems and hillside livelihoods. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:42:52.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-riverlands",
+      "expected_name": "Sora",
+      "expected_region": "Riverlands",
+      "focus": "Water quality and flood resilience",
+      "elapsed_ms": 3621,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "25c50c1c-eedf-413f-a4dc-494a2a3c3abd",
+        "npc_id": "mayor-riverlands",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Sora, the civic guide for Riverlands. Our focus is water quality and flood resilience. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:42:55.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-wetlands",
+      "expected_name": "Nadi",
+      "expected_region": "Wetlands",
+      "focus": "Wetland restoration and habitat",
+      "elapsed_ms": 3074,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "686e57d6-c9af-4e89-8fe7-84be7ab261c5",
+        "npc_id": "mayor-wetlands",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Nadi, the civic guide for Wetlands. Our focus is wetland restoration and habitat. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:42:58.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-woodlands",
+      "expected_name": "Ilan",
+      "expected_region": "Woodlands",
+      "focus": "Forest stewardship and biodiversity",
+      "elapsed_ms": 3121,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "e9ffb0d4-4430-431d-a01f-a0a5c053fbb1",
+        "npc_id": "mayor-woodlands",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Ilan, the civic guide for Woodlands. Our focus is forest stewardship and biodiversity. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:01.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-rainforest",
+      "expected_name": "Amara",
+      "expected_region": "Rainforest",
+      "focus": "Forest communities and conservation",
+      "elapsed_ms": 2799,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "e213fe10-bafb-47d6-adb2-f61fcee96388",
+        "npc_id": "mayor-rainforest",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Amara, the civic guide for Rainforest. Our focus is forest communities and conservation. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:04.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-grasslands",
+      "expected_name": "Kito",
+      "expected_region": "Grasslands",
+      "focus": "Pasture, soil and biodiversity",
+      "elapsed_ms": 2819,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "7f70cb95-b3b0-4b21-8235-43e229b14b76",
+        "npc_id": "mayor-grasslands",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Kito, the civic guide for Grasslands. Our focus is pasture, soil, and biodiversity. Visit the World Assembly research desk to choose a country, a goal, and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:07.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-farmlands",
+      "expected_name": "Leila",
+      "expected_region": "Farmlands",
+      "focus": "Agriculture and market access",
+      "elapsed_ms": 2801,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "1e9fc322-d3c9-4791-be2c-8269e21c88f7",
+        "npc_id": "mayor-farmlands",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Leila, the civic guide for Farmlands. Our focus is agriculture and market access. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:10.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-drylands",
+      "expected_name": "Samir",
+      "expected_region": "Drylands",
+      "focus": "Drought resilience and water access",
+      "elapsed_ms": 2687,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "63c470a5-cc17-418d-a162-329f82993718",
+        "npc_id": "mayor-drylands",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Samir, the civic guide for Drylands. Our focus is drought resilience and water access. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:13.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-desert",
+      "expected_name": "Zahra",
+      "expected_region": "Desert",
+      "focus": "Heat resilience and mobility",
+      "elapsed_ms": 2750,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "21a01f9b-1a27-441a-b12c-2911c6b54d2a",
+        "npc_id": "mayor-desert",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Zahra, the civic guide for Desert. Our focus is heat resilience and mobility. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:16.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-savanna",
+      "expected_name": "Ayo",
+      "expected_region": "Savanna",
+      "focus": "Land use and wildlife corridors",
+      "elapsed_ms": 3143,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "1ec6104f-574c-453a-a735-9ecdc6db5bda",
+        "npc_id": "mayor-savanna",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Ayo, the civic guide for Savanna. My focus is on land use and wildlife corridors. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:19.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-coast",
+      "expected_name": "Marin",
+      "expected_region": "Coast",
+      "focus": "Coastal livelihoods and erosion",
+      "elapsed_ms": 2655,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "b235041c-e215-4d04-9fa3-0163f7d68176",
+        "npc_id": "mayor-coast",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Marin, the civic guide for Coast. Our focus is coastal livelihoods and erosion. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:22.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-islands",
+      "expected_name": "Kai",
+      "expected_region": "Islands",
+      "focus": "Island resilience and ocean care",
+      "elapsed_ms": 2764,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "9bbc7460-07ab-4c23-8e8f-51b6bc1b3996",
+        "npc_id": "mayor-islands",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Kai, the civic guide for Islands. Our focus is island resilience and ocean care. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:25.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-harbor",
+      "expected_name": "Nila",
+      "expected_region": "Harbor",
+      "focus": "Fair trade and port access",
+      "elapsed_ms": 2789,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "22186cde-43e7-40c6-8da0-9136923fb4d3",
+        "npc_id": "mayor-harbor",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Nila, the civic guide for Harbor. Our focus is fair trade and port access. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:28.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-cities",
+      "expected_name": "Rumi",
+      "expected_region": "Cities",
+      "focus": "Housing, accessibility and public space",
+      "elapsed_ms": 2957,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "788a32fb-41a0-490a-87d3-f4d24bc6aeb6",
+        "npc_id": "mayor-cities",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Rumi, the civic guide for Cities. My focus is on housing, accessibility, and public space. Visit the World Assembly research desk to choose a country, a goal, and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:31.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-workshops",
+      "expected_name": "Tala",
+      "expected_region": "Workshops",
+      "focus": "Skills and decent work",
+      "elapsed_ms": 2882,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "d15077d6-ede6-4e83-a4ab-a6a4d9ee0b4a",
+        "npc_id": "mayor-workshops",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Tala, the civic guide for Workshops. Our focus is on skills and decent work. Visit the World Assembly research desk to choose a country, a goal, and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:34.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-gardens",
+      "expected_name": "Pema",
+      "expected_region": "Gardens",
+      "focus": "Food growing and community care",
+      "elapsed_ms": 2789,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "2c20d3a7-77d9-4f77-9601-fc74ba485abc",
+        "npc_id": "mayor-gardens",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Pema, the civic guide for Gardens. Our focus is food growing and community care. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:37.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-lakes",
+      "expected_name": "Elio",
+      "expected_region": "Lakes",
+      "focus": "Freshwater ecosystems and health",
+      "elapsed_ms": 2686,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "97389d5c-e529-4a54-81c8-5dcd4d5d1737",
+        "npc_id": "mayor-lakes",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Elio, the civic guide for Lakes. My focus is on freshwater ecosystems and health. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:40.320Z",
+        "mode": "local-model"
+      }
+    },
+    {
+      "npc_id": "mayor-commons",
+      "expected_name": "Noor",
+      "expected_region": "Commons",
+      "focus": "Dialogue and coordination",
+      "elapsed_ms": 3142,
+      "matches_name": true,
+      "matches_region": true,
+      "response": {
+        "id": "cb7dff19-c63d-4e7f-9185-7e9f3473556f",
+        "npc_id": "mayor-commons",
+        "question": "Introduce yourself with your name and exact region, then describe your civic focus briefly.",
+        "answer": "I am Noor, the civic guide for Commons. Our focus is dialogue and coordination. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.",
+        "created_at": "2026-10-12T05:43:43.320Z",
+        "mode": "local-model"
+      }
+    }
+  ],
+  "limits": "English roster/identity smoke evaluation only; not general factual correctness, multilingual quality or concurrent capacity.",
+  "audit_valid": true,
+  "conversations": 20,
+  "submissions": 0
+}
