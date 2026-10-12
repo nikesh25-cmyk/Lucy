@@ -15,3 +15,6 @@ All 202 platform tests passed. Coverage checks all target identifiers and goal c
 Actual isolated browser QA inspected target 17.11’s historical year, changed goal while retaining the open directory, and used a reviewer account to create four Nepal target-2.3 proposals. The filtered list had four proposed records and the whole-country summary seventy-eight. This is workflow verification, not a real smallholder study; there were zero submissions/adoptions and no production accounts created. The saved live world’s original 2,998-proposal backlog is preserved.
 
 Full source wording is linked rather than reproduced in the catalog. The metadata collection does not import global progress statistics or individual indicator datasets and does not refresh automatically. Broader UN programme coverage, substantive country findings and a real agriculture pilot remain open.
+
+
+New target proposals now include a registered fragment selecting the exact target for bounded framework reading. Existing activated scopes remain preserved. See `TARGET_READING.md` for parser coverage, live retrieval proof, output classification and limits.
