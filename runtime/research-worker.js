@@ -62,7 +62,7 @@ async function pinnedSource(url,addresses,signal,{limit=1_000_000,pdf=false,json
     const chosen=addresses[0];
     const request=httpsRequest(url,{method:'GET',signal,headers:{Accept:pdf?'application/pdf':json?'application/json':'text/html,text/plain','User-Agent':'Lucy-Research/1.0'},lookup:(_host,options,callback)=>options.all?callback(null,[chosen]):callback(null,chosen.address,chosen.family)},response=>{
       const type=response.headers['content-type']||'';
-      if(response.statusCode<200||response.statusCode>=300||!(pdf?/application\/pdf/i:json?/application\/json(?:\s*;|$)/i:/text\/(html|plain)/i).test(type)||Number(response.headers['content-length'])>limit){response.resume();reject(new Error('Source status, type or size is unsupported.'));return;}
+      if(response.statusCode<200||response.statusCode>=300||!(pdf?/application\/pdf/i:json?/application\/json(?:\s*;|$)/i:/text\/(html|plain)/i).test(type)||Number(response.headers['content-length'])>limit){response.resume();reject(Object.assign(new Error('Source status, type or size is unsupported.'),{sourceStatus:response.statusCode}));return;}
       let size=0;const chunks=[];response.on('data',chunk=>{size+=chunk.length;if(size>limit){response.destroy();reject(new Error('Source exceeds its byte limit.'));}else chunks.push(chunk);});
       response.on('error',reject);response.on('end',()=>resolve(new Response(Buffer.concat(chunks),{status:response.statusCode,headers:{'content-type':type}})));
     });request.on('error',reject);request.end();
