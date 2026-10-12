@@ -67,6 +67,17 @@ export const civicMethods={
     return {country,routes:agricultureSources(country),license:STATISTICS_LICENSE,metadata:STATISTICS.metadata,collection_gaps:(STATISTICS.metadata.unavailable||[]).filter(item=>item.country_code===country.iso2||item.country===country.name),snapshot:STATISTICS.countries.find(item=>item.country_code===country.iso2)||null};
   },
   assembly(){return {charter:CIVIC_CHARTER,goals:SDG_GOALS,programmes:PROGRAMMES,pilot:PILOT,stages,rubric};},
+  countryResearchPlan(input={}){
+    const country=COUNTRIES.entries.find(item=>item.iso2===input.country);if(!country)return null;
+    const rows=this.all('SELECT goal,stage,status,COUNT(*) AS count FROM research_leads WHERE country_code=? GROUP BY goal,stage,status ORDER BY goal,stage,status',country.iso2);
+    const sum=(items,status)=>items.filter(item=>!status||item.status===status).reduce((n,item)=>n+item.count,0);
+    const statuses=[...new Set(rows.map(item=>item.status))].map(status=>({status,count:sum(rows,status)}));
+    const goals=SDG_GOALS.map((name,index)=>{const selected=rows.filter(item=>item.goal===index+1);return {number:index+1,name,total:sum(selected),statuses:statuses.map(item=>({status:item.status,count:sum(selected,item.status)}))};});
+    const stageOrder=[...stages.map(item=>({id:item.id,name:item.name})),{id:'programme-baseline',name:'Institution-specific baseline'},{id:'programme-proposal',name:'Institution-specific recommendation'},{id:'agriculture',name:'Agriculture pilot deliverables'}];
+    const stageSummary=stageOrder.map(stage=>{const selected=rows.filter(item=>item.stage===stage.id);return {...stage,total:sum(selected),statuses:statuses.map(item=>({status:item.status,count:sum(selected,item.status)}))};});
+    const snapshot=STATISTICS.countries.find(item=>item.country_code===country.iso2),series=snapshot?.series||[],points=series.flatMap(item=>item.points);
+    return {country:{name:country.name,iso2:country.iso2,iso3:country.iso3},generated_at:new Date(this.clock()).toISOString(),total:sum(rows),statuses,goals,stages:stageSummary,agriculture_evidence:{series:series.length,records:points.length,reported_values:points.filter(item=>item.value!==null).length,missing_values:points.filter(item=>item.value===null).length,coverage:series.length===3?'retained':series.length?'partial':'none',gaps:(STATISTICS.metadata.unavailable||[]).filter(item=>item.country_code===country.iso2||item.country===country.name),limitation:'Retained annual agriculture sector observations only. Not evidence of all SDGs, crop demand, buyers, current law or completed research.'},workflow:['Choose a scoped baseline with a named beneficiary and reviewer.','Review country-specific evidence before comparing interventions.','Map responsible institutions and verified public access routes.','Prepare and independently review a decision brief; document actual adoption separately.'],limitations:'Counts describe catalog proposal workflow, not country outcomes or completed studies. Acceptance is independent review inside Lucy; adoption is a separately recorded declaration, not institutional endorsement. General and institution-specific stages overlap and do not imply dependencies, priority scores or automatic activation. Source dates, missing values and local applicability still require review.'};
+  },
   research(actor,input={}){
     const params=[],where=[];
     for(const [key,column] of [['country','country_code'],['goal','goal'],['status','status']])if(input[key]){where.push(`${column}=?`);params.push(String(input[key]).slice(0,40));}
@@ -78,7 +89,7 @@ export const civicMethods={
     const clause=where.length?' WHERE '+where.join(' AND '):'',offset=integer(input.offset,0,1000000),limit=integer(input.limit,24,50);if(!limit)fail(400,'Page size must be positive.');
     const total=this.get('SELECT COUNT(*) AS n FROM research_leads'+clause,...params).n;
     const leads=this.all('SELECT * FROM research_leads'+clause+' ORDER BY CASE WHEN stage=\'agriculture\' THEN 0 ELSE 1 END,country_code,goal,id LIMIT ? OFFSET ?',...params,limit,offset).map(lead=>({...lead,country:COUNTRIES.entries.find(country=>country.iso2===lead.country_code)?.name,source_urls:JSON.parse(lead.source_urls)}));
-    return {leads,total,offset,limit,has_more:offset+limit<total,counts:this.all('SELECT status,COUNT(*) AS count FROM research_leads GROUP BY status'),catalog_total:this.get('SELECT COUNT(*) AS n FROM research_leads').n};
+    return {leads,total,offset,limit,has_more:offset+limit<total,country_plan:this.countryResearchPlan(input),counts:this.all('SELECT status,COUNT(*) AS count FROM research_leads GROUP BY status'),catalog_total:this.get('SELECT COUNT(*) AS n FROM research_leads').n};
   },
   researchGenerate(actor,input){
     human(actor,['admin','reviewer']);this.active();const country=COUNTRIES.entries.find(country=>country.iso2===input.country_code);if(!country)fail(400,'Choose a catalog country or area.');
