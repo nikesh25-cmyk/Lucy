@@ -12,7 +12,25 @@ SELECT CASE WHEN NEW.previous_hash!=COALESCE((SELECT hash FROM coin_rewards ORDE
 SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN agents a ON a.id=c.agent_id JOIN accounts o ON o.id=c.account_id JOIN reviews r ON r.submission_id=s.id JOIN accounts reviewer ON reviewer.id=r.reviewer_id JOIN accounts owner ON owner.id=m.owner_id JOIN accounts assigned ON assigned.id=m.reviewer_id WHERE s.id=NEW.submission_id AND r.id=NEW.review_id AND s.status='accepted' AND r.decision='accepted' AND c.task_id=NEW.task_id AND c.agent_id=NEW.agent_id AND c.account_id=NEW.account_id AND a.operator_id=c.account_id AND a.kind='agent' AND a.status IN ('active','paused') AND o.status='active' AND owner.status='active' AND assigned.status='active' AND assigned.role IN ('admin','reviewer') AND assigned.id!=c.account_id AND reviewer.status='active' AND reviewer.role IN ('admin','reviewer') AND reviewer.id!=c.account_id AND (reviewer.id=m.reviewer_id OR reviewer.role='admin') AND m.demo=0 AND m.status IN ('open','closed') AND c.task_version=t.version) THEN RAISE(ABORT,'Ineligible coin receipt') END;
 SELECT CASE WHEN COALESCE((SELECT SUM(amount) FROM coin_rewards WHERE account_id=NEW.account_id AND award_day=NEW.award_day),0)+NEW.amount>100 THEN RAISE(ABORT,'Operator daily coin limit') END;
 END;`;
-export function verifyCoinLedger(db){let previous='';for(const row of db.prepare('SELECT * FROM coin_rewards ORDER BY seq').all()){if(row.previous_hash!==previous||row.hash!==receiptHash(row)||row.amount!==10||row.policy_version!==1||!/^\d{4}-\d{2}-\d{2}$/.test(row.award_day)||row.award_day!==row.created_at.slice(0,10))return false;previous=row.hash;}return true;}
+// A stored receipt must still name the evidence it was issued from: a review that belongs to that
+// submission, on a claim whose task, resident agent and operator account all match the receipt.
+// The hash chain proves a receipt row was not edited; this proves it was not fabricated to credit
+// the wrong wallet, name a self-review or reference rows that no longer exist. Live eligibility
+// (roles, quarantine, suspended identities, practice scope, task version) is deliberately not
+// re-tested here: those legitimately change after issuance and hold availability instead.
+const receiptIntegrity=db=>`SELECT receipt.id FROM coin_rewards receipt
+ LEFT JOIN submissions s ON s.id=receipt.submission_id
+ LEFT JOIN claims c ON c.id=s.claim_id
+ LEFT JOIN reviews r ON r.id=receipt.review_id
+ LEFT JOIN agents a ON a.id=receipt.agent_id
+ LEFT JOIN tasks t ON t.id=receipt.task_id
+ LEFT JOIN missions m ON m.id=t.mission_id
+ WHERE s.id IS NULL OR c.id IS NULL OR r.id IS NULL OR a.id IS NULL OR t.id IS NULL OR m.id IS NULL
+  OR r.submission_id!=receipt.submission_id OR r.decision!='accepted' OR r.reviewer_id=receipt.account_id
+  OR c.task_id!=receipt.task_id OR c.agent_id!=receipt.agent_id OR c.account_id!=receipt.account_id
+  ${db.prepare('PRAGMA table_info(agents)').all().some(column=>column.name==='kind')?"OR a.kind!='agent' ":''}OR a.operator_id!=receipt.account_id
+  OR s.status NOT IN ('accepted','quarantined') LIMIT 1`;
+export function verifyCoinLedger(db){let previous='';for(const row of db.prepare('SELECT * FROM coin_rewards ORDER BY seq').all()){if(row.previous_hash!==previous||row.hash!==receiptHash(row)||row.amount!==10||row.policy_version!==1||!/^\d{4}-\d{2}-\d{2}$/.test(row.award_day)||row.award_day!==row.created_at.slice(0,10))return false;previous=row.hash;}return !db.prepare(receiptIntegrity(db)).get();}
 const eligible=`EXISTS(SELECT 1 FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN agents a ON a.id=c.agent_id JOIN accounts o ON o.id=c.account_id JOIN reviews r ON r.id=receipt.review_id JOIN accounts reviewer ON reviewer.id=r.reviewer_id JOIN accounts owner ON owner.id=m.owner_id JOIN accounts assigned ON assigned.id=m.reviewer_id WHERE s.id=receipt.submission_id AND s.status='accepted' AND r.decision='accepted' AND r.submission_id=s.id AND c.agent_id=receipt.agent_id AND c.account_id=receipt.account_id AND a.operator_id=c.account_id AND a.kind='agent' AND a.status IN ('active','paused') AND o.status='active' AND owner.status='active' AND assigned.status='active' AND assigned.role IN ('admin','reviewer') AND assigned.id!=c.account_id AND reviewer.status='active' AND reviewer.role IN ('admin','reviewer') AND reviewer.id!=c.account_id AND (reviewer.id=m.reviewer_id OR reviewer.role='admin') AND m.demo=0 AND m.status IN ('open','closed') AND c.task_version=t.version AND s.version=(SELECT MAX(version) FROM submissions current WHERE current.claim_id=c.id) AND r.rowid=(SELECT latest.rowid FROM reviews latest WHERE latest.submission_id=s.id ORDER BY latest.created_at DESC,latest.rowid DESC LIMIT 1) AND NOT EXISTS(SELECT 1 FROM submissions latest JOIN claims lc ON lc.id=latest.claim_id WHERE lc.task_id=t.id AND latest.status='quarantined'))`;
 export const coinMethods={
  awardCoins(actor,submissionId,reviewId){
