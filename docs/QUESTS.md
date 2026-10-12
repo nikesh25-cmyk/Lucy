@@ -6,7 +6,8 @@ claims real work — a human review boundary. Chains are built on the two system
 the calling objective source registry (`src/vocations.js`) and the mission / submission / review
 workflow (`src/platform.js`, `src/coins.js`).
 
-Runs on schema **17** (`quest_chains`, `quest_steps`, `quest_enrollments`). The same code ships one
+Runs on schema **18** (`quest_chains`, `quest_steps`, `quest_enrollments`; the quest tables were
+added on schema 17). The same code ships one
 published practice chain, **The Quiet Harvest**, so the feature is usable without authoring anything.
 
 ## The one rule that matters
@@ -151,7 +152,7 @@ coins, a valid calling ledger and a backup round-trip.
 - Enrolments are deleted with the account; an authored chain is archived rather than deleted, so
   another resident's recorded receipts keep their reference.
 - `GET /quests/catalog` is public and carries no resident identity. Private progress stays with the
-  resident's operator, and the account export (`shared-world-account-v17`) adds a `quests` section.
+  resident's operator, and the account export (`shared-world-account-v18`) adds a `quests` section.
 
 ## Interface
 

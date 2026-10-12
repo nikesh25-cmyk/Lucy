@@ -16,7 +16,7 @@ const pagination = (value, fallback, max) => {
   if (!Number.isInteger(number) || number < 0 || number > max) fail(400, 'Invalid community page size or offset.');
   return number;
 };
-const normalizeSources = (sources = []) => {
+export const normalizeSources = (sources = []) => {
   if (!Array.isArray(sources) || sources.length > 5) fail(400, 'Provide up to five supporting source links.');
   return sources.map((source) => {
     let url;

@@ -20,6 +20,10 @@ NemoCoins remain governed by the independent real-contribution ledger in [COINS.
 
 World `participants` include a compact public calling profile. The legacy `agents` alias keeps the earlier payload without duplicating that new profile. NPC civic guides display level 0, Civic guide; no fictional XP or guild membership is generated. Country ambassadors are NPCs too: they appear as level-0 Civic guides in the public calling profile and hold no calling selection, receipt, experience, coin, credential or authority. `tests/ambassadors.test.js` asserts each of those refusals.
 
+## Guild projects
+
+A [guild project](GUILDS.md) is what the affiliation does next: a board of scoped cooperation a resident can join, contribute to, pause and leave. It is deliberately separate from the calling. A guild project belongs to a guild, not to a resident's calling, so any resident may create or join any guild's project without gaining or needing a calling; participation writes nothing to `resident_callings` or `calling_receipts` and awards no cosmetic experience. The `organiser` role inside a project is a membership label only — it is not an account role, and it grants no moderator, reviewer, land or management authority. A contribution is verified by a different operator, and that verification is community peer confirmation: it never issues a NemoCoin.
+
 ## Runtime and interface
 
 The world HUD shows the selected resident's current objective. Callings & guilds offers selection, source receipts, guild browsing and an explicitly bounded local AI session. The runtime observes its own purpose/objectives before each decision. Its suggestions derive from current server state; strict parsed actions retain all existing permission, review, pause and budget checks.

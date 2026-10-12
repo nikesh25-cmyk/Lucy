@@ -717,6 +717,60 @@ async function main() {
       return `201 author draft; 200 publish; 400 refused client completion; 201 join (idempotent repeat); 200 travel; saved facts path ${pathBlock.x},${pathBlock.y} and wood ${raisedBlock.x},${raisedBlock.y} in ${world.plot.id} (block position ${blockPosition.x},${blockPosition.y}); both ordered steps complete once each (10 cosmetic experience); 0 coins from the chain, 10 coins still held by the independently accepted contribution`;
     });
 
+    await step('12. a guild project board keeps participation explicit, verification independent and guild activity coinless', async () => {
+      // A third operator is needed: the administrator owns the project and the reviewer makes the
+      // contribution, so only an unrelated operator can verify it independently.
+      const invite = expectStatus(await post('/invites', { role: 'member' }, { token: world.adminToken }), 201, 'POST /invites for a third operator');
+      const neighbor = expectStatus(await post('/auth/register', { name: 'Acceptance neighbor', email: 'neighbor@e2e.test', password: PASSWORD, consent: true, invite: invite.code }, { apiClient: 'operator' }), 201, 'POST /auth/register with the third operator invitation');
+      expectThat(neighbor.account?.role === 'member', 'the third operator must hold the ordinary member role', { expected: 'role=member', actual: describe(neighbor.account) });
+      world.neighborToken = neighbor.token;
+      const reviewerAgent = expectStatus(await post('/agents', { kind: 'agent', name: 'Reviewer resident', color: '#8c6ab1', symbol: '▲', capabilities: 'Joins bounded cooperative work', limitations: 'No external tools and no real-world claims' }, { token: world.reviewerToken }), 201, 'POST /agents for the reviewer');
+      const neighborAgent = expectStatus(await post('/agents', { kind: 'human', name: 'Neighbor player' }, { token: world.neighborToken }), 201, 'POST /agents (human player) for the third operator');
+      expectThat(neighborAgent.kind === 'human', 'a human player must be able to take part in a guild project', { expected: 'kind=human', actual: describe(neighborAgent) });
+
+      const plan = [{ id: 'walk', title: 'Walk one accessible route', output_name: 'A traced route', scope: 'Walk and record one accessible route' }];
+      const project = expectStatus(await post('/guilds/projects', { agent_id: world.agentId, guild_id: 'cultivator', title: 'A shared growing plan', summary: 'One bounded piece of cooperative work for the acceptance run.', visibility: 'public', plan }, { token: world.adminToken }), 201, 'POST /guilds/projects as the administrator');
+      expectThat(project.guild_name === 'Living Gardens' && project.participants.length === 1 && project.participants[0].role === 'organiser', 'the creating resident must be the organiser of the guild project', { expected: 'the Living Gardens guild with one organiser participant', actual: describe({ guild_name: project.guild_name, participants: project.participants }) });
+      expectThat(project.policy?.coins_awarded === 0 && project.policy?.grants_land === false && project.policy?.grants_reviewer === false, 'the guild policy must state that no coin, plot or reviewer right is granted', { expected: 'coins_awarded=0, grants_land=false, grants_reviewer=false', actual: describe(project.policy) });
+      const hidden = expectStatus(await post('/guilds/projects', { agent_id: world.agentId, guild_id: 'cultivator', title: 'A private plan', summary: 'Kept to its creator until shared.', visibility: 'private', plan }, { token: world.adminToken }), 201, 'POST /guilds/projects (private)');
+
+      const outsider = await get('/guilds', { token: world.reviewerToken });
+      const outsiderBoard = expectStatus(outsider, 200, 'GET /guilds as another operator');
+      expectThat(!outsiderBoard.projects.some((item) => item.id === hidden.id) && !outsider.raw.includes('A private plan'), 'a private guild project must not be listed for an outsider', { expected: 'the private project absent from the listing', actual: describe(outsiderBoard.projects.map((item) => item.title)) });
+      expectStatus(await get(`/guilds/project?id=${hidden.id}`, { token: world.reviewerToken }), 404, 'GET /guilds/project for an outsider');
+      expectStatus(await get(`/guilds/project?id=${hidden.id}`), 404, 'GET /guilds/project anonymously');
+      expectStatus(await get(`/guilds/project?id=${project.id}`), 200, 'GET /guilds/project anonymously for a public project');
+
+      expectStatus(await post('/guilds/participation', { agent_id: reviewerAgent.id, project_id: project.id, action: 'join' }, { token: world.reviewerToken }), 200, 'POST /guilds/participation join');
+      expectStatus(await post('/guilds/participation', { agent_id: neighborAgent.id, project_id: project.id, action: 'join' }, { token: world.neighborToken }), 200, 'POST /guilds/participation join (human player)');
+      const pledged = expectStatus(await post('/guilds/contributions', { agent_id: reviewerAgent.id, project_id: project.id, workstream_id: 'walk', action: 'pledge', commitment: 'I will walk and record one route.' }, { token: world.reviewerToken }), 200, 'POST /guilds/contributions pledge');
+      expectThat(pledged.contributions[0].status === 'pledged' && pledged.contributions[0].outcome.completed === false && pledged.shared_status.totals.verified_contributions === 0, 'a pledge must never be displayed as a completed outcome', { expected: 'a pledged intention with nothing verified', actual: describe(pledged.contributions[0].outcome) });
+      const submitted = expectStatus(await post('/guilds/contributions', { agent_id: reviewerAgent.id, project_id: project.id, workstream_id: 'walk', action: 'submit', evidence: 'A route recorded on the server with its own limits.', sources: [{ url: 'https://example.org/route', location: 'Section 1' }] }, { token: world.reviewerToken }), 200, 'POST /guilds/contributions submit');
+      expectThat(submitted.contributions[0].status === 'submitted' && submitted.contributions[0].outcome.completed === false, 'a submitted contribution must stay an unverified claim until a different operator verifies it', { expected: 'submitted with completed=false', actual: describe(submitted.contributions[0].outcome) });
+      const contributionId = submitted.contributions[0].id;
+
+      expectStatus(await post('/guilds/verify', { agent_id: reviewerAgent.id, project_id: project.id, contribution_id: contributionId, action: 'approve', reason: 'Approving my own contribution.' }, { token: world.reviewerToken }), 403, 'POST /guilds/verify by the contributing operator');
+      expectStatus(await post('/guilds/verify', { agent_id: world.agentId, project_id: project.id, contribution_id: contributionId, action: 'approve', reason: 'Approving inside my own project.' }, { token: world.adminToken }), 403, 'POST /guilds/verify by the project creator');
+      const verified = expectStatus(await post('/guilds/verify', { agent_id: neighborAgent.id, project_id: project.id, contribution_id: contributionId, action: 'approve', reason: 'Checked the recorded route independently.' }, { token: world.neighborToken }), 200, 'POST /guilds/verify by a third, independent operator');
+      expectThat(verified.contributions[0].outcome.completed === true && verified.contributions[0].outcome.verified === true && verified.shared_status.totals.verified_contributions === 1, 'only an independent verification may read as a completed outcome', { expected: 'one verified contribution and completed=true', actual: describe({ outcome: verified.contributions[0].outcome, totals: verified.shared_status.totals }) });
+
+      const participationView = expectStatus(await get(`/guilds?agent_id=${reviewerAgent.id}`, { token: world.reviewerToken }), 200, 'GET /guilds for the participating resident');
+      const listed = participationView.projects.find((item) => item.id === project.id);
+      expectThat(listed?.participation.joined === true && listed?.shared_status.totals.verified_contributions === 1, 'the board must report the resident’s own participation with its verified total', { expected: 'joined with one verified contribution', actual: describe(listed?.shared_status?.totals) });
+      expectThat(expectStatus(await get('/land?mine=1', { token: world.neighborToken }), 200, 'GET /land?mine=1 for the verifying operator').plots.length === 0, 'taking part in a guild project must grant no stewarded plot', { expected: 'no plot', actual: 'a stewardship appeared' });
+      const neighborWallet = expectStatus(await get(`/coins?agent_id=${neighborAgent.id}`, { token: world.neighborToken }), 200, 'GET /coins for the verifying operator');
+      expectThat(neighborWallet.balance === 0 && neighborWallet.issued === 0, 'verifying a guild contribution must issue no NemoCoins', { expected: 'zero coins', actual: describe({ balance: neighborWallet.balance, issued: neighborWallet.issued }) });
+
+      const left = expectStatus(await post('/guilds/participation', { agent_id: reviewerAgent.id, project_id: project.id, action: 'leave' }, { token: world.reviewerToken }), 200, 'POST /guilds/participation leave');
+      expectThat(left.left === true, 'a participant must be able to leave', { expected: 'left=true', actual: describe(left) });
+      const afterLeave = expectStatus(await get(`/guilds/project?id=${project.id}&agent_id=${reviewerAgent.id}`, { token: world.reviewerToken }), 200, 'GET /guilds/project after leaving');
+      expectThat(afterLeave.contributions[0].participant.state === 'left' && afterLeave.shared_status.totals.verified_contributions === 1, 'leaving must keep the recorded work as attributed history', { expected: 'a left participant with the verified contribution retained', actual: describe({ state: afterLeave.contributions[0].participant.state, verified: afterLeave.shared_status.totals.verified_contributions }) });
+
+      const guildWallet = expectStatus(await get(`/coins?agent_id=${world.agentId}`, { token: world.adminToken }), 200, 'GET /coins after the whole guild flow');
+      expectThat(guildWallet.balance === 10 && guildWallet.receipt_count === 1 && guildWallet.integrity_valid === true, 'the only coin receipt must still be the independently accepted contribution', { expected: 'the same single 10-coin receipt', actual: describe({ balance: guildWallet.balance, receipts: guildWallet.receipt_count, valid: guildWallet.integrity_valid }) });
+      return `201 invite + 201 third operator (role=member) + 201 reviewer resident + 201 human player; 201 public project (Living Gardens, one organiser) and 201 private project; 404 private project for an outsider and anonymously; 200 join for an AI resident and for a human player; 200 pledge (intention, nothing verified); 200 submit (unverified claim); 403 self-verification and 403 creator verification; 200 verification by a third operator (completed=true, 1 verified); 200 leave (the verified record stays attributed); 0 coins from the whole guild flow, the earlier 10-coin acceptance intact`;
+    });
+
     const shutdown = await stopServer();
     expectThat(shutdown.lockReleased, 'a graceful shutdown must release the process lock', { expected: `no ${join(state.workspace, 'server.lock')}`, actual: 'the lock file remained after shutdown' });
     expectThat(shutdown.workspaceRemoved, 'the temporary workspace must be removed', { expected: 'workspace removed', actual: state.workspace });

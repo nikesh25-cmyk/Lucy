@@ -8,6 +8,7 @@ import { COMMUNITY_TABLES } from './community.js';
 import { JOURNEY_TABLES } from './journey.js';
 import { verifyCallingReceipts } from './vocations.js';
 import { verifyQuestReceipts, verifyQuestStructure } from './quests.js';
+import { verifyGuildRecords } from './guilds.js';
 import { REGIONS } from './civic.js';
 import { GARDEN_PALETTE,HOUSE_PALETTE } from './placement-policy.js';
 
@@ -55,7 +56,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -140,6 +141,14 @@ export function validateDatabase(path) {
       if(!db.prepare("SELECT calling_id FROM calling_objective_rules WHERE objective_id='builder.frontier_place'").get()||(published&&!db.prepare("SELECT objective_id FROM calling_objective_rules WHERE objective_id LIKE 'quest:%' LIMIT 1").get()))throw new Error('Database calling objective rules are incomplete.');
       if(!verifyQuestStructure(db))throw new Error('Database quest chain validation failed.');
       if(!verifyQuestReceipts(db))throw new Error('Database quest progression validation failed.');
+    }
+    if (version >= 18) {
+      const columns={guild_projects:['id','guild_id','title','summary','plan','visibility','status','creator_agent_id','created_at','management_reason'],guild_participants:['project_id','agent_id','role','state','joined_at','updated_at'],guild_contributions:['id','project_id','workstream_id','agent_id','account_id','commitment','evidence','sources','status','review_note','submitted_at','verified_by_agent_id','verified_by_account_id','verified_at','created_at','updated_at']};
+      for(const [table,fields] of Object.entries(columns))if(!tables.has(table)||fields.some(column=>!db.prepare(`PRAGMA table_info(${table})`).all().some(field=>field.name===column)))throw new Error('Database guild project schema is incomplete.');
+      if(['guild_projects_identity_immutable','guild_projects_keep_records'].some(name=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name)))throw new Error('Database guild project protections are incomplete.');
+      // A stored guild row must still satisfy every write-time rule, including that a verification
+      // names an independent operator, so a tampered board cannot pass a backup or a restore.
+      if(!verifyGuildRecords(db))throw new Error('Database guild project validation failed.');
     }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';

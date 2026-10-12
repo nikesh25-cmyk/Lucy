@@ -70,7 +70,7 @@ test('a human avatar has its own quota, immutable identity, durable movement, ch
   f.tx('homeSettings', f.actor('alice'), avatar.id, { visibility: 'private' });
   assert.throws(() => f.platform.world(f.actor('bob'), { world_id: homeId }), { status: 403 });
   const exported = f.platform.exportAccount(f.actor('alice'));
-  assert.equal(exported.format, 'shared-world-account-v17');
+  assert.equal(exported.format, 'shared-world-account-v18');
   assert.equal(exported.agents.filter(a => a.kind === 'human').length, 1);
   assert.equal(exported.world_objects.some(o => o.type === 'flowers'), true);
   f.platform.close(); const restarted = new Platform(f.database, f.clock); t.after(() => restarted.close());
@@ -119,7 +119,7 @@ test('schema nine migration preserves agent identities, sessions, coin receipt h
   const older = join(f.directory, 'schema-nine.sqlite'); backupDatabase(f.platform.db, older);
   assert.equal(validateDatabase(older).schema_version, 9);
   f.platform.close(); const restarted = new Platform(f.database, f.clock); t.after(() => restarted.close());
-  assert.equal(validateDatabase(f.database).schema_version, 17);
+  assert.equal(validateDatabase(f.database).schema_version, 18);
   assert.equal(restarted.me(restarted.authenticate(f.credentials.alice.token)).agents[0].kind, 'agent');
   assert.equal(restarted.authenticate(session.token, 'read').agent.kind, 'agent');
   assert.deepEqual({ ...restarted.get('SELECT * FROM coin_rewards') }, receipt);
@@ -146,7 +146,7 @@ test('schema ten migration retains legacy frontier geometry and coin receipts wh
   const old = join(f.directory, 'schema-ten.sqlite'); backupDatabase(f.platform.db, old);
   assert.equal(validateDatabase(old).schema_version, 10);
   f.platform.close(); const restarted = new Platform(f.database, f.clock); t.after(() => restarted.close());
-  assert.equal(validateDatabase(f.database).schema_version, 17);
+  assert.equal(validateDatabase(f.database).schema_version, 18);
   assert.equal(restarted.get('SELECT COUNT(*) AS n FROM land_parcels').n, 16384);
   const preserved = restarted.get('SELECT * FROM frontier_blocks WHERE id=?', 'legacy-land-block');
   assert.equal(preserved.world_id, 'frontier:8:0'); assert.equal(preserved.plot_id, null); assert.equal(preserved.type, 'wood');
@@ -186,6 +186,6 @@ test('account removal ends stewardship and redacts land text while preserving sh
   assert.equal(publicPlot.block_count, 1); assert.equal(publicPlot.can_assign, false); assert.equal(publicPlot.purpose, '');
   assert.throws(() => f.tx('landAssign', f.actor('bob'), { plot_id: plotId, purpose: 'Appropriate occupied ground' }), { status: 409 });
   assert.throws(() => f.platform.authenticate(f.credentials.alice.token), { status: 401 });
-  assert.equal(validateDatabase(f.database).schema_version, 17);
+  assert.equal(validateDatabase(f.database).schema_version, 18);
   assert.equal(f.platform.verifyAudit(), true);
 });
