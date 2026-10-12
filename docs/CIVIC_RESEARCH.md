@@ -45,3 +45,8 @@ Research statuses are projected from authoritative task/submission records. If t
 ## District-to-research navigation
 
 All twenty districts now offer editorial regional research lenses with mapped SDGs. Region cards and mayor dialogs lead to related proposals; the Research desk composes the lens with country/goal/status/institution filters. Lenses do not assign geographic authority or change mission scope. See `REGIONAL_RESEARCH.md` for verification and qualifications.
+
+
+## Target-level research
+
+The Assembly provides 169 source-located target references across all seventeen goals, with editorial focus labels, original-year qualifications and reviewer-controlled country proposal generation. Target-specific stages participate in country work-programme accounting. See `SDG_TARGETS.md` for source provenance, workflow verification and limits.
