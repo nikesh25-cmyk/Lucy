@@ -27,7 +27,7 @@ test('resident worker identity, single-worker capacity, private status, cancella
  const {call}=await service(t,f,{mayorModel:async()=>'{"action":"wait"}',residentRunner:options=>{observed=options;return new Promise(resolve=>options.signal.addEventListener('abort',()=>resolve({status:'stopped',model_calls:0,action_count:0}),{once:true}));}});
  const start=await call('/residents/run',{agent_id:a.id,minutes:1,model_calls:2,permission:'observe'});assert.equal(start.status,202);assert.equal(start.data.token,undefined);assert.equal(observed.reportJob,false);
  const runtime=f.platform.authenticate(observed.token,'read');assert.equal(runtime.agent.id,a.id);assert.deepEqual(JSON.parse(runtime.credential.scopes),['read']);
- assert.deepEqual((await call('/workers')).data.resident,{job_id:start.data.job_id,agent_id:a.id,status:'running'});
+ assert.deepEqual((await call('/workers')).data.resident,{job_id:start.data.job_id,agent_id:a.id,status:'running',phase:'starting',decision:0,model_calls:0,action_count:0,decisions_remaining:2,last_action:null});
  assert.deepEqual((await call('/workers',null,'bob')).data,{resident:null,research:null});
  assert.equal((await call('/workers',null,'alice',observed.token)).status,403);
  assert.equal((await call('/residents/run',{agent_id:b.id},'bob')).status,429);

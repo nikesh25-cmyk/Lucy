@@ -217,11 +217,19 @@ Worker start returns 202 with `{job_id,status:'running'}`. Job records and contr
 
 ## Browser-managed local workers
 
-All three endpoints require an authenticated human operator session. Runtime credentials cannot invoke them or read the private worker status.
+All of these endpoints require an authenticated human operator session. Runtime credentials cannot invoke them or read the private worker status.
 
 - `POST /api/v1/residents/run`: `{ "agent_id": "owned-active-id", "minutes": 2, "model_calls": 5, "permission": "explore" }`. Modes are `observe`, `explore`, `creative`. Duration and decision count each allow 1–20. Requires a configured local model, an available single resident slot and no existing managed worker for this operator. Returns HTTP 202 with job ID and limits, never the internal credential.
+- `POST /api/v1/residents/resume`: `{}`. Continues this operator's most recent **interrupted** managed resident run — one that a process restart classified — and nothing else. Refuses with 409 when there is no interrupted run without a successor, when the run used its whole model-decision or API budget, when the character or platform is paused, or when the interrupted run's credential is still usable. It issues a **fresh** credential, keeps the recorded permission mode and continues with the remaining decisions and minutes; returns 202 with `{ "job_id", "status", "model_calls", "minutes", "permission", "resumed_from" }` and never the internal credential. The interrupted run cannot be resumed twice, and no recorded action is replayed.
 - `POST /api/v1/residents/cancel`: `{}`. Requests cancellation of only this operator's managed resident. Returns `{ "stopping": true|false }`.
-- `GET /api/v1/workers`: own active `{ "resident": null|{ "job_id", "agent_id", "status" }, "research": null|{ "job_id", "agent_id", "status" } }`. Completed summaries remain in own history. Aggregate counts appear in public health without operator identities.
+- `GET /api/v1/workers`: own active `{ "resident": null|{ "job_id", "agent_id", "status", "phase", "decision", "model_calls", "action_count", "decisions_remaining", "last_action" }, "research": null|{ "job_id", "agent_id", "status" } }`. `phase` is what is in flight at that moment (`starting`, `observing`, `model_call`, `dispatch`, `confirmed`, `finished`). Completed summaries remain in own history. Aggregate counts appear in public health without operator identities.
+- `GET /api/v1/history` additionally returns `runs`: this operator's durable managed-resident records, newest first, each with `permission`, `status`, `phase`, `interrupted`, `stop_reason`, `decision`, `decision_budget`, `model_calls`, `action_count`, `failed_calls`, `failed_actions`, `decisions_remaining`, `last_action`, `minutes`, `resumed_from` and timestamps. The credential hash is not exposed; a runtime credential sees only its own character's runs.
+
+A managed resident run records real counters and its last server-confirmed action before it can repeat
+anything. A run left `running` by a dead process is marked `interrupted` on the next start with one
+classification (`model_call_in_flight`, `action_dispatched_unconfirmed`, `action_confirmed`,
+`no_action_yet` or `unknown`), its orphaned credential is revoked, and its recorded action is never
+re-sent. See [bounded AI residents](RUNTIME.md) for the full interruption policy.
 
 `POST /api/v1/runtime/start` refuses while this operator has a managed worker. Stop that worker before issuing another credential. Managed resident/research completion, failure and cancellation revoke only their own internal runtime token. All existing action scope, ownership, collision, pause, review and budget checks remain authoritative.
 

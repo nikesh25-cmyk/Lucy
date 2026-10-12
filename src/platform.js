@@ -14,6 +14,7 @@ import { vocationMethods } from './vocations.js';
 import { journeyMethods } from './journey.js';
 import { civicMethods } from './civic-engine.js';
 import { REGIONS } from './civic.js';
+import { classifyResidentRun, INTERRUPTION_SUMMARY, RESIDENT_RUN_PHASES, RESIDENT_RUN_STATUSES } from './recovery.js';
 
 const scrypt = promisify(scryptCallback);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -29,6 +30,11 @@ const parse = (value) => JSON.parse(value);
 const publicAccount = ({ id, name, role: accountRole, status, created_at }) => ({ id, name, role: accountRole, status, created_at });
 // Bounded reads: each listing below returns the most recent records up to these limits.
 const MISSION_LIMIT = 200, GALLERY_LIMIT = 200, SAFETY_LIMIT = 200, HISTORY_LIMIT = 200, EXPORT_LIMIT = 500;
+const parsed = (value) => { try { const item = JSON.parse(value || '{}'); return item && typeof item === 'object' && !Array.isArray(item) ? item : {}; } catch { return {}; } };
+// A stored resident run as the operator's own history renders it: the last confirmed action is an
+// object, remaining model decisions are derived, and the credential hash is never exposed.
+const runView = (row) => { const { credential_hash, ...rest } = row; return { ...rest, last_action: parsed(row.last_action), pending_action: parsed(row.pending_action), decisions_remaining: Math.max(0, row.decision_budget - row.model_calls) }; };
+const residentInterruptionDetail = (run, interruption) => `Local resident interrupted: ${INTERRUPTION_SUMMARY[interruption]}. ${run.model_calls} model decisions, ${run.action_count} confirmed actions, ${run.failed_actions} refused actions. No action is repeated automatically and the run credential was revoked; resume it explicitly from your contributions.`.slice(0, 500);
 
 export class Platform {
   constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); }
@@ -437,6 +443,7 @@ export class Platform {
       submissions,
       drafts:actor.kind==='session'?this.drafts(actor):[],
       jobs: this.all(`SELECT j.*,a.name AS agent_name FROM jobs j JOIN agents a ON a.id=j.agent_id WHERE a.operator_id=?${actor.kind === 'runtime' ? ' AND j.agent_id=?' : ''} ORDER BY j.created_at DESC LIMIT 100`, actor.account.id, ...(actor.kind === 'runtime' ? [actor.agent.id] : [])),
+      runs: this.all(`SELECT r.*,a.name AS agent_name FROM resident_runs r JOIN agents a ON a.id=r.agent_id WHERE a.operator_id=?${actor.kind === 'runtime' ? ' AND r.agent_id=?' : ''} ORDER BY r.started_at DESC,r.id DESC LIMIT 50`, actor.account.id, ...(actor.kind === 'runtime' ? [actor.agent.id] : [])).map(runView),
       reviews: this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id WHERE r.submission_id IN (SELECT value FROM json_each(?)) ORDER BY r.created_at DESC,r.rowid DESC', JSON.stringify([...ids])),
     };
   }
@@ -568,7 +575,7 @@ export class Platform {
     const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at DESC,m.rowid DESC LIMIT ?`, actor.account.id, actor.account.id, EXPORT_LIMIT);
     const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=? ORDER BY w.created_at DESC LIMIT ?', actor.account.id, EXPORT_LIMIT);
     const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=? ORDER BY b.created_at DESC LIMIT ?', actor.account.id, EXPORT_LIMIT);
-    return { format: 'shared-world-account-v15', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, frontier:this.frontierExport(actor), coins:this.coinExport(actor), callings:this.vocationExport(actor), ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=? ORDER BY f.created_at DESC LIMIT ?',actor.account.id,EXPORT_LIMIT).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    return { format: 'shared-world-account-v16', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, frontier:this.frontierExport(actor), coins:this.coinExport(actor), callings:this.vocationExport(actor), ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=? ORDER BY f.created_at DESC LIMIT ?',actor.account.id,EXPORT_LIMIT).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']);
@@ -597,10 +604,83 @@ export class Platform {
   recoverWorkerJobs() {
     const interrupted = this.all("SELECT id FROM jobs WHERE status='running'");
     for (const job of interrupted) {
-      this.run("UPDATE jobs SET status='stopped',detail=? WHERE id=?", 'Server restarted before this worker finished. Check contributions before retrying; release an unsubmitted claim or wait for its lease to expire.', job.id);
-      this.audit('system', 'research.worker.interrupted', job.id);
+      const run = this.get('SELECT * FROM resident_runs WHERE id=?', job.id);
+      if (!run) {
+        this.run("UPDATE jobs SET status='stopped',detail=? WHERE id=?", 'Server restarted before this worker finished. Check contributions before retrying; release an unsubmitted claim or wait for its lease to expire.', job.id);
+        this.audit('system', 'research.worker.interrupted', job.id);
+        continue;
+      }
+      // A bounded resident run is classified, never repeated. The last durable write says whether a
+      // model call or an action was in flight, and the orphaned runtime credential is revoked so the
+      // process that died cannot keep using it. Repeating the work is an explicit human decision.
+      const interruption = classifyResidentRun(run);
+      this.run("UPDATE jobs SET status='interrupted',detail=? WHERE id=?", residentInterruptionDetail(run, interruption), job.id);
+      this.run("UPDATE resident_runs SET status='interrupted',interrupted=?,stop_reason='process_restart',updated_at=? WHERE id=?", interruption, now(), run.id);
+      if (run.credential_hash) this.run('UPDATE tokens SET revoked=1 WHERE hash=?', run.credential_hash);
+      this.audit('system', 'resident.run.interrupted', job.id);
     }
     return interrupted.length;
+  }
+  // ---- Durable state for one bounded managed resident run (schema 16) --------------------------
+  // Only counters, identifiers and the credential hash the tokens table already stores are kept
+  // here. The runtime token is never written, and no transition is inferred: the runtime reports
+  // each one, and the server records the receipt on top of it.
+  startResidentRun(input = {}) {
+    const account = this.get('SELECT id FROM accounts WHERE id=?', input.account_id || '');
+    const agent = this.get('SELECT id FROM agents WHERE id=?', input.agent_id || '');
+    if (!account || !agent) fail(404, 'Unknown resident run identity.');
+    const id = text(input.id, 'Run identifier', 80);
+    if (this.get('SELECT id FROM resident_runs WHERE id=?', id)) fail(409, 'This resident run already exists.');
+    if (!['observe', 'explore', 'creative'].includes(input.permission)) fail(400, 'Invalid resident permission mode.');
+    const decisions = Number(input.decisions), minutes = Number(input.minutes);
+    if (!Number.isInteger(decisions) || decisions < 1 || decisions > 20 || !Number.isInteger(minutes) || minutes < 1 || minutes > 20) fail(400, 'Invalid resident run limits.');
+    const credentialHash = input.credential_hash || '';
+    if (!/^[a-f0-9]{64}$/.test(credentialHash)) fail(400, 'A resident run stores only its credential hash.');
+    const resumedFrom = input.resumed_from || null;
+    if (resumedFrom && !this.get("SELECT id FROM resident_runs WHERE id=? AND status='interrupted'", resumedFrom)) fail(409, 'Only an interrupted run can be resumed.');
+    const created = now();
+    this.run("INSERT INTO resident_runs(id,account_id,agent_id,permission,status,phase,interrupted,stop_reason,decision,decision_budget,model_calls,action_count,failed_calls,failed_actions,last_action,pending_action,credential_hash,minutes,resumed_from,started_at,updated_at) VALUES(?,?,?,?,'running','starting','','',0,?,0,0,0,0,'{}','{}',?,?,?,?,?)", id, account.id, agent.id, input.permission, decisions, credentialHash, minutes, resumedFrom, created, created);
+    return this.get('SELECT * FROM resident_runs WHERE id=?', id);
+  }
+  recordResidentRun(id, changes = {}) {
+    const run = this.get('SELECT * FROM resident_runs WHERE id=?', id);
+    if (!run) fail(404, 'Resident run not found.');
+    // Recovery owns an interrupted run's record: a process that somehow outlived the restart cannot
+    // rewrite the classification or the counters the next start read.
+    if (run.status === 'interrupted') fail(409, 'This resident run was already classified as interrupted.');
+    const pick = (key, fallback) => (changes[key] === undefined ? fallback : changes[key]);
+    const count = (key) => { const value = pick(key, run[key]); if (!Number.isInteger(value) || value < 0) fail(400, `Invalid resident run ${key}.`); return value; };
+    const detail = (key) => { const value = changes[key]; if (value === undefined) return run[key]; if (!value || typeof value !== 'object' || Array.isArray(value)) fail(400, 'Invalid resident run state detail.'); return JSON.stringify(value); };
+    const phase = pick('phase', run.phase), status = pick('status', run.status);
+    if (!RESIDENT_RUN_PHASES.includes(phase)) fail(400, 'Invalid resident run phase.');
+    if (!RESIDENT_RUN_STATUSES.includes(status) || status === 'interrupted') fail(400, 'Invalid resident run status.');
+    const stopReason = pick('stop_reason', run.stop_reason);
+    if (typeof stopReason !== 'string' || stopReason.length > 64) fail(400, 'Invalid resident run stop reason.');
+    const next = { phase, status, stop_reason: stopReason, decision: count('decision'), model_calls: count('model_calls'), action_count: count('action_count'), failed_calls: count('failed_calls'), failed_actions: count('failed_actions'), last_action: detail('last_action'), pending_action: detail('pending_action') };
+    if (next.decision > run.decision_budget || next.model_calls > next.decision || next.action_count > next.model_calls || next.failed_calls > next.model_calls || next.failed_actions > next.model_calls) fail(400, 'Inconsistent resident run counters.');
+    if (next.status !== 'running' && next.phase !== 'finished') fail(400, 'A finished resident run must record its final phase.');
+    this.run('UPDATE resident_runs SET phase=?,status=?,stop_reason=?,decision=?,model_calls=?,action_count=?,failed_calls=?,failed_actions=?,last_action=?,pending_action=?,updated_at=? WHERE id=?', phase, status, stopReason, next.decision, next.model_calls, next.action_count, next.failed_calls, next.failed_actions, next.last_action, next.pending_action, now(), id);
+    return this.get('SELECT * FROM resident_runs WHERE id=?', id);
+  }
+  residentRun(id) { const run = this.get('SELECT * FROM resident_runs WHERE id=?', id); return run ? runView(run) : null; }
+  residentRuns(accountId, limit = 50) {
+    const size = Number(limit);
+    if (!Number.isInteger(size) || size < 1 || size > 200) fail(400, 'Invalid resident run page size.');
+    return this.all('SELECT * FROM resident_runs WHERE account_id=? ORDER BY started_at DESC,id DESC LIMIT ?', accountId, size).map(runView);
+  }
+  residentResumePlan(accountId) {
+    const run = this.get("SELECT r.* FROM resident_runs r WHERE r.account_id=? AND r.status='interrupted' AND r.interrupted!='' AND NOT EXISTS(SELECT 1 FROM resident_runs s WHERE s.resumed_from=r.id) ORDER BY r.started_at DESC,r.id DESC LIMIT 1", accountId);
+    if (!run) fail(409, 'No interrupted run is waiting for an explicit resume.');
+    const decisions = run.decision_budget - run.model_calls;
+    if (decisions < 1) fail(409, 'This run used its whole model-decision budget; start a new run instead.');
+    // Remaining API budget comes from the interrupted run's own credential row, never from a copy.
+    const credential = run.credential_hash ? this.get('SELECT max_calls,used_calls,revoked FROM tokens WHERE hash=?', run.credential_hash) : null;
+    if (credential && !credential.revoked) fail(409, 'The interrupted run still holds a usable credential. Stop that process before resuming it.');
+    const apiCalls = credential ? Math.max(0, credential.max_calls - credential.used_calls) : 0;
+    if (apiCalls < 1) fail(409, 'This run used its whole API budget; start a new run instead.');
+    if (!this.get('SELECT id FROM agents WHERE id=?', run.agent_id)) fail(409, 'The character for this run is unavailable.');
+    const elapsed = Math.max(0, this.clock() - Date.parse(run.started_at));
+    return { run_id: run.id, agent_id: run.agent_id, permission: run.permission, decisions, minutes: Math.max(1, Math.min(20, run.minutes - Math.floor(elapsed / 60000))), api_calls_remaining: apiCalls, interruption: run.interrupted };
   }
   job(actor, input) {
     if (actor.kind !== 'runtime' || actor.agent?.kind !== 'agent') fail(403, 'An agent runtime credential is required.');

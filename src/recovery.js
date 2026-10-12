@@ -14,6 +14,34 @@ const countryCatalog=JSON.parse(readFileSync(new URL('../catalog/countries.json'
 const requiredTables = ['accounts', 'invites', 'agents', 'tokens', 'missions', 'tasks', 'claims', 'submissions', 'reviews', 'adoptions', 'messages', 'reports', 'appeals', 'jobs', 'settings', 'audit'];
 const digest = (value) => createHash('sha256').update(value).digest('hex');
 
+// One bounded managed resident run. `phase` names exactly what was in flight when the process last
+// wrote, so a restart can tell a model call apart from a sent action. `interrupted` is the honest
+// classification written once by recovery; it is never guessed from the world.
+export const RESIDENT_RUN_PHASES = Object.freeze(['starting','observing','model_call','dispatch','confirmed','finished']);
+export const RESIDENT_RUN_STATUSES = Object.freeze(['running','completed','stopped','failed','interrupted']);
+export const RESIDENT_RUN_INTERRUPTIONS = Object.freeze(['no_action_yet','model_call_in_flight','action_dispatched_unconfirmed','action_confirmed','unknown']);
+export const INTERRUPTION_SUMMARY = Object.freeze({
+  no_action_yet: 'The process died before any action was confirmed',
+  model_call_in_flight: 'The process died while a model call was in flight; no action was sent for that decision',
+  action_dispatched_unconfirmed: 'An action was being dispatched and its confirmation was never recorded; verify it in the world before retrying',
+  action_confirmed: 'The last confirmed action is recorded and nothing was pending',
+  unknown: 'No durable run state matched this job',
+});
+
+// Classify one interrupted run from its last durable write. Only what the record can prove is
+// distinguished; anything unrecognized stays 'unknown' rather than being assumed safe.
+export function classifyResidentRun(run) {
+  if (!run) return 'unknown';
+  const action = (() => { try { return JSON.parse(run.last_action || '{}'); } catch { return {}; } })();
+  let pending = {};
+  try { pending = JSON.parse(run.pending_action || '{}'); } catch { pending = {}; }
+  if (run.phase === 'model_call') return 'model_call_in_flight';
+  if (run.phase === 'dispatch') return pending?.action ? 'action_dispatched_unconfirmed' : 'unknown';
+  if (run.phase === 'confirmed') return 'action_confirmed';
+  if (run.phase === 'starting' || run.phase === 'observing') return action?.action ? 'action_confirmed' : 'no_action_yet';
+  return 'unknown';
+}
+
 function privateDirectory(path) {
   mkdirSync(path, { recursive: true, mode: 0o700 });
 }
@@ -26,7 +54,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -91,6 +119,15 @@ export function validateDatabase(path) {
       if(db.prepare('SELECT m.guide_id FROM ambassador_legacy_map m JOIN npc_mayors n ON n.id=m.guide_id LEFT JOIN npc_ambassadors a ON a.id=m.ambassador_id WHERE a.id IS NULL OR m.region_id!=n.region_id').get())throw new Error('Database country ambassador mapping is invalid.');
       if(REGIONS.some(region=>!db.prepare('SELECT guide_id FROM ambassador_legacy_map WHERE guide_id=?').get(region.mayor.id)))throw new Error('Database country ambassador mapping is incomplete.');
       if(db.prepare("SELECT c.id FROM ambassador_conversations c LEFT JOIN npc_ambassadors a ON a.id=c.ambassador_id WHERE a.id IS NULL").get())throw new Error('Database country ambassador conversations are invalid.');
+    }
+    if (version >= 16) {
+      const columns=['id','account_id','agent_id','permission','status','phase','interrupted','stop_reason','decision','decision_budget','model_calls','action_count','failed_calls','failed_actions','last_action','pending_action','credential_hash','minutes','resumed_from','started_at','updated_at'];
+      if(!tables.has('resident_runs')||columns.some(column=>!db.prepare('PRAGMA table_info(resident_runs)').all().some(field=>field.name===column)))throw new Error('Database resident run schema is incomplete.');
+      const lists=`status NOT IN (${RESIDENT_RUN_STATUSES.map(value=>`'${value}'`).join(',')}) OR phase NOT IN (${RESIDENT_RUN_PHASES.map(value=>`'${value}'`).join(',')}) OR (interrupted!='' AND interrupted NOT IN (${RESIDENT_RUN_INTERRUPTIONS.map(value=>`'${value}'`).join(',')})) OR permission NOT IN ('observe','explore','creative')`;
+      if(db.prepare(`SELECT r.id FROM resident_runs r WHERE ${lists} OR length(r.stop_reason)>64 OR decision_budget NOT BETWEEN 1 AND 20 OR minutes NOT BETWEEN 1 AND 20 OR decision<0 OR decision>decision_budget OR model_calls<0 OR model_calls>decision OR action_count<0 OR action_count>model_calls OR failed_calls<0 OR failed_calls>model_calls OR failed_actions<0 OR failed_actions>model_calls OR NOT json_valid(r.last_action) OR NOT json_valid(r.pending_action) OR json_type(r.last_action)!='object' OR json_type(r.pending_action)!='object' OR (r.credential_hash!='' AND (length(r.credential_hash)!=64 OR r.credential_hash GLOB '*[^0-9a-f]*')) OR (r.status='interrupted' AND r.interrupted='') OR (r.status NOT IN ('running','interrupted') AND r.phase!='finished') OR length(r.started_at)!=24 OR length(r.updated_at)!=24`).get())throw new Error('Database resident run state is invalid.');
+      // An interrupted classification is written only by recovery, and a resumed run points at the
+      // interrupted run it continues. Nothing here repeats an action; it records what already happened.
+      if(db.prepare("SELECT r.id FROM resident_runs r LEFT JOIN resident_runs p ON p.id=r.resumed_from WHERE r.resumed_from IS NOT NULL AND (p.id IS NULL OR p.status!='interrupted' OR p.interrupted='')").get())throw new Error('Database resident run resume history is invalid.');
     }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';

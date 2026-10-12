@@ -19,6 +19,15 @@ import { manifest } from './src/content.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
+// The operator-visible receipt for one bounded resident run: real counters, the honest stop reason
+// and the last action the server confirmed. It never contains a token, a prompt or a conversation.
+const residentRunDetail = (result, status) => {
+  const failures = [];
+  if (result.failed_calls) failures.push(`${result.failed_calls} failed model calls`);
+  if (result.failed_actions) failures.push(`${result.failed_actions} refused actions`);
+  const stop = typeof result.stop_reason === 'string' && result.stop_reason ? result.stop_reason : 'unknown';
+  return `Local resident: ${result.model_calls} model decisions, ${result.action_count} actions${failures.length ? ` (${failures.join(', ')})` : ''}; ${status} · ${stop}. ${result.last_action?.action ? `Last confirmed action: ${result.last_action.action}. ` : ''}No research acceptance or adoption is implied.`;
+};
 const files = new Map([
   ['/src/voxel-world.js',['src/voxel-world.js','text/javascript; charset=utf-8']],
   ['/src/voxel-geometry.js',['src/voxel-geometry.js','text/javascript; charset=utf-8']],
@@ -70,7 +79,7 @@ const writes = new Map([
   ['/callings/select', ['callingSelect', null]],
   ['/land/assign',['landAssign',null]], ['/land/release',['landRelease',null]], ['/frontier/expand',['frontierExpand','build']], ['/frontier/build',['frontierBuild','build']], ['/operations/registration',['registrationSettings',null]],
   ['/drafts', ['draftSave', null]], ['/drafts/resume', ['draftResume', null]], ['/drafts/archive', ['draftArchive', null]],
-  ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]],
+  ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]], ['/residents/resume', ['residentResume', null]],
   ['/research/run', ['researchRun', null]], ['/research/cancel', ['researchCancel', null]], ['/mayors/talk', ['mayorTalk', 'chat']], ['/mayors/control', ['mayorControl', null]], ['/ambassadors/talk', ['ambassadorTalk', 'chat']], ['/ambassadors/control', ['ambassadorControl', null]], ['/research/generate', ['researchGenerate', null]], ['/research/activate', ['researchActivate', null]],
   ['/invites', ['invite', null]], ['/agents', ['createAgent', null]],
   ['/agents/control', ['agentControl', null]], ['/runtime/start', ['runtime', null]],
@@ -211,7 +220,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       if (request.method === 'GET') {
         const result = platform.transaction(() => {
           let value;
-          if(route==='/workers'){const view=run=>run?{job_id:run.id,agent_id:run.agent_id,status:'running'}:null;value={research:view(researchRuns.get(actor.account.id)),resident:view(residentRuns.get(actor.account.id))};}
+          if(route==='/workers'){const view=run=>{if(!run)return null;const state=platform.residentRun(run.id);return {job_id:run.id,agent_id:run.agent_id,status:'running',...(state?{phase:state.phase,decision:state.decision,model_calls:state.model_calls,action_count:state.action_count,decisions_remaining:state.decisions_remaining,last_action:state.last_action.action||null}:{})};};value={research:view(researchRuns.get(actor.account.id)),resident:view(residentRuns.get(actor.account.id))};}
           else if(route==='/callings')value=platform.callings(actor,Object.fromEntries(url.searchParams));
           else if(route==='/callings/guilds')value=platform.callingGuilds(Object.fromEntries(url.searchParams));
           else if(route==='/drafts')value={drafts:platform.drafts(actor,{archived:url.searchParams.get('archived')==='1'})};
@@ -275,30 +284,40 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         if(actor.kind!=='session')fail(403,'Human operator required.');
         residentRuns.get(actor.account.id)?.controller.abort();return json(response,200,{stopping:residentRuns.has(actor.account.id)});
       }
-      if(route==='/residents/run'){
+      if(route==='/residents/run'||route==='/residents/resume'){
         if(actor.kind!=='session')fail(403,'Human operator required.');
-        if(platform.ownedAgent(actor,input.agent_id).kind==='human')fail(403,'Choose an agent character for local AI work.');
-        if(!civicModel)fail(409,'Configure a local model before running a resident.');
         if(activeWorker(actor.account.id))fail(409,'Stop your active worker before starting another.');
         if(residentRuns.size)fail(429,'The local resident worker is at capacity. Try again after it finishes.');
-        const minutes=Number(input.minutes??2),calls=Number(input.model_calls??5),permission=input.permission||'explore';
+        if(!civicModel)fail(409,'Configure a local model before running a resident.');
+        // A resume is an explicit human action: it re-reads the interrupted run's own remaining
+        // budgets and always issues a fresh credential. No stored action is ever replayed.
+        const request=route==='/residents/resume'?(()=>{const plan=platform.residentResumePlan(actor.account.id);return {agent_id:plan.agent_id,minutes:plan.minutes,model_calls:plan.decisions,permission:plan.permission,resumed_from:plan.run_id};})():input;
+        const agent=platform.ownedAgent(actor,request.agent_id);
+        if(agent.kind==='human')fail(403,'Choose an agent character for local AI work.');
+        if(agent.status!=='active')fail(409,'Resume this character before running local AI work for it.');
+        const minutes=Number(request.minutes??2),calls=Number(request.model_calls??5),permission=request.permission||'explore';
         if(!Number.isInteger(minutes)||minutes<1||minutes>20||!Number.isInteger(calls)||calls<1||calls>20||!['observe','explore','creative'].includes(permission))fail(400,'Choose 1–20 minutes, 1–20 model decisions and a listed permission mode.');
         const scopes=permission==='observe'?['read']:permission==='explore'?['read','move','chat']:['read','move','chat','contribute','build'];
-        const id=randomUUID(),controller=new AbortController();
+        const id=randomUUID(),controller=new AbortController(),resumedFrom=request.resumed_from||null;
         const credential=platform.transaction(()=>{
-          const session=platform.runtime(actor,input.agent_id,{minutes,max_calls:calls*8+4,scopes});
-          platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)',id,input.agent_id,'running',`Local resident: up to ${calls} model decisions, ${minutes} ${minutes===1?'minute':'minutes'}; ${permission} permissions.`,new Date().toISOString());platform.audit(actor.account.id,'resident.worker.started',id);return session;
+          const session=platform.runtime(actor,agent.id,{minutes,max_calls:calls*8+4,scopes});
+          platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)',id,agent.id,'running',`Local resident: up to ${calls} model decisions, ${minutes} ${minutes===1?'minute':'minutes'}; ${permission} permissions${resumedFrom?'; resumed from an interrupted run.':'.'}`,new Date().toISOString());
+          platform.startResidentRun({id,account_id:actor.account.id,agent_id:agent.id,permission,decisions:calls,minutes,credential_hash:createHash('sha256').update(session.token).digest('hex'),resumed_from:resumedFrom});
+          platform.audit(actor.account.id,resumedFrom?'resident.worker.resumed':'resident.worker.started',id);return session;
         });
-        residentRuns.set(actor.account.id,{id,agent_id:input.agent_id,controller});
+        residentRuns.set(actor.account.id,{id,agent_id:agent.id,controller});
         const modelFn=input=>civicModel({...input,beforeDispatch:()=>{platform.authenticate(credential.token,'read');platform.active();controller.signal.throwIfAborted();}});
-        const promise=Promise.resolve().then(()=>residentRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,modelFn,durationMs:minutes*60000,maxCalls:calls,signal:controller.signal,reportJob:false})).then(result=>{
+        // The runtime reports every transition; the durable record is written before an action can be
+        // repeated, so a process death leaves a classifiable record instead of guesswork.
+        const promise=Promise.resolve().then(()=>residentRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,modelFn,durationMs:minutes*60000,maxCalls:calls,runId:id,permission,onState:changes=>platform.recordResidentRun(id,changes),signal:controller.signal,reportJob:false})).then(result=>{
           if(!['completed','failed','stopped'].includes(result.status)||!Number.isInteger(result.model_calls)||!Number.isInteger(result.action_count)||result.model_calls<0||result.model_calls>calls||result.action_count<0||result.action_count>result.model_calls)throw new Error('Invalid resident receipt');
+          if([result.failed_calls,result.failed_actions].some(value=>value!==undefined&&(!Number.isInteger(value)||value<0||value>result.model_calls)))throw new Error('Invalid resident receipt');
           const status=controller.signal.aborted?'stopped':result.status;
-          platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',status,`Local resident: ${result.model_calls} model decisions, ${result.action_count} actions; ${status}. No research acceptance or adoption is implied.`,id);platform.audit(actor.account.id,'resident.worker.'+status,id);});
-        }).catch(()=>{platform.transaction(()=>{const status=controller.signal.aborted?'stopped':'failed';platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',status,'Local resident stopped; check model availability, permissions and run history before retrying.',id);platform.audit(actor.account.id,'resident.worker.'+status,id);});})
+          platform.transaction(()=>{platform.recordResidentRun(id,{status,phase:'finished',stop_reason:typeof result.stop_reason==='string'?result.stop_reason:'',model_calls:result.model_calls,action_count:result.action_count,failed_calls:result.failed_calls||0,failed_actions:result.failed_actions||0,last_action:result.last_action||undefined,pending_action:{}});platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',status,residentRunDetail(result,status),id);platform.audit(actor.account.id,'resident.worker.'+status,id);});
+        }).catch(()=>{platform.transaction(()=>{const status=controller.signal.aborted?'stopped':'failed';platform.recordResidentRun(id,{status,phase:'finished',stop_reason:controller.signal.aborted?'canceled_or_duration_limit':'runner_unavailable',pending_action:{}});platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',status,'Local resident stopped; check model availability, permissions and run history before retrying.',id);platform.audit(actor.account.id,'resident.worker.'+status,id);});})
           .finally(()=>{platform.transaction(()=>revokeWorker(credential));residentRuns.delete(actor.account.id);});
         residentRuns.get(actor.account.id).promise=promise;
-        return json(response,202,{job_id:id,status:'running',model_calls:calls,minutes,permission});
+        return json(response,202,{job_id:id,status:'running',model_calls:calls,minutes,permission,resumed_from:resumedFrom});
       }
       if(route==='/research/cancel'){
         if(actor.kind!=='session')fail(403,'Human operator required.');

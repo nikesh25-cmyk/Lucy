@@ -775,17 +775,36 @@ function decisionBriefForm(parent,claim,previous){
   }
   inputs.append(button('Preview decision brief',()=>{const values=Object.fromEntries(new FormData(inputs.closest('form'))),{brief}=collect(values),dialog=element('dialog',null,'brief-preview');dialog.append(element('h2','Decision brief preview'),decisionBriefView(brief),button('Return to editing',()=>dialog.close(),'secondary'));dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();},'secondary small'));
 }
+const residentPhases={starting:'starting',observing:'observing the world',model_call:'waiting for the local model',dispatch:'sending one action to the world',confirmed:'action confirmed by the server',finished:'finished'};
+const residentInterruptions={no_action_yet:'No action had been confirmed when the process stopped',model_call_in_flight:'The process stopped while a model call was in flight; no action was sent for that decision',action_dispatched_unconfirmed:'An action was being sent and its confirmation was never recorded. Verify it in the world before retrying',action_confirmed:'The last server-confirmed action is recorded and nothing was pending',unknown:'The last durable state is unknown'};
+// The durable record of one bounded resident run: real counters, the interruption classification
+// and the last action the server confirmed. Resuming is always a separate human decision.
+function residentRunRecord(run){
+  const node=element('article',null,'record');
+  node.append(element('h3',`${run.agent_name||'Your agent'} · ${run.permission} run`),badge(run.status==='interrupted'?`interrupted · ${run.interrupted}`:run.status));
+  if(run.interrupted)node.append(paragraph(residentInterruptions[run.interrupted]||residentInterruptions.unknown,'privacy'));
+  node.append(paragraph(`${run.model_calls} model decisions, ${run.action_count} confirmed actions${run.failed_actions?`, ${run.failed_actions} refused`:''}${run.failed_calls?`, ${run.failed_calls} failed model calls`:''} · ${run.decisions_remaining} decisions left${run.stop_reason?` · stopped: ${run.stop_reason}`:''}`,'privacy'));
+  if(run.last_action?.action)node.append(paragraph(`Last confirmed action: ${run.last_action.action} (decision ${run.last_action.decision}). A restart records it and never repeats it.`,'privacy'));
+  node.append(paragraph(`${run.resumed_from?'Resumed from an interrupted run':'Started'} ${date(run.started_at)}. Tokens are never stored here, only the credential hash.`,'privacy'));
+  return node;
+}
 function renderHistory(parent) {
   parent.append(heading('Your contribution journey','Claims last 20 minutes. Corrections retain earlier versions and review reasons.'));
   const runs=card('Your agent runs');
   runs.append(button('Refresh runs and contributions',async()=>{state.history=await api('/history');mergeMissionContext();state.workers=await api('/workers');await loadResearch();renderView();},'secondary small'));
   const running=(state.history.jobs||[]).some(job=>job.status==='running');
   if(running)runs.append(paragraph('A bounded worker is active or waiting for local inference. Refresh to see its current status. Submissions still require human review.'));
+  if(state.workers.resident)runs.append(paragraph(`Live state: ${residentPhases[state.workers.resident.phase]||state.workers.resident.phase} · ${state.workers.resident.model_calls} model decisions, ${state.workers.resident.action_count} confirmed actions, ${state.workers.resident.decisions_remaining} left${state.workers.resident.last_action?`, last confirmed ${state.workers.resident.last_action}`:''}.`));
   if(state.workers.resident)runs.append(button('Stop my local resident',async()=>{const result=await api('/residents/cancel','POST',{});notice(result.stopping?'Stop requested. Refresh runs after cleanup completes.':'No local resident is running.');},'secondary small'));
   if(state.workers.research)runs.append(button('Stop my research worker',async()=>{const result=await api('/research/cancel','POST',{});notice(result.stopping?'Stop requested. Refresh runs after cleanup completes.':'No research worker is running.');},'secondary small'));
   if(!(state.history.jobs||[]).length)runs.append(empty('No agent runs have been recorded for your characters.'));
   for(const job of state.history.jobs||[]){const failure=parseResearchFailure(job.detail),item=append(element('article',null,'record'),element('h3',job.agent_name||'Your agent'),badge(job.status));
     if(failure)item.append(paragraph(`${failure.label}${failure.source_number?` · Source ${failure.source_number}`:''}`),paragraph(titleOfTask(failure.task_id)),paragraph(failure.action),paragraph(failure.claim_note,'privacy'),button('Open mission tasks',()=>showMissionTask(failure.task_id),'secondary small'));else item.append(paragraph(job.detail));item.append(paragraph(date(job.created_at),'privacy'));runs.append(item);}
+  const runRecords=state.history.runs||[];
+  if(runRecords.length)runs.append(element('h3','Run state'),paragraph('What the server had confirmed when each resident run last wrote. A stopped process is classified when the world restarts; nothing is repeated automatically.','privacy'));
+  for(const run of runRecords)runs.append(residentRunRecord(run));
+  const resumable=runRecords.find(run=>run.status==='interrupted'&&run.decisions_remaining>0);
+  if(resumable&&!state.workers.resident&&!state.workers.research)runs.append(button('Resume this interrupted run',async()=>{const result=await api('/residents/resume','POST',{});state.history=await api('/history');state.workers=await api('/workers');renderView();notice(`Resumed with ${result.model_calls} remaining model decisions, the ${result.permission} permissions and a fresh credential.`);},'small'),paragraph(`Resuming continues the character's work with ${resumable.decisions_remaining} model decisions left and a new credential; it never repeats a recorded action. An expired or revoked credential cannot resume.`,'privacy'));
   parent.append(runs);
   const drafts=card('Your private research drafts');drafts.append(paragraph('Saved work survives refresh and claim expiry. Reclaiming follows the current task availability and requirements.','privacy'),button('Show archived drafts',async()=>{const result=await api('/drafts?archived=1');state.history.drafts=result.drafts;renderView();},'secondary small'));
   for(const draft of state.history.drafts||[]){const item=element('article',null,'record');item.append(element('h3',draft.task_title||titleOfTask(draft.task_id)),paragraph(`${draft.archived?'Archived':'Private'} · Revision ${draft.revision} · ${date(draft.updated_at)}`,'privacy'));

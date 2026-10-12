@@ -1,5 +1,6 @@
 import {getWorldDefinition,walkable} from '../world.js';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { createLocalModel } from './model.js';
 import content from '../src/content.js';
 import { planWalk } from '../src/world-walk.js';
@@ -34,6 +35,18 @@ export function worldUrl(value = 'http://127.0.0.1:3000') {
     throw new Error('WORLD_URL must use HTTPS or local HTTP, without credentials or a path.');
   }
   return url;
+}
+
+/**
+ * The stable identity of one logical runtime write. The same run, decision, endpoint and body always
+ * produce the same key, so a request that is retried after an interruption is recognisable as the
+ * write that was already sent instead of a new one. The server already accepts `Idempotency-Key` on
+ * its claim, submission, draft and follow-up writes; the world's other runtime writes are refused or
+ * become no-ops when repeated, and the mutation budgets bound how often they can be attempted.
+ */
+export function writeKey(runId, decision, path, body) {
+  const run = typeof runId === 'string' && runId ? runId : 'local';
+  return `${run}:${decision}:${createHash('sha256').update(`${path} ${JSON.stringify(body ?? null)}`).digest('hex').slice(0, 24)}`;
 }
 
 export function parseAction(value) {
@@ -482,7 +495,7 @@ export function observationPrompt(view, status) {
 }
 
 export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fetch, now = Date.now,
-  durationMs, maxCalls, modelTimeoutMs, stepDelayMs = 1500, signal, reportJob = true } = {}) {
+  durationMs, maxCalls, modelTimeoutMs, stepDelayMs = 1500, signal, reportJob = true, runId, onState } = {}) {
   if (running) throw new Error('Only one runtime may run in this process.');
   if (typeof token !== 'string' || !token || /[\r\n]/.test(token)) throw new Error('WORLD_AGENT_TOKEN is required.');
   if (typeof modelFn !== 'function') throw new Error('A local model adapter is required.');
@@ -492,6 +505,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
   const timeout = limit(modelTimeoutMs, 30000, 30000, 'model timeout');
   if (!Number.isInteger(stepDelayMs) || stepDelayMs < 0 || stepDelayMs > 2000) throw new Error('Invalid step delay.');
   if(typeof reportJob!=='boolean')throw new Error('Invalid job reporting option.');
+  if(onState!==undefined&&typeof onState!=='function')throw new Error('Invalid run state recorder.');
   running = true;
   const began = now();
   const deadline = began + duration;
@@ -500,15 +514,18 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
   signal?.addEventListener('abort', cancel, { once: true });
   if (signal?.aborted) cancel();
   const timer = setTimeout(cancel, duration);
-  const summary = { kind: 'runtime', status: 'completed', duration_ms: 0, model_calls: 0, action_count: 0, navigation_steps: 0, stop_reason: 'call_limit' };
+  const summary = { kind: 'runtime', status: 'completed', duration_ms: 0, model_calls: 0, action_count: 0, failed_calls: 0, failed_actions: 0, navigation_steps: 0, stop_reason: 'call_limit', last_action: null };
   let canReport = false;
   let runtimeStatus;
-  async function request(path, body, requestSignal = runController.signal) {
+  // Every transition is reported before it can be repeated. A recorder failure stops the run rather
+  // than letting it keep acting without durable state.
+  const record = (changes) => (onState ? onState(changes) : Promise.resolve());
+  async function request(path, body, key) {
     if (path !== '/runtime/status' && runtimeStatus?.remaining_calls <= 0) throw Object.assign(new Error('Runtime credential budget exhausted.'), { stopReason: 'credential_budget_exhausted' });
     return bounded(async (opSignal) => {
       const response = await fetchImpl(new URL('/api/v1' + path, endpoint), {
         method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: opSignal,
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
       if (!response.ok) throw Object.assign(new Error('World request denied or unavailable.'),{status:response.status});
@@ -516,7 +533,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
       if (text.length > 1048576) throw new Error('World response exceeds its limit.');
       if (path !== '/runtime/status' && runtimeStatus) runtimeStatus.remaining_calls = Math.max(0, runtimeStatus.remaining_calls - 1);
       return text ? JSON.parse(text) : {};
-    }, Math.max(1, Math.min(10000, deadline - now())), requestSignal);
+    }, Math.max(1, Math.min(10000, deadline - now())), runController.signal);
   }
   async function allowed() {
     if (runController.signal.aborted || now() >= deadline) return false;
@@ -550,7 +567,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
       await pause(NAVIGATION_LIMITS.step_interval_ms);
       if (!(await allowed())) { summary.status = 'stopped'; summary.stop_reason = stopReason(); break; }
       let result;
-      try { result = await request('/' + step.action, { direction: step.direction }); }
+      try { result = await request('/' + step.action, { direction: step.direction }, writeKey(runId, summary.model_calls, step.action, { direction: step.direction })); }
       catch (error) { if ([409, 429].includes(error.status)) break; throw error; }
       if (result.blocked) break;
       if (!moved) summary.action_count++;
@@ -559,7 +576,12 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
     }
     return moved;
   }
+  // One decision: report the model call before it is dispatched, report the action before it is
+  // sent, and record the confirmation the server actually returned.
+  const confirming = (name, decision, key) => record({ phase: 'confirmed', action_count: summary.action_count, pending_action: {}, last_action: { action: name, decision, key, at: new Date(now()).toISOString() } });
+  const observing = (changes = {}) => record({ phase: 'observing', pending_action: {}, ...changes });
   try {
+    await record({ phase: 'starting', status: 'running' });
     while (summary.model_calls < calls && summary.status === 'completed') {
       const view = await request('/world');
       if (!(await allowed())) { summary.status = 'stopped'; summary.stop_reason = stopReason(); break; }
@@ -582,50 +604,67 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
         throw new Error('Observation identity changed.');
       }
       summary.model_calls++;
-      const raw = await bounded((opSignal) => modelFn({ prompt: observationPrompt(view, runtimeStatus), signal: opSignal }),
-        Math.max(1, Math.min(timeout, deadline - now())), runController.signal);
+      const decision = summary.model_calls;
+      await record({ phase: 'model_call', decision, model_calls: decision });
+      let raw;
+      try {
+        raw = await bounded((opSignal) => modelFn({ prompt: observationPrompt(view, runtimeStatus), signal: opSignal }),
+          Math.max(1, Math.min(timeout, deadline - now())), runController.signal);
+      } catch (error) { summary.failed_calls++; throw error; }
       const action = parseAction(raw);
       if (!(await allowed())) { summary.status = 'stopped'; summary.stop_reason = stopReason(); break; }
       authorizeAction(action, view, runtimeStatus);
+      const key = writeKey(runId, decision, action.action, action);
+      if (action.action === 'wait') await observing();
+      else await record({ phase: 'dispatch', pending_action: { action: action.action, decision, key } });
       try{
-      if (action.action === 'walk_to') await walkTo(action, view);
-      if(action.action==='remove_block')await request('/frontier/build',{world_id:view.world.id,x:action.x,y:action.y,z:action.z,remove:true});
-      if (action.action === 'move') await request('/move', { direction: action.direction });
-      if (action.action === 'climb') await request('/climb', { direction: action.direction });
-      if (action.action === 'look') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/look`, { yaw: action.yaw, pitch: action.pitch });
-      if (action.action === 'say') await request('/messages', { text: action.text, channel: 'public' });
-      if (action.action === 'travel') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/travel`, { world_id: action.world_id });
-      if(action.action==='expand')await request('/frontier/expand',{world_id:view.world.id,direction:action.direction});
-      if(action.action==='build_block')await request('/frontier/build',{world_id:view.world.id,type:action.type,x:action.x,y:action.y,z:action.z});
-      if (action.action === 'build') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/build`, { type: action.type, x: action.x, y: action.y });
-      if (action.action === 'posture') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/posture`, { posture: action.posture });
-      if (action.action === 'emote') await request('/emotes', { emote: action.emote });
-      if (action.action === 'circle') await request('/circles/membership', { circle_id: action.circle_id, action: action.intent });
+      if (action.action === 'walk_to') { const moved = await walkTo(action, view); if (moved) { summary.last_action = { action: 'walk_to', decision, key, at: new Date(now()).toISOString() }; await confirming('walk_to', decision, key); } else await observing(); }
+      if(action.action==='remove_block')await request('/frontier/build',{world_id:view.world.id,x:action.x,y:action.y,z:action.z,remove:true},key);
+      if (action.action === 'move') await request('/move', { direction: action.direction }, key);
+      if (action.action === 'climb') await request('/climb', { direction: action.direction }, key);
+      if (action.action === 'look') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/look`, { yaw: action.yaw, pitch: action.pitch }, key);
+      if (action.action === 'say') await request('/messages', { text: action.text, channel: 'public' }, key);
+      if (action.action === 'travel') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/travel`, { world_id: action.world_id }, key);
+      if(action.action==='expand')await request('/frontier/expand',{world_id:view.world.id,direction:action.direction},key);
+      if(action.action==='build_block')await request('/frontier/build',{world_id:view.world.id,type:action.type,x:action.x,y:action.y,z:action.z},key);
+      if (action.action === 'build') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/build`, { type: action.type, x: action.x, y: action.y }, key);
+      if (action.action === 'posture') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/posture`, { posture: action.posture }, key);
+      if (action.action === 'emote') await request('/emotes', { emote: action.emote }, key);
+      if (action.action === 'circle') await request('/circles/membership', { circle_id: action.circle_id, action: action.intent }, key);
       if (action.action === 'pledge') await request('/projects/pledges', { project_id: action.project_id, action: action.intent,
-        ...(action.commitment ? { commitment: action.commitment } : {}) });
-      if (action.action === 'rsvp') await request('/events/rsvp', { event_id: action.event_id, action: action.intent });
-      if (action.action === 'thanks') await request('/thanks', { recipient_agent_id: action.recipient_agent_id, reason: action.reason });
+        ...(action.commitment ? { commitment: action.commitment } : {}) }, key);
+      if (action.action === 'rsvp') await request('/events/rsvp', { event_id: action.event_id, action: action.intent }, key);
+      if (action.action === 'thanks') await request('/thanks', { recipient_agent_id: action.recipient_agent_id, reason: action.reason }, key);
       if (action.action === 'garden') await request('/journey/garden', { action: action.intent, x: action.x, y: action.y,
-        ...(action.kind ? { kind: action.kind } : {}) });
-      if (action.action === 'craft') await request('/journey/craft', { recipe_id: action.recipe_id });
-      if (!['wait', 'walk_to'].includes(action.action)) summary.action_count++;
-      }catch(error){if(error.status!==409||!['build_block','remove_block','expand'].includes(action.action))throw error;}
+        ...(action.kind ? { kind: action.kind } : {}) }, key);
+      if (action.action === 'craft') await request('/journey/craft', { recipe_id: action.recipe_id }, key);
+      if (!['wait', 'walk_to'].includes(action.action)) { summary.action_count++; summary.last_action = { action: action.action, decision, key, at: new Date(now()).toISOString() }; await confirming(action.action, decision, key); }
+      }catch(error){
+        // The server answered and refused, or the request failed: never counted as a confirmed action.
+        if (Number.isInteger(error.status)) { summary.failed_actions++; await observing({ failed_actions: summary.failed_actions }); }
+        if(error.status!==409||!['build_block','remove_block','expand'].includes(action.action))throw error;
+      }
       if (summary.status === 'completed' && summary.model_calls < calls && stepDelayMs) await pause(stepDelayMs);
     }
   } catch (error) {
     summary.status = error.stopReason || runController.signal.aborted || now() >= deadline ? 'stopped' : 'failed';
-    summary.stop_reason = error.stopReason || (runController.signal.aborted || now() >= deadline ? 'canceled_or_duration_limit' : 'unavailable_or_invalid_action');
+    summary.stop_reason = error.stopReason || (runController.signal.aborted || now() >= deadline ? 'canceled_or_duration_limit' : [401, 403, 503].includes(error.status) ? 'paused_revoked_or_unavailable' : 'unavailable_or_invalid_action');
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener('abort', cancel);
     summary.duration_ms = Math.max(0, now() - began);
-    // Receipts contain counters only. A rejected receipt never retries a run.
-    if (reportJob && canReport && !runController.signal.aborted && now() < deadline) {
-      try { await request('/jobs', { status: summary.status,
-        detail: `Local runtime: ${summary.model_calls} model calls, ${summary.action_count} actions, ${summary.duration_ms} ms; ${summary.stop_reason}.` }); }
-      catch { /* Optional contribution scope may be absent. */ }
-    }
-    running = false;
+    try {
+      // The final durable write carries the real counters, the stop reason and the last action the
+      // server confirmed. Its failure stops the run rather than hiding an unrecorded outcome.
+      await record({ phase: 'finished', status: summary.status, stop_reason: summary.stop_reason, decision: summary.model_calls,
+        model_calls: summary.model_calls, action_count: summary.action_count, failed_calls: summary.failed_calls, failed_actions: summary.failed_actions, pending_action: {} });
+      // Receipts contain counters only. A rejected receipt never retries a run.
+      if (reportJob && canReport && !runController.signal.aborted && now() < deadline) {
+        try { await request('/jobs', { status: summary.status,
+          detail: `Local runtime: ${summary.model_calls} model calls, ${summary.action_count} actions, ${summary.duration_ms} ms; ${summary.stop_reason}.` }); }
+        catch { /* Optional contribution scope may be absent. */ }
+      }
+    } finally { running = false; }
   }
   return summary;
 }
