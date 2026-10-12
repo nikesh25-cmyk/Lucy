@@ -18,6 +18,8 @@ import { civicAtlas, REGIONS, mayorTopic } from './src/civic.js';
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const files = new Map([
+  ['/src/country-atlas.js', ['src/country-atlas.js', 'text/javascript; charset=utf-8']],
+  ['/assets/atlas/countries.json', ['assets/atlas/countries.json', 'application/json; charset=utf-8']],
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/missions', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
