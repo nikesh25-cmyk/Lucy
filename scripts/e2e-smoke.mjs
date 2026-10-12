@@ -188,15 +188,19 @@ async function readTerrain(worldId, area) {
   const areaX = { minimum: area?.minimumX ?? 0, maximum: area?.maximumX ?? width - 1 };
   const areaY = { minimum: area?.minimumY ?? 0, maximum: area?.maximumY ?? height - 1 };
   const grid = Array.from({ length: height }, () => new Array(width).fill(undefined));
+  const solid = new Set(), decorative = new Set();
   let pages = 0;
+  const collectScenery = (page) => { for (const item of page.scenery || []) { if (!Number.isInteger(item?.x) || !Number.isInteger(item?.y)) continue; (item.blocks === true ? solid : decorative).add(`${item.x},${item.y}`); } };
+  collectScenery(descriptor);
   for (const x of windowStarts(areaX.minimum, areaX.maximum, columns, width)) {
     for (const y of windowStarts(areaY.minimum, areaY.maximum, rows, height)) {
       const page = expectStatus(await get(`/world?world_id=${encodeURIComponent(worldId)}&x=${x}&y=${y}`), 200, `GET /world window ${x},${y}`);
       for (let row = 0; row < page.terrain.length; row++) for (let column = 0; column < page.terrain[row].length; column++) grid[page.camera.y + row][page.camera.x + column] = page.terrain[row][column];
+      collectScenery(page);
       pages++;
     }
   }
-  return { descriptor, grid, width, height, columns, rows, pages };
+  return { descriptor, grid, width, height, columns, rows, pages, solid, decorative };
 }
 
 function distancesFrom(grid, origin, blocked = new Set()) {
@@ -264,26 +268,57 @@ async function walkTo(token, from, target, grid, blocked) {
 }
 
 // The collision refusal is proved on a real unwalkable tile: walk to the nearest
-// reachable tile that touches one, then ask the server to step onto it.
-async function proveCollisionRefusal(token, from, grid, blocked) {
+// reachable tile that touches one, then ask the server to step onto it. A solid
+// scenery tile is preferred when one is reachable, so the shared footprint table
+// (src/footprints.js) is proved at the release gate as well as the terrain legend.
+async function proveCollisionRefusal(token, from, grid, blocked, scenery = new Set()) {
   const distances = distancesFrom(grid, from, blocked);
   let probe = null;
   for (const [key, distance] of distances) {
     const [x, y] = key.split(',').map(Number);
     for (const [direction, [dx, dy]] of Object.entries({ up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] })) {
-      if (blocked.has(`${x + dx},${y + dy}`)) continue;
+      const neighbour = `${x + dx},${y + dy}`;
+      // A gate or passage neighbour is unreachable; a solid-scenery neighbour is the refusal we want.
+      const solidScenery = scenery.has(neighbour);
+      if (!solidScenery && blocked.has(neighbour)) continue;
       const type = grid[y + dy]?.[x + dx];
-      if (typeof type !== 'string' || !UNWALKABLE.has(type)) continue;
-      if (!probe || distance < probe.distance) probe = { x, y, distance, direction, type };
+      if (!solidScenery && (typeof type !== 'string' || !UNWALKABLE.has(type))) continue;
+      if (!probe || (solidScenery && !probe.solidScenery) || (solidScenery === probe.solidScenery && distance < probe.distance)) {
+        probe = { x, y, distance, direction, type: solidScenery ? `solid ${describe(type)} scenery` : type, solidScenery };
+      }
     }
   }
-  expectThat(probe, 'the character must be able to reach a tile beside an unwalkable terrain tile', { expected: 'a reachable tile with an unwalkable neighbour', actual: `origin ${from.x},${from.y} with ${distances.size} reachable tiles` });
+  expectThat(probe, 'the character must be able to reach a tile beside an unwalkable or solid-scenery tile', { expected: 'a reachable tile with a refused neighbour', actual: `origin ${from.x},${from.y} with ${distances.size} reachable tiles` });
   const position = await walkTo(token, from, { x: probe.x, y: probe.y }, grid, blocked);
   const response = await moveOnce(token, probe.direction);
   expectStatus(response, 200, `POST /move ${probe.direction} onto an unwalkable ${probe.type} tile`);
   expectThat(response.body.blocked === true, `moving onto an unwalkable ${probe.type} tile must be refused`, { expected: 'blocked=true', actual: describe(response.body), request: response.request, response });
   expectThat(response.body.x === position.x && response.body.y === position.y, 'a refused move must leave the position unchanged', { expected: `${position.x},${position.y}`, actual: `${response.body.x},${response.body.y}`, request: response.request, response });
   return { position, probe };
+}
+
+// The other half of the same rule: a decorative scenery tile stays walkable, so a
+// resident is never fenced out of the ground cover the renderer draws as flat.
+async function proveDecorationWalk(token, from, grid, solid, decorative) {
+  const distances = distancesFrom(grid, from, solid);
+  // The step that lands on the decoration is the reverse of the offset from it to its stand tile.
+  const reverse = { up: 'down', down: 'up', left: 'right', right: 'left' };
+  let candidate = null;
+  for (const key of decorative) {
+    const [x, y] = key.split(',').map(Number);
+    for (const [direction, [dx, dy]] of Object.entries({ up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] })) {
+      const distance = distances.get(`${x + dx},${y + dy}`);
+      if (distance === undefined) continue;
+      if (!candidate || distance < candidate.distance) candidate = { x, y, direction: reverse[direction], distance, stand: { x: x + dx, y: y + dy } };
+    }
+  }
+  expectThat(candidate, 'a decorative scenery tile must border a reachable tile', { expected: 'a reachable tile beside decorative scenery', actual: `${decorative.size} decorative tiles` });
+  const position = await walkTo(token, from, candidate.stand, grid, solid);
+  const response = await moveOnce(token, candidate.direction);
+  expectStatus(response, 200, `POST /move ${candidate.direction} onto a decorative scenery tile`);
+  expectThat(response.body.blocked === false, 'a decorative scenery tile must stay walkable', { expected: 'blocked=false', actual: describe(response.body), request: response.request, response });
+  expectThat(response.body.x === candidate.x && response.body.y === candidate.y, 'the resident must reach the decorative tile', { expected: `${candidate.x},${candidate.y}`, actual: `${response.body.x},${response.body.y}`, request: response.request, response });
+  return response.body;
 }
 
 // Candidate construction sites: every walkable tile of an available parcel,
@@ -461,19 +496,28 @@ async function main() {
       return `201 runtime session (scopes read/move/build/contribute, 500 calls); 200 read; 403 POST /messages (scope: ${describe(chat.body?.error)}); 403 POST /invites`;
     });
 
-    await step('7. the runtime walks to the frontier, is refused an unwalkable tile, and builds in the assigned plot', async () => {
+    await step('7. the runtime walks to the frontier, is refused unwalkable terrain and solid scenery, and builds in the assigned plot', async () => {
       const commonsView = expectStatus(await get('/world?world_id=commons'), 200, 'GET /world?world_id=commons');
       const gateway = commonsView.portals.find((portal) => portal.target_world_id === 'frontier:0:0');
       expectThat(gateway, 'the Commons must publish the frontier gateway', { expected: 'a portal to frontier:0:0', actual: describe(commonsView.portals.map((portal) => portal.target_world_id)) });
-      const commons = await readTerrain('commons', { minimumX: Math.min(world.position.x, gateway.x) - 4, maximumX: Math.max(world.position.x, gateway.x) + 4, minimumY: Math.min(world.position.y, gateway.y) - 4, maximumY: Math.max(world.position.y, gateway.y) + 4 });
-      const distances = distancesFrom(commons.grid, world.position);
+      // The Commons window is widened east to the authored tree belt and south to the theatre so the
+      // harness can prove a solid-scenery refusal as well as the terrain legend.
+      const commons = await readTerrain('commons', { minimumX: Math.min(world.position.x, gateway.x) - 4, maximumX: 38, minimumY: 0, maximumY: 20 });
+      const commonsBlocked = new Set([...commons.solid]);
+      expectThat(commons.solid.size > 0 && commons.decorative.size > 0, 'the Commons must publish both solid and decorative scenery', { expected: 'both classes present', actual: describe({ solid: commons.solid.size, decorative: commons.decorative.size }) });
+      const commonsProbe = await proveCollisionRefusal(world.runtimeToken, world.position, commons.grid, commonsBlocked, commons.solid);
+      expectThat(commonsProbe.probe.solidScenery === true, 'the nearest refusal must be solid authored scenery, not only terrain', { expected: 'a reachable tile beside solid scenery', actual: describe(commonsProbe.probe) });
+      world.position = commonsProbe.position;
+      const decorated = await proveDecorationWalk(world.runtimeToken, world.position, commons.grid, commons.solid, commons.decorative);
+      world.position = { x: decorated.x, y: decorated.y };
+      const distances = distancesFrom(commons.grid, world.position, commonsBlocked);
       let stand = null;
       for (const [dx, dy] of [[0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]]) {
         const distance = distances.get(`${gateway.x + dx},${gateway.y + dy}`);
         if (distance !== undefined && (!stand || distance < stand.distance)) stand = { x: gateway.x + dx, y: gateway.y + dy, distance };
       }
       expectThat(stand, 'the frontier gateway must be reachable from the character', { expected: 'a walkable tile beside the gateway', actual: `gateway ${gateway.x},${gateway.y}` });
-      world.position = await walkTo(world.runtimeToken, world.position, { x: stand.x, y: stand.y }, commons.grid);
+      world.position = await walkTo(world.runtimeToken, world.position, { x: stand.x, y: stand.y }, commons.grid, commonsBlocked);
 
       await sleep(MOVE_INTERVAL_MS);
       const travelled = expectStatus(await post(`/agents/${world.agentId}/travel`, { world_id: 'frontier:0:0' }, { token: world.runtimeToken }), 200, 'POST /agents/:id/travel to frontier:0:0');
@@ -482,7 +526,7 @@ async function main() {
       const arrival = world.frontier.descriptor.landmarks.find((landmark) => landmark.name === 'Frontier Crossroads');
       if (!arrival || arrival.x !== travelled.x || arrival.y !== travelled.y) state.notes.push(`The frontier arrival ${travelled.x},${travelled.y} differs from the published crossroads ${arrival ? `${arrival.x},${arrival.y}` : 'landmark'}; the construction plan is still recomputed from the real position.`);
 
-      const probe = await proveCollisionRefusal(world.runtimeToken, world.position, world.frontier.grid, world.frontier.blocked);
+      const probe = await proveCollisionRefusal(world.runtimeToken, world.position, world.frontier.grid, world.frontier.blocked, world.frontier.solid);
       world.position = probe.position;
 
       const target = world.buildPlan;
@@ -498,7 +542,7 @@ async function main() {
       expectThat(persisted && persisted.x === block.x && persisted.y === block.y && persisted.z === block.z, 'the built block must persist in the world view', { expected: `block ${block.id}`, actual: describe((view.blocks || []).map((entry) => entry.id)) });
       const plotRead = expectStatus(await get(`/land/plot?plot_id=${world.plot.id}`), 200, `GET /land/plot?plot_id=${world.plot.id}`);
       expectThat(plotRead.plot.block_count === 1, 'the plot must report its construction', { expected: 'block_count=1', actual: describe(plotRead.plot.block_count) });
-      return `200 travel to frontier:0:0; 200 refused move onto an unwalkable ${probe.probe.type} tile (blocked=true, position unchanged); 200 frontier build (plot_id=${block.plot_id}, ${block.type} at ${block.x},${block.y},z=${block.z}); read back from GET /world and GET /land/plot`;
+      return `Commons: 200 refused move onto ${commonsProbe.probe.type} (blocked=true, position unchanged); 200 walked onto decorative scenery at ${decorated.x},${decorated.y}; 200 travel to frontier:0:0; 200 refused move onto an unwalkable ${probe.probe.type} tile (blocked=true, position unchanged); 200 frontier build (plot_id=${block.plot_id}, ${block.type} at ${block.x},${block.y},z=${block.z}); read back from GET /world and GET /land/plot`;
     });
 
     await step('8. a second account reviews independently and the contribution earns Nemo Coins', async () => {

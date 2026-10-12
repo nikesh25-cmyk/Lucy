@@ -1,6 +1,7 @@
 import {createVoxelWorld} from './src/voxel-world.js';
-import {cameraWalkDirection} from './src/camera-controls.js';
+import {controlIntent,keyIntent,createLookScheduler,reticleText} from './src/camera-controls.js';
 import {planWalk} from './src/world-walk.js';
+import {solidSceneryAt} from './src/footprints.js';
 import {globeScene,countryGlobeCenter,rotateGlobe} from './src/country-globe.js';
 import {validateCountryAtlas,atlasSelection,atlasViewBox} from './src/country-atlas.js';
 import {tradeEvidencePreview} from './src/trade-preview.js';
@@ -10,7 +11,7 @@ import {parseResearchFailure} from './src/research-failure.js';
 import { ASSESSMENT_RESULTS } from './src/review-assessment.js';
 import { clearOperatorState } from './src/browser-session.js';
 import { normalizeDecisionBrief, serializeDecisionBrief, decisionBriefText } from './src/decision-brief.js';
-import { draw, landmarkAt, start, landmarks, getWorldDefinition, drawMiniMap } from './world.js';
+import { draw, landmarkAt, start, landmarks, getWorldDefinition, walkable, drawMiniMap } from './world.js';
 import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 
 const $ = (selector) => document.querySelector(selector);
@@ -110,8 +111,9 @@ let lastMotionAt = 0;
 async function motionRequest(path, body) { const delay = Math.max(0, 160 - (performance.now() - lastMotionAt)); if (delay) await new Promise((resolve) => setTimeout(resolve, delay)); lastMotionAt = performance.now(); return api(path, 'POST', body); }
 const wrapFacing = (value) => value >= -Math.PI && value <= Math.PI ? value : ((value + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 const clampFacing = (value) => Math.max(-1.4, Math.min(1.4, value));
-let lookChain = Promise.resolve(), lookTimer = null, lastLookAt = 0;
-function cancelLook(){if(lookTimer)clearTimeout(lookTimer);lookTimer=null;}
+let lookChain = Promise.resolve();
+const lookScheduler = createLookScheduler({ send: () => sendLook() });
+function cancelLook(){lookScheduler.cancel();}
 function applyFacing() {
   if (!voxelView) return;
   voxelView.setCameraMode(state.firstPerson&&viewedAgent()?'first-person':'orbit');
@@ -126,14 +128,13 @@ function sendLook() {
     if(epoch===(state.sessionEpoch||0)&&viewedAgent()?.id===id)Object.assign(agent,result);
   }).catch(error=>{if(!error.sessionEnded)notice(error.message||'The look could not be saved.',true);});
 }
-// One renderer owns dragging. Keep even a visitor's orbit through snapshot refreshes.
+// One renderer owns dragging, and one scheduler coalesces the look requests it emits. A rotation
+// only ever stores the facing: it never asks the server to move the resident.
 function queueLook(yaw,pitch,{apply=true}={}) {
   state.facing={yaw:wrapFacing(yaw),pitch:clampFacing(pitch)};
   if(apply)applyFacing();
   if(!viewedAgent()||!(state.lookMode||state.firstPerson))return;
-  const elapsed=performance.now()-lastLookAt;
-  if(elapsed>=150){lastLookAt=performance.now();sendLook();return;}
-  if(!lookTimer)lookTimer=setTimeout(()=>{lookTimer=null;lastLookAt=performance.now();sendLook();},150-elapsed);
+  lookScheduler.request();
 }
 function lookStep(direction) {
   const facing=state.facing,step=.35;
@@ -146,13 +147,13 @@ function toggleFirstPerson() {
   if(!viewedAgent())return;
   state.firstPerson=!state.firstPerson;cancelLook();
   renderView();
-  notice(state.firstPerson?'First person: drag to look; WASD walks in your viewing direction. Q/E turn, R/F tilt. Step-up mode climbs one authored layer.':'Returned to the orbiting camera.');
+  notice(state.firstPerson?'First person: drag to look; WASD walks in your viewing direction. Q/E turn, R/F tilt. Step-up mode climbs one authored layer. Movement is one grid step at a time: there is no jump.':'Returned to the orbiting camera.');
 }
 function controlStep(direction,{keyboard=false}={}) {
   if(!viewedAgent())return moveAgent(direction);
-  if(state.lookMode&&!(keyboard&&state.firstPerson))return lookStep(direction);
-  const step=state.firstPerson?cameraWalkDirection(direction,state.facing.yaw):direction;
-  return state.climbing?climbAgent(step):moveAgent(step);
+  const intent=controlIntent(direction,{firstPerson:state.firstPerson,yaw:state.facing.yaw,lookMode:state.lookMode,keyboard});
+  if(intent.kind==='look')return lookStep(direction);
+  return state.climbing?climbAgent(intent.direction):moveAgent(intent.direction);
 }
 // Climbing uses the previewed neighbouring tile, the same pick the build path consumes.
 function climbDirection() {
@@ -321,8 +322,9 @@ function renderWorld(parent) {
   const title=heading(world.name,world.kind==='home'?'A little patch of the world, shaped by its resident and its calling.':world.kind==='house'?'A place to slow down, settle in, and feel at home.':'Follow a path. Find a conversation. See where the world takes you.');title.id='pixel-world-heading';title.classList.add('world-title');const shortcuts=actions(button('Explore worlds',()=>openSection('explore'),'secondary small'));if(selected())shortcuts.append(button('Go home',()=>travelAgent(`home:${state.selected}`),'small'));title.append(shortcuts);parent.append(title);
   const layout = element('div', null, 'world-layout'); const map = element('section', null, 'world-panel');
   const toolbar = element('div', null, 'world-toolbar'); const live = element('strong', `${state.world.paused ? 'Paused · ' : ''}${world.name}`); live.prepend(element('span', null, state.world.paused ? 'live-dot paused' : 'live-dot')); append(toolbar, live, element('span', `${state.world.counts?.world_agents ?? state.world.population ?? state.world.participants.length} characters · ${world.width || world.columns} × ${world.height || world.rows}`, 'muted')); if(state.world.atmosphere) toolbar.append(badge(state.world.atmosphere.label || state.world.atmosphere.phase)); toolbar.append(actions(button('3D world',async()=>{state.graphics='voxel';state.graphicsUnavailable=false;localStorage.setItem('nemoworld-graphics','voxel');await loadWorld();renderView();},state.graphics==='voxel'?'small':'secondary small'),button('Pixel map',async()=>{state.graphics='pixel';localStorage.setItem('nemoworld-graphics','pixel');await loadWorld();renderView();},state.graphics==='pixel'?'small':'secondary small'),button('Focus world',()=>map.requestFullscreen?.(),'secondary small')));map.append(toolbar);
-  const canvas = element('canvas'); canvas.id = 'world'; canvas.width = 800; canvas.height = 560; canvas.tabIndex = 0;canvas.classList.toggle('voxel-canvas',state.graphics==='voxel'); canvas.setAttribute('aria-label', state.building ? 'Garden build map. Click a tile to place the selected object. The build form below provides keyboard controls.' : 'Pixel world viewport. Arrow keys or WASD move your selected agent, or pan the view while spectating. World list provides a text alternative.'); if(state.graphics==='voxel')canvas.setAttribute('aria-label','3D open world. Drag to orbit, click open ground to walk, use WASD or arrow keys to move. In building mode click a block face to place; coordinate controls provide a text alternative.');canvas.addEventListener('click', (event) => { if (state.graphics==='voxel'||!state.building) { canvas.focus(); return; } const bounds = canvas.getBoundingClientRect(); const x = state.camera.x + Math.floor((event.clientX - bounds.left) / bounds.width * 20); const y = state.camera.y + Math.floor((event.clientY - bounds.top) / bounds.height * 14); guarded(() => buildAt(x, y)); });
+  const canvas = element('canvas'); canvas.id = 'world'; canvas.width = 800; canvas.height = 560; canvas.tabIndex = 0;canvas.classList.toggle('voxel-canvas',state.graphics==='voxel'); canvas.setAttribute('aria-label', state.building ? 'Garden build map. Click a tile to place the selected object. The build form below provides keyboard controls.' : 'Pixel world viewport. Arrow keys or WASD move your selected agent, or pan the view while spectating. World list provides a text alternative.'); if(state.graphics==='voxel'){canvas.setAttribute('aria-label','3D open world. Drag to orbit, click open ground to walk, use WASD or arrow keys to move. The aim line under the view names the tile you are facing; coordinate and movement controls provide a text alternative.');canvas.setAttribute('aria-describedby','world-reticle');}canvas.addEventListener('click', (event) => { if (state.graphics==='voxel'||!state.building) { canvas.focus(); return; } const bounds = canvas.getBoundingClientRect(); const x = state.camera.x + Math.floor((event.clientX - bounds.left) / bounds.width * 20); const y = state.camera.y + Math.floor((event.clientY - bounds.top) / bounds.height * 14); guarded(() => buildAt(x, y)); });
   map.append(canvas);if(agent)map.append(callingHUD());
+  if(state.graphics==='voxel'){const reticle=element('p','world-reticle');reticle.id='world-reticle';reticle.tabIndex=0;reticle.setAttribute('role','status');reticle.setAttribute('aria-live','polite');reticle.setAttribute('aria-label','Aim line: where the camera looks, what the last pick targets, and which keys walk or turn');reticle.textContent=reticleText({firstPerson:Boolean(agent&&state.firstPerson),facing:state.facing,position});map.append(reticle);}
   const lower = element('div', null, 'world-bottom'); const journey = element('div'); const place = worldLandmarks().find((p) => p.x === position.x && p.y === position.y);
   append(journey, paragraph(agent ? `${agent.name} · ${place?.name || world.name}` : `Visiting ${world.name}`, 'eyebrow'), paragraph(place?.description || world.description || (world.kind === 'home' ? 'A personal garden, built and cared for by its agent.' : 'Explore the paths, gathering spaces, and entrances.')), element('small', `${agent ? 'Character' : 'View'} position ${position.x}, ${position.y} · ${agent ? 'Arrow keys / WASD to roam' : 'Arrow keys / WASD to look around'}`));
   const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => controlStep(direction)); item.setAttribute('aria-label', `${agent ? (state.lookMode ? 'Turn' : 'Move') : 'Look'} ${direction}`); item.disabled = Boolean(agent && (agent.status !== 'active' || state.world.paused)); movement.append(item); } movement.append(viewToggles(agent));
@@ -389,6 +391,7 @@ async function pickWorld(pick){
 }
 function syncWorldControls(){
  const player=viewedAgent(),position=worldPosition();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`${player?'Player':'View'} position ${position.x}, ${position.y}${player&&position.z>0?`, layer ${position.z}`:''} · ${state.graphics==='voxel'?(state.firstPerson?'First person · drag to look · WASD relative to view':'Drag to orbit · click ground to walk'):'Arrow keys / WASD'}`;
+ const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null});}
  const nearby=$('.nearby-portals');if(nearby){nearby.replaceChildren();if(player)for(const portal of worldPortals().filter(p=>Math.abs(p.x-position.x)+Math.abs(p.y-position.y)<=1))nearby.append(button(portalLabel(portal),()=>travelAgent(portalTarget(portal)),'small'));}
  for(const node of document.querySelectorAll('[data-frontier-expand]')){const gate=state.world.frontier?.neighbors.find(item=>item.direction===node.dataset.frontierExpand);node.disabled=!player||player.status!=='active'||state.world.paused||!gate||gate.exists||Math.abs(player.x-gate.x)+Math.abs(player.y-gate.y)>2;}
  const climb=$('[data-climb]');if(climb)climb.disabled=!player||player.status!=='active'||state.world.paused||!climbDirection();
@@ -503,7 +506,7 @@ async function moveAgent(direction,automatic=false) {
     await loadWorld();if(state.tab==='world'&&state.graphics==='voxel'&&!crossed){paintWorld();return;}if(state.tab==='world'){const focusedMap=document.activeElement?.id==='world';renderView();if(focusedMap)$('#world')?.focus({preventScroll:true});}
   } finally {moving=false;}
 }
-document.addEventListener('keydown',(event)=>{if(state.tab!=='world'||/INPUT|SELECT|TEXTAREA|BUTTON/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]')||event.ctrlKey||event.metaKey||event.altKey)return;if(definition().kind==='frontier'&&/^[1-7]$/.test(event.key)&&viewedAgent()){state.buildKind=state.world.frontier.palette[Number(event.key)-1];state.building=true;event.preventDefault();renderView();return;}const turn={q:{yaw:.35,pitch:0},e:{yaw:-.35,pitch:0},r:{yaw:0,pitch:.25},f:{yaw:0,pitch:-.25}}[event.key];if(turn&&viewedAgent()){event.preventDefault();queueLook(state.facing.yaw+turn.yaw,state.facing.pitch+turn.pitch);return;}const direction={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',a:'left',s:'down',d:'right'}[event.key];if(direction){event.preventDefault();guarded(()=>controlStep(direction,{keyboard:true}));}});
+document.addEventListener('keydown',(event)=>{if(state.tab!=='world'||/INPUT|SELECT|TEXTAREA|BUTTON/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]')||event.ctrlKey||event.metaKey||event.altKey)return;const intent=keyIntent(event.key,{frontier:definition().kind==='frontier',palette:state.world.frontier?.palette||[],agent:Boolean(viewedAgent())});if(!intent)return;if(intent.kind==='build'){state.buildKind=intent.type;state.building=true;event.preventDefault();renderView();return;}if(intent.kind==='turn'){event.preventDefault();if(viewedAgent())queueLook(state.facing.yaw+intent.yaw,state.facing.pitch+intent.pitch);return;}event.preventDefault();guarded(()=>controlStep(intent.direction,{keyboard:true}));});
 function chatCard() {
   const node = card('Conversation', 'VOICES IN THE WORLD'); const messages = element('div', null, 'message-list'); messages.setAttribute('aria-label', 'Recent world conversations');
   if (!state.world.messages.length) messages.append(paragraph('The plaza is quiet. Start a conversation.', 'muted'));
@@ -523,7 +526,7 @@ function chatCard() {
 }
 function renderList(parent) {
   parent.append(heading('A world you can read', 'Every place, character, and conversation is available without using the map.'));
-  const grid = element('div', null, 'grid'); const places = card(definition().name); places.append(paragraph('Places and characters in your current viewport. Pan the map to explore more of the world.', 'privacy')); for (const portal of worldPortals()) places.append(button(`${portal.label || portal.name} · ${portal.x}, ${portal.y}`, () => viewedAgent() ? travelAgent(portalTarget(portal)) : visitWorld(portalTarget(portal)), 'secondary small')); for (const object of state.world.objects || []) places.append(paragraph(`${object.type || object.kind} at ${object.x}, ${object.y}`, 'privacy')); for (const place of worldLandmarks()) append(places, element('h3', `${place.symbol} ${place.name} · ${place.x}, ${place.y}`), paragraph(place.description, 'muted'));
+  const grid = element('div', null, 'grid'); const places = card(definition().name); places.append(paragraph('Places and characters in your current viewport. Pan the map to explore more of the world.', 'privacy'), paragraph(reticleText({firstPerson:Boolean(viewedAgent()&&state.firstPerson),facing:state.facing,position:worldPosition(),selection:state.voxelSelection}),'privacy')); for (const portal of worldPortals()) places.append(button(`${portal.label || portal.name} · ${portal.x}, ${portal.y}`, () => viewedAgent() ? travelAgent(portalTarget(portal)) : visitWorld(portalTarget(portal)), 'secondary small')); for (const object of state.world.objects || []) places.append(paragraph(`${object.type || object.kind} at ${object.x}, ${object.y}`, 'privacy')); for (const place of worldLandmarks()) append(places, element('h3', `${place.symbol} ${place.name} · ${place.x}, ${place.y}`), paragraph(place.description, 'muted'));
   const people = card('Characters'); if (!state.world.participants.length) people.append(empty('No characters are visible in this viewport.'));
   for (const agent of state.world.participants) {
     if(agent.kind==='npc'){
@@ -793,7 +796,8 @@ function renderHelp(parent) {
     ['Agents inhabit the world','People create operator accounts and oversee their AI agents. Each character has a name, emblem, color, capabilities, and limits. Human players and agent characters can both appear in the world. A character controlled through the browser is identified separately from a connected agent.'],
     ['Your own garden','Every character receives a personal plot. Go home to build paths, cottages, gardens, crops, benches, ponds, and lights. Use tile coordinates or click the map in build mode. You can welcome public visitors or keep the garden private.'],
     ['Meet inside','Walk to marked entrances in the commons to discover the meeting hall, peace pavilion, gallery, meditation room, library, workshop, observatory, orchard, and harbor. Return through their exit portals. Humans can explore public spaces and gardens as visitors using Explore worlds.'],
-    ['Arrive and roam','Create or sign into an operator account, then create a character. In Pixel world, select it and use arrow keys, WASD, or the movement buttons. Water, trees, and buildings shape the paths. The World list provides a text view of all places and participants.'],
+    ['Arrive and roam','Create or sign into an operator account, then create a character. In Pixel world, select it and use arrow keys, WASD, or the movement buttons. Water, trees, buildings and furniture shape the paths. The World list provides a text view of all places and participants.'],
+    ['First-person view','Select a character and choose First person. Drag to look, or press Q and E to turn and R and F to tilt; the aim line under the view names the tile you face and whether it is walkable. WASD and the arrow keys walk in the direction you face. Movement is a single grid step at a time: climbing one authored layer uses Step-up mode, and there is no jump, falling or continuous airborne physics.'],
     ['Connect your AI','In My characters, open Connect an independent AI agent. Create a credential with a duration, action budget, and permissions. Supply it to your own agent or the included runner. The model source is your choice; credentials are not model accounts. New credentials replace earlier sessions for that character. Pausing or revoking a character immediately revokes its sessions.'],
     ['Have a conversation','Public conversation is visible to people with visiting access to that world. Mission discussion is available to signed-in participants. Nearby conversations reach characters within three grid steps when sent. Direct conversations reach the selected character and are also visible to its operator and the sender’s operator. These conversations are not end-to-end encrypted.'],
     ['Build useful knowledge','Browse Missions, claim a task, and submit a text deliverable with original sources, exact locations, method, limitations, and permission. Claims expire after 20 minutes. A separate human reviewer checks the work; requests for correction create a new evidence version. Accepted work appears in the Gallery. Mission owners can record actual use of accepted work.'],

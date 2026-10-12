@@ -60,6 +60,8 @@ for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22])for(const
 // The typed content layer is a browser module: src/content.js imports content/index.js, which
 // statically imports every sealed definition file. Serve exactly what the sealed manifest lists.
 files.set('/src/camera-controls.js', ['src/camera-controls.js', 'text/javascript; charset=utf-8']);
+files.set('/src/footprints.js', ['src/footprints.js', 'text/javascript; charset=utf-8']);
+files.set('/src/elevation.js', ['src/elevation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/content.js', ['src/content.js', 'text/javascript; charset=utf-8']);
 files.set('/content/content-manifest.json', ['content/content-manifest.json', 'application/json; charset=utf-8']);
 for (const item of manifest().entries) files.set(`/${item.file}`, [item.file, 'application/json; charset=utf-8']);

@@ -1,12 +1,16 @@
 // Server-authoritative column collision for elevation. Integer grid layers only.
 // Grid x/y keep the world tile convention (up = -y). z is the layer index, 0 at the base.
+import { BLOCKING_SCENERY, blockOccupiesTile } from './footprints.js';
+
 export const ELEVATION_LIMITS = Object.freeze({
   min: 0, max: 8, stepUp: 1, maxFall: 8, headroom: 2, maxSubsteps: 8,
 });
 
 export const ELEVATION_DIRECTIONS = Object.freeze({ up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] });
 
-export const ELEVATION_BLOCKING_OBJECTS = Object.freeze(['cottage', 'tree', 'pond', 'fountain']);
+// Solid scenery, resolved from the shared footprint table so this list cannot drift from the
+// renderer, pathfinding or placement validation.
+export const ELEVATION_BLOCKING_OBJECTS = BLOCKING_SCENERY;
 
 const limits = ELEVATION_LIMITS;
 const blockingObjects = new Set(ELEVATION_BLOCKING_OBJECTS);
@@ -37,7 +41,7 @@ export function blockLayers(blocks) {
   const layers = new Map();
   for (const block of Array.isArray(blocks) ? blocks : []) {
     if (!Number.isInteger(block?.x) || !Number.isInteger(block?.y) || !Number.isInteger(block?.z)) continue;
-    if (block.z < limits.min || block.type === 'path') continue;
+    if (block.z < limits.min || !blockOccupiesTile(block.type)) continue;
     const key = columnKey(block.x, block.y);
     const column = layers.get(key) || layers.set(key, new Set()).get(key);
     column.add(block.z);
@@ -81,7 +85,8 @@ function held(from, layers, reason) {
  * `world` supplies walkable(target, definition), definition, objects, and either `layers`
  * (a blockLayers map) or `blocks` (raw authored blocks). `world.authoredLayers` is the subset
  * of solids authored by players; it DEFAULTS to every solid layer, which keeps authored blocks
- * hard walls. Step-up onto solid ground only happens when the caller explicitly passes
+ * hard walls. `world.solidTiles` optionally carries the shared solid-scenery index. Step-up onto
+ * solid ground only happens when the caller explicitly passes
  * `policy.allowAuthoredStepUp: true`; do not remove that flag, it preserves the shipped rule
  * that a single authored block blocks movement (see world-walk.js).
  */
@@ -94,7 +99,11 @@ export function canStep(from, direction, world = {}, policy = {}) {
   if (!world.walkable(target, world.definition)) return held(from, layers, 'unwalkable');
   const objects = Array.isArray(world.objects) ? world.objects : [];
   const blockers = world.blockingObjects instanceof Set ? world.blockingObjects : blockingObjects;
-  if (objects.some((object) => object && object.x === target.x && object.y === target.y && blockers.has(object.type ?? object.kind))) {
+  // `solidTiles` is the shared footprint index (src/footprints.js solidTileKeys): a caller that
+  // already holds every solid object of the neighbourhood passes it instead of rescanning a list.
+  const solidTiles = world.solidTiles instanceof Set ? world.solidTiles : null;
+  if (solidTiles?.has(`${target.x},${target.y}`)
+    || objects.some((object) => object && object.x === target.x && object.y === target.y && blockers.has(object.type ?? object.kind))) {
     return held(from, layers, 'object');
   }
   const originSurface = surfaceAt(from.x, from.y, layers);

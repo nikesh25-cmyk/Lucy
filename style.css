@@ -69,3 +69,6 @@ body:has([aria-current="page"][aria-label="Research desk"]) .hero,body:has([aria
 .start-here{margin-bottom:24px}.start-paths{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:22px 0}.start-path{min-width:0}.start-path>img{width:28px;height:28px;margin-bottom:12px;opacity:.8}.start-path h3{font-size:1.1rem}.start-path>p:not(.privacy){font-size:.85rem;line-height:1.7}.start-path button{max-width:100%;white-space:normal}.guide-steps{padding-left:26px}.guide-steps li{padding-left:8px;margin:18px 0}.guide-steps h3{margin-bottom:6px}#pixel-world-heading{scroll-margin-top:20px}@media(max-width:700px){.start-paths{grid-template-columns:1fr;gap:20px}.start-path+.start-path{border-top:1px solid var(--line);padding-top:20px}}
 
 @media(min-width:1051px){.sidebar{max-height:100vh;overflow-y:auto;position:sticky;top:0;align-self:start}}
+
+/* First-person aim line: text only, readable, and reachable by keyboard. */
+.world-reticle{margin:0;padding:.7rem 1.1rem;background:#fffef7;border-top:1px solid #c5cfb9;color:#66765b;font-size:.72rem;line-height:1.65}.world-reticle:focus-visible{outline:2px solid #7b986d;outline-offset:-2px}

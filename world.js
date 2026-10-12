@@ -1,4 +1,5 @@
 // One shared tile map powers both server movement and the browser renderer.
+import { standableTile } from './src/footprints.js';
 export const TILE = 40;
 export const COLS = 20;
 export const ROWS = 14;
@@ -49,9 +50,15 @@ export function terrainAt(position, world) {
   return tiles[position.y]?.[position.x];
 }
 
+/**
+ * A standable tile: walkable terrain without solid scenery. Terrain types come from the retained map
+ * and scenery from the definition's authored objects, resolved through the shared footprint table in
+ * src/footprints.js. Terrain tiles keep their meaning: water, trees, buildings, fountains and walls
+ * are never walkable, while paths, bridges, plazas, gardens, rugs and floors are.
+ */
 export function walkable(position, world) {
-  const type = terrainAt(position, world);
-  return type !== undefined && !['water', 'tree', 'building', 'fountain', 'wall'].includes(type);
+  const definition = world === undefined || world === null ? null : world.terrain ? world : getWorldDefinition(world);
+  return standableTile(position, definition ? definition.terrain : terrain, definition ? definition.objects : undefined);
 }
 
 export function move(position, direction, world) {
@@ -312,9 +319,11 @@ function makeCountry(id, label) {
   paintGrid(grid, COUNTRY_VENUE_PLAZA.x, COUNTRY_VENUE_PLAZA.y, COUNTRY_VENUE_PLAZA.width, COUNTRY_VENUE_PLAZA.height, 'plaza');
   // A small garden bed gives each venue the same cared-for shape without changing walkability.
   paintGrid(grid, 24, 9, 3, 2, 'garden');
-  for (const [x, y] of [[12, 8], [27, 8], [12, 23], [27, 23]]) objects.push({ type: 'lantern', x, y });
-  for (const [x, y] of [[15, 23], [25, 23]]) objects.push({ type: 'bench', x, y });
-  objects.push({ type: 'flowers', x: 19, y: 9 }, { type: 'table', x: 13, y: 12 });
+  // Solid furnishings stay off the plaza: every plaza tile can hold one ambassador stand, so a
+  // lantern, bench or table inside COUNTRY_VENUE_PLAZA would be drawn around a resident.
+  for (const [x, y] of [[10, 8], [29, 8], [10, 22], [29, 22]]) objects.push({ type: 'lantern', x, y });
+  for (const [x, y] of [[12, 25], [27, 25]]) objects.push({ type: 'bench', x, y });
+  objects.push({ type: 'flowers', x: 19, y: 9 }, { type: 'table', x: 10, y: 12 });
   for (let y = 3; y < rows; y += 4) for (let x = 3; x < columns; x += 5) {
     if (x >= COUNTRY_VENUE_PLAZA.x - 2 && x <= COUNTRY_VENUE_PLAZA.x + COUNTRY_VENUE_PLAZA.width + 1
       && y >= COUNTRY_VENUE_PLAZA.y - 2 && y <= COUNTRY_VENUE_PLAZA.y + COUNTRY_VENUE_PLAZA.height + 1) continue;

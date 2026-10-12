@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { COLS, ROWS, FRONTIER_SIZE, FRONTIER_COORDINATE_LIMIT, FRONTIER_MIN_COORDINATE, FRONTIER_MAX_COORDINATE, FRONTIER_PLOT_SIZE, frontierCoordinates, frontierGates, frontierPlotId, getWorldDefinition, walkable } from '../world.js';
-import { blockLayers, canStep, isGrounded, settle, surfaceAt } from './elevation.js';
+import { blockLayers, isGrounded, settle } from './elevation.js';
+import { escapeColumns } from './world-walk.js';
+import { blockOccupiesTile } from './footprints.js';
 import { palette, rules } from './content.js';
 
 export const FRONTIER_PALETTE = Object.freeze(palette('frontier'));
@@ -78,30 +80,17 @@ function settleColumn(platform, worldId, position) {
 function protectedTile(position, definition) {
   return position.x >= 23 && position.x <= 25 || position.y >= 23 && position.y <= 25 || distance(position, definition.start) <= 2 || definition.portals.some((gate) => distance(position, gate) <= 2);
 }
-function publicEscapeColumns(definition, blocks, objects) {
-  const layers = blockLayers(blocks), context = { walkable, definition, layers, objects };
-  const queue = [definition.start], seen = new Set([`${definition.start.x},${definition.start.y}`]);
-  // Reverse edges find residents who can reach the crossroads. A high roof can descend
-  // to a road even when a road resident could not climb onto that roof in one step.
-  for (let index = 0; index < queue.length; index++) for (const [dx, dy, direction] of [[0, -1, 'down'], [0, 1, 'up'], [-1, 0, 'right'], [1, 0, 'left']]) {
-    const position = { x: queue[index].x + dx, y: queue[index].y + dy }, key = `${position.x},${position.y}`;
-    if (seen.has(key) || !walkable(position, definition)) continue;
-    const step = canStep({ ...position, z: surfaceAt(position.x, position.y, layers) }, direction, context, { allowAuthoredStepUp: true });
-    if (!step.blocked) { seen.add(key); queue.push(position); }
-  }
-  return seen;
-}
 function keepsResidentsConnected(platform, agent, candidate, definition, removedId = null) {
   const blocks = platform.all('SELECT id,x,y,z,type FROM frontier_blocks WHERE world_id=?', agent.world_id);
   const objects = platform.all('SELECT x,y,type FROM world_objects WHERE world_id=?', agent.world_id);
   const proposed = removedId ? blocks.filter(block => block.id !== removedId) : [...blocks, candidate];
-  const after = publicEscapeColumns(definition, proposed, objects);
+  const after = escapeColumns(definition, proposed, objects);
   const disconnected = platform.all("SELECT x,y FROM agents WHERE world_id=? AND status!='deleted'", agent.world_id).filter(position => !after.has(`${position.x},${position.y}`));
   if (!disconnected.length) return true;
   if (!removedId) return false;
   // Legacy traps must remain removable one block at a time. Removal may not take away
   // an existing escape, including by settling somebody below a surrounding wall.
-  const before = publicEscapeColumns(definition, blocks, objects);
+  const before = escapeColumns(definition, blocks, objects);
   return disconnected.every(position => !before.has(`${position.x},${position.y}`));
 }
 const parcelOccupied = 'EXISTS(SELECT 1 FROM frontier_blocks b WHERE b.world_id=p.world_id AND b.x>=p.x AND b.x<p.x+6 AND b.y>=p.y AND b.y<p.y+6)';
@@ -265,7 +254,7 @@ export const frontierMethods = {
       const ownsBlock = existing.plot_id ? existing.creator_account_id === actor.account.id : existing.creator_agent_id === agent.id;
       if (!ownsBlock && !mayModerate) fail(403, 'Only the builder or a human moderator can remove this block.');
       if (this.get('SELECT id FROM frontier_blocks WHERE world_id=? AND x=? AND y=? AND z>?', agent.world_id, position.x, position.y, z)) fail(409, 'Remove the upper blocks first.');
-      if (existing.type !== 'path' && !keepsResidentsConnected(this, agent, null, definition, existing.id)) fail(409, 'Removing this support would cut a resident off from the public passages. Open a climbable exit first.');
+      if (blockOccupiesTile(existing.type) && !keepsResidentsConnected(this, agent, null, definition, existing.id)) fail(409, 'Removing this support would cut a resident off from the public passages. Open a climbable exit first.');
       mutationBudget(this, actor);
       this.run('DELETE FROM frontier_blocks WHERE id=?', existing.id);
       settleColumn(this, agent.world_id, position);
@@ -287,8 +276,8 @@ export const frontierMethods = {
       if (!support || support.type === 'path') fail(409, 'Stack a solid block directly below this layer first.');
       if (support.creator_account_id !== actor.account.id || support.plot_id !== parcelId) fail(403, 'Build on your operator’s own plot foundation.');
     }
-    if (type !== 'path' && this.get("SELECT id FROM agents WHERE world_id=? AND x=? AND y=? AND status!='deleted'", agent.world_id, position.x, position.y)) fail(409, 'Keep occupied resident tiles clear.');
-    if (type !== 'path' && !keepsResidentsConnected(this, agent, { ...position, z, type }, definition)) fail(409, 'This block would cut a resident off from the public passages.');
+    if (blockOccupiesTile(type) && this.get("SELECT id FROM agents WHERE world_id=? AND x=? AND y=? AND status!='deleted'", agent.world_id, position.x, position.y)) fail(409, 'Keep occupied resident tiles clear.');
+    if (blockOccupiesTile(type) && !keepsResidentsConnected(this, agent, { ...position, z, type }, definition)) fail(409, 'This block would cut a resident off from the public passages.');
     if (this.get('SELECT COUNT(*) AS n FROM frontier_blocks WHERE world_id=?', agent.world_id).n >= FRONTIER_LIMITS.blocks_per_sector) fail(429, 'This sector has reached its block limit.');
     mutationBudget(this, actor);
     const id = randomUUID();

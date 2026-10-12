@@ -1,6 +1,7 @@
 import * as THREE from '../assets/vendor/three-voxel.js';
 import { getWorldDefinition } from '../world.js';
 import { VOXEL_LIMITS, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, inVoxelWindow, voxelParcelAddress, voxelParcelSelection, cellOccludedBelow, createOrbitInput } from './voxel-geometry.js';
+import { blockOccupiesTile } from './footprints.js';
 import content from './content.js';
 
 // Renderer-only tints: terrain, foliage, trim and the interior palette, none of which owns a typed
@@ -63,37 +64,47 @@ function cubeBatch(resources) {
   return { add, finish };
 }
 
+// Scenery is drawn exactly as the shared footprint table declares it (src/footprints.js):
+//   mass  — a tile-sized solid; the server refuses the tile, so filling the column is honest
+//   flat  — ground detail at or below knee height, inside its own tile
+//   frame — an open marker: geometry in the tile-edge bands with cross members above the head
+// Every dimension below stays inside its own tile, and every cross member clears the drawn
+// resident's height, so a neighbouring resident is never drawn inside scenery.
 function tree(batch, x, y, type, pick) {
   const n = hash(`${x},${y}`), height = type === 'palm' ? 2.3 : 1.7 + n % 3 * 0.15;
   if (type === 'mountain') {
-    batch.add(x + .5, .7, y + .5, 1.5, 1.4, 1.5, '#929e9d', pick);
-    batch.add(x + .5, 1.65, y + .5, 1.08, .5, 1.08, COLORS.snow, pick); return;
+    batch.add(x + .5, .75, y + .5, .99, 1.5, .99, '#929e9d', pick);
+    batch.add(x + .5, 1.66, y + .5, .99, .28, .99, COLORS.snow, pick); return;
   }
   if (type === 'cactus') {
     batch.add(x + .5, .95, y + .5, .35, 1.9, .35, '#649873', pick);
-    batch.add(x + .85, 1.08, y + .5, .55, .28, .27, '#649873', pick);
-    batch.add(x + 1.02, 1.35, y + .5, .22, .7, .22, '#649873', pick); return;
+    batch.add(x + .78, 1.08, y + .5, .42, .28, .27, '#649873', pick);
+    batch.add(x + .9, 1.35, y + .5, .22, .7, .22, '#649873', pick); return;
   }
   batch.add(x + .5, height / 2, y + .5, .28, height, .28, COLORS.trunk, pick);
   if (type === 'palm') {
     batch.add(x + .5, height + .15, y + .5, 2.2, .24, .55, COLORS.leaf, pick);
     batch.add(x + .5, height + .15, y + .5, .55, .24, 2.2, COLORS.leaf, pick);
   } else {
-    batch.add(x + .5, height + .17, y + .5, 1.4, 1.15, 1.4, variant('#438367', x, y), pick);
-    batch.add(x + .5, height + .86, y + .5, .95, .55, .95, variant('#6a9f73', x, y), pick);
-    if (type === 'fruit') for (const dx of [-.45, .35]) batch.add(x + .5 + dx, height + .25, y + 1.18, .17, .17, .17, '#d7905d', pick);
+    // The canopy starts above the drawn resident's head, so a neighbour is never inside the leaves.
+    batch.add(x + .5, height + .78, y + .5, 1.4, 1.15, 1.4, variant('#438367', x, y), pick);
+    batch.add(x + .5, height + 1.47, y + .5, .95, .55, .95, variant('#6a9f73', x, y), pick);
+    if (type === 'fruit') for (const dx of [-.45, .35]) batch.add(x + .5 + dx, height + .95, y + .78, .17, .17, .17, '#d7905d', pick);
   }
 }
 
 function house(batch, x, y, pick, type = 'cottage') {
-  const large = ['shelter', 'civic-building'].includes(type), width = large ? 2.5 : 1.8, length = large ? 2 : 1.5;
-  if (type !== 'shelter') {
-    batch.add(x + .5, .8, y + .5, width, 1.6, length, '#d5c4a1', pick);
-    batch.add(x + .5, .6, y + .5 + length / 2 + .012, .38, 1.2, .035, COLORS.dark, pick);
-    for (const dx of [-.6, .6]) batch.add(x + .5 + dx, 1.05, y + .5 + length / 2 + .02, .35, .45, .04, COLORS.glass, pick, 'glow');
-  } else for (const dx of [-1.05, 1.05]) for (const dy of [-.8, .8]) batch.add(x + .5 + dx, .8, y + .5 + dy, .16, 1.6, .16, COLORS.trunk, pick);
-  for (let step = 0; step < 3; step++) batch.add(x + .5, 1.7 + step * .22, y + .5, width + .35 - step * .5, .23, length + .4, COLORS.roof, pick);
-  if (type !== 'shelter') batch.add(x + 1.05, 2.2, y + .27, .22, .8, .25, '#968b79', pick);
+  if (type === 'shelter') {
+    // An open pavilion: corner posts in the tile-edge bands and a roof above the drawn head.
+    for (const dx of [-.5, .5]) for (const dy of [-.5, .5]) batch.add(x + .5 + dx, .8, y + .5 + dy, .16, 1.6, .16, COLORS.trunk, pick);
+    for (let step = 0; step < 3; step++) batch.add(x + .5, 1.82 + step * .2, y + .5, 1.5 - step * .35, .2, 1.5 - step * .35, COLORS.roof, pick);
+    return;
+  }
+  batch.add(x + .5, .8, y + .5, .99, 1.6, .99, '#d5c4a1', pick);
+  batch.add(x + .5, .6, y + .5 + .512, .38, 1.2, .035, COLORS.dark, pick);
+  for (const dx of [-.3, .3]) batch.add(x + .5 + dx, 1.05, y + .5 + .52, .3, .42, .04, COLORS.glass, pick, 'glow');
+  for (let step = 0; step < 3; step++) batch.add(x + .5, 1.7 + step * .22, y + .5, 1.05 - step * .25, .23, 1.05 - step * .25, COLORS.roof, pick);
+  batch.add(x + .7, 2.2, y + .3, .22, .8, .25, '#968b79', pick);
 }
 
 function furniture(batch, item) {
@@ -101,10 +112,13 @@ function furniture(batch, item) {
   const add = (dx, h, dy, w, d, l, color, style) => batch.add(x + .5 + dx, h, y + .5 + dy, w, d, l, color, pick, style);
   if (['tree', 'fruit', 'palm', 'cactus', 'mountain'].includes(type)) return tree(batch, x, y, type, pick);
   if (['cottage', 'shelter', 'civic-building'].includes(type)) return house(batch, x, y, pick, type);
-  if (['bench', 'table', 'workbench'].includes(type)) {
-    const table = type !== 'bench'; add(0, table ? .6 : .32, 0, 1.3, .14, table ? .8 : .38, COLORS.wood);
-    for (const dx of [-.45, .45]) add(dx, .17, 0, .13, .35, .35, COLORS.trunk);
-    if (!table) add(0, .64, -.24, 1.3, .45, .1, COLORS.wood);
+  // A garden path object is the same thin surface the frontier block draws: flat, walkable ground.
+  if (type === 'path') add(0, .04, 0, .99, .08, .99, COLORS[type] || COLORS.stone);
+  else if (type === 'pond') { add(0, .07, 0, .99, .14, .99, COLORS.stone); add(0, .1, 0, .84, .06, .84, COLORS.water); }
+  else if (['bench', 'table', 'workbench'].includes(type)) {
+    const table = type !== 'bench'; add(0, table ? .6 : .32, 0, .99, .14, table ? .8 : .38, COLORS.wood);
+    for (const dx of [-.35, .35]) add(dx, .17, 0, .13, .35, .35, COLORS.trunk);
+    if (!table) add(0, .64, -.22, .99, .45, .1, COLORS.wood);
   } else if (['flowers', 'farm'].includes(type)) {
     if (type === 'farm') add(0, .045, 0, .92, .09, .92, COLORS.dirt);
     for (const dx of [-.25, .2]) for (const dy of [-.2, .25]) {
@@ -113,17 +127,17 @@ function furniture(batch, item) {
   } else if (['lamp', 'lantern'].includes(type)) {
     add(0, .88, 0, .09, 1.75, .09, COLORS.dark); add(0, 1.8, 0, .28, .35, .28, COLORS.gold, 'glow'); add(0, 2, 0, .4, .09, .4, COLORS.dark);
   } else if (type === 'fountain') {
-    add(0, .17, 0, 1.45, .34, 1.45, COLORS.stone); add(0, .36, 0, 1.2, .06, 1.2, COLORS.water); add(0, .85, 0, .18, 1.2, .18, COLORS.stone); add(0, 1.25, 0, .72, .1, .72, COLORS.stone);
+    add(0, .17, 0, .99, .34, .99, COLORS.stone); add(0, .36, 0, .84, .06, .84, COLORS.water); add(0, .85, 0, .18, 1.2, .18, COLORS.stone); add(0, 1.25, 0, .66, .1, .66, COLORS.stone);
   } else if (type === 'bookshelf') {
     add(0, .8, 0, .9, 1.6, .4, COLORS.trunk);
     for (let level = 0; level < 3; level++) for (let i = 0; i < 4; i++) add(-.3 + i * .2, .25 + level * .48, .22, .12, .3, .12, ['#72908a', '#c38d6d', '#cab573', '#979bb3'][i]);
   } else if (type === 'trellis') {
     for (const dx of [-.45, .45]) add(dx, .9, 0, .09, 1.8, .09, COLORS.wood);
     for (const h of [.5, 1, 1.5]) add(0, h, 0, .98, .08, .1, COLORS.leaf);
-  } else if (type === 'boat') { add(0, -.02, 0, 1.6, .3, .65, COLORS.wood); add(0, .8, 0, .08, 1.5, .08, COLORS.dark); add(.26, 1.02, 0, .48, .6, .05, COLORS.cream); }
-  else if (type === 'bed') { add(0, .23, 0, .9, .45, 1.4, COLORS.wood); add(0, .48, .18, .85, .13, .95, '#8bafa2'); add(0, .5, -.45, .75, .18, .32, COLORS.cream); }
+  } else if (type === 'boat') { add(0, -.02, 0, .99, .3, .65, COLORS.wood); add(0, .8, 0, .08, 1.5, .08, COLORS.dark); add(.26, 1.02, 0, .48, .6, .05, COLORS.cream); }
+  else if (type === 'bed') { add(0, .23, 0, .9, .45, .99, COLORS.wood); add(0, .48, .18, .85, .13, .7, '#8bafa2'); add(0, .5, -.3, .7, .18, .3, COLORS.cream); }
   else if (type === 'cushion') add(0, .1, 0, .7, .2, .7, '#bfa4a4');
-  else if (type === 'telescope') { add(0, .55, 0, .14, 1.1, .14, COLORS.stone); add(0, 1.07, 0, 1.3, .28, .3, '#526f82'); }
+  else if (type === 'telescope') { add(0, .55, 0, .14, 1.1, .14, COLORS.stone); add(0, 1.07, 0, .99, .28, .3, '#526f82'); }
   else if (type !== 'gateway') { add(0, .22, 0, .7, .44, .7, COLORS.stone); add(0, .8, 0, .45, .7, .45, type === 'display' ? COLORS.gold : '#a4b9ab'); }
 }
 
@@ -159,16 +173,19 @@ function terrainScene(resources, definition, snapshot, plan, cullHidden = true) 
   for (const item of plan.objects) furniture(batch, item);
   for (const item of plan.portals) {
     const pick = { x: item.x, y: item.y, z: 0, type: 'portal', portal: item };
-    for (const dx of [-.62, .62]) batch.add(item.x + .5 + dx, 1.1, item.y + .5, .2, 2.2, .2, '#78998b', pick);
-    batch.add(item.x + .5, 2.17, item.y + .5, 1.45, .22, .22, COLORS.gold, pick, 'glow');
-    batch.add(item.x + .5, .03, item.y + .5, 1.28, .07, .8, '#9dccb6', pick, 'glow');
+    // A walk-through frame: posts in the tile-edge bands, cross member above the drawn head, and a
+    // floor decal for the landing pad.
+    for (const dx of [-.5, .5]) batch.add(item.x + .5 + dx, 1.1, item.y + .5, .2, 2.2, .2, '#78998b', pick);
+    batch.add(item.x + .5, 2.17, item.y + .5, 1.3, .22, .22, COLORS.gold, pick, 'glow');
+    batch.add(item.x + .5, .04, item.y + .5, 1.28, .07, .8, '#9dccb6', pick, 'glow');
   }
   for (const item of plan.gates) {
     const pick = { x: item.x, y: item.y, z: 0, type: 'gate', neighbor: item };
-    for (const dx of [-.62, .62]) batch.add(item.x + .5 + dx, 1, item.y + .5, .22, 2, .22, COLORS.trunk, pick);
-    batch.add(item.x + .5, 2.04, item.y + .5, 1.46, .23, .23, COLORS.gold, pick, 'glow');
-    batch.add(item.x + .5, .8, item.y + .5, 1.24, .1, .12, '#98ac96', pick);
-    batch.add(item.x + .5, 1.36, item.y + .5, .2, .2, .2, COLORS.gold, pick, 'glow');
+    for (const dx of [-.5, .5]) batch.add(item.x + .5 + dx, 1, item.y + .5, .22, 2, .22, COLORS.trunk, pick);
+    batch.add(item.x + .5, 2.04, item.y + .5, 1.42, .23, .23, COLORS.gold, pick, 'glow');
+    batch.add(item.x + .5, 1.72, item.y + .5, 1.24, .1, .12, '#98ac96', pick);
+    batch.add(item.x + .5, 1.68, item.y + .5, .2, .2, .2, COLORS.gold, pick, 'glow');
+    batch.add(item.x + .5, .05, item.y + .5, 1.24, .08, .12, '#98ac96', pick);
   }
   // Landmark pennants are navigation markers; they do not imply a live participant.
   for (const item of (definition.landmarks || []).filter(place => inVoxelWindow(place, plan.window)).slice(0, 40)) {
@@ -191,7 +208,7 @@ function terrainScene(resources, definition, snapshot, plan, cullHidden = true) 
 function blocksScene(resources, definition, plan) {
   const batch = cubeBatch(resources), withParcel = parcelAttacher(definition, plan);
   for (const item of plan.blocks) {
-    const material = item.material || item.type || item.kind, path = material === 'path' && item.z === 0;
+    const material = item.material || item.type || item.kind, path = !blockOccupiesTile(material) && item.z === 0;
     batch.add(item.x + .5, path ? .045 : item.z + .5, item.y + .5, .99, path ? .09 : .99, .99,
       COLORS[material] || COLORS.stone, withParcel({ x: item.x, y: item.y, z: item.z, type: 'block', block: item }), material === 'glass' ? 'glass' : 'solid');
   }

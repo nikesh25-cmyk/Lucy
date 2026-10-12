@@ -3,6 +3,8 @@ import { getWorldDefinition, walkable, sharedWorldIds, COLS, ROWS, frontierGates
 import { frontierMethods } from './frontier.js';
 import { contributionSource, contributionEligibility } from './journey.js';
 import { blockLayers, canStep, isGrounded, settle, surfaceAt } from './elevation.js';
+import { sceneryBlocks, solidSceneryAt } from './footprints.js';
+import { escapeColumns, nearestClearTile } from './world-walk.js';
 import { GARDEN_PALETTE, HOUSE_PALETTE } from './placement-policy.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -23,6 +25,17 @@ const quantity = (value, fallback, maximum) => {
 // Same clamp semantics as normalizeOrbit in src/voxel-geometry.js, with the wider pitch range agents may look along.
 const wrapYaw = (value) => value >= -Math.PI && value <= Math.PI ? value : ((value + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 const clampPitch = (value) => Math.max(-1.4, Math.min(1.4, value));
+/**
+ * True when a solid placement would cut a resident off from the world's shared arrival, using the same
+ * escape search the frontier consults. A resident already stranded by legacy geometry is not
+ * re-counted: only a placement that takes away a route that existed before is refused.
+ */
+function trapsResident(platform, worldId, definition, beforeObjects, afterObjects) {
+  const residents = platform.all("SELECT x,y FROM agents WHERE world_id=? AND status!='deleted'", worldId);
+  if (!residents.length) return false;
+  const before = escapeColumns(definition, [], beforeObjects), after = escapeColumns(definition, [], afterObjects);
+  return residents.some((resident) => { const key = `${resident.x},${resident.y}`; return before.has(key) && !after.has(key); });
+}
 // `/move` and `/climb` call (actor, input); `/agents/:id/look` and `/agents/:id/climb` call (actor, agent_id, input).
 const actionInput = (args) => args.length > 1 ? { ...args[1], agent_id: args[1]?.agent_id || args[0] } : args[0] || {};
 
@@ -131,12 +144,16 @@ export const spaceMethods = {
       .filter(readable)
       .reverse().map(({ recipients, ...message }) => message);
     const objects = this.all('SELECT id,type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', id).map((object) => ({ ...object, kind: object.type }));
+    // Authored scenery inside the returned window, resolved through the shared footprint table, so a
+    // client or agent reads the same occupancy the server enforces instead of re-deriving it.
+    const scenery = (definition.objects || []).filter((item) => item.x >= camera.x && item.x < camera.x + COLS && item.y >= camera.y && item.y < camera.y + ROWS)
+      .map((item) => ({ x: item.x, y: item.y, type: item.type || item.kind, blocks: sceneryBlocks(item.type || item.kind) }));
     const portals = (definition.portals || []).filter((portal) => this.get('SELECT id FROM worlds WHERE id=?', portal.targetWorldId || portal.target_world_id)).map((portal) => ({ ...portal, target_world_id: portal.targetWorldId || portal.target_world_id, label: portal.name || portal.label }));
     const blockCenter = viewerAgent?.world_id === id ? viewerAgent : { x: camera.x + Math.floor(COLS / 2), y: camera.y + Math.floor(ROWS / 2) };
     const blockWindow = input.view === 'voxel' ? { x: Math.max(0, Math.min(world.width - 37, blockCenter.x - 18)), y: Math.max(0, Math.min(world.height - 37, blockCenter.y - 18)), columns: Math.min(37, world.width), rows: Math.min(37, world.height) } : camera;
     const frontierView = this.frontierView(id, blockWindow, actor);
     const ownHome = viewerAgent ? this.get("SELECT id,name,visibility FROM worlds WHERE owner_agent_id=? AND kind='home'", viewerAgent.id) : null;
-    return { world: { ...world, description: definition.description || '', lore: definition.lore || '', ambiance: definition.ambiance || '' }, participants, agents: participants.map(({calling,...legacy})=>legacy), messages, camera, objects, portals, own_home: ownHome, build_palette: world.kind === 'house' ? housePalette : palette,
+    return { world: { ...world, description: definition.description || '', lore: definition.lore || '', ambiance: definition.ambiance || '' }, participants, agents: participants.map(({calling,...legacy})=>legacy), messages, camera, objects, scenery, portals, own_home: ownHome, build_palette: world.kind === 'house' ? housePalette : palette,
       ...frontierView, terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
       bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null,
       counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='agent'").n, registered_humans: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='human'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n+this.get('SELECT COUNT(*) AS n FROM npc_ambassadors WHERE world_id=?',id).n, visible_agents: participants.length, hidden_agents: hiddenAgents },
@@ -192,7 +209,12 @@ export const spaceMethods = {
     // Return to the corresponding outdoor entrance when leaving an interior.
     const exit = target.id === 'commons' ? (definition.portals || []).find((p) => (p.targetWorldId || p.target_world_id) === agent.world_id) : null;
     const matchingGate = target.kind === 'frontier' ? frontierGates(target.id).find((gate) => gate.targetWorldId === agent.world_id) : null;
-    const arrival = matchingGate ? { x: matchingGate.x, y: matchingGate.y } : exit ? { x: exit.x, y: exit.y } : position;
+    const doorway = matchingGate ? { x: matchingGate.x, y: matchingGate.y } : exit ? { x: exit.x, y: exit.y } : position;
+    // Arrival and portal tiles stay clear. A legacy placement left on a doorway must never spawn a
+    // resident inside scenery, so the doorway falls back to the nearest clear tile beside it.
+    const arrivalObjects = this.all('SELECT type,x,y FROM world_objects WHERE world_id=?', target.id);
+    const arrival = walkable(doorway, definition) && !solidSceneryAt(doorway, arrivalObjects) ? doorway : nearestClearTile(definition, doorway, arrivalObjects);
+    if (!arrival) fail(409, 'This doorway is blocked by scenery. A human moderator must clear it before anyone can enter.');
     const arrivalZ = surfaceAt(arrival.x, arrival.y, blockLayers(this.all("SELECT x,y,z FROM frontier_blocks WHERE world_id=? AND type!='path' AND x=? AND y=?", target.id, arrival.x, arrival.y)));
     this.run("UPDATE agents SET world_id=?,x=?,y=?,z=?,grounded=1,posture='standing',last_move=?,last_seen=? WHERE id=?", target.id, arrival.x, arrival.y, arrivalZ, this.clock(), this.clock(), agent.id);
     this.audit(actor.account.id, 'world.entered', target.id);
@@ -205,13 +227,22 @@ export const spaceMethods = {
     const world = this.space(actor, agent.world_id);
     if (world.owner_agent_id !== agent.id || !['home', 'house'].includes(world.kind)) fail(403, 'Build inside your own garden or cottage.');
     const position = { x: input.x, y: input.y }, definition = getWorldDefinition(world);
-    if (!Number.isInteger(position.x) || !Number.isInteger(position.y) || !walkable(position, definition)) fail(400, 'Choose a buildable tile inside your garden.');
-    if (Math.abs(position.x - definition.start.x) + Math.abs(position.y - definition.start.y) <= 1 || (definition.portals || []).some((p) => Math.abs(p.x - position.x) + Math.abs(p.y - position.y) <= 1)) fail(409, 'Keep the arrival and exit clear.');
+    if (!Number.isInteger(position.x) || !Number.isInteger(position.y)) fail(400, 'Choose a buildable tile inside your garden.');
+    // The original cottage furniture and the arrival tiles keep their own, more specific refusals.
     if (world.kind === 'house' && (definition.objects || []).some((object) => object.x === position.x && object.y === position.y)) fail(409, 'Keep the original cottage furniture clear.');
+    if (!walkable(position, definition)) fail(400, 'Choose a buildable tile inside your garden.');
+    if (Math.abs(position.x - definition.start.x) + Math.abs(position.y - definition.start.y) <= 1 || (definition.portals || []).some((p) => Math.abs(p.x - position.x) + Math.abs(p.y - position.y) <= 1)) fail(409, 'Keep the arrival and exit clear.');
     if (input.remove === true) this.run('DELETE FROM world_objects WHERE world_id=? AND x=? AND y=?', world.id, position.x, position.y);
     else {
       const type = input.type || input.kind;
       if (!(world.kind === 'house' ? housePalette : palette).includes(type)) fail(400, 'Choose an item from the building palette.');
+      // Solid scenery follows the shared footprint table: it may not share a tile with a resident and
+      // it may not leave anyone without a walkable route back to the garden or cottage entrance.
+      if (sceneryBlocks(type)) {
+        if (this.get("SELECT id FROM agents WHERE world_id=? AND x=? AND y=? AND status!='deleted'", world.id, position.x, position.y)) fail(409, 'Keep occupied resident tiles clear.');
+        const placed = this.all('SELECT type,x,y FROM world_objects WHERE world_id=?', world.id).filter((object) => object.x !== position.x || object.y !== position.y);
+        if (trapsResident(this, world.id, definition, placed, [...placed, { type, x: position.x, y: position.y }])) fail(409, 'This object would leave a resident with no walkable route to the entrance.');
+      }
       if (!this.get('SELECT id FROM world_objects WHERE world_id=? AND x=? AND y=?', world.id, position.x, position.y) && this.get('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', world.id).n >= 200) fail(429, 'A home holds 200 placed items.');
       this.run('INSERT INTO world_objects(id,world_id,type,x,y,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(world_id,x,y) DO UPDATE SET type=excluded.type', randomUUID(), world.id, type, position.x, position.y, new Date(this.clock()).toISOString());
     }

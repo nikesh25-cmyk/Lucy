@@ -8,16 +8,34 @@ The shared frontier has a defined land registry: a 16 × 16 grid of areas, each 
 
 Humans can create accounts, sign in and enter as a human player. Agents can inhabit the same spaces through their own scoped runtimes. Both can build authorized places and help open adjacent areas within the finite perimeter. A parcel’s purpose and stewardship describe its application use; this renderer does not issue property rights, take payments or turn land into an investment product.
 
+## Occupancy and footprints
+
+`src/footprints.js` is the one table that says what a tile holds, and every consumer reads it: `walkable()` in `world.js`, `canStep`/`blockLayers` in `src/elevation.js`, `planWalk` and `escapeColumns` in `src/world-walk.js`, placement validation in `src/spaces.js` and `src/frontier.js`, and the drawing code in `src/voxel-world.js`. A scenery type is declared in exactly one class:
+
+| Class | Occupancy | Server rule | Renderer |
+| --- | --- | --- | --- |
+| `mass` — cottage, tree, fruit, palm, cactus, mountain, pond, fountain, bench, table, workbench, bookshelf, bed, boat, telescope, display, sculpture, kitchen, lamp, lantern, trellis, civic-building | occupies its tile at resident height | not walkable, routed around, refused on an occupied tile, refused when it would strand a resident | a tile-sized solid; roofs and canopies rise above the drawn resident's head so a neighbour is never inside them |
+| `flat` — flowers, farm, cushion, the garden `path` object | ground detail no higher than knee height, inside its own tile | walkable | low ground cover a resident stands among |
+| `frame` — gateway, shelter, portal and gate frames | open marker | walkable | posts in the tile-edge bands and cross members above the drawn resident's head, so a resident walks through |
+
+An unrecognised scenery type fails closed as a `mass`, so a new or legacy type can never be silently passable. Terrain keeps its own collision legend (`water`, `tree`, `building`, `fountain`, `wall` are blocked; `path`, `bridge`, `plaza`, `garden`, `rug` and `floor` are walkable), and a frontier block column is a solid layer unless it is the thin `path` surface.
+
+The shared table is why a resident is never drawn inside scenery: a type that the renderer draws as solid is a tile the server refuses, a type drawn as ground cover is a tile the server allows, and a marker is drawn so that its frame leaves the standing column clear. Tests in `tests/footprints.test.js` assert both directions for every type, assert that the real instance geometry obeys the class it declares, and assert that every authored world keeps its arrival and portal tiles clear with a route between them. `tests/world-coherence.test.js` walks a planned first-person route through the Commons and into a frontier area with real server steps and asserts the camera at every stored layer.
+
+The world snapshot publishes the same resolution: `scenery` lists the authored tiles inside the returned window with a `blocks` flag, so an API client, an agent or the release acceptance harness reads the occupancy the server enforces instead of re-deriving it.
+
 ## Interaction
 
 - Drag the canvas horizontally to orbit around the selected character or visitor position. A mouse can also adjust the viewing elevation; touch keeps vertical page scrolling available.
+- In first person the same drag rotates the view and nothing else: a gesture measured past six pixels is a look, a shorter one is a click, and one gesture is never both. Keyboard controls stay available: WASD and the arrow keys walk, Q and E turn, R and F tilt, and in the frontier the digits 1–7 choose a block.
+- The aim line under the view is a live, keyboard-focusable status element. It names the view mode, the compass direction you face, your tile and layer, the last picked tile with whether it is walkable or solid, and the keys that walk or turn. It is plain text with no markup.
 - Click a tile, object, character, gateway, or authored block to select it. The application decides whether to walk, inspect, build, or travel.
 - In the frontier hotbar, `Climb to previewed block` steps one authored layer onto the currently previewed neighbouring tile, and `Step-up mode` makes the movement controls climb instead of walk.
 - Camera buttons can rotate, zoom, and reset the view without a mouse. `Turn mode` (Q, E, R, F or pointer drag), `Step-up mode`, and `First person` are labelled toggles; each reports its state through `aria-pressed`.
 - Walking remains a server action. This renderer does not grant movement, building, expansion, reward, or moderation authority.
 - An assignment or purpose shown in the interface is read from the server’s land records. Selection highlights and camera movement cannot create stewardship or authorize construction.
 - Unopened frontier gates appear as closed frames. Selecting one can lead to the application's explicit expansion action; rendering never creates a sector.
-- Browsers without WebGL 2 use the existing map view. Context loss produces a readable message.
+- Browsers without WebGL 2 use the existing map view, which lists places, entrances, scenery and characters as text. Context loss produces a readable message. The same aim line is repeated in that text view, so the selection hint is never only graphical.
 
 ## Local dependency
 
@@ -42,7 +60,7 @@ The application requests `view=voxel` for a matching 37 × 37 authoritative bloc
 
 Column elevation is implemented server-side. `src/elevation.js` derives a column surface from authored solids, and `agents` stores each resident's layer (`z`) and `grounded` flag. Ordinary movement (`POST /move`) keeps the shipped rule that any authored layer in the target column is a wall. `POST /climb` — and `POST /agents/:id/climb` — opts into a one-layer step-up with a two-layer headroom check and refuses a taller column; a descent settles the resident onto the lower surface. Stored `z` is treated as a cache: every authoritative block write in `src/frontier.js` re-derives it from the column, and `POST /agents/:id/look` stores a yaw/pitch orientation on its own 120 ms throttle.
 
-Not implemented: vertical physics, falling, jumping, acceleration, arbitrary voxel mining, and continuous terrain beyond an opened area still require additional server mechanics. There is no continuous-time simulation of an airborne resident, The renderer has a true first-person camera at the selected resident’s cell center and elevation plus 1.35 layers. It omits the resident’s own avatar, uses stored yaw/pitch, and preserves terrain between camera modes. WASD maps the viewed heading to a cardinal server step. No continuous airborne simulation is claimed.
+Not implemented: vertical physics, falling, jumping, acceleration, arbitrary voxel mining, and continuous terrain beyond an opened area still require additional server mechanics. Movement exists only as a single grid step: there is no jump, no fall simulation, and no flight, so a resident never occupies a position between tiles. The renderer has a true first-person camera at the selected resident’s cell center and elevation plus 1.35 layers — the camera reads the resident’s stored layer, and rotates it only through stored yaw/pitch, so a rotation never moves the character. It omits the resident’s own avatar and preserves terrain between camera modes. WASD maps the viewed heading to a cardinal server step. No continuous airborne simulation is claimed.
 
 ## Integration contract
 
@@ -69,4 +87,4 @@ The factory returns `null` when graphics are unavailable. A canvas already used 
 
 ## Verification
 
-The renderer tests use the actual retained Three.js library without a GPU to verify terrain and authored-block raycasts, top and side face conversion, participant selection, camera projection, viewport and block limits, invalid and duplicate record filtering, static scene reuse, disposal, and retained dependency hashes. Browser graphics and responsive interactions are verified by the application's integration workflow.
+The renderer tests use the actual retained Three.js library without a GPU to verify terrain and authored-block raycasts, top and side face conversion, participant selection, camera projection, viewport and block limits, invalid and duplicate record filtering, static scene reuse, disposal, and retained dependency hashes. The footprint tests additionally read the real instance matrices to check that each scenery class is drawn as declared. Browser graphics and responsive interactions are verified by the application's integration workflow; this repository has no browser automation, so the first-person route, camera elevation and controls are verified by HTTP and module tests plus a manual walkthrough (see `docs/handoff/task-02-first-person.md`).
