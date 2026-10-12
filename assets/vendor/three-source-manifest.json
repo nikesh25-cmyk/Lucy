@@ -1,0 +1,49 @@
+{
+  "package": "three",
+  "version": "0.186.1",
+  "registry": "https://registry.npmjs.org/three/0.186.1",
+  "tarball": "https://registry.npmjs.org/three/-/three-0.186.1.tgz",
+  "integrity": "sha512-blFeqb49wRCSGUGj7gtpfnSGHy2lwDk94RhUmS1c/hTby70kvChbWpkJ4Pm1390LqzzvTmzgXKHPEafJwCb8jA==",
+  "integrity_verified": true,
+  "tarball_sha256": "8cd068708ea44f2c73c944b1cead2ba2f0d5c15c8fc194e5700f4e4f4a033fe7",
+  "license": "MIT",
+  "repository": "https://github.com/mrdoob/three.js",
+  "verified_on": "2026-10-12",
+  "build": {
+    "tool": "esbuild",
+    "version": "0.28.0",
+    "target": "es2022",
+    "format": "esm",
+    "minify": true,
+    "entry": "export {WebGLRenderer,Scene,PerspectiveCamera,Fog,Color,HemisphereLight,DirectionalLight,MeshLambertMaterial,MeshBasicMaterial,BoxGeometry,InstancedMesh,Mesh,Group,Matrix4,Object3D,Vector2,Vector3,Raycaster,EdgesGeometry,LineBasicMaterial,LineSegments,CanvasTexture,SpriteMaterial,Sprite,SRGBColorSpace,PCFShadowMap,ACESFilmicToneMapping} from './build/three.module.js';\n"
+  },
+  "sources": [
+    {
+      "path": "build/three.module.js",
+      "bytes": 662772,
+      "sha256": "9052042d676cb0fdc1ddfefe193053f34b7ac0513a616fdac4535d49987812ea"
+    },
+    {
+      "path": "build/three.core.js",
+      "bytes": 1458113,
+      "sha256": "9edde002b066a9a05676a6127f67735b62baf399bdea529f2f7e31657da769e6"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1081,
+      "sha256": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc"
+    }
+  ],
+  "files": [
+    {
+      "path": "assets/vendor/three-voxel.js",
+      "bytes": 551333,
+      "sha256": "37fe9184bb0c982e1d48e77375fbeb6b2f8a3fdd54b62a5f0cd87499fdcb5e88"
+    },
+    {
+      "path": "assets/vendor/THREE-LICENSE.txt",
+      "bytes": 1081,
+      "sha256": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc"
+    }
+  ]
+}

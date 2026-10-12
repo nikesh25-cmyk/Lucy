@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { getWorldDefinition, move, walkable, sharedWorldIds, COLS, ROWS } from '../world.js';
+import { getWorldDefinition, move, walkable, sharedWorldIds, COLS, ROWS, frontierGates } from '../world.js';
+import { frontierMethods } from './frontier.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const palette = Object.freeze(['cottage', 'tree', 'flowers', 'bench', 'farm', 'pond', 'lamp', 'path', 'fountain', 'bookshelf', 'table', 'lantern', 'sculpture', 'trellis', 'cushion']);
@@ -15,6 +16,7 @@ const quantity = (value, fallback, maximum) => {
 };
 
 export const spaceMethods = {
+  ...frontierMethods,
   canReadMessage(actor, message) {
     if (message.status !== 'visible') return false;
     if (message.channel === 'public') {
@@ -33,6 +35,7 @@ export const spaceMethods = {
         const definition = getWorldDefinition(id);
         this.run('INSERT OR IGNORE INTO worlds VALUES(?,?,?,NULL,?,?,?,?)', id, definition.name, definition.kind, 'public', definition.columns, definition.rows, date());
       }
+      this.seedFrontier();
       for (const agent of this.all("SELECT id,name FROM agents WHERE status!='deleted' AND NOT EXISTS(SELECT 1 FROM worlds WHERE id='house:'||agents.id)")) this.createHome(agent.id, agent.name);
     });
   },
@@ -59,7 +62,7 @@ export const spaceMethods = {
     const agentId = actor?.agent?.id || '';
     const condition = "w.kind='home' AND a.status!='deleted' AND o.status='active' AND (w.visibility='public' OR a.operator_id=? OR a.id=?) AND (instr(lower(w.name),lower(?))>0 OR instr(lower(a.name),lower(?))>0)";
     const total = this.get(`SELECT COUNT(*) AS n FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition}`, owner, agentId, query, query).n;
-    const shared = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)) AS agent_count FROM worlds w LEFT JOIN agents a ON a.id=w.owner_agent_id WHERE w.owner_agent_id IS NULL ORDER BY w.id`);
+    const shared = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)) AS agent_count FROM worlds w LEFT JOIN agents a ON a.id=w.owner_agent_id WHERE w.owner_agent_id IS NULL AND w.kind!='frontier' ORDER BY w.id`);
     const homes = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)) AS agent_count FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition} ORDER BY w.name,w.id LIMIT ? OFFSET ?`, owner, agentId, query, query, limit, offset);
     return { worlds: [...shared, ...homes], total, offset, limit, has_more: offset + limit < total, shared_count: shared.length };
   },
@@ -69,7 +72,7 @@ export const spaceMethods = {
     const world = this.space(actor, id), definition = getWorldDefinition(world);
     const center = viewerAgent?.world_id === id ? viewerAgent : definition.start;
     const camera = { x: Math.min(Math.max(0, world.width - COLS), quantity(input.x, Math.max(0, center.x - Math.floor(COLS / 2)), world.width)), y: Math.min(Math.max(0, world.height - ROWS), quantity(input.y, Math.max(0, center.y - Math.floor(ROWS / 2)), world.height)) };
-    const participants = this.all(`SELECT a.id,a.name,a.operator_id,o.name AS operator,a.color,a.symbol,a.capabilities,a.limitations,a.status,a.verified,a.x,a.y,a.world_id,a.posture,a.last_seen,a.emote,a.emote_until,
+    const participants = this.all(`SELECT a.id,a.name,a.kind,a.operator_id,o.name AS operator,a.color,a.symbol,a.capabilities,a.limitations,a.status,a.verified,a.x,a.y,a.world_id,a.posture,a.last_seen,a.emote,a.emote_until,
       EXISTS(SELECT 1 FROM tokens t WHERE t.agent_id=a.id AND t.kind='runtime' AND t.revoked=0 AND t.expires_at>? AND t.used_calls<t.max_calls) AS has_session,
       (SELECT COUNT(*) FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE c.agent_id=a.id AND s.status='accepted') AS accepted_contributions
       FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.world_id=? AND a.x>=? AND a.x<? AND a.y>=? AND a.y<? AND a.status!='deleted' AND o.status='active'
@@ -89,12 +92,15 @@ export const spaceMethods = {
       .filter((m) => m.channel === 'public' && m.world_id === id || actor && m.channel === 'mission' || JSON.parse(m.recipients).some((recipient) => viewerIds.includes(recipient)))
       .reverse().map(({ recipients, ...message }) => message);
     const objects = this.all('SELECT id,type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', id).map((object) => ({ ...object, kind: object.type }));
-    const portals = (definition.portals || []).map((portal) => ({ ...portal, target_world_id: portal.targetWorldId || portal.target_world_id, label: portal.name || portal.label }));
+    const portals = (definition.portals || []).filter((portal) => this.get('SELECT id FROM worlds WHERE id=?', portal.targetWorldId || portal.target_world_id)).map((portal) => ({ ...portal, target_world_id: portal.targetWorldId || portal.target_world_id, label: portal.name || portal.label }));
+    const blockCenter = viewerAgent?.world_id === id ? viewerAgent : { x: camera.x + Math.floor(COLS / 2), y: camera.y + Math.floor(ROWS / 2) };
+    const blockWindow = input.view === 'voxel' ? { x: Math.max(0, Math.min(world.width - 37, blockCenter.x - 18)), y: Math.max(0, Math.min(world.height - 37, blockCenter.y - 18)), columns: Math.min(37, world.width), rows: Math.min(37, world.height) } : camera;
+    const frontierView = this.frontierView(id, blockWindow, actor);
     const ownHome = viewerAgent ? this.get("SELECT id,name,visibility FROM worlds WHERE owner_agent_id=? AND kind='home'", viewerAgent.id) : null;
     return { world: { ...world, description: definition.description || '', lore: definition.lore || '', ambiance: definition.ambiance || '' }, participants, agents: participants, messages, camera, objects, portals, own_home: ownHome, build_palette: world.kind === 'house' ? housePalette : palette,
-      terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
+      ...frontierView, terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
       bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null,
-      counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n, visible_agents: participants.length },
+      counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='agent'").n, registered_humans: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='human'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n, visible_agents: participants.length },
       paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true' };
   },
   moveAgent(actor, input) {
@@ -102,8 +108,11 @@ export const spaceMethods = {
     if (agent.status !== 'active') fail(403, 'The agent is paused.');
     if (!['up', 'down', 'left', 'right'].includes(input.direction)) fail(400, 'Invalid movement direction.');
     if (this.clock() - agent.last_move < 120) fail(429, 'Move more slowly.');
+    const crossing = frontierGates(agent.world_id).find((gate) => gate.direction === input.direction && gate.x === agent.x && gate.y === agent.y && this.get('SELECT world_id FROM frontier_sectors WHERE world_id=?', gate.targetWorldId));
+    if (crossing) return this.travel(actor, agent.id, { world_id: crossing.targetWorldId });
     let position = move(agent, input.direction, getWorldDefinition(this.space(actor, agent.world_id)));
     if (this.get("SELECT id FROM world_objects WHERE world_id=? AND x=? AND y=? AND type IN ('cottage','tree','pond','fountain')", agent.world_id, position.x, position.y)) position = { x: agent.x, y: agent.y };
+    if (this.get("SELECT id FROM frontier_blocks WHERE world_id=? AND x=? AND y=? AND type!='path'", agent.world_id, position.x, position.y)) position = { x: agent.x, y: agent.y };
     this.run("UPDATE agents SET x=?,y=?,posture='standing',last_move=?,last_seen=?,verified=CASE WHEN ?=1 THEN 1 ELSE verified END WHERE id=?", position.x, position.y, this.clock(), this.clock(), actor.kind === 'runtime' ? 1 : 0, agent.id);
     return { ...position, world_id: agent.world_id, posture: 'standing' };
   },
@@ -118,11 +127,12 @@ export const spaceMethods = {
     const definition = getWorldDefinition(target), position = definition.start;
     // Return to the corresponding outdoor entrance when leaving an interior.
     const exit = target.id === 'commons' ? (definition.portals || []).find((p) => (p.targetWorldId || p.target_world_id) === agent.world_id) : null;
-    const arrival = exit ? { x: exit.x, y: exit.y } : position;
+    const matchingGate = target.kind === 'frontier' ? frontierGates(target.id).find((gate) => gate.targetWorldId === agent.world_id) : null;
+    const arrival = matchingGate ? { x: matchingGate.x, y: matchingGate.y } : exit ? { x: exit.x, y: exit.y } : position;
     this.run("UPDATE agents SET world_id=?,x=?,y=?,posture='standing',last_move=?,last_seen=? WHERE id=?", target.id, arrival.x, arrival.y, this.clock(), this.clock(), agent.id);
     this.audit(actor.account.id, 'world.entered', target.id);
     this.recordVisit?.(actor, agent.id, target.id);
-    return { ...arrival, world_id: target.id, posture: 'standing' };
+    return { ...arrival, world_id: target.id, posture: 'standing', entered: true };
   },
   build(actor, agentId, input) {
     this.active(); const agent = this.ownedAgent(actor, agentId);

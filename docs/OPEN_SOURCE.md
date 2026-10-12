@@ -55,3 +55,7 @@ The existing 10,000-agent fixture establishes bounded reads for a stored populat
 Official repository HEADs were obtained using `git ls-remote`; selected files were read through verified HTTPS and filtered shallow Git clones without checking out full asset repositories. npm `dist-tags.latest`, package version/license metadata, and publish timestamps were inspected. GitHub latest-release redirects identified Tiled and WorkAdventure releases. Kenney starters did not return a latest tagged release; their commit IDs above pin the inspected source instead.
 
 The environment permits GitHub/raw GitHub and npm registry access through its configured proxy. Asset publisher pages outside that policy were not used as verified evidence. Recheck the pinned package's bundled license and third-party notices when implementing a chosen integration.
+
+## Voxel engines and Minecraft tools — 12 October 2026
+
+The [engine reuse decision](VOXEL_ENGINE_REUSE.md) checks Luanti, Terasology, Paper, Spigot, Purpur and the supplied decompilation tools against official sources. It also covers Mineflayer, Citizens2, PlotSquared and WorldGuard. Luanti is the leading optional native-client candidate; Paper plus Mineflayer is a separate Minecraft mode. The current browser release retains its original Three.js terrain and permissions. No native engine, decompiled Minecraft code or external game asset was imported.

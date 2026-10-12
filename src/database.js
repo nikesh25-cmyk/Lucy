@@ -6,11 +6,12 @@ import { dirname } from 'node:path';
 import { COMMUNITY_SCHEMA } from './community.js';
 import { CIVIC_SCHEMA } from './civic-engine.js';
 import { JOURNEY_SCHEMA } from './journey.js';
+import { FRONTIER_SCHEMA, LAND_SCHEMA, LAND_BLOCK_GUARDS } from './frontier.js';
 
 export function openDatabase(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
-  if (db.prepare('PRAGMA user_version').get().user_version > 9) { db.close(); throw new Error('Unsupported database schema version.'); }
+  if (db.prepare('PRAGMA user_version').get().user_version > 11) { db.close(); throw new Error('Unsupported database schema version.'); }
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', consent_at TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS invites(code_hash TEXT PRIMARY KEY, role TEXT NOT NULL, expires_at INTEGER NOT NULL, used_by TEXT);
@@ -35,6 +36,7 @@ export function openDatabase(path) {
     CREATE TABLE IF NOT EXISTS worlds(id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, owner_agent_id TEXT REFERENCES agents(id), visibility TEXT NOT NULL DEFAULT 'public', width INTEGER NOT NULL, height INTEGER NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS world_objects(id TEXT PRIMARY KEY, world_id TEXT NOT NULL REFERENCES worlds(id), type TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, created_at TEXT NOT NULL, UNIQUE(world_id,x,y));`);
   try {
+    db.exec("INSERT OR IGNORE INTO settings VALUES('registration','open')");
     if (!db.prepare('PRAGMA table_info(agents)').all().some((c) => c.name === 'world_id')) db.exec("ALTER TABLE agents ADD COLUMN world_id TEXT NOT NULL DEFAULT 'commons'");
     if (!db.prepare('PRAGMA table_info(messages)').all().some((c) => c.name === 'world_id')) db.exec("ALTER TABLE messages ADD COLUMN world_id TEXT NOT NULL DEFAULT 'commons'");
     if (!db.prepare('PRAGMA table_info(agents)').all().some((c) => c.name === 'posture')) db.exec("ALTER TABLE agents ADD COLUMN posture TEXT NOT NULL DEFAULT 'standing'");
@@ -44,11 +46,22 @@ export function openDatabase(path) {
     if (!agentColumns.has('last_emote')) db.exec('ALTER TABLE agents ADD COLUMN last_emote INTEGER NOT NULL DEFAULT 0');
     if (!agentColumns.has('region_id')) db.exec("ALTER TABLE agents ADD COLUMN region_id TEXT NOT NULL DEFAULT 'commons'");
     if (!agentColumns.has('country')) db.exec("ALTER TABLE agents ADD COLUMN country TEXT NOT NULL DEFAULT ''");
+    if (!agentColumns.has('kind')) db.exec("ALTER TABLE agents ADD COLUMN kind TEXT NOT NULL DEFAULT 'agent' CHECK(kind IN ('agent','human'))");
+    db.exec(`CREATE TRIGGER IF NOT EXISTS agents_kind_immutable BEFORE UPDATE OF kind ON agents WHEN NEW.kind IS NOT OLD.kind BEGIN SELECT RAISE(ABORT,'Avatar kind is immutable'); END;
+      CREATE UNIQUE INDEX IF NOT EXISTS one_human_avatar ON agents(operator_id) WHERE kind='human' AND status!='deleted';
+      CREATE TRIGGER IF NOT EXISTS tokens_agent_runtime BEFORE INSERT ON tokens WHEN NEW.kind='runtime' AND NOT EXISTS(SELECT 1 FROM agents WHERE id=NEW.agent_id AND operator_id=NEW.account_id AND kind='agent') BEGIN SELECT RAISE(ABORT,'Only agents can receive runtime credentials'); END;
+      CREATE TRIGGER IF NOT EXISTS tokens_agent_runtime_update BEFORE UPDATE OF agent_id,account_id,kind ON tokens WHEN NEW.kind='runtime' AND NOT EXISTS(SELECT 1 FROM agents WHERE id=NEW.agent_id AND operator_id=NEW.account_id AND kind='agent') BEGIN SELECT RAISE(ABORT,'Only agents can receive runtime credentials'); END;`);
     db.exec(COMMUNITY_SCHEMA);
     db.exec(JOURNEY_SCHEMA);
     db.exec(CIVIC_SCHEMA);
     db.exec(DRAFT_SCHEMA);
+    // Refresh the eligibility trigger after adding kind, without rewriting historical receipts.
+    db.exec('DROP TRIGGER IF EXISTS coins_validate_insert');
     db.exec(COIN_SCHEMA);
+    db.exec(FRONTIER_SCHEMA);
+    db.exec(LAND_SCHEMA);
+    if (!db.prepare('PRAGMA table_info(frontier_blocks)').all().some(column => column.name === 'plot_id')) db.exec('ALTER TABLE frontier_blocks ADD COLUMN plot_id TEXT REFERENCES land_parcels(id)');
+    db.exec(LAND_BLOCK_GUARDS);
     db.exec(`CREATE TABLE IF NOT EXISTS task_followups(task_id TEXT PRIMARY KEY REFERENCES tasks(id),submission_id TEXT NOT NULL REFERENCES submissions(id),creator_id TEXT NOT NULL REFERENCES accounts(id),idempotency_key TEXT NOT NULL,fingerprint TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(creator_id,idempotency_key)); CREATE INDEX IF NOT EXISTS followups_submission ON task_followups(submission_id);`);
     if(!db.prepare('PRAGMA table_info(mayor_conversations)').all().some(column=>column.name==='mode'))db.exec("ALTER TABLE mayor_conversations ADD COLUMN mode TEXT NOT NULL DEFAULT 'rules'");
     const conversationColumns=new Set(db.prepare('PRAGMA table_info(mayor_conversations)').all().map(column=>column.name));
@@ -66,7 +79,7 @@ export function openDatabase(path) {
       CREATE INDEX IF NOT EXISTS research_mission_country_goal ON research_leads(mission_id,country_code,goal);
       CREATE INDEX IF NOT EXISTS claims_agent ON claims(agent_id);
       CREATE INDEX IF NOT EXISTS submissions_claim ON submissions(claim_id,status);
-      PRAGMA user_version=9; COMMIT;`);
+      PRAGMA user_version=11; COMMIT;`);
   } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
   if (path !== ':memory:') chmodSync(path, 0o600);
   return db;

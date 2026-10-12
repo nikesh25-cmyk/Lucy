@@ -22,7 +22,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -34,6 +34,25 @@ export function validateDatabase(path) {
     if(version>=7&&(!tables.has('task_followups')||['task_id','submission_id','creator_id','idempotency_key','fingerprint','created_at'].some(column=>!db.prepare('PRAGMA table_info(task_followups)').all().some(field=>field.name===column))))throw new Error('Database follow-up schema is incomplete.');
     if(version>=8){if(!tables.has('coin_rewards')||['coins_no_update','coins_no_delete','coins_validate_insert'].some(name=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name)))throw new Error('Database coin schema is incomplete.');if(!verifyCoinLedger(db))throw new Error('Database coin ledger validation failed.');}
     if(version>=9&&['mode','country_context','source_numbers'].some(column=>!db.prepare('PRAGMA table_info(mayor_conversations)').all().some(field=>field.name===column)))throw new Error('Database mayor evidence schema is incomplete.');
+    if (version >= 10) {
+      if (!db.prepare('PRAGMA table_info(agents)').all().some(field => field.name === 'kind') || ['agents_kind_immutable','tokens_agent_runtime','tokens_agent_runtime_update'].some(name => !db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name)) || !db.prepare("SELECT name FROM sqlite_schema WHERE type='index' AND name='one_human_avatar'").get()) throw new Error('Database human avatar schema is incomplete.');
+      if (db.prepare("SELECT id FROM agents WHERE kind NOT IN ('agent','human')").get() || db.prepare("SELECT t.hash FROM tokens t LEFT JOIN agents a ON a.id=t.agent_id WHERE t.kind='runtime' AND (a.id IS NULL OR a.kind!='agent' OR a.operator_id!=t.account_id)").get()) throw new Error('Database avatar identities are invalid.');
+      const registration = db.prepare("SELECT value FROM settings WHERE key='registration'").get()?.value;
+      if (!['open','closed'].includes(registration)) throw new Error('Database registration settings are invalid.');
+      const frontierColumns = { frontier_sectors:['world_id','sector_x','sector_y','creator_account_id','creator_agent_id','created_at'], frontier_blocks:['id','world_id','x','y','z','type','creator_agent_id','creator_account_id','created_at'], frontier_actions:['id','account_id','agent_id','world_id','action','created_at'] };
+      for (const [table, columns] of Object.entries(frontierColumns)) if (!tables.has(table) || columns.some(column => !db.prepare(`PRAGMA table_info(${table})`).all().some(field => field.name === column))) throw new Error('Database frontier schema is incomplete.');
+    }
+    if (version >= 11) {
+      const landColumns = { land_parcels:['id','world_id','sector_x','sector_y','plot_x','plot_y','x','y','width','height','area_m2','buildable_cells','reserved','reserved_reason'], land_stewardships:['plot_id','account_id','purpose','description','assigned_at'], land_events:['id','plot_id','account_id','action','purpose','description','created_at'] };
+      for (const [table, columns] of Object.entries(landColumns)) if (!tables.has(table) || columns.some(column => !db.prepare(`PRAGMA table_info(${table})`).all().some(field => field.name === column))) throw new Error('Database land schema is incomplete.');
+      if (db.prepare('SELECT COUNT(*) AS n FROM land_parcels').get().n !== 16384) throw new Error('Database finite land registry is incomplete.');
+      if (!db.prepare('PRAGMA table_info(frontier_blocks)').all().some(column => column.name === 'plot_id') || ['land_parcels_no_update','land_parcels_no_delete','land_parcels_validate_insert','land_stewardships_validate_insert','land_stewardships_no_update','frontier_sectors_finite_insert','frontier_sectors_identity_immutable','frontier_blocks_plot_insert'].some(name => !db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name))) throw new Error('Database land protections are incomplete.');
+      if (db.prepare("SELECT id FROM land_parcels WHERE sector_x NOT BETWEEN -8 AND 7 OR sector_y NOT BETWEEN -8 AND 7 OR plot_x NOT BETWEEN 0 AND 7 OR plot_y NOT BETWEEN 0 AND 7 OR id!=printf('plot:%d:%d:%d:%d',sector_x,sector_y,plot_x,plot_y) OR world_id!='frontier:'||sector_x||':'||sector_y OR x!=plot_x*6 OR y!=plot_y*6 OR width!=6 OR height!=6 OR area_m2!=36 OR buildable_cells NOT BETWEEN 0 AND 36 OR reserved NOT IN (0,1) OR (reserved=0 AND reserved_reason!='') OR (reserved=1 AND reserved_reason='')").get()) throw new Error('Database land registry is invalid.');
+      if (db.prepare("SELECT s.plot_id FROM land_stewardships s JOIN land_parcels p ON p.id=s.plot_id WHERE p.reserved!=0 OR length(trim(s.purpose)) NOT BETWEEN 1 AND 120 OR length(s.description)>500").get()) throw new Error('Database land stewardship is invalid.');
+      if (db.prepare('SELECT b.id FROM frontier_blocks b JOIN land_parcels p ON p.id=b.plot_id WHERE b.world_id!=p.world_id OR b.x<p.x OR b.x>=p.x+p.width OR b.y<p.y OR b.y>=p.y+p.height').get()) throw new Error('Database parcel construction is invalid.');
+      // Canonical legacy sectors outside the new perimeter stay valid backup records.
+      if (db.prepare("SELECT world_id FROM frontier_sectors WHERE world_id!=printf('frontier:%d:%d',sector_x,sector_y)").get()) throw new Error('Database frontier area identities are invalid.');
+    }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';
     for (const entry of db.prepare('SELECT * FROM audit ORDER BY seq').all()) {

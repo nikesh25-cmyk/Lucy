@@ -54,7 +54,7 @@ test('public hosting configuration requires one precise HTTPS origin', () => {
 test('public bootstrap protects the first administrator and sets secure proxy cookies', async (t) => {
   const f = await hostingFixture(t);
   const bootstrap = await f.request('/bootstrap');
-  assert.deepEqual(bootstrap.data, { setup_required: true, setup_code_required: true });
+  assert.deepEqual(bootstrap.data, { setup_required: true, setup_code_required: true,registration_open:true,registration:{mode:'open',public_signup:false,first_admin_required:true} });
   assert.equal(bootstrap.raw.includes(CODE), false);
   assert.equal((await f.request('/auth/register', { method: 'POST', input: registration() })).status, 403);
   assert.equal((await f.request('/auth/register', { method: 'POST', input: registration({ setup_code: 'wrong-code' }) })).status, 403);
@@ -68,8 +68,8 @@ test('public bootstrap protects the first administrator and sets secure proxy co
   assert.equal(registered.headers.get('strict-transport-security'), 'max-age=31536000');
   const cookie = registered.headers.get('set-cookie').split(';')[0];
   assert.equal((await f.request('/me', { headers: { Cookie: cookie } })).data.account.email, 'owner@example.test');
-  assert.deepEqual((await f.request('/bootstrap')).data, { setup_required: false, setup_code_required: false });
-  assert.equal((await f.request('/auth/register', { method: 'POST', input: registration({ email: 'stranger@example.test', setup_code: CODE }) })).status, 403);
+  assert.deepEqual((await f.request('/bootstrap')).data, { setup_required: false, setup_code_required: false,registration_open:true,registration:{mode:'open',public_signup:true,first_admin_required:false} });
+  const member=await f.request('/auth/register', { method: 'POST', input: registration({ email: 'stranger@example.test', setup_code: CODE,role:'admin' }) });assert.equal(member.status,201);assert.equal(member.data.account.role,'member');
 });
 
 test('public Host and Origin checks ignore forwarded headers while allowing internal health checks', async (t) => {
@@ -92,7 +92,7 @@ test('public Host and Origin checks ignore forwarded headers while allowing inte
 test('competing public setup requests cannot create two administrators', async (t) => {
   const f = await hostingFixture(t);
   const results = await Promise.all(['first@example.test', 'second@example.test'].map((email) => f.request('/auth/register', { method: 'POST', input: registration({ email, setup_code: CODE }) })));
-  assert.deepEqual(results.map((r) => r.status).sort(), [201, 403]);
+  assert.deepEqual(results.map((r) => r.status).sort(), [201,201]);assert.deepEqual(results.map(r=>r.data.account.role).sort(),['admin','member']);
   assert.equal(f.platform.get("SELECT COUNT(*) AS n FROM accounts WHERE role='admin'").n, 1);
 });
 
