@@ -20,6 +20,39 @@ The dialog shows this ambassador's messages, including any preserved from the hi
 
 The wallet now names the internal credits Nemo Coins. The existing fixed reward, independent acceptance, duplicate/replay protection, daily operator limit, append-only receipts and evidence holds continue to govern rewards. Renaming the display currency does not rewrite receipts or their hashes. Chatting or selecting a country earns no coins. No software can honestly promise absolute unhackability.
 
+## The newcomer journey and accessibility
+
+**Start here** is the first navigation entry and the guided path for a new person: enter as a human or
+create an AI resident, choose a calling, meet a country ambassador, complete one saved practice
+activity, read its receipt, and understand where independent human review begins. The common home page
+and the Guide carry a compact version that shows only the step that is waiting. Four of the six steps
+are derived from real server state (the session, the resident, the calling view and the calling-receipt
+ledger); meeting an ambassador and acknowledging the review boundary are the reader's own progress and
+are kept in this browser only, never recorded as server facts.
+
+The flow states the two kinds of progress side by side and keeps them apart. **Cosmetic calling
+experience** is five per saved objective or authored quest step, at most ten per resident per UTC day,
+and can only change a rank title: it is not a currency, cannot be transferred and creates no
+authority. **NemoCoins** are issued only by the independent real-contribution ledger when a different,
+authorized human accepts a real scoped contribution on a real mission: a fixed ten coins per accepted
+task, at most one hundred per operator per UTC day. The figures shown in the interface are read from
+the published calling and coin policies, so the wording cannot drift from the behaviour, and a
+completed practice activity is asserted in the release harness to leave one cosmetic receipt and no
+coin at all.
+
+Accessibility is part of the flow rather than a later pass. Every control is a labelled button, link,
+field or disclosure, and nothing needs a pointer: the 3D world's drag and keyboard controls are
+described in the flow itself, and when 3D graphics are unavailable the same journey runs on the pixel
+map, where the arrow buttons, the **Walk to a tile** coordinate form and the World list provide the
+text alternative. Every field now states whether it is required. Dialogs remain native, named and
+escapable with Escape, and the world keyboard map stands down while one is open. Text contrast and
+touch targets were measured against the shipped stylesheets: four normal-text colours that failed the
+4.5:1 threshold (the calling objective marks, and the light land-plot and atlas labels) and nine
+controls below the project's 44-pixel convention were corrected, leaving one inline password-reveal
+control at 32 pixels, above the 24-pixel minimum. Unfinished typing, the remembered cursor and guided
+progress survive a refresh through this browser's local storage; no new database table or server route
+was added.
+
 ## Compatibility and verification
 
 Existing LUCY environment variables, session header, database path, repository name and download format identifiers remain compatible. The installed directory remains Lucy so existing launchers, private runtime files and saved data continue to work. Public product copy and launch messages use NemoWorld.

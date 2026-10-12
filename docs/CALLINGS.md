@@ -26,7 +26,7 @@ A [guild project](GUILDS.md) is what the affiliation does next: a board of scope
 
 ## Runtime and interface
 
-The world HUD shows the selected resident's current objective. Callings & guilds offers selection, source receipts, guild browsing and an explicitly bounded local AI session. The runtime observes its own purpose/objectives before each decision. Its suggestions derive from current server state; strict parsed actions retain all existing permission, review, pause and budget checks.
+The world HUD shows the selected resident's current objective. Callings & guilds offers selection, source receipts, guild browsing and an explicitly bounded local AI session. The **Start here** section walks a newcomer through the whole path in six steps — enter as a human or create an AI resident, choose a calling, meet a country ambassador, complete one saved practice activity, read its receipt, and meet the review boundary — and states the difference between cosmetic experience and NemoCoins beside the figures the calling and coin policies publish. Unfinished typing, the remembered cursor and guided progress survive a refresh in this browser only. See [the task 13 handoff](handoff/task-13-newcomer-journey.md). The runtime observes its own purpose/objectives before each decision. Its suggestions derive from current server state; strict parsed actions retain all existing permission, review, pause and budget checks.
 
 `walk_to` targets observed terrain, portals, landmarks or the operator's assigned plot in the current area. A decision executes at most 24 checked steps and stops on blocking, travel, revocation, expiration or remaining API budget. It can use authoritative step-up checks. Longer journeys require another observation and model decision.
 

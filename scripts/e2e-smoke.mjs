@@ -356,6 +356,25 @@ function constructionOptions({ grid, parcels, origin, buildRange, blocked = new 
   return { chosen, options: [chosen, ...options.filter((option) => option !== chosen)] };
 }
 
+// A free, walkable tile in a resident's own garden: inside the published window, away from the
+// arrival and every doorway (the build method refuses trips and doorways), and not already built on.
+function gardenFarmSite(descriptor, agentId) {
+  const resident = descriptor.participants.find((entry) => entry.id === agentId) || descriptor.camera;
+  const away = (point, x, y) => Math.abs(point.x - x) + Math.abs(point.y - y) > 1;
+  const sites = [];
+  for (let row = 0; row < descriptor.terrain.length; row++) {
+    for (let column = 0; column < descriptor.terrain[row].length; column++) {
+      if (!walkableTile(descriptor.terrain, column, row)) continue;
+      const x = descriptor.camera.x + column, y = descriptor.camera.y + row;
+      if (!away(resident, x, y) || descriptor.portals.some((portal) => !away(portal, x, y))) continue;
+      if ((descriptor.objects || []).some((object) => object.x === x && object.y === y)) continue;
+      sites.push({ x, y, distance: Math.abs(resident.x - x) + Math.abs(resident.y - y) });
+    }
+  }
+  sites.sort((a, b) => a.distance - b.distance || a.y - b.y || a.x - b.x);
+  return sites[0] || null;
+}
+
 async function main() {
   state.workspace = await mkdtemp(join(tmpdir(), 'nemoworld-e2e-'));
   state.database = join(state.workspace, 'world.sqlite');
@@ -771,6 +790,91 @@ async function main() {
       return `201 invite + 201 third operator (role=member) + 201 reviewer resident + 201 human player; 201 public project (Living Gardens, one organiser) and 201 private project; 404 private project for an outsider and anonymously; 200 join for an AI resident and for a human player; 200 pledge (intention, nothing verified); 200 submit (unverified claim); 403 self-verification and 403 creator verification; 200 verification by a third operator (completed=true, 1 verified); 200 leave (the verified record stays attributed); 0 coins from the whole guild flow, the earlier 10-coin acceptance intact`;
     });
 
+    await step('13. a newcomer registers, creates an AI resident and chooses a calling', async () => {
+      // An ordinary member account through public signup, with no invitation: the newcomer path.
+      const registration = expectStatus(await post('/auth/register', { name: 'Journey newcomer', email: 'newcomer@e2e.test', password: PASSWORD, consent: true }, { apiClient: 'operator' }), 201, 'POST /auth/register as a newcomer with no invitation');
+      expectThat(registration.account?.role === 'member', 'open public signup must create an ordinary member account', { expected: 'role=member', actual: describe(registration.account), request: registration.request, response: registration });
+      world.newcomerToken = registration.token;
+      world.newcomerId = registration.account.id;
+
+      const resident = expectStatus(await post('/agents', { kind: 'agent', name: 'Journey resident', color: '#aa7845', symbol: '◆', capabilities: 'Walks the guided newcomer path', limitations: 'No external tools and no real-world claims' }, { token: world.newcomerToken }), 201, 'POST /agents for the newcomer');
+      expectThat(resident.kind === 'agent' && resident.status === 'active' && typeof resident.id === 'string', 'the newcomer must be able to create an active AI resident', { expected: 'kind=agent, status=active with an id', actual: describe(resident), request: resident.request, response: resident });
+      world.newcomerAgent = resident.id;
+      const startingPlace = expectStatus(await get(`/world?agent_id=${resident.id}`, { token: world.newcomerToken }), 200, 'GET /world for the newcomer resident');
+      const newcomerParticipant = startingPlace.participants.find((entry) => entry.id === resident.id);
+      expectThat(newcomerParticipant?.world_id === 'commons', 'a new resident must start in the Commons', { expected: 'world_id=commons', actual: describe(newcomerParticipant?.world_id) });
+
+      const chosen = expectStatus(await post('/callings/select', { agent_id: resident.id, calling_id: 'explorer' }, { token: world.newcomerToken }), 200, 'POST /callings/select as the newcomer');
+      expectThat(chosen.calling?.id === 'explorer' && chosen.calling?.guild_name === 'Wayfarers', 'the newcomer must be able to select the calling and its guild', { expected: 'explorer in Wayfarers', actual: describe(chosen.calling), request: chosen.request, response: chosen });
+      expectThat(chosen.today?.earned === 0 && chosen.experience?.available === 0 && chosen.experience?.cosmetic === true, 'choosing a calling must grant no experience by itself', { expected: '0 experience, cosmetic', actual: describe({ today: chosen.today, experience: chosen.experience }) });
+      expectThat(chosen.policy?.experience_per_objective === 5 && chosen.policy?.daily_experience_limit === 10, 'the calling policy must publish the fixed five-per-objective and ten-per-day rule', { expected: 'per_objective=5, daily_limit=10', actual: describe(chosen.policy) });
+      expectThat(chosen.policy?.cosmetic === true && chosen.policy?.currency === false && chosen.policy?.transferable === false, 'the calling policy must state that experience is cosmetic, not a currency and not transferable', { expected: 'cosmetic=true, currency=false, transferable=false', actual: describe(chosen.policy) });
+      const emptyWallet = expectStatus(await get(`/coins?agent_id=${resident.id}`, { token: world.newcomerToken }), 200, 'GET /coins for the newcomer resident');
+      expectThat(emptyWallet.balance === 0 && emptyWallet.receipt_count === 0, 'choosing a calling must issue no NemoCoin at all', { expected: 'balance=0, receipt_count=0', actual: describe({ balance: emptyWallet.balance, receipt_count: emptyWallet.receipt_count }) });
+      expectThat(emptyWallet.policy?.award === 10 && emptyWallet.policy?.operator_daily_limit === 100 && emptyWallet.policy?.transferable === false, 'the wallet must publish the fixed coin policy beside the zero balance', { expected: 'award=10, operator_daily_limit=100, transferable=false', actual: describe(emptyWallet.policy) });
+      return `201 newcomer member account (no invitation); 201 AI resident ${resident.id.slice(0, 8)}… in the Commons; 200 calling explorer · Wayfarers with 0 experience (policy: 5 per objective, 10 per day, cosmetic, not a currency); wallet 0 coins beside the fixed 10-coin policy`;
+    });
+
+    await step('14. the newcomer meets a country ambassador and begins the shipped practice chain', async () => {
+      const profile = expectStatus(await get('/ambassador?id=amb-KEN'), 200, 'GET /ambassador?id=amb-KEN as a visitor');
+      expectThat(profile.country_context?.country?.iso3 === 'KEN' && profile.venue?.kind === 'country', 'the ambassador must answer from its own registered country context and venue', { expected: 'country_context KEN in a country venue', actual: describe({ country: profile.country_context?.country, kind: profile.venue?.kind }) });
+      expectThat(/^A fictional NemoWorld research guide\./.test(profile.remit?.fictional || '') && profile.research?.evidence_routes?.length === 5, 'the ambassador must stay a fictional guide with its registered research routes', { expected: 'a fictional-guide remit and five registered routes', actual: describe({ remit: profile.remit?.fictional, routes: profile.research?.evidence_routes?.length }) });
+
+      const catalogue = expectStatus(await get('/quests/catalog'), 200, 'GET /quests/catalog');
+      const practice = catalogue.chains.find((chain) => chain.slug === 'quiet-harvest');
+      expectThat(practice?.practice === true && practice.steps.length === 3, 'the shipped Quiet Harvest chain must be a three-step practice chain', { expected: 'a three-step practice chain', actual: describe({ practice: practice?.practice, steps: practice?.steps?.length }) });
+      expectThat(practice.steps.every((steps) => steps.output.requires_review === false), 'no practice step may claim a review boundary', { expected: 'requires_review=false on every step', actual: describe(practice.steps.map((item) => item.output.requires_review)) });
+      expectThat(catalogue.policy?.coins_awarded === 0 && catalogue.policy?.client_completion === false, 'the public catalogue must state that a chain awards no coins and cannot be completed by a client', { expected: 'coins_awarded=0, client_completion=false', actual: describe(catalogue.policy) });
+
+      const joined = expectStatus(await post('/quests/join', { agent_id: world.newcomerAgent, chain_id: 'quiet-harvest' }, { token: world.newcomerToken, headers: { 'Idempotency-Key': 'e2e-newcomer-join-1' } }), 201, 'POST /quests/join for the practice chain');
+      expectThat(joined.next_action?.step_slug === 'first-sowing' && joined.next_action?.action?.kind === 'garden', 'the board must show the concrete next action for the newcomer', { expected: 'first-sowing with a garden action', actual: describe(joined.next_action) });
+      expectThat(joined.next_action?.output?.source_kind === 'crop_plant' && joined.next_action?.output?.name === 'One planted crop in your own garden', 'the next action must name the saved fact and its output', { expected: 'a crop_plant output named in full', actual: describe(joined.next_action?.output) });
+      expectThat(joined.next_action?.requires_human_review === false, 'the first practice step must need no independent review, and say so', { expected: 'requires_human_review=false', actual: describe(joined.next_action?.requires_human_review) });
+      const opened = expectStatus(await get(`/quests?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /quests for the newly enrolled newcomer');
+      const enrolled = opened.progress.find((item) => item.chain_slug === 'quiet-harvest');
+      expectThat(opened.enrolled_count === 1 && enrolled?.complete === false && enrolled.steps[0].state === 'available', 'joining must record one enrolment with no completed step', { expected: 'one enrolment, first step available, nothing complete', actual: describe({ enrolled: opened.enrolled_count, progress: enrolled }) });
+      return `200 GET /ambassador?id=amb-KEN (country:KEN, five registered routes, fictional-guide remit); 200 catalogue lists the practice chain (coins_awarded=0, client_completion=false, no review on any step); 201 join returns next action first-sowing (crop_plant, no review), 1 enrolment, 0 complete`;
+    });
+
+    await step('15. the newcomer completes one saved practice activity, reads its receipt and meets the review boundary', async () => {
+      const home = `home:${world.newcomerAgent}`;
+      await sleep(MOVE_INTERVAL_MS);
+      const travelled = expectStatus(await post(`/agents/${world.newcomerAgent}/travel`, { world_id: home }, { token: world.newcomerToken }), 200, `POST /agents/:id/travel to ${home}`);
+      expectThat(travelled.entered === true && travelled.world_id === home, 'the newcomer resident must reach its own garden', { expected: `entered=true in ${home}`, actual: describe({ entered: travelled.entered, world_id: travelled.world_id }), request: travelled.request, response: travelled });
+
+      const garden = expectStatus(await get(`/world?world_id=${home}&agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET the newcomer’s personal garden');
+      const site = gardenFarmSite(garden, world.newcomerAgent);
+      expectThat(site, 'the personal garden must offer a free walkable tile away from the arrival and doorways', { expected: 'a buildable garden tile', actual: describe({ camera: garden.camera, portals: garden.portals?.length }) });
+      const built = expectStatus(await post(`/agents/${world.newcomerAgent}/build`, { type: 'farm', x: site.x, y: site.y }, { token: world.newcomerToken }), 201, `POST build a crop patch at ${site.x},${site.y}`);
+      expectThat(built.world_id === home && built.x === site.x && built.y === site.y && built.removed === false, 'the crop patch must be saved in the newcomer’s own garden', { expected: `a saved farm at ${site.x},${site.y}`, actual: describe(built), request: built.request, response: built });
+      const planted = expectStatus(await post('/journey/garden', { agent_id: world.newcomerAgent, action: 'plant', kind: 'herbs', x: site.x, y: site.y }, { token: world.newcomerToken }), 200, 'POST /journey/garden plant as the operator');
+      expectThat(planted.crop?.kind === 'herbs' && planted.crop?.harvested_at === null && planted.crop?.ready === false, 'planting must save one growing crop on the patch', { expected: 'one growing herbs crop', actual: describe(planted.crop), request: planted.request, response: planted });
+
+      const board = expectStatus(await get(`/quests?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /quests after the saved planting');
+      const chain = board.chains.find((item) => item.slug === 'quiet-harvest');
+      expectThat(chain.steps[0].state === 'complete' && chain.steps[0].saved_facts.length === 1, 'the saved planting must complete the first practice step exactly once', { expected: 'step one complete with one saved fact', actual: describe({ state: chain.steps[0]?.state, facts: chain.steps[0]?.saved_facts }) });
+      expectThat(chain.steps[1].state !== 'complete' && board.next_action?.step_slug === 'patient-tending', 'the practice chain must offer its own next concrete step, never a shortcut', { expected: 'patient-tending waiting', actual: describe({ state: chain.steps[1]?.state, next: board.next_action?.step_slug }) });
+
+      const calling = expectStatus(await get(`/callings?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /callings to read the newcomer’s receipt');
+      expectThat(calling.receipts.length === 1 && calling.receipts[0].objective_id === 'quest:quiet-harvest.first-sowing', 'the practice activity must leave exactly one receipt, named for its authored step', { expected: 'one receipt for quest:quiet-harvest.first-sowing', actual: describe(calling.receipts.map((receipt) => receipt.objective_id)), request: calling.request, response: calling });
+      expectThat(calling.receipts[0].points === 5 && calling.receipts[0].source_kind === 'crop_plant' && calling.receipts[0].available === true, 'the receipt must record its saved source and five cosmetic experience', { expected: 'points=5 from a crop_plant source', actual: describe(calling.receipts[0]) });
+      expectThat(calling.receipts[0].earned_day === calling.today.day && calling.today.earned === 5 && calling.today.limit === 10 && calling.experience.available === 5 && calling.experience.held === 0, 'the receipt must count against the same ten-a-day cosmetic limit', { expected: '5 of 10 cosmetic experience today', actual: describe({ today: calling.today, experience: calling.experience }) });
+
+      const wallet = expectStatus(await get(`/coins?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /coins after the practice receipt');
+      expectThat(wallet.balance === 0 && wallet.issued === 0 && wallet.held === 0 && wallet.receipt_count === 0, 'a completed practice activity must mint no NemoCoin at all, while the cosmetic receipt stands', { expected: 'zero coins beside one cosmetic receipt', actual: describe({ balance: wallet.balance, issued: wallet.issued, receipts: wallet.receipt_count }) });
+      expectThat(wallet.integrity_valid === true, 'the ledger must stay valid with no practice receipt in it', { expected: 'integrity_valid=true', actual: describe(wallet.integrity_valid) });
+
+      const spoof = await post('/quests/complete', { agent_id: world.newcomerAgent, chain_id: 'quiet-harvest' }, { token: world.newcomerToken });
+      expectStatus(spoof, 400, 'POST /quests/complete as the newcomer');
+      expectThat(/saved server fact/.test(spoof.body?.error || ''), 'the newcomer must be told that a step advances only from a saved server fact', { expected: 'an error naming the saved server fact', actual: describe(spoof.body), request: spoof.request, response: spoof });
+      const selfReview = await post('/reviews', { submission_id: 'not-a-real-submission', decision: 'accepted', reason: 'A newcomer trying to accept work.' }, { token: world.newcomerToken });
+      expectStatus(selfReview, 403, 'POST /reviews as an ordinary member account');
+      expectThat(/authorized human/i.test(selfReview.body?.error || ''), 'the review boundary must name the missing authorized human account', { expected: 'an error naming the authorized human account', actual: describe(selfReview.body), request: selfReview.request, response: selfReview });
+      const acceptance = expectStatus(await get(`/coins?agent_id=${world.agentId}`, { token: world.adminToken }), 200, 'GET /coins for the earlier contributor after the whole newcomer path');
+      expectThat(acceptance.balance === 10 && acceptance.receipt_count === 1, 'the only coin receipt must still be the independently accepted contribution', { expected: 'the same single 10-coin receipt', actual: describe({ balance: acceptance.balance, receipts: acceptance.receipt_count, valid: acceptance.integrity_valid }) });
+      return `200 travel to ${home}; saved crop patch at ${site.x},${site.y}; 200 plant; first practice step complete from one saved crop_plant fact; one receipt (quest:quiet-harvest.first-sowing, 5 of 10 cosmetic experience today, available); 0 coins from the practice path (balance 0, no receipt, ledger valid); 400 refused client completion; 403 refused self-review (authorized human account required); the earlier independent acceptance still holds its single 10-coin receipt`;
+    });
+
     const shutdown = await stopServer();
     expectThat(shutdown.lockReleased, 'a graceful shutdown must release the process lock', { expected: `no ${join(state.workspace, 'server.lock')}`, actual: 'the lock file remained after shutdown' });
     expectThat(shutdown.workspaceRemoved, 'the temporary workspace must be removed', { expected: 'workspace removed', actual: state.workspace });
@@ -795,6 +899,7 @@ async function main() {
   console.log('');
   console.log(`SUMMARY  ${state.results.length} steps passed, 0 failed`);
   console.log('  coins            one fixed 10-coin receipt for an independently accepted contribution; ledger integrity verified');
+  console.log('  newcomer         a member account with one AI resident, one chosen calling, one country ambassador read, one saved practice activity with one cosmetic receipt (5 of 10 today) and zero coins');
   if (state.notes.length) {
     console.log('  notes');
     for (const note of state.notes) console.log(`    - ${note}`);

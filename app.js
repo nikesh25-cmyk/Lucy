@@ -34,6 +34,28 @@ const titleOfTask = (id) => state.tasks.find((task) => task.id === id)?.title ||
 const date = (value) => value ? new Date(value).toLocaleString() : '—';
 const isReviewer = () => ['admin', 'reviewer'].includes(state.account?.role);
 const isModerator = () => ['admin', 'moderator'].includes(state.account?.role);
+// A newcomer's unfinished typing, remembered cursor and guided-path progress stay in this browser
+// only. Nothing here is sent to the server, so a refresh never loses work in progress and never
+// creates a draft record for anyone else to read. These functions touch only localStorage, which is
+// why the block between the markers can be evaluated on its own in tests/newcomer-journey.test.js.
+// newcomer-persistence:start
+const DRAFT_PREFIX = 'nemoworld-draft:';
+const NEWCOMER_KEY = 'nemoworld-newcomer';
+const FOCUS_KEY = 'nemoworld-focus';
+function storageGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
+function storageSet(key, value) { try { localStorage.setItem(key, value); return true; } catch { return false; } }
+function storageRemove(key) { try { localStorage.removeItem(key); } catch { /* Best effort in a private window. */ } }
+function storedObject(key) { const text = storageGet(key); if (!text) return {}; try { const value = JSON.parse(text); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch { return {}; } }
+function draftValues(section) { const stored = storedObject(`${DRAFT_PREFIX}${section}`), values = {}; for (const [name, value] of Object.entries(stored)) if (typeof value === 'string' && value !== '') values[name] = value; return values; }
+function saveDraftValues(section, values) { const kept = {}; for (const [name, value] of Object.entries(values || {})) if (typeof value === 'string' && value !== '') kept[name] = value; if (Object.keys(kept).length) storageSet(`${DRAFT_PREFIX}${section}`, JSON.stringify(kept)); else storageRemove(`${DRAFT_PREFIX}${section}`); return kept; }
+function clearDraftValues(section) { storageRemove(`${DRAFT_PREFIX}${section}`); }
+function rememberFocus(section, field) { if (!section) return; storageSet(FOCUS_KEY, JSON.stringify({ section: String(section), field: String(field || ''), at: Date.now() })); }
+function rememberedFocus() { const stored = storedObject(FOCUS_KEY); return { section: typeof stored.section === 'string' ? stored.section : '', field: typeof stored.field === 'string' ? stored.field : '' }; }
+function forgetFocus() { storageRemove(FOCUS_KEY); }
+function newcomerProgress() { const stored = storedObject(NEWCOMER_KEY); return { completed: [...new Set((Array.isArray(stored.completed) ? stored.completed : []).filter(id => typeof id === 'string'))], acknowledged: Boolean(stored.acknowledged) }; }
+function saveNewcomerProgress(progress) { const next = { completed: [...new Set((progress.completed || []).filter(id => typeof id === 'string'))], acknowledged: Boolean(progress.acknowledged) }; storageSet(NEWCOMER_KEY, JSON.stringify(next)); return next; }
+function newcomerComplete(id, acknowledged = null) { const progress = newcomerProgress(); if (progress.completed.includes(id) && (acknowledged === null || acknowledged === progress.acknowledged)) return progress; return saveNewcomerProgress({ completed: [...progress.completed, id], acknowledged: acknowledged === null ? progress.acknowledged : acknowledged }); }
+// newcomer-persistence:end
 function notice(message, error = false) { const node = error && $('#auth-dialog').open ? $('#auth-notice') : $('#notice'); node.textContent = message; node.className = error ? 'error' : ''; node.hidden = false; node.setAttribute('role',error?'alert':'status'); }
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
@@ -65,12 +87,41 @@ function field(form, name, labelText, { type = 'text', options, required = true,
   if (min != null) type === 'number' ? input.min = min : input.minLength = min;
   if (type === 'password') input.autocomplete = 'current-password';
   if (type === 'email') input.autocomplete = 'email';
-  if(type==='password'){const wrap=element('span',null,'password-field');const reveal=button('Show',()=>{input.type=input.type==='password'?'text':'password';reveal.textContent=input.type==='password'?'Show':'Hide';reveal.setAttribute('aria-pressed',String(input.type==='text'));},'password-reveal');reveal.setAttribute('aria-label',`Show or hide ${labelText.toLowerCase()}`);reveal.setAttribute('aria-pressed','false');wrap.append(input,reveal);label.append(wrap);}else label.append(input); if (hint) label.append(element('small', hint)); form.append(label); return input;
+  if(type==='password'){const wrap=element('span',null,'password-field');const reveal=button('Show',()=>{input.type=input.type==='password'?'text':'password';reveal.textContent=input.type==='password'?'Show':'Hide';reveal.setAttribute('aria-pressed',String(input.type==='text'));},'password-reveal');reveal.setAttribute('aria-label',`Show or hide ${labelText.toLowerCase()}`);reveal.setAttribute('aria-pressed','false');wrap.append(input,reveal);label.append(wrap);}else label.append(input);
+  // Every control states whether it must be filled in, so no required field is only implied by a
+  // red border or by a failed submit. The native required flag still blocks an empty submit.
+  label.append(element('small', [required ? 'Required.' : 'Optional.', hint].filter(Boolean).join(' '), 'hint field-requirement')); form.append(label); return input;
 }
-function form(parent, submitLabel, callback) {
+function form(parent, submitLabel, callback, section = null) {
   const node = element('form'); const controls = element('div', null, 'field-grid'); const submit = element('button', submitLabel); submit.type = 'submit';
-  node.append(controls, submit); node.addEventListener('submit', (event) => { event.preventDefault(); guarded(async () => { submit.disabled = true; const originalText=submit.textContent; submit.textContent='Working…';node.setAttribute('aria-busy','true'); try { await callback(Object.fromEntries(new FormData(node)), node); } finally { submit.disabled = false; submit.textContent=originalText;node.removeAttribute('aria-busy'); } }); });
+  if (section) { node.dataset.draftSection = section; attachLocalDraft(node, section); }
+  node.append(controls, submit); node.addEventListener('submit', (event) => { event.preventDefault(); guarded(async () => { submit.disabled = true; const originalText=submit.textContent; submit.textContent='Working…';node.setAttribute('aria-busy','true'); try { await callback(Object.fromEntries(new FormData(node)), node); if (section) { clearDraftValues(section); forgetFocus(); } } finally { submit.disabled = false; submit.textContent=originalText;node.removeAttribute('aria-busy'); } }); });
   parent.append(node); return controls;
+}
+// A locally kept draft: the field values are written to this browser as they are typed, restored
+// when the form is built again after a refresh, and cleared only after a successful submit. The
+// remembered control is the one the newcomer's cursor was last in.
+function attachLocalDraft(node, section) {
+  const remembered = draftValues(section);
+  for (const control of node.querySelectorAll('[name]')) {
+    if (!Object.hasOwn(remembered, control.name)) continue;
+    if (control.type === 'checkbox') control.checked = remembered[control.name] === 'on';
+    else control.value = remembered[control.name];
+  }
+  const collect = () => { const values = {}; for (const control of node.querySelectorAll('[name]')) { if (control.type === 'checkbox') { if (control.checked) values[control.name] = 'on'; continue; } if (control.value !== '') values[control.name] = control.value; } return values; };
+  node.addEventListener('input', () => saveDraftValues(section, collect()));
+  node.addEventListener('change', () => saveDraftValues(section, collect()));
+  node.addEventListener('focusin', (event) => { if (event.target?.name) rememberFocus(section, event.target.name); });
+  return node;
+}
+function restoreRememberedFocus() {
+  const remembered = rememberedFocus();
+  if (!remembered.field) return false;
+  const form = document.querySelector(`form[data-draft-section="${remembered.section}"]`);
+  const control = form ? form.querySelector(`[name="${remembered.field}"]`) : null;
+  if (!control) return false;
+  control.focus({ preventScroll: true });
+  return true;
 }
 function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
 function heading(title, description) { const node = element('div', null, 'section-title'); const text = element('div'); append(text, element('h2', title), paragraph(description)); node.append(text); return node; }
@@ -105,7 +156,7 @@ function normalizeWorld(world) { return { ...world, participants: world.particip
 async function loadWorld() { state.world = normalizeWorld(await api(worldURL())); }
 async function loadDirectory() { const result = await api(`/worlds?${new URLSearchParams({ q: state.worldQuery, offset: String(state.worldOffset), limit: '12' })}`); state.worlds = Array.isArray(result) ? result : result.worlds || result.items || []; state.worldTotal = result.total ?? state.worlds.length; state.directoryHasMore = result.has_more ?? state.worldOffset + state.worlds.length < state.worldTotal; }
 async function loadAmbassadors() { state.ambassadorPage = await api('/ambassadors?' + new URLSearchParams({ q: state.ambassadorQuery.q || '', group: state.ambassadorQuery.group || '', offset: String(state.ambassadorOffset || 0), limit: '20',...(isModerator()&&state.ambassadorIncludePaused?{include_paused:'1'}:{}) })); state.ambassadors = state.ambassadorPage.entries || []; }
-async function openAmbassador(id) { state.ambassadorProfile = await api('/ambassador?id=' + encodeURIComponent(id)); await openSection('civic'); }
+async function openAmbassador(id) { state.ambassadorProfile = await api('/ambassador?id=' + encodeURIComponent(id)); newcomerComplete('ambassador'); await openSection('civic'); }
 async function visitWorld(id) { walkVersion++;$('#notice').hidden=true; state.viewWorld = id; state.focus = getWorldDefinition(id).start; state.building = false; await loadWorld(); state.tab = 'world'; render(); }
 let lastMotionAt = 0;
 async function motionRequest(path, body) { const delay = Math.max(0, 160 - (performance.now() - lastMotionAt)); if (delay) await new Promise((resolve) => setTimeout(resolve, delay)); lastMotionAt = performance.now(); return api(path, 'POST', body); }
@@ -235,11 +286,11 @@ function renderAuth() {
   const node = $('#auth-area'); node.replaceChildren(); if (state.account) { finishAuth(); return; }
   $('#auth-title').textContent=state.authMode==='login'?'Welcome back':state.setup?'Plant the first seed':'Make yourself at home';const tabs=$('#auth-tabs');tabs.replaceChildren();for(const [mode,label]of[['login','Sign in'],['register',state.setup?'Create first account':'Create account']]){const item=button(label,()=>{state.authMode=mode;renderAuth();});item.setAttribute('aria-pressed',String(state.authMode===mode));tabs.append(item);}
   const grid = element('div', null, 'auth-panels'); const login = card('Welcome back', 'OPERATOR ACCESS'); login.append(paragraph('Sign in to manage your agents and oversee their time in the world.', 'muted'));
-  const inputs = form(login, 'Sign in', async (data, node) => { const result = await api('/auth/login', 'POST', data); node.reset();state.sessionEpoch=(state.sessionEpoch||0)+1; state.account = result.account; finishAuth(); await refresh(); render(); notice('Welcome back. Choose a character to enter the world.'); });
+  const inputs = form(login, 'Sign in', async (data, node) => { const result = await api('/auth/login', 'POST', data); node.reset();state.sessionEpoch=(state.sessionEpoch||0)+1; state.account = result.account; finishAuth(); await refresh(); render(); notice('Welcome back. Choose a character to enter the world.'); }, 'auth-login');
   field(inputs, 'email', 'Email', { type: 'email' }); field(inputs, 'password', 'Password', { type: 'password', max: 128 });
   const signup = card(state.setup ? 'Plant the first seed' : 'Join the community', 'CREATE AN OPERATOR ACCOUNT');
   signup.append(paragraph(state.setup ? 'The first account becomes the local administrator. You can then invite operators, reviewers, and moderators.' : 'Create an adult account to play as yourself and build alongside agents. Your account also manages any AI characters you create.', 'muted'));
-  const register = form(signup, state.setup ? 'Create the first account' : 'Create account', async (data, node) => { const result = await api('/auth/register', 'POST', { ...data, consent: data.consent === 'on' }); node.reset();state.sessionEpoch=(state.sessionEpoch||0)+1; state.account = result.account; state.setup = false; finishAuth();await refresh();if(data.entry==='human')await playAsHuman();else{state.tab='characters';render();notice('Your account is ready. Create an agent character.');} });
+  const register = form(signup, state.setup ? 'Create the first account' : 'Create account', async (data, node) => { const result = await api('/auth/register', 'POST', { ...data, consent: data.consent === 'on' }); node.reset();state.sessionEpoch=(state.sessionEpoch||0)+1; state.account = result.account; state.setup = false; finishAuth();await refresh();if(data.entry==='human')await playAsHuman();else{state.tab='characters';render();notice('Your account is ready. Create an agent character.');} }, 'auth-register');
   field(register, 'name', 'Operator display name', { max: 40 }); field(register, 'email', 'Private contact email', { type: 'email', max: 254 });
   const password = field(register, 'password', 'Password', { type: 'password', min: 12, max: 128, hint: 'At least 12 characters.' }); password.autocomplete = 'new-password';
   if(state.setup && state.setupCodeRequired){const setupCode=field(register,'setup_code','Private setup code',{type:'password',max:256,full:true,hint:'Use the private code from your hosting dashboard to create the first administrator. Keep it confidential.'});setupCode.autocomplete='off';}
@@ -248,13 +299,13 @@ function renderAuth() {
   login.hidden=state.authMode!=='login';signup.hidden=state.authMode!=='register';append(grid,login,signup);node.append(grid);
 }
 function renderTabs() {
-  const groups=[{title:'THE WORLD',items:[['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦'],['guilds','Guild projects','⚒'],['quests','Quest chains','◇']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
+  const groups=[{title:'THE WORLD',items:[['start','Start here','◇'],['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦'],['guilds','Guild projects','⚒'],['quests','Quest chains','◇']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
   if(state.account)groups.push({title:'YOUR RESIDENTS',items:[['coins','Coin wallet','✧'],['passport','Resident passport','♟'],['workshop','Garden & workshop','✿'],['characters','My characters','♟'],['history','My contributions','▤']]});
   const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'GOVERNANCE',items:care});groups.push({title:'',items:[['help','Guide','?']]});
-  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
+  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list',start:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
 }
 function renderView() { if(voxelView){state.voxelOrbit=voxelView.orbit;voxelView.destroy();voxelView=null;}document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons'));
-  const node = $('#view'); node.replaceChildren(); const views = { world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,quests:renderQuests };
+  const node = $('#view'); node.replaceChildren(); const views = { start: renderStartJourney, world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,quests:renderQuests };
   (views[state.tab] || renderWorld)(node);node.setAttribute('aria-busy','false');
 }
 function renderCivic(parent) {
@@ -310,10 +361,150 @@ function renderAmbassadorProfileCard(profile){
   if(turns.length){const transcript=element('div',null,'mayor-transcript');for(const turn of turns)renderGuideReply(transcript,turn);disclosure(node,'Private conversation history',body=>body.append(transcript));}
   return node;
 }
+// The newcomer journey: six concrete steps from arriving to understanding where independent human
+// review begins. Every "done" state is either real server state (the account, the resident, the
+// calling, a saved receipt) or the newcomer's own acknowledged reading, remembered in this browser.
+// The two kinds of progress are kept visibly apart: cosmetic calling experience, and NemoCoins,
+// which only the independent real-contribution ledger can issue. The figures in NEWCOMER_XP and
+// NEWCOMER_COINS are the fallbacks shown to a signed-out visitor; tests/newcomer-journey.test.js
+// asserts they equal CALLING_POLICY and COIN_POLICY, and the renderer prefers the live payload.
+const NEWCOMER_XP = Object.freeze({ per_objective: 5, daily_limit: 10 });
+const NEWCOMER_COINS = Object.freeze({ award: 10, operator_daily_limit: 100 });
+const NEWCOMER_INTRO = 'Six steps take a newcomer from arriving to understanding how real work is reviewed: enter as a human or create an AI resident, choose a calling, meet a country ambassador, complete one saved practice activity, read its receipt, and see where independent human review begins.';
+const NEWCOMER_CONTROLS = 'Controls, in both views. In the 3D world, drag to look and use W A S D or the arrow keys to walk; the aim line under the view names the tile you face and says whether it is solid. First person, Turn mode and Step-up mode are ordinary buttons with their state announced. If 3D graphics are unavailable in your browser, the same world falls back to the pixel map: the arrow buttons move one tile at a time, Walk to a tile plans a route from typed coordinates, and the World list is a text view of every place and participant. Nothing in this journey needs a mouse, a drag or a hover.';
+function xpNumbers() { const policy = state.callings?.policy; return { per: Number.isInteger(policy?.experience_per_objective) ? policy.experience_per_objective : NEWCOMER_XP.per_objective, limit: Number.isInteger(policy?.daily_experience_limit) ? policy.daily_experience_limit : NEWCOMER_XP.daily_limit }; }
+function coinNumbers() { const policy = state.journey?.coins?.policy; return { award: Number.isInteger(policy?.award) ? policy.award : NEWCOMER_COINS.award, limit: Number.isInteger(policy?.operator_daily_limit) ? policy.operator_daily_limit : NEWCOMER_COINS.operator_daily_limit }; }
+// The practice receipt the flow can honestly call cosmetic: a calling objective, or a step of an
+// authored *practice* chain. An acceptance receipt from real, independently reviewed work is not a
+// practice activity, and a step of a real evidence chain is not either, so neither counts here.
+function practiceReceipt() {
+  const receipts = state.callings?.receipts || [], chains = state.quests?.chains || [];
+  return receipts.find((receipt) => {
+    const objective = String(receipt.objective_id || '');
+    if (objective.startsWith('quest:')) return chains.find((chain) => chain.slug === objective.slice(6).split('.')[0])?.practice === true;
+    return receipt.source_kind !== 'research_accepted';
+  }) || null;
+}
+function markNewcomerStep(id, acknowledged = null) { newcomerComplete(id, acknowledged); if (state.tab === 'start') renderView(); }
+function newcomerSteps() {
+  const progress = newcomerProgress(), resident = selected(), calling = state.callings?.calling || null, receipt = practiceReceipt();
+  const steps = [
+    { id: 'enter', title: 'Enter as a human, or create an AI resident',
+      detail: state.account ? `You are signed in as ${state.account.name}. The account is the adult who oversees its characters; a human player, one or more AI residents, or both can take part.` : 'An operator account is free to create and is responsible for the characters under it. You can also look around the whole world first, without one.',
+      done: Boolean(state.account && resident),
+      controls: state.account ? actions(button(resident ? 'Open my characters' : 'Create an AI resident', () => openSection('characters'), 'small'), button('Play as myself', () => playAsHuman(), 'secondary small')) : actions(button('Create an operator account', () => openAuth('register')), button('Sign in', () => openAuth('login'), 'secondary small')) },
+    { id: 'calling', title: 'Choose a calling',
+      detail: calling ? `${resident?.name || 'Your resident'} follows ${calling.name} · ${calling.guild_name}. A calling is a purpose and a guild affiliation; it grants no account role, land, permission or review authority.` : 'A calling gives your resident a purpose, a guild affiliation and two daily objectives. You choose it; an AI resident never chooses its own.',
+      done: Boolean(calling),
+      controls: actions(state.account ? button(calling ? 'Review or change the calling' : 'Choose a calling', () => openSection('callings'), 'small') : button('Create an account to choose a calling', () => openAuth('register'), 'small')) },
+    { id: 'ambassador', title: 'Meet a country ambassador',
+      detail: progress.completed.includes('ambassador') ? 'You have opened a country ambassador. Ambassadors answer only from that country’s registered, dated context and never as a government or United Nations official.' : 'Every catalog country and area has one ambassador, each standing in its own generated country venue. Reading one is how the research questions of a place become concrete.',
+      done: progress.completed.includes('ambassador'),
+      controls: actions(button('Meet the country ambassadors', () => openSection('civic'), 'small')) },
+    { id: 'practice', title: 'Complete one saved practice activity',
+      detail: receipt ? `A saved practice activity is on record: ${receipt.objective_id.replaceAll('_', ' ')} on ${receipt.earned_day}.` : 'A practice activity is something the server records anyway — walking into a place, planting and harvesting a crop, crafting a keepsake or placing a saved block. It is credited only from that saved fact, and it mints no coins.',
+      done: Boolean(receipt),
+      controls: actions(button('Open the calling objectives', () => openSection('callings'), 'secondary small'), button('Open the quest chains', () => openSection('quests'), 'secondary small')) },
+    { id: 'receipt', title: 'Read its receipt',
+      detail: receipt ? `The receipt below is the whole record: a saved source, one UTC day and ${xpNumbers().per} cosmetic experience.` : 'The receipt is the durable record of the activity: which saved fact credited it, on which day, and how much cosmetic experience it produced.',
+      done: Boolean(receipt),
+      controls: actions(button('Open my experience receipts', () => openSection('callings'), 'secondary small')) },
+    { id: 'review', title: 'Understand how real contribution review works',
+      detail: progress.acknowledged ? 'You have read the review boundary. Cosmetic progress and accepted real contributions are separate records, and only independent human acceptance mints a NemoCoin.' : 'Reaching a review boundary means your evidence waits for a different, authorized human being. You cannot accept your own work, and a model cannot accept it for you.',
+      done: progress.acknowledged,
+      controls: actions(button('Open a real mission', () => openSection('missions'), 'secondary small'), button('Read the review boundary again', () => { const target = document.getElementById('newcomer-review'); if (target) target.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); else openSection('start'); }, 'secondary small')) },
+  ];
+  return steps;
+}
+// `only` renders a single step (its index in the six) for the compact home-page line; without it the
+// whole ordered path is rendered for the guided start section.
+function newcomerStepsList(only = null) {
+  const steps = newcomerSteps(), list = element('ol', null, 'newcomer-steps'), firstOpen = steps.findIndex((step) => !step.done);
+  steps.forEach((step, index) => {
+    if (only !== null && index !== only) return;
+    const standing = step.done ? 'done' : index === firstOpen ? 'next' : 'later';
+    const item = element('li', null, `newcomer-step ${standing}`);
+    item.setAttribute('aria-label', `Step ${index + 1} of ${steps.length}: ${step.title}. ${step.done ? 'Complete' : standing === 'next' ? 'This is your next step' : 'Waiting'}.`);
+    item.append(element('h3', `Step ${index + 1} · ${step.title}`), badge(step.done ? 'complete' : standing === 'next' ? 'your next step' : 'waiting'));
+    item.append(paragraph(step.detail, 'privacy'));
+    item.append(step.controls);
+    list.append(item);
+  });
+  return list;
+}
+function newcomerReceiptCard() {
+  const receipt = practiceReceipt(), xp = xpNumbers(), coins = coinNumbers(), wallet = state.journey?.coins || null;
+  const node = card('The receipt for your practice activity', 'SAVED SERVER RECORD'); node.id = 'newcomer-receipt';
+  if (!receipt) { node.append(empty('No practice receipt yet. Complete one saved activity — the server credits it from the recorded fact alone.')); return node; }
+  const table = element('table', null, 'evidence-table');
+  const caption = element('caption', 'One practice receipt, exactly as the server stored it.');
+  const head = element('thead'), headRow = element('tr'); for (const title of ['Field', 'Value']) headRow.append(element('th', title)); head.append(headRow);
+  const body = element('tbody');
+  for (const [label, value] of [['Objective', receipt.objective_id.replaceAll('_', ' ')], ['Saved source', `${receipt.source_kind} · ${receipt.source_id}`], ['Credited day (UTC)', receipt.earned_day], ['Cosmetic experience', `${receipt.points}`], ['State', receipt.available ? 'available' : 'held because its source changed']]) { const row = element('tr'); row.append(element('th', label), element('td', value)); body.append(row); }
+  table.append(caption, head, body);
+  node.append(table, paragraph(`This receipt is cosmetic participation, not currency: ${xp.per} experience per saved objective, at most ${xp.limit} per resident per UTC day, with no cash value and no transfers. Calling experience never becomes a NemoCoin.`, 'privacy'));
+  node.append(paragraph(wallet ? `The same resident’s coin wallet holds ${wallet.balance} NemoCoin${wallet.balance === 1 ? '' : 's'} from ${wallet.receipt_count} reward receipt${wallet.receipt_count === 1 ? '' : 's'}. Practice activity mints nothing, so a practice-only resident stays at zero.` : `A practice activity mints no NemoCoins. NemoCoins are issued only when a different, authorized human being accepts a real scoped contribution, at a fixed ${coins.award} coins per accepted task and at most ${coins.limit} per operator per UTC day.`, 'privacy'));
+  node.append(button('Open the full wallet and ledger', () => openSection('coins'), 'secondary small'));
+  return node;
+}
+function newcomerBoundaryCard() {
+  const xp = xpNumbers(), coins = coinNumbers(), progress = newcomerProgress();
+  const node = card('Cosmetic progress, and real contribution review', 'THE ONE DISTINCTION THAT MATTERS'); node.id = 'newcomer-review';
+  const grid = element('div', null, 'grid two');
+  const cosmeticLane = element('article', null, 'newcomer-lane');
+  cosmeticLane.append(element('h3', 'Cosmetic calling experience (XP)'), badge('calling · cosmetic'),
+    paragraph(`What it records: bounded participation in the world, credited from a saved server fact — a calling objective or an authored quest step.`),
+    paragraph(`How it is earned: ${xp.per} experience per completed objective, at most ${xp.limit} per resident per UTC day. One saved fact is credited once, by whichever objective or quest step the server reaches first.`),
+    paragraph('What it can do: change a cosmetic rank title (Newcomer, Apprentice, Practitioner, Companion, Worldmaker). It cannot be transferred, spent, sold or exchanged, and it creates no authority.'));
+  const coinLane = element('article', null, 'newcomer-lane');
+  coinLane.append(element('h3', 'NemoCoins'), badge('real contribution · independently reviewed'),
+    paragraph('What it records: one real scoped contribution that a different, authorized human reviewer accepted on a real mission with a named owner and reviewer.'),
+    paragraph(`How it is earned: a fixed ${coins.award} coins per accepted task, one receipt per task, at most ${coins.limit} per operator per UTC day. The server sets the amount and the date; no client, model or character can mint, change or transfer a coin.`),
+    paragraph('What reaching the review boundary means: your submitted evidence waits for that independent human. You cannot accept your own work, a sibling character of your operator cannot accept it, and an approval is not proof of external impact.'));
+  grid.append(cosmeticLane, coinLane);
+  node.append(grid, paragraph('A practice activity, a quest step, a guild pledge, a thank-you and a harvest all leave cosmetic or community records. None of them mints a NemoCoin: the only route from this world to a real reward is an independent human acceptance of a real task.', 'privacy'));
+  const ack = button(progress.acknowledged ? 'Reviewed: I understand the review boundary' : 'I have read the review boundary', () => { const next = !progress.acknowledged; markNewcomerStep('review', next); notice(next ? 'Saved. Real contributions need a different, authorized human reviewer.' : 'Marked as not yet read. The explanation stays here.'); }, 'secondary small');
+  ack.setAttribute('aria-pressed', String(progress.acknowledged));
+  const controls = actions(ack, button('Open a real mission', () => openSection('missions'), 'secondary small'), button('Read the calling policy in the interface', () => openSection('callings'), 'secondary small'), button('Read the quest rules', () => openSection('quests'), 'secondary small'));
+  if (isReviewer()) controls.append(button('Open the review queue', () => openSection('review'), 'secondary small'));
+  node.append(controls);
+  return node;
+}
+function newcomerControlsCard() {
+  const node = card('Moving around, and the map fallback', 'CONTROLS IN THIS FLOW'); node.id = 'newcomer-controls';
+  node.append(paragraph(NEWCOMER_CONTROLS), paragraph('Movement is one grid step at a time. Water, trees, buildings and furniture shape the paths; stepping into them is refused and your position stays where it was. Climbing one authored layer uses Step-up mode, and there is no jumping or continuous airborne physics.', 'privacy'));
+  node.append(button('Open the world and its controls', () => openSection('world'), 'secondary small'), button('Manage my characters', () => openSection('characters'), 'secondary small'));
+  return node;
+}
+function newcomerJourneyCard({ compact = false } = {}) {
+  const progress = newcomerProgress(), steps = newcomerSteps(), done = steps.filter((step) => step.done).length;
+  const node = card('Your first six steps', 'GUIDED START'); node.id = 'newcomer-journey'; node.classList.add('newcomer-journey');
+  node.append(paragraph(NEWCOMER_INTRO));
+  const bar = element('progress'); bar.max = steps.length; bar.value = done; bar.setAttribute('aria-label', `${done} of ${steps.length} guided steps complete`);
+  node.append(bar, paragraph(`${done} of ${steps.length} complete. Progress is remembered in this browser, so a refresh returns you to the step you were on${progress.completed.includes('ambassador') ? ' with the ambassador you met' : ''}.`, 'privacy'));
+  if (!compact) node.append(newcomerStepsList());
+  else {
+    // The home page shows only the step that is waiting, so a returning resident is not lectured.
+    const next = steps.findIndex((step) => !step.done);
+    if (next >= 0) node.append(newcomerStepsList(next));
+    else node.append(paragraph('All six steps are complete. Nothing further is owed: the world, its callings and its review boundaries are open to you.', 'privacy'));
+    node.append(actions(button('Open the guided journey', () => openSection('start'), 'small'), button('Coin wallet', () => openSection('coins'), 'secondary small')));
+  }
+  return node;
+}
+function renderStartJourney(parent) {
+  parent.append(heading('Start here', 'This is the whole newcomer path in text: six steps, the receipt they produce, the controls in both views, and the difference between cosmetic progress and reviewed real contribution. Every step is an ordinary button or field, and no window opened here traps the keyboard.'));
+  parent.append(newcomerJourneyCard());
+  parent.append(newcomerReceiptCard());
+  parent.append(newcomerBoundaryCard());
+  parent.append(newcomerControlsCard());
+  if (!state.account) parent.append(paragraph('Browsing is open to visitors: the ambassadors, the country evidence, the research backlog and the guide all work without an account. A signed-in account is needed to create a resident and to record a saved activity.', 'privacy'));
+}
 function renderStartHere(parent){
  const panel=card('Choose your next step','WELCOME TO NEMOWORLD');panel.classList.add('start-here');
  const paths=[{title:'Meet the world',count:state.ambassadorPage?.catalog?.total?`${state.ambassadorPage.catalog.total} country ambassadors`:'Country ambassadors',text:'Explore ecological districts and meet the country ambassadors. Human moderators oversee the community.',label:'Meet the ambassadors',action:()=>openSection('civic'),icon:'compass'}, {title:'Start with a place',count:state.countries.length?`${state.countries.length} countries & areas`:'Country research context',text:'Choose a country, inspect its dated evidence and find the research questions that need work.',label:'Choose a country',action:()=>openSection('countries'),icon:'earth'}, {title:'Build useful knowledge',count:researchCount(),text:'Proposals become scoped missions with a beneficiary and independent reviewer. Evidence comes before recommendations.',label:'Browse all research',action:()=>browseResearch(),icon:'clipboard-list'}];
  const grid=element('div',null,'start-paths');for(const path of paths){const tile=element('article',null,'start-path'),icon=element('img');icon.src='/assets/icons/'+path.icon+'.svg';icon.alt='';icon.setAttribute('aria-hidden','true');tile.append(icon,element('h3',path.title),paragraph(path.count,'privacy'),paragraph(path.text),button(path.label,path.action,'secondary small'));grid.append(tile);}panel.append(grid,paragraph('Browsing is open to visitors. Create an account to play as a human or bring your AI agents. Proposal counts describe a backlog, not completed studies.','privacy'));parent.append(panel);
+ if(state.tab==='world'||state.tab==='help')parent.append(newcomerJourneyCard({compact:true}));
 }
 function researchCount(){return Number.isInteger(state.research?.catalog_total)?`${state.research.catalog_total.toLocaleString()} research proposals`:'Research proposals';}
 
@@ -329,6 +520,7 @@ function renderWorld(parent) {
   append(journey, paragraph(agent ? `${agent.name} · ${place?.name || world.name}` : `Visiting ${world.name}`, 'eyebrow'), paragraph(place?.description || world.description || (world.kind === 'home' ? 'A personal garden, built and cared for by its agent.' : 'Explore the paths, gathering spaces, and entrances.')), element('small', `${agent ? 'Character' : 'View'} position ${position.x}, ${position.y} · ${agent ? 'Arrow keys / WASD to roam' : 'Arrow keys / WASD to look around'}`));
   const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => controlStep(direction)); item.setAttribute('aria-label', `${agent ? (state.lookMode ? 'Turn' : 'Move') : 'Look'} ${direction}`); item.disabled = Boolean(agent && (agent.status !== 'active' || state.world.paused)); movement.append(item); } movement.append(viewToggles(agent));
   journey.append(element('div',null,'nearby-portals'));
+  if (agent) journey.append(walkToTileForm(agent, world));
   append(lower, journey, movement);map.append(lower);if(state.graphics==='voxel')map.append(actions(button('Look left',()=>queueLook(state.facing.yaw+.35,state.facing.pitch),'secondary small'),button('Look right',()=>queueLook(state.facing.yaw-.35,state.facing.pitch),'secondary small'),button('Zoom in',()=>voxelView?.zoom(-3),'secondary small'),button('Zoom out',()=>voxelView?.zoom(3),'secondary small'),button('Reset camera',()=>{queueLook(.78,state.firstPerson?0:.68);voxelView?.setOrbit({distance:24});},'secondary small')));if(world.kind==='frontier')map.append(frontierHotbar());if(state.graphicsUnavailable)map.append(paragraph('3D graphics are unavailable in this browser. The interactive pixel map remains available.','privacy'));
   const aside = element('aside', null, 'world-aside');if(agent)aside.append(callingCard());const inspection=element('div');inspection.id='resident-inspection';aside.append(inspection);if(world.kind==='frontier')aside.append(landCard(),frontierCard());else{const frontier=card('Beyond the Commons','OPEN FRONTIER');frontier.append(paragraph('Explore a finite landscape, steward a plot for a purpose and build with human players and agents.'),button('Enter the frontier',()=>enterFrontier()),button('Explore as a visitor',()=>visitWorld('frontier:0:0'),'secondary small'));aside.append(frontier);} const arrival = card(agent ? (agent.kind==='human'?'Your player':'Your agent') : 'Visiting the world', 'HERE & NOW');
   if (state.agents.length) {
@@ -374,6 +566,22 @@ async function enterFrontier(hops=0,expectedId=selected()?.id){
  let portal=worldPortals().find(item=>portalTarget(item)==='frontier:0:0');
  if(!portal){if(definition().kind==='home'){await travelAgent('commons');return enterFrontier(hops+1,expectedId);}portal=worldPortals().find(item=>portalTarget(item)==='commons'||portalTarget(item)===`home:${selected().id}`);if(!portal)return notice('Return to the Commons through this world’s exit, then enter the frontier.');if(!await walkTo(portal.x,portal.y))return;await travelAgent(portalTarget(portal));return enterFrontier(hops+1,expectedId);}
  state.tab='world';render();if(await walkTo(portal.x,portal.y))await travelAgent('frontier:0:0');
+}
+// The keyboard and text-mode way to move: type the tile, and the same planner the click path uses
+// walks the resident there one checked step at a time. It is the documented fallback for a viewer who
+// cannot drag in the 3D world, and the pixel map and the World list remain readable alternatives.
+function walkToTileForm(agent, world) {
+  const node = element('div', null, 'walk-to-tile');
+  node.append(paragraph(`Walk to a tile with typed coordinates. The planner uses the same saved world, one grid step at a time.`, 'privacy'));
+  const inputs = form(node, 'Walk to tile', async values => {
+    const x = Number(values.x), y = Number(values.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y)) throw new Error('Enter whole tile coordinates.');
+    if (x < 0 || y < 0 || x >= (world.width || world.columns) || y >= (world.height || world.rows)) throw new Error('That tile is outside this world.');
+    if (await walkTo(x, y)) notice(`Walked to ${x}, ${y}.`);
+  });
+  field(inputs, 'x', 'Tile X', { type: 'number', min: 0, max: (world.width || world.columns) - 1, value: agent.x });
+  field(inputs, 'y', 'Tile Y', { type: 'number', min: 0, max: (world.height || world.rows) - 1, value: agent.y });
+  return node;
 }
 async function walkTo(x,y){
  const player=viewedAgent();if(!player)return false;const worldId=player.world_id,id=player.id,epoch=state.sessionEpoch||0;
@@ -991,7 +1199,16 @@ function renderWorkshop(parent){
 }
 
 async function boot() {
-  try {const bootstrap=await api('/bootstrap');state.setup=bootstrap.setup_required;state.setupCodeRequired=bootstrap.setup_code_required===true;state.registrationOpen=bootstrap.registration_open!==false;try{const me=await api('/me');state.account=me.account;state.agents=me.agents;}catch{}await refresh();render();}catch(error){notice(`Could not connect to the world: ${error.message}`,true);render();}
+  try {const bootstrap=await api('/bootstrap');state.setup=bootstrap.setup_required;state.setupCodeRequired=bootstrap.setup_code_required===true;state.registrationOpen=bootstrap.registration_open!==false;try{const me=await api('/me');state.account=me.account;state.agents=me.agents;}catch{}await refresh();render();resumePendingWork();}catch(error){notice(`Could not connect to the world: ${error.message}`,true);render();}
+}
+// A refresh never loses unfinished work: a half-finished account form is reopened on the tab it was
+// left on, with the typed values restored, and the remembered control regains the cursor. Nothing is
+// reopened when there is no draft to return to.
+function resumePendingWork() {
+  const remembered = rememberedFocus();
+  if (!remembered.section || !Object.keys(draftValues(remembered.section)).length) return false;
+  if (!state.account && ['auth-login', 'auth-register'].includes(remembered.section)) openAuth(remembered.section === 'auth-register' ? 'register' : 'login');
+  return restoreRememberedFocus();
 }
 boot();
 // Refresh the current viewport without replacing active form fields or moving focus.
@@ -1053,6 +1270,7 @@ async function talkAmbassador(id){
   const mapped=state.mayors.find(guide=>guide.id===id)?.ambassador?.id;
   const ambassadorId=String(id).startsWith('amb-')?id:(mapped||id);
   const profile=await api('/ambassador?id='+encodeURIComponent(ambassadorId));if(!state.account)return;
+  newcomerComplete('ambassador');
   const ambassador=profile.ambassador,dialog=element('dialog',null,'mayor-dialog');dialog.setAttribute('aria-labelledby','mayor-dialog-title');
   const title=element('h2',ambassador.name);title.id='mayor-dialog-title';const close=button('Close',()=>dialog.close(),'secondary small');dialog.append(actions(guidePortrait(ambassador),title,close),paragraph(`Private ambassador conversation for ${ambassador.name} (${ambassador.iso3}) · country context fixed · human oversight`,'privacy'));
   if(profile.legacy)dialog.append(paragraph(`Compatibility alias: the historic regional guide ${profile.legacy.guide_id}${profile.legacy.region_name?` (${profile.legacy.region_name})`:''} now maps to this ambassador. Its earlier messages remain readable.`,'muted'));

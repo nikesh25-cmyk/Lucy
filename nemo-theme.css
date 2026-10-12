@@ -65,3 +65,55 @@ dialog,#auth-dialog,.mayor-dialog{background:linear-gradient(145deg,#12382e,#082
 .calling-hud .secondary{color:#e5ebdb;border-color:#637d65}.calling-catalog{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin:24px 0}.calling-catalog .card{margin:0;display:flex;flex-direction:column}.calling-choice h2{font-size:26px}.calling-choice button{margin-top:auto}.calling-choice .privacy{font-size:11px}
 .calling-story{background:linear-gradient(120deg,#163c30,#09281f);border-color:#8ba87966}.calling-quest{padding:20px 0;border-top:1px solid var(--line)}.calling-quest h3{margin:10px 0;font-size:21px}.calling-quest.complete{opacity:.78}.calling-objective{display:flex;align-items:flex-start;gap:10px;margin:12px 0;font-size:12px}.calling-objective p{margin:0}.objective-mark{color:#77914e}.calling-objective.complete .objective-mark{color:#216744}.calling-card .actions{margin-top:15px}.guild-member{padding:18px 0;border-top:1px solid var(--line)}.guild-member>.badge{margin-left:12px}.resident-inspection{border:1px solid #b0c5a1}.resident-inspection button{margin:5px 5px 0 0}
 @media(max-width:1200px){.calling-catalog{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.calling-catalog{grid-template-columns:1fr}.calling-hud{padding:13px;gap:10px}.calling-hud button{font-size:11px}.calling-hud p{font-size:12px}.guild-member>.badge{margin-left:0;display:inline-block}}
+
+/* The guided newcomer path: six ordered steps, the receipt they produce, the review boundary and the
+   controls note. Same editorial language as the rest of the shell, no new palette. */
+.newcomer-journey .newcomer-steps{list-style:none;margin:20px 0;padding:0;display:grid;gap:14px}
+.newcomer-step{border:1px solid var(--line);border-radius:20px;padding:18px 20px;background:linear-gradient(135deg,#aec8a60b,#acd0ba03);min-width:0}
+.newcomer-step h3{margin:8px 0 4px;font-size:1.05rem}
+.newcomer-step p{margin:6px 0}
+.newcomer-step .badge{display:inline-block}
+.newcomer-step.done{border-color:#bdd2a852}
+.newcomer-step.next{border-color:#ded6a566;background:#ded6a50d}
+.newcomer-step.later{opacity:.88}
+.newcomer-step.next .badge{background:#ded6a518;color:var(--gold);border-color:#ded6a55c}
+.newcomer-journey progress{display:block;width:100%;max-width:420px;height:8px;accent-color:var(--gold);margin:14px 0 8px}
+.newcomer-lane{border:1px solid var(--line);border-radius:20px;padding:18px 20px;background:#10382e;color:var(--ink);min-width:0}
+.newcomer-lane h3{font-size:1.08rem;margin:10px 0 8px}
+.newcomer-lane p{color:var(--muted)}
+.walk-to-tile{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+.walk-to-tile form{margin-top:6px}
+.field-requirement{display:block;font-weight:400}
+#newcomer-journey,#newcomer-receipt,#newcomer-review,#newcomer-controls{scroll-margin-top:20px}
+
+/* Contrast and target corrections measured from these two stylesheets. The shipped values below the
+   marker failed WCAG 2.2 AA (4.5:1) for normal text; the ratios after each rule are recomputed from
+   the stylesheets by tests/newcomer-journey.test.js and listed in
+   docs/handoff/task-13-newcomer-journey.md. */
+.objective-mark{color:#bdd2a8}                             /* 7.51:1 on the calling story, was 3.45:1 */
+.calling-objective.complete .objective-mark{color:var(--gold)} /* 8.28:1, was 1.79:1 */
+.plot-grid .plot-cell{color:#3f5548}                       /* 7.08:1 on the light cell, was 3.98:1 */
+.land-atlas .land-area{color:#4a5c52}                      /* 6.26:1 on the light area, was 2.73:1 */
+.password-reveal{min-height:32px;min-width:36px}           /* 26px was above the 24px AA floor, below the project's 44px */
+
+/* Every control in the flow keeps a 44-pixel target: on any coarse pointer, and on the small
+   screens this release supports. Wider screens with a mouse keep the existing 38-pixel small button
+   and 40-pixel tab, which are unchanged. */
+@media(pointer:coarse){button.small{min-height:44px}
+.tabs button{min-height:44px}
+.icon-button{min-width:44px;min-height:44px}
+.frontier-hotbar button{min-height:44px}
+#session-bar button{min-height:44px;padding:10px 14px}
+.auth-tabs button{min-height:44px}
+.directory-body>.actions button{min-height:44px}
+.plot-grid .plot-cell{min-height:44px}
+.land-atlas .land-area{min-height:44px}}
+@media(max-width:1050px){.tabs button{min-height:44px}}
+@media(max-width:650px){button.small{min-height:44px}
+.frontier-hotbar button{min-height:44px}
+.icon-button{min-width:44px;min-height:44px}
+#session-bar button{min-height:44px;padding:10px 14px}
+.auth-tabs button{min-height:44px}
+.directory-body>.actions button{min-height:44px}}
+@media(max-width:600px){.plot-grid .plot-cell{min-height:44px}
+.land-atlas .land-area{min-height:44px}}
