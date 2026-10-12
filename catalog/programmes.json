@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "researchedOn": "2026-10-11",
+  "researchedOn": "2026-10-12",
   "status": "independent-research-reference",
-  "scope": "70 reference records: principal organs, General Assembly main committees, ECOSOC functional and regional commissions, specialized agency groups, funds/programmes and other entities, ten human rights treaty bodies, the Human Rights Council, two human rights review mechanisms and three UNFCCC constituted bodies. This does not enumerate every subsidiary body, mandate, treaty procedure or programme; reference bodies and mechanisms are distinct categories.",
+  "scope": "74 reference records: principal organs, General Assembly main committees, ECOSOC functional and regional commissions, specialized agency groups, funds/programmes and other entities, ten human rights treaty bodies, the Human Rights Council, two human rights review mechanisms, three UNFCCC constituted bodies, the Peacebuilding Commission, Peacebuilding Fund and Committee on World Food Security. UNDRR is included among other entities. Coverage does not enumerate every subsidiary body, mandate, treaty procedure or programme; bodies, funds and mechanisms are distinct categories.",
   "affiliation": "Lucy has no UN affiliation, mandate or endorsement. Task suggestions and SDG mappings are Lucy editorial proposals, not UN instructions.",
   "institutions": [
     {
@@ -1628,6 +1628,150 @@
         "https://sdgs.un.org/goals/goal17"
       ],
       "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "peacebuilding-commission",
+      "name": "Peacebuilding Commission",
+      "type": "peacebuilding-advisory-body",
+      "mandate": "Convening and advisory work on sustaining peace, recovery and institution-building, with national ownership and country consent.",
+      "sourceUrl": "https://www.un.org/peacebuilding/en/content/about-the-commission",
+      "sdgs": [
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map published country peacebuilding priorities and participation gaps",
+        "Prepare a conflict-sensitive civilian service coordination brief"
+      ],
+      "countryResearchChecks": [
+        "Verify country consent, current official priorities and national ownership before proposing any engagement.",
+        "Use public civilian evidence; do not identify individuals as threats or infer peacebuilding outcomes from a global mandate."
+      ],
+      "evidenceLocator": "Mandate: founding resolutions and sustaining-peace functions; country consent and convening/advisory roles",
+      "relatedSourceUrls": [
+        "https://www.un.org/peacebuilding/en/commission/programme-of-work"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate text reviewed",
+        "retrieved": "2026-10-12T03:03:35.090Z",
+        "sha256": "1b2bdfdedb89d9b52a822e23def21f02c8d92a0753e1472729a17ce747d6eb6e"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "peacebuilding-fund",
+      "name": "Secretary-General’s Peacebuilding Fund",
+      "type": "peacebuilding-fund",
+      "mandate": "Supports peacebuilding in conflict-affected or at-risk situations through a distinct financing instrument; access requires the applicable official process.",
+      "sourceUrl": "https://www.un.org/peacebuilding/en/fund/documents/investments",
+      "sdgs": [
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Compare published programme priorities with a verified country needs baseline",
+        "Map the official eligibility and review process without assuming funding"
+      ],
+      "countryResearchChecks": [
+        "Distinguish Immediate Response and Peacebuilding and Recovery facilities; verify current guidance, country eligibility and expiry dates with official focal points.",
+        "An eligibility reference, allocation, pledge or archived investment plan is not a funding offer, application approval or actual disbursement."
+      ],
+      "evidenceLocator": "PBF Investments overview; linked eligibility guidance. Investment totals and plan dates on this overview include historical periods and are not copied as current figures.",
+      "relatedSourceUrls": [
+        "https://www.un.org/peacebuilding/en/content/countries-declared-eligible-pbf-secretary-general"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate text reviewed",
+        "retrieved": "2026-10-12T03:03:35.789Z",
+        "sha256": "6834196c454581efd7656533d50c8d46b9c219e63a235693395534602d4ace1b"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "committee-world-food-security",
+      "name": "Committee on World Food Security",
+      "type": "food-security-platform",
+      "mandate": "Intergovernmental food-security and nutrition dialogue, coordination and voluntary policy convergence.",
+      "sourceUrl": "https://www.fao.org/cfs/en/",
+      "sdgs": [
+        2,
+        5,
+        10,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Compare a published voluntary policy product with a country food-security baseline",
+        "Identify producer access and nutrition evidence gaps for a municipal decision brief"
+      ],
+      "countryResearchChecks": [
+        "Identify the relevant voluntary policy product, edition and country food-system context; it is not automatically binding national law.",
+        "Verify local producer needs, affordability, participation and implementation evidence before proposing uptake or export support."
+      ],
+      "evidenceLocator": "Platform, policy convergence and uptake functions; voluntary policy products",
+      "relatedSourceUrls": [
+        "https://www.fao.org/cfs/policy-products/voluntary-guidelines-and-policy-recommendations/en"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate text reviewed",
+        "retrieved": "2026-10-12T03:03:38.211Z",
+        "sha256": "ab2faeaf8937faf346a2c788bba064a37b9ea0243717ef333fe53162ff1692f3"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "undrr",
+      "name": "United Nations Office for Disaster Risk Reduction",
+      "type": "other-entity",
+      "mandate": "Coordinates disaster risk reduction and supports implementation, monitoring and review of the Sendai Framework.",
+      "sourceUrl": "https://www.undrr.org/our-work",
+      "sdgs": [
+        11,
+        13,
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map publicly documented municipal hazards, warning gaps and responsible agencies",
+        "Compare risk-informed livelihood and agriculture resilience options"
+      ],
+      "countryResearchChecks": [
+        "Find current national and local disaster-risk plans, dated hazard/loss data and responsible warning authorities; global progress does not prove local readiness.",
+        "Verify vulnerable-group participation, warning accessibility and local implementation costs; do not infer funding or emergency instructions from a framework."
+      ],
+      "evidenceLocator": "Risk knowledge, locally led DRR, recovery readiness and Sendai Framework custodianship",
+      "relatedSourceUrls": [
+        "https://www.undrr.org/implementing-sendai-framework/what-sendai-framework"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate text reviewed",
+        "retrieved": "2026-10-12T03:03:39.287Z",
+        "sha256": "a24bc55fcf9be21b32adb0509eea8555a720d0ba9611666c077e638a08aadab9"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     }
   ],
   "frameworks": [
@@ -1728,14 +1872,34 @@
     "functional-commission": 8,
     "regional-commission": 5,
     "specializedAgencyGroups": 15,
-    "fundsProgrammesOtherEntities": 14,
+    "fundsProgrammesOtherEntities": 15,
     "worldBankCounting": "The World Bank Group is one catalog group; the UN guide notes IBRD, IFC and IDA as three specialized agencies. Do not infer fifteen legal entities.",
     "exclusions": [
       "Subsidiary and expert bodies outside the listed categories",
-      "Treaty bodies",
+      "Treaty bodies and procedures beyond the ten listed core human rights bodies",
       "Every project, programme and agenda",
       "Historical and abolished institutions"
-    ]
+    ],
+    "peacebuilding-advisory-body": 1,
+    "peacebuilding-fund": 1,
+    "food-security-platform": 1,
+    "countsByType": {
+      "charter-based-body": 1,
+      "climate-constituted-body": 3,
+      "food-security-platform": 1,
+      "functional-commission": 8,
+      "fund-programme": 6,
+      "ga-main-committee": 6,
+      "human-rights-review-mechanism": 2,
+      "human-rights-treaty-body": 10,
+      "other-entity": 9,
+      "peacebuilding-advisory-body": 1,
+      "peacebuilding-fund": 1,
+      "principal-organ": 6,
+      "regional-commission": 5,
+      "specialized-agency": 14,
+      "specialized-agency-group": 1
+    }
   },
   "coverageGaps": [
     "Individual Special Procedures mandates and country coverage are not enumerated.",
