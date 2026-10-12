@@ -33,7 +33,7 @@ function sourceRecords(input,sourceCount){
   const number=reference(record.source_number,sourceCount,true);if(numbers.has(number))invalid('Retained source numbers must be unique.');numbers.add(number);
   if(typeof record.sha256!=='string'||!/^[a-f0-9]{64}$/.test(record.sha256))invalid('Retained source hash must use SHA256.');
   if(typeof record.retrieved!=='string'||!Number.isFinite(Date.parse(record.retrieved)))invalid('Retained source needs a retrieval date.');
-  if(!['web-excerpt','visual-review-paraphrase','normalized-statistics'].includes(record.kind))invalid('Choose a retained evidence kind.');
+  if(!['web-excerpt','visual-review-paraphrase','normalized-statistics','global-target-framework'].includes(record.kind))invalid('Choose a retained evidence kind.');
   return {source_number:number,sha256:record.sha256,retrieved:new Date(record.retrieved).toISOString(),kind:record.kind,summary:string(record.summary,'Retained retrieval summary',1800),publication_note:string(record.publication_note||'Publication date not established','Retained publication note',200)};
  });
 }
