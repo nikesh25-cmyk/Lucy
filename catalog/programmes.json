@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "researchedOn": "2026-10-12",
   "status": "independent-research-reference",
-  "scope": "79 reference records: principal organs, General Assembly main committees, ECOSOC functional and regional commissions, specialized agency groups, funds/programmes and other entities, ten human rights treaty bodies, the Human Rights Council, two human rights review mechanisms, seven UNFCCC constituted bodies and the Santiago technical-assistance network, the Peacebuilding Commission, Peacebuilding Fund and Committee on World Food Security. UNDRR is included among other entities. Coverage does not enumerate every subsidiary body, mandate, treaty procedure or programme; bodies, funds and mechanisms are distinct categories.",
+  "scope": "83 reference records: principal organs, General Assembly main committees, ECOSOC functional and regional commissions, specialized agency groups, funds/programmes and other entities, ten human rights treaty bodies, the Human Rights Council, two human rights review mechanisms, seven UNFCCC constituted bodies and the Santiago technical-assistance network, the Peacebuilding Commission, Peacebuilding Fund and Committee on World Food Security. UNDRR is included among other entities. Coverage does not enumerate every subsidiary body, mandate, treaty procedure or programme; bodies, funds and mechanisms are distinct categories. SDG follow-up, voluntary national review, resident coordination and country cooperation frameworks are included as distinct reference mechanisms.",
   "affiliation": "Lucy has no UN affiliation, mandate or endorsement. Task suggestions and SDG mappings are Lucy editorial proposals, not UN instructions.",
   "institutions": [
     {
@@ -1966,6 +1966,153 @@
         "https://sdgs.un.org/goals/goal17"
       ],
       "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "hlpf",
+      "name": "High-level Political Forum on Sustainable Development",
+      "type": "sdg-review-forum",
+      "mandate": "Provides a global forum for reviewing and following up SDG implementation.",
+      "sourceUrl": "https://www.un.org/sustainabledevelopment/monitoring-and-progress-hlpf/",
+      "sdgs": [
+        17,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map country priorities and evidence gaps to the relevant SDG review process",
+        "Compare publicly documented follow-up options for national and local priorities"
+      ],
+      "countryResearchChecks": [
+        "Verify the applicable review year, official country report and responsible national process; past forum dates are not new submission deadlines.",
+        "Distinguish forum recommendations, country-reported progress and independently supported results; participation does not establish UN endorsement or project financing."
+      ],
+      "evidenceLocator": "Monitoring and progress: HLPF and country presentations",
+      "relatedSourceUrls": [
+        "https://hlpf.un.org/",
+        "https://sdgs.un.org/2030agenda"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official monitoring overview retrieved; this establishes the reference role, not current country reports, participation or independently verified outcomes.",
+      "sourceVerification": {
+        "method": "Secured public DNS-pinned TLS overview retrieval; role reviewed",
+        "directReaderStatus": "retrieved",
+        "sha256": "a8fc292fa5de2bb21e1a9ebe1743517042374d437b4aca5068961801946ff990",
+        "retrieved": "2026-10-12T07:01:37.613Z"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "voluntary-national-review",
+      "name": "Voluntary National Reviews",
+      "type": "national-review-mechanism",
+      "mandate": "Country-led reviews sharing implementation experience and challenges within the SDG follow-up process.",
+      "sourceUrl": "https://www.un.org/sustainabledevelopment/monitoring-and-progress-hlpf/",
+      "sdgs": [
+        17,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Audit a national review’s sources, dates and unresolved evidence gaps",
+        "Map a scoped local research question to published national priorities"
+      ],
+      "countryResearchChecks": [
+        "Find the actual dated country VNR and underlying official data; country self-reporting is not independent certification and missing reporting does not prove missing activity.",
+        "Verify the relevant reporting cycle, focal institution and current guidance; do not promote a historic schedule or handbook into a newly issued deadline.",
+        "Record participation and data-disaggregation limits; proposed local contributions need national ownership and consent rather than presumed authority."
+      ],
+      "evidenceLocator": "Country Voluntary National Review presentations",
+      "relatedSourceUrls": [
+        "https://sdgs.un.org/2030agenda",
+        "https://hlpf.un.org/sites/default/files/2025-10/VNR%202026%20Handbook%20EN.pdf"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official monitoring overview retrieved; this establishes the reference role, not current country reports, participation or independently verified outcomes.",
+      "sourceVerification": {
+        "method": "Secured public DNS-pinned TLS overview retrieval; role reviewed",
+        "directReaderStatus": "retrieved",
+        "sha256": "a8fc292fa5de2bb21e1a9ebe1743517042374d437b4aca5068961801946ff990",
+        "retrieved": "2026-10-12T07:01:37.613Z"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "resident-coordinator-system",
+      "name": "United Nations Resident Coordinator system",
+      "type": "development-coordination-system",
+      "mandate": "Coordinates UN development-system support and country-team planning around national priorities.",
+      "sourceUrl": "https://unsdg.un.org/2030-agenda/leadership/the-resident-coordinator",
+      "sdgs": [
+        17,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Locate published country-team priorities and current public coordination routes",
+        "Map a research recommendation to documented national delivery responsibilities"
+      ],
+      "countryResearchChecks": [
+        "Verify the actual country office, current public role and dated country-team documents; fictional Lucy mayors are not Resident Coordinators or UN representatives.",
+        "Check government ownership, responsible agencies and consent for any proposed engagement; a public office or contact route is not an invitation, partnership or authority to act.",
+        "Separate coordinated support plans, commitments and actual delivery; no financing offer is inferred from the system description."
+      ],
+      "evidenceLocator": "Resident Coordinator role and country-team responsibilities",
+      "relatedSourceUrls": [
+        "https://unsdg.un.org/about/how-we-work",
+        "https://unsdg.un.org/2030-agenda/cooperation-framework"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed primary-page text reviewed. Direct retrieval remained unavailable or unsupported; full live source retrieval is unverified. Current country offices and documents require separate verification.",
+      "sourceVerification": {
+        "method": "Official indexed primary-page role review; secured direct retrieval gap",
+        "directReaderStatus": "collection-gap"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cooperation-framework",
+      "name": "UN Sustainable Development Cooperation Framework",
+      "type": "country-programming-framework",
+      "mandate": "Frames country-level UN development-system planning, implementation, monitoring and evaluation with host-government priorities.",
+      "sourceUrl": "https://unsdg.un.org/2030-agenda/cooperation-framework",
+      "sdgs": [
+        17,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Locate the current country framework and compare its priorities with local evidence",
+        "Identify public results reports and scoped implementation research gaps"
+      ],
+      "countryResearchChecks": [
+        "Locate the signed country-specific framework and applicable programme period, amendments, results reports and responsible national institutions; generic guidance is not a country agreement.",
+        "Distinguish proposed results, recorded spending and independently evidenced outcomes; a framework is not funding for a Lucy project.",
+        "Check the current Common Country Analysis and country-owned participation process; historic guidance must not be labelled the latest edition without verification."
+      ],
+      "evidenceLocator": "Cooperation Framework purpose and programme cycle",
+      "relatedSourceUrls": [
+        "https://unsdg.un.org/resources/united-nations-sustainable-development-cooperation-framework-guidance",
+        "https://unsdg.un.org/about/how-we-work"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed primary-page text reviewed. Direct retrieval remained unavailable or unsupported; full live source retrieval is unverified. Current country offices and documents require separate verification.",
+      "sourceVerification": {
+        "method": "Official indexed primary-page role review; secured direct retrieval gap",
+        "directReaderStatus": "collection-gap"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     }
   ],
   "frameworks": [
@@ -2081,17 +2228,21 @@
       "charter-based-body": 1,
       "climate-constituted-body": 7,
       "climate-technical-assistance-network": 1,
+      "country-programming-framework": 1,
+      "development-coordination-system": 1,
       "food-security-platform": 1,
       "functional-commission": 8,
       "fund-programme": 6,
       "ga-main-committee": 6,
       "human-rights-review-mechanism": 2,
       "human-rights-treaty-body": 10,
+      "national-review-mechanism": 1,
       "other-entity": 9,
       "peacebuilding-advisory-body": 1,
       "peacebuilding-fund": 1,
       "principal-organ": 6,
       "regional-commission": 5,
+      "sdg-review-forum": 1,
       "specialized-agency": 14,
       "specialized-agency-group": 1
     }
@@ -2100,6 +2251,7 @@
     "Individual Special Procedures mandates and country coverage are not enumerated.",
     "UNFCCC constituted bodies, treaty secretariats and funding mechanisms remain partially covered.",
     "Current country treaty participation, legal procedures, reporting cycles and programme eligibility require task-specific verification.",
-    "Listed climate mechanisms do not establish country compliance, support eligibility or delivery; full source retrieval gaps and current operational terms require task-specific review."
+    "Listed climate mechanisms do not establish country compliance, support eligibility or delivery; full source retrieval gaps and current operational terms require task-specific review.",
+    "Current country review documents, coordination-office roles and cooperation-framework cycles need country-specific verification; generic references do not establish support or country results."
   ]
 }
