@@ -17,7 +17,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 const $ = (selector) => document.querySelector(selector);
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62}});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -463,11 +463,89 @@ function frontierCard(){
  if(!viewedAgent())node.append(button(state.account?'Play as myself':'Create account & play',()=>state.account?playAsHuman():openAuth('register')));
  else{node.append(paragraph('Steward a plot above, then choose a block and click a face or use coordinates. Stack up to eight layers inside your plot. Roads and conservation land stay clear.','privacy'));
  const controls=form(node,'Apply block at coordinates',async data=>buildAt(Number(data.x),Number(data.y),Number(data.z)));const mine=data.my_plot?.world_id===expectedWorld?data.my_plot:null;field(controls,'x','Block X',{type:'number',min:0,max:47,value:mine?mine.x+1:Math.min(47,worldPosition().x+2)});field(controls,'y','Block Y',{type:'number',min:0,max:47,value:mine?mine.y+1:Math.min(47,worldPosition().y+2)});field(controls,'z','Block height',{type:'number',min:0,max:7,value:0,full:true});}
+ node.append(blueprintCard(data,expectedWorld));
  const gates=element('div',null,'frontier-gates');for(const gate of data.neighbors){const direction={up:'North',down:'South',left:'West',right:'East'}[gate.direction];const row=element('div',null,'frontier-gate');row.append(element('strong',direction),paragraph(gate.exists?'Neighboring area is open':'New area available','privacy'));
  row.append(button(viewedAgent()?'Walk to gate':'Look at gate',async()=>{if(viewedAgent())await walkTo(gate.x,gate.y);else{state.focus={x:gate.x,y:gate.y};await loadWorld();paintWorld();}},'secondary small'));
  if(gate.exists&&!viewedAgent())row.append(button('Explore area',()=>visitWorld(gate.target_world_id),'secondary small'));
  if(!gate.exists){const expand=button('Expand '+direction.toLowerCase(),async()=>{const result=await api('/frontier/expand','POST',{agent_id:state.selected,world_id:expectedWorld,direction:gate.direction});await loadWorld();renderView();notice(result.created?'New area opened. Walk outward through the gate to enter.':'This neighboring area is already open.');},'small');expand.dataset.frontierExpand=gate.direction;row.append(expand);}gates.append(row);
  }node.append(gates);disclosure(node,'Shared building limits',body=>{body.append(paragraph(`Each operator can open up to ${data.limits.expansions_per_operator_day} new areas per UTC day. The fixed map contains ${data.limits.sectors} areas and ${data.limits.blocks_per_sector} blocks per area. Build within ${data.limits.build_range} tiles of your player. Expansion and building earn no contribution coins.`,'privacy'));});return node;
+}
+/**
+ * Reusable construction blueprints. The panel previews the exact cells, layers, block count,
+ * doorways and ownership the server computed, then applies the same plan. Every value the server
+ * returns is written as text, so a blueprint can never introduce markup into the page.
+ */
+function blueprintCard(data,expectedWorld){
+ const node=card('Small construction blueprints','REUSABLE BUILDINGS');node.classList.add('blueprint-card');
+ const catalogue=data?.blueprints||[];if(!catalogue.length)return node;
+ const player=viewedAgent(),disabled=!player||player.status!=='active'||state.world.paused;
+ const current=catalogue.some(item=>item.id===state.blueprint)?state.blueprint:catalogue[0].id;
+ node.append(paragraph('Preview an original small building inside your own plot, then apply it. Application is all or nothing: if one cell or layer fails a server rule, nothing is built.','privacy'));
+ const controls=element('div',null,'field-grid');
+ const choose=field(controls,'blueprint','Blueprint',{options:catalogue.map(item=>({value:item.id,label:`${item.name} · ${item.block_count} blocks`})),value:current});
+ choose.setAttribute('aria-label','Choose a construction blueprint to preview');
+ choose.addEventListener('change',()=>{state.blueprint=choose.value;state.blueprintReport=null;renderView();});
+ const mine=data.my_plot?.world_id===expectedWorld?data.my_plot:null;
+ const anchor=state.blueprintAnchor||{x:mine?mine.x+1:Math.min(47,worldPosition().x+1),y:mine?mine.y+1:Math.min(47,worldPosition().y+1)};
+ const anchorX=field(controls,'blueprint_x','Blueprint X',{type:'number',min:0,max:47,value:String(anchor.x)});
+ const anchorY=field(controls,'blueprint_y','Blueprint Y',{type:'number',min:0,max:47,value:String(anchor.y)});
+ anchorX.addEventListener('change',()=>{state.blueprintAnchor={x:Number(anchorX.value),y:Number(anchorY.value)};});
+ anchorY.addEventListener('change',()=>{state.blueprintAnchor={x:Number(anchorX.value),y:Number(anchorY.value)};});
+ const readAnchor=()=>(state.blueprintAnchor={x:Number(anchorX.value),y:Number(anchorY.value)});
+ node.append(controls);
+ const preview=button('Preview blueprint',async()=>{
+  if(!player)return state.account?playAsHuman():openAuth('register');
+  state.blueprint=choose.value;
+  const tile=readAnchor();
+  state.blueprintReport=await api('/frontier/build','POST',{agent_id:player.id,world_id:expectedWorld,blueprint:choose.value,x:tile.x,y:tile.y,preview:true});
+  renderView();
+ },'small');
+ preview.dataset.blueprintPreview='1';preview.setAttribute('aria-label','Preview the chosen blueprint footprint without building it');
+ const apply=button('Apply blueprint',async()=>{
+  if(!player)return state.account?playAsHuman():openAuth('register');
+  const tile=readAnchor();
+  const result=await api('/frontier/build','POST',{agent_id:player.id,world_id:expectedWorld,blueprint:choose.value,x:tile.x,y:tile.y});
+  state.blueprint=result.blueprint.id;state.blueprintReport=null;
+  await loadWorld();paintWorld();
+  notice(result.replay?`${result.blueprint.name} is already built at ${tile.x}, ${tile.y}; nothing changed.`:`${result.blueprint.name} built at ${tile.x}, ${tile.y} with ${result.new_blocks} blocks and ${result.actions} building actions.`);
+  renderView();
+ },'small');
+ apply.dataset.blueprintApply='1';apply.setAttribute('aria-label','Apply the chosen blueprint to the previewed position');
+ const remove=button('Remove this structure',async()=>{
+  if(!player)return state.account?playAsHuman():openAuth('register');
+  const tile=readAnchor();
+  const result=await api('/frontier/build','POST',{agent_id:player.id,world_id:expectedWorld,blueprint:choose.value,x:tile.x,y:tile.y,remove:true});
+  state.blueprintReport=null;
+  await loadWorld();paintWorld();
+  notice(result.replay?`Nothing of ${result.blueprint.name} stands at ${tile.x}, ${tile.y}.`:`Removed ${result.removed_blocks} blocks of ${result.blueprint.name}. Anyone standing on it was lowered to the ground.`);
+  renderView();
+ },'secondary small');
+ remove.dataset.blueprintRemove='1';remove.setAttribute('aria-label','Remove the structure at the previewed position in your plot');
+ for(const control of [preview,apply,remove])control.disabled=disabled;
+ node.append(actions(preview,apply,remove));
+ if(disabled)node.append(paragraph(player?'Your character is paused; blueprints stay disabled until it is active again.':'Play as your character to preview and build a blueprint.','privacy'));
+ node.append(blueprintReportView(state.blueprintReport));
+ return node;
+}
+function blueprintReportView(report){
+ const node=element('div',null,'blueprint-report');node.id='blueprint-report';node.tabIndex=0;
+ node.setAttribute('role','status');node.setAttribute('aria-live','polite');
+ node.setAttribute('aria-label','Blueprint preview: footprint, block count, doorways, ownership and validation');
+ if(!report){node.append(paragraph('Preview a blueprint to read its exact cells and layers, block count, doorway access, ownership and budget before building.','privacy'));return node;}
+ node.append(element('strong',`${report.blueprint.name} · ${report.block_count} blocks`),paragraph(report.blueprint.summary));
+ node.append(paragraph(`${report.footprint.width} × ${report.footprint.depth} m footprint with its first cell at ${report.anchor.x}, ${report.anchor.y}.`,'privacy'));
+ node.append(paragraph(report.valid&&report.replay?'Every layer already stands here: applying again changes nothing.':`${report.new_blocks} new blocks, ${report.existing_blocks} of yours already in place. ${report.budgets.actions_remaining} of ${report.budgets.actions_per_operator_day} daily building actions remain; ${report.budgets.blocks_remaining} of ${report.budgets.blocks_per_sector} blocks remain in this area.`,'privacy'));
+ node.append(paragraph(report.access.shared_clear?'Shared access stays clear: no road, arrival or gateway tile is used.':'Shared access would be blocked.','privacy'));
+ const doorways=report.access.doorways;
+ if(doorways)node.append(paragraph(doorways.every(doorway=>doorway.clear)?`${doorways.length} doorway${doorways.length===1?'':'s'} open${doorways.length===1?'s':''} onto walkable ground.`:'A doorway would open onto ground a resident cannot reach.','privacy'));
+ node.append(paragraph(report.ownership.is_mine?`Inside your plot ${report.ownership.plot_id}${report.ownership.purpose?` for “${report.ownership.purpose}”`:''}.`:`Not inside your own assigned plot (${report.ownership.plot_id||'no plot address'}).`,'privacy'));
+ if(report.issues.length)for(const issue of report.issues)node.append(paragraph(issue.message,'error'));
+ else node.append(paragraph('Every server rule passes for this position.','privacy'));
+ disclosure(node,'Exact cells and layers',body=>{
+  for(const layer of report.layers||[])body.append(paragraph(`Layer ${layer.z} · ${layer.type} · ${layer.cells.length} block${layer.cells.length===1?'':'s'} · ${layer.cells.map(cell=>`${cell.x}, ${cell.y}`).join(' · ')}`,'privacy'));
+  body.append(paragraph(`${report.cells.length} cells in total. A block layer is solid unless it is the thin path surface, and paths belong on layer zero.`,'privacy'));
+ });
+ return node;
 }
 async function buildAt(x,y,z=0,pick=null){
  const player=viewedAgent();if(!player)return;const world=definition();
