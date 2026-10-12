@@ -1,0 +1,416 @@
+{
+  "schemaVersion": 1,
+  "id": "country-source-packs-2026-10-12",
+  "title": "Country source packs: Nepal plus four LDC countries (batch 1)",
+  "researchedOn": "2026-10-12",
+  "status": "research-source-packs-no-pilot-selected-no-outreach-sent",
+  "framing": "These are source packs for research. No real pilot is selected, no beneficiary outcome is asserted, no mission or task was activated, and no message was sent to any institution. Every material statement below is either (a) a dated primary-source reading recorded with its exact URL and source location, (b) a bounded UN Comtrade / World Bank preview retained byte-for-byte with a checksum, or (c) an explicit research question or evidence gap.",
+  "scope": {
+    "countries": ["Nepal (NPL)", "Bangladesh (BGD)", "Ethiopia (ETH)", "Cambodia (KHM)", "Senegal (SEN)"],
+    "productAndDestinationScope": "One tightly scoped origin-product-corridor per country, recorded as a research corridor rather than a shipment plan.",
+    "excluded": "No country-wide investment ranking, no multi-product programme, no buyer list, no tariff schedule reproduced, no cost model, no legal advice."
+  },
+  "selectionRationale": {
+    "statement": "Nepal is the anchor required by the task. The four added countries were chosen from the 44 LDC entries in catalog/countries.json for maximum legitimate diversity of region, corridor and regulator while each has an independent published national statistical/agricultural institution and a distinct, documented export corridor.",
+    "criteria": [
+      "Each is an LDC flag in the dated M49 snapshot retained in catalog/countries.json (retrieved 2026-10-11).",
+      "Each has a reachable official agriculture ministry and a national statistics instance that could be read directly.",
+      "Each pairs a different region with a different single corridor so the five packs do not duplicate one another.",
+      "Each has at least one bounded, checkable trade observation or an explicit, recorded provider gap."
+    ],
+    "graduationCaveat": "LDC status is a dated statistical snapshot, not a political statement. Bangladesh is scheduled to graduate from LDC status and Cambodia and Senegal have their own graduation timelines; treat the ldc flag as a snapshot and refresh before relying on it."
+  },
+  "sharedDatasetProviders": [
+    {
+      "id": "worldbank-wdi",
+      "name": "World Bank World Development Indicators (API v2, source 2)",
+      "url": "https://api.worldbank.org/v2/country/{ISO3}/indicator/{indicator}?format=json&date=2015:2026&per_page=12&source=2",
+      "access": "Reachable; retained snapshots exist in catalog/agriculture-statistics.json (retrieved 2026-10-11) and, for Senegal only, in docs/research/country-packs/sources/statistics/ (retrieved 2026-10-12).",
+      "license": "World Bank data terms and CC BY 4.0 attribution are recorded per series in the catalog; original providers identified per indicator.",
+      "caveat": "Annual sector context only. The agriculture value-added series includes forestry and fishing and is not crop revenue or export earnings. Dataset update dates are not observation dates."
+    },
+    {
+      "id": "un-comtrade-preview",
+      "name": "UN Comtrade public annual preview API",
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS",
+      "access": "Reachable without an API key; returns a bounded subset. Raw responses for successful bounded queries are retained under docs/research/country-packs/sources/trade/ with SHA256 checksums and a manifest.",
+      "license": "UN Comtrade data-use policy applies; no blanket reuse licence is asserted and attribution is retained.",
+      "caveat": "A zero-row preview is an evidence gap, not zero trade. Historical trade does not establish current buyer demand, supplier capacity, shipment eligibility, price or financing."
+    },
+    {
+      "id": "faostat",
+      "name": "FAOSTAT",
+      "url": "https://www.fao.org/faostat/",
+      "access": "Landing application reachable; the JavaScript interface yields no parsed production table text on a plain read, and catalog/agriculture-workflows.json records that the FAOSTAT API host (fenixservices.fao.org) was not reachable from this environment.",
+      "caveat": "No FAOSTAT production/yield/trade numbers are quoted in these packs; extracting them remains an open task."
+    },
+    {
+      "id": "itc-market-analysis",
+      "name": "ITC Market Analysis Tools (Trade Map, Market Access Map, Export Potential Map)",
+      "url": "https://marketanalysis.intracen.org/en",
+      "access": "Direct read returned HTTP 403 (access restricted) in this batch; catalog/agriculture-workflows.json already records the same 403 and notes account/plan restrictions.",
+      "caveat": "No ITC figures are quoted. Export-potential outputs are modelled opportunities, not confirmed demand."
+    },
+    {
+      "id": "wto-eping",
+      "name": "WTO ePing SPS/TBT platform and dataset",
+      "url": "https://eping.wto.org/en/",
+      "additionalUrls": ["https://data.wto.org/en", "https://www.wto.org/english/tratop_e/sps_e/sps_e.htm"],
+      "access": "Reachable (2026-10-12).",
+      "caveat": "A notification or an enquiry point is a regulatory contact, not a buyer and not proof of the complete current law."
+    },
+    {
+      "id": "un-m49",
+      "name": "UNSD M49 countries or areas",
+      "url": "https://unstats.un.org/unsd/methodology/m49/overview/",
+      "access": "Retained snapshot: catalog/countries.json (retrieved 2026-10-11, 248 entries, 44 with the LDC flag).",
+      "caveat": "A statistical catalog of countries or areas, not a list of sovereign states or UN members."
+    }
+  ],
+  "packs": [
+    {
+      "country": "Nepal",
+      "iso2": "NP",
+      "iso3": "NPL",
+      "m49": "524",
+      "ldcSnapshot": true,
+      "corridor": {
+        "originProduct": "Tea and similar hill-grown speciality crops (tea as the worked example)",
+        "destination": "India (land-border corridor)",
+        "why": "Nepal is the required anchor and already has a sourced starter pilot record (catalog/agriculture-pilot.json, researchedOn 2026-10-11) plus a documented India tea-import regulatory change during 2026. This pack reuses that work rather than repeating it."
+      },
+      "agricultureBaseline": {
+        "note": "Baseline is annual World Bank WDI context plus the country's own statistics office; it is not crop revenue, land availability, buyer demand or export eligibility.",
+        "wdi": [
+          {"indicator": "NV.AGR.TOTL.ZS", "name": "Agriculture, forestry, and fishing, value added (% of GDP)", "unit": "% of GDP", "latestYear": 2025, "latestValue": 21.5578137957376, "earliestYear": 2015, "earliestValue": 26.518508431071, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/NPL-NV.AGR.TOTL.ZS-97f63f8a276a8b93.json", "sha256": "97f63f8a276a8b93749055ea6fe8bd817d7b6d11d2d1e5bbddd0d03d741d96be", "url": "https://api.worldbank.org/v2/country/NPL/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2"},
+          {"indicator": "SL.AGR.EMPL.ZS", "name": "Employment in agriculture (% of total employment) (modeled ILO estimate)", "unit": "% of total employment", "latestYear": 2025, "latestValue": 22.9119744042875, "earliestYear": 2015, "earliestValue": 26.3365108741251, "modelled": true, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/NPL-SL.AGR.EMPL.ZS-3b2903ee14688434.json", "url": "https://api.worldbank.org/v2/country/NPL/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2"},
+          {"indicator": "AG.LND.ARBL.ZS", "name": "Arable land (% of land area)", "unit": "% of land area", "latestYear": 2024, "latestValue": 12.5831880013952, "earliestYear": 2015, "earliestValue": 14.1764213463551, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/NPL-AG.LND.ARBL.ZS-c7929f77eac0f746.json", "url": "https://api.worldbank.org/v2/country/NPL/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"}
+        ],
+        "nationalStatisticsRoute": "National Statistics Office, Thapathali, Kathmandu (https://nsonepal.gov.np/, read 2026-10-12) publishes official indices and survey releases. A retained MoALD statistical yearbook series (e.g. Statistical Information on Nepalese Agriculture) is the conventional national agriculture baseline but was not downloaded in this batch.",
+        "tradeObservation": "No bounded UN Comtrade preview was obtainable for Nepal tea in this batch (see tradeEvidence and evidenceGaps). One previous query-specific gap is already recorded in docs/TRADE_EVIDENCE.md (Nepal-to-India HS 0902 and India mirror for 2023 returned no rows)."
+      },
+      "exportEligibilityRoutes": {
+        "note": "These are the routes a producer would have to walk and that research still has to verify. Presence of a route is not evidence that a specific shipment qualifies.",
+        "routes": [
+          {"route": "Nepal export documentation route", "whatToVerify": "Current exporter registration/export-licence route and the authority that issues it; a Nepal cabinet decision of 2082-09-04 printed on the Department of Customs home page (retrieved 2026-10-12) changed certain customs transit/routing arrangements, so any checklist must be re-dated.", "evidence": "https://customs.gov.np/ (page read 2026-10-12)"},
+          {"route": "Food-safety certification at origin", "whatToVerify": "Whether the Department of Food Technology and Quality Control export certificate is required for the specific tea grade and destination, and its current fee/validity.", "evidence": "http://www.dftqc.gov.np/ (read 2026-10-12; contact block shows separate phone lines for food import/export matters)"},
+          {"route": "Preferential India access under the Nepal-India trade treaty", "whatToVerify": "The current consolidated treaty text, any amendment, and the applicable Indian customs notification. catalog/agriculture-pilot.json records that the published Nepal treaty text provides certificate-of-origin arrangements but that no current shipment tariff or exemption was confirmed.", "evidence": "https://www.tepc.gov.np/pages/treaty-of-trade-india (indexed official extract recorded 2026-10-11; direct fetch not re-verified in this batch)"},
+          {"route": "Indian destination-side import clearance for tea", "whatToVerify": "Which edition of the Tea Board India directive applies to the shipment date, and whether FSSAI testing route and notified laboratory are valid for that grade.", "evidence": "catalog/agriculture-pilot.json sources tea-directive-01, tea-corrigendum, tea-directive-02 and tea-labs (all 2026-dated official Tea Board India PDFs, retrieved 2026-10-11)."}
+        ]
+      },
+      "marketAccessQuestions": [
+        "Which exact Nepal tea grade, packaging and border point is in scope, and does the India tea-import SOP for that grade apply at the intended shipment date? (Directive 02/2026 supersedes the earlier directive and corrigendum, so older checklists need reconciliation.)",
+        "What is the current, consolidated Nepal-India preferential tariff and certificate-of-origin requirement for the scoped grade?",
+        "Is a Nepal-issued phytosanitary or food-safety certificate required for the destination and product form, and which body issues it?",
+        "Are there current Indian SPS/TBT notifications specific to processed tea that add requirements beyond the Tea Board directive?",
+        "What evidence, if any, exists for actual buyer demand rather than a procedural notice? (See evidenceGaps; none was established.)"
+      ],
+      "officialInstitutions": [
+        {"name": "Ministry of Agriculture, Forest and Environment", "url": "https://moafe.gov.np/", "role": "Federal agriculture, forestry and environment policy ministry.", "verifiedOn": "2026-10-12", "reading": "Home page title 'Ministry of Agriculture, Forest and Environment' (Krishna, Van tatha Paryawaran Mantralaya), Singh Durbar, Kathmandu. Note: catalog/ and older references use the previous name 'Ministry of Agriculture and Livestock Development' (moald.gov.np); the current ministry site now presents the merged name."},
+        {"name": "Department of Food Technology and Quality Control (DFTQC)", "url": "http://www.dftqc.gov.np/", "role": "Food technology and quality control department; food import/export certificate matters.", "verifiedOn": "2026-10-12", "reading": "Read over HTTP; HTTPS endpoint did not respond. Page shows the department name and its contact block."},
+        {"name": "National Tea and Coffee Development Board (NTCDB)", "url": "https://www.teacoffee.gov.np/", "role": "Tea and coffee sector board; publishes tea statistics, producer lists and sector notices.", "verifiedOn": "2026-10-12", "reading": "Kirtipur, Kathmandu; site lists tea statistics and producer pages."},
+        {"name": "National Statistics Office", "url": "https://nsonepal.gov.np/", "role": "National statistical agency; official indices and survey releases.", "verifiedOn": "2026-10-12", "reading": "Thapathali, Kathmandu."},
+        {"name": "Department of Customs", "url": "https://customs.gov.np/", "role": "Customs administration under the Ministry of Finance; publishes circulars and transit notices.", "verifiedOn": "2026-10-12", "reading": "Tripureshwor, Kathmandu."}
+      ],
+      "publicContactRoutes": [
+        {"institution": "Ministry of Agriculture, Forest and Environment", "route": "info@moafe.gov.np", "channelType": "published institutional mailbox", "sourceUrl": "https://moafe.gov.np/", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"},
+        {"institution": "Department of Food Technology and Quality Control", "route": "info@dftqc.gov.np; suchana@dftqc.gov.np", "channelType": "published institutional mailboxes", "sourceUrl": "http://www.dftqc.gov.np/", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"},
+        {"institution": "National Tea and Coffee Development Board", "route": "info@ntcdb.gov.np", "channelType": "published institutional mailbox", "sourceUrl": "https://www.teacoffee.gov.np/", "readOn": "2026-10-12", "contactStatus": "published-not-contacted", "note": "Already recorded in catalog/agriculture-pilot.json institutionRoutes."},
+        {"institution": "National Statistics Office", "route": "info@nsonepal.gov.np", "channelType": "published institutional mailbox", "sourceUrl": "https://nsonepal.gov.np/", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"},
+        {"institution": "Department of Customs", "route": "csd@customs.gov.np", "channelType": "published institutional mailbox", "sourceUrl": "https://customs.gov.np/", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"}
+      ],
+      "tradeEvidence": {
+        "boundedComtradePreviews": [],
+        "emptyPreviews": [
+          {"query": "Nepal (524) exports HS 0902 to India (356), 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=524&period=2023&partnerCode=356&cmdCode=0902&flowCode=X", "result": "zero-row preview", "retrievedOn": "2026-10-12"},
+          {"query": "Nepal (524) exports HS 0902 to World, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=524&period=2023&partnerCode=0&cmdCode=0902&flowCode=X", "result": "zero-row preview", "retrievedOn": "2026-10-12"},
+          {"query": "India (356) imports HS 0902 from Nepal (524), 2023 (mirror)", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=356&period=2023&partnerCode=524&cmdCode=0902&flowCode=M", "result": "zero-row preview", "retrievedOn": "2026-10-12"}
+        ],
+        "interpretation": "Zero-row previews are evidence gaps, not zero trade. Nepal and India tea trade figures still need to be obtained from the provider's fuller query surface or an official national source, respecting provider terms."
+      },
+      "evidenceGaps": [
+        "No Nepal tea trade value or volume was confirmed in this batch: bounded Comtrade previews returned zero rows and no FAOSTAT/ITC figure was retrievable.",
+        "No committed buyer and no evidence of willingness to buy was established. The India Tea Board buyer response notice already reviewed (catalog/buyer-notice-review.json, 2026-10-12) is a procedural notice with an unassessed annexure, explicitly not a positive importer directory.",
+        "Current consolidated Nepal-India trade treaty text and the applicable Indian customs notification were not re-fetched in this batch.",
+        "The applicable edition of the Indian tea-import directive for an intended shipment date remains unverified.",
+        "No producer, municipality, tea grade, packaging specification or border point has been selected.",
+        "The Nepal national agriculture statistical yearbook and the Ministry of Agriculture, Forest and Environment contact page were not downloaded; the ministry mailbox was read from the site itself."
+      ],
+      "currentSourceDates": {
+        "wdiDatasetUpdated": "2026-10-08",
+        "wdiRetrieved": "2026-10-11",
+        "sitesRead": "2026-10-12",
+        "comtradeQueriesRun": "2026-10-12",
+        "pilotRecordResearchedOn": "2026-10-11"
+      }
+    },
+    {
+      "country": "Bangladesh",
+      "iso2": "BD",
+      "iso3": "BGD",
+      "m49": "050",
+      "ldcSnapshot": true,
+      "corridor": {
+        "originProduct": "Jute goods and frozen shrimp (single-corridor research candidates; not both at once)",
+        "destination": "European Union as a candidate high-requirement destination; regional South Asian trade as the alternative",
+        "why": "Bangladesh is the largest LDC population and a major agricultural exporter with strong published institutions, which makes it the natural second country and a different regulator set from Nepal."
+      },
+      "agricultureBaseline": {
+        "note": "Annual World Bank WDI context only; it is not crop revenue or export eligibility.",
+        "wdi": [
+          {"indicator": "NV.AGR.TOTL.ZS", "name": "Agriculture, forestry, and fishing, value added (% of GDP)", "latestYear": 2025, "latestValue": 11.4240222467121, "earliestYear": 2015, "earliestValue": 14.7829964369364, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/BGD-NV.AGR.TOTL.ZS-7f93b61a161722d7.json", "url": "https://api.worldbank.org/v2/country/BGD/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2"},
+          {"indicator": "SL.AGR.EMPL.ZS", "name": "Employment in agriculture (% of total employment) (modeled ILO estimate)", "latestYear": 2025, "latestValue": 44.2601251126533, "earliestYear": 2015, "earliestValue": 43.542342342038, "modelled": true, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/BGD-SL.AGR.EMPL.ZS-0df82c8529684ce3.json", "url": "https://api.worldbank.org/v2/country/BGD/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2"},
+          {"indicator": "AG.LND.ARBL.ZS", "name": "Arable land (% of land area)", "latestYear": 2024, "latestValue": 60.5131750787432, "earliestYear": 2015, "earliestValue": 59.7415456710456, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/BGD-AG.LND.ARBL.ZS-8ea11e29075df974.json", "url": "https://api.worldbank.org/v2/country/BGD/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"}
+        ],
+        "nationalStatisticsRoute": "Bangladesh Bureau of Statistics (https://bbs.gov.bd/, read 2026-10-12) publishes national statistics; its contact page did not yield machine-readable contact text in this batch.",
+        "tradeObservation": "Not obtainable from the Comtrade preview in this batch: every bounded Bangladesh query returned a zero-row preview (see tradeEvidence)."
+      },
+      "exportEligibilityRoutes": {
+        "note": "Routes a producer/processor would need to walk; their current requirements are research questions, not confirmed facts here.",
+        "routes": [
+          {"route": "Exporter registration / export licence", "whatToVerify": "Which body currently issues the exporter registration, its renewal frequency and current form. candidate - not yet verified: the Export Promotion Bureau publishes an exporter database route and a certificate-of-origin route on its navigation.", "evidence": "http://epb.gov.bd/ (read 2026-10-12)"},
+          {"route": "Sectoral licence and health certificate for fish/shrimp", "whatToVerify": "Which authority issues the health certificate for the scoped seafood product and its current conditions. candidate - not yet verified.", "evidence": "To be confirmed from the Department of Fisheries; not read in this batch."},
+          {"route": "Customs declaration and export procedure", "whatToVerify": "Current declaration route and any single-window system. The National Board of Revenue home page (https://nbr.gov.bd/, read 2026-10-12) links customs and digital services named 'ePass' and lists a Single Window/ASYCUDA route.", "evidence": "https://nbr.gov.bd/ (read 2026-10-12)"},
+          {"route": "Destination-side food-safety and SPS entry requirements", "whatToVerify": "Whether the destination imposes Jute or shrimp-specific SPS/TBT requirements and which notifications are in force.", "evidence": "WTO ePing (https://eping.wto.org/en/) and data.wto.org are reachable (2026-10-12); not yet queried for specific codes."}
+        ]
+      },
+      "marketAccessQuestions": [
+        "For the scoped product (raw/semi-processed jute goods OR frozen shrimp), what is the correct current HS classification and which authority confirms the specific export licence?",
+        "Which current SPS/TBT notifications and destination import rules apply, and are any of them LDC-specific?",
+        "What is the current exporter registration and certificate-of-origin procedure, and can it be evidenced from the official source rather than a secondary guide?",
+        "Which Bangladeshi laboratory or certification body is accepted for the destination, and is its accreditation current?",
+        "Is there any primary-source evidence of buyer demand rather than a business directory listing?"
+      ],
+      "officialInstitutions": [
+        {"name": "Ministry of Agriculture", "url": "https://moa.gov.bd/", "role": "Federal agriculture policy ministry.", "verifiedOn": "2026-10-12", "reading": "Home page reached over HTTPS. Its contacts/feedback page is JavaScript-rendered and yielded no machine-readable mailbox."},
+        {"name": "Department of Agricultural Extension (DAE)", "url": "http://dae.gov.bd/", "role": "Agricultural extension service.", "verifiedOn": "2026-10-12", "reading": "Site reachable over HTTP; HTTPS endpoint and www host did not respond."},
+        {"name": "Bangladesh Agricultural Research Council (BARC)", "url": "https://barc.gov.bd/", "role": "Agricultural research coordination.", "verifiedOn": "2026-10-12"},
+        {"name": "Export Promotion Bureau (EPB)", "url": "http://epb.gov.bd/", "role": "National export promotion body under the Ministry of Commerce; publishes an exporter database, certificate-of-origin and REX registration routes.", "verifiedOn": "2026-10-12", "reading": "Home page reached over HTTP. Its officer directory page lists role-based institutional mailboxes."},
+        {"name": "National Board of Revenue (NBR)", "url": "https://nbr.gov.bd/", "role": "Revenue authority; customs and export/import facilitation.", "verifiedOn": "2026-10-12"},
+        {"name": "Bangladesh Bureau of Statistics (BBS)", "url": "https://bbs.gov.bd/", "role": "National statistics office.", "verifiedOn": "2026-10-12"}
+      ],
+      "publicContactRoutes": [
+        {"institution": "Export Promotion Bureau (EPB)", "route": "Role-based institutional mailboxes published on the EPB officer directory, including dg1@epb.gov.bd (Director-General) and dd-commodities@epb.gov.bd (commodities desk)", "channelType": "published institutional mailboxes", "sourceUrl": "http://epb.gov.bd/pages/officers", "readOn": "2026-10-12", "contactStatus": "published-not-contacted", "note": "These are role/desk addresses published by the institution on its own officer directory, not personal addresses. Current occupant and mailbox deliverability are not verified."},
+        {"institution": "Ministry of Agriculture", "route": "Institutional website contact/feedback form (no mailbox exposed in machine-readable form)", "channelType": "published institutional web form", "sourceUrl": "https://moa.gov.bd/pages/static-pages/694032e235ce18e1c0563ddc", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"}
+      ],
+      "tradeEvidence": {
+        "boundedComtradePreviews": [],
+        "emptyPreviews": [
+          {"query": "Bangladesh (50) exports HS 5303, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=50&period=2023&partnerCode=0&cmdCode=5303&flowCode=X", "result": "zero-row preview", "retrievedOn": "2026-10-12"},
+          {"query": "Bangladesh (50) exports HS 030617, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=50&period=2023&partnerCode=0&cmdCode=030617&flowCode=X", "result": "zero-row preview", "retrievedOn": "2026-10-12"},
+          {"query": "Bangladesh (50) exports HS 100630, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=50&period=2023&partnerCode=0&cmdCode=100630&flowCode=X", "result": "zero-row preview", "retrievedOn": "2026-10-12"}
+        ],
+        "interpretation": "Bangladesh returned zero-row previews for every bounded query attempted, including codes that other reporters answered. This is recorded as a provider-coverage gap and is not evidence of zero trade. A fuller provider query surface, respecting its terms, is still required."
+      },
+      "evidenceGaps": [
+        "No Bangladesh trade value or volume was confirmed; the preview returned zero rows for every attempted code.",
+        "No committed buyer and no evidence of willingness to buy.",
+        "The current exporter registration, certificate-of-origin and sectoral health-certificate procedures were not verified from the official source.",
+        "The Ministry of Agriculture mailbox and the BBS contact details were not exposed in machine-readable form and were not guessed.",
+        "The Bangladesh Single Window / customs digital route was observed only as a navigation label; its current procedure was not read.",
+        "No producer, processor, product grade, port or destination has been selected."
+      ],
+      "currentSourceDates": {"wdiDatasetUpdated": "2026-10-08", "wdiRetrieved": "2026-10-11", "sitesRead": "2026-10-12", "comtradeQueriesRun": "2026-10-12"}
+    },
+    {
+      "country": "Ethiopia",
+      "iso2": "ET",
+      "iso3": "ETH",
+      "m49": "231",
+      "ldcSnapshot": true,
+      "corridor": {
+        "originProduct": "Green coffee (arabica)",
+        "destination": "Germany as an EU candidate destination",
+        "why": "Ethiopia is a large African LDC with a distinct export regulator; coffee is its best-documented agricultural export and the public preview produced actual bounded observations for the Ethiopia-coffee corridor."
+      },
+      "agricultureBaseline": {
+        "wdi": [
+          {"indicator": "NV.AGR.TOTL.ZS", "name": "Agriculture, forestry, and fishing, value added (% of GDP)", "latestYear": 2025, "latestValue": 32.8186147009719, "earliestYear": 2015, "earliestValue": 36.0569753905786, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/ETH-NV.AGR.TOTL.ZS-a6eb3a030a78d09f.json", "url": "https://api.worldbank.org/v2/country/ETH/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2"},
+          {"indicator": "SL.AGR.EMPL.ZS", "name": "Employment in agriculture (% of total employment) (modeled ILO estimate)", "latestYear": 2025, "latestValue": 60.1432419652977, "earliestYear": 2015, "earliestValue": 67.9554159374159, "modelled": true, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/ETH-SL.AGR.EMPL.ZS-64402d04840d58ad.json", "url": "https://api.worldbank.org/v2/country/ETH/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2"},
+          {"indicator": "AG.LND.ARBL.ZS", "name": "Arable land (% of land area)", "latestYear": 2024, "latestValue": 14.6149731743459, "earliestYear": 2015, "earliestValue": 13.9989792804256, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/ETH-AG.LND.ARBL.ZS-68fd06bb653ffc1a.json", "url": "https://api.worldbank.org/v2/country/ETH/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"}
+        ],
+        "nationalStatisticsRoute": "The Ethiopian statistics agency site (statsethiopia.gov.et) was not reachable from this environment (2026-10-12); no national agriculture figure was retrieved.",
+        "tradeObservation": "Bounded Comtrade preview observations were obtained for Ethiopia coffee and oilseeds (see tradeEvidence)."
+      },
+      "exportEligibilityRoutes": {
+        "routes": [
+          {"route": "Coffee export authorisation", "whatToVerify": "Which body currently authorises coffee export and what the current licence/quality-verification route is. The Ethiopian Coffee and Tea Authority is listed by the Ministry of Agriculture as an affiliated institution; its own site was not reachable.", "evidence": "https://www.moa.gov.et/affiliated-institutions/ (read 2026-10-12)"},
+          {"route": "Customs export declaration", "whatToVerify": "Current export declaration procedure and any single-window or electronic route. The Ministry of Agriculture site names a National Single Window and an E-License system as public services but the underlying procedure text was not read.", "evidence": "https://www.moa.gov.et/e-services/ (navigation read 2026-10-12)"},
+          {"route": "Farming-practice and provenance documentation for EU entry", "whatToVerify": "Whether the destination requires farm-level traceability or a specific sustainability/quality scheme for the scoped coffee grade.", "evidence": "Not verified in this batch."}
+        ]
+      },
+      "marketAccessQuestions": [
+        "Which specific coffee grade and processing method is in scope, and how is it classified at export and import?",
+        "Does the EU destination impose a current SPS/TBT or due-diligence requirement beyond standard customs, and which notification states it?",
+        "Which Ethiopian body issues the export authorisation and the quality certificate, and is that authority's current procedure documented online?",
+        "What is the current Ethiopia-Germany or Ethiopia-EU tariff and origin treatment for the scoped grade?",
+        "Is there primary-source evidence of buyer demand rather than a trade directory entry?"
+      ],
+      "officialInstitutions": [
+        {"name": "FDRE Ministry of Agriculture", "url": "https://www.moa.gov.et/", "role": "Federal agriculture ministry; supervises sector institutions including the coffee and tea authority.", "verifiedOn": "2026-10-12", "reading": "Home page title 'FDRE Ministry of Agriculture'; lists Agriculture and Horticulture Development, Natural Resource Development, Livestock and Fisheries, and Agricultural Investment and Input Supply sectors."},
+        {"name": "Ethiopian Coffee and Tea Authority (ECTA)", "url": "https://ethiocta.gov.et/", "role": "Coffee and tea sector authority, formed under a Council of Ministers mandate, listed as an affiliated institution of the Ministry of Agriculture.", "verifiedOn": "2026-10-12", "reading": "Institution listing read on the ministry's affiliated institutions page; the authority's own site did not respond in this batch."},
+        {"name": "Ethiopian Agricultural Authority (EAA)", "url": "https://www.eaa.gov.et/", "role": "Agricultural authority listed among the ministry's affiliated institutions (link observed on the ministry page; not read).", "verifiedOn": "2026-10-12", "reading": "Observed as an outgoing link on https://www.moa.gov.et/affiliated-institutions/."},
+        {"name": "Ethiopian Agricultural Research Institute (EIAR)", "url": "http://www.eiar.gov.et/", "role": "Agricultural research.", "verifiedOn": "2026-10-12", "reading": "Observed as an outgoing link on the ministry affiliated-institutions page; not read."}
+      ],
+      "publicContactRoutes": [
+        {"institution": "FDRE Ministry of Agriculture", "route": "info@moa.gov.et; telephone +251 11646 21 99", "channelType": "published institutional mailbox and switchboard number", "sourceUrl": "https://www.moa.gov.et/", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"}
+      ],
+      "tradeEvidence": {
+        "boundedComtradePreviews": [
+          {"query": "Ethiopia (231) exports HS 090111 to Germany (276), 2022", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2022&partnerCode=276&cmdCode=090111&flowCode=X", "primaryValue": 237279426.68, "fobvalue": 237279426.68, "netWgtKg": 48379010.0, "isAggregate": false, "isOriginalClassification": true, "isReported": true, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/ET-coffee-to-DE-2022-X-90756ca9c4fadc09.json", "sha256": "90756ca9c4fadc09858502f8c9f76e671090546bd30365c7085a093771f5b881", "retrievedOn": "2026-10-12"},
+          {"query": "Ethiopia (231) exports HS 090111 to Germany (276), 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2023&partnerCode=276&cmdCode=090111&flowCode=X", "primaryValue": 110602673.501, "fobvalue": 110602673.501, "netWgtKg": 24202210.0, "isAggregate": false, "isOriginalClassification": true, "isReported": true, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/ET-coffee-to-DE-2023-X-35029db0b7290403.json", "sha256": "35029db0b7290403cdc411166af0da403460a3648ec2368de69c4915a1bc3c47", "retrievedOn": "2026-10-12"},
+          {"query": "Ethiopia (231) exports HS 0901 to World, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2023&partnerCode=0&cmdCode=0901&flowCode=X", "primaryValue": 1225642096.907, "fobvalue": 1225642096.907, "netWgtKg": 236075527.82, "isAggregate": true, "isOriginalClassification": true, "isReported": false, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/ET-coffee-world-2023-X-8e263fc3317d0370.json", "sha256": "8e263fc3317d0370e3adfdb9386144a7d7ccfea7b7f7a00eae4f2899c0b5f25e", "retrievedOn": "2026-10-12"},
+          {"query": "Ethiopia (231) exports HS 1207 to World, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2023&partnerCode=0&cmdCode=1207&flowCode=X", "primaryValue": 258605062.388, "fobvalue": 258605062.388, "netWgtKg": 145686807.95, "isAggregate": true, "isOriginalClassification": true, "isReported": false, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/ET-oilseeds-world-2023-X-3f942592fbe3ea8b.json", "sha256": "3f942592fbe3ea8b228f2d3697ddf1627d9e4af501b1eaadfdba30425e94faf4", "retrievedOn": "2026-10-12"}
+        ],
+        "interpretation": "These are single annual provider rows, retained byte-for-byte. Where isReported is false the value is an aggregate/derived record rather than a directly reported national submission. Historical values do not establish current demand, capacity or eligibility. The 2022-to-2023 decline in the Germany corridor is an observation, not a trend conclusion: two points cannot establish direction.",
+        "emptyPreviews": []
+      },
+      "evidenceGaps": [
+        "The Ethiopian statistics agency and the Coffee and Tea Authority sites were unreachable, so no national production figure and no coffee-authority procedure were read.",
+        "No committed buyer and no evidence of willingness to buy. No importer list is asserted.",
+        "Current coffee export authorisation and quality-verification procedures were not verified from the authority's own source.",
+        "The current Ethiopia-Germany tariff and origin treatment was not verified.",
+        "Only HS 090111 (not roasted/decaffeinated) was queried; other coffee forms remain unqueried.",
+        "No producer, cooperative, grade or destination beyond the single candidate was selected."
+      ],
+      "currentSourceDates": {"wdiDatasetUpdated": "2026-10-08", "wdiRetrieved": "2026-10-11", "sitesRead": "2026-10-12", "comtradeQueriesRun": "2026-10-12"}
+    },
+    {
+      "country": "Cambodia",
+      "iso2": "KH",
+      "iso3": "KHM",
+      "m49": "116",
+      "ldcSnapshot": true,
+      "corridor": {
+        "originProduct": "Milled rice (primary) and cassava (secondary observation)",
+        "destination": "China as the candidate destination for milled rice",
+        "why": "Cambodia is a South-East Asian LDC with a formal rice export-corridor record; the public preview produced bounded observations for Cambodia-to-China milled rice and world cassava."
+      },
+      "agricultureBaseline": {
+        "wdi": [
+          {"indicator": "NV.AGR.TOTL.ZS", "name": "Agriculture, forestry, and fishing, value added (% of GDP)", "latestYear": 2025, "latestValue": 16.1106828275296, "earliestYear": 2015, "earliestValue": 20.1408488554582, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/KHM-NV.AGR.TOTL.ZS-22798e93f2e9772f.json", "url": "https://api.worldbank.org/v2/country/KHM/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2"},
+          {"indicator": "SL.AGR.EMPL.ZS", "name": "Employment in agriculture (% of total employment) (modeled ILO estimate)", "latestYear": 2025, "latestValue": 33.4047460215625, "earliestYear": 2015, "earliestValue": 42.4684239936853, "modelled": true, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/KHM-SL.AGR.EMPL.ZS-88135e9a1ffac542.json", "url": "https://api.worldbank.org/v2/country/KHM/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2"},
+          {"indicator": "AG.LND.ARBL.ZS", "name": "Arable land (% of land area)", "latestYear": 2024, "latestValue": 23.3409245411285, "earliestYear": 2015, "earliestValue": 22.3296510310446, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-11", "rawFile": "catalog/statistics/KHM-AG.LND.ARBL.ZS-52b607e10459b071.json", "url": "https://api.worldbank.org/v2/country/KHM/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"}
+        ],
+        "nationalStatisticsRoute": "National Institute of Statistics (https://www.nis.gov.kh/, read 2026-10-12), which publishes the national statistics institute pages and legal documents.",
+        "tradeObservation": "Bounded Comtrade preview observations were obtained for Cambodia milled rice to China and world cassava (see tradeEvidence)."
+      },
+      "exportEligibilityRoutes": {
+        "routes": [
+          {"route": "Milled rice export registration and quota route", "whatToVerify": "Which authority currently registers rice exporters and whether a destination quota or registration arrangement applies. candidate - not yet verified.", "evidence": "The Ministry of Commerce site was unavailable ('Site Under Maintenance', 2026-10-12), so this route could not be read."},
+          {"route": "Sanitary/phytosanitary certification", "whatToVerify": "Which body issues the phytosanitary certificate and its current conditions. The Ministry of Agriculture, Forestry and Fisheries site lists a National Single Window and an E-License public-service route on its navigation.", "evidence": "https://www.maff.gov.kh/contactus?lang=en (read 2026-10-12)"},
+          {"route": "Destination-side import rules for rice", "whatToVerify": "The current Chinese import requirements and any quota/registration arrangement for Cambodian milled rice.", "evidence": "Not verified in this batch."}
+        ]
+      },
+      "marketAccessQuestions": [
+        "Which milled rice grade and packaging is in scope, and how is it classified at export and import?",
+        "Is there a current destination quota, registered-exporter arrangement or import licence for the scoped grade?",
+        "Which certificate(s) are mandatory at origin and which body issues each?",
+        "Are there current SPS/TBT notifications applying to the scoped product, and does the destination require a specific treatment?",
+        "Is there primary-source evidence of buyer demand rather than a federation statement or a directory listing?"
+      ],
+      "officialInstitutions": [
+        {"name": "Ministry of Agriculture, Forestry and Fisheries (MAFF)", "url": "https://www.maff.gov.kh/", "role": "Agriculture, forestry and fisheries ministry; general directorates for agronomy, animal health, fisheries and forestry.", "verifiedOn": "2026-10-12", "reading": "Home page and contact page read. The site presents general directorates and public services including a National Single Window and E-License system."},
+        {"name": "National Institute of Statistics (NIS)", "url": "https://www.nis.gov.kh/", "role": "National statistics institute.", "verifiedOn": "2026-10-12", "reading": "Site reachable; publishes legal documents and national statistics-system pages."},
+        {"name": "Ministry of Commerce", "url": "https://www.moc.gov.kh/", "role": "Commerce ministry (expected trade and export-promotion remit).", "verifiedOn": "2026-10-12", "reading": "Not verified: the site returned HTTP 403 with a 'Site Under Maintenance' page."},
+        {"name": "Ministry of Economy and Finance", "url": "https://www.mef.gov.kh/", "role": "Economy and finance ministry (expected customs/tariff remit).", "verifiedOn": "2026-10-12", "reading": "Not verified: returned HTTP 403 in this batch."}
+      ],
+      "publicContactRoutes": [
+        {"institution": "Ministry of Agriculture, Forestry and Fisheries", "route": "info@maff.gov.kh; telephone (855) 23 726128 / 23 726 129; address No 200, Preah Norodom Blvd (41), Tonle Bassac, Chamkarmon, Phnom Penh", "channelType": "published institutional mailbox, switchboard and postal address", "sourceUrl": "https://www.maff.gov.kh/contactus?lang=en", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"},
+        {"institution": "National Institute of Statistics", "route": "info@nis.gov.kh", "channelType": "published institutional mailbox", "sourceUrl": "https://www.nis.gov.kh/", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"}
+      ],
+      "tradeEvidence": {
+        "boundedComtradePreviews": [
+          {"query": "Cambodia (116) exports HS 100630 to China (156), 2022", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2022&partnerCode=156&cmdCode=100630&flowCode=X", "primaryValue": 163229307.64, "fobvalue": 163229307.64, "netWgtKg": 279526175.0, "isAggregate": false, "isOriginalClassification": true, "isReported": true, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/KH-rice-to-CN-2022-X-16468b30ed8771c1.json", "sha256": "16468b30ed8771c1f79dc0ee178d05bd9590b63c1801bb6ef2505a95e213f432", "retrievedOn": "2026-10-12"},
+          {"query": "Cambodia (116) exports HS 100630 to China (156), 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2023&partnerCode=156&cmdCode=100630&flowCode=X", "primaryValue": 126648899.74, "fobvalue": 126648899.74, "netWgtKg": 198087184.0, "isAggregate": true, "isOriginalClassification": true, "isReported": false, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/KH-rice-to-CN-2023-X-51b5d10e9eb3b742.json", "sha256": "51b5d10e9eb3b742d4a779432e56def7bc44b6cdc323a168d13264326fca48f7", "retrievedOn": "2026-10-12"},
+          {"query": "Cambodia (116) exports HS 071410 (cassava, fresh or dried) to World, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2023&partnerCode=0&cmdCode=071410&flowCode=X", "primaryValue": 166131077.28, "fobvalue": 166131077.28, "netWgtKg": 2413187653.397, "isAggregate": true, "isOriginalClassification": true, "isReported": false, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/KH-cassava-world-2023-X-6c6aef87e0abb4cc.json", "sha256": "6c6aef87e0abb4cc14c468941a2903540ad5bf43c8dde76bc549a3cfd7ce391a", "retrievedOn": "2026-10-12"},
+          {"query": "Cambodia (116) exports HS 100630 to World, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2023&partnerCode=0&cmdCode=100630&flowCode=X", "primaryValue": 454303235.0, "fobvalue": 454303235.0, "netWgtKg": 647349914.923, "isAggregate": true, "isOriginalClassification": true, "isReported": false, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/KH-rice-to-world-2023-X-f1699005cb419153.json", "sha256": "f1699005cb41915395cbf4b7675bd266969bbc913e35409d4fbed25af23c17bd", "retrievedOn": "2026-10-12"}
+        ],
+        "interpretation": "Single annual provider rows retained byte-for-byte. The world-total row and the China-partner row are not additive across classification bases and must not be summed or read as a trend from two points. Historical trade does not establish current demand, capacity or eligibility.",
+        "emptyPreviews": []
+      },
+      "evidenceGaps": [
+        "The Ministry of Commerce site was under maintenance and returned HTTP 403, so the current export-registration and rice-corridor routes were not verified.",
+        "The Ministry of Economy and Finance (expected customs/tariff remit) returned HTTP 403 and was not read.",
+        "The Ministry of Economy and Finance (expected customs/tariff remit) returned HTTP 403 and was not read.",
+        "No national production or harvested-area figure was retrieved (FAOSTAT not extractable, NIS figures not downloaded).",
+        "No committed buyer and no evidence of willingness to buy.",
+        "No producer, miller, grade, port or destination beyond the single candidate was selected."
+      ],
+      "currentSourceDates": {"wdiDatasetUpdated": "2026-10-08", "wdiRetrieved": "2026-10-11", "sitesRead": "2026-10-12", "comtradeQueriesRun": "2026-10-12"}
+    },
+    {
+      "country": "Senegal",
+      "iso2": "SN",
+      "iso3": "SEN",
+      "m49": "686",
+      "ldcSnapshot": true,
+      "corridor": {
+        "originProduct": "Fresh horticulture (banana as the worked example) and marine products as the alternative",
+        "destination": "European Union (Germany as the candidate destination for banana)",
+        "why": "Senegal is a West African LDC with a reachable agriculture ministry and its own statistics agency. catalog/agriculture-statistics.json previously recorded a Senegal WDI collection failure, and part of that failure was resolved in this batch, which makes the gap itself documented rather than hidden."
+      },
+      "agricultureBaseline": {
+        "wdi": [
+          {"indicator": "NV.AGR.TOTL.ZS", "name": "Agriculture, forestry, and fishing, value added (% of GDP)", "latestYear": 2025, "latestValue": 17.0838912567949, "earliestYear": 2015, "earliestValue": 14.2825767344045, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-12", "rawFile": "docs/research/country-packs/sources/statistics/SEN-NV.AGR.TOTL.ZS.json", "sha256": "22391ae201c77e8a99322890c0234a46b26f7bba87cce2f70d090f4991a29fc7", "url": "https://api.worldbank.org/v2/country/SEN/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2", "note": "Collected fresh in this batch because catalog/agriculture-statistics.json records this series as unavailable (operation aborted 2026-10-11)."},
+          {"indicator": "SL.AGR.EMPL.ZS", "name": "Employment in agriculture (% of total employment) (modeled ILO estimate)", "latestYear": 2025, "latestValue": 29.5764060033702, "earliestYear": 2015, "earliestValue": 33.3328100594178, "modelled": true, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-12", "rawFile": "docs/research/country-packs/sources/statistics/SEN-SL.AGR.EMPL.ZS.json", "sha256": "c81a2b5647703bbb8252c49c312f5579760863a96f3c2f9080d50584a67fa84f", "url": "https://api.worldbank.org/v2/country/SEN/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2"},
+          {"indicator": "AG.LND.ARBL.ZS", "name": "Arable land (% of land area)", "latestYear": 2024, "latestValue": 19.893003687737, "earliestYear": 2015, "earliestValue": 18.9840544330754, "datasetUpdated": "2026-10-08", "retrievedOn": "2026-10-12", "rawFile": "docs/research/country-packs/sources/statistics/SEN-AG.LND.ARBL.ZS.json", "sha256": "d9a70a8f55437ba24241f90575655bf907f8d319c4a470a18fb9a6ca5dc13e90", "url": "https://api.worldbank.org/v2/country/SEN/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"}
+        ],
+        "nationalStatisticsRoute": "Agence Nationale de la Statistique et de la Démographie (ANSD) publishes publications, principal indicators and legal/licence information (https://www.ansd.sn/, read 2026-10-12).",
+        "tradeObservation": "Bounded Comtrade preview observations were obtained for Senegal world banana and world fish (see tradeEvidence)."
+      },
+      "exportEligibilityRoutes": {
+        "routes": [
+          {"route": "Horticultural export authorisation and quality control", "whatToVerify": "Which body currently authorises horticultural exports and the current quality control route. The ministry site lists a national horticulture forum and its directions/services, but the procedure text was not read.", "evidence": "https://agriculture.gouv.sn/ (read 2026-10-12)"},
+          {"route": "Customs export declaration", "whatToVerify": "Current export declaration and customs procedure. The customs site (https://www.douanes.sn/) was reachable but the specific contact page returned HTTP 404; the procedure was not read.", "evidence": "https://www.douanes.sn/ (read 2026-10-12)"},
+          {"route": "Destination-side plant-health entry requirements", "whatToVerify": "Which plant-health certificate and pest-related conditions the EU destination requires for the scoped product.", "evidence": "Not verified in this batch."}
+        ]
+      },
+      "marketAccessQuestions": [
+        "Which fresh product, variety and packaging is in scope, and how is it classified at export and import?",
+        "Which Senegalese body issues the export authorisation and the plant-health certificate, and is its current procedure documented online?",
+        "What EU entry conditions apply to the scoped product, and does any current SPS/TBT notification change them?",
+        "What is the current tariff and origin treatment, and does any preference apply?",
+        "Is there primary-source evidence of buyer demand rather than a directory listing or a trade-fair presence?"
+      ],
+      "officialInstitutions": [
+        {"name": "Ministère de l'Agriculture, de la Souveraineté alimentaire et de l'Élevage (MASAE)", "url": "https://agriculture.gouv.sn/", "role": "Agriculture, food sovereignty and livestock ministry.", "verifiedOn": "2026-10-12", "reading": "Home page and contacts page read; the contacts page gives the Diamniadio ministerial sphere address, a switchboard and a mailbox."},
+        {"name": "Agence Nationale de la Statistique et de la Démographie (ANSD)", "url": "https://www.ansd.sn/", "role": "National statistics agency.", "verifiedOn": "2026-10-12", "reading": "Site reachable; publishes publications, principal indicators and data-use licence information."},
+        {"name": "Direction générale des Douanes", "url": "https://www.douanes.sn/", "role": "Customs administration.", "verifiedOn": "2026-10-12", "reading": "Home page reachable; the /contact path returned HTTP 404."},
+        {"name": "Agence Sénégalaise de Normalisation (ASN)", "url": "http://www.asn.sn/", "role": "Standards body (site reachable; remit not read in detail).", "verifiedOn": "2026-10-12"}
+      ],
+      "publicContactRoutes": [
+        {"institution": "Ministère de l'Agriculture, de la Souveraineté alimentaire et de l'Élevage (MASAE)", "route": "assistance@agriculture.gouv.sn; telephone +221 33 859 65 99; Sphère Ministérielle de Diamniadio, Ousmane Tanor Dieng, Dakar", "channelType": "published institutional mailbox, switchboard and postal address", "sourceUrl": "https://agriculture.gouv.sn/contacts/", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"},
+        {"institution": "Agence Nationale de la Statistique et de la Démographie (ANSD)", "route": "statsenegal@ansd.sn; telephone [+221] 33 869 21 39", "channelType": "published institutional mailbox and switchboard", "sourceUrl": "https://www.ansd.sn/", "readOn": "2026-10-12", "contactStatus": "published-not-contacted"}
+      ],
+      "tradeEvidence": {
+        "boundedComtradePreviews": [
+          {"query": "Senegal (686) exports HS 0803 (bananas) to World, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=686&period=2023&partnerCode=0&cmdCode=0803&flowCode=X", "primaryValue": 43408.156, "fobvalue": 43408.156, "netWgtKg": 72860.0, "isAggregate": true, "isOriginalClassification": true, "isReported": false, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/SN-banana-world-2023-X-b7aeb14941e0616d.json", "sha256": "b7aeb14941e0616d6c2f47d058eba184aea024c4886ccf08d75d0641bae97437", "retrievedOn": "2026-10-12"},
+          {"query": "Senegal (686) exports HS 0303 (fish, frozen) to World, 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=686&period=2023&partnerCode=0&cmdCode=0303&flowCode=X", "primaryValue": 259078632.097, "fobvalue": 259078632.097, "netWgtKg": 232475116.0, "isAggregate": true, "isOriginalClassification": true, "isReported": false, "legacyEstimationFlag": 0, "rawFile": "docs/research/country-packs/sources/trade/SN-fish-world-2023-X-1452ce6add6f4ed0.json", "sha256": "1452ce6add6f4ed00fcb4942da6b47f0fa69a2f54f95a28c7db93eb05372c3a6", "retrievedOn": "2026-10-12"}
+        ],
+        "emptyPreviews": [
+          {"query": "Senegal (686) exports HS 080390 to Germany (276), 2023", "queryUrl": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=686&period=2023&partnerCode=276&cmdCode=080390&flowCode=X", "result": "zero-row preview", "retrievedOn": "2026-10-12"}
+        ],
+        "interpretation": "Single annual provider rows retained byte-for-byte; both are aggregate/derived (isReported false). The banana world figure is small in value terms while the fish world figure is large, which is a factual observation only and not a recommendation. The Germany-partner banana query returned no rows, which is an evidence gap rather than zero trade."
+      },
+      "evidenceGaps": [
+        "catalog/agriculture-statistics.json records the Senegal WDI series as unavailable (operation aborted, 2026-10-11); three series were retrieved fresh on 2026-10-12 and retained, but they are a new collection, not a reviewed catalog installation.",
+        "No Senegal trade value for the EU/Germany corridor was confirmed; the Germany-partner query returned zero rows.",
+        "The customs contact page returned HTTP 404 and the customs export procedure was not read.",
+        "No national production or yield figure was retrieved.",
+        "No committed buyer and no evidence of willingness to buy.",
+        "No producer, exporter, product variety, port or destination beyond the single candidate was selected."
+      ],
+      "currentSourceDates": {"wdiDatasetUpdated": "2026-10-08", "wdiRetrieved": "2026-10-12", "sitesRead": "2026-10-12", "comtradeQueriesRun": "2026-10-12"}
+    }
+  ],
+  "crossCuttingEvidenceGaps": [
+    "No buyer demand and no willingness to buy was established for any of the five countries. A directory listing, a federation statement or a procedural notice is not a committed buyer.",
+    "No supplier capacity, available volume, seasonality, logistics cost or price was verified.",
+    "FAOSTAT production/yield/trade extraction remains open; no FAOSTAT number is quoted.",
+    "The ITC Market Analysis Tools were refused (HTTP 403) and no accession/plan was attempted; no ITC number is quoted.",
+    "No mission, task, scope or approved host was created or activated by this work.",
+    "No message was sent to any institution, buyer or contact route."
+  ],
+  "boundaries": "Independent NemoWorld research. No government adoption, UN affiliation, trade commitment, named buyer demand, contact transmission or completed export transaction is asserted. No real pilot is selected. All contacts recorded are published institutional channels and were not contacted."
+}

@@ -1,0 +1,336 @@
+{
+  "retrieved_on": "2026-10-12",
+  "provider": "UN Comtrade preview API (public, no key)",
+  "endpoint": "https://comtradeapi.un.org/public/v1/preview/C/A/HS",
+  "notes": [
+    "preview endpoint returns a bounded subset; empty preview is an evidence gap, not zero trade",
+    "national data policy applies; no blanket reuse licence asserted"
+  ],
+  "records": [
+    {
+      "file": "BD-jute-2023-X",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "BD-rice-2023-X",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "BD-shrimp-2022-X",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "BD-shrimp-2023-X",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "ET-coffee-to-DE-2022-X-90756ca9c4fadc09.json",
+      "query": "ET-coffee-to-DE-2022-X",
+      "rows": 1,
+      "bytes": 975,
+      "sha256": "90756ca9c4fadc09858502f8c9f76e671090546bd30365c7085a093771f5b881",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2022&partnerCode=276&cmdCode=090111&flowCode=X",
+      "refYear": 2022,
+      "reporterCode": 231,
+      "partnerCode": 276,
+      "cmdCode": "090111",
+      "flowCode": "X",
+      "primaryValue": 237279426.68,
+      "fobvalue": 237279426.68,
+      "cifvalue": null,
+      "netWgt_kg": 48379010.0,
+      "isAggregate": false,
+      "isOriginalClassification": true,
+      "isReported": true,
+      "legacyEstimationFlag": 0
+    },
+    {
+      "file": "ET-coffee-to-DE-2023-X-35029db0b7290403.json",
+      "query": "ET-coffee-to-DE-2023-X",
+      "rows": 1,
+      "bytes": 977,
+      "sha256": "35029db0b7290403cdc411166af0da403460a3648ec2368de69c4915a1bc3c47",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2023&partnerCode=276&cmdCode=090111&flowCode=X",
+      "refYear": 2023,
+      "reporterCode": 231,
+      "partnerCode": 276,
+      "cmdCode": "090111",
+      "flowCode": "X",
+      "primaryValue": 110602673.501,
+      "fobvalue": 110602673.501,
+      "cifvalue": null,
+      "netWgt_kg": 24202210.0,
+      "isAggregate": false,
+      "isOriginalClassification": true,
+      "isReported": true,
+      "legacyEstimationFlag": 0
+    },
+    {
+      "file": "ET-coffee-world-2023-X-8e263fc3317d0370.json",
+      "query": "ET-coffee-world-2023-X",
+      "rows": 1,
+      "bytes": 981,
+      "sha256": "8e263fc3317d0370e3adfdb9386144a7d7ccfea7b7f7a00eae4f2899c0b5f25e",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2023&partnerCode=0&cmdCode=0901&flowCode=X",
+      "refYear": 2023,
+      "reporterCode": 231,
+      "partnerCode": 0,
+      "cmdCode": "0901",
+      "flowCode": "X",
+      "primaryValue": 1225642096.907,
+      "fobvalue": 1225642096.907,
+      "cifvalue": null,
+      "netWgt_kg": 236075527.82,
+      "isAggregate": true,
+      "isOriginalClassification": true,
+      "isReported": false,
+      "legacyEstimationFlag": 0
+    },
+    {
+      "file": "ET-oilseeds-world-2023-X-3f942592fbe3ea8b.json",
+      "query": "ET-oilseeds-world-2023-X",
+      "rows": 1,
+      "bytes": 979,
+      "sha256": "3f942592fbe3ea8b228f2d3697ddf1627d9e4af501b1eaadfdba30425e94faf4",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2023&partnerCode=0&cmdCode=1207&flowCode=X",
+      "refYear": 2023,
+      "reporterCode": 231,
+      "partnerCode": 0,
+      "cmdCode": "1207",
+      "flowCode": "X",
+      "primaryValue": 258605062.388,
+      "fobvalue": 258605062.388,
+      "cifvalue": null,
+      "netWgt_kg": 145686807.95,
+      "isAggregate": true,
+      "isOriginalClassification": true,
+      "isReported": false,
+      "legacyEstimationFlag": 0
+    },
+    {
+      "file": "IN-from-NP-tea-2023-M",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "KH-cassava-world-2023-X-6c6aef87e0abb4cc.json",
+      "query": "KH-cassava-world-2023-X",
+      "rows": 1,
+      "bytes": 985,
+      "sha256": "6c6aef87e0abb4cc14c468941a2903540ad5bf43c8dde76bc549a3cfd7ce391a",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2023&partnerCode=0&cmdCode=071410&flowCode=X",
+      "refYear": 2023,
+      "reporterCode": 116,
+      "partnerCode": 0,
+      "cmdCode": "071410",
+      "flowCode": "X",
+      "primaryValue": 166131077.28,
+      "fobvalue": 166131077.28,
+      "cifvalue": null,
+      "netWgt_kg": 2413187653.397,
+      "isAggregate": true,
+      "isOriginalClassification": true,
+      "isReported": false,
+      "legacyEstimationFlag": 0
+    },
+    {
+      "file": "KH-rice-to-CN-2022-X-16468b30ed8771c1.json",
+      "query": "KH-rice-to-CN-2022-X",
+      "rows": 1,
+      "bytes": 978,
+      "sha256": "16468b30ed8771c1f79dc0ee178d05bd9590b63c1801bb6ef2505a95e213f432",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2022&partnerCode=156&cmdCode=100630&flowCode=X",
+      "refYear": 2022,
+      "reporterCode": 116,
+      "partnerCode": 156,
+      "cmdCode": "100630",
+      "flowCode": "X",
+      "primaryValue": 163229307.64,
+      "fobvalue": 163229307.64,
+      "cifvalue": null,
+      "netWgt_kg": 279526175.0,
+      "isAggregate": false,
+      "isOriginalClassification": true,
+      "isReported": true,
+      "legacyEstimationFlag": 0
+    },
+    {
+      "file": "KH-rice-to-CN-2023-X-51b5d10e9eb3b742.json",
+      "query": "KH-rice-to-CN-2023-X",
+      "rows": 1,
+      "bytes": 978,
+      "sha256": "51b5d10e9eb3b742d4a779432e56def7bc44b6cdc323a168d13264326fca48f7",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2023&partnerCode=156&cmdCode=100630&flowCode=X",
+      "refYear": 2023,
+      "reporterCode": 116,
+      "partnerCode": 156,
+      "cmdCode": "100630",
+      "flowCode": "X",
+      "primaryValue": 126648899.74,
+      "fobvalue": 126648899.74,
+      "cifvalue": null,
+      "netWgt_kg": 198087184.0,
+      "isAggregate": true,
+      "isOriginalClassification": true,
+      "isReported": false,
+      "legacyEstimationFlag": 0
+    },
+    {
+      "file": "NP-IN-tea-2022-X",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "NP-IN-tea-2023-X",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "NP-cardamom-world-2023-X",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "NP-tea-world-2023-X",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "SN-banana-to-DE-2023-X",
+      "rows": 0,
+      "note": "empty preview"
+    },
+    {
+      "file": "SN-banana-world-2023-X-b7aeb14941e0616d.json",
+      "query": "SN-banana-world-2023-X",
+      "rows": 1,
+      "bytes": 956,
+      "sha256": "b7aeb14941e0616d6c2f47d058eba184aea024c4886ccf08d75d0641bae97437",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=686&period=2023&partnerCode=0&cmdCode=0803&flowCode=X",
+      "refYear": 2023,
+      "reporterCode": 686,
+      "partnerCode": 0,
+      "cmdCode": "0803",
+      "flowCode": "X",
+      "primaryValue": 43408.156,
+      "fobvalue": 43408.156,
+      "cifvalue": null,
+      "netWgt_kg": 72860.0,
+      "isAggregate": true,
+      "isOriginalClassification": true,
+      "isReported": false,
+      "legacyEstimationFlag": 0
+    },
+    {
+      "file": "SN-fish-world-2023-X-1452ce6add6f4ed0.json",
+      "query": "SN-fish-world-2023-X",
+      "rows": 1,
+      "bytes": 976,
+      "sha256": "1452ce6add6f4ed00fcb4942da6b47f0fa69a2f54f95a28c7db93eb05372c3a6",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=686&period=2023&partnerCode=0&cmdCode=0303&flowCode=X",
+      "refYear": 2023,
+      "reporterCode": 686,
+      "partnerCode": 0,
+      "cmdCode": "0303",
+      "flowCode": "X",
+      "primaryValue": 259078632.097,
+      "fobvalue": 259078632.097,
+      "cifvalue": null,
+      "netWgt_kg": 232475116.0,
+      "isAggregate": true,
+      "isOriginalClassification": true,
+      "isReported": false,
+      "legacyEstimationFlag": 0
+    },
+    {
+      "file": "KH-rice-to-world-2023-X-f1699005cb419153.json",
+      "query": "KH-rice-to-world-2023-X",
+      "rows": 1,
+      "bytes": 980,
+      "sha256": "f1699005cb41915395cbf4b7675bd266969bbc913e35409d4fbed25af23c17bd",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2023&partnerCode=0&cmdCode=100630&flowCode=X",
+      "refYear": 2023,
+      "reporterCode": 116,
+      "partnerCode": 0,
+      "cmdCode": "100630",
+      "flowCode": "X",
+      "primaryValue": 454303235.0,
+      "fobvalue": 454303235.0,
+      "cifvalue": null,
+      "netWgt_kg": 647349914.923,
+      "isAggregate": true,
+      "isOriginalClassification": true,
+      "isReported": false,
+      "legacyEstimationFlag": 0
+    }
+  ],
+  "retrieved_at_local": "2026-10-12T23:06:51.430696+05:45",
+  "empty_previews": [
+    {
+      "query": "BD-jute-2023-X",
+      "command_url_key": "BD-jute-2023-X",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=50&period=2023&partnerCode=0&cmdCode=5303&flowCode=X"
+    },
+    {
+      "query": "BD-rice-2023-X",
+      "command_url_key": "BD-rice-2023-X",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=50&period=2023&partnerCode=0&cmdCode=100630&flowCode=X"
+    },
+    {
+      "query": "BD-shrimp-2022-X",
+      "command_url_key": "BD-shrimp-2022-X",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=50&period=2022&partnerCode=0&cmdCode=030617&flowCode=X"
+    },
+    {
+      "query": "BD-shrimp-2023-X",
+      "command_url_key": "BD-shrimp-2023-X",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=50&period=2023&partnerCode=0&cmdCode=030617&flowCode=X"
+    },
+    {
+      "query": "IN-from-NP-tea-2023-M",
+      "command_url_key": "IN-from-NP-tea-2023-M",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=356&period=2023&partnerCode=524&cmdCode=0902&flowCode=M"
+    },
+    {
+      "query": "NP-IN-tea-2022-X",
+      "command_url_key": "NP-IN-tea-2022-X",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=524&period=2022&partnerCode=356&cmdCode=0902&flowCode=X"
+    },
+    {
+      "query": "NP-IN-tea-2023-X",
+      "command_url_key": "NP-IN-tea-2023-X",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=524&period=2023&partnerCode=356&cmdCode=0902&flowCode=X"
+    },
+    {
+      "query": "NP-cardamom-world-2023-X",
+      "command_url_key": "NP-cardamom-world-2023-X",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=524&period=2023&partnerCode=0&cmdCode=0908&flowCode=X"
+    },
+    {
+      "query": "NP-tea-world-2023-X",
+      "command_url_key": "NP-tea-world-2023-X",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=524&period=2023&partnerCode=0&cmdCode=0902&flowCode=X"
+    },
+    {
+      "query": "SN-banana-to-DE-2023-X",
+      "command_url_key": "SN-banana-to-DE-2023-X",
+      "note": "provider returned a zero-row preview for this bounded query; recorded as an evidence gap, not zero trade",
+      "query_url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=686&period=2023&partnerCode=276&cmdCode=080390&flowCode=X"
+    }
+  ],
+  "additional_empty_previews": [],
+  "reporter_coverage_note": "Bangladesh (050/50) returned zero-row previews for every bounded query attempted; this is a preview-coverage gap, not evidence of zero trade."
+}
