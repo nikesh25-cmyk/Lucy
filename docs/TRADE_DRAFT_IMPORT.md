@@ -16,7 +16,7 @@ The prepared text includes the candidate scope, CSV, source retrieval/hash notes
 
 In **My contributions**, open the free-text form of an owned active claim. Select **Prepared trade submission draft**, inspect the import and choose **Apply prepared trade draft**. The form must be empty so unfinished/correction work is not silently replaced. Imported text saves privately. Review the fields and explicitly select **Submit for human review** when ready.
 
-Import checks the specific inert format, bounded fields, one-to-ten canonical public Comtrade URLs, valid source dates and the task's approved Comtrade host. Original-byte and factual verification are still human responsibilities: selecting a local JSON file does not certify it. Changed operator sessions or detached forms cannot apply a late file read.
+Import checks the specific inert format, bounded fields, one-to-ten canonical public Comtrade URLs, valid source dates and the task's approved Comtrade host. Original-byte and factual verification are still human responsibilities: selecting a local JSON file does not certify it. Changed operator sessions or detached forms cannot apply or parse a late file read. Invalid JSON errors use a generic message without reflecting file contents.
 
 The free-text form now supports adding up to ten source records, matching the server. Saved draft values preserve all ten rows across refresh; corrected submissions retain their source rows. Existing three-source drafts remain compatible, with no database migration. The private draft size/revision/rate limits and claim permissions remain in force.
 
