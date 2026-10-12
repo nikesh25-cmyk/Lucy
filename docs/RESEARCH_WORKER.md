@@ -10,7 +10,7 @@ For CLI operation, set `WORLD_AGENT_TOKEN`, `WORLD_URL`, `WORLD_TASK_ID`, and `W
 
 Runs have no outbound contact or government-submission capability. Accepted output and documented adoption are separate stages. After a server restart, in-progress job records are marked stopped; inspect an existing claim before retrying. Never silently repeat a submission.
 
-Local Ollama setup: https://docs.ollama.com/quickstart and https://ollama.com/download/mac . Choose a model appropriate for the available RAM, install it separately, and restart Lucy with `LUCY_MODEL_NAME`. No model-quality or full autonomy claim follows from successful generation.
+Local Ollama setup: https://docs.ollama.com/quickstart and https://ollama.com/download/mac . Choose a model appropriate for the available RAM, install it separately, and restart NemoWorld with `LUCY_MODEL_NAME`. No model-quality or full autonomy claim follows from successful generation.
 
 Apple Silicon Macs can use the pinned [project-local AI installer](LOCAL_AI.md). The launcher starts a verified installed model automatically; an incomplete download leaves inference disabled.
 

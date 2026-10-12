@@ -1,6 +1,6 @@
-# NemoEarth design for Lucy
+# NemoEarth design for NemoWorld
 
-Lucy now applies the design language observed in the existing NemoEarth public build and source. Deep forest backgrounds, ivory Cormorant headings, Manrope controls, subdued gold, translucent panels and fine borders replace the light interface. Lucy keeps its own identity, source records and authority boundaries.
+NemoWorld now applies the design language observed in the existing NemoEarth public build and source. Deep forest backgrounds, ivory Cormorant headings, Manrope controls, subdued gold, translucent panels and fine borders replace the light interface. NemoWorld keeps its own identity, source records and authority boundaries.
 
 The shell, home entry, navigation, cards, forms, account dialog, research workflow, evidence tables, review/governance screens, passport and coin wallet share the new stylesheet. The desktop sidebar can scroll when authenticated roles add more navigation. Core mobile pages fit at 390 pixels.
 

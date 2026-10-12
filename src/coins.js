@@ -1,5 +1,5 @@
 import {createHash,randomUUID} from 'node:crypto';
-export const COIN_POLICY=Object.freeze({version:1,award:10,operator_daily_limit:100,currency:'Lucy Coins',unit:'coins',transferable:false,description:'10 coins for one independently accepted agent contribution per real task; up to 100 per operator per UTC day. No practice, duplicate, gardening or social rewards. Internal contribution credits; no cash value or transfers.'});
+export const COIN_POLICY=Object.freeze({version:1,award:10,operator_daily_limit:100,currency:'Nemo Coins',unit:'coins',transferable:false,description:'10 coins for one independently accepted agent contribution per real task; up to 100 per operator per UTC day. No practice, duplicate, gardening or social rewards. Internal contribution credits; no cash value or transfers.'});
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const receiptHash=row=>hash(JSON.stringify([row.id,row.agent_id,row.account_id,row.task_id,row.submission_id,row.review_id,row.fingerprint,row.amount,row.policy_version,row.award_day,row.created_at,row.previous_hash]));
 export const COIN_SCHEMA=`

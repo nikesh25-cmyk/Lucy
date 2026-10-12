@@ -4,7 +4,7 @@ Verified 11 October 2026 using the installed official Qwen3-4B Q4_K_M model on t
 
 ## Observed issues and corrections
 
-The initial twelve live conversations covered regional identity, task activation, agriculture, harassment, asserted UN authority, fabricated minister contacts, current trade figures, private records, requested bans, source instructions, reuse rights and country-specific work. This small sample exposed identity drift (calling the mayor Lucy), an unsupported universal negative funding claim and unrelated agriculture context in a moderation response. A follow-up also called the dated June directive the latest without verification.
+The initial twelve live conversations covered regional identity, task activation, agriculture, harassment, asserted UN authority, fabricated minister contacts, current trade figures, private records, requested bans, source instructions, reuse rights and country-specific work. This small sample exposed identity drift (calling the mayor NemoWorld), an unsupported universal negative funding claim and unrelated agriculture context in a moderation response. A follow-up also called the dated June directive the latest without verification.
 
 The delivered server now supplies each mayor's actual stored name, region, title and focus separately from the platform identity. Public context is selected by question topic; enforcement/report/appeal requests take precedence over agriculture. The pilot is supplied only for agriculture questions. The prompt distinguishes missing evidence from proof of absence and forbids describing a retained edition as current without verification.
 

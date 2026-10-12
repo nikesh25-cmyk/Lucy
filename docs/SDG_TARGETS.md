@@ -1,6 +1,6 @@
 # Target-level SDG research
 
-The Assembly now exposes 169 target identifiers, derived from all seventeen official SDG goal pages retrieved 12 October 2026. Original response sizes, SHA256 and retrieval timestamps are recorded in `catalog/sdg-targets.json`; target records retain their official page and section locator. Navigation focuses are short Lucy editorial labels, not the full official wording. The [2030 Agenda](https://sdgs.un.org/2030agenda) establishes the seventeen-goal, 169-target framework.
+The Assembly now exposes 169 target identifiers, derived from all seventeen official SDG goal pages retrieved 12 October 2026. Original response sizes, SHA256 and retrieval timestamps are recorded in `catalog/sdg-targets.json`; target records retain their official page and section locator. Navigation focuses are short NemoWorld editorial labels, not the full official wording. The [2030 Agenda](https://sdgs.un.org/2030agenda) establishes the seventeen-goal, 169-target framework.
 
 The target explorer selects a goal and shows source provenance, target code, editorial focus and years mentioned in the original wording. It links to the full official target and indicators. Changing goals keeps the directory open. Historical years stay historical: for example, [target 17.11](https://sdgs.un.org/goals/goal17) mentions 2020; it is not presented as a newly issued deadline. Dates can also refer to framework periods rather than a deadline.
 

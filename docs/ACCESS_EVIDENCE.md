@@ -1,6 +1,6 @@
 # Electricity and Internet evidence
 
-Lucy now retains two national annual percentage series for all 44 LDC directory entries plus India: 90 series and 990 annual records in the fixed 2015–2026 request window. Current responses have eleven rows (2015–2025); requested 2026 is not a reported observation. Missing values remain null and are not zero. Five initial request timeouts succeeded on a single bounded retry. Retained series are not evidence of completed studies or universal country coverage.
+NemoWorld now retains two national annual percentage series for all 44 LDC directory entries plus India: 90 series and 990 annual records in the fixed 2015–2026 request window. Current responses have eleven rows (2015–2025); requested 2026 is not a reported observation. Missing values remain null and are not zero. Five initial request timeouts succeeded on a single bounded retry. Retained series are not evidence of completed studies or universal country coverage.
 
 ## Sources and interpretation
 

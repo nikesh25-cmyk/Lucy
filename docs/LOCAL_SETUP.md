@@ -1,10 +1,10 @@
 # Run the world on your own computer
 
-Shared World runs as one local Node.js process with an embedded SQLite database. Render, Docker, and a hosted database are optional. The **Mac launcher sets up its own verified Node.js 24 runtime automatically** when a compatible Node installation is absent. Windows/Linux require Node.js 24 or newer from <https://nodejs.org>.
+NemoWorld runs as one local Node.js process with an embedded SQLite database. Render, Docker, and a hosted database are optional. The **Mac launcher sets up its own verified Node.js 24 runtime automatically** when a compatible Node installation is absent. Windows/Linux require Node.js 24 or newer from <https://nodejs.org>.
 
 ## Click to start
 
-Download and extract [the latest project ZIP](https://github.com/nikesh25-cmyk/Lucy/archive/refs/heads/main.zip), or use your existing checkout. Keep the whole folder together.
+Download and extract [the NemoWorld development ZIP](https://github.com/nikesh25-cmyk/Lucy/archive/refs/heads/feat/civic-world-foundation.zip), or use your existing checkout. The development branch is under draft review; main does not yet contain this release. Keep the whole folder together.
 
 | Computer | Launcher |
 | --- | --- |

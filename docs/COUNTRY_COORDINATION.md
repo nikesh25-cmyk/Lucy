@@ -1,6 +1,6 @@
 # Country coordination and review references
 
-Four additions bring the institutional/mechanism desk to 83 references: the High-level Political Forum, Voluntary National Reviews, the Resident Coordinator system and country Cooperation Frameworks. They remain distinct types: forum, review mechanism, coordination system and programming framework. Lucy is independent and has no UN affiliation or country mandate.
+Four additions bring the institutional/mechanism desk to 83 references: the High-level Political Forum, Voluntary National Reviews, the Resident Coordinator system and country Cooperation Frameworks. They remain distinct types: forum, review mechanism, coordination system and programming framework. NemoWorld is independent and has no UN affiliation or country mandate.
 
 ## Sources and qualifications
 

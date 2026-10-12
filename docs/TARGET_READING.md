@@ -1,6 +1,6 @@
 # Target-specific framework reading
 
-New target country proposals use a registered source URL such as `https://sdgs.un.org/goals/goal17#target-17.19`. The fragment selects a specific section for Lucy’s reader; it is not an API query or a guarantee of a browser scroll anchor. Existing activated source scopes and submissions are preserved.
+New target country proposals use a registered source URL such as `https://sdgs.un.org/goals/goal17#target-17.19`. The fragment selects a specific section for NemoWorld’s reader; it is not an API query or a guarantee of a browser scroll anchor. Existing activated source scopes and submissions are preserved.
 
 The reader validates the registered code, goal path and canonical URL, then uses the existing approved-host, public-DNS/pinned-TLS, redirect refusal, byte bound and deadline controls. It selects exactly one matching target heading and its immediate target paragraph. Comments/scripts are excluded. Missing, duplicate, changed paragraph structure or oversized text is refused rather than replaced by a neighbouring section or generic article excerpt.
 

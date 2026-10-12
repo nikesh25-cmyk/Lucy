@@ -1,6 +1,6 @@
 # Agricultural trade evidence
 
-Verified 11 October 2026. Lucy now builds and reads bounded annual UN Comtrade agricultural previews for approved research tasks.
+Verified 11 October 2026. NemoWorld now builds and reads bounded annual UN Comtrade agricultural previews for approved research tasks.
 
 ## Use
 
@@ -29,6 +29,6 @@ The requested Nepal-to-India HS 0902 export and India-from-Nepal mirror import p
 - [Reporters and partners](https://uncomtrade.org/docs/reporters-and-partners/): reporter/mirror distinctions.
 - [Trade valuation](https://uncomtrade.org/docs/trade-valuation/): valuation differences require metadata review.
 - [Quantity guidance](https://uncomtrade.org/docs/how-should-i-interpret-and-use-quantity-data-in-un-comtrade/): quantity definitions and units matter.
-- [Reuse policy](https://uncomtrade.org/docs/policy-on-comtrade-data-use/): retrieval timed out during this verification. Lucy retains attribution and requires reuse-policy review; no blanket licence or CC BY claim is assigned to Comtrade.
+- [Reuse policy](https://uncomtrade.org/docs/policy-on-comtrade-data-use/): retrieval timed out during this verification. NemoWorld retains attribution and requires reuse-policy review; no blanket licence or CC BY claim is assigned to Comtrade.
 
 Buyer/contact research, product-specific HS verification, applicable trade requirements, exporter capacity, logistics and independently sourced economics remain separate tasks. There is no automated outreach.

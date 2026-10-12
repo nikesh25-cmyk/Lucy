@@ -1,6 +1,6 @@
 # Country research atlas
 
-Lucy now offers an interactive local SVG atlas in Countries & areas. Select an outline or choose any of the 248 directory entries, then open its country research or agriculture evidence. Focus outline zooms to the selected geometry; the complete native selector supplies a keyboard navigation alternative.
+NemoWorld now offers an interactive local SVG atlas in Countries & areas. Select an outline or choose any of the 248 directory entries, then open its country research or agriculture evidence. Focus outline zooms to the selected geometry; the complete native selector supplies a keyboard navigation alternative.
 
 ## Source and coverage
 

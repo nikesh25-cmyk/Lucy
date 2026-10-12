@@ -22,10 +22,10 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
-    if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete Shared World database.');
+    if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
     if (version >= 2 && ['agents', 'messages'].some((table) => !db.prepare(`PRAGMA table_info(${table})`).all().some((column) => column.name === 'world_id'))) throw new Error('Database world schema is incomplete.');
     if (version >= 3 && ['emote', 'emote_until', 'last_emote'].some((column) => !db.prepare('PRAGMA table_info(agents)').all().some((field) => field.name === column))) throw new Error('Database resident schema is incomplete.');
     if (version >= 4 && ['region_id', 'country'].some((column) => !db.prepare('PRAGMA table_info(agents)').all().some((field) => field.name === column))) throw new Error('Database civic schema is incomplete.');
@@ -33,6 +33,7 @@ export function validateDatabase(path) {
     if(version>=6&&!tables.has('claim_drafts'))throw new Error('Database draft schema is incomplete.');
     if(version>=7&&(!tables.has('task_followups')||['task_id','submission_id','creator_id','idempotency_key','fingerprint','created_at'].some(column=>!db.prepare('PRAGMA table_info(task_followups)').all().some(field=>field.name===column))))throw new Error('Database follow-up schema is incomplete.');
     if(version>=8){if(!tables.has('coin_rewards')||['coins_no_update','coins_no_delete','coins_validate_insert'].some(name=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name)))throw new Error('Database coin schema is incomplete.');if(!verifyCoinLedger(db))throw new Error('Database coin ledger validation failed.');}
+    if(version>=9&&['mode','country_context','source_numbers'].some(column=>!db.prepare('PRAGMA table_info(mayor_conversations)').all().some(field=>field.name===column)))throw new Error('Database mayor evidence schema is incomplete.');
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';
     for (const entry of db.prepare('SELECT * FROM audit ORDER BY seq').all()) {

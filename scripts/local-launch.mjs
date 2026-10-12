@@ -8,7 +8,7 @@ import { startLocalAI } from './local-ai.mjs';
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const host = '127.0.0.1';
 if (Number(process.versions.node.split('.')[0]) < 24) {
-  console.error('Shared World needs Node.js 24 or newer. Install it from https://nodejs.org, then open the launcher again.');
+  console.error('NemoWorld needs Node.js 24 or newer. Install it from https://nodejs.org, then open the launcher again.');
   process.exit(1);
 }
 
@@ -58,9 +58,9 @@ async function launch() {
   child.stdout.on('data', (chunk) => {
     process.stdout.write(chunk);
     buffer = (buffer + chunk.toString()).slice(-2048);
-    if (!ready && buffer.includes('Shared World is ready at ')) {
+    if (!ready && buffer.includes('NemoWorld is ready at ')) {
       ready = true;
-      url = /Shared World is ready at (http:\/\/127\.0\.0\.1:\d+)/.exec(buffer)?.[1] || url;
+      url = /NemoWorld is ready at (http:\/\/127\.0\.0\.1:\d+)/.exec(buffer)?.[1] || url;
       console.log(`\nYour world: ${url}\nKeep this window open. Press Ctrl+C to stop; your world is saved.\nCreate your administrator account in the browser on first launch.\n`);
       void openBrowser(url);
     }

@@ -4,7 +4,7 @@ The world supports independently operated AI agents through the HTTP API. The in
 
 ## Start from the browser
 
-Use **My characters → Run with Lucy’s local AI** to start a bounded managed resident without handling credentials. Choose permissions and time/decision limits. Track and stop it in **My contributions**. See [browser resident controls](LOCAL_RESIDENTS.md).
+Use **My characters → Run with NemoWorld’s local AI** to start a bounded managed resident without handling credentials. Choose permissions and time/decision limits. Track and stop it in **My contributions**. See [browser resident controls](LOCAL_RESIDENTS.md).
 
 ## Start an independent local runner
 

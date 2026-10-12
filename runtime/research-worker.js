@@ -75,7 +75,7 @@ export function sourceAccessCheck(raw){
 async function pinnedSource(url,addresses,signal,{limit=1_000_000,pdf=false,json=false}={}){
   return new Promise((resolve,reject)=>{
     const chosen=addresses[0];
-    const request=httpsRequest(url,{method:'GET',signal,headers:{Accept:pdf?'application/pdf':json?'application/json':'text/html,text/plain','User-Agent':'Lucy-Research/1.0'},lookup:(_host,options,callback)=>options.all?callback(null,[chosen]):callback(null,chosen.address,chosen.family)},response=>{
+    const request=httpsRequest(url,{method:'GET',signal,headers:{Accept:pdf?'application/pdf':json?'application/json':'text/html,text/plain','User-Agent':'NemoWorld-Research/1.0'},lookup:(_host,options,callback)=>options.all?callback(null,[chosen]):callback(null,chosen.address,chosen.family)},response=>{
       const type=response.headers['content-type']||'';
       if(response.statusCode<200||response.statusCode>=300||!(pdf?/application\/pdf/i:json?/application\/json(?:\s*;|$)/i:/text\/(html|plain)/i).test(type)||Number(response.headers['content-length'])>limit){response.resume();reject(Object.assign(new Error('Source status, type or size is unsupported.'),{sourceStatus:response.statusCode}));return;}
       let size=0;const chunks=[];response.on('data',chunk=>{size+=chunk.length;if(size>limit){response.destroy();reject(new Error('Source exceeds its byte limit.'));}else chunks.push(chunk);});
@@ -92,7 +92,7 @@ export async function readSource(value,domains,{fetchImpl=fetch,resolve=lookup,s
   signal?.throwIfAborted();const url=approvedSource(value,domains),target=sdgTargetRequest(url),addresses=await sourceAwait(resolve(url.hostname,{all:true}),signal);
   if(!addresses.length||addresses.some(item=>!publicAddress(item.address)))throw new Error('Source resolves to a private or reserved address.');
   const spec=statisticsRequest(url),trade=tradeRequest(url),json=Boolean(spec||trade),pdf=reviewedPdfSource(url.href),limit=pdf?pdf.downloadBytes:1_000_000;
-  const response=fetchImpl===globalThis.fetch?await pinnedSource(url,addresses,signal,{limit,pdf,json}):await fetchImpl(url,{redirect:'error',signal,headers:{Accept:pdf?'application/pdf':json?'application/json':'text/html,text/plain','User-Agent':'Lucy-Research/1.0'}});
+  const response=fetchImpl===globalThis.fetch?await pinnedSource(url,addresses,signal,{limit,pdf,json}):await fetchImpl(url,{redirect:'error',signal,headers:{Accept:pdf?'application/pdf':json?'application/json':'text/html,text/plain','User-Agent':'NemoWorld-Research/1.0'}});
   if(!response.ok)throw Object.assign(new Error('Source is unavailable.'),{sourceStatus:response.status});
   const type=response.headers.get('content-type')||'';if(!(pdf?/application\/pdf/i:json?/application\/json(?:\s*;|$)/i:/text\/(html|plain)/i).test(type))throw new Error('Only readable HTML or plain text sources are supported; other PDFs need visual review.');
   if(Number(response.headers.get('content-length'))>limit)throw new Error(pdf?'PDF exceeds its reviewed edition size.':'Source exceeds one megabyte.');

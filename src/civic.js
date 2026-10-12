@@ -27,7 +27,7 @@ const districts = [
 const regionalGoals={highlands:[6,11,13],snowline:[11,13],foothills:[2,8,15],riverlands:[6,11,13],wetlands:[6,14,15],woodlands:[13,15],rainforest:[13,15,16],grasslands:[2,13,15],farmlands:[2,8,12],drylands:[6,13,15],desert:[3,11,13],savanna:[2,15],coast:[8,13,14],islands:[7,13,14],harbor:[8,9,17],cities:[10,11,16],workshops:[4,8,9],gardens:[2,3,11],lakes:[3,6,15],commons:[16,17]};
 
 export const REGIONS = Object.freeze(districts.map(([id,name,landscape,mayor,focus], index) => Object.freeze({
-  id, name, landscape, researchGoals:Object.freeze(regionalGoals[id]), researchMapping:'Lucy editorial SDG research lens; not a country boundary, task assignment or UN mandate.', mayor: Object.freeze({ id: `mayor-${id}`, name: mayor, title: `Mayor of ${name}`, focus, status: 'active', kind: 'npc' }),
+  id, name, landscape, researchGoals:Object.freeze(regionalGoals[id]), researchMapping:'NemoWorld editorial SDG research lens; not a country boundary, task assignment or UN mandate.', mayor: Object.freeze({ id: `mayor-${id}`, name: mayor, title: `Mayor of ${name}`, focus, status: 'active', kind: 'npc' }),
   order: index + 1,
 })));
 
