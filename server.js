@@ -217,7 +217,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           response.writeHead(200);return response.end(deliveryPacketHTML(result));
         }
         if(route==='/research'&&url.searchParams.get('download')==='programme'){if(!result.country_plan)fail(400,'Choose a catalog country for the work programme.');response.setHeader('Content-Disposition',`attachment; filename="lucy-${result.country_plan.country.iso2}-research-programme.json"`);return json(response,200,result.country_plan);}
-        if(route==='/country-evidence'&&url.searchParams.get('download')==='1')response.setHeader('Content-Disposition',`attachment; filename="lucy-${result.country.iso3}-agriculture-evidence.json"`);
+        if(route==='/country-evidence'&&url.searchParams.get('download')==='1')response.setHeader('Content-Disposition',`attachment; filename="lucy-${result.country.iso3}-${result.sector||'agriculture'}-evidence.json"`);
         return json(response, 200, result);
       }
       if (request.method === 'DELETE') {

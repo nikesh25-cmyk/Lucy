@@ -63,3 +63,5 @@ body:has([aria-current="page"][aria-label="Research desk"]) .hero,body:has([aria
 .atlas-background{cursor:default}
 
 .workflow-stages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}.workflow-stage{padding:14px;border:1px solid var(--line);border-radius:12px;min-width:0}.workflow-stage p{margin-bottom:0}.workflow-stage button{max-width:100%;white-space:normal;text-align:left}.workflow-stage button[aria-pressed=true]{background:var(--ink);color:var(--bg)}#research-workflow{scroll-margin-top:20px}@media(max-width:650px){.workflow-stages{grid-template-columns:1fr}}
+
+.evidence-metadata{display:block;margin-top:.5rem}
