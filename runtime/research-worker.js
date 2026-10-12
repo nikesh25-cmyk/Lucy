@@ -11,10 +11,14 @@ import { readFileSync } from 'node:fs';
 import { statisticsRequest, normalizeStatistics } from './statistics-source.js';
 const pdfReview=JSON.parse(readFileSync(new URL('../catalog/tea-directive-review.json',import.meta.url),'utf8'));
 
+const pdfReviews=[pdfReview,JSON.parse(readFileSync(new URL('../catalog/buyer-notice-review.json',import.meta.url),'utf8'))];
+export function reviewedPdfSource(url){return pdfReviews.find(review=>new URL(review.sourceUrl).href===new URL(url).href)||null;}
+
 export function reviewedPdf(bytes,review=pdfReview){
   const sha256=createHash('sha256').update(bytes).digest('hex');
   if(bytes.length!==review.downloadBytes||sha256!==review.sha256||!bytes.subarray(0,5).equals(Buffer.from('%PDF-')))throw new Error('PDF edition differs from its visual review. A new review is required.');
-  return {title:review.title,sha256,text:review.clauses.map(clause=>`p${clause.page} ${clause.locator}: ${clause.summary}`).join('\n'),quote:null,location:`Previously visually reviewed PDF; pages 1–${review.pageCount}; clause locators in review notes`,declared_published:null,review_notes:true,reviewed_on:review.reviewedOn,publication_note:review.documentDate};
+  const pages=review.reviewedPages||Array.from({length:review.pageCount},(_,index)=>index+1);if(!pages.length||pages.some(page=>!Number.isInteger(page)||page<1||page>review.pageCount)||review.clauses.some(clause=>!pages.includes(clause.page)))throw Error('PDF notes refer to unreviewed pages.');
+  return {evidence_role:review.evidenceRole||'regulatory-clause-review',title:review.title,sha256,text:review.clauses.map(clause=>`p${clause.page} ${clause.locator}: ${clause.summary}`).join('\n'),quote:null,location:`Previously visually reviewed PDF; reviewed pages ${pages.join(', ')} of ${review.pageCount}; clause locators in review notes`,declared_published:null,review_notes:true,reviewed_on:review.reviewedOn,publication_note:review.documentDate};
 }
 
 // Network reads are limited to approved public source hosts; redirects are not followed.
@@ -76,13 +80,13 @@ function sourceAwait(promise,signal){
 export async function readSource(value,domains,{fetchImpl=fetch,resolve=lookup,signal,retainRaw=false}={}){
   signal?.throwIfAborted();const url=approvedSource(value,domains),addresses=await sourceAwait(resolve(url.hostname,{all:true}),signal);
   if(!addresses.length||addresses.some(item=>!publicAddress(item.address)))throw new Error('Source resolves to a private or reserved address.');
-  const spec=statisticsRequest(url),trade=tradeRequest(url),json=Boolean(spec||trade),pdf=url.href===pdfReview.sourceUrl,limit=pdf?pdfReview.downloadBytes:1_000_000;
+  const spec=statisticsRequest(url),trade=tradeRequest(url),json=Boolean(spec||trade),pdf=reviewedPdfSource(url.href),limit=pdf?pdf.downloadBytes:1_000_000;
   const response=fetchImpl===globalThis.fetch?await pinnedSource(url,addresses,signal,{limit,pdf,json}):await fetchImpl(url,{redirect:'error',signal,headers:{Accept:pdf?'application/pdf':json?'application/json':'text/html,text/plain','User-Agent':'Lucy-Research/1.0'}});
   if(!response.ok)throw new Error('Source is unavailable.');
   const type=response.headers.get('content-type')||'';if(!(pdf?/application\/pdf/i:json?/application\/json(?:\s*;|$)/i:/text\/(html|plain)/i).test(type))throw new Error('Only readable HTML or plain text sources are supported; other PDFs need visual review.');
   if(Number(response.headers.get('content-length'))>limit)throw new Error(pdf?'PDF exceeds its reviewed edition size.':'Source exceeds one megabyte.');
   let size=0;const chunks=[];for await(const chunk of response.body){size+=chunk.length;if(size>limit)throw new Error(pdf?'PDF exceeds its reviewed edition size.':'Source exceeds one megabyte.');chunks.push(chunk);}
-  if(pdf)return {url:url.href,retrieved:new Date().toISOString(),...reviewedPdf(Buffer.concat(chunks))};
+  if(pdf)return {url:url.href,retrieved:new Date().toISOString(),...reviewedPdf(Buffer.concat(chunks),pdf)};
   const raw=Buffer.concat(chunks).toString('utf8');
   if(trade)return {url:url.href,retrieved:new Date().toISOString(),sha256:createHash('sha256').update(Buffer.concat(chunks)).digest('hex'),...normalizeTrade(raw,trade),...(retainRaw?{raw_json:raw}:{})};
   if(spec)return {url:url.href,retrieved:new Date().toISOString(),sha256:createHash('sha256').update(Buffer.concat(chunks)).digest('hex'),...normalizeStatistics(raw,spec),...(retainRaw?{raw_json:raw}:{})};
@@ -134,7 +138,7 @@ export async function runResearch({token,url,taskId,urls,modelFn,fetchImpl=fetch
     stage='task';const missions=await request('/missions?task_id='+encodeURIComponent(taskId)),task=missions.tasks.find(task=>task.id===taskId);if(!task)throw new Error('Task not available.');const mission=missions.missions?.find(item=>item.id===task.mission_id);if(configuration.output==='decision-brief'&&!mission)throw new Error('Mission context is required for a decision brief.');
     for(const source of urls)approvedSource(source,task.allowed_domains);
     stage='claim';claim=await request('/claims',{task_id:taskId,agent_id:status.agent_id},randomUUID());
-    stage='source';const records=[];for(const [index,source] of urls.entries()){sourceNumber=index+1;records.push(await readSource(source,task.allowed_domains,{fetchImpl,resolve,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(new URL(source).href===pdfReview.sourceUrl?90000:15000)])}));}
+    stage='source';const records=[];for(const [index,source] of urls.entries()){sourceNumber=index+1;records.push(await readSource(source,task.allowed_domains,{fetchImpl,resolve,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(reviewedPdfSource(source)?90000:15000)])}));}
     let artifact=records.map((record,index)=>`Source ${index+1}: ${record.title}\nURL: ${record.url}\nRetrieved: ${record.retrieved}\nSource-declared publication date: ${record.declared_published||'not established'}\nSHA256: ${record.sha256}\nExtraction: ${record.location}\n${record.structured_data?`Normalized annual statistics (not a quotation):\n${record.text}\nAttribution: ${record.structured_data.license.attribution}\nLicence: ${record.structured_data.license.name}; ${record.structured_data.license.url}`:record.review_notes?`Visual review notes (${record.reviewed_on}; paraphrases, not quotations):\n${record.text}\nDocument date note: ${record.publication_note}`:`Extracted excerpt (24 words maximum): ${record.quote}`}\nEvidence assessment: source accessibility established; substantive claims and applicability require review.`).join('\n\n');
     const facts=statisticalFacts(records);if(facts)artifact='VALIDATED STATISTICAL OBSERVATIONS · SOURCE ATTRIBUTION REQUIRED\n'+facts+'\n\n'+artifact;
     const onlyStatistics=records.every(record=>record.structured_data);
