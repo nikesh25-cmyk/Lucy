@@ -23,6 +23,7 @@ const files = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
+  ['/src/trade-import.js', ['src/trade-import.js', 'text/javascript; charset=utf-8']],
   ['/src/trade.js', ['src/trade.js', 'text/javascript; charset=utf-8']],
   ['/src/research-failure.js', ['src/research-failure.js', 'text/javascript; charset=utf-8']],
   ['/src/delivery-packet.js', ['src/delivery-packet.js', 'text/javascript; charset=utf-8']],
