@@ -7,3 +7,6 @@ The worker tracks permission checks, task selection, claiming, source retrieval,
 My contributions shows the stage, task, practical repair guidance, cleanup status and a route back to mission tasks. Operations shows readable report summaries. Runtime credentials are still revoked by the managed runner’s cleanup. The report is an execution observation; it does not prove source quality, factual support or readiness to proceed.
 
 Verification includes an isolated source failure after one successful source, no partial submission, successful release, failed release remaining unconfirmed, private history, module serving and credential revocation. Actual browser QA started an intentionally failing fictional agricultural-source task, displayed Source 1 and confirmed claim release, then followed Open mission tasks and inspected the open task again. No production account or external recommendation was created.
+
+
+Source-stage history now carries bounded access-check, access-denied, rate-limit and unreadable-content classifications while preserving legacy records. See `SOURCE_ACCESS.md` for response recognition, live verification and privacy limits.

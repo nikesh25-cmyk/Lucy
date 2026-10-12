@@ -1,3 +1,4 @@
+import {sourceFailureProblem} from '../src/research-failure.js';
 import {tradeRequest,normalizeTrade} from './trade-source.js';
 import {researchOutput,researchBriefPrompt,modelDecisionBrief,briefModelProse} from './research-brief.js';
 import { randomUUID, createHash } from 'node:crypto';
@@ -61,6 +62,15 @@ export function extractSource(raw, type = 'text/html') {
   }
   return { text, location, declared_published };
 }
+// Recognize bounded interstitial structures, not mentions of access checks in an article.
+export function sourceAccessCheck(raw){
+ const html=raw.replace(/<!--[\s\S]*?-->/g,' ');
+ const frames=[...html.matchAll(/<iframe\b[^>]*>/gi)];
+ const incapsula=frames.some(([tag])=>/\bid\s*=\s*["']main-iframe["']/i.test(tag)&&/\bsrc\s*=\s*["']\/_Incapsula_Resource(?:[?"'])/i.test(tag));
+ const title=/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i.exec(html)?.[1].replace(/<[^>]+>/g,' ').trim()||'';
+ const cloudflare=/^(?:just a moment(?:\.\.\.)?|attention required!?)$/i.test(title)&&/<script\b[^>]*\bsrc\s*=\s*["']\/cdn-cgi\/challenge-platform\//i.test(html);
+ return (incapsula||cloudflare)&&!/<article\b/i.test(html);
+}
 async function pinnedSource(url,addresses,signal,{limit=1_000_000,pdf=false,json=false}={}){
   return new Promise((resolve,reject)=>{
     const chosen=addresses[0];
@@ -82,7 +92,7 @@ export async function readSource(value,domains,{fetchImpl=fetch,resolve=lookup,s
   if(!addresses.length||addresses.some(item=>!publicAddress(item.address)))throw new Error('Source resolves to a private or reserved address.');
   const spec=statisticsRequest(url),trade=tradeRequest(url),json=Boolean(spec||trade),pdf=reviewedPdfSource(url.href),limit=pdf?pdf.downloadBytes:1_000_000;
   const response=fetchImpl===globalThis.fetch?await pinnedSource(url,addresses,signal,{limit,pdf,json}):await fetchImpl(url,{redirect:'error',signal,headers:{Accept:pdf?'application/pdf':json?'application/json':'text/html,text/plain','User-Agent':'Lucy-Research/1.0'}});
-  if(!response.ok)throw new Error('Source is unavailable.');
+  if(!response.ok)throw Object.assign(new Error('Source is unavailable.'),{sourceStatus:response.status});
   const type=response.headers.get('content-type')||'';if(!(pdf?/application\/pdf/i:json?/application\/json(?:\s*;|$)/i:/text\/(html|plain)/i).test(type))throw new Error('Only readable HTML or plain text sources are supported; other PDFs need visual review.');
   if(Number(response.headers.get('content-length'))>limit)throw new Error(pdf?'PDF exceeds its reviewed edition size.':'Source exceeds one megabyte.');
   let size=0;const chunks=[];for await(const chunk of response.body){size+=chunk.length;if(size>limit)throw new Error(pdf?'PDF exceeds its reviewed edition size.':'Source exceeds one megabyte.');chunks.push(chunk);}
@@ -90,8 +100,9 @@ export async function readSource(value,domains,{fetchImpl=fetch,resolve=lookup,s
   const raw=Buffer.concat(chunks).toString('utf8');
   if(trade)return {url:url.href,retrieved:new Date().toISOString(),sha256:createHash('sha256').update(Buffer.concat(chunks)).digest('hex'),...normalizeTrade(raw,trade),...(retainRaw?{raw_json:raw}:{})};
   if(spec)return {url:url.href,retrieved:new Date().toISOString(),sha256:createHash('sha256').update(Buffer.concat(chunks)).digest('hex'),...normalizeStatistics(raw,spec),...(retainRaw?{raw_json:raw}:{})};
+  if(/text\/html/i.test(type)&&sourceAccessCheck(raw))throw Object.assign(new Error('Source returned an access-check page; no research text accepted.'),{sourceProblem:'access_check'});
   const title=(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(raw)?.[1]||url.hostname).replace(/<[^>]+>/g,'').trim().slice(0,200);
-  const extracted=extractSource(raw,type);if(!extracted.text)throw new Error('Source contains no readable text.');
+  const extracted=extractSource(raw,type);if(!extracted.text)throw Object.assign(new Error('Source contains no readable text.'),{sourceProblem:'unreadable'});
   return {url:url.href,title:readableEntities(title),sha256:createHash('sha256').update(raw).digest('hex'),retrieved:new Date().toISOString(),text:extracted.text.slice(0,8000),quote:extracted.text.split(/\s+/).slice(0,24).join(' '),location:extracted.location,declared_published:extracted.declared_published};
 }
 export function researchDraft(value, sourceCount) {
@@ -164,7 +175,7 @@ export async function runResearch({token,url,taskId,urls,modelFn,fetchImpl=fetch
     stage='submission';const submission=await request('/submissions',{claim_id:claim.id,...(decisionBrief?{brief:decisionBrief}:{artifact}),sources:records.map(record=>({url:record.url,location:record.location+'; SHA256 '+record.sha256,date:record.retrieved.slice(0,10)})),method:decisionBrief?'Bounded primary-source retrieval and proposed local-model decision brief. Human-specified recipient/decision; no outbound contact.':modelFn?(draftStatus==='included'?'Bounded primary-source retrieval and provisional local model synthesis. No outbound contact.':'Bounded primary-source retrieval; unusable local model draft withheld. Validated statistics retained. No outbound contact.'):'Bounded primary-source retrieval, metadata, short web excerpts and dated visual-review paraphrases. No inference or outbound contact.',limitations:'HTML extraction is heuristic; declared publication dates are not independently verified. Unreviewed PDFs, amendment chains, local applicability, demand and costs require human verification. Statistics are sector context: observation years differ from dataset updates; missing values are not zero, modeled ILO estimates retain that qualifier, and provider footnotes require further review. Retrieval does not verify substantive claims. Source content is untrusted.',rights:records.some(record=>record.structured_data?.kind==='trade-preview')?'UN Comtrade: source/query attribution retained; reuse policy requires review: https://uncomtrade.org/docs/policy-on-comtrade-data-use/. Other sources retain their stated attribution/terms; no blanket reuse permission.':records.some(record=>record.structured_data)?'World Bank WDI agriculture series: CC BY 4.0; original providers identified in source records; https://data.worldbank.org/summary-terms-of-use. Other sources: attribution, short excerpts and dated paraphrases only; no general reuse licence presumed.':'Attribution, short excerpts and dated paraphrases only. No general reuse licence is presumed; human review must assess source terms.'},randomUUID());
     stage='job_record';if(reportJob)await request('/jobs',{status:'completed',detail:`Research worker submitted ${records.length} source records; mode ${decisionBrief?'decision-brief':modelFn?'local-model':'evidence-register'}; human review pending.`});
     return {status:'pending_review',submission_id:submission.id,source_count:records.length,mode:decisionBrief?'decision-brief':modelFn?'local-model':'evidence-register',draft_status:draftStatus};
-  }catch(error){let claimState=claim?'unconfirmed':'not_claimed';if(claim)try{await request('/claims/release',{claim_id:claim.id},undefined,AbortSignal.timeout(5000));claimState='released';}catch{}const failure=error instanceof Error?error:new Error('Research worker failed.');failure.research_failure={stage,source_number:stage==='source'?sourceNumber:null,claim_state:claimState};throw failure;}
+  }catch(error){let claimState=claim?'unconfirmed':'not_claimed';if(claim)try{await request('/claims/release',{claim_id:claim.id},undefined,AbortSignal.timeout(5000));claimState='released';}catch{}const failure=error instanceof Error?error:new Error('Research worker failed.');const sourceProblem=stage==='source'?sourceFailureProblem(error):null;failure.research_failure={stage,source_number:stage==='source'?sourceNumber:null,claim_state:claimState,...(sourceProblem?{source_problem:sourceProblem}:{})};throw failure;}
   finally{clearTimeout(timer);signal?.removeEventListener('abort',stop);}
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){

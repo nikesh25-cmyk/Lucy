@@ -23,3 +23,6 @@ Official indexed text was reviewed from the pages below. The PAICC overview, cap
 Task suggestions, checks and SDG mappings are Lucy editorial proposals. They retain the independent activation/review workflow and grant no authority, endorsement, funding or outreach permission. Adding references does not generate proposals in the saved world or change activated scopes.
 
 Verification exercises deduplicated country generation, preserved country checks after activation, approved discovery hosts and zero automatic submissions/adoptions. The five additions do not complete all climate bodies, procedures, funds or programme agendas; specific country research and a real pilot remain outstanding.
+
+
+A subsequent bounded live WIM read was recognized as an access-check response and refused, with zero evidence records accepted. Its catalog note now records that specific barrier. See `SOURCE_ACCESS.md`; this does not establish successful mandate retrieval or country applicability.

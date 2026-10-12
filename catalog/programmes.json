@@ -1913,11 +1913,13 @@
         "https://unfccc.int/topics/adaptation-and-resilience/workstreams/loss-and-damage/warsaw-international-mechanism"
       ],
       "sourceCheckedOn": "2026-10-12",
-      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned a recognized access-check response instead of research content; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
       "sourceVerification": {
         "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
         "directReaderStatus": "collection-gap",
-        "directReaderReason": "Source contains no readable text."
+        "directReaderReason": "Recognized access-check response; no research text accepted.",
+        "directReaderProblem": "access_check",
+        "directReaderCheckedAt": "2026-10-12T05:26:24.077Z"
       },
       "sdgLinks": [
         "https://sdgs.un.org/goals/goal13",

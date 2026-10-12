@@ -284,7 +284,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         const promise=researchRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,taskId:task.id,urls:input.urls,output:configuration.output,briefContext:configuration.briefContext,reportJob:false,modelFn:civicModel||undefined,signal:controller.signal}).then(result=>{
           platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?','completed',`Submitted ${result.source_count} source records; ${result.mode}; review pending.`,id);platform.audit(actor.account.id,'research.worker.submitted',id);});
         }).catch(error=>{
-          const failure=error?.research_failure;const detail=researchFailureDetail({taskId:task.id,stage:failure?.stage,sourceNumber:failure?.source_number,claimState:failure?.claim_state,cancelled:controller.signal.aborted});
+          const failure=error?.research_failure;const detail=researchFailureDetail({taskId:task.id,stage:failure?.stage,sourceNumber:failure?.source_number,claimState:failure?.claim_state,cancelled:controller.signal.aborted,sourceProblem:failure?.source_problem});
           platform.transaction(()=>{platform.run('UPDATE jobs SET status=?,detail=? WHERE id=?',controller.signal.aborted?'stopped':'failed',detail,id);platform.audit(actor.account.id,'research.worker.stopped',id);});
         }).finally(()=>{platform.transaction(()=>revokeWorker(credential));researchRuns.delete(actor.account.id);});
         researchRuns.get(actor.account.id).promise=promise;
