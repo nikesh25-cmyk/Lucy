@@ -92,7 +92,7 @@ The same application supports another host through `LUCY_PUBLIC_ORIGIN`, `LUCY_B
 
 ## Reused code and assets
 
-The interface uses locally served DM Sans and Space Grotesk fonts and selected Lucide icons. The 3D renderer uses a locally retained, verified Three.js bundle under its MIT license. Sources, versions, licenses, and file hashes are recorded in [asset credits](assets/THIRD_PARTY.md). There are no external font or icon requests. See [open source research](docs/OPEN_SOURCE.md) for verified engines, multiplayer frameworks, map tools, and asset packs that can accelerate future development.
+The interface uses locally served DM Sans and Space Grotesk fonts and selected Lucide icons. The 3D renderer uses a locally retained, verified Three.js bundle under its MIT license. Sources, versions, licenses, and file hashes are recorded in [asset credits](assets/THIRD_PARTY.md). There are no external font or icon requests. See [the voxel engine and Minecraft reuse decision](docs/VOXEL_ENGINE_REUSE.md) and [open source research](docs/OPEN_SOURCE.md) for verified engines, multiplayer frameworks, map tools, and asset packs that can accelerate future development.
 
 ## Scope
 
