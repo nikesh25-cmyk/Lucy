@@ -1,0 +1,1651 @@
+{
+  "schemaVersion": 1,
+  "checkedOn": "2026-10-12",
+  "status": "independent-target-research-reference",
+  "scope": "169 target identifiers across seventeen official SDG goal pages. Focus labels are Lucy editorial navigation summaries; full official wording and indicator definitions must be read separately.",
+  "qualification": "Framework targets are not country findings, current national measurement definitions, project funding or deadlines issued by Lucy. Years mentioned in the original wording are retained without treating them as new deadlines.",
+  "sources": [
+    {
+      "goal": 1,
+      "url": "https://sdgs.un.org/goals/goal1",
+      "retrieved": "2026-10-12T05:57:18.335974+00:00",
+      "sha256": "5d8763898a5606dd7f0e9796492ea7f8f58bf8d63aaf9ce254922c2b54c49891",
+      "bytes": 110615
+    },
+    {
+      "goal": 2,
+      "url": "https://sdgs.un.org/goals/goal2",
+      "retrieved": "2026-10-12T05:57:16.649114+00:00",
+      "sha256": "0fa1b1155f1163660eb13c8eb6149f1460f7f11f3674655f8e78600d936fb6c0",
+      "bytes": 120329
+    },
+    {
+      "goal": 3,
+      "url": "https://sdgs.un.org/goals/goal3",
+      "retrieved": "2026-10-12T05:57:17.430036+00:00",
+      "sha256": "1de1aa5d5eb12290570eec4b09942f6ba6bc9aa49d8939a6483996799a457200",
+      "bytes": 171952
+    },
+    {
+      "goal": 4,
+      "url": "https://sdgs.un.org/goals/goal4",
+      "retrieved": "2026-10-12T05:57:17.217792+00:00",
+      "sha256": "b11df00972b85052130944509ca0e0f988f9303bda7a849eeb467453badd9f38",
+      "bytes": 118092
+    },
+    {
+      "goal": 5,
+      "url": "https://sdgs.un.org/goals/goal5",
+      "retrieved": "2026-10-12T05:57:19.892119+00:00",
+      "sha256": "75fd2deed4ef1336877016c9eb016e32da50cefdb9bec8ef295f9cb868cd11c9",
+      "bytes": 125732
+    },
+    {
+      "goal": 6,
+      "url": "https://sdgs.un.org/goals/goal6",
+      "retrieved": "2026-10-12T05:57:19.482370+00:00",
+      "sha256": "5c59b1d8f7eefb33276f3d3fc069acb6077415ce42978ef8eb6fe2d6ae7eb518",
+      "bytes": 108591
+    },
+    {
+      "goal": 7,
+      "url": "https://sdgs.un.org/goals/goal7",
+      "retrieved": "2026-10-12T05:57:20.027349+00:00",
+      "sha256": "d442e872ce1dd7465a450a34d5139ba83769ca71d26d25aa43302824b81cbd77",
+      "bytes": 99123
+    },
+    {
+      "goal": 8,
+      "url": "https://sdgs.un.org/goals/goal8",
+      "retrieved": "2026-10-12T05:57:21.555816+00:00",
+      "sha256": "5247a3b42f5e41a8d23527d34c0a95d1cb896a916121520eae2953720834ecf2",
+      "bytes": 132094
+    },
+    {
+      "goal": 9,
+      "url": "https://sdgs.un.org/goals/goal9",
+      "retrieved": "2026-10-12T05:57:21.797611+00:00",
+      "sha256": "5b8698dcd7bff0c1cc7f258a00ccb134b6d674c20cd5939ea2ce5a6b9f5e602d",
+      "bytes": 118828
+    },
+    {
+      "goal": 10,
+      "url": "https://sdgs.un.org/goals/goal10",
+      "retrieved": "2026-10-12T05:57:22.263087+00:00",
+      "sha256": "f78a31f9e4e0296cbb4461a3ee8c2133465b9025f180f0c71d5d47217c332954",
+      "bytes": 115054
+    },
+    {
+      "goal": 11,
+      "url": "https://sdgs.un.org/goals/goal11",
+      "retrieved": "2026-10-12T05:57:23.581901+00:00",
+      "sha256": "13a00fd05e557a819716012ecc784e3cc1d54c185e14e872f19296c9f0725123",
+      "bytes": 115420
+    },
+    {
+      "goal": 12,
+      "url": "https://sdgs.un.org/goals/goal12",
+      "retrieved": "2026-10-12T05:57:23.800080+00:00",
+      "sha256": "6e643e824cad6118307204a4a968da18cd92dabecc8ae81010196b0aed91060e",
+      "bytes": 114789
+    },
+    {
+      "goal": 13,
+      "url": "https://sdgs.un.org/goals/goal13",
+      "retrieved": "2026-10-12T05:57:24.556466+00:00",
+      "sha256": "22d5bc2d3e497d3d8adcb20f89ecca088c5faf17ecd0d1c6c7923a83a00b62a8",
+      "bytes": 103123
+    },
+    {
+      "goal": 14,
+      "url": "https://sdgs.un.org/goals/goal14",
+      "retrieved": "2026-10-12T05:57:25.860160+00:00",
+      "sha256": "7bc69ac7f755bf2a136a62e9adbcc5d873000b4da44aa72acfa06cfb63f2f160",
+      "bytes": 111174
+    },
+    {
+      "goal": 15,
+      "url": "https://sdgs.un.org/goals/goal15",
+      "retrieved": "2026-10-12T05:57:25.806671+00:00",
+      "sha256": "e9d4edfe4169980d2a62b9075fcd35c66715c42a9ad3301fd4407a889aadd42a",
+      "bytes": 130661
+    },
+    {
+      "goal": 16,
+      "url": "https://sdgs.un.org/goals/goal16",
+      "retrieved": "2026-10-12T05:57:26.411374+00:00",
+      "sha256": "b29499336527225bf72e2831750af5677509045de1275c1f2381969041a85020",
+      "bytes": 146042
+    },
+    {
+      "goal": 17,
+      "url": "https://sdgs.un.org/goals/goal17",
+      "retrieved": "2026-10-12T05:57:28.180604+00:00",
+      "sha256": "162595b14fca723589b78805a6cb13f638dde9708ea57f6e5fdac3cf7ef0425e",
+      "bytes": 171866
+    }
+  ],
+  "entries": [
+    {
+      "code": "1.1",
+      "goal": 1,
+      "focus": "Extreme poverty",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal1",
+      "evidenceLocator": "Targets and Indicators; target 1.1"
+    },
+    {
+      "code": "1.2",
+      "goal": 1,
+      "focus": "National poverty measures",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal1",
+      "evidenceLocator": "Targets and Indicators; target 1.2"
+    },
+    {
+      "code": "1.3",
+      "goal": 1,
+      "focus": "Social protection coverage",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal1",
+      "evidenceLocator": "Targets and Indicators; target 1.3"
+    },
+    {
+      "code": "1.4",
+      "goal": 1,
+      "focus": "Basic services and resource rights",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal1",
+      "evidenceLocator": "Targets and Indicators; target 1.4"
+    },
+    {
+      "code": "1.5",
+      "goal": 1,
+      "focus": "Vulnerability and resilience",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal1",
+      "evidenceLocator": "Targets and Indicators; target 1.5"
+    },
+    {
+      "code": "1.a",
+      "goal": 1,
+      "focus": "Poverty-reduction resources",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal1",
+      "evidenceLocator": "Targets and Indicators; target 1.a"
+    },
+    {
+      "code": "1.b",
+      "goal": 1,
+      "focus": "Inclusive poverty policies",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal1",
+      "evidenceLocator": "Targets and Indicators; target 1.b"
+    },
+    {
+      "code": "2.1",
+      "goal": 2,
+      "focus": "Food access",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal2",
+      "evidenceLocator": "Targets and Indicators; target 2.1"
+    },
+    {
+      "code": "2.2",
+      "goal": 2,
+      "focus": "Nutrition needs",
+      "originalYears": [
+        "2025",
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal2",
+      "evidenceLocator": "Targets and Indicators; target 2.2"
+    },
+    {
+      "code": "2.3",
+      "goal": 2,
+      "focus": "Small-producer livelihoods",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal2",
+      "evidenceLocator": "Targets and Indicators; target 2.3"
+    },
+    {
+      "code": "2.4",
+      "goal": 2,
+      "focus": "Resilient farming",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal2",
+      "evidenceLocator": "Targets and Indicators; target 2.4"
+    },
+    {
+      "code": "2.5",
+      "goal": 2,
+      "focus": "Agricultural genetic diversity",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal2",
+      "evidenceLocator": "Targets and Indicators; target 2.5"
+    },
+    {
+      "code": "2.a",
+      "goal": 2,
+      "focus": "Rural investment capacity",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal2",
+      "evidenceLocator": "Targets and Indicators; target 2.a"
+    },
+    {
+      "code": "2.b",
+      "goal": 2,
+      "focus": "Agricultural trade distortions",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal2",
+      "evidenceLocator": "Targets and Indicators; target 2.b"
+    },
+    {
+      "code": "2.c",
+      "goal": 2,
+      "focus": "Food-market information",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal2",
+      "evidenceLocator": "Targets and Indicators; target 2.c"
+    },
+    {
+      "code": "3.1",
+      "goal": 3,
+      "focus": "Maternal survival",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.1"
+    },
+    {
+      "code": "3.2",
+      "goal": 3,
+      "focus": "Child survival",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.2"
+    },
+    {
+      "code": "3.3",
+      "goal": 3,
+      "focus": "Communicable disease response",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.3"
+    },
+    {
+      "code": "3.4",
+      "goal": 3,
+      "focus": "Chronic illness and mental wellbeing",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.4"
+    },
+    {
+      "code": "3.5",
+      "goal": 3,
+      "focus": "Substance-use prevention",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.5"
+    },
+    {
+      "code": "3.6",
+      "goal": 3,
+      "focus": "Road injury prevention",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.6"
+    },
+    {
+      "code": "3.7",
+      "goal": 3,
+      "focus": "Reproductive healthcare access",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.7"
+    },
+    {
+      "code": "3.8",
+      "goal": 3,
+      "focus": "Affordable healthcare coverage",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.8"
+    },
+    {
+      "code": "3.9",
+      "goal": 3,
+      "focus": "Environmental health risks",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.9"
+    },
+    {
+      "code": "3.a",
+      "goal": 3,
+      "focus": "Tobacco policy",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.a"
+    },
+    {
+      "code": "3.b",
+      "goal": 3,
+      "focus": "Medicine and vaccine access",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.b"
+    },
+    {
+      "code": "3.c",
+      "goal": 3,
+      "focus": "Healthcare staffing",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.c"
+    },
+    {
+      "code": "3.d",
+      "goal": 3,
+      "focus": "Health-risk preparedness",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal3",
+      "evidenceLocator": "Targets and Indicators; target 3.d"
+    },
+    {
+      "code": "4.1",
+      "goal": 4,
+      "focus": "School completion and learning",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.1"
+    },
+    {
+      "code": "4.2",
+      "goal": 4,
+      "focus": "Early learning",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.2"
+    },
+    {
+      "code": "4.3",
+      "goal": 4,
+      "focus": "Technical and higher learning",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.3"
+    },
+    {
+      "code": "4.4",
+      "goal": 4,
+      "focus": "Skills for livelihoods",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.4"
+    },
+    {
+      "code": "4.5",
+      "goal": 4,
+      "focus": "Inclusive learning access",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.5"
+    },
+    {
+      "code": "4.6",
+      "goal": 4,
+      "focus": "Reading and numeracy",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.6"
+    },
+    {
+      "code": "4.7",
+      "goal": 4,
+      "focus": "Learning for sustainability",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.7"
+    },
+    {
+      "code": "4.a",
+      "goal": 4,
+      "focus": "Accessible learning facilities",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.a"
+    },
+    {
+      "code": "4.b",
+      "goal": 4,
+      "focus": "Scholarship opportunities",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.b"
+    },
+    {
+      "code": "4.c",
+      "goal": 4,
+      "focus": "Teacher availability",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal4",
+      "evidenceLocator": "Targets and Indicators; target 4.c"
+    },
+    {
+      "code": "5.1",
+      "goal": 5,
+      "focus": "Gender discrimination",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal5",
+      "evidenceLocator": "Targets and Indicators; target 5.1"
+    },
+    {
+      "code": "5.2",
+      "goal": 5,
+      "focus": "Violence against women and girls",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal5",
+      "evidenceLocator": "Targets and Indicators; target 5.2"
+    },
+    {
+      "code": "5.3",
+      "goal": 5,
+      "focus": "Harmful practices",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal5",
+      "evidenceLocator": "Targets and Indicators; target 5.3"
+    },
+    {
+      "code": "5.4",
+      "goal": 5,
+      "focus": "Unpaid care responsibilities",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal5",
+      "evidenceLocator": "Targets and Indicators; target 5.4"
+    },
+    {
+      "code": "5.5",
+      "goal": 5,
+      "focus": "Women in leadership",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal5",
+      "evidenceLocator": "Targets and Indicators; target 5.5"
+    },
+    {
+      "code": "5.6",
+      "goal": 5,
+      "focus": "Reproductive autonomy",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal5",
+      "evidenceLocator": "Targets and Indicators; target 5.6"
+    },
+    {
+      "code": "5.a",
+      "goal": 5,
+      "focus": "Equal resource rights",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal5",
+      "evidenceLocator": "Targets and Indicators; target 5.a"
+    },
+    {
+      "code": "5.b",
+      "goal": 5,
+      "focus": "Technology for empowerment",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal5",
+      "evidenceLocator": "Targets and Indicators; target 5.b"
+    },
+    {
+      "code": "5.c",
+      "goal": 5,
+      "focus": "Gender-equality policy",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal5",
+      "evidenceLocator": "Targets and Indicators; target 5.c"
+    },
+    {
+      "code": "6.1",
+      "goal": 6,
+      "focus": "Drinking-water access",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal6",
+      "evidenceLocator": "Targets and Indicators; target 6.1"
+    },
+    {
+      "code": "6.2",
+      "goal": 6,
+      "focus": "Sanitation and hygiene",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal6",
+      "evidenceLocator": "Targets and Indicators; target 6.2"
+    },
+    {
+      "code": "6.3",
+      "goal": 6,
+      "focus": "Water pollution reduction",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal6",
+      "evidenceLocator": "Targets and Indicators; target 6.3"
+    },
+    {
+      "code": "6.4",
+      "goal": 6,
+      "focus": "Efficient water use",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal6",
+      "evidenceLocator": "Targets and Indicators; target 6.4"
+    },
+    {
+      "code": "6.5",
+      "goal": 6,
+      "focus": "Coordinated water governance",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal6",
+      "evidenceLocator": "Targets and Indicators; target 6.5"
+    },
+    {
+      "code": "6.6",
+      "goal": 6,
+      "focus": "Freshwater ecosystem care",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal6",
+      "evidenceLocator": "Targets and Indicators; target 6.6"
+    },
+    {
+      "code": "6.a",
+      "goal": 6,
+      "focus": "Water-sector cooperation",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal6",
+      "evidenceLocator": "Targets and Indicators; target 6.a"
+    },
+    {
+      "code": "6.b",
+      "goal": 6,
+      "focus": "Community water participation",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal6",
+      "evidenceLocator": "Targets and Indicators; target 6.b"
+    },
+    {
+      "code": "7.1",
+      "goal": 7,
+      "focus": "Reliable energy access",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal7",
+      "evidenceLocator": "Targets and Indicators; target 7.1"
+    },
+    {
+      "code": "7.2",
+      "goal": 7,
+      "focus": "Renewable supply",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal7",
+      "evidenceLocator": "Targets and Indicators; target 7.2"
+    },
+    {
+      "code": "7.3",
+      "goal": 7,
+      "focus": "Energy-use efficiency",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal7",
+      "evidenceLocator": "Targets and Indicators; target 7.3"
+    },
+    {
+      "code": "7.a",
+      "goal": 7,
+      "focus": "Clean-energy cooperation",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal7",
+      "evidenceLocator": "Targets and Indicators; target 7.a"
+    },
+    {
+      "code": "7.b",
+      "goal": 7,
+      "focus": "Energy-service infrastructure",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal7",
+      "evidenceLocator": "Targets and Indicators; target 7.b"
+    },
+    {
+      "code": "8.1",
+      "goal": 8,
+      "focus": "Growth and national circumstances",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.1"
+    },
+    {
+      "code": "8.2",
+      "goal": 8,
+      "focus": "Productivity and diversification",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.2"
+    },
+    {
+      "code": "8.3",
+      "goal": 8,
+      "focus": "Enterprise and job creation",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.3"
+    },
+    {
+      "code": "8.4",
+      "goal": 8,
+      "focus": "Resource-efficient growth",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.4"
+    },
+    {
+      "code": "8.5",
+      "goal": 8,
+      "focus": "Decent employment and pay",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.5"
+    },
+    {
+      "code": "8.6",
+      "goal": 8,
+      "focus": "Youth opportunity gaps",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.6"
+    },
+    {
+      "code": "8.7",
+      "goal": 8,
+      "focus": "Exploitation and child labour",
+      "originalYears": [
+        "2025"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.7"
+    },
+    {
+      "code": "8.8",
+      "goal": 8,
+      "focus": "Worker protection",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.8"
+    },
+    {
+      "code": "8.9",
+      "goal": 8,
+      "focus": "Tourism livelihoods",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.9"
+    },
+    {
+      "code": "8.10",
+      "goal": 8,
+      "focus": "Financial inclusion",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.10"
+    },
+    {
+      "code": "8.a",
+      "goal": 8,
+      "focus": "Trade-support capacity",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.a"
+    },
+    {
+      "code": "8.b",
+      "goal": 8,
+      "focus": "Youth employment policy",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal8",
+      "evidenceLocator": "Targets and Indicators; target 8.b"
+    },
+    {
+      "code": "9.1",
+      "goal": 9,
+      "focus": "Resilient infrastructure access",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal9",
+      "evidenceLocator": "Targets and Indicators; target 9.1"
+    },
+    {
+      "code": "9.2",
+      "goal": 9,
+      "focus": "Inclusive industry",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal9",
+      "evidenceLocator": "Targets and Indicators; target 9.2"
+    },
+    {
+      "code": "9.3",
+      "goal": 9,
+      "focus": "Small-enterprise market access",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal9",
+      "evidenceLocator": "Targets and Indicators; target 9.3"
+    },
+    {
+      "code": "9.4",
+      "goal": 9,
+      "focus": "Cleaner industrial systems",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal9",
+      "evidenceLocator": "Targets and Indicators; target 9.4"
+    },
+    {
+      "code": "9.5",
+      "goal": 9,
+      "focus": "Research and industrial innovation",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal9",
+      "evidenceLocator": "Targets and Indicators; target 9.5"
+    },
+    {
+      "code": "9.a",
+      "goal": 9,
+      "focus": "Infrastructure support access",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal9",
+      "evidenceLocator": "Targets and Indicators; target 9.a"
+    },
+    {
+      "code": "9.b",
+      "goal": 9,
+      "focus": "Domestic technology capability",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal9",
+      "evidenceLocator": "Targets and Indicators; target 9.b"
+    },
+    {
+      "code": "9.c",
+      "goal": 9,
+      "focus": "Affordable digital access",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal9",
+      "evidenceLocator": "Targets and Indicators; target 9.c"
+    },
+    {
+      "code": "10.1",
+      "goal": 10,
+      "focus": "Lower-income livelihood gains",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.1"
+    },
+    {
+      "code": "10.2",
+      "goal": 10,
+      "focus": "Social and economic inclusion",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.2"
+    },
+    {
+      "code": "10.3",
+      "goal": 10,
+      "focus": "Equal opportunity",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.3"
+    },
+    {
+      "code": "10.4",
+      "goal": 10,
+      "focus": "Redistributive policy",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.4"
+    },
+    {
+      "code": "10.5",
+      "goal": 10,
+      "focus": "Financial-system oversight",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.5"
+    },
+    {
+      "code": "10.6",
+      "goal": 10,
+      "focus": "Developing-country voice",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.6"
+    },
+    {
+      "code": "10.7",
+      "goal": 10,
+      "focus": "Migration governance",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.7"
+    },
+    {
+      "code": "10.a",
+      "goal": 10,
+      "focus": "Differentiated trade treatment",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.a"
+    },
+    {
+      "code": "10.b",
+      "goal": 10,
+      "focus": "Development finance flows",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.b"
+    },
+    {
+      "code": "10.c",
+      "goal": 10,
+      "focus": "Remittance affordability",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal10",
+      "evidenceLocator": "Targets and Indicators; target 10.c"
+    },
+    {
+      "code": "11.1",
+      "goal": 11,
+      "focus": "Housing and basic services",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.1"
+    },
+    {
+      "code": "11.2",
+      "goal": 11,
+      "focus": "Accessible urban transport",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.2"
+    },
+    {
+      "code": "11.3",
+      "goal": 11,
+      "focus": "Participatory settlement planning",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.3"
+    },
+    {
+      "code": "11.4",
+      "goal": 11,
+      "focus": "Heritage protection",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.4"
+    },
+    {
+      "code": "11.5",
+      "goal": 11,
+      "focus": "Disaster losses",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.5"
+    },
+    {
+      "code": "11.6",
+      "goal": 11,
+      "focus": "Urban pollution and waste",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.6"
+    },
+    {
+      "code": "11.7",
+      "goal": 11,
+      "focus": "Inclusive public space",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.7"
+    },
+    {
+      "code": "11.a",
+      "goal": 11,
+      "focus": "Urban-rural linkages",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.a"
+    },
+    {
+      "code": "11.b",
+      "goal": 11,
+      "focus": "Integrated resilience planning",
+      "originalYears": [
+        "2015",
+        "2020",
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.b"
+    },
+    {
+      "code": "11.c",
+      "goal": 11,
+      "focus": "Locally appropriate construction",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal11",
+      "evidenceLocator": "Targets and Indicators; target 11.c"
+    },
+    {
+      "code": "12.1",
+      "goal": 12,
+      "focus": "Sustainable consumption programmes",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.1"
+    },
+    {
+      "code": "12.2",
+      "goal": 12,
+      "focus": "Responsible resource use",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.2"
+    },
+    {
+      "code": "12.3",
+      "goal": 12,
+      "focus": "Food loss and waste",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.3"
+    },
+    {
+      "code": "12.4",
+      "goal": 12,
+      "focus": "Chemical and waste management",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.4"
+    },
+    {
+      "code": "12.5",
+      "goal": 12,
+      "focus": "Waste prevention and reuse",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.5"
+    },
+    {
+      "code": "12.6",
+      "goal": 12,
+      "focus": "Corporate sustainability disclosure",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.6"
+    },
+    {
+      "code": "12.7",
+      "goal": 12,
+      "focus": "Responsible public purchasing",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.7"
+    },
+    {
+      "code": "12.8",
+      "goal": 12,
+      "focus": "Sustainability awareness",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.8"
+    },
+    {
+      "code": "12.a",
+      "goal": 12,
+      "focus": "Production science capacity",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.a"
+    },
+    {
+      "code": "12.b",
+      "goal": 12,
+      "focus": "Tourism impact measurement",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.b"
+    },
+    {
+      "code": "12.c",
+      "goal": 12,
+      "focus": "Fossil-subsidy reform",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal12",
+      "evidenceLocator": "Targets and Indicators; target 12.c"
+    },
+    {
+      "code": "13.1",
+      "goal": 13,
+      "focus": "Climate-hazard resilience",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal13",
+      "evidenceLocator": "Targets and Indicators; target 13.1"
+    },
+    {
+      "code": "13.2",
+      "goal": 13,
+      "focus": "Climate policy integration",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal13",
+      "evidenceLocator": "Targets and Indicators; target 13.2"
+    },
+    {
+      "code": "13.3",
+      "goal": 13,
+      "focus": "Climate learning and capacity",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal13",
+      "evidenceLocator": "Targets and Indicators; target 13.3"
+    },
+    {
+      "code": "13.a",
+      "goal": 13,
+      "focus": "Climate-finance commitments",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal13",
+      "evidenceLocator": "Targets and Indicators; target 13.a"
+    },
+    {
+      "code": "13.b",
+      "goal": 13,
+      "focus": "Vulnerable-country planning capacity",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal13",
+      "evidenceLocator": "Targets and Indicators; target 13.b"
+    },
+    {
+      "code": "14.1",
+      "goal": 14,
+      "focus": "Marine pollution reduction",
+      "originalYears": [
+        "2025"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.1"
+    },
+    {
+      "code": "14.2",
+      "goal": 14,
+      "focus": "Coastal ecosystem resilience",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.2"
+    },
+    {
+      "code": "14.3",
+      "goal": 14,
+      "focus": "Ocean chemistry impacts",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.3"
+    },
+    {
+      "code": "14.4",
+      "goal": 14,
+      "focus": "Sustainable harvest governance",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.4"
+    },
+    {
+      "code": "14.5",
+      "goal": 14,
+      "focus": "Marine-area conservation",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.5"
+    },
+    {
+      "code": "14.6",
+      "goal": 14,
+      "focus": "Fisheries subsidy reform",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.6"
+    },
+    {
+      "code": "14.7",
+      "goal": 14,
+      "focus": "Ocean-based livelihoods",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.7"
+    },
+    {
+      "code": "14.a",
+      "goal": 14,
+      "focus": "Marine research capability",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.a"
+    },
+    {
+      "code": "14.b",
+      "goal": 14,
+      "focus": "Artisanal fisher access",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.b"
+    },
+    {
+      "code": "14.c",
+      "goal": 14,
+      "focus": "Ocean governance frameworks",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal14",
+      "evidenceLocator": "Targets and Indicators; target 14.c"
+    },
+    {
+      "code": "15.1",
+      "goal": 15,
+      "focus": "Land and freshwater ecosystems",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.1"
+    },
+    {
+      "code": "15.2",
+      "goal": 15,
+      "focus": "Forest conservation",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.2"
+    },
+    {
+      "code": "15.3",
+      "goal": 15,
+      "focus": "Land restoration",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.3"
+    },
+    {
+      "code": "15.4",
+      "goal": 15,
+      "focus": "Mountain biodiversity",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.4"
+    },
+    {
+      "code": "15.5",
+      "goal": 15,
+      "focus": "Threatened habitats and species",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.5"
+    },
+    {
+      "code": "15.6",
+      "goal": 15,
+      "focus": "Genetic-resource benefit sharing",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.6"
+    },
+    {
+      "code": "15.7",
+      "goal": 15,
+      "focus": "Wildlife exploitation",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.7"
+    },
+    {
+      "code": "15.8",
+      "goal": 15,
+      "focus": "Invasive-species prevention",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.8"
+    },
+    {
+      "code": "15.9",
+      "goal": 15,
+      "focus": "Nature in public planning",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.9"
+    },
+    {
+      "code": "15.a",
+      "goal": 15,
+      "focus": "Biodiversity finance",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.a"
+    },
+    {
+      "code": "15.b",
+      "goal": 15,
+      "focus": "Forest-management finance",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.b"
+    },
+    {
+      "code": "15.c",
+      "goal": 15,
+      "focus": "Community wildlife stewardship",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal15",
+      "evidenceLocator": "Targets and Indicators; target 15.c"
+    },
+    {
+      "code": "16.1",
+      "goal": 16,
+      "focus": "Violence reduction",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.1"
+    },
+    {
+      "code": "16.2",
+      "goal": 16,
+      "focus": "Child protection",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.2"
+    },
+    {
+      "code": "16.3",
+      "goal": 16,
+      "focus": "Accessible justice",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.3"
+    },
+    {
+      "code": "16.4",
+      "goal": 16,
+      "focus": "Illicit flows and organized crime",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.4"
+    },
+    {
+      "code": "16.5",
+      "goal": 16,
+      "focus": "Integrity and bribery prevention",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.5"
+    },
+    {
+      "code": "16.6",
+      "goal": 16,
+      "focus": "Accountable institutions",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.6"
+    },
+    {
+      "code": "16.7",
+      "goal": 16,
+      "focus": "Inclusive public decisions",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.7"
+    },
+    {
+      "code": "16.8",
+      "goal": 16,
+      "focus": "Global-governance participation",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.8"
+    },
+    {
+      "code": "16.9",
+      "goal": 16,
+      "focus": "Identity registration",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.9"
+    },
+    {
+      "code": "16.10",
+      "goal": 16,
+      "focus": "Information and freedoms",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.10"
+    },
+    {
+      "code": "16.a",
+      "goal": 16,
+      "focus": "Institutional prevention capacity",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.a"
+    },
+    {
+      "code": "16.b",
+      "goal": 16,
+      "focus": "Non-discriminatory policy",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal16",
+      "evidenceLocator": "Targets and Indicators; target 16.b"
+    },
+    {
+      "code": "17.1",
+      "goal": 17,
+      "focus": "Domestic revenue capacity",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.1"
+    },
+    {
+      "code": "17.2",
+      "goal": 17,
+      "focus": "Development-assistance commitments",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.2"
+    },
+    {
+      "code": "17.3",
+      "goal": 17,
+      "focus": "Additional development finance",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.3"
+    },
+    {
+      "code": "17.4",
+      "goal": 17,
+      "focus": "Debt sustainability",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.4"
+    },
+    {
+      "code": "17.5",
+      "goal": 17,
+      "focus": "LDC investment promotion",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.5"
+    },
+    {
+      "code": "17.6",
+      "goal": 17,
+      "focus": "Science cooperation",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.6"
+    },
+    {
+      "code": "17.7",
+      "goal": 17,
+      "focus": "Environmental technology access",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.7"
+    },
+    {
+      "code": "17.8",
+      "goal": 17,
+      "focus": "LDC technology capability",
+      "originalYears": [
+        "2017"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.8"
+    },
+    {
+      "code": "17.9",
+      "goal": 17,
+      "focus": "Country-plan capacity support",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.9"
+    },
+    {
+      "code": "17.10",
+      "goal": 17,
+      "focus": "Multilateral trade rules",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.10"
+    },
+    {
+      "code": "17.11",
+      "goal": 17,
+      "focus": "Developing-country exports",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.11"
+    },
+    {
+      "code": "17.12",
+      "goal": 17,
+      "focus": "LDC market preferences",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.12"
+    },
+    {
+      "code": "17.13",
+      "goal": 17,
+      "focus": "Macroeconomic coordination",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.13"
+    },
+    {
+      "code": "17.14",
+      "goal": 17,
+      "focus": "Coherent development policies",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.14"
+    },
+    {
+      "code": "17.15",
+      "goal": 17,
+      "focus": "National policy leadership",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.15"
+    },
+    {
+      "code": "17.16",
+      "goal": 17,
+      "focus": "Development partnerships",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.16"
+    },
+    {
+      "code": "17.17",
+      "goal": 17,
+      "focus": "Cross-sector partnerships",
+      "originalYears": [],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.17"
+    },
+    {
+      "code": "17.18",
+      "goal": 17,
+      "focus": "Disaggregated data capacity",
+      "originalYears": [
+        "2020"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.18"
+    },
+    {
+      "code": "17.19",
+      "goal": 17,
+      "focus": "Progress measurement beyond GDP",
+      "originalYears": [
+        "2030"
+      ],
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "evidenceLocator": "Targets and Indicators; target 17.19"
+    }
+  ]
+}
