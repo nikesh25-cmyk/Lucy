@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "palettes": {
+    "garden": [
+      "cottage",
+      "tree",
+      "flowers",
+      "bench",
+      "farm",
+      "pond",
+      "lamp",
+      "path",
+      "fountain",
+      "bookshelf",
+      "table",
+      "lantern",
+      "sculpture",
+      "trellis",
+      "cushion"
+    ],
+    "house": [
+      "bookshelf",
+      "table",
+      "lantern",
+      "sculpture",
+      "cushion",
+      "bench",
+      "flowers"
+    ],
+    "frontier": [
+      "stone",
+      "wood",
+      "glass",
+      "brick",
+      "sand",
+      "grass",
+      "path"
+    ]
+  },
+  "sources": {
+    "garden": "src/spaces.js:7 (build palette for home and shared outdoor worlds)",
+    "house": "src/spaces.js:8 (build palette inside a personal cottage)",
+    "frontier": "src/frontier.js:4 FRONTIER_PALETTE"
+  }
+}

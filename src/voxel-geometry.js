@@ -10,6 +10,40 @@ export function normalizeOrbit(value = {}) {
     pitch: clamp(finite(value.pitch, 0.62), 0.3, 1.22), distance: clamp(finite(value.distance, 17), 6, 32) };
 }
 
+const cameraMode = value => value === 'first-person' ? 'first-person' : 'orbit';
+const normalizeCameraInput = (value, mode) => mode === 'first-person'
+  ? { ...normalizeOrbit(value), pitch: clamp(finite(value.pitch, 0), -1.4, 1.4) }
+  : normalizeOrbit(value);
+
+/** One owner for orbit input. Only a real drag emits the already-applied absolute look state. */
+export function createOrbitInput({ initial = {}, mode: initialMode = 'orbit', onLook } = {}) {
+  let mode = cameraMode(initialMode), orbit = normalizeCameraInput(initial, mode);
+  const set = value => { orbit = normalizeCameraInput({ ...orbit, ...value }, mode); return { ...orbit }; };
+  return {
+    get orbit() { return { ...orbit }; },
+    get mode() { return mode; },
+    setMode(value) { mode = cameraMode(value); orbit = normalizeCameraInput(orbit, mode); return mode; },
+    set,
+    rotate(yaw = 0, pitch = 0) { return set({ yaw: orbit.yaw + (Number.isFinite(yaw) ? yaw : 0), pitch: orbit.pitch + (Number.isFinite(pitch) ? pitch : 0) }); },
+    zoom(distance = 0) { return set({ distance: orbit.distance + (Number.isFinite(distance) ? distance : 0) }); },
+    drag(x = 0, y = 0) {
+      const previous = orbit;
+      const next = set({ yaw: orbit.yaw - (Number.isFinite(x) ? x : 0) * .008, pitch: orbit.pitch + (Number.isFinite(y) ? y : 0) * .006 });
+      if (previous.yaw !== next.yaw || previous.pitch !== next.pitch) onLook?.({ ...next });
+      return next;
+    }
+  };
+}
+
+/** True first-person eye and view direction; positive pitch looks down, as in orbit mode. */
+export function firstPersonCamera(position, value = {}) {
+  const facing = normalizeCameraInput(value, 'first-person');
+  const eye = { x: finite(position?.x, 0) + .5, y: clamp(finite(position?.z, 0), 0, VOXEL_LIMITS.height) + 1.35, z: finite(position?.y, 0) + .5 };
+  const horizontal = Math.cos(facing.pitch);
+  return { eye, target: { x: eye.x - Math.sin(facing.yaw) * horizontal, y: eye.y - Math.sin(facing.pitch),
+    z: eye.z - Math.cos(facing.yaw) * horizontal }, orbit: facing };
+}
+
 export function orbitCamera(position, value = {}) {
   const orbit = normalizeOrbit(value), x = finite(position?.x, 0) + 0.5, z = finite(position?.y, 0) + 0.5;
   const height = clamp(finite(position?.z, 0), 0, VOXEL_LIMITS.height) + 0.75;
@@ -61,14 +95,39 @@ export function voxelParcelSelection(parcels, selection) {
     parcel.plot_x === selection.plot_x && parcel.plot_y === selection.plot_y && (!selection.world_id || selection.world_id === parcel.world_id)) || null;
 }
 
+// A tile's type as voxelPlan resolves it: an observed tile wins over the retained map.
+const cellTypeAt = (definition, snapshot, camera, x, y) => {
+  const observed = snapshot?.terrain?.[y - camera.y]?.[x - camera.x];
+  return typeof observed === 'string' ? observed : definition?.terrain?.[y]?.[x];
+};
+
+const OCCLUSION_NEIGHBOURS = Object.freeze([[1, 0], [-1, 0], [0, 1], [0, -1]]);
+// A water base sits at -0.82 instead of -0.5 and a bridge carries a deck, so neither is ever culled.
+const BASE_ALWAYS_VISIBLE = new Set(['water', 'bridge']);
+
+/**
+ * Whole-node cull for the terrain base cube, the analogue of Luanti's `if (!faces) return;`.
+ * A land cell whose four axis neighbours are all land cells inside the window has no exposed side:
+ * every neighbour's base cube covers the shared face and the surface slab above is always drawn.
+ * `water` never occludes because its base sits 0.32 lower, so a land/water seam keeps its side face.
+ */
+export function cellOccludedBelow(definition, snapshot, plan, x, y) {
+  if (!plan?.window || !Number.isInteger(x) || !Number.isInteger(y)) return false;
+  const camera = snapshot?.camera || { x: 0, y: 0 }, type = cellTypeAt(definition, snapshot, camera, x, y);
+  if (typeof type !== 'string' || BASE_ALWAYS_VISIBLE.has(type)) return false;
+  for (const [dx, dy] of OCCLUSION_NEIGHBOURS) {
+    const nearX = x + dx, nearY = y + dy, near = inVoxelWindow({ x: nearX, y: nearY }, plan.window) ? cellTypeAt(definition, snapshot, camera, nearX, nearY) : undefined;
+    if (typeof near !== 'string' || near === 'water') return false;
+  }
+  return true;
+}
+
 export function voxelPlan(definition, snapshot = {}, position = definition?.start) {
   const window = voxelWindow(definition, position), cells = [];
   const parcels = voxelParcels(definition, snapshot, window), byParcel = new Map(parcels.map(parcel => [parcel.id, parcel]));
   const sourceCamera = snapshot.camera || { x: 0, y: 0 };
   for (let y = window.y; y < window.bottom; y++) for (let x = window.x; x < window.right; x++) {
-    const retained = definition?.terrain?.[y]?.[x];
-    const observed = snapshot.terrain?.[y - sourceCamera.y]?.[x - sourceCamera.x];
-    const type = typeof observed === 'string' ? observed : retained;
+    const type = cellTypeAt(definition, snapshot, sourceCamera, x, y);
     if (typeof type === 'string') {
       const address = voxelParcelAddress(definition?.id, { x, y }), parcel = address ? byParcel.get(address.id) : null;
       cells.push({ x, y, type, ...(parcel ? { parcel } : {}) });

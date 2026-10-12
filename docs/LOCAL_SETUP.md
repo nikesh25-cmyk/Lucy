@@ -40,7 +40,7 @@ A Codex cloud task runs on its cloud machine. Commands there do not install soft
 
 ## Verification
 
-The launcher was exercised on the Linux cloud computer with an isolated database, browser opening disabled, a deliberately occupied port, and inherited hosted-origin settings. It selected a free loopback port, served all ten shared worlds, exposed first-account registration in local mode, and stopped cleanly. Both official Mac archives were downloaded and matched the pinned checksums. On 11 October 2026, native macOS launch, browser response, schema 5 migration, thirty shared spaces, and the 106-test suite were verified locally. Windows execution still needs checking on Windows.
+The launcher was exercised on the Linux cloud computer with an isolated database, browser opening disabled, a deliberately occupied port, and inherited hosted-origin settings. It selected a free loopback port, served the thirty shared worlds, exposed first-account registration in local mode, and stopped cleanly. Both official Mac archives were downloaded and matched the pinned checksums. On 11 October 2026, native macOS launch, browser response, schema 5 migration, thirty shared spaces, and the then-current 106-test suite were verified locally. Windows execution still needs checking on Windows.
 
 ## Enable local inference
 

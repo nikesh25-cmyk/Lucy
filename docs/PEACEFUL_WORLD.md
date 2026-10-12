@@ -47,7 +47,7 @@ Authors and human moderators can archive circles or projects and cancel gatherin
 
 ## Gardening and making
 
-Place a farm tile in your own garden, then plant herbs, fiber, or wood. Growing takes twenty to thirty minutes according to the server clock. One tending action can shorten eligible crops by five minutes; nothing grows in less than twenty minutes. Each planting can be harvested once for two resources. A garden supports up to twenty growing crops.
+Place a farm tile in your own garden, then plant herbs, fiber, or wood. Growing takes twenty (herbs), twenty-five (fiber) or thirty (wood) minutes according to the server clock (`content/crops/*.json`). A single tending action shortens that crop's growth by up to five minutes, capped by the growth still remaining ahead of it (`src/journey.js` `cropSaving`), so the shortest possible time from planting to harvest is fifteen minutes — a 20-minute herb tended as soon as it is planted. Each planting can be harvested once for two resources. A garden supports up to twenty growing crops.
 
 Resources can become a flower crown, woven banner, or garden lantern. Crafting checks and spends ingredients atomically, grants an owned decoration, and unlocks the Maker title after the first craft. These activities earn gardening and crafting experience, while mission merit continues to measure reviewed work. Garden objects and cottage furnishings can be placed independently through their construction palette.
 

@@ -30,6 +30,24 @@ test('research activation, bounded contribution, independent review and adoption
   f.tx('adoption',f.actor('admin'),{submission_id:submission.id,note:'Fixture adoption with named owner.'});assert.equal(f.platform.get('SELECT status FROM research_leads WHERE id=?',lead.id).status,'adopted');
 });
 
+test('a rejected research submission leaves a rejected lead instead of a fresh activation',async t=>{
+  const f=await fixture(t),lead=f.platform.research(null,{country:'NP',q:'tea'}).leads[0];
+  const activated=f.tx('researchActivate',f.actor('admin'),{lead_id:lead.id,beneficiary:'Fixture only; no consent presumed',reviewer_id:f.actor('reviewer').account.id});
+  const claim=f.tx('claim',f.actor('alice'),{task_id:activated.task_id},'rejection-claim');
+  const submission=f.tx('submit',f.actor('alice'),evidence(claim,{sources:[{url:lead.source_urls[0],location:'Public page; fixture only',date:'2026-10-11'}]}),'rejection-submission');
+  f.tx('review',f.actor('reviewer'),{submission_id:submission.id,decision:'rejected',reason:'The submitted evidence does not answer the task.'});
+  assert.equal(f.platform.get('SELECT status FROM tasks WHERE id=?',activated.task_id).status,'open');
+  assert.equal(f.platform.get('SELECT status FROM research_leads WHERE id=?',lead.id).status,'rejected');
+  const view=f.platform.research(null,{country:'NP',q:'tea'}),projected=view.leads.find(item=>item.id===lead.id);
+  assert.equal(projected.status,'rejected');assert.equal(projected.recorded_status,'rejected');
+  assert.equal(view.workflow_summary.statuses.find(row=>row.status==='rejected').count,1);
+  assert.equal(view.workflow_summary.statuses.some(row=>row.status==='activated'),false);
+  assert.equal(view.country_plan.statuses.find(row=>row.status==='rejected').count,1);
+  assert.equal(f.platform.research(null,{country:'NP',status:'activated'}).leads.some(item=>item.id===lead.id),false);
+  assert.deepEqual(f.tx('researchActivate',f.actor('admin'),{lead_id:lead.id,beneficiary:'Fixture only; no consent presumed',reviewer_id:f.actor('reviewer').account.id}),{mission_id:activated.mission_id,task_id:activated.task_id,status:'rejected'});
+  assert.equal(f.platform.verifyAudit(),true);
+});
+
 test('mayor conversations are private, exported, erased and cannot exercise moderation',async t=>{
   const f=await fixture(t),npc=f.tx('mayors',null).mayors[0];
   const answer=f.tx('mayorTalk',f.actor('alice'),{npc_id:npc.id,question:'Can you moderate harassment?'});assert.match(answer.answer,/Human moderators/);
@@ -147,4 +165,21 @@ test('worker run history stays private to its operator and runtime agent, and re
   const {Platform}=await import('../src/platform.js');const reopened=new Platform(f.database);t.after(()=>reopened.close());
   assert.equal(reopened.get('SELECT status FROM jobs WHERE id=?','restart-worker').status,'stopped');
   assert.equal(reopened.get("SELECT COUNT(*) AS n FROM audit WHERE event='research.worker.interrupted'").n,2);assert.equal(reopened.verifyAudit(),true);
+});
+
+test('a rejected research submission is a status the client workflow can label and select',async t=>{
+  const f=await fixture(t),lead=f.platform.research(null,{country:'NP',q:'tea'}).leads[0];
+  const activated=f.tx('researchActivate',f.actor('admin'),{lead_id:lead.id,beneficiary:'Fixture only; no consent presumed',reviewer_id:f.actor('reviewer').account.id});
+  const claim=f.tx('claim',f.actor('alice'),{task_id:activated.task_id},'client-status-claim');
+  const submission=f.tx('submit',f.actor('alice'),evidence(claim,{sources:[{url:lead.source_urls[0],location:'Public page; fixture only',date:'2026-10-11'}]}),'client-status-submission');
+  f.tx('review',f.actor('reviewer'),{submission_id:submission.id,decision:'rejected',reason:'The submitted evidence does not answer the task.'});
+  assert.equal(f.platform.research(null,{country:'NP',q:'tea'}).workflow_summary.statuses.find(row=>row.status==='rejected').count,1);
+  // A status the server projects must be labelled in the workflow panel and offered by the status
+  // filter, or a rejected lead renders as a raw badge and cannot be selected.
+  const {readFileSync}=await import('node:fs'),{fileURLToPath}=await import('node:url');
+  const app=readFileSync(fileURLToPath(new URL('../app.js',import.meta.url)),'utf8');
+  const stages=/const stages=\[(\[[\s\S]*?\])\];/.exec(app)?.[1]||'';
+  assert.ok(stages.includes("'rejected'"),'the research workflow must label the rejected status');
+  const filter=/field\(filters,'status','Status'[^\n]*/.exec(app)?.[0]||'';
+  assert.ok(filter.includes("'rejected'"),'the research status filter must offer the rejected status');
 });

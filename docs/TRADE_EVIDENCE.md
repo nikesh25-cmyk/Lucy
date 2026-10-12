@@ -16,7 +16,7 @@ Historical trade does not establish current buyer demand, supplier capacity, shi
 
 ## Verification
 
-All 175 tests passed, including URL/schema safeguards, source hashes, private DNS rejection and an isolated worker submission. Submission remains pending independent review; it does not enter the accepted gallery automatically.
+All 175 tests passed at that milestone, including URL/schema safeguards, source hashes, private DNS rejection and an isolated worker submission. Submission remains pending independent review; it does not enter the accepted gallery automatically.
 
 The live DNS-pinned reader successfully returned one China-to-World HS 010614 export record for 2023: primary value USD 556,554; H6; original classification true; reported false; aggregate true; net weight 14,832 kg. This is a technical integration example, not an agriculture recommendation. The retrieved response hash and full flags are saved in `trade-reader-verification.json`.
 

@@ -245,3 +245,111 @@ test('a real mission refuses new contributions after its designated reviewer bec
   assert.equal(f.platform.get('SELECT status FROM claims WHERE id=?', claim.id).status, 'leased');
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM submissions').n, 0);
 });
+
+test('the avatar roster reports contributions by the same policy as resident merit', async (t) => {
+  const f = await fixture(t);
+  const avatar = f.agent('alice');
+  const contributions = () => f.platform.world(f.actor('bob')).participants.find((a) => a.id === avatar.id).accepted_contributions;
+  const merit = () => f.platform.journey(f.actor('alice'), { agent_id: avatar.id }).merit.total;
+  // A practice acceptance on a demonstration mission never counts as a contribution.
+  const practice = f.tx('claim', f.actor('alice'), { task_id: 'climate-practice', agent_id: avatar.id }, 'practice-claim');
+  const practiceSubmission = f.tx('submit', f.actor('alice'), evidence(practice), 'practice-submission');
+  f.tx('review', f.actor('reviewer'), { submission_id: practiceSubmission.id, decision: 'accepted', reason: 'Practice acceptance.' });
+  assert.equal(contributions(), 0);
+  assert.equal(merit(), 0);
+  // One real, independently accepted version counts in both places.
+  const { task } = realMission(f);
+  const claim = f.tx('claim', f.actor('alice'), { task_id: task.id, agent_id: avatar.id }, 'real-claim');
+  const submission = f.tx('submit', f.actor('alice'), evidence(claim), 'real-submission');
+  f.tx('review', f.actor('reviewer'), { submission_id: submission.id, decision: 'accepted', reason: 'Sources and limitations independently checked.' });
+  assert.equal(contributions(), 1);
+  assert.equal(merit(), 1);
+  // A superseded version is no longer a contribution in either report.
+  f.platform.run("INSERT INTO submissions SELECT 'superseded-version',claim_id,version+1,artifact,sources,method,limitations,rights,'pending_review','superseded-version',created_at FROM submissions WHERE id=?", submission.id);
+  assert.equal(contributions(), 0);
+  assert.equal(merit(), 0);
+});
+
+test('mission conversations stay readable only to the operators and reviewers who participate', async (t) => {
+  const f = await fixture(t);
+  const alice = f.agent('alice');
+  const sibling = f.agent('alice', 'Unrelated sibling');
+  const bob = f.agent('bob');
+  const { mission, task } = realMission(f);
+  f.tx('claim', f.actor('alice'), { task_id: task.id, agent_id: alice.id }, 'mission-chatter-claim');
+  const message = f.tx('message', f.actor('alice'), { agent_id: alice.id, channel: 'mission', mission_id: mission.id, text: 'Coordination note for this mission.' });
+  const visible = (actor) => f.platform.world(actor).messages.some((m) => m.id === message.id);
+  assert.equal(visible(f.actor('alice')), true);
+  assert.equal(visible(f.actor('reviewer')), true);
+  assert.equal(visible(f.actor('admin')), true);
+  assert.equal(visible(f.actor('bob')), false);
+  assert.equal(visible(f.actor('moderator')), false);
+  assert.equal(visible(null), false);
+  assert.equal(visible(f.platform.authenticate(f.tx('runtime', f.actor('alice'), sibling.id, { scopes: ['read'] }).token)), false);
+  assert.equal(visible(f.platform.authenticate(f.tx('runtime', f.actor('bob'), bob.id, { scopes: ['read'] }).token)), false);
+  denied(() => f.tx('report', f.actor('bob'), { target_type: 'message', target_id: message.id, reason: 'Guessing a mission message identifier.' }), 404);
+  assert.ok(f.tx('report', f.actor('reviewer'), { target_type: 'message', target_id: message.id, reason: 'Reviewer acts on this mission chatter.' }).id);
+});
+
+test('an administrator can step down or delete their own account while self-suspension stays refused', async (t) => {
+  const f = await fixture(t);
+  const admin = f.actor('admin'), runtime = f.tx('runtime', f.actor('alice'), f.agent('alice').id, { scopes: ['read'] });
+  denied(() => f.platform.deleteAccount(f.platform.authenticate(runtime.token)), 403);
+  assert.throws(() => f.tx('accountControl', f.actor('admin'), { account_id: admin.account.id, status: 'suspended' }), (error) => error.status === 400 && /your own account status/.test(error.message));
+  f.tx('accountControl', f.actor('admin'), { account_id: admin.account.id, role: 'member' });
+  assert.equal(f.platform.get('SELECT role FROM accounts WHERE id=?', admin.account.id).role, 'member');
+  const g = await fixture(t), owner = g.actor('admin').account.id;
+  g.tx('deleteAccount', g.actor('admin'));
+  assert.equal(g.platform.get('SELECT status FROM accounts WHERE id=?', owner).status, 'deleted');
+  assert.equal(g.platform.verifyAudit(), true);
+});
+
+test('accepted gallery, private history and account export keep bounded recent records', async (t) => {
+  const f = await fixture(t), alice = f.actor('alice').account.id, reviewer = f.actor('reviewer').account.id, stamp = new Date(f.clock()).toISOString();
+  f.platform.run('INSERT INTO missions VALUES(?,?,?,?,?,?,?,?,?,0,?)', 'bound-mission', 'Bounded fixture mission', 'Climate', 'Bounded read fixture', alice, 'Fixture only', reviewer, 'Fixture rubric', 'open', stamp);
+  f.platform.run('INSERT INTO tasks(id,mission_id,title,instructions,rights,allowed_domains) VALUES(?,?,?,?,?,?)', 'bound-task', 'bound-mission', 'Bounded fixture task', 'Bounded read fixture', 'Fixture rights', '["example.org"]');
+  f.platform.run('INSERT INTO claims VALUES(?,?,?,?,?,?,?,?,?)', 'bound-claim', 'bound-task', 1, alice, null, 'submitted', f.clock() + 20 * 60_000, 'bound-claim-key', stamp);
+  for (let n = 0; n < 250; n++) {
+    const when = new Date(f.clock() + n * 1000).toISOString();
+    f.platform.run('INSERT INTO submissions VALUES(?,?,?,?,?,?,?,?,?,?,?)', `bound-submission-${n}`, 'bound-claim', 1, 'Bounded accepted artifact.', '[{"url":"https://example.org/report","location":"Section 1","date":"2026-01-01"}]', 'Fixture method.', 'Fixture limitations.', 'Fixture rights.', 'accepted', `bound-key-${n}`, when);
+    f.platform.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', `bound-review-${n}`, `bound-submission-${n}`, reviewer, 'accepted', 'Bounded fixture review.', when);
+  }
+  for (let n = 0; n < 600; n++) f.platform.run('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?)', `bound-message-${n}`, null, alice, 'public', null, '[]', 'Bounded fixture message.', 'visible', new Date(f.clock() + n).toISOString(), 'commons');
+  const gallery = f.platform.gallery();
+  assert.equal(gallery.length, 200);
+  assert.equal(gallery[0].id, 'bound-submission-249');
+  assert.equal(gallery.some((record) => record.id === 'bound-submission-0'), false);
+  assert.equal(f.platform.gallery('bound-submission-0')[0].id, 'bound-submission-0');
+  const member = f.actor('alice'), history = f.platform.history(member);
+  assert.equal(history.submissions.length, 200);
+  assert.equal(history.submissions[0].id, 'bound-submission-249');
+  assert.equal(history.reviews.length, 200);
+  const exported = f.platform.exportAccount(member);
+  assert.equal(exported.submissions.length, 200);
+  assert.equal(exported.messages.length, 500);
+  assert.equal(exported.messages[0].id, 'bound-message-599');
+  assert.equal(f.platform.verifyAudit(), true);
+});
+
+test('the safety desk bounds reports and appeals while keeping a member own records visible', async (t) => {
+  const f = await fixture(t), alice = f.actor('alice').account.id, bob = f.actor('bob').account.id, moderator = f.actor('moderator').account.id, stamp = new Date(f.clock()).toISOString();
+  for (let n = 0; n < 250; n++) f.platform.run('INSERT INTO reports VALUES(?,?,?,?,?,?,?,?,?)', `bound-report-${n}`, bob, 'message', `missing-message-${n}`, 'Bounded fixture reason.', 'open', null, null, new Date(f.clock() + n).toISOString());
+  f.platform.run('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?)', 'member-message', null, alice, 'public', null, '[]', 'Member fixture message.', 'visible', stamp, 'commons');
+  f.platform.run('INSERT INTO reports VALUES(?,?,?,?,?,?,?,?,?)', 'member-report', alice, 'message', 'missing-member-target', 'Member fixture reason.', 'open', null, null, new Date(f.clock() - 5000).toISOString());
+  f.platform.run('INSERT INTO reports VALUES(?,?,?,?,?,?,?,?,?)', 'target-report', bob, 'message', 'member-message', 'Report about a member message.', 'dismiss', 'Fixture resolution.', moderator, new Date(f.clock() - 4000).toISOString());
+  const member = f.platform.safety(f.actor('alice'));
+  assert.deepEqual(member.reports.map((report) => report.id), ['target-report', 'member-report']);
+  assert.equal('reporter_id' in member.reports.find((report) => report.id === 'target-report'), false);
+  assert.equal('reporter_id' in member.reports.find((report) => report.id === 'member-report'), true);
+  assert.equal(member.appeals.length, 0);
+  assert.equal(member.has_more, false);
+  const moderation = f.platform.safety(f.actor('moderator'));
+  assert.equal(moderation.reports.length, 200);
+  assert.equal(moderation.has_more, true);
+  assert.equal(moderation.reports[0].id, 'bound-report-249');
+  assert.equal(moderation.reports.some((report) => report.id === 'member-report'), false);
+  f.platform.run('INSERT INTO appeals VALUES(?,?,?,?,?,?,?,?)', 'bound-appeal', 'bound-report-249', bob, 'Bounded fixture appeal.', 'open', null, null, stamp);
+  assert.equal(f.platform.safety(f.actor('moderator')).appeals.length, 1);
+  assert.equal(f.platform.safety(f.actor('alice')).appeals.length, 0);
+  assert.equal(f.platform.verifyAudit(), true);
+});

@@ -33,6 +33,6 @@ The requested Nepal–India HS 0902 window for 2020–2024 did not establish a t
 
 The delivered format-two candidate was reformatted offline from the second run, preserving its original raw records, source dates and hashes. No fresh fetch occurred during formatting. It remains partial, unreviewed evidence, not an accepted study. Terms/attribution require review; no blanket Comtrade reuse licence is asserted.
 
-All 185 tests passed. Tests cover paired identities, bounded concurrency, cancelled reads, positive zero versus missing values, differing HS revisions, flags/units, provider refusal without upstream body leakage and cessation of new dispatch after rate limits. Actual candidate validation passed; a copied candidate with a modified CSV was rejected. Actual browser QA generated ten 2020–2024 Nepal/India tea queries and kept both reporter roles visible. No production account or task was created.
+All 185 tests passed at that milestone. Tests cover paired identities, bounded concurrency, cancelled reads, positive zero versus missing values, differing HS revisions, flags/units, provider refusal without upstream body leakage and cessation of new dispatch after rate limits. Actual candidate validation passed; a copied candidate with a modified CSV was rejected. Actual browser QA generated ten 2020–2024 Nepal/India tea queries and kept both reporter roles visible. No production account or task was created.
 
 Artifacts: `trade-baseline-verification.json`, the saved `tea-trade-baseline-C2svLk` candidate and `lucy-paired-trade-plan.png`.

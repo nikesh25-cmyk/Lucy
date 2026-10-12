@@ -18,6 +18,6 @@ Projection documentation: https://d3js.org/d3-geo/azimuthal#geoOrthographic
 
 ## Verification
 
-All 223 local tests passed. New checks cover spherical ring closure, disconnected France/Corsica and French Guiana separation, South Africa's hole, country orientation, hemisphere clipping, bounds at poles/date line, pinned bundle hashes/licences, read-only routes and unchanged saved research/coin state.
+All 223 local tests passed at that milestone. New checks cover spherical ring closure, disconnected France/Corsica and French Guiana separation, South Africa's hole, country orientation, hemisphere clipping, bounds at poles/date line, pinned bundle hashes/licences, read-only routes and unchanged saved research/coin state.
 
 Actual isolated browser QA verified arrow and button rotation, Nepal selector orientation, an India outline click, India flat focus and Singapore's no-outline research fallback. At 390 pixels, page width remained 390 and the globe fit at 316 pixels. The temporary viewport was reset and the fixture closed. These checks validate the observed interface, not legal geography, all-device acceptance or new country research findings.

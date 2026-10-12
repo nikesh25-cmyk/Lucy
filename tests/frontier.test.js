@@ -108,16 +108,62 @@ test('frontier blocks enforce foundations, ownership, range, occupancy, protecte
   assert.equal(FRONTIER_PALETTE.includes('glass'), true);
 });
 
-test('ground construction cannot trap another resident and human moderators can remove authored blocks', async t => {
+test('two-layer construction cannot trap another resident and human moderators can open a climbable exit', async t => {
   const f = await fixture(t), alice = f.agent('alice'), bob = f.agent('bob'), moderator = f.agent('moderator'), tile = openTile();
   steward(f);
   position(f, alice, tile.x - 2, tile.y); position(f, bob, tile.x, tile.y); position(f, moderator, tile.x - 2, tile.y);
-  for (const neighbor of [{ x: tile.x, y: tile.y - 1 }, { x: tile.x, y: tile.y + 1 }, { x: tile.x + 1, y: tile.y }]) { f.advance(); build(f, 'alice', alice, neighbor); }
-  f.advance(); assert.throws(() => build(f, 'alice', alice, { x: tile.x - 1, y: tile.y }), { status: 409 });
-  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_blocks').n, 3);
-  assert.equal(build(f, 'moderator', moderator, { x: tile.x, y: tile.y - 1 }, { remove: true }).removed, true);
-  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_blocks').n, 2);
+  for (const neighbor of [{ x: tile.x, y: tile.y - 1 }, { x: tile.x, y: tile.y + 1 }, { x: tile.x + 1, y: tile.y }]) for (let z = 0; z < 2; z++) { f.advance(); build(f, 'alice', alice, neighbor, { z }); }
+  f.advance(); assert.equal(build(f, 'alice', alice, { x: tile.x - 1, y: tile.y }).changed, true, 'One layer remains a climbable exit.');
+  f.advance(); assert.throws(() => build(f, 'alice', alice, { x: tile.x - 1, y: tile.y }, { z: 1 }), { status: 409 });
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_blocks').n, 7);
+  assert.equal(build(f, 'moderator', moderator, { x: tile.x, y: tile.y - 1 }, { z: 1, remove: true }).removed, true);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_blocks').n, 6);
   assert.equal(f.platform.verifyAudit(), true);
+});
+
+test('climbing admits one authored layer, refuses two, and settling follows the block column', async t => {
+  const f = await fixture(t), alice = f.agent('alice'), tile = openTile();
+  steward(f);
+  closeTo(f, alice, tile);
+  f.advance(); assert.equal(build(f, 'alice', alice, tile).changed, true);
+  const climbed = f.tx('climbAgent', f.actor('alice'), { agent_id: alice.id, direction: 'right' });
+  assert.deepEqual({ x: climbed.x, y: climbed.y, z: climbed.z, grounded: climbed.grounded, blocked: climbed.blocked },
+    { x: tile.x, y: tile.y, z: 1, grounded: true, blocked: false });
+  assert.deepEqual({ ...f.platform.get('SELECT z,grounded FROM agents WHERE id=?', alice.id) }, { z: 1, grounded: 1 });
+  // Removing the support under a standing resident settles the stored column cache.
+  f.advance(); assert.equal(build(f, 'alice', alice, tile, { remove: true }).removed, true);
+  assert.deepEqual({ ...f.platform.get('SELECT z,grounded FROM agents WHERE id=?', alice.id) }, { z: 0, grounded: 1 });
+  // Two authored layers are too high for one step, and ordinary movement stays a wall.
+  const stackTile = { x: tile.x - 1, y: tile.y };
+  f.advance(); assert.equal(build(f, 'alice', alice, stackTile).changed, true);
+  f.advance(); assert.equal(build(f, 'alice', alice, stackTile, { z: 1, type: 'glass' }).changed, true);
+  const refused = f.tx('climbAgent', f.actor('alice'), { agent_id: alice.id, direction: 'left' });
+  assert.deepEqual({ x: refused.x, y: refused.y, z: refused.z, grounded: refused.grounded, blocked: refused.blocked },
+    { x: tile.x, y: tile.y, z: 0, grounded: true, blocked: true });
+  f.advance(); assert.equal(build(f, 'alice', alice, stackTile, { z: 1, remove: true }).removed, true);
+  f.advance(); const walked = f.tx('moveAgent', f.actor('alice'), { agent_id: alice.id, direction: 'left' });
+  assert.deepEqual({ x: walked.x, y: walked.y, z: walked.z, blocked: walked.blocked }, { x: tile.x, y: tile.y, z: 0, blocked: true });
+  f.advance(); const stepped = f.tx('climbAgent', f.actor('alice'), { agent_id: alice.id, direction: 'left' });
+  assert.deepEqual({ x: stepped.x, y: stepped.y, z: stepped.z, blocked: stepped.blocked }, { x: stackTile.x, y: stackTile.y, z: 1, blocked: false });
+  const participant = f.platform.world(f.actor('alice'), { world_id: seed, agent_id: alice.id }).participants.find((item) => item.id === alice.id);
+  assert.deepEqual({ z: participant.z, grounded: participant.grounded }, { z: 1, grounded: 1 });
+});
+
+test('looking wraps yaw, clamps pitch and keeps its own throttle', async t => {
+  const f = await fixture(t), alice = f.agent('alice');
+  const looked = f.tx('lookAgent', f.actor('alice'), { agent_id: alice.id, yaw: 9, pitch: 5 });
+  assert.ok(Math.abs(looked.yaw - (9 - Math.PI * 2)) < 1e-9);
+  assert.equal(looked.pitch, 1.4);
+  assert.deepEqual({ ...f.platform.get('SELECT yaw,pitch FROM agents WHERE id=?', alice.id) }, { yaw: looked.yaw, pitch: 1.4 });
+  assert.throws(() => f.tx('lookAgent', f.actor('alice'), { agent_id: alice.id, yaw: NaN, pitch: 0 }), { status: 400 });
+  assert.throws(() => f.tx('lookAgent', f.actor('alice'), { agent_id: alice.id, yaw: 0, pitch: Infinity }), { status: 400 });
+  // A look uses last_look only: it can be taken inside the movement throttle, but it never
+  // lets a move bypass that throttle, and two looks in a row are throttled too.
+  f.advance(2000); f.tx('moveAgent', f.actor('alice'), { agent_id: alice.id, direction: 'up' });
+  f.advance(50);
+  assert.deepEqual(f.tx('lookAgent', f.actor('alice'), { agent_id: alice.id, yaw: 0, pitch: -2 }), { yaw: 0, pitch: -1.4 });
+  assert.throws(() => f.tx('moveAgent', f.actor('alice'), { agent_id: alice.id, direction: 'up' }), { status: 429 });
+  assert.throws(() => f.tx('lookAgent', f.actor('alice'), { agent_id: alice.id, yaw: 0.5, pitch: 0 }), { status: 429 });
 });
 
 test('frontier mutations require the observed area and reject stale requests after a resident crosses', async t => {

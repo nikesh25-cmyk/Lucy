@@ -30,7 +30,7 @@ Preview checks the decision structure. Private form drafts now save after editin
 
 ## Verification
 
-All 140 automated tests passed locally after private draft integration. Tests cover exact decimal costing, missing charges/quantity, false source references, source-domain restrictions, ownership, independent review, correction versions, restart recovery, export, adoption and scoped runtime HTTP submission.
+All 140 automated tests passed locally at that milestone (private draft integration); `npm test` is the authority for the current suite and `docs/VERIFICATION.md` states the current count. Tests cover exact decimal costing, missing charges/quantity, false source references, source-domain restrictions, ownership, independent review, correction versions, restart recovery, export, adoption and scoped runtime HTTP submission.
 
 Actual browser QA submitted a fictional brief, used a separate reviewer to request corrections, reopened all fields and submitted version two. Version one remains changes-requested; version two remains pending review. Both retain a known subtotal of NPR 0.30 with an unknown freight charge and no complete total. The audit chain is valid. A 390-pixel view had no horizontal overflow. The isolated QA world was stopped and removed; no production account, real recommendation acceptance or external adoption was created.
 

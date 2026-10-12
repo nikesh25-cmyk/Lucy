@@ -10,10 +10,11 @@
     "start": "node server.js",
     "local": "node scripts/local-launch.mjs",
     "test": "node --test",
+    "e2e": "node scripts/e2e-smoke.mjs",
     "agent": "node runtime/agent.js",
     "backup": "node scripts/recovery.js backup",
     "restore": "node scripts/recovery.js restore",
-    "check": "node --check server.js && node --check scripts/local-launch.mjs && node --check src/platform.js && node --check src/database.js && node --check src/spaces.js && node --check src/community.js && node --check src/journey.js && node --check src/atmosphere.js && node --check src/recovery.js && node --check runtime/agent.js && node --check src/frontier.js && node --check src/voxel-world.js && node --check src/voxel-geometry.js && node --check src/world-walk.js && node --check app.js && node --check world.js",
+    "check": "node --check server.js && node --check scripts/local-launch.mjs && node --check src/platform.js && node --check src/database.js && node --check src/spaces.js && node --check src/community.js && node --check src/journey.js && node --check src/atmosphere.js && node --check src/recovery.js && node --check runtime/agent.js && node --check src/frontier.js && node --check src/voxel-world.js && node --check src/voxel-geometry.js && node --check src/elevation.js && node --check src/world-walk.js && node --check app.js && node --check world.js && node --check src/vocations.js && node --check src/camera-controls.js && node --check src/content.js && node --check src/placement-policy.js",
     "research": "node runtime/research-worker.js"
   }
 }

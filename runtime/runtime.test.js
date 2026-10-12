@@ -87,7 +87,7 @@ test('instructions inside conversations cannot authorize model tools or arbitrar
     } });
   assert.equal(result.status, 'failed');
   assert.equal(result.action_count, 0);
-  assert.ok(f.requests.every((r) => ['/api/v1/world', '/api/v1/runtime/status', '/api/v1/journey', '/api/v1/community', '/api/v1/jobs'].includes(r.path)));
+  assert.ok(f.requests.every((r) => ['/api/v1/world', '/api/v1/runtime/status', '/api/v1/journey', '/api/v1/community', '/api/v1/callings', '/api/v1/jobs'].includes(r.path)));
 });
 
 test('provider timeout terminates a hung provider without dispatching', async () => {

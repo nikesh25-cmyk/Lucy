@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import content from './content.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const readText = (value, label, maximum, optional = false) => {
@@ -6,14 +7,14 @@ const readText = (value, label, maximum, optional = false) => {
   if (typeof value !== 'string' || !value.trim() || value.length > maximum) fail(400, `${label} must contain ${optional ? '0' : '1'}–${maximum} characters.`);
   return value.trim();
 };
-const crops = Object.freeze({ herbs: 20 * 60_000, fiber: 25 * 60_000, wood: 30 * 60_000 });
-const recipes = Object.freeze([
-  { id: 'flower_crown', name: 'Flower crown', ingredients: { herbs: 2, fiber: 1 }, output: 'flower_crown' },
-  { id: 'woven_banner', name: 'Woven banner', ingredients: { fiber: 3, wood: 1 }, output: 'woven_banner' },
-  { id: 'garden_lantern', name: 'Garden lantern', ingredients: { wood: 2, herbs: 1 }, output: 'garden_lantern' },
-]);
-const titles = ['Resident', 'Explorer', 'Gardener', 'Maker'];
-const avatars = ['sprout', 'star', 'flower', 'leaf'];
+// Growth times, decoration recipes, titles and keepsake avatars all come from the sealed
+// content layer. Only the keepsakes a resident starts with are eligible from the outset; the
+// gated ones carry an unlock threshold and are added by cosmeticOptions as they are earned.
+const crops = Object.freeze(content.crops());
+const tendSaving = 5 * 60_000;
+const recipes = Object.freeze(content.recipes());
+const titles = Object.freeze(content.cosmetics('title'));
+const avatars = Object.freeze(content.cosmetics('avatar').filter((id) => content.entry(id, 'cosmetic').rules.unlock_at_shared_visits === undefined));
 
 export const JOURNEY_TABLES = Object.freeze(['journey_profiles', 'journey_visits', 'journey_journal', 'journey_inventory', 'journey_crops']);
 export const JOURNEY_SCHEMA = `
@@ -22,7 +23,7 @@ export const JOURNEY_SCHEMA = `
   CREATE TABLE IF NOT EXISTS journey_journal(id TEXT PRIMARY KEY,agent_id TEXT NOT NULL REFERENCES agents(id),text TEXT NOT NULL,created_at INTEGER NOT NULL);
   CREATE INDEX IF NOT EXISTS journey_journal_agent ON journey_journal(agent_id,created_at);
   CREATE TABLE IF NOT EXISTS journey_inventory(agent_id TEXT NOT NULL REFERENCES agents(id),kind TEXT NOT NULL,quantity INTEGER NOT NULL CHECK(quantity>=0),PRIMARY KEY(agent_id,kind));
-  CREATE TABLE IF NOT EXISTS journey_crops(agent_id TEXT NOT NULL REFERENCES agents(id),x INTEGER NOT NULL,y INTEGER NOT NULL,kind TEXT NOT NULL CHECK(kind IN ('herbs','fiber','wood')),planted_at INTEGER NOT NULL,tended_at INTEGER,harvested_at INTEGER,PRIMARY KEY(agent_id,x,y));
+  CREATE TABLE IF NOT EXISTS journey_crops(agent_id TEXT NOT NULL REFERENCES agents(id),x INTEGER NOT NULL,y INTEGER NOT NULL,kind TEXT NOT NULL CHECK(kind IN (${Object.keys(crops).map((kind) => `'${kind}'`).join(',')})),planted_at INTEGER NOT NULL,tended_at INTEGER,harvested_at INTEGER,PRIMARY KEY(agent_id,x,y));
 `;
 
 function owned(platform, actor, input, mutate = false) {
@@ -44,8 +45,14 @@ function initialize(platform, agentId) {
 function inventory(platform, agentId) {
   return platform.all('SELECT kind,quantity FROM journey_inventory WHERE agent_id=? AND quantity>0 ORDER BY kind', agentId).map((item) => ({ ...item }));
 }
+function cropSaving(crop) {
+  if (crop.tended_at == null) return 0;
+  // Tending saves five minutes, capped by the growth still ahead of the crop so a
+  // tend is never a no-op and never shortens a crop by more than it had left.
+  return Math.min(tendSaving, Math.max(0, crops[crop.kind] - (crop.tended_at - crop.planted_at)));
+}
 function cropView(crop, time) {
-  const readyAt = crop.planted_at + crops[crop.kind] - (crop.tended_at == null ? 0 : Math.min(5 * 60_000, crops[crop.kind] - 20 * 60_000));
+  const readyAt = crop.planted_at + crops[crop.kind] - cropSaving(crop);
   return { ...crop, ready_at: readyAt, ready: crop.harvested_at == null && time >= readyAt };
 }
 function cosmeticOptions(platform, agentId, state) {
@@ -55,22 +62,26 @@ function cosmeticOptions(platform, agentId, state) {
     avatars: [...avatars, ...(visited >= 3 ? ['explorer_banner'] : []), ...inventory(platform, agentId).filter((item) => recipes.some((recipe) => recipe.output === item.kind)).map((item) => item.kind)],
   };
 }
+// Eligibility for an independently accepted real contribution. The joins and
+// policy conditions are shared by the resident merit summary and the world avatar
+// roster so the two can never report different contributions.
+export const contributionSource = `submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id
+  JOIN missions m ON m.id=t.mission_id JOIN accounts operator ON operator.id=c.account_id
+  JOIN accounts mission_owner ON mission_owner.id=m.owner_id JOIN accounts assigned ON assigned.id=m.reviewer_id
+  JOIN reviews r ON r.submission_id=s.id JOIN accounts reviewer ON reviewer.id=r.reviewer_id`;
+export const contributionEligibility = (agentRef) => `c.agent_id=${agentRef} AND operator.status='active' AND mission_owner.status='active'
+  AND m.demo=0 AND m.status IN ('open','closed') AND c.task_version=t.version
+  AND assigned.status='active' AND assigned.role IN ('admin','reviewer') AND assigned.id!=c.account_id
+  AND reviewer.status='active' AND reviewer.role IN ('admin','reviewer') AND reviewer.id!=c.account_id
+  AND (reviewer.id=m.reviewer_id OR reviewer.role='admin') AND r.decision='accepted' AND s.status='accepted'
+  AND s.version=(SELECT MAX(version) FROM submissions current WHERE current.claim_id=c.id)
+  AND r.rowid=(SELECT latest.rowid FROM reviews latest WHERE latest.submission_id=s.id ORDER BY latest.created_at DESC,latest.rowid DESC LIMIT 1)`;
 function merit(platform, agentId) {
   // Derive credit from current evidence, never from a persistent points counter.
   const eligible = platform.all(`SELECT DISTINCT s.id,m.owner_id,
     EXISTS(SELECT 1 FROM adoptions d JOIN accounts owner ON owner.id=d.owner_id
       WHERE d.submission_id=s.id AND d.owner_id=m.owner_id AND d.owner_id!=c.account_id AND owner.status='active' AND length(trim(d.note))>0) AS adopted
-    FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id
-    JOIN missions m ON m.id=t.mission_id JOIN accounts operator ON operator.id=c.account_id
-    JOIN accounts mission_owner ON mission_owner.id=m.owner_id JOIN accounts assigned ON assigned.id=m.reviewer_id
-    JOIN reviews r ON r.submission_id=s.id JOIN accounts reviewer ON reviewer.id=r.reviewer_id
-    WHERE c.agent_id=? AND operator.status='active' AND mission_owner.status='active'
-    AND m.demo=0 AND m.status IN ('open','closed') AND c.task_version=t.version
-    AND assigned.status='active' AND assigned.role IN ('admin','reviewer') AND assigned.id!=c.account_id
-    AND reviewer.status='active' AND reviewer.role IN ('admin','reviewer') AND reviewer.id!=c.account_id
-    AND (reviewer.id=m.reviewer_id OR reviewer.role='admin') AND r.decision='accepted' AND s.status='accepted'
-    AND s.version=(SELECT MAX(version) FROM submissions current WHERE current.claim_id=c.id)
-    AND r.rowid=(SELECT latest.rowid FROM reviews latest WHERE latest.submission_id=s.id ORDER BY latest.created_at DESC,latest.rowid DESC LIMIT 1)`, agentId);
+    FROM ${contributionSource} WHERE ${contributionEligibility('?')}`, agentId);
   const accepted = eligible.length, adopted = eligible.reduce((sum, item) => sum + item.adopted, 0);
   return { accepted, adopted, total: accepted + adopted };
 }
@@ -121,7 +132,7 @@ export const journeyMethods = {
       badges, journal: this.all('SELECT id,text,created_at FROM journey_journal WHERE agent_id=? ORDER BY created_at DESC,rowid DESC LIMIT 200', agent.id),
       inventory: inventory(this, agent.id), crops: this.all('SELECT x,y,kind,planted_at,tended_at,harvested_at FROM journey_crops WHERE agent_id=? ORDER BY y,x', agent.id).map((crop) => cropView(crop, this.clock())),
       recipes: recipes.map((recipe) => ({ ...recipe, ingredients: { ...recipe.ingredients } })), quests,
-      coins:this.coins(actor,{agent_id:agent.id}), merit: earnedMerit, goodwill: earnedGoodwill, unlocks: sharedVisits >= 3 ? ['explorer_banner'] : [], server_time: this.clock(),
+      callings:this.callings(actor,{agent_id:agent.id}), coins:this.coins(actor,{agent_id:agent.id}), merit: earnedMerit, goodwill: earnedGoodwill, unlocks: sharedVisits >= 3 ? ['explorer_banner'] : [], server_time: this.clock(),
     };
   },
   updateProfile(actor, input) {

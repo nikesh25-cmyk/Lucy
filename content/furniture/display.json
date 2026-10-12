@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "display",
+  "kind": "furniture",
+  "label": "Display case",
+  "since": "1.0.0",
+  "order": 18,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#e2ca83",
+    "geometry": "prop",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "walkable": true,
+    "footprint": "open",
+    "geometry": "prop"
+  },
+  "notes": [
+    "Voxel prop branch colours display cases gold; the tile renderer draws a dedicated case (world.js)."
+  ]
+}

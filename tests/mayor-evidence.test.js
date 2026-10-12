@@ -25,7 +25,7 @@ test('selected-country mayor context preserves exact retained provenance, missin
   assert.match(context.sources[4].publisher,/ITU/);assert.match(context.sources[4].license.attribution,/ITU/);
   assert.deepEqual(reply.source_numbers,[1,2,3,4,5]);assert.equal(f.platform.mayors(null).conversations.length,0);assert.equal(f.platform.mayors(f.actor('bob')).conversations.length,0);
   assert.deepEqual(f.platform.exportAccount(f.actor('alice')).civic.conversations[0].country_context,context);
-  assert.equal(f.platform.exportAccount(f.actor('alice')).format,'shared-world-account-v11');
+  assert.equal(f.platform.exportAccount(f.actor('alice')).format,'shared-world-account-v14');
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM research_leads').n,before);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM claims').n,0);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,0);
   f.advance();const other=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'BD'});assert.match(other.answer,/Bangladesh/);assert.doesNotMatch(other.answer,/Nepal tea|India/);
   f.advance();assert.throws(()=>f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'XX'}),{status:400});
@@ -48,14 +48,14 @@ test('country context preserves zero, all-null and uncollected series as differe
 
 test('stored mayor country snapshots survive restart and backup; schema eight conversations migrate without fabricated context',async t=>{
   const f=await fixture(t),reply=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'NP'}),backup=join(f.directory,'country-backup.sqlite');
-  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version,11);
+  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version,14);
   f.platform.close();const reopened=new Platform(f.database);t.after(()=>{try{reopened.close();}catch{/* Closed again before testing migration. */}});
   assert.deepEqual(reopened.mayors(reopened.authenticate(f.credentials.alice.token)).conversations[0].country_context,reply.country_context);
   // Recreate the previous schema without changing the pre-existing question or answer.
   reopened.db.exec('ALTER TABLE mayor_conversations DROP COLUMN country_context; ALTER TABLE mayor_conversations DROP COLUMN source_numbers; PRAGMA user_version=8');
   assert.equal(validateDatabase(f.database).schema_version,8);reopened.close();
   const migrated=new Platform(f.database);t.after(()=>migrated.close());const old=migrated.mayors(migrated.authenticate(f.credentials.alice.token)).conversations[0];
-  assert.equal(old.question,reply.question);assert.equal(old.answer,reply.answer);assert.equal(old.country_context,null);assert.deepEqual(old.source_numbers,[]);assert.equal(validateDatabase(f.database).schema_version,11);assert.equal(migrated.verifyAudit(),true);
+  assert.equal(old.question,reply.question);assert.equal(old.answer,reply.answer);assert.equal(old.country_context,null);assert.deepEqual(old.source_numbers,[]);assert.equal(validateDatabase(f.database).schema_version,14);assert.equal(migrated.verifyAudit(),true);
   migrated.db.exec('ALTER TABLE mayor_conversations DROP COLUMN country_context');assert.throws(()=>validateDatabase(f.database),/mayor evidence schema/);
 });
 

@@ -167,6 +167,27 @@ test('goodwill counts unique independent thanks and never converts appreciation 
   assert.equal(passport().goodwill.thanks, 0);
 });
 
+test('tending shortens every crop by five minutes without exceeding the remaining growth', async (t) => {
+  const f = await setup(t), agent = f.agent('alice');
+  for (const [kind, x] of [['herbs', 4], ['fiber', 5], ['wood', 6]]) {
+    const planted = farm(f, agent, kind, x);
+    const tended = f.tx('gardenAction', f.actor('alice'), { agent_id: agent.id, action: 'tend', x, y: 6 });
+    assert.equal(planted.crop.ready_at - planted.crop.planted_at, { herbs: 20, fiber: 25, wood: 30 }[kind] * 60_000);
+    assert.equal(tended.crop.ready_at - tended.crop.planted_at, ({ herbs: 20, fiber: 25, wood: 30 }[kind] - 5) * 60_000, `${kind} should be shortened by five minutes`);
+  }
+  // A late tend can only save the growth the crop still has ahead of it.
+  const late = farm(f, agent, 'wood', 7);
+  f.advance(28 * 60_000);
+  const capped = f.tx('gardenAction', f.actor('alice'), { agent_id: agent.id, action: 'tend', x: 7, y: 6 });
+  assert.equal(capped.crop.ready_at - late.crop.planted_at, 28 * 60_000);
+  assert.equal(capped.crop.ready, true);
+  // A ready crop has nothing left to save, so tending leaves its time unchanged.
+  const finished = farm(f, agent, 'herbs', 8);
+  f.advance(20 * 60_000);
+  const unchanged = f.tx('gardenAction', f.actor('alice'), { agent_id: agent.id, action: 'tend', x: 8, y: 6 });
+  assert.equal(unchanged.crop.ready_at, finished.crop.planted_at + 20 * 60_000);
+});
+
 test('journal retention is bounded and account export/deletion includes only owned resident data', async (t) => {
   const f = await setup(t), agent = f.agent('alice'), bob = f.agent('bob');
   for (let n = 0; n < 205; n++) f.tx('writeJournal', f.actor('alice'), { agent_id: agent.id, text: `Entry ${n}` });

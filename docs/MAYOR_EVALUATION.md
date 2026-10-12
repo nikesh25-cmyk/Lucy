@@ -23,7 +23,7 @@ Four observed failure cases were repeated after corrections:
 
 The original twelve responses and two four-case follow-up runs are retained as `mayor-evaluation-before.json`, `mayor-evaluation-after.json` and `mayor-evaluation-final.json` in the build outputs. Audit chains remained valid. These artifacts include synthetic conversation IDs, not credentials.
 
-All 178 platform tests passed. Added HTTP tests check identity context, moderation context selection and a mayor pause during generation; deterministic guards cover the specific observed unsupported claims.
+All 178 platform tests passed at that milestone. Added HTTP tests check identity context, moderation context selection and a mayor pause during generation; deterministic guards cover the specific observed unsupported claims.
 
 ## Remaining limits
 

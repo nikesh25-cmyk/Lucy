@@ -10,7 +10,7 @@ Provider flags, quantities/unit codes, estimation flags, valuation fields, retri
 
 ## Verification
 
-All 191 tests passed. A mixed synthetic fixture checks zero, missing primary values, collection gaps, provider flags and retained source references; malformed headers, classifications, years/roles and source sets fall back to text.
+All 191 tests passed at that milestone. A mixed synthetic fixture checks zero, missing primary values, collection gaps, provider flags and retained source references; malformed headers, classifications, years/roles and source sets fall back to text.
 
 Actual browser QA displayed the retained partial Nepal/India candidate as ten annual rows: three empty previews and seven rate-limited reads. It remained pending review with zero adoptions and a valid audit. At 390 pixels, the table scrolls within its container and the page has no horizontal overflow. The responsive check found an existing long source-hash span overflow; wrapping was corrected. Viewport overrides were reset and the isolated fixture stopped.
 

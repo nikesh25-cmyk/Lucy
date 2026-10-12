@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "sage",
+  "kind": "cosmetic",
+  "label": "Sage",
+  "since": "1.0.0",
+  "order": 5,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#8eae83",
+    "geometry": null,
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "cosmetic_kind": "agent_color",
+    "earned_by": "selected by the operator when creating the character"
+  },
+  "notes": [
+    "Named colour resolved by AGENT_COLORS in src/voxel-world.js; an explicit hex colour saved on the agent passes through unchanged."
+  ]
+}

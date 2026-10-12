@@ -10,7 +10,7 @@ Each new record retains a check date, source location, editorial research sugges
 
 Existing country proposals, activated task scopes, accounts and world data are preserved. Added references do not automatically activate missions or create research submissions. Coverage remains partial for subsidiary bodies, individual Special Procedures mandates, climate bodies, treaty secretariats, funding mechanisms and programme-level agendas. These limits are visible in the reference desk.
 
-Verification: 172 tests pass. Tests exercise the new categories, distinct Council/Committee names, deduplicated country proposals, discovery routes, preserved country checks after activation, and zero automatic submissions/adoptions. Actual isolated browser QA displayed all ten treaty bodies and their evidence requirements, then a reviewer generated two Nepal disability-rights proposals. Those proposals are workflow fixtures, not completed studies or government recommendations.
+Verification: 172 tests passed at that milestone. Tests exercise the new categories, distinct Council/Committee names, deduplicated country proposals, discovery routes, preserved country checks after activation, and zero automatic submissions/adoptions. Actual isolated browser QA displayed all ten treaty bodies and their evidence requirements, then a reviewer generated two Nepal disability-rights proposals. Those proposals are workflow fixtures, not completed studies or government recommendations.
 
 
 The 12 October expansion adds four peacebuilding, food-security and disaster-risk references; see `STABILITY_REFERENCES.md` for secured retrieval proof, country checks and verification. The earlier sixteen-record addition and its 172-test milestone above are historical.

@@ -22,7 +22,7 @@ The free-text form now supports adding up to ten source records, matching the se
 
 ## Verification
 
-All 187 tests passed. Prepared ten-source fixture evidence preserved fields, scope and source numbering; unsupported fields, credential parameters, noncanonical years, invalid dates, oversized text and empty source lists were refused. Source ten survives draft normalization. Submission enters pending review through an owned claim with approved hosts; self-review is refused and no adoption is created.
+All 187 tests passed at that milestone. Prepared ten-source fixture evidence preserved fields, scope and source numbering; unsupported fields, credential parameters, noncanonical years, invalid dates, oversized text and empty source lists were refused. Source ten survives draft normalization. Submission enters pending review through an owned claim with approved hosts; self-review is refused and no adoption is created.
 
 Actual isolated browser QA imported the retained partial Nepal/India candidate, saved it, added ten source slots and verified content/row recovery after refresh. The user-controlled submit step produced one version with three retained source records, pending review, zero adoptions and a valid audit. The fixture was stopped and removed; no production account, claim, submission, acceptance, recommendation or adoption was created.
 

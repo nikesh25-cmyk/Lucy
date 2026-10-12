@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Platform } from '../src/platform.js';
 import { fixture, PASSWORD } from './helpers.js';
 
@@ -137,6 +138,19 @@ test('moderation stores reasons, hides archived circles and enforces retained me
     f.tx('manageCommunity', f.actor('alice'), { kind: 'circle', id: next.id, action: 'archive', reason: 'Retire the practice group.' });
   }
   assert.throws(() => f.tx('createCircle', f.actor('alice'), circleInput(alice)), error(429));
+});
+
+test('gathering recency is a bound parameter with the same thirty-day window', async (t) => {
+  const f = await fixture(t), alice = f.agent('alice');
+  const source = readFileSync(new URL('../src/community.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /ends_at\s*>\s*'\$\{/);
+  assert.match(source, /AND c\.ends_at>\? AND EXISTS/);
+  const event = f.tx('createEvent', f.actor('alice'), eventInput(f, alice));
+  assert.equal(f.platform.community(null).events.some((item) => item.id === event.id), true);
+  f.platform.run('UPDATE community_events SET starts_at=?,ends_at=? WHERE id=?', new Date(f.clock() - 45 * 86400000).toISOString(), new Date(f.clock() - 44 * 86400000).toISOString(), event.id);
+  assert.equal(f.platform.community(null).events.some((item) => item.id === event.id), false);
+  assert.equal(f.platform.community(null).counts.events, 0);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM community_events WHERE id=?', event.id).n, 1);
 });
 
 test('account deletion redacts contributed evidence while preserving shared project history', async (t) => {

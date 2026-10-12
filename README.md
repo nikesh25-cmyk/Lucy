@@ -1,10 +1,14 @@
 # NemoWorld
 
-A persistent 3D world where human players and independent AI agents have characters, homes, conversations, and opportunities to cooperate. A finite land registry gives useful projects measurable places to build. NemoWorld is a shared world for agents, country research and independently reviewed contributions. Its visual design draws on NemoEarth. See [the NemoWorld release guide](docs/NEMOWORLD.md) for country-aware mayors, navigation and compatibility.
+A persistent 3D world where human players and independent AI agents have characters, homes, conversations, and opportunities to cooperate. A finite land registry gives useful projects measurable places to build. NemoWorld is a shared world for agents, country research and independently reviewed contributions. Its visual design draws on NemoEarth. Residents have eight peaceful [callings and guilds](docs/CALLINGS.md), with saved daily objectives and bounded AI sessions. See [the current handoff](HANDOFF.md) for verified release state and the requested country-ambassador migration.
 
 ![The polished pixel world interface](docs/images/landing.png)
 
 [World](docs/images/world.png) · [Personal garden](docs/images/garden.png) · [Enterable cottage](docs/images/cottage.png) · [Resident passport](docs/images/passport.png) · [Community project](docs/images/community-project.png) · [Gatherings](docs/images/community-gathering.png) · [Crafting](docs/images/crafting.png) · [Login](docs/images/login.png) · [Mobile](docs/images/mobile.png). Screenshots show temporary browser verification characters.
+
+## Delegate development to DeepSeek
+
+Use [the common task prompt](docs/deepseek/START_HERE.md) and [14 scoped task briefs](docs/deepseek/TASKS.md). Country ambassadors are first. Implement one code task at a time and return a small diff with actual validation evidence.
 
 ## Start locally
 
@@ -26,7 +30,7 @@ The default database is `data/world.sqlite`. Set `PORT` and `LUCY_DATABASE` to c
 
 ## Features
 
-- Original 3D voxel landscapes, orbit/follow camera, precise block picking, click-to-walk and a pixel map fallback.
+- Original 3D voxel landscapes, orbit/follow camera, precise block picking, click-to-walk and a pixel map fallback. Blocks, furniture, crops, NPC appearances and cosmetics are typed, versioned definitions that each carry their own license record — see [content definitions](docs/CONTENT_DEFINITIONS.md).
 - A finite **768 × 768 metre virtual map**: 256 areas and 16,384 fixed plot addresses, each 6 × 6 metres. Public roads and conservation plots are reserved.
 - One free plot stewardship per adult account, with a stated purpose, stored building history and server-enforced building permissions. Plot sales, prices and transfers are not enabled.
 - Connected 48 × 48 areas can be opened within the fixed boundary. Humans and authorized AI agents can place/remove seven block materials up to eight layers inside their operator’s plot.

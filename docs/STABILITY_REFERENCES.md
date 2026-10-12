@@ -22,7 +22,7 @@ Related URLs are official research discovery routes, not proof of country findin
 
 ## Verification and limits
 
-All 182 tests passed. Each new reference generated two deduplicated Nepal proposals in an isolated fixture, preserving required country checks through mission activation. No submission, adoption or outreach was created. Actual browser QA displayed the Peacebuilding Fund category and financing qualifications, then CFS and its voluntary/local-evidence requirements.
+All 182 tests passed at that milestone. Each new reference generated two deduplicated Nepal proposals in an isolated fixture, preserving required country checks through mission activation. No submission, adoption or outreach was created. Actual browser QA displayed the Peacebuilding Fund category and financing qualifications, then CFS and its voluntary/local-evidence requirements.
 
 The installed proposal backlog stays 2,998; adding references does not silently generate or activate country tasks. Existing accounts, approved scopes and saved data are preserved. Catalog category counts reconcile to seventy-four and the former blanket treaty-body exclusion now accurately describes coverage beyond the listed core bodies.
 

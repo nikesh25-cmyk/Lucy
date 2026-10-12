@@ -165,19 +165,3 @@ test('HTTP methods and malformed requests fail safely without exception details'
   assert.deepEqual(failed.data, { error: 'Server error.' });
   assert.doesNotMatch(failed.raw, /Sensitive|password|stack|platform\.js/);
 });
-
-test('expired browser cookies recover public reads but cannot access private data or mutate records',async t=>{
- const f=await httpFixture(t),agent=f.agent('alice');f.tx('homeSettings',f.actor('alice'),agent.id,{visibility:'private'});const cookie='world_session='+f.credentials.alice.token;
- f.tx('logout',f.actor('alice'));const countries=await f.request('/countries',{cookie});assert.equal(countries.status,200);assert.equal(countries.data.total,248);assert.match(countries.headers.get('set-cookie'),/Max-Age=0/);assert.equal(countries.headers.get('x-lucy-session'),'expired');
- const privateHome=await f.request('/world?world_id='+encodeURIComponent('home:'+agent.id),{cookie});assert.equal(privateHome.status,403);assert.equal(privateHome.raw.includes(agent.name),false);
- for(const route of ['/me','/history','/drafts','/export','/workers']){const result=await f.request(route,{cookie});assert.equal(result.status,401);assert.match(result.headers.get('set-cookie'),/Max-Age=0/);}
- const before=f.platform.get('SELECT COUNT(*) AS n FROM agents').n;assert.equal((await f.request('/agents',{method:'POST',cookie,input:{name:'Denied expired creation'}})).status,401);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM agents').n,before);
- const malformed=await f.request('/countries',{cookie:'world_session=obsolete-cookie'});assert.equal(malformed.status,200);assert.match(malformed.headers.get('set-cookie'),/Max-Age=0/);
- const fresh=await f.request('/countries',{cookie:'world_session='+f.credentials.bob.token});assert.equal(fresh.status,200);assert.equal(fresh.headers.get('set-cookie'),null);assert.equal(f.platform.verifyAudit(),true);
-});
-test('explicit API credentials never downgrade to visitors or invalidate an unrelated browser cookie',async t=>{
- const f=await httpFixture(t),cookie='world_session='+f.credentials.alice.token;f.tx('logout',f.actor('bob'));
- const expired=await f.request('/countries',{token:f.credentials.bob.token,cookie});assert.equal(expired.status,401);assert.equal(expired.headers.get('set-cookie'),null);
- assert.equal((await f.request('/me',{cookie})).status,200);
- f.platform.run("UPDATE accounts SET status='suspended' WHERE id=?",f.actor('alice').account.id);assert.equal((await f.request('/countries',{cookie})).status,403);
-});

@@ -6,6 +6,8 @@ import { dirname, resolve, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { COMMUNITY_TABLES } from './community.js';
 import { JOURNEY_TABLES } from './journey.js';
+import { verifyCallingReceipts } from './vocations.js';
+import { GARDEN_PALETTE,HOUSE_PALETTE } from './placement-policy.js';
 
 const requiredTables = ['accounts', 'invites', 'agents', 'tokens', 'missions', 'tasks', 'claims', 'submissions', 'reviews', 'adoptions', 'messages', 'reports', 'appeals', 'jobs', 'settings', 'audit'];
 const digest = (value) => createHash('sha256').update(value).digest('hex');
@@ -22,7 +24,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -52,6 +54,22 @@ export function validateDatabase(path) {
       if (db.prepare('SELECT b.id FROM frontier_blocks b JOIN land_parcels p ON p.id=b.plot_id WHERE b.world_id!=p.world_id OR b.x<p.x OR b.x>=p.x+p.width OR b.y<p.y OR b.y>=p.y+p.height').get()) throw new Error('Database parcel construction is invalid.');
       // Canonical legacy sectors outside the new perimeter stay valid backup records.
       if (db.prepare("SELECT world_id FROM frontier_sectors WHERE world_id!=printf('frontier:%d:%d',sector_x,sector_y)").get()) throw new Error('Database frontier area identities are invalid.');
+    }
+    if (version >= 12) {
+      if (['z', 'grounded', 'yaw', 'pitch', 'last_look'].some(column => !db.prepare('PRAGMA table_info(agents)').all().some(field => field.name === column))) throw new Error('Database elevation schema is incomplete.');
+      if (db.prepare('SELECT id FROM agents WHERE z NOT BETWEEN 0 AND 8').get()) throw new Error('Database elevation state is invalid.');
+    }
+    if (version >= 13) {
+      if (!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name='world_objects_build_guard'").get()) throw new Error('Database garden build protections are incomplete.');
+      const garden=GARDEN_PALETTE.map(type=>`'${type}'`).join(','),house=HOUSE_PALETTE.map(type=>`'${type}'`).join(',');
+      if (db.prepare(`SELECT o.id FROM world_objects o JOIN worlds w ON w.id=o.world_id WHERE (w.kind='home' AND o.type NOT IN (${garden})) OR (w.kind='house' AND o.type NOT IN (${house}))`).get()) throw new Error('Database garden construction is invalid.');
+      if (db.prepare("SELECT o.id FROM world_objects o JOIN worlds w ON w.id=o.world_id WHERE w.kind NOT IN ('home','house') OR o.x<0 OR o.x>=w.width OR o.y<0 OR o.y>=w.height").get()) throw new Error('Database garden construction is invalid.');
+    }
+    if (version >= 14) {
+      const columns={resident_callings:['agent_id','calling_id','selected_at','last_changed_day'],calling_receipts:['id','agent_id','account_id','calling_id','objective_id','source_kind','source_id','source_at','selected_at','earned_day','points','created_at','proof_hash']};
+      for(const [table,fields] of Object.entries(columns))if(!tables.has(table)||fields.some(column=>!db.prepare(`PRAGMA table_info(${table})`).all().some(field=>field.name===column)))throw new Error('Database calling schema is incomplete.');
+      if(['world_objects_update_guard','calling_receipts_no_update','calling_receipts_validate_insert'].some(name=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name))||['calling_source_events','calling_objective_rules'].some(name=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='view' AND name=?").get(name)))throw new Error('Database calling and build protections are incomplete.');
+      if(db.prepare("SELECT v.agent_id FROM resident_callings v JOIN agents a ON a.id=v.agent_id WHERE v.calling_id NOT IN (SELECT calling_id FROM calling_objective_rules) OR v.selected_at<0 OR (v.last_changed_day!='' AND (length(v.last_changed_day)!=10 OR date(v.last_changed_day) IS NULL))").get()||db.prepare('SELECT r.id FROM calling_receipts r JOIN agents a ON a.id=r.agent_id WHERE r.account_id!=a.operator_id').get()||!verifyCallingReceipts(db))throw new Error('Database calling progress validation failed.');
     }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { Platform } from '../src/platform.js';
 import { createApp } from '../server.js';
 import { getWorldDefinition, walkable } from '../world.js';
+import { REGIONS } from '../src/civic.js';
 import { fixture } from './helpers.js';
 
 const denied = (operation, statuses = [403, 404]) => assert.throws(operation, (error) => statuses.includes(error.status));
@@ -71,6 +72,31 @@ test('shared interiors require a nearby portal while homes support directory vis
   assert.equal(f.platform.get('SELECT world_id FROM agents WHERE id=?', alice.id).world_id, 'commons');
   denied(() => f.tx('travel', f.actor('bob'), alice.id, { world_id: 'commons' }));
   denied(() => f.tx('travel', f.actor('alice'), alice.id, { world_id: 'missing-world' }), [400, 404]);
+});
+
+test('a non-owner reaches another public garden from anywhere in the directory, and never a private one', async (t) => {
+  // Directory visiting is documented, so travel to a home skips only the doorway requirement:
+  // README.md "Use the world directory to visit public gardens as a character or human spectator"
+  // and docs/ARCHITECTURE.md "gardens can be visited through the directory". The Commons has no
+  // doorway into another character's garden, and the visitor is standing nowhere near one.
+  const f = await fixture(t);
+  const owner = f.agent('alice');
+  const visitor = f.agent('bob');
+  const homeId = `home:${owner.id}`;
+  assert.equal(f.platform.get('SELECT world_id FROM agents WHERE id=?', visitor.id).world_id, 'commons');
+  assert.equal(f.tx('travel', f.actor('bob'), visitor.id, { world_id: homeId }).world_id, homeId);
+  assert.equal(f.platform.get('SELECT world_id FROM agents WHERE id=?', visitor.id).world_id, homeId);
+  // A cottage is an interior and still needs a doorway: the visitor arrives on the garden's cottage
+  // doorway, so moving away from it makes the interior unreachable without walking back.
+  f.platform.run('UPDATE agents SET x=2,y=2 WHERE id=?', visitor.id);
+  f.advance();
+  denied(() => f.tx('travel', f.actor('bob'), visitor.id, { world_id: `house:${owner.id}` }), [409]);
+  f.tx('homeSettings', f.actor('alice'), owner.id, { visibility: 'private' });
+  assert.equal(f.platform.get('SELECT world_id FROM agents WHERE id=?', visitor.id).world_id, 'commons');
+  f.advance();
+  denied(() => f.tx('travel', f.actor('bob'), visitor.id, { world_id: homeId }), [403]);
+  f.advance();
+  assert.equal(f.tx('travel', f.actor('alice'), owner.id, { world_id: homeId }).world_id, homeId);
 });
 
 test('home construction validates ownership, walkability, bounds and capacity and persists objects', async (t) => {
@@ -156,7 +182,7 @@ test('ten thousand registered agents produce bounded viewport and directory resp
   assert.equal(view.counts.visible_agents, avatars(view).length);
   assert.ok(view.terrain.length <= 14);
   assert.ok(view.terrain.every((row) => row.length <= 20));
-  assert.ok(JSON.stringify(view).length < 250_000);
+  assert.ok(JSON.stringify(view).length < 250_000, `Viewport response exceeds its 250000-character budget: ${JSON.stringify(view).length}`);
   const farAway = f.platform.world(f.actor('alice'), { world_id: 'commons', x: 80, y: 50 });
   assert.equal(avatars(farAway).length, 0);
   const listing = f.platform.worldList(f.actor('alice'), { offset: 0, limit: 2 });
@@ -242,6 +268,22 @@ test('a personal cottage requires its garden doorway and inherits private visiti
   assert.equal(f.platform.get('SELECT world_id FROM agents WHERE id=?', alice.id).world_id, 'commons');
 });
 
+test('the viewport roster never exceeds the 200-avatar bound and reports hidden participants', async (t) => {
+  const f = await fixture(t);
+  const alice = f.agent('alice');
+  const position = f.platform.get('SELECT x,y FROM agents WHERE id=?', alice.id);
+  // Synthetic civic residents exceed the bound so the cap and its reporting are observable.
+  f.platform.transaction(() => {
+    const insert = f.platform.db.prepare("INSERT INTO npc_mayors(id,region_id,world_id,name,sprite,x,y,status,ticks,last_tick) VALUES(?,?,'commons',?,0,?,?,'active',0,?)");
+    for (let index = 0; index < 205; index++) insert.run(randomUUID(), REGIONS[0].id, `Bound mayor ${index}`, position.x, position.y, f.clock());
+  });
+  const view = f.platform.world(f.actor('alice'), { world_id: 'commons' });
+  assert.equal(avatars(view).length, 200);
+  assert.equal(view.counts.visible_agents, avatars(view).length);
+  assert.equal(view.counts.hidden_agents, 6);
+  assert.equal(avatars(view).filter((participant) => participant.id === alice.id).length, 1);
+});
+
 test('placed obstacles block movement and removing them restores passage while flowers stay walkable', async (t) => {
   const f = await fixture(t);
   const alice = f.agent('alice');
@@ -296,7 +338,7 @@ test('deleting a home owner clears construction and safely evacuates garden and 
   assert.equal(f.platform.verifyAudit(), true);
 });
 
-test('ten shared worlds expose scenic region metadata and doorway travel returns to the correct district', async (t) => {
+test('thirty shared worlds expose scenic region metadata and doorway travel returns to the correct district', async (t) => {
   const f = await fixture(t);
   const agent = f.agent('alice');
   const listing = f.platform.worldList(f.actor('alice'));
@@ -349,4 +391,29 @@ test('garden decorations and safe cottage furnishing preserve ownership and clea
   f.advance();
   f.tx('travel', f.actor('alice'), owner.id, { world_id: homeId });
   assert.equal(f.platform.world(f.actor('alice'), { agent_id: owner.id }).objects.length, 6);
+});
+
+test('garden storage refuses a placed object that bypasses the build method', async (t) => {
+  // build() is not the only possible writer, so the same rule is a database trigger: an object may
+  // only enter its own garden or cottage, in bounds, from the palette that world kind may build with.
+  const f = await fixture(t);
+  const owner = f.agent('alice');
+  const homeId = `home:${owner.id}`, houseId = `house:${owner.id}`;
+  const insert = (world, type, x, y) => f.platform.run('INSERT INTO world_objects(id,world_id,type,x,y,created_at) VALUES(?,?,?,?,?,?)',
+    randomUUID(), world, type, x, y, new Date(f.clock()).toISOString());
+  assert.throws(() => insert(homeId, 'invented-statue', 4, 8), /Garden objects/);
+  assert.throws(() => insert('commons', 'tree', 4, 8), /Garden objects/);
+  assert.throws(() => insert(houseId, 'pond', 4, 8), /Garden objects/, 'a garden-only object may not enter a cottage');
+  assert.throws(() => insert(homeId, 'tree', 900, 8), /Garden objects/, 'an object may not leave the world bounds');
+  assert.throws(() => insert(homeId, 'tree', -1, 8), /Garden objects/);
+  assert.throws(() => insert('home:missing', 'tree', 4, 8), /foreign key|Garden objects/);
+  insert(homeId, 'tree', 4, 8);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', homeId).n, 1);
+  // The guard must not break the build method's upsert or its removal.
+  f.tx('travel', f.actor('alice'), owner.id, { world_id: homeId });
+  f.tx('build', f.actor('alice'), owner.id, { type: 'bench', x: 4, y: 8 });
+  assert.equal(f.platform.get('SELECT type FROM world_objects WHERE world_id=?', homeId).type, 'bench');
+  f.tx('build', f.actor('alice'), owner.id, { remove: true, x: 4, y: 8 });
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', homeId).n, 0);
+  assert.equal(f.platform.verifyAudit(), true);
 });

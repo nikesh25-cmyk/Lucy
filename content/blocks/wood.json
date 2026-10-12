@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "id": "wood",
+  "kind": "block",
+  "label": "Wood",
+  "since": "1.0.0",
+  "order": 1,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#b58c58",
+    "color_2d": "#b38b60",
+    "geometry": "cube",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [
+      "frontier"
+    ],
+    "walkable": false,
+    "stack": {
+      "requires_solid_below": true,
+      "z_min": 0,
+      "z_max": 7,
+      "supports_stacking": true
+    },
+    "path_only_z0": false
+  },
+  "notes": [
+    "Two authored colours exist: the voxel material colour (appearance.color) and the tile-renderer colour (appearance.color_2d).",
+    "Stack placement above z 0 requires a solid block directly below in the same operator plot (src/frontier.js)."
+  ]
+}

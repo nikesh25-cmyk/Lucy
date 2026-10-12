@@ -10,6 +10,7 @@ import { openDatabase } from './database.js';
 import { start } from '../world.js';
 import { spaceMethods } from './spaces.js';
 import { communityMethods } from './community.js';
+import { vocationMethods } from './vocations.js';
 import { journeyMethods } from './journey.js';
 import { civicMethods } from './civic-engine.js';
 import { REGIONS } from './civic.js';
@@ -26,9 +27,11 @@ const text = (value, label, max = 2000, optional = false) => {
 const role = (actor, roles) => { if (!actor || actor.kind !== 'session' || !roles.includes(actor.account.role)) fail(403, 'This action requires an authorized human account.'); };
 const parse = (value) => JSON.parse(value);
 const publicAccount = ({ id, name, role: accountRole, status, created_at }) => ({ id, name, role: accountRole, status, created_at });
+// Bounded reads: each listing below returns the most recent records up to these limits.
+const MISSION_LIMIT = 200, GALLERY_LIMIT = 200, SAFETY_LIMIT = 200, HISTORY_LIMIT = 200, EXPORT_LIMIT = 500;
 
 export class Platform {
-  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); }
+  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); }
   get(sql, ...args) { return this.db.prepare(sql).get(...args); }
   all(sql, ...args) { return this.db.prepare(sql).all(...args); }
   run(sql, ...args) { return this.db.prepare(sql).run(...args); }
@@ -39,7 +42,7 @@ export class Platform {
   }
   audit(actor, event, recordId = '') {
     const previous = this.get('SELECT hash FROM audit ORDER BY seq DESC LIMIT 1')?.hash || '';
-    const date = now();
+    const date = new Date(this.clock()).toISOString();
     const digest = hash(JSON.stringify([actor, event, recordId, date, previous]));
     this.run('INSERT INTO audit(actor,event,record_id,created_at,previous_hash,hash) VALUES(?,?,?,?,?,?)', actor, event, recordId, date, previous, digest);
   }
@@ -181,6 +184,7 @@ export class Platform {
     this.audit(actor.account.id, kind === 'human' ? 'human.created' : 'agent.created', id);
     this.createHome(id, name);
     this.recordVisit(actor, id, 'commons');
+    this.callings(actor,{agent_id:id});
     return this.get('SELECT id,name,kind,status FROM agents WHERE id=?', id);
   }
   ownedAgent(actor, id) {
@@ -265,9 +269,11 @@ export class Platform {
   missionList(actor = null, options = {}) {
     this.expireClaims();
     if(Object.keys(options).length)return missionDirectory(this,actor,options);
-    const missions = this.all('SELECT m.*,o.name AS owner,r.name AS reviewer FROM missions m LEFT JOIN accounts o ON o.id=m.owner_id LEFT JOIN accounts r ON r.id=m.reviewer_id').filter((mission) => mission.status !== 'draft' || (actor?.kind === 'session' && (actor.account.role === 'admin' || [mission.owner_id, mission.reviewer_id].includes(actor.account.id))));
-    const ids = new Set(missions.map((mission) => mission.id));
-    return { missions, tasks: this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id').filter((task) => ids.has(task.mission_id)).map((task) => ({ ...task, allowed_domains: parse(task.allowed_domains), allowed_actions: ['read-approved-sources', 'submit-evidence'], risk: 'low', lease_minutes: 20 })) };
+    const human = actor?.kind === 'session' ? actor : null, visible = "(m.status<>'draft' OR ?=1 OR m.owner_id=? OR m.reviewer_id=?)", args = [human?.account.role === 'admin' ? 1 : 0, human?.account.id || '', human?.account.id || ''];
+    const total = this.get(`SELECT COUNT(*) AS n FROM missions m WHERE ${visible}`, ...args).n;
+    const missions = this.all(`SELECT m.*,o.name AS owner,r.name AS reviewer FROM missions m LEFT JOIN accounts o ON o.id=m.owner_id LEFT JOIN accounts r ON r.id=m.reviewer_id WHERE ${visible} ORDER BY m.created_at DESC,m.id ASC LIMIT ?`, ...args, MISSION_LIMIT);
+    const tasks = this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id WHERE t.mission_id IN (SELECT value FROM json_each(?)) ORDER BY t.id', JSON.stringify(missions.map((mission) => mission.id))).map((task) => ({ ...task, allowed_domains: parse(task.allowed_domains), allowed_actions: ['read-approved-sources', 'submit-evidence'], risk: 'low', lease_minutes: 20 }));
+    return { missions, tasks, total, offset: 0, limit: MISSION_LIMIT, has_more: missions.length < total };
   }
   createMission(actor, input) {
     role(actor, ['admin', 'reviewer']); this.active();
@@ -402,6 +408,8 @@ export class Platform {
     this.run('UPDATE claims SET status=?,expires_at=? WHERE id=?', input.decision, this.clock() + 20 * 60_000, submission.claim_id);
     if(input.decision==='changes_requested')this.run('UPDATE claim_drafts SET archived=0 WHERE claim_id=?',submission.claim_id);
     this.run('UPDATE tasks SET status=? WHERE id=?', input.decision === 'rejected' ? 'open' : input.decision, submission.task_id);
+    // Reopening a rejected task must not present its research lead as freshly activated.
+    if(input.decision==='rejected')this.run("UPDATE research_leads SET status='rejected' WHERE task_id=?",submission.task_id);
     this.audit(actor.account.id, `review.${input.decision}`, id);
     const coin_reward=input.decision==='accepted'?this.awardCoins(actor,submission.id,id):null;
     return { id, decision: input.decision,...(coin_reward?{coin_reward}:{}) };
@@ -414,10 +422,11 @@ export class Platform {
     if (!owner || !reviewer) fail(409, 'The mission owner or review capacity is unavailable.');
   }
   history(actor) {
-    const reviewer = actor.kind === 'session' && ['admin', 'reviewer'].includes(actor.account.role);
-    const predicate = reviewer ? '(m.demo=1 OR m.reviewer_id=? OR ?=1 OR c.account_id=?)' : 'c.account_id=?';
+    const reviewer = actor.kind === 'session' && ['admin', 'reviewer'].includes(actor.account.role), runtime = actor.kind === 'runtime';
+    const predicate = `${reviewer ? '(m.demo=1 OR m.reviewer_id=? OR ?=1 OR c.account_id=?)' : 'c.account_id=?'}${runtime ? ' AND c.agent_id=?' : ''}`;
     const args = reviewer ? [actor.account.id, actor.account.role === 'admin' ? 1 : 0, actor.account.id] : [actor.account.id];
-    const submissions = this.all(`SELECT s.*,c.task_id,t.title AS task_title,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC`, ...args).filter((s) => actor.kind !== 'runtime' || s.agent_id === actor.agent.id).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
+    if (runtime) args.push(actor.agent.id);
+    const submissions = this.all(`SELECT s.*,c.task_id,t.title AS task_title,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC,s.rowid DESC LIMIT ?`, ...args, HISTORY_LIMIT).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
     const ids = new Set(submissions.map((s) => s.id));
     const claims=this.all('SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=? ORDER BY c.created_at DESC',actor.account.id).filter(c=>actor.kind!=='runtime'||c.agent_id===actor.agent.id);
     const contextIds=JSON.stringify([...new Set([...claims.map(c=>c.task_id),...submissions.map(s=>s.task_id)])]);
@@ -428,12 +437,12 @@ export class Platform {
       submissions,
       drafts:actor.kind==='session'?this.drafts(actor):[],
       jobs: this.all(`SELECT j.*,a.name AS agent_name FROM jobs j JOIN agents a ON a.id=j.agent_id WHERE a.operator_id=?${actor.kind === 'runtime' ? ' AND j.agent_id=?' : ''} ORDER BY j.created_at DESC LIMIT 100`, actor.account.id, ...(actor.kind === 'runtime' ? [actor.agent.id] : [])),
-      reviews: this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id').filter((r) => ids.has(r.submission_id)),
+      reviews: this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id WHERE r.submission_id IN (SELECT value FROM json_each(?)) ORDER BY r.created_at DESC,r.rowid DESC', JSON.stringify([...ids])),
     };
   }
   gallery(submissionId=null) {
     return this.all(`SELECT s.id,s.status,s.artifact,s.sources,s.method,s.limitations,s.rights,s.version,s.created_at,c.task_id,c.agent_id,t.title AS task_title,m.title AS mission,m.demo,m.beneficiary,m.rubric,COALESCE(a.name,o.name) AS contributor,r.id AS review_id,r.decision AS review_decision,r.reason,r.created_at AS reviewed_at,h.name AS reviewer,
-      (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted'${submissionId?' AND s.id=?':''} ORDER BY s.created_at DESC`,...(submissionId?[submissionId]:[])).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
+      (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted'${submissionId?' AND s.id=?':''} ORDER BY s.created_at DESC,s.rowid DESC LIMIT ?`,...(submissionId?[submissionId]:[]),GALLERY_LIMIT).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
   }
   deliveryPacket(input){
     const record=this.gallery(text(input.submission,'Submission identifier',100))[0];
@@ -486,9 +495,11 @@ export class Platform {
   safety(actor) {
     role(actor, ['admin', 'moderator', 'reviewer', 'member']);
     const moderator = actor.kind === 'session' && ['admin', 'moderator'].includes(actor.account.role);
-    const reports = this.all('SELECT * FROM reports').filter((r) => moderator || r.reporter_id === actor.account.id || this.targetOwner(r) === actor.account.id);
-    const ids = new Set(reports.map((r) => r.id));
-    return { reports: reports.map((report) => { if (moderator || report.reporter_id === actor.account.id) return report; const { reporter_id, ...visible } = report; return visible; }), appeals: this.all('SELECT * FROM appeals').filter((a) => moderator || ids.has(a.report_id)) };
+    // Ownership is resolved in SQL so the bound keeps a member's own reports and appeals visible.
+    const mine = "(r.reporter_id=? OR (r.target_type='agent' AND EXISTS(SELECT 1 FROM agents g WHERE g.id=r.target_id AND g.operator_id=?)) OR (r.target_type='message' AND EXISTS(SELECT 1 FROM messages m WHERE m.id=r.target_id AND m.account_id=?)) OR (r.target_type='submission' AND EXISTS(SELECT 1 FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE s.id=r.target_id AND c.account_id=?)))";
+    const rows = moderator ? this.all('SELECT r.* FROM reports r ORDER BY r.created_at DESC,r.rowid DESC LIMIT ?', SAFETY_LIMIT + 1) : this.all(`SELECT r.* FROM reports r WHERE ${mine} ORDER BY r.created_at DESC,r.rowid DESC LIMIT ?`, actor.account.id, actor.account.id, actor.account.id, actor.account.id, SAFETY_LIMIT + 1);
+    const reports = rows.slice(0, SAFETY_LIMIT), ids = new Set(reports.map((r) => r.id));
+    return { reports: reports.map((report) => { if (moderator || report.reporter_id === actor.account.id) return report; const { reporter_id, ...visible } = report; return visible; }), appeals: this.all('SELECT * FROM appeals WHERE report_id IN (SELECT value FROM json_each(?)) ORDER BY created_at DESC,rowid DESC LIMIT ?', JSON.stringify([...ids]), SAFETY_LIMIT), has_more: rows.length > SAFETY_LIMIT };
   }
   targetOwner(report) {
     if (report.target_type === 'agent') return this.get('SELECT operator_id FROM agents WHERE id=?', report.target_id)?.operator_id;
@@ -536,7 +547,8 @@ export class Platform {
   }
   accountControl(actor, input) {
     role(actor, ['admin']);
-    if (input.account_id === actor.account.id) fail(400, 'You cannot change your own admin role or status.');
+    // An administrator may step down; self-suspension would revoke their own access to every administrator route.
+    if (input.account_id === actor.account.id && input.status) fail(400, 'You cannot change your own account status.');
     if (!this.get('SELECT id FROM accounts WHERE id=?', input.account_id || '')) fail(404, 'Account not found.');
     if (input.role) {
       if (!['member', 'reviewer', 'moderator'].includes(input.role)) fail(400, 'Invalid account role.');
@@ -553,15 +565,16 @@ export class Platform {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']);
     const history = this.history({ ...actor, account: { ...actor.account, role: 'member' } });
     const agents = this.me(actor).agents;
-    const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at`, actor.account.id, actor.account.id);
-    const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
-    const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
-    return { format: 'shared-world-account-v11', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, frontier:this.frontierExport(actor), coins:this.coinExport(actor), ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=?',actor.account.id).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at DESC,m.rowid DESC LIMIT ?`, actor.account.id, actor.account.id, EXPORT_LIMIT);
+    const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=? ORDER BY w.created_at DESC LIMIT ?', actor.account.id, EXPORT_LIMIT);
+    const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=? ORDER BY b.created_at DESC LIMIT ?', actor.account.id, EXPORT_LIMIT);
+    return { format: 'shared-world-account-v14', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, frontier:this.frontierExport(actor), coins:this.coinExport(actor), callings:this.vocationExport(actor), ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=? ORDER BY f.created_at DESC LIMIT ?',actor.account.id,EXPORT_LIMIT).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
-    role(actor, ['member', 'reviewer', 'moderator']);
+    role(actor, ['admin', 'member', 'reviewer', 'moderator']);
     if (this.get("SELECT id FROM missions WHERE (owner_id=? OR reviewer_id=?) AND status='open'", actor.account.id, actor.account.id)) fail(409, 'Transfer or close your active missions before deleting your account.');
     this.run('DELETE FROM claim_drafts WHERE claim_id IN (SELECT id FROM claims WHERE account_id=?)',actor.account.id);
+    this.deleteVocations(actor);
     this.deleteCommunity(actor);
     this.deleteJourney(actor);
     this.run('DELETE FROM land_stewardships WHERE account_id=?', actor.account.id);
@@ -598,7 +611,7 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods);
 
 Object.assign(Platform.prototype,draftMethods);
 

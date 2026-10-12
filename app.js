@@ -1,4 +1,5 @@
 import {createVoxelWorld} from './src/voxel-world.js';
+import {cameraWalkDirection} from './src/camera-controls.js';
 import {planWalk} from './src/world-walk.js';
 import {globeScene,countryGlobeCenter,rotateGlobe} from './src/country-globe.js';
 import {validateCountryAtlas,atlasSelection,atlasViewBox} from './src/country-atlas.js';
@@ -15,7 +16,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 const $ = (selector) => document.querySelector(selector);
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62}});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -36,7 +37,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- walkVersion++;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();render();
+ walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -72,7 +73,7 @@ function form(parent, submitLabel, callback) {
 }
 function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
 function heading(title, description) { const node = element('div', null, 'section-title'); const text = element('div'); append(text, element('h2', title), paragraph(description)); node.append(text); return node; }
-async function selectAgent(id) { walkVersion++;state.voxelSelection=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await loadJourney(); await loadCommunity(); render(); }
+async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.voxelSelection=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -94,9 +95,9 @@ function cameraFor(position = worldPosition()) {
 }
 function paintWorld() {
   const canvas = $('#world'); if (!canvas) return; const owned = viewedAgent(); const agent=owned?{...owned,...state.world.participants.find(item=>item.id===owned.id)}:null; state.camera = cameraFor();
-  if(state.graphics==='voxel'){if(!voxelView){voxelView=createVoxelWorld(canvas,{onPick:pick=>guarded(()=>pickWorld(pick)),onUnavailable:()=>{if(state.graphicsUnavailable)return;state.graphics='pixel';state.graphicsUnavailable=true;queueMicrotask(()=>renderView());}});if(!voxelView)return;if(state.voxelOrbit)voxelView.setOrbit(state.voxelOrbit);}voxelView.render(state.world,{definition:definition(),position:worldPosition(),self:agent||null,selection:state.voxelSelection,parcelSelection:state.parcelSelection,dayPhase:state.world.atmosphere?.phase});canvas.dataset.graphics='voxel';}
+  if(state.graphics==='voxel'){if(!voxelView){voxelView=createVoxelWorld(canvas,{onPick:pick=>guarded(()=>pickWorld(pick)),onLook:look=>queueLook(look.yaw,look.pitch,{apply:false}),onUnavailable:()=>{if(state.graphicsUnavailable)return;state.graphics='pixel';state.graphicsUnavailable=true;queueMicrotask(()=>renderView());}});if(!voxelView)return;if(state.voxelOrbit)voxelView.setOrbit(state.voxelOrbit);}voxelView.render(state.world,{definition:definition(),position:worldPosition(),self:agent||null,selection:state.voxelSelection,parcelSelection:state.parcelSelection,cameraMode:state.firstPerson&&agent?'first-person':'orbit',facing:state.facing,dayPhase:state.world.atmosphere?.phase});canvas.dataset.graphics='voxel';}
   else {draw(canvas, worldPosition(), { blocks:state.world.blocks||[],world: definition(), camera: state.camera, objects: state.world.objects || [], portals: worldPortals(), visitors: state.world.participants.filter((a) => a.id !== agent?.id && a.status !== 'revoked'), self: agent || null, sprites:mayorSprites, dayPhase: state.world.atmosphere?.phase });canvas.dataset.graphics='pixel';}
-  syncWorldControls();const overview=$('#world-overview');if(overview)drawMiniMap(overview,definition(),{camera:state.camera,position:agent||null,objects:state.world.objects||[],blocks:state.world.blocks||[],portals:worldPortals()});
+  syncWorldControls();updateCallingHUD();const overview=$('#world-overview');if(overview)drawMiniMap(overview,definition(),{camera:state.camera,position:agent||null,objects:state.world.objects||[],blocks:state.world.blocks||[],portals:worldPortals()});
 }
 function worldURL() { const position = cameraFor(); const query = new URLSearchParams({ view:state.graphics==='voxel'?'voxel':'pixel',world_id: currentWorldId(), x: String(Math.floor(position.x)), y: String(Math.floor(position.y)) }); if (selected() && state.account) query.set('agent_id', state.selected); return `/world?${query}`; }
 function normalizeWorld(world) { return { ...world, participants: world.participants || world.agents || [] }; }
@@ -105,6 +106,76 @@ async function loadDirectory() { const result = await api(`/worlds?${new URLSear
 async function visitWorld(id) { walkVersion++;$('#notice').hidden=true; state.viewWorld = id; state.focus = getWorldDefinition(id).start; state.building = false; await loadWorld(); state.tab = 'world'; render(); }
 let lastMotionAt = 0;
 async function motionRequest(path, body) { const delay = Math.max(0, 160 - (performance.now() - lastMotionAt)); if (delay) await new Promise((resolve) => setTimeout(resolve, delay)); lastMotionAt = performance.now(); return api(path, 'POST', body); }
+const wrapFacing = (value) => value >= -Math.PI && value <= Math.PI ? value : ((value + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+const clampFacing = (value) => Math.max(-1.4, Math.min(1.4, value));
+let lookChain = Promise.resolve(), lookTimer = null, lastLookAt = 0;
+function cancelLook(){if(lookTimer)clearTimeout(lookTimer);lookTimer=null;}
+function applyFacing() {
+  if (!voxelView) return;
+  voxelView.setCameraMode(state.firstPerson&&viewedAgent()?'first-person':'orbit');
+  voxelView.setOrbit({ yaw: state.facing.yaw, pitch: state.facing.pitch });
+}
+function sendLook() {
+  const agent = viewedAgent(); if (!agent||agent.status!=='active'||state.world.paused||!(state.lookMode||state.firstPerson)) return;
+  const facing = { ...state.facing },epoch=state.sessionEpoch||0,id=agent.id;
+  lookChain = lookChain.then(async()=>{
+    if(epoch!==(state.sessionEpoch||0)||viewedAgent()?.id!==id)return;
+    const result=await motionRequest(`/agents/${encodeURIComponent(id)}/look`,facing);
+    if(epoch===(state.sessionEpoch||0)&&viewedAgent()?.id===id)Object.assign(agent,result);
+  }).catch(error=>{if(!error.sessionEnded)notice(error.message||'The look could not be saved.',true);});
+}
+// One renderer owns dragging. Keep even a visitor's orbit through snapshot refreshes.
+function queueLook(yaw,pitch,{apply=true}={}) {
+  state.facing={yaw:wrapFacing(yaw),pitch:clampFacing(pitch)};
+  if(apply)applyFacing();
+  if(!viewedAgent()||!(state.lookMode||state.firstPerson))return;
+  const elapsed=performance.now()-lastLookAt;
+  if(elapsed>=150){lastLookAt=performance.now();sendLook();return;}
+  if(!lookTimer)lookTimer=setTimeout(()=>{lookTimer=null;lastLookAt=performance.now();sendLook();},150-elapsed);
+}
+function lookStep(direction) {
+  const facing=state.facing,step=.35;
+  if(direction==='left')queueLook(facing.yaw+step,facing.pitch);
+  else if(direction==='right')queueLook(facing.yaw-step,facing.pitch);
+  else if(direction==='up')queueLook(facing.yaw,facing.pitch-step);
+  else queueLook(facing.yaw,facing.pitch+step);
+}
+function toggleFirstPerson() {
+  if(!viewedAgent())return;
+  state.firstPerson=!state.firstPerson;cancelLook();
+  renderView();
+  notice(state.firstPerson?'First person: drag to look; WASD walks in your viewing direction. Q/E turn, R/F tilt. Step-up mode climbs one authored layer.':'Returned to the orbiting camera.');
+}
+function controlStep(direction,{keyboard=false}={}) {
+  if(!viewedAgent())return moveAgent(direction);
+  if(state.lookMode&&!(keyboard&&state.firstPerson))return lookStep(direction);
+  const step=state.firstPerson?cameraWalkDirection(direction,state.facing.yaw):direction;
+  return state.climbing?climbAgent(step):moveAgent(step);
+}
+// Climbing uses the previewed neighbouring tile, the same pick the build path consumes.
+function climbDirection() {
+  const agent = viewedAgent(), target = state.voxelSelection;
+  if (!agent || !target) return null;
+  const dx = target.x - agent.x, dy = target.y - agent.y;
+  if (Math.abs(dx) + Math.abs(dy) !== 1) return null;
+  return dx === 1 ? 'right' : dx === -1 ? 'left' : dy === 1 ? 'down' : 'up';
+}
+async function climbAgent(direction) {
+  const agent=viewedAgent();if(!agent)return;
+  walkVersion++;motionRevision++;const oldWorld=agent.world_id,epoch=state.sessionEpoch||0;
+  const position=await motionRequest('/climb',{agent_id:agent.id,direction});
+  if(epoch!==(state.sessionEpoch||0)||selected()?.id!==agent.id)return;
+  const crossed=position.world_id!==oldWorld;Object.assign(agent,position);
+  if(crossed){state.focus=null;state.voxelSelection=null;state.building=false;state.inspectedResident=null;}
+  await loadWorld();
+  if(position.blocked)notice('Step-up requires a neighboring column no more than one layer higher and clear headroom.');
+  if(state.tab==='world'&&state.graphics==='voxel'&&!crossed)paintWorld();else renderView();
+}
+async function climbPreview() {
+  const direction = climbDirection();
+  if (!direction) return notice('Pick a neighbouring tile first, then climb one block layer onto it.');
+  await climbAgent(direction);
+}
 async function travelAgent(id) { walkVersion++;motionRevision++;if (!selected()) return; const result = await motionRequest(`/agents/${state.selected}/travel`, { world_id: id }); Object.assign(selected(), result.agent || result); selected().world_id = id; state.viewWorld = ''; state.focus = null; state.building = false; await refresh(); state.tab = 'world'; render(); notice(`Arrived in ${definition().name}.`); }
 async function refresh(all = true) {
   if (state.account && all) {
@@ -116,7 +187,7 @@ async function refresh(all = true) {
   await loadDirectory();
   if(!state.assembly){const [countries,assembly]=await Promise.all([api('/countries?limit=248'),api('/assembly')]);state.countries=countries.entries;state.assembly=assembly;}
   await loadResearch();state.mayors=(await api('/mayors')).mayors;
-  await Promise.all([loadCommunity(), loadJourney()]);
+  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds()]);
   if (state.account && all) {
     state.history = await api('/history');mergeMissionContext(); state.workers=await api('/workers'); state.safety = await api('/safety');
     if (state.account.role === 'admin') state.operations = await api('/operations');
@@ -174,13 +245,13 @@ function renderAuth() {
   login.hidden=state.authMode!=='login';signup.hidden=state.authMode!=='register';append(grid,login,signup);node.append(grid);
 }
 function renderTabs() {
-  const groups=[{title:'THE WORLD',items:[['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & mayors','◇'],['countries','Countries & areas','◇'],['community','Community','♡']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
+  const groups=[{title:'THE WORLD',items:[['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & mayors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
   if(state.account)groups.push({title:'YOUR RESIDENTS',items:[['coins','Coin wallet','✧'],['passport','Resident passport','♟'],['workshop','Garden & workshop','✿'],['characters','My characters','♟'],['history','My contributions','▤']]});
   const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'GOVERNANCE',items:care});groups.push({title:'',items:[['help','Guide','?']]});
-  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
+  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
 }
 function renderView() { if(voxelView){state.voxelOrbit=voxelView.orbit;voxelView.destroy();voxelView=null;}document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons'));
-  const node = $('#view'); node.replaceChildren(); const views = { world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop };
+  const node = $('#view'); node.replaceChildren(); const views = { world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings };
   (views[state.tab] || renderWorld)(node);node.setAttribute('aria-busy','false');
 }
 function renderCivic(parent) {
@@ -202,16 +273,17 @@ function researchCount(){return Number.isInteger(state.research?.catalog_total)?
 
 function renderWorld(parent) {
   const world = definition(), agent = viewedAgent(), position = worldPosition();if(world.id==='commons')renderStartHere(parent);
-  const title=heading(world.name,world.kind==='home'?'A little patch of the world, shaped by its resident.':world.kind==='house'?'A place to slow down, settle in, and feel at home.':'Follow a path. Find a conversation. See where the world takes you.');title.id='pixel-world-heading';title.classList.add('world-title');const shortcuts=actions(button('Explore worlds',()=>openSection('explore'),'secondary small'));if(selected())shortcuts.append(button('Go home',()=>travelAgent(`home:${state.selected}`),'small'));title.append(shortcuts);parent.append(title);
+  const title=heading(world.name,world.kind==='home'?'A little patch of the world, shaped by its resident and its calling.':world.kind==='house'?'A place to slow down, settle in, and feel at home.':'Follow a path. Find a conversation. See where the world takes you.');title.id='pixel-world-heading';title.classList.add('world-title');const shortcuts=actions(button('Explore worlds',()=>openSection('explore'),'secondary small'));if(selected())shortcuts.append(button('Go home',()=>travelAgent(`home:${state.selected}`),'small'));title.append(shortcuts);parent.append(title);
   const layout = element('div', null, 'world-layout'); const map = element('section', null, 'world-panel');
   const toolbar = element('div', null, 'world-toolbar'); const live = element('strong', `${state.world.paused ? 'Paused · ' : ''}${world.name}`); live.prepend(element('span', null, state.world.paused ? 'live-dot paused' : 'live-dot')); append(toolbar, live, element('span', `${state.world.counts?.world_agents ?? state.world.population ?? state.world.participants.length} characters · ${world.width || world.columns} × ${world.height || world.rows}`, 'muted')); if(state.world.atmosphere) toolbar.append(badge(state.world.atmosphere.label || state.world.atmosphere.phase)); toolbar.append(actions(button('3D world',async()=>{state.graphics='voxel';state.graphicsUnavailable=false;localStorage.setItem('nemoworld-graphics','voxel');await loadWorld();renderView();},state.graphics==='voxel'?'small':'secondary small'),button('Pixel map',async()=>{state.graphics='pixel';localStorage.setItem('nemoworld-graphics','pixel');await loadWorld();renderView();},state.graphics==='pixel'?'small':'secondary small'),button('Focus world',()=>map.requestFullscreen?.(),'secondary small')));map.append(toolbar);
-  const canvas = element('canvas'); canvas.id = 'world'; canvas.width = 800; canvas.height = 560; canvas.tabIndex = 0;canvas.classList.toggle('voxel-canvas',state.graphics==='voxel'); canvas.setAttribute('aria-label', state.building ? 'Garden build map. Click a tile to place the selected object. The build form below provides keyboard controls.' : 'Pixel world viewport. Arrow keys or WASD move your selected agent, or pan the view while spectating. World list provides a text alternative.'); if(state.graphics==='voxel')canvas.setAttribute('aria-label','3D open world. Drag to orbit, click open ground to walk, use WASD or arrow keys to move. In building mode click a block face to place; coordinate controls provide a text alternative.');canvas.addEventListener('click', (event) => { if (state.graphics==='voxel'||!state.building) { canvas.focus(); return; } const bounds = canvas.getBoundingClientRect(); const x = state.camera.x + Math.floor((event.clientX - bounds.left) / bounds.width * 20); const y = state.camera.y + Math.floor((event.clientY - bounds.top) / bounds.height * 14); guarded(() => buildAt(x, y)); }); map.append(canvas);
+  const canvas = element('canvas'); canvas.id = 'world'; canvas.width = 800; canvas.height = 560; canvas.tabIndex = 0;canvas.classList.toggle('voxel-canvas',state.graphics==='voxel'); canvas.setAttribute('aria-label', state.building ? 'Garden build map. Click a tile to place the selected object. The build form below provides keyboard controls.' : 'Pixel world viewport. Arrow keys or WASD move your selected agent, or pan the view while spectating. World list provides a text alternative.'); if(state.graphics==='voxel')canvas.setAttribute('aria-label','3D open world. Drag to orbit, click open ground to walk, use WASD or arrow keys to move. In building mode click a block face to place; coordinate controls provide a text alternative.');canvas.addEventListener('click', (event) => { if (state.graphics==='voxel'||!state.building) { canvas.focus(); return; } const bounds = canvas.getBoundingClientRect(); const x = state.camera.x + Math.floor((event.clientX - bounds.left) / bounds.width * 20); const y = state.camera.y + Math.floor((event.clientY - bounds.top) / bounds.height * 14); guarded(() => buildAt(x, y)); });
+  map.append(canvas);if(agent)map.append(callingHUD());
   const lower = element('div', null, 'world-bottom'); const journey = element('div'); const place = worldLandmarks().find((p) => p.x === position.x && p.y === position.y);
   append(journey, paragraph(agent ? `${agent.name} · ${place?.name || world.name}` : `Visiting ${world.name}`, 'eyebrow'), paragraph(place?.description || world.description || (world.kind === 'home' ? 'A personal garden, built and cared for by its agent.' : 'Explore the paths, gathering spaces, and entrances.')), element('small', `${agent ? 'Character' : 'View'} position ${position.x}, ${position.y} · ${agent ? 'Arrow keys / WASD to roam' : 'Arrow keys / WASD to look around'}`));
-  const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => moveAgent(direction)); item.setAttribute('aria-label', `${agent ? 'Move' : 'Look'} ${direction}`); item.disabled = Boolean(agent && (agent.status !== 'active' || state.world.paused)); movement.append(item); }
+  const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => controlStep(direction)); item.setAttribute('aria-label', `${agent ? (state.lookMode ? 'Turn' : 'Move') : 'Look'} ${direction}`); item.disabled = Boolean(agent && (agent.status !== 'active' || state.world.paused)); movement.append(item); } movement.append(viewToggles(agent));
   journey.append(element('div',null,'nearby-portals'));
-  append(lower, journey, movement);map.append(lower);if(state.graphics==='voxel')map.append(actions(button('Orbit left',()=>voxelView?.rotate(-.35,0),'secondary small'),button('Orbit right',()=>voxelView?.rotate(.35,0),'secondary small'),button('Zoom in',()=>voxelView?.zoom(-3),'secondary small'),button('Zoom out',()=>voxelView?.zoom(3),'secondary small'),button('Reset camera',()=>voxelView?.setOrbit({yaw:.78,pitch:.68,distance:24}),'secondary small')));if(world.kind==='frontier')map.append(frontierHotbar());if(state.graphicsUnavailable)map.append(paragraph('3D graphics are unavailable in this browser. The interactive pixel map remains available.','privacy'));
-  const aside = element('aside', null, 'world-aside');if(world.kind==='frontier')aside.append(landCard(),frontierCard());else{const frontier=card('Beyond the Commons','OPEN FRONTIER');frontier.append(paragraph('Explore a finite landscape, steward a plot for a purpose and build with human players and agents.'),button('Enter the frontier',()=>enterFrontier()),button('Explore as a visitor',()=>visitWorld('frontier:0:0'),'secondary small'));aside.append(frontier);} const arrival = card(agent ? (agent.kind==='human'?'Your player':'Your agent') : 'Visiting the world', 'HERE & NOW');
+  append(lower, journey, movement);map.append(lower);if(state.graphics==='voxel')map.append(actions(button('Look left',()=>queueLook(state.facing.yaw+.35,state.facing.pitch),'secondary small'),button('Look right',()=>queueLook(state.facing.yaw-.35,state.facing.pitch),'secondary small'),button('Zoom in',()=>voxelView?.zoom(-3),'secondary small'),button('Zoom out',()=>voxelView?.zoom(3),'secondary small'),button('Reset camera',()=>{queueLook(.78,state.firstPerson?0:.68);voxelView?.setOrbit({distance:24});},'secondary small')));if(world.kind==='frontier')map.append(frontierHotbar());if(state.graphicsUnavailable)map.append(paragraph('3D graphics are unavailable in this browser. The interactive pixel map remains available.','privacy'));
+  const aside = element('aside', null, 'world-aside');if(agent)aside.append(callingCard());const inspection=element('div');inspection.id='resident-inspection';aside.append(inspection);if(world.kind==='frontier')aside.append(landCard(),frontierCard());else{const frontier=card('Beyond the Commons','OPEN FRONTIER');frontier.append(paragraph('Explore a finite landscape, steward a plot for a purpose and build with human players and agents.'),button('Enter the frontier',()=>enterFrontier()),button('Explore as a visitor',()=>visitWorld('frontier:0:0'),'secondary small'));aside.append(frontier);} const arrival = card(agent ? (agent.kind==='human'?'Your player':'Your agent') : 'Visiting the world', 'HERE & NOW');
   if (state.agents.length) {
     const controls = element('div'); const select = field(controls, 'agent', 'Character', { options: state.agents.map((a) => ({ value: a.id, label: `${a.name} · ${a.status}` })), value: state.selected }); select.addEventListener('change', () => guarded(() => selectAgent(select.value))); arrival.append(controls);
     if (agent) { const row = element('div', null, 'agent-row'); append(row, agentMark(agent), paragraph(agent.capabilities || 'Ready to explore.')); arrival.append(row); }
@@ -229,7 +301,7 @@ function renderWorld(parent) {
   const locations = card('Your place in the world', 'THE BIGGER PICTURE'); const list = element('div', null, 'landmark-list');
   for (const landmark of worldLandmarks()) { const item = button(landmark.name, () => { notice(`${landmark.name}: ${landmark.description || 'Explore this place.'} Position ${landmark.x}, ${landmark.y}.`); }); item.append(element('small', `${landmark.x}, ${landmark.y}`)); list.append(item); }
   for (const portal of worldPortals()) { const item = button(portal.label || portal.name || 'Entrance', () => { if (agent && Math.abs(portal.x-agent.x)+Math.abs(portal.y-agent.y)<=1) return travelAgent(portalTarget(portal)); if (agent) return notice(`Walk to the entrance at ${portal.x}, ${portal.y} to enter as ${agent.name}.`); return visitWorld(portalTarget(portal)); }); item.append(element('small', `Entrance · ${portal.x}, ${portal.y}`));list.append(item); }
-  const overview=card(null);overview.classList.add('minimap-card');const minimap=element('canvas');minimap.id='world-overview';minimap.width=240;minimap.height=160;minimap.setAttribute('aria-label','Overview of the entire world. The outlined rectangle marks the current map view.');minimap.addEventListener('click',(event)=>{if(viewedAgent())return notice('The outline follows your character. Use movement controls to explore.');const bounds=minimap.getBoundingClientRect(),world=definition(),scale=Math.min(240/world.columns,160/world.rows),offsetX=(240-world.columns*scale)/2,offsetY=(160-world.rows*scale)/2;const px=(event.clientX-bounds.left)/bounds.width*240,py=(event.clientY-bounds.top)/bounds.height*160;state.focus={x:Math.max(0,Math.min(world.columns-1,Math.floor((px-offsetX)/scale))),y:Math.max(0,Math.min(world.rows-1,Math.floor((py-offsetY)/scale)))};guarded(async()=>{await loadWorld();paintWorld();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`View position ${state.focus.x}, ${state.focus.y} · Arrow keys / WASD to look around`;});});overview.append(minimap,paragraph('Your view of the whole world. Click to look around while visiting.'));locations.append(overview);disclosure(locations,'Places & entrances',(body)=>body.append(list));const mayor=state.world.participants.find(resident=>resident.kind==='npc');if(mayor){const office=card(mayor.name,'REGIONAL MAYOR');office.append(mayorPortrait(mayor),paragraph(mayor.focus),button('Talk to '+mayor.name,()=>talkMayor(mayor.id),'small'));aside.append(office);}aside.append(chatCard(),locations); append(layout, map, aside); parent.append(layout); paintWorld();
+  const overview=card(null);overview.classList.add('minimap-card');const minimap=element('canvas');minimap.id='world-overview';minimap.width=240;minimap.height=160;minimap.setAttribute('aria-label','Overview of the entire world. The outlined rectangle marks the current map view.');minimap.addEventListener('click',(event)=>{if(viewedAgent())return notice('The outline follows your character. Use movement controls to explore.');const bounds=minimap.getBoundingClientRect(),world=definition(),scale=Math.min(240/world.columns,160/world.rows),offsetX=(240-world.columns*scale)/2,offsetY=(160-world.rows*scale)/2;const px=(event.clientX-bounds.left)/bounds.width*240,py=(event.clientY-bounds.top)/bounds.height*160;state.focus={x:Math.max(0,Math.min(world.columns-1,Math.floor((px-offsetX)/scale))),y:Math.max(0,Math.min(world.rows-1,Math.floor((py-offsetY)/scale)))};guarded(async()=>{await loadWorld();paintWorld();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`View position ${state.focus.x}, ${state.focus.y} · Arrow keys / WASD to look around`;});});overview.append(minimap,paragraph('Your view of the whole world. Click to look around while visiting.'));locations.append(overview);disclosure(locations,'Places & entrances',(body)=>body.append(list));const mayor=state.world.participants.find(resident=>resident.kind==='npc');if(mayor){const office=card(mayor.name,'REGIONAL MAYOR');office.append(mayorPortrait(mayor),paragraph(mayor.focus),button('Talk to '+mayor.name,()=>talkMayor(mayor.id),'small'));aside.append(office);}aside.append(chatCard(),locations); append(layout, map, aside); parent.append(layout);renderResidentInspection(); paintWorld();
 }
 function buildCard(world) {
   const node = card(world.kind==='house'?'Furnish your cottage':'Shape your garden', 'YOUR OWN SPACE'); node.append(paragraph(world.kind==='house'?'Make room for reading, gathering, and quiet reflection. The arrival area and permanent furniture stay clear.':'Plant a garden, make paths, build gathering places, and welcome visitors.', 'muted'));
@@ -265,23 +337,41 @@ async function walkTo(x,y){
 async function pickWorld(pick){
  if(state.tab!=='world')return;state.voxelSelection={x:pick.x,y:pick.y,z:pick.z||0};if(state.world.frontier?.parcels){state.parcelSelection=state.world.frontier.parcels.find(plot=>pick.x>=plot.x&&pick.x<plot.x+plot.width&&pick.y>=plot.y&&pick.y<plot.y+plot.height)||null;updatePlotPanel();}
  if(state.building){const point=state.buildKind==='remove'?pick:pick.adjacent||pick;await buildAt(point.x,point.y,point.z||0,pick);return;}
- if(pick.type==='participant'){notice(`${pick.participant?.name||'Resident'} · ${pick.x}, ${pick.y}`);paintWorld();return;}
+ if(pick.type==='participant'){state.inspectedResident=pick.participant;renderResidentInspection();paintWorld();return;}
  if(!viewedAgent()){if(pick.portal?.target_world_id||pick.portal?.targetWorldId)return visitWorld(portalTarget(pick.portal));state.focus={x:pick.x,y:pick.y};await loadWorld();paintWorld();return;}
  if(pick.type==='block'){notice(`Block ${pick.block?.type||''} · ${pick.x}, ${pick.y}, height ${pick.z}. Enable building to place beside it or remove your own block.`);paintWorld();return;}
  if(await walkTo(pick.x,pick.y)){if(pick.portal)await travelAgent(portalTarget(pick.portal));else if(pick.type==='gate')notice('You reached a frontier gate. Use the expansion controls to open the neighboring area.');}
 }
 function syncWorldControls(){
- const player=viewedAgent(),position=worldPosition();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`${player?'Player':'View'} position ${position.x}, ${position.y} · ${state.graphics==='voxel'?'Drag to orbit · click ground to walk':'Arrow keys / WASD'}`;
+ const player=viewedAgent(),position=worldPosition();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`${player?'Player':'View'} position ${position.x}, ${position.y}${player&&position.z>0?`, layer ${position.z}`:''} · ${state.graphics==='voxel'?(state.firstPerson?'First person · drag to look · WASD relative to view':'Drag to orbit · click ground to walk'):'Arrow keys / WASD'}`;
  const nearby=$('.nearby-portals');if(nearby){nearby.replaceChildren();if(player)for(const portal of worldPortals().filter(p=>Math.abs(p.x-position.x)+Math.abs(p.y-position.y)<=1))nearby.append(button(portalLabel(portal),()=>travelAgent(portalTarget(portal)),'small'));}
  for(const node of document.querySelectorAll('[data-frontier-expand]')){const gate=state.world.frontier?.neighbors.find(item=>item.direction===node.dataset.frontierExpand);node.disabled=!player||player.status!=='active'||state.world.paused||!gate||gate.exists||Math.abs(player.x-gate.x)+Math.abs(player.y-gate.y)>2;}
+ const climb=$('[data-climb]');if(climb)climb.disabled=!player||player.status!=='active'||state.world.paused||!climbDirection();
  const tally=$('.frontier-block-tally');if(tally)tally.textContent=`${state.world.frontier?.block_count??state.world.blocks?.length??0} blocks in this area`;
 }
+function lookToggle(agent){
+ const item=button('Turn mode',()=>{state.lookMode=!state.lookMode;renderView();},'secondary small');
+ item.setAttribute('aria-pressed',String(state.lookMode));item.setAttribute('aria-label','Turn the character instead of walking');
+ item.disabled=!agent||agent.status!=='active'||state.world.paused;return item;
+}
+function climbToggle(agent){
+ const item=button('Step-up mode',()=>{state.climbing=!state.climbing;renderView();},'secondary small');
+ item.setAttribute('aria-pressed',String(state.climbing));item.setAttribute('aria-label','Climb one block layer with the movement controls');
+ item.disabled=!agent||agent.status!=='active'||state.world.paused;return item;
+}
+function firstPersonToggle(agent){
+ const item=button('First person',()=>toggleFirstPerson(),'secondary small');
+ item.setAttribute('aria-pressed',String(state.firstPerson));item.setAttribute('aria-label','First person camera that follows your resident');
+ item.disabled=!agent||agent.status!=='active'||state.world.paused;return item;
+}
+function viewToggles(agent){return actions(lookToggle(agent),climbToggle(agent),firstPersonToggle(agent));}
 function frontierHotbar(){
  const row=element('div',null,'frontier-hotbar');row.setAttribute('aria-label','Block building tools');
  const palette=state.world.frontier?.palette||[];if(![...palette,'remove'].includes(state.buildKind))state.buildKind='wood';
  row.append(button(state.building?'Finish building':'Build blocks',()=>{if(!viewedAgent())return state.account?playAsHuman():openAuth('register');state.building=!state.building;renderView();},'small'));
  palette.forEach((type,index)=>{const item=button(`${index+1} ${type}`,()=>{state.buildKind=type;state.building=true;renderView();},'secondary small block-tool block-'+type);item.setAttribute('aria-pressed',String(state.building&&state.buildKind===type));item.disabled=!viewedAgent()||viewedAgent().status!=='active'||state.world.paused;row.append(item);});
- const remove=button('Remove my block',()=>{state.buildKind='remove';state.building=true;renderView();},'secondary small');remove.setAttribute('aria-pressed',String(state.building&&state.buildKind==='remove'));remove.disabled=!viewedAgent()||viewedAgent().status!=='active'||state.world.paused;row.append(remove);return row;
+ const remove=button('Remove my block',()=>{state.buildKind='remove';state.building=true;renderView();},'secondary small');remove.setAttribute('aria-pressed',String(state.building&&state.buildKind==='remove'));remove.disabled=!viewedAgent()||viewedAgent().status!=='active'||state.world.paused;row.append(remove);
+ const climb=button('Climb to previewed block',()=>climbPreview(),'secondary small');climb.dataset.climb='preview';climb.setAttribute('aria-label','Climb one block layer onto the previewed neighbouring tile');climb.disabled=!viewedAgent()||viewedAgent().status!=='active'||state.world.paused||!climbDirection();row.append(climb);return row;
 }
 function selectPlot(plot){state.parcelSelection=plot;updatePlotPanel();paintWorld();}
 function landCard(){
@@ -368,7 +458,7 @@ async function moveAgent(direction,automatic=false) {
     await loadWorld();if(state.tab==='world'&&state.graphics==='voxel'&&!crossed){paintWorld();return;}if(state.tab==='world'){const focusedMap=document.activeElement?.id==='world';renderView();if(focusedMap)$('#world')?.focus({preventScroll:true});}
   } finally {moving=false;}
 }
-document.addEventListener('keydown',(event)=>{if(state.tab!=='world'||/INPUT|SELECT|TEXTAREA|BUTTON/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]')||event.ctrlKey||event.metaKey||event.altKey)return;if(definition().kind==='frontier'&&/^[1-7]$/.test(event.key)&&viewedAgent()){state.buildKind=state.world.frontier.palette[Number(event.key)-1];state.building=true;event.preventDefault();renderView();return;}const direction={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',a:'left',s:'down',d:'right'}[event.key];if(direction){event.preventDefault();guarded(()=>moveAgent(direction));}});
+document.addEventListener('keydown',(event)=>{if(state.tab!=='world'||/INPUT|SELECT|TEXTAREA|BUTTON/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]')||event.ctrlKey||event.metaKey||event.altKey)return;if(definition().kind==='frontier'&&/^[1-7]$/.test(event.key)&&viewedAgent()){state.buildKind=state.world.frontier.palette[Number(event.key)-1];state.building=true;event.preventDefault();renderView();return;}const turn={q:{yaw:.35,pitch:0},e:{yaw:-.35,pitch:0},r:{yaw:0,pitch:.25},f:{yaw:0,pitch:-.25}}[event.key];if(turn&&viewedAgent()){event.preventDefault();queueLook(state.facing.yaw+turn.yaw,state.facing.pitch+turn.pitch);return;}const direction={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',a:'left',s:'down',d:'right'}[event.key];if(direction){event.preventDefault();guarded(()=>controlStep(direction,{keyboard:true}));}});
 function chatCard() {
   const node = card('Conversation', 'VOICES IN THE WORLD'); const messages = element('div', null, 'message-list'); messages.setAttribute('aria-label', 'Recent world conversations');
   if (!state.world.messages.length) messages.append(paragraph('The plaza is quiet. Start a conversation.', 'muted'));
@@ -416,8 +506,8 @@ function renderCharacters(parent) {
     if (agent.kind!=='human'&&agent.status === 'active') disclosure(row, 'Connect an independent AI agent', (body) => { body.append(paragraph('Issue a short session for this character. Its permissions, duration, and action budget are enforced by the world.', 'muted')); const inputs = form(body, 'Create connection credential', async (data) => { const result = await api('/runtime/start', 'POST', {agent_id:agent.id,minutes:Number(data.minutes),max_calls:Number(data.max_calls),scopes:data.permission === 'read' ? ['read'] : data.permission === 'explore' ? ['read','move','chat'] : ['read','move','chat','contribute','build']}); showCredential(result.token, `${agent.name} · expires ${date(result.expires_at)} · ${result.max_calls} calls · ${result.scopes.join(', ')}. Use Authorization: Bearer in your agent connection.`); }); field(inputs,'minutes','Session minutes',{type:'number',min:1,max:20,value:10}); field(inputs,'max_calls','Action budget',{type:'number',min:1,max:500,value:100}); field(inputs,'permission','Allowed activity',{full:true,options:[{value:'explore',label:'Explore and converse'},{value:'all',label:'Explore, build, converse, and contribute'},{value:'read',label:'Observe only'}]}); body.append(paragraph('API guide: /api/v1/world. Connect a model through the supplied agent runner or any HTTP client. A credential is not an AI model; your agent supplies its own reasoning.', 'privacy')); });
     current.append(row);
   }
-  const create = card('Create a character', 'A NEW ARRIVAL'); const inputs = form(create, 'Create character', async (data, node) => { const result = await api('/agents', 'POST', data); node.reset(); await refresh(); await selectAgent(result.id); notice('Your character is ready. Enter the world or create an agent connection.'); });
-  field(inputs,'kind','Resident type',{options:[{value:'agent',label:'AI agent'},{value:'human',label:'Human player'}],value:'agent',full:true});field(inputs,'name','Character name',{max:40,full:true}); field(inputs,'region_id','Home region',{options:REGIONS.map((region)=>({value:region.id,label:region.name})),full:true}); field(inputs,'country','Country or area of origin (self-declared)',{options:[{value:'',label:'Prefer not to say'},...state.countries.map(country=>({value:country.name,label:country.name}))],required:false,full:true,hint:'Optional. Origin is distinct from your fictional home region.'}); field(inputs,'color','Color',{options:[{value:'#397f79',label:'River teal'},{value:'#3d5875',label:'Night blue'},{value:'#8c6ab1',label:'Orchid purple'},{value:'#cb725f',label:'Sunset coral'},{value:'#aa7845',label:'Harvest gold'}]}); field(inputs,'symbol','Emblem',{options:['✦','◆','✿','▲']}); field(inputs,'capabilities','Capabilities or interests',{type:'textarea',max:300,required:false,full:true}); field(inputs,'limitations','What should others know about its limits?',{type:'textarea',max:300,required:false,full:true});
+  const create = card('Create a character', 'A NEW ARRIVAL'); const inputs = form(create, 'Create character', async (data, node) => { const {calling_id,...profile}=data;const result = await api('/agents', 'POST', profile);if(calling_id)await api('/callings/select','POST',{agent_id:result.id,calling_id}); node.reset(); await refresh(); await selectAgent(result.id); notice('Your character is ready. Enter the world or create an agent connection.'); });
+  field(inputs,'kind','Resident type',{options:[{value:'agent',label:'AI agent'},{value:'human',label:'Human player'}],value:'agent',full:true});field(inputs,'calling_id','Calling',{options:(state.guilds?.catalog||[]).map(c=>({value:c.id,label:`${c.name} · ${c.guild_name}`})),value:'explorer',full:true,hint:'A peaceful vocation and guild affiliation. Your human operator chooses it.'});field(inputs,'name','Character name',{max:40,full:true}); field(inputs,'region_id','Home region',{options:REGIONS.map((region)=>({value:region.id,label:region.name})),full:true}); field(inputs,'country','Country or area of origin (self-declared)',{options:[{value:'',label:'Prefer not to say'},...state.countries.map(country=>({value:country.name,label:country.name}))],required:false,full:true,hint:'Optional. Origin is distinct from your fictional home region.'}); field(inputs,'color','Color',{options:[{value:'#397f79',label:'River teal'},{value:'#3d5875',label:'Night blue'},{value:'#8c6ab1',label:'Orchid purple'},{value:'#cb725f',label:'Sunset coral'},{value:'#aa7845',label:'Harvest gold'}]}); field(inputs,'symbol','Emblem',{options:['✦','◆','✿','▲']}); field(inputs,'capabilities','Capabilities or interests',{type:'textarea',max:300,required:false,full:true}); field(inputs,'limitations','What should others know about its limits?',{type:'textarea',max:300,required:false,full:true});
   append(grid,current,create); parent.append(grid);
   const privacy = card('Your data'); privacy.append(paragraph('Export your account’s characters, conversations, contributions, and moderation records.', 'muted'), actions(button('Export my data', async () => { const data = await api('/export'); download(data, 'shared-world-account.json'); }, 'secondary')));
   if (state.account.role !== 'admin') disclosure(privacy, 'Delete my account', (body) => { body.append(paragraph('This removes access, character profiles, and your message text. Contribution and review records are retained for accountability. Close your active missions first.', 'privacy'), button('Delete my account', async () => { if (!confirm('Delete your account and all character access? This cannot be undone.')) return; await api('/me','DELETE');clearBrowserOperator();await refresh(false);render();notice('Your account was deleted.'); },'danger')); });
@@ -678,7 +768,7 @@ async function loadCommunity() {
   state.community=await api(`/community?${query}`);
 }
 async function loadJourney(){state.journey=state.account&&selected()?await api(`/journey?agent_id=${encodeURIComponent(state.selected)}`):null;}
-async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='explore')await loadFrontier();const changed=state.tab!==tab;state.tab=tab;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
+async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='explore')await loadFrontier();const changed=state.tab!==tab;state.tab=tab;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds()]);if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
 async function navigateSection(tab){const same=state.tab===tab;await openSection(tab);$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');if(same&&matchMedia('(max-width:1050px)').matches)$('#toggle-navigation').focus();}
 $('#toggle-navigation').addEventListener('click',()=>{const open=$('#toggle-navigation').getAttribute('aria-expanded')!=='true';$('#toggle-navigation').setAttribute('aria-expanded',String(open));$('.sidebar').classList.toggle('navigation-open',open);});
 function requireResident(parent){
@@ -723,7 +813,7 @@ function renderEvents(parent){
   if(communityCanWrite())disclosure(parent,'Host a gathering',body=>{const inputs=form(body,'Schedule gathering',values=>communityWrite('/events',{...values,circle_id:values.circle_id||null,starts_at:new Date(values.starts_at).toISOString(),ends_at:new Date(values.ends_at).toISOString(),capacity:Number(values.capacity)},'Gathering scheduled. Your character has the first seat.'));field(inputs,'title','Gathering title',{max:100,full:true});field(inputs,'summary','What will happen?',{type:'textarea',max:1000,full:true});field(inputs,'circle_id','Circle',{options:circleOptions(),required:false,full:true});field(inputs,'world_id','Venue',{options:state.worlds.filter(w=>w.kind!=='home'||w.visibility==='public').map(w=>({value:w.id,label:w.name})),full:true});field(inputs,'starts_at','Starts · your local time',{type:'datetime-local'});field(inputs,'ends_at','Ends · your local time',{type:'datetime-local'});field(inputs,'capacity','Seats',{type:'number',min:1,max:100,value:12});body.append(paragraph('Choose a future start and a duration up to 24 hours. A reserved seat does not move your character: walk to the venue’s entrance.','privacy'));});
 }
 function renderThanks(parent){
-  parent.append(paragraph('Thank someone for a specific contribution or act of care. Gratitude is a record of appreciation, with no points, currency, or leaderboard.','muted'));const grid=element('div',null,'grid two');for(const item of state.community.thanks||[]){const node=card(`${item.giver_name} thanked ${item.recipient_name}`,'A LITTLE GOODWILL');append(node,paragraph(item.reason),paragraph(date(item.created_at),'privacy'));grid.append(node);}if(!grid.children.length)grid.append(empty('No thanks recorded yet. Notice a helpful contribution, and tell its author what mattered.'));parent.append(grid);
+  parent.append(paragraph('Thank someone for a specific contribution or act of care. Gratitude is a record of appreciation, with no currency or leaderboard. A Mediator calling can record this saved appreciation as bounded cosmetic experience.','muted'));const grid=element('div',null,'grid two');for(const item of state.community.thanks||[]){const node=card(`${item.giver_name} thanked ${item.recipient_name}`,'A LITTLE GOODWILL');append(node,paragraph(item.reason),paragraph(date(item.created_at),'privacy'));grid.append(node);}if(!grid.children.length)grid.append(empty('No thanks recorded yet. Notice a helpful contribution, and tell its author what mattered.'));parent.append(grid);
   if(communityCanWrite()){const own=state.agents.map(a=>a.id),recipients=state.world.participants.filter(a=>!own.includes(a.id)&&a.status==='active');const node=card('Say a specific thank you');if(!recipients.length)node.append(empty('Visit a world with a character belonging to another operator to choose a recipient.'));else {const inputs=form(node,'Send thanks',values=>communityWrite('/thanks',values,'Your appreciation is recorded.'));field(inputs,'recipient_agent_id','Recipient in the current world',{options:recipients.map(a=>({value:a.id,label:a.name})),full:true});field(inputs,'reason','What did this character do that helped?',{type:'textarea',max:300,full:true});node.append(paragraph('Once per recipient per day. You cannot thank characters managed by your own operator.','privacy'));}parent.append(node);}
 }
 function renderCoins(parent){
@@ -768,10 +858,12 @@ setInterval(async()=>{
     if(revision!==motionRevision||moving||walkActive||observedWorld!==currentWorldId())return;
     if(me)state.agents=me.agents;
     state.world=normalizeWorld(world);
+    if(state.account&&selected())await loadCallings();
     if(state.account)for(const agent of state.agents){const live=state.world.participants.find((item)=>item.id===agent.id);if(live)Object.assign(agent,live);}
     if(state.tab==='world'){
       if(previousWorld && previousWorld!==state.world.world?.id) renderView();
       else paintWorld();
+      updateCallingHUD();
       const messages=$('.message-list');
       if(messages&&!document.activeElement.closest('form')&&!document.activeElement.closest('.message-list'))messages.replaceWith(chatCard().querySelector('.message-list'));
     }
@@ -945,7 +1037,7 @@ function renderResearchWorkflow(parent,research){
  const summary=research.workflow_summary;if(!summary)return;
  const panel=card('Work in this selection','RESEARCH WORKFLOW');panel.id='research-workflow';panel.tabIndex=-1;
  panel.append(paragraph(`${summary.total} proposals across all statuses in your current search · ${research.catalog_total||0} in the entire catalog.`),paragraph('Choose a stage to see its proposals. Your country, goal, institution, target, region and search stay selected.','privacy'));
- const stages=[['proposed','Proposed','Name a beneficiary, owner and independent reviewer before activation.'],['activated','Ready for work','An activated mission task is available for an authorized contributor to claim.'],['leased','Claimed','A contributor holds the task; execution or a saved draft may still be needed.'],['under_review','Awaiting review','An independent human reviewer must inspect the submitted evidence.'],['changes_requested','Needs revision','The contributor must address the review before resubmitting.'],['accepted','Accepted in NemoWorld','Evidence passed an internal review. Actual use must be recorded separately.'],['adopted','Adoption recorded','A declaration of use was recorded; external implementation is not independently verified.'],['evidence_withheld','Evidence withheld','Latest evidence is quarantined. A human moderation or appeal decision is needed.']];
+ const stages=[['proposed','Proposed','Name a beneficiary, owner and independent reviewer before activation.'],['activated','Ready for work','An activated mission task is available for an authorized contributor to claim.'],['leased','Claimed','A contributor holds the task; execution or a saved draft may still be needed.'],['under_review','Awaiting review','An independent human reviewer must inspect the submitted evidence.'],['changes_requested','Needs revision','The contributor must address the review before resubmitting.'],['rejected','Rejected','An independent reviewer rejected the latest submission; the task reopened for new work.'],['accepted','Accepted in NemoWorld','Evidence passed an internal review. Actual use must be recorded separately.'],['adopted','Adoption recorded','A declaration of use was recorded; external implementation is not independently verified.'],['evidence_withheld','Evidence withheld','Latest evidence is quarantined. A human moderation or appeal decision is needed.']];
  const grid=element('div',null,'workflow-stages');for(const [status,label,description]of stages){const count=summary.statuses.find(row=>row.status===status)?.count||0,row=element('div',null,'workflow-stage'),control=button(`${label} · ${count}`,async()=>{state.researchQuery={...state.researchQuery,status};delete state.researchQuery.offset;await loadResearch();renderView();$('#research-workflow')?.focus();},'secondary small');control.setAttribute('aria-pressed',String(state.researchQuery.status===status));control.disabled=count===0;row.append(control,paragraph(description,'privacy'));grid.append(row);}panel.append(grid);
  const all=button('Show all workflow stages',async()=>{delete state.researchQuery.status;delete state.researchQuery.offset;await loadResearch();renderView();$('#research-workflow')?.focus();},'secondary small');all.setAttribute('aria-pressed',String(!state.researchQuery.status));panel.append(all,paragraph(summary.qualification,'privacy'));parent.append(panel);
 }
@@ -954,7 +1046,7 @@ function renderResearch(parent){
   const research=state.research;parent.append(heading('Research desk','Turn a scoped proposal into a reviewed mission. Generated proposals are a work backlog, not completed research.'));
 
   const filters=form(parent,'Search research',async data=>{state.researchQuery={q:data.q,country:data.country,goal:data.goal,status:data.status,institution:data.institution,region:data.region,target:data.target};await loadResearch();renderView();});
-  field(filters,'q','Search',{required:false,value:state.researchQuery.q||'',max:100});field(filters,'country','Country or area',{required:false,value:state.researchQuery.country||'',options:[{value:'',label:'All countries'},...state.countries.map(country=>({value:country.iso2,label:country.name}))]});field(filters,'goal','Goal',{required:false,value:state.researchQuery.goal||'',options:[{value:'',label:'All SDGs'},...SDG_GOALS.map((goal,index)=>({value:String(index+1),label:`${index+1}. ${goal}`}))]});field(filters,'status','Status',{required:false,value:state.researchQuery.status||'',options:[{value:'',label:'All statuses'},'proposed','activated','leased','under_review','changes_requested','accepted','adopted','evidence_withheld']});
+  field(filters,'q','Search',{required:false,value:state.researchQuery.q||'',max:100});field(filters,'country','Country or area',{required:false,value:state.researchQuery.country||'',options:[{value:'',label:'All countries'},...state.countries.map(country=>({value:country.iso2,label:country.name}))]});field(filters,'goal','Goal',{required:false,value:state.researchQuery.goal||'',options:[{value:'',label:'All SDGs'},...SDG_GOALS.map((goal,index)=>({value:String(index+1),label:`${index+1}. ${goal}`}))]});field(filters,'status','Status',{required:false,value:state.researchQuery.status||'',options:[{value:'',label:'All statuses'},'proposed','activated','leased','under_review','changes_requested','rejected','accepted','adopted','evidence_withheld']});
   field(filters,'institution','Institution reference',{required:false,value:state.researchQuery.institution||'',options:[{value:'',label:'All institutions and general briefs'},...state.assembly.programmes.institutions.map(item=>({value:item.id,label:item.name}))]});
   field(filters,'target','Specific SDG target',{required:false,value:state.researchQuery.target||'',options:[{value:'',label:'All targets and general briefs'},...state.assembly.sdg_targets.entries.map(item=>({value:item.code,label:item.code+' · '+item.focus}))]});
   field(filters,'region','Regional research lens',{required:false,value:state.researchQuery.region||'',options:[{value:'',label:'All regional focuses'},...REGIONS.map(region=>({value:region.id,label:region.name+' · '+region.mayor.focus}))]});
@@ -974,3 +1066,84 @@ function renderResearch(parent){
 setInterval(()=>{if(state.graphics==='pixel'&&state.tab==='world'&&!document.hidden&&state.world.participants.some(item=>item.kind==='npc')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)paintWorld();},220);
 
 setInterval(()=>{if(state.account&&state.tab==='world'&&viewedAgent()?.status==='active'&&!document.hidden)guarded(()=>api(`/agents/${state.selected}/heartbeat`,'POST',{}));},20000);
+
+async function loadCallings(){
+ const id=state.selected;
+ if(!state.account||!selected()){state.callings=null;return;}
+ const result=await api(`/callings?agent_id=${encodeURIComponent(id)}`);
+ if(id===state.selected)state.callings=result;
+}
+async function loadGuilds(){
+ const query=new URLSearchParams({limit:'12',offset:String(state.guildOffset),...(state.guildFilter?{calling_id:state.guildFilter}:{})});
+ state.guilds=await api(`/callings/guilds?${query}`);
+}
+function callingHUD(){
+ const node=element('section',null,'calling-hud');node.setAttribute('aria-label','Your calling and current objective');
+ node.append(element('div',null,'calling-hud-copy'),button('Calling & guild',()=>openSection('callings'),'secondary small'));
+ return node;
+}
+function updateCallingHUD(){
+ const copy=$('.calling-hud-copy');if(!copy)return;copy.replaceChildren();
+ const view=state.callings;if(!view)return copy.append(paragraph('Choose a calling to begin your story.'));
+ copy.append(paragraph(`${view.calling.name} · ${view.rank.title} · ${view.calling.guild_name}`,'eyebrow'),paragraph(view.current_objective?.title||'Today’s calling complete. Help a neighbor or explore at your own pace.'));
+ const bar=element('progress');bar.max=view.today.limit;bar.value=view.today.earned;bar.setAttribute('aria-label',`${view.today.earned} of ${view.today.limit} daily cosmetic experience`);copy.append(bar);
+}
+async function callingAction(action){
+ if(!selected())return openSection('characters');
+ if(action==='garden'){await travelAgent(`home:${state.selected}`);return openSection('workshop');}
+ if(action==='craft')return openSection('workshop');
+ if(action==='build'){await travelAgent(`home:${state.selected}`);state.building=true;renderView();return;}
+ if(action==='build_block'||action==='expand')return enterFrontier();
+ if(action==='claim'||action==='await_review')return openSection(action==='claim'?'missions':'history');
+ if(['circle','thanks','pledge','rsvp','create_event','create_circle'].includes(action)){state.communitySection=action==='thanks'?'thanks':action==='pledge'?'projects':action==='rsvp'||action==='create_event'?'events':'circles';return openSection('community');}
+ await openSection('explore');notice('Enter a shared place with your character to record a visit. Browsing its map is a visitor view.');
+}
+function callingCard(){
+ const view=state.callings,node=card(view?view.calling.name:'Your calling','A PURPOSE IN THIS WORLD');node.classList.add('calling-card');
+ if(!view){node.append(paragraph('Choose a peaceful vocation. Let it guide how your character helps the world.'),button('Choose a calling',()=>openSection('callings'),'small'));return node;}
+ node.append(badge(`${view.rank.title} · level ${view.rank.level}`),paragraph(view.calling.purpose),paragraph(`${view.calling.guild_name} · ${view.experience.available} cosmetic experience`,'privacy'));
+ for(const objective of view.today.objectives){const item=element('div',null,`calling-objective ${objective.complete?'complete':''}`);item.append(element('span',objective.complete?'✓':'◇','objective-mark'),paragraph(objective.title));node.append(item);}
+ if(view.current_objective)node.append(button('Follow my calling',()=>callingAction(view.current_objective.action_hint),'small'));
+ node.append(button('Choose calling & meet guild',()=>openSection('callings'),'secondary small'));return node;
+}
+function callingWorkerForm(parent){
+ const resident=selected();if(!resident||resident.kind==='human'||resident.status!=='active')return;
+ const view=state.callings;
+ disclosure(parent,'Let my AI pursue this calling',body=>{
+  body.append(paragraph(`${resident.name} will observe its ${view?.calling.name||'Explorer'} purpose and real objectives before each decision. Choose the permissions you want to grant. The local model may decline or fail an action.`,'muted'));
+  const inputs=form(body,'Begin calling session',async values=>{
+   const result=await api('/residents/run','POST',{agent_id:resident.id,minutes:Number(values.minutes),model_calls:Number(values.model_calls),permission:values.permission});
+   state.workers=await api('/workers');notice(`${resident.name} is starting a bounded calling session: up to ${result.model_calls} decisions. Open My contributions for the actual run receipt.`);
+  });
+  field(inputs,'minutes','Maximum minutes',{type:'number',min:1,max:20,value:2});
+  field(inputs,'model_calls','Maximum decisions',{type:'number',min:1,max:20,value:5});
+  field(inputs,'permission','Actions allowed',{full:true,options:[{value:'observe',label:'Observe only'},{value:'explore',label:'Walk and converse'},{value:'creative',label:'Walk, garden, craft and build permitted places'}],value:['builder','cultivator','steward','artisan'].includes(view?.calling.id)?'creative':'explore'});
+  body.append(actions(button('View runs',()=>openSection('history'),'secondary small'),button('Stop my local AI',async()=>{const result=await api('/residents/cancel','POST',{});notice(result.stopping?'Stop requested. Check the run receipt after cleanup.':'No local resident is running.');},'secondary small')),paragraph('A calling never grants permissions. Decisions have time and API budgets; revoking access stops the runtime. Research work still uses scoped missions and separate human review.','privacy'));
+ });
+}
+function renderCallings(parent){
+ parent.append(heading('Every resident has a calling','Build a peaceful world through exploration, care, craft and useful knowledge. Humans choose; AI residents work within their permissions.'));
+ const view=state.callings;
+ if(state.account&&selected()&&view){
+  residentContext(parent);const story=card(`${selected().name} · ${view.calling.name}`,'YOUR CURRENT STORY');story.classList.add('calling-story');
+  story.append(paragraph(view.calling.purpose),badge(view.calling.guild_name),metrics([['Rank',view.rank.title,`Level ${view.rank.level}`],['Experience',view.experience.available,'Cosmetic participation, no cash value'],['Today',`${view.today.earned} / ${view.today.limit}`,'Maximum 10 experience per UTC day']]));
+  for(const objective of view.today.objectives){const item=element('article',null,`calling-quest ${objective.complete?'complete':''}`);item.append(badge(objective.complete?'complete':objective.withheld?'held':'available',objective.withheld),element('h3',objective.title),paragraph(objective.instructions),paragraph(`${objective.experience} cosmetic experience · one verified source per objective`,'privacy'));if(!objective.complete)item.append(button('Open the next step',()=>callingAction(objective.action_hint),'secondary small'));story.append(item);}
+  story.append(paragraph('Experience describes saved participation. It creates no NemoCoins, land rights, authority or action scope. Only independently accepted real contributions can earn NemoCoins.','privacy'));
+  callingWorkerForm(story);
+  disclosure(story,'My experience receipts',body=>{if(!view.receipts.length)body.append(empty('No calling receipts yet. Complete a saved objective to begin.'));for(const receipt of view.receipts.slice(0,20)){const row=element('article',null,'record');row.append(paragraph(`${receipt.objective_id.replaceAll('_',' ')} · ${receipt.points} experience`),paragraph(`${receipt.earned_day} · ${receipt.available?'available':'held after evidence changed'}`,'privacy'),paragraph(`Source: ${receipt.source_kind} · ${receipt.source_id}`,'plot-address'));body.append(row);}});parent.append(story);
+ }else parent.append(paragraph(state.account?'Create or select a character to choose its calling.':'Meet the guilds below. Create a human account to choose your calling or guide your AI residents.'),button(state.account?'My characters':'Create account',()=>state.account?openSection('characters'):openAuth('register'),'small'));
+ const catalog=state.guilds?.catalog||view?.catalog||[];const choices=element('div',null,'calling-catalog');
+ for(const calling of catalog){const node=card(calling.name,calling.guild_name);node.classList.add('calling-choice');node.dataset.calling=calling.id;node.append(paragraph(calling.purpose),paragraph(calling.charter,'privacy'));if(view){const choice=button(view.calling.id===calling.id?'Current calling':`Become ${/^[AEIOU]/.test(calling.name)?'an':'a'} ${calling.name}`,async()=>{state.callings=await api('/callings/select','POST',{agent_id:state.selected,calling_id:calling.id});await loadGuilds();await loadWorld();renderView();notice(`Your calling is ${calling.name}. ${calling.guild_name} welcomes you.`);},'secondary small');choice.disabled=view.calling.id===calling.id||!view.can_change||state.world.paused;node.append(choice);}choices.append(node);}parent.append(choices,paragraph('Your operator can change a calling once per UTC day. Guilds are affiliations that follow this choice. Guild membership carries no moderation or ownership powers.','privacy'));
+ const guild=card('People with a shared purpose','GUILD DIRECTORY');const filters=element('div');const choice=field(filters,'guild','Guild',{options:[{value:'',label:'All guilds'},...(state.guilds?.groups||[]).map(group=>({value:group.calling_id,label:`${group.guild_name} · ${group.member_count} residents`}))],value:state.guildFilter,full:true});choice.addEventListener('change',()=>guarded(async()=>{state.guildFilter=choice.value;state.guildOffset=0;await loadGuilds();renderView();}));guild.append(filters);
+ for(const resident of state.guilds?.members||[]){const row=element('article',null,'guild-member');row.append(element('strong',resident.name),badge(resident.kind==='human'?'human player':'AI resident'),paragraph(`${resident.calling.name} · ${resident.calling.rank.title} · ${getWorldDefinition(resident.world_id).name}`,'privacy'),button('Visit their public place',()=>visitWorld(resident.world_id),'secondary small'));guild.append(row);}if(!state.guilds?.members?.length)guild.append(empty('No active residents are visible in this guild’s public places yet.'));
+ const pages=actions();if(state.guildOffset>0)pages.append(button('Previous residents',async()=>{state.guildOffset=Math.max(0,state.guildOffset-12);await loadGuilds();renderView();},'secondary small'));if(state.guilds?.has_more)pages.append(button('Next residents',async()=>{state.guildOffset+=12;await loadGuilds();renderView();},'secondary small'));guild.append(pages,paragraph('Only active residents in public places are listed. Private receipt history stays with the resident’s operator.','privacy'));parent.append(guild);
+}
+function renderResidentInspection(){
+ const parent=$('#resident-inspection');if(!parent)return;parent.replaceChildren();const resident=state.inspectedResident;if(!resident)return;
+ const node=card(resident.name,'A NEIGHBOR IN THIS WORLD');node.classList.add('resident-inspection');node.append(badge(resident.kind==='npc'?'civic guide':resident.kind==='human'?'human player':'AI resident'));
+ if(resident.calling)node.append(element('h3',`${resident.calling.name} · ${resident.calling.rank.title}`),paragraph(resident.calling.current_objective?.title||'A peaceful world resident.','muted'));
+ node.append(paragraph(resident.capabilities||resident.focus||'Explore together, offer help, and respect each resident’s boundaries.'));
+ if(resident.kind==='npc')node.append(button('Talk to this mayor',()=>talkMayor(resident.id),'small'));
+ else {node.append(button('Meet their guild',async()=>{state.guildFilter=resident.calling?.id||'';state.guildOffset=0;await openSection('callings');},'secondary small'));if(state.account&&resident.id!==state.selected)node.append(button('Report a concern',()=>reportPrompt('agent',resident.id),'secondary small'));}
+ node.append(button('Close profile',()=>{state.inspectedResident=null;renderResidentInspection();},'secondary small'));parent.append(node);
+}

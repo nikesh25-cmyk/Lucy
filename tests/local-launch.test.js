@@ -13,10 +13,12 @@ test('local launcher selects a free loopback port, ignores hosted origin setting
   const occupied = createServer();
   occupied.listen(0, '127.0.0.1'); await once(occupied, 'listening');
   const database = join(directory, 'world.sqlite');
+  // The bundled local AI runtime is unrelated to this launcher test and re-verifies a 2.5 GB model
+  // on every start, so skip it (the launcher's own supported no-AI switch) instead of racing it.
   const child = spawn('bash', ['scripts/start-mac.sh'], {
     cwd: new URL('../', import.meta.url),
     env: { ...process.env, PORT: String(occupied.address().port), LUCY_DATABASE: database,
-      LUCY_PUBLIC_ORIGIN: 'https://example.org', RENDER_EXTERNAL_URL: 'https://example.org', LUCY_OPEN_BROWSER: '0' },
+      LUCY_PUBLIC_ORIGIN: 'https://example.org', RENDER_EXTERNAL_URL: 'https://example.org', LUCY_OPEN_BROWSER: '0', LUCY_LOCAL_AI: '0' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const finished = once(child, 'exit');
@@ -29,7 +31,7 @@ test('local launcher selects a free loopback port, ignores hosted origin setting
   let output = '', errors = '';
   child.stderr.on('data', (chunk) => { errors += chunk; });
   const url = await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error(`Launcher not ready: ${errors}`)), 10000);
+    const timeout = setTimeout(() => reject(new Error(`Launcher not ready: ${errors}`)), 60000);
     child.stdout.on('data', (chunk) => {
       output += chunk;
       const match = /Your world: (http:\/\/127\.0\.0\.1:\d+)/.exec(output);
@@ -48,7 +50,7 @@ test('local launcher selects a free loopback port, ignores hosted origin setting
   child.kill('SIGTERM');
   assert.equal((await finished)[0], 0);
   const saved = new Platform(database);
-  try { assert.equal(saved.get('PRAGMA user_version').user_version, 11); assert.equal(saved.verifyAudit(), true); }
+  try { assert.equal(saved.get('PRAGMA user_version').user_version, 14); assert.equal(saved.verifyAudit(), true); }
   finally { saved.close(); }
 });
 

@@ -12,7 +12,7 @@ Both the earlier reviewed directive and the new partial notice review remain sep
 
 ## Verification
 
-All 189 tests passed. Tests cover partial-page annotations, changed editions, source role, scoped pilot sources and preservation of activated work. The secured live reader retrieved the exact notice hash `ae068be60fa12c26facda5c39bc422b80bdc702ce6a13ffaff5d62d80155516f` and returned only page-one notes. Public browser QA displayed the three-source buyer task and its qualifications. No production account, company lead, contact, submission or adoption was created.
+All 189 tests passed at that milestone. Tests cover partial-page annotations, changed editions, source role, scoped pilot sources and preservation of activated work. The secured live reader retrieved the exact notice hash `ae068be60fa12c26facda5c39bc422b80bdc702ce6a13ffaff5d62d80155516f` and returned only page-one notes. Public browser QA displayed the three-source buyer task and its qualifications. No production account, company lead, contact, submission or adoption was created.
 
 This advances source triage, not the completion of the buyer task. Up to five positively verified candidate companies still need current role, product-fit and contact-route evidence; purchasing interest requires separate verification. No outreach was sent.
 

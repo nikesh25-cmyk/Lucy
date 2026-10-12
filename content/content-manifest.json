@@ -1,0 +1,1583 @@
+{
+  "schema_version": 1,
+  "generated_by": "scripts/seal-content.mjs",
+  "kinds": {
+    "appearance": 20,
+    "block": 7,
+    "cosmetic": 29,
+    "crop": 3,
+    "furniture": 27
+  },
+  "entries": [
+    {
+      "id": "mayor-1",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-1.json",
+      "sha256": "64758a3cf4860ec2bec141e1c81ac98ad2c71655a3420bd08ce05eb8f828c0e7",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/1.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/1.png",
+          "sha256": "b94d2fd6c4262c67478cf9bc8d696909b7a7c133c25dcd6309972a7ad101f1d5"
+        },
+        {
+          "path": "assets/mayors/facesets/1.png",
+          "sha256": "002df9c6f39664f8756a5f439f112a2d9a310dbf2c737538546b9acaeb9eb8ca"
+        }
+      ]
+    },
+    {
+      "id": "mayor-10",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-10.json",
+      "sha256": "1b3626c05211cfc23079a365bf934b3c4905b34b1326a42e401327edc44c1095",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/10.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/10.png",
+          "sha256": "335db41df0f4c55b1b5ba4938748ae360ae4413ef1ff1049904a78074d0cb458"
+        },
+        {
+          "path": "assets/mayors/facesets/10.png",
+          "sha256": "0971cc9607cec50d78f6c24403d9ce937cffd6a131da015178fcafa27ea478a1"
+        }
+      ]
+    },
+    {
+      "id": "mayor-11",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-11.json",
+      "sha256": "8523789add1f78efabb3bf6bf7b270eb501062c518366c35aca9666a6bf98a22",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/11.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/11.png",
+          "sha256": "44a3bf31d01e563fbf3800be8eb98c4955157cdb0ada767854becb504957d196"
+        },
+        {
+          "path": "assets/mayors/facesets/11.png",
+          "sha256": "43e94c6077a407a870ae936544f89c5de08b6cafd04c1cebf1a12ae60f1d2947"
+        }
+      ]
+    },
+    {
+      "id": "mayor-12",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-12.json",
+      "sha256": "17ee0625d5122bff3febc505724146add88872eafee7f2a7ce04a99cb14c7648",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/12.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/12.png",
+          "sha256": "a2acf1c4866777dedbef9d8fc07971c4f6a556fa73f5192aee9b86e385c0eae4"
+        },
+        {
+          "path": "assets/mayors/facesets/12.png",
+          "sha256": "eff455ec23833052e3310ca2a933c2f5ab5d4f028b35cf78f710b82a894f8c41"
+        }
+      ]
+    },
+    {
+      "id": "mayor-13",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-13.json",
+      "sha256": "973767b153bb387f6ec5ea53b8634a5d11814a0be46f4c5ac89b83b5b7781b5f",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/13.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/13.png",
+          "sha256": "937bbfb7d31b5b29a4e6e012c7e977568910180502c7a874e7f37c937280ae61"
+        },
+        {
+          "path": "assets/mayors/facesets/13.png",
+          "sha256": "44ac47933f0b136edfe3d8b8633c97cdafa0113b1bfcc108bbe387adb9ead54f"
+        }
+      ]
+    },
+    {
+      "id": "mayor-14",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-14.json",
+      "sha256": "c6f91b569712f73e280584fab52a023bddfca330444d076b3bf39469572cf3d8",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/14.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/14.png",
+          "sha256": "10136e78185754a94b404d7d68d05af37217f0edf7a96627a361bdc27bcb0128"
+        },
+        {
+          "path": "assets/mayors/facesets/14.png",
+          "sha256": "b379b452adaf6586bf6c9d038cb25449b81e5c2a18ecd75f46c6ac186346af3e"
+        }
+      ]
+    },
+    {
+      "id": "mayor-15",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-15.json",
+      "sha256": "f7f3d35f02d9177d7ff28d331e156663fe8d69653b160defbf8dd2bc4c5cd72f",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/15.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/15.png",
+          "sha256": "fac3c289eec4d21b19f8cc5f6ecc9e8695c63f7aeb18535cbf8d8a9041a7f8f1"
+        },
+        {
+          "path": "assets/mayors/facesets/15.png",
+          "sha256": "9c069cc4f22bdfe54723324d75c740e960ad02bc897eccdad74ca9cd2f618032"
+        }
+      ]
+    },
+    {
+      "id": "mayor-16",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-16.json",
+      "sha256": "8394567eac697d62a89d651f78caadfaa7bdc920bf26b568de8a20742cc2238a",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/16.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/16.png",
+          "sha256": "50151d435a719149f6ad53369670ed8068c6dda97d96e6a0de5cf0cf6aa17095"
+        },
+        {
+          "path": "assets/mayors/facesets/16.png",
+          "sha256": "14bb932d1cf89e5874ba6eafecfbf0589497b5e6f9c304171e5087dfccb0f2e9"
+        }
+      ]
+    },
+    {
+      "id": "mayor-17",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-17.json",
+      "sha256": "790f6c512f88a64edeb965c1e396b8daf0cfede3e11fe938b4babae719ec576b",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/17.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/17.png",
+          "sha256": "befe5e851dc1f9e74f46042e270d00775632a13d9877c11625d9bfdbe971c74f"
+        },
+        {
+          "path": "assets/mayors/facesets/17.png",
+          "sha256": "4df043ea19f9110cbf1ae75e07f9b2fd37563a9a7b9746fe0a57342fa99aeed1"
+        }
+      ]
+    },
+    {
+      "id": "mayor-18",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-18.json",
+      "sha256": "ba797f34b98eaf883fdbfc3963ce233d22aed5b2474a4552ac74708ec8a91eb9",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/18.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/18.png",
+          "sha256": "1212d624d20ef3142bd9caf0cf1881dac1e5c3c9f29c5ae9d8ca5989e294d129"
+        },
+        {
+          "path": "assets/mayors/facesets/18.png",
+          "sha256": "b96b2f05841b01cdf7e496939ffca9aaec882d9f55909da3af3d03b4deefed01"
+        }
+      ]
+    },
+    {
+      "id": "mayor-19",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-19.json",
+      "sha256": "bf18eb347aff95ecb662d9f84d9618364b6732fee391ec9243cf651a3361481f",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/19.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/19.png",
+          "sha256": "7d8fd847e3f9655e5e36783abf1d91230d29d9bd60d03d9ae96700bf748c8d5f"
+        },
+        {
+          "path": "assets/mayors/facesets/19.png",
+          "sha256": "59149975c362394976825aee16a278bca751583e6b8b3346f5858f19cfaf8cb8"
+        }
+      ]
+    },
+    {
+      "id": "mayor-2",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-2.json",
+      "sha256": "1112f1fcc1f4ddb4457a731bf174ef39371705f58db6bfe2081fc28da422b6ce",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/2.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/2.png",
+          "sha256": "89f9406aedac56686f52c1d1e910a0259864f39b9338a37509282996830edf7c"
+        },
+        {
+          "path": "assets/mayors/facesets/2.png",
+          "sha256": "05f75aab420396a7df000db35d8539011597601f7863a238684aba5f0409f335"
+        }
+      ]
+    },
+    {
+      "id": "mayor-20",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-20.json",
+      "sha256": "2b3677fdf329932d391c31afae7da21c3489bf9c1464b66127175a23241ac12d",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/20.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/20.png",
+          "sha256": "7f900561f06cb0254dce72aa5d462a5c17a889a065b86281db44563b4ac06134"
+        },
+        {
+          "path": "assets/mayors/facesets/20.png",
+          "sha256": "8393c5758d8e605a96a00900b8a5c6aa63ed358020a98974b83ab2d905d7f588"
+        }
+      ]
+    },
+    {
+      "id": "mayor-21",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-21.json",
+      "sha256": "0f447a90b6a429f1517329bbdcf55ab99c907d7462c16eb124941c23c1fefbef",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/21.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/21.png",
+          "sha256": "dc5198ceb4433958aca0bffb89e587316bb8a98af14aca0895c9ab62cb0503f1"
+        },
+        {
+          "path": "assets/mayors/facesets/21.png",
+          "sha256": "01fae1bf7b10d21fc65f0c4b8a99c9e25ae5130e86b5d503285b7aa608581902"
+        }
+      ]
+    },
+    {
+      "id": "mayor-22",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-22.json",
+      "sha256": "132a400b7e3e9057d518b2173d480a1dcd27691e32f14efd9e8e3a49a5b0f43d",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/22.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/22.png",
+          "sha256": "268e2403a50ed3c05189e6637005ad2b1715e2aaa1e9eebec07057bc3baceb86"
+        },
+        {
+          "path": "assets/mayors/facesets/22.png",
+          "sha256": "5301854b3d7ba8abd34c6eb97ee926829348022712663ecdbce64e033716305c"
+        }
+      ]
+    },
+    {
+      "id": "mayor-3",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-3.json",
+      "sha256": "ac2c2dcb0f3418ed36e42473aa39488752ce252903e8d0392b45250bb92aab8e",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/3.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/3.png",
+          "sha256": "e8238ed320ebdb5423a9977d43e1737278a4f446469c388dbd7b7d2201b91326"
+        },
+        {
+          "path": "assets/mayors/facesets/3.png",
+          "sha256": "98baf281de5cee1683f4277b598a25ca5a4a247a892fcfea628d6c92532ebfe5"
+        }
+      ]
+    },
+    {
+      "id": "mayor-5",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-5.json",
+      "sha256": "f68c63f985439b66592685a3ad20c7ba55c8a24dcf0e7e627e839d4c8e90b623",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/5.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/5.png",
+          "sha256": "d2d4257e5d54618efe1bc1be32d480ca8356d7981de59af4e216e20de2b61c4e"
+        },
+        {
+          "path": "assets/mayors/facesets/5.png",
+          "sha256": "7461ab22a3e29a61daded5b1b7c8466ee7fd52a55fcc3aa1387db8946cd8ffcc"
+        }
+      ]
+    },
+    {
+      "id": "mayor-6",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-6.json",
+      "sha256": "0e9686933534148bcfaf5b4765014e4809be76faa0b07f2a6ac2860203a98b6c",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/6.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/6.png",
+          "sha256": "173655715e319cf2383c189673d3c198bb5c840155120015ce4501ab5d2fdc77"
+        },
+        {
+          "path": "assets/mayors/facesets/6.png",
+          "sha256": "81fd73d77346e15bbd03496fe6b67a6791aa5ff8e1851fa28c37a3148dcc56ea"
+        }
+      ]
+    },
+    {
+      "id": "mayor-7",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-7.json",
+      "sha256": "14d08ed99f3aad38501ff905a685435386d9e77f0f05bc1264a9541f9f2af717",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/7.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/7.png",
+          "sha256": "81708c825b7b6ab9e9aa59e8e49915f682f2e3f4757fc0a3450d2355628c377f"
+        },
+        {
+          "path": "assets/mayors/facesets/7.png",
+          "sha256": "f33ff09cac53d2ac3683a39815ee180b3ea594fccb8de0044f71f27143e77437"
+        }
+      ]
+    },
+    {
+      "id": "mayor-9",
+      "kind": "appearance",
+      "file": "content/appearances/mayor-9.json",
+      "sha256": "ee89a5f535fac3d36ab8dbf1d104e12d83dffe419633c9d0d564218a8734259b",
+      "license": {
+        "spdx": "CC0-1.0",
+        "author": "Pixel-boy / Sparklin Labs",
+        "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/9.png",
+        "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+        "notice_file": "assets/mayors/LICENSE.txt",
+        "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+      },
+      "assets": [
+        {
+          "path": "assets/mayors/characters/9.png",
+          "sha256": "79ee75f1cf2e11f96b94d4bf102013b86ac46b5fd9ec4243e408954ade4aa2c3"
+        },
+        {
+          "path": "assets/mayors/facesets/9.png",
+          "sha256": "8c180f7b7a6c243cb332986108e7a8dc6ab34e1cd73691ebfa2bb1c441b9da08"
+        }
+      ]
+    },
+    {
+      "id": "brick",
+      "kind": "block",
+      "file": "content/blocks/brick.json",
+      "sha256": "5e5f00fec05845651d463c4096f78957deb4832ab3cf2786e9420bb6c06b3668",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "glass",
+      "kind": "block",
+      "file": "content/blocks/glass.json",
+      "sha256": "4394878602caf2255d676f464e6df702e6ac86b6ba28772d552c34bde2443d39",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "grass",
+      "kind": "block",
+      "file": "content/blocks/grass.json",
+      "sha256": "354d033569a21f3ac08a628ef45e2b01dea5c245c05b7b7f5eb7d5552dee1535",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "path",
+      "kind": "block",
+      "file": "content/blocks/path.json",
+      "sha256": "bcdfcba8da16da3c8be9335de7961801fee33fb3956cf843971a0b2afb606edb",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "sand",
+      "kind": "block",
+      "file": "content/blocks/sand.json",
+      "sha256": "78eeaa28b64be2f90378139f25f64cc09281dc53b62edfb3e80cea6334ce5042",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "stone",
+      "kind": "block",
+      "file": "content/blocks/stone.json",
+      "sha256": "6b50df49d3b44c05bc3cede1ac0a99b61adc8e2fa94d6867362f1fc62d74eb50",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "wood",
+      "kind": "block",
+      "file": "content/blocks/wood.json",
+      "sha256": "811477dfe78c11dc4193693c48abbaa23574429325ef3d1e5ffa76b88a537eeb",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "blue",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/agent-color-blue.json",
+      "sha256": "c7d0e21c7bb3e7aa220a6a1203b0215be28b6cd47fc0471efc4d35ce778600dc",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "bow",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/expression-bow.json",
+      "sha256": "68afb9dbfe4023b842cd12f836fe3d7634715e5f6b5cbe3e7e27f0622e9efc9e",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "cheer",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/expression-cheer.json",
+      "sha256": "9c56be0685b7edb80d73743736f6f985eed309454e7355b8c342c85f68403a02",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "coral",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/agent-color-coral.json",
+      "sha256": "ac7785339fc4bebe316c9093efda2d617fb5384a585aa35fa7fc6ecb0343733c",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "Explorer",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/title-explorer.json",
+      "sha256": "e74d1190341cfcba4a324a5983b697c25cc2c919fddbaaeb7e45dce1be86d361",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "explorer_banner",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/avatar-explorer_banner.json",
+      "sha256": "f0dcdb5e3ba45d974887c794f82d03c814f14de9698bac1c50960ff13c8fda2f",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "flower",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/avatar-flower.json",
+      "sha256": "07ab35229d3ef07b44033a90545842f11f1bfe4b7c740a6c61bc058148b5eae1",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "flower_crown",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/craft-flower_crown.json",
+      "sha256": "05811dd4eb08894e7ae5042b3bad945e70b69d71ebf678e659ad94536a700187",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "garden_lantern",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/craft-garden_lantern.json",
+      "sha256": "4d12a936c3d7a97e509daca48d5760f352f0e2e506ca8e98ac7b01f734ca3a98",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "Gardener",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/title-gardener.json",
+      "sha256": "c8be555e8dbb4c89e659a3bd653ebb49ce89a13673dc9678fc6fac01355d4b2b",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "gold",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/agent-color-gold.json",
+      "sha256": "ffd36f66b8b406a34454f28bb70958235c16e7e9ba3b79ba9f836ca604a26ab0",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "heart",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/expression-heart.json",
+      "sha256": "9c41737fe5ec7bd38517c019c31b05fe9397a829e11948027a8a983d9e4ce5a6",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "lavender",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/agent-color-lavender.json",
+      "sha256": "82a3f77bbaf4b7f484eb00e6c521cc4c5d1c8cb8777fa3d464e56c6be9b8c273",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "leaf",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/avatar-leaf.json",
+      "sha256": "004c2834ee508a0bff8c150847ca078976a72934717800c98c78c30561d9e8bd",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "Maker",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/title-maker.json",
+      "sha256": "def3d71e723c11767a6f4a659ab1aba9c670c58bad05ca1b4d35ecf05f09baaf",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "none",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/expression-none.json",
+      "sha256": "ece574d53a2ec075af6ca2fe7f992b77f21840e93b95460c0688cd9c1a6a4be5",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "Resident",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/title-resident.json",
+      "sha256": "a8df9ceee3769fb5c11597c249e329e21ad38fc72cdcf7032d9f540fb468da54",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "rose",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/agent-color-rose.json",
+      "sha256": "62d840f8f58e04325b172e479d6242d6588ca5e161bcfb1e60d2e069bb7d4d70",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "sage",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/agent-color-sage.json",
+      "sha256": "a3c48c2bb21c3c63c59a1f84f67a405346a9163dbc09958b0daa7f5fef6d9635",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "sprout",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/avatar-sprout.json",
+      "sha256": "8b1374d182788ca5715e9ac85c4cbbbff5af4f11e4aa375c1007c720ade8e9f3",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "star",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/avatar-star.json",
+      "sha256": "34a1e4562fed9b4601e126fd936253998a9b58c0edd65ffcc3103aee68f1a3f7",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "teal",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/agent-color-teal.json",
+      "sha256": "5481bb43c55497c71f83d1051beab0f9467a75f051afbb13d9181a6c0c1a597d",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "think",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/expression-think.json",
+      "sha256": "566ff8667d79146d7de8228ffdea0f4a899d5932a537d4fcc43b4c8a02d3abb0",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "tone-1",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/skin-tone-1.json",
+      "sha256": "a5b91dd72d3e7cd3614f4553c3059d75883f9e44a8353290a529065146099d2a",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "tone-2",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/skin-tone-2.json",
+      "sha256": "a37c29d8ca98c8ca39b50addc8736bc8c28f7182bc516b50a46bce8700481168",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "tone-3",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/skin-tone-3.json",
+      "sha256": "80f0ebad96a2d30d9150624f966d6bc02a7f3174dac5ef0f2b678c1ec2b0ba14",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "tone-4",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/skin-tone-4.json",
+      "sha256": "ab3356de3bb5acb75ea447225f90c46543a8aea99962524490fb7b047ef4fb4d",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "wave",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/expression-wave.json",
+      "sha256": "2ed36a9e2d1e13765d6ace390b4eefa1fb9a4b0bebc926dd5b3482b5d26e5d57",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "woven_banner",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/craft-woven_banner.json",
+      "sha256": "5c3918bf663ecb3db21fbc02819fd654efa1e0ba769e36fcf7a61ac0ea4cab42",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "fiber",
+      "kind": "crop",
+      "file": "content/crops/fiber.json",
+      "sha256": "b8a1a4814a0cc42c5aa0ddbce941614999179be76169299d00645408120b7d36",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project game data: src/journey.js growth times, harvest yield and garden limits",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "herbs",
+      "kind": "crop",
+      "file": "content/crops/herbs.json",
+      "sha256": "4753e2cb971f203f95fae6a006675f64f3fc251f606d75b5a1b920f93e408230",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project game data: src/journey.js growth times, harvest yield and garden limits",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "wood",
+      "kind": "crop",
+      "file": "content/crops/wood.json",
+      "sha256": "8f621a498af88a194e2ac558513e4339593613ba5cc76726c8b2946f7be6536f",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project game data: src/journey.js growth times, harvest yield and garden limits",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "bed",
+      "kind": "furniture",
+      "file": "content/furniture/bed.json",
+      "sha256": "a84ada1110d1ef77dfabadf33a1f909289bf15eedba0f8a18b58c3b264fe367a",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "bench",
+      "kind": "furniture",
+      "file": "content/furniture/bench.json",
+      "sha256": "63be9ef5badb1d894c22762d440af37ecbad91c01eddc71a1dc1856d29ebc3f2",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "boat",
+      "kind": "furniture",
+      "file": "content/furniture/boat.json",
+      "sha256": "2def500dbbecaa4f4e8d2141ebb342294ff467c555090e09d5eb7f157f84158c",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "bookshelf",
+      "kind": "furniture",
+      "file": "content/furniture/bookshelf.json",
+      "sha256": "f65076975c82d9f70a24d2b05ae58b1925abf517c3aa1ce927f4ef55aad8f8d8",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "cactus",
+      "kind": "furniture",
+      "file": "content/furniture/cactus.json",
+      "sha256": "63eeb6f2211fc799c16a2104661c8461dc4687cc9d7682ecf4658474265d19cb",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "civic-building",
+      "kind": "furniture",
+      "file": "content/furniture/civic-building.json",
+      "sha256": "27ea4f4daf5d418bfbcd5c4339ecb2d1a5c3d5aebcc126c11820bd60ade66256",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "cottage",
+      "kind": "furniture",
+      "file": "content/furniture/cottage.json",
+      "sha256": "c16cae97038a9418632afb828200523087cb0d12ab64affb3e5cba4c0c374172",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "cushion",
+      "kind": "furniture",
+      "file": "content/furniture/cushion.json",
+      "sha256": "25901aead7180277e81ba1798d8eca7e726f710c6c378cf6b918cd79c6d63989",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "display",
+      "kind": "furniture",
+      "file": "content/furniture/display.json",
+      "sha256": "4c439473a2992d41ca97c715108dc27ce6ca849e1508a2a7b64997514e95751c",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "farm",
+      "kind": "furniture",
+      "file": "content/furniture/farm.json",
+      "sha256": "3eb1f19834f0c1d5b13cd83fffb4b1f20e87464e8507d0c7da2e0b04762ddde6",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "flowers",
+      "kind": "furniture",
+      "file": "content/furniture/flowers.json",
+      "sha256": "2c8fc8464a4399043df1640737f793ab22bc8eb284d082321eca8bf3d6eda457",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "fountain",
+      "kind": "furniture",
+      "file": "content/furniture/fountain.json",
+      "sha256": "38b157028221ce1c0e611c008a13bca6acd0481d2f9720f3008b275ea1484f3d",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "fruit",
+      "kind": "furniture",
+      "file": "content/furniture/fruit.json",
+      "sha256": "c3f35a4bd04ee03e5fbee7f1d08c04d13759c5649a1591de698658a1cf9fb7d6",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "gateway",
+      "kind": "furniture",
+      "file": "content/furniture/gateway.json",
+      "sha256": "fc67ad1b2a63ba09e04dfd4054ea570120ca4b80b3eceb171928bb99f6d18eeb",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "kitchen",
+      "kind": "furniture",
+      "file": "content/furniture/kitchen.json",
+      "sha256": "4aa066647dfaf011b50812f2666f7911baacfd020adb32c8b8bc7f30257357bf",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "lamp",
+      "kind": "furniture",
+      "file": "content/furniture/lamp.json",
+      "sha256": "cac7b7c3f739ae4b8bb4afd42853961d387d44c5d1a488f7b656164ffc7c228e",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "lantern",
+      "kind": "furniture",
+      "file": "content/furniture/lantern.json",
+      "sha256": "93c54bebbe708abe37eb7b2e69c3730f0997f46852cd0e05b965a232b1f9f30a",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "mountain",
+      "kind": "furniture",
+      "file": "content/furniture/mountain.json",
+      "sha256": "3f9ddc503d5c55b8a2e21367ddd029b9efc48aaa7d9b9bc4016b5c92e899075d",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "palm",
+      "kind": "furniture",
+      "file": "content/furniture/palm.json",
+      "sha256": "9415e543901689b9d961aa6f298c20e4602848916d53bc1b93597353a8ae154e",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "pond",
+      "kind": "furniture",
+      "file": "content/furniture/pond.json",
+      "sha256": "b66084506b35628659f6adf5c5115b9647027b839792c5bd01d20c94215d342d",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "sculpture",
+      "kind": "furniture",
+      "file": "content/furniture/sculpture.json",
+      "sha256": "d15ada58522c8f1f513dea5999d1b8f53cdb1c5d37991e01bfa260cdffa81c64",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "shelter",
+      "kind": "furniture",
+      "file": "content/furniture/shelter.json",
+      "sha256": "654aa7ff1ad81402d6dc2b2924e1959ac749a2d20d43c1fc548935e7b19f54bc",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "table",
+      "kind": "furniture",
+      "file": "content/furniture/table.json",
+      "sha256": "4e6f0fd86dde3c4f2c409f5914252617c27c573b9843712559dac0645af35dc0",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "telescope",
+      "kind": "furniture",
+      "file": "content/furniture/telescope.json",
+      "sha256": "6cd5d5576933a40d1d9f2472eb2929d4597bc9e19eecac2ee1d9f9b3d29b8a90",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "tree",
+      "kind": "furniture",
+      "file": "content/furniture/tree.json",
+      "sha256": "7400b754d8bbebbb300d2eadd47b461e8b0a985dfb3fd5e97f1a30b741e15612",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "trellis",
+      "kind": "furniture",
+      "file": "content/furniture/trellis.json",
+      "sha256": "bde757af6f782275f99ce529b12dcf6a07b0f21f4acf25e034714ecf55e26955",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "workbench",
+      "kind": "furniture",
+      "file": "content/furniture/workbench.json",
+      "sha256": "f3d7fe09f57bb49980791e226dd559114c680c33c94f72060373f031337f96d4",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    }
+  ],
+  "support": [
+    {
+      "path": "content/palettes.json",
+      "sha256": "068b898b4596e86da9fec7c4fdefe2629cc89f6f8b614c0657029e04571d239e"
+    },
+    {
+      "path": "content/notices.json",
+      "sha256": "15ee577ab454cdf96fe29c25d10410308b3af845865ed675a2300ffb7c920c5c"
+    },
+    {
+      "path": "content/index.js",
+      "sha256": "0fbcc0de969f48f55c26be57ff55c66a78670407fd5fbe3b07a4d38244fa9489"
+    }
+  ]
+}

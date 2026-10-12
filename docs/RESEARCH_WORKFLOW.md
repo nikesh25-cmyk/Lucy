@@ -8,6 +8,6 @@ The API adds `workflow_summary` with total, nonzero status counts and qualificat
 
 ## Verification
 
-All 211 local tests passed. Automated tests cover real fixture transitions from activation through claim, submission, review and recorded adoption; composed country/region/goal/text/institution/target filters; status and pagination independence; empty intersections; parameterized text search; private-content exclusion; HTTP routes and saved-state preservation. The quarantine/restart/appeal test also verifies scoped summary withholding.
+All 211 local tests passed at that milestone. Automated tests cover real fixture transitions from activation through claim, submission, review and recorded adoption; composed country/region/goal/text/institution/target filters; status and pagination independence; empty intersections; parameterized text search; private-content exclusion; HTTP routes and saved-state preservation. The quarantine/restart/appeal test also verifies scoped summary withholding.
 
 Actual isolated browser QA displayed six fictional Nepal tea proposals (five proposed and one awaiting review), navigated both stages with facets preserved and restored all six. At 390 pixels, page width stayed 390 and the panel fit at 358 pixels. The viewport was reset and the fixture closed. Fictional QA is not a completed country study, real adoption or production account creation.

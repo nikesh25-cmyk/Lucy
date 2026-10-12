@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "id": "mayor-17",
+  "kind": "appearance",
+  "label": "Civic mayor sprite 17",
+  "since": "1.0.0",
+  "order": 14,
+  "license": {
+    "spdx": "CC0-1.0",
+    "author": "Pixel-boy / Sparklin Labs",
+    "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/17.png",
+    "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+    "notice_file": "assets/mayors/LICENSE.txt",
+    "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+    "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+  },
+  "appearance": {
+    "sprite": 17,
+    "color": null,
+    "geometry": "sprite-sheet",
+    "transparent": true,
+    "emissive": null,
+    "atlas": "assets/mayors/characters/17.png",
+    "faceset": "assets/mayors/facesets/17.png",
+    "served": {
+      "atlas": "/assets/mayors/characters/17.png",
+      "faceset": "/assets/mayors/facesets/17.png"
+    },
+    "frame": {
+      "width": 16,
+      "height": 16,
+      "columns": 4,
+      "rows": 7,
+      "idle_row": 0,
+      "walk_rows": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "directions": {
+        "down": 0,
+        "up": 1,
+        "left": 2,
+        "right": 3
+      }
+    }
+  },
+  "rules": {
+    "palettes": [],
+    "roster_roles": [
+      "civic-mayor"
+    ],
+    "sprite": 17,
+    "directions": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "walk_rows": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "action_rows_excluded": [
+      4,
+      5,
+      6
+    ]
+  },
+  "assets": [
+    {
+      "path": "assets/mayors/characters/17.png",
+      "sha256": "befe5e851dc1f9e74f46042e270d00775632a13d9877c11625d9bfdbe971c74f"
+    },
+    {
+      "path": "assets/mayors/facesets/17.png",
+      "sha256": "4df043ea19f9110cbf1ae75e07f9b2fd37563a9a7b9746fe0a57342fa99aeed1"
+    }
+  ],
+  "notes": [
+    "Assigned to a region mayor by position in the roster declared in src/civic-engine.js; the numeric sprite id is stored in the npc_mayors.sprite column.",
+    "The portrait faceset is vendored at assets/mayors/facesets/, the route the client loads; it is byte-identical to the pack layout copy at assets/mayors/characters/faceset/.",
+    "Sheets 4 and 8 from the same pack are excluded: they carry only two rows and cannot serve the four-direction walk animation."
+  ]
+}

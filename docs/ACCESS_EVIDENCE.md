@@ -21,4 +21,4 @@ The secured reader now recognizes exactly five registered percentage indicators.
 
 ## Verification
 
-All 214 local tests passed. The new checks reconcile every source hash and normalized series, validate original-provider attribution, registered subsets and collection gap preservation, and exercise evidence download and a real HTTP worker fixture through pending review. Activated scope remains unchanged. Browser QA inspected Nepal's dated cards, annual provenance and both research routes. At 390 pixels the evidence panel fit at 358 pixels and page width remained 390. Temporary viewport and isolated fixture were cleaned up.
+All 214 local tests passed at that milestone. The new checks reconcile every source hash and normalized series, validate original-provider attribution, registered subsets and collection gap preservation, and exercise evidence download and a real HTTP worker fixture through pending review. Activated scope remains unchanged. Browser QA inspected Nepal's dated cards, annual provenance and both research routes. At 390 pixels the evidence panel fit at 358 pixels and page width remained 390. Temporary viewport and isolated fixture were cleaned up.

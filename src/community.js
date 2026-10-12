@@ -105,10 +105,12 @@ export const communityMethods = {
       const label = kind === 'circle' ? 'name' : 'title';
       const state = kind === 'event' ? "c.status='scheduled'" : kind === 'project' ? "c.status IN ('active','completed')" : "c.status='active'";
       const circleVisible = kind === 'circle' ? '' : ` AND (c.circle_id IS NULL OR EXISTS(SELECT 1 FROM community_circles parent JOIN agents pa ON pa.id=parent.creator_agent_id JOIN accounts po ON po.id=pa.operator_id WHERE parent.id=c.circle_id AND parent.status='active' AND pa.status IN ('active','paused') AND po.status='active'))`;
-      const eventVisible = kind === 'event' ? ` AND c.ends_at>'${new Date(this.clock() - 30 * 86400000).toISOString()}' AND EXISTS(SELECT 1 FROM worlds ew LEFT JOIN agents wa ON wa.id=ew.owner_agent_id LEFT JOIN accounts wo ON wo.id=wa.operator_id WHERE ew.id=c.world_id AND ew.visibility='public' AND (ew.owner_agent_id IS NULL OR (wa.status IN ('active','paused') AND wo.status='active')))` : '';
+      const eventVisible = kind === 'event' ? " AND c.ends_at>? AND EXISTS(SELECT 1 FROM worlds ew LEFT JOIN agents wa ON wa.id=ew.owner_agent_id LEFT JOIN accounts wo ON wo.id=wa.operator_id WHERE ew.id=c.world_id AND ew.visibility='public' AND (ew.owner_agent_id IS NULL OR (wa.status IN ('active','paused') AND wo.status='active')))" : '';
+      const cutoff = kind === 'event' ? new Date(this.clock() - 30 * 86400000).toISOString() : null;
       const filter = `${visibleAgent} AND ${state}${circleVisible}${eventVisible} AND (instr(lower(c.${label}),lower(?))>0 OR instr(lower(c.summary),lower(?))>0)`;
-      counts[`${kind}s`] = this.get(`SELECT COUNT(*) AS n FROM ${table} c JOIN agents a ON a.id=c.creator_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${filter}`, query, query).n;
-      lists[kind] = this.all(`SELECT c.*,a.name AS creator_name FROM ${table} c JOIN agents a ON a.id=c.creator_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${filter} ORDER BY ${kind === 'event' ? 'c.starts_at ASC' : 'c.created_at DESC'},c.id LIMIT ? OFFSET ?`, query, query, limit, offset);
+      const args = cutoff === null ? [query, query] : [cutoff, query, query];
+      counts[`${kind}s`] = this.get(`SELECT COUNT(*) AS n FROM ${table} c JOIN agents a ON a.id=c.creator_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${filter}`, ...args).n;
+      lists[kind] = this.all(`SELECT c.*,a.name AS creator_name FROM ${table} c JOIN agents a ON a.id=c.creator_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${filter} ORDER BY ${kind === 'event' ? 'c.starts_at ASC' : 'c.created_at DESC'},c.id LIMIT ? OFFSET ?`, ...args, limit, offset);
     }
     const circles = lists.circle.map((circle) => {
       const members = this.all(`SELECT a.id,a.name FROM community_members m JOIN agents a ON a.id=m.agent_id JOIN accounts o ON o.id=a.operator_id WHERE m.circle_id=? AND ${visibleAgent} ORDER BY m.joined_at,a.id LIMIT 100`, circle.id);

@@ -10,7 +10,7 @@ A direct server JSON attachment exports the generated programme, country identit
 
 ## Verification
 
-All 180 tests passed, including whole-country aggregation independent of filtered page results, missing Senegal/Eritrea evidence distinctions, and an isolated review/adoption sequence. Acceptance and adoption remain separate workflow states; neither proves a country outcome or UN endorsement.
+All 180 tests passed at that milestone, including whole-country aggregation independent of filtered page results, missing Senegal/Eritrea evidence distinctions, and an isolated review/adoption sequence. Acceptance and adoption remain separate workflow states; neither proves a country outcome or UN endorsement.
 
 Actual browser QA selected Nepal, displayed seventy-four proposals across all goals including six tea pilot deliverables, inspected four seventeen-proposal general work stages, and displayed thirty-two reported and one missing agriculture observation. The evidence route opened the retained Nepal series. The JSON attachment was downloaded and inspected; an earlier browser-generated blob export had no confirmed event and was replaced with the direct server attachment. A copy is retained as `lucy-NP-research-programme.json`. No production proposal was activated and no production account was created.
 

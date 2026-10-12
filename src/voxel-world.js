@@ -1,11 +1,25 @@
 import * as THREE from '../assets/vendor/three-voxel.js';
 import { getWorldDefinition } from '../world.js';
-import { VOXEL_LIMITS, voxelPlan, voxelPick, normalizeOrbit, orbitCamera, inVoxelWindow, voxelParcelAddress, voxelParcelSelection } from './voxel-geometry.js';
+import { VOXEL_LIMITS, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, inVoxelWindow, voxelParcelAddress, voxelParcelSelection, cellOccludedBelow, createOrbitInput } from './voxel-geometry.js';
+import content from './content.js';
 
-const COLORS = Object.freeze({ dirt: '#927052', grass: '#79a86d', meadow: '#79a86d', stone: '#a4b1b0', wood: '#b58c58', brick: '#c88466',
-  glass: '#9dd9e0', leaf: '#468969', leaves: '#468969', water: '#4b9dad', sand: '#d9c692', snow: '#e5eeee', path: '#d7c49c',
+// Renderer-only tints: terrain, foliage, trim and the interior palette, none of which owns a typed
+// definition. `gold` stays local because the agent cosmetic of that id is a deeper tone
+// (#cbb46c) than this lantern glow (#e2ca83): two different colours share the name, so neither may
+// stand in for the other. The frontier block colours and the agent colours are resolved from the
+// content layer below, where each one is a sealed definition.
+const LOCAL_COLORS = Object.freeze({ dirt: '#927052', meadow: '#79a86d', leaf: '#468969', leaves: '#468969', water: '#4b9dad', snow: '#e5eeee',
   plaza: '#e3d7b4', floor: '#c8aa82', rug: '#869e8c', trunk: '#81664a', roof: '#bd7961', dark: '#324842', cream: '#f1e9cb', gold: '#e2ca83' });
-const AGENT_COLORS = { teal: '#448c87', coral: '#d9876e', lavender: '#a497c4', gold: '#cbb46c', blue: '#6c9eb6', sage: '#8eae83', rose: '#c58b9d' };
+const COLORS = Object.freeze({ ...LOCAL_COLORS, ...Object.fromEntries(content.palette('frontier').map((id) => [id, content.color(id, 'block')])) });
+const AGENT_COLORS = Object.freeze(Object.fromEntries(content.cosmetics('agent_color').map((id) => [id, content.color(id, 'cosmetic')])));
+// Original calling emblems represent an operator's explicit choice, never an account privilege.
+const CALLING_STYLES = Object.freeze({
+  explorer: { color: '#7bc0c9', mark: 'cross' }, builder: { color: '#d39170', mark: 'arch' },
+  cultivator: { color: '#95c681', mark: 'sprout' }, researcher: { color: '#ada6d7', mark: 'book' },
+  steward: { color: '#d7c48a', mark: 'cross' }, mediator: { color: '#e4dfbe', mark: 'bridge' },
+  artisan: { color: '#d39bac', mark: 'diamond' }, host: { color: '#88b7d0', mark: 'arch' },
+});
+const callingStyle = item => typeof item.calling?.id === 'string' && Object.hasOwn(CALLING_STYLES, item.calling.id) ? CALLING_STYLES[item.calling.id] : null;
 const variant = (base, x, y) => new THREE.Color(base).multiplyScalar(0.91 + ((x * 47 + y * 91) % 7) * 0.025).getHex();
 const validColor = value => typeof value === 'string' && /^#[a-f\d]{6}$/i.test(value) ? value : null;
 const hash = value => { let result = 0; for (const char of String(value)) result = Math.imul(result ^ char.charCodeAt(0), 16777619); return result >>> 0; };
@@ -113,17 +127,21 @@ function furniture(batch, item) {
   else if (type !== 'gateway') { add(0, .22, 0, .7, .44, .7, COLORS.stone); add(0, .8, 0, .45, .7, .45, type === 'display' ? COLORS.gold : '#a4b9ab'); }
 }
 
-function terrainScene(resources, definition, plan) {
-  const batch = cubeBatch(resources), scenery = new Map(plan.objects.map(item => [`${item.x},${item.y}`, item.type || item.kind]));
+const parcelAttacher = (definition, plan) => {
   const parcels = new Map(plan.parcels.map(parcel => [parcel.id, parcel]));
-  const withParcel = record => {
+  return record => {
     const address = voxelParcelAddress(definition.id, record), parcel = address && parcels.get(address.id);
     return parcel ? { ...record, parcel } : record;
   };
+};
+
+function terrainScene(resources, definition, snapshot, plan, cullHidden = true) {
+  const batch = cubeBatch(resources), scenery = new Map(plan.objects.map(item => [`${item.x},${item.y}`, item.type || item.kind])), withParcel = parcelAttacher(definition, plan);
   for (const item of plan.cells) {
     const { x, y, type } = item, pick = { x, y, z: 0, type: 'terrain', terrain: type, ...(item.parcel ? { parcel: item.parcel } : {}) };
     const base = ['water', 'bridge'].includes(type) ? COLORS.dirt : type === 'building' || type === 'tree' || type === 'fountain' ? definition.groundColor || COLORS.grass : COLORS[type] || definition.groundColor || COLORS.grass;
-    batch.add(x + .5, type === 'water' ? -.82 : -.5, y + .5, 1, 1, 1, variant(COLORS.dirt, x, y), pick);
+    // An interior base cube has no exposed face, so it is skipped; the slab below always stays.
+    if (!cullHidden || !cellOccludedBelow(definition, snapshot, plan, x, y)) batch.add(x + .5, type === 'water' ? -.82 : -.5, y + .5, 1, 1, 1, variant(COLORS.dirt, x, y), pick);
     batch.add(x + .5, type === 'water' ? -.16 : -.04, y + .5, 1, .08, 1, variant(base, x, y), pick);
     if (type === 'water') batch.add(x + .5, -.095, y + .5, .99, .08, .99, variant(COLORS.water, x, y), pick);
     if (type === 'bridge') for (let i = 0; i < 4; i++) batch.add(x + .5, .03, y + .125 + i * .25, 1, .13, .22, COLORS.wood, pick);
@@ -139,11 +157,6 @@ function terrainScene(resources, definition, plan) {
     if (type === 'garden' && (x + y) % 2 === 0) furniture(batch, { x, y, type: 'flowers' });
   }
   for (const item of plan.objects) furniture(batch, item);
-  for (const item of plan.blocks) {
-    const material = item.material || item.type || item.kind, path = material === 'path' && item.z === 0;
-    batch.add(item.x + .5, path ? .045 : item.z + .5, item.y + .5, .99, path ? .09 : .99, .99,
-      COLORS[material] || COLORS.stone, withParcel({ x: item.x, y: item.y, z: item.z, type: 'block', block: item }), material === 'glass' ? 'glass' : 'solid');
-  }
   for (const item of plan.portals) {
     const pick = { x: item.x, y: item.y, z: 0, type: 'portal', portal: item };
     for (const dx of [-.62, .62]) batch.add(item.x + .5 + dx, 1.1, item.y + .5, .2, 2.2, .2, '#78998b', pick);
@@ -171,6 +184,18 @@ function terrainScene(resources, definition, plan) {
   const result = batch.finish();
   // All click targets retain the tile's parcel, including trees and saved furnishings.
   for (const mesh of result.pickables) mesh.userData.picks = mesh.userData.picks.map(pick => pick ? withParcel(pick) : pick);
+  return result;
+}
+
+/** Saved blocks batch apart from the terrain so placing one block never rebuilds the diorama. */
+function blocksScene(resources, definition, plan) {
+  const batch = cubeBatch(resources), withParcel = parcelAttacher(definition, plan);
+  for (const item of plan.blocks) {
+    const material = item.material || item.type || item.kind, path = material === 'path' && item.z === 0;
+    batch.add(item.x + .5, path ? .045 : item.z + .5, item.y + .5, .99, path ? .09 : .99, .99,
+      COLORS[material] || COLORS.stone, withParcel({ x: item.x, y: item.y, z: item.z, type: 'block', block: item }), material === 'glass' ? 'glass' : 'solid');
+  }
+  const result = batch.finish(); result.group.name = 'voxel-blocks';
   return result;
 }
 
@@ -216,21 +241,59 @@ function parcelScene(resources, plan, selection, hover) {
   return result;
 }
 
+// Every field peopleScene reads, including `z`: elevation moves the whole body. Roster order is
+// deliberately not part of the key, because instance order is invisible and the server re-sorts by
+// `last_seen` on each poll.
+const PEOPLE_FIELDS = Object.freeze(['id', 'x', 'y', 'z', 'posture', 'color', 'kind']);
+
+/** The participants peopleScene draws: self is appended when the roster omits it, then bounded and placed. */
+const renderablePeople = (participants, self) => {
+  const people = self && !participants.some(item => item.id === self.id) ? [...participants, self] : participants;
+  return people.slice(0, VOXEL_LIMITS.participants).filter(item => Number.isInteger(item?.x) && Number.isInteger(item?.y));
+};
+
+/**
+ * Character batch key projected onto the visible fields above. Polls that only refresh `last_seen`,
+ * re-order the roster, or change curated profile fields therefore reuse every existing batch instead
+ * of disposing and rebuilding all avatars every few seconds.
+ */
+export function peopleVisualKey(participants, self) {
+  return JSON.stringify([self?.id || null, renderablePeople(participants, self)
+    .map(item => [...PEOPLE_FIELDS.map(field => item[field] ?? null), callingStyle(item) ? item.calling.id : null]).sort()]);
+}
+
+// Fresh names, public profiles and presence belong to current picks even when their geometry is reused.
+function refreshPeoplePicks(batch, participants, self) {
+  const records = new Map(renderablePeople(participants, self).map(item => [item.id, {
+    x: item.x, y: item.y, z: item.z || 0, type: 'participant', participant: item,
+  }]));
+  for (const mesh of batch.pickables) mesh.userData.picks = mesh.userData.picks.map(pick => pick ? records.get(pick.participant?.id) || null : null);
+}
+
 function peopleScene(resources, participants, self) {
   const batch = cubeBatch(resources);
-  const people = self && !participants.some(item => item.id === self.id) ? [...participants, self] : participants;
-  for (const item of people.slice(0, VOXEL_LIMITS.participants)) {
-    if (!Number.isInteger(item.x) || !Number.isInteger(item.y)) continue;
-    const npc = item.kind === 'npc', pick = { x: item.x, y: item.y, z: 0, type: 'participant', participant: item };
+  for (const item of renderablePeople(participants, self)) {
+    const npc = item.kind === 'npc', elevation = item.z || 0, pick = { x: item.x, y: item.y, z: item.z || 0, type: 'participant', participant: item };
     const color = validColor(item.color) || AGENT_COLORS[item.color] || '#649b8a', n = hash(item.id), skin = ['#d4a17b', '#b27f59', '#e4b995', '#997456'][n % 4];
-    const x = item.x + .5, y = item.y + .5, sitting = ['sitting', 'meditating'].includes(item.posture), height = sitting ? -.26 : 0;
-    batch.add(x, .04, y, .62, .06, .62, item.id === self?.id ? COLORS.gold : '#607b65');
-    for (const dx of [-.12, .12]) batch.add(x + dx, .22, y, .18, sitting ? .25 : .4, .21, COLORS.dark, pick);
+    const x = item.x + .5, y = item.y + .5, sitting = ['sitting', 'meditating'].includes(item.posture), height = elevation + (sitting ? -.26 : 0);
+    batch.add(x, .04 + elevation, y, .62, .06, .62, item.id === self?.id ? COLORS.gold : '#607b65');
+    for (const dx of [-.12, .12]) batch.add(x + dx, .22 + elevation, y, .18, sitting ? .25 : .4, .21, COLORS.dark, pick);
     batch.add(x, .68 + height, y, .46, .54, .26, color, pick);
     for (const dx of [-.31, .31]) { batch.add(x + dx, .7 + height, y, .13, .4, .19, color, pick); batch.add(x + dx, .46 + height, y, .13, .12, .18, skin, pick); }
     batch.add(x, 1.12 + height, y, .42, .4, .4, skin, pick);
     batch.add(x, 1.33 + height, y - .025, .44, .1, .43, npc ? COLORS.gold : COLORS.dark, pick);
     for (const dx of [-.09, .09]) batch.add(x + dx, 1.13 + height, y + .205, .045, .05, .035, COLORS.dark, pick);
+    const calling = callingStyle(item);
+    if (calling) {
+      const emblemX = x - .13, emblemHeight = .82 + height, emblemY = y + .164;
+      batch.add(emblemX, emblemHeight, emblemY, .14, .18, .052, calling.color, pick);
+      const pixel = (dx, dy, width = .027, depth = .028) => batch.add(emblemX + dx, emblemHeight + dy, emblemY + .03, width, depth, .014, COLORS.cream, pick);
+      if (calling.mark === 'cross') { pixel(0, 0, .026, .1); pixel(0, 0, .09, .026); }
+      else if (calling.mark === 'arch' || calling.mark === 'bridge') { pixel(-.03, -.018, .022, .08); pixel(.03, -.018, .022, .08); pixel(0, .027, .084, .022); }
+      else if (calling.mark === 'sprout') { pixel(0, -.019, .022, .07); pixel(-.025, .025, .039, .025); pixel(.025, .041, .039, .025); }
+      else if (calling.mark === 'book') { pixel(-.023, 0, .027, .1); pixel(.023, 0, .027, .1); }
+      else { pixel(0, .039); pixel(-.029, 0); pixel(.029, 0); pixel(0, -.039); }
+    }
     if (npc) { batch.add(x, .84 + height, y + .15, .065, .38, .045, COLORS.gold, pick); for (const dx of [-.14, 0, .14]) batch.add(x + dx, 1.43 + height, y, .07, .17, .07, COLORS.gold, pick); }
   }
   return batch.finish();
@@ -240,28 +303,40 @@ const disposeBatch = batch => { if (!batch) return; for (const mesh of batch.gro
 
 /** A GPU-independent scene builder used by rendering and real Raycaster tests. */
 export function createVoxelScene() {
-  const resources = createResources(), root = new THREE.Group(); let staticBatch, peopleBatch, parcelBatch, key = '', peopleKey = '', parcelKey = '', lastPlan, destroyed = false;
+  const resources = createResources(), root = new THREE.Group(); let staticBatch, blockBatch, peopleBatch, parcelBatch, key = '', blockKey = '', peopleKey = '', parcelKey = '', lastPlan, destroyed = false;
   let stats = { cells: 0, blocks: 0, participants: 0, cubes: 0, drawBatches: 0 }, pickables = [];
   return { root,
     update(definition, snapshot = {}, options = {}) {
       if (destroyed) throw new Error('The voxel scene has been destroyed.');
       const position = options.position || options.self || definition.start, plan = voxelPlan(definition, snapshot, position);
-      const nextKey = JSON.stringify([definition.id, definition.kind, definition.groundColor, plan.cells, plan.objects, plan.portals, plan.gates, plan.blocks]);
+      const cullHidden = options.cullHidden !== false;
+      const nextKey = JSON.stringify([definition.id, definition.kind, definition.groundColor, plan.cells, plan.objects, plan.portals, plan.gates, cullHidden]);
       if (nextKey !== key) {
         if (staticBatch) root.remove(staticBatch.group); disposeBatch(staticBatch);
-        staticBatch = terrainScene(resources, definition, plan); staticBatch.group.name = 'voxel-terrain'; root.add(staticBatch.group); key = nextKey;
+        staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden); staticBatch.group.name = 'voxel-terrain'; root.add(staticBatch.group); key = nextKey;
       }
-      const nextPeopleKey = JSON.stringify([plan.participants, options.self]);
+      const firstPerson = options.cameraMode === 'first-person', drawnSelf = firstPerson ? null : options.self;
+      const drawnPeople = firstPerson ? plan.participants.filter(item => item.id !== options.self?.id) : plan.participants;
+      // The projected key ignores volatile roster fields; `rebuildPeople` restores the raw payload key.
+      const nextPeopleKey = options.rebuildPeople === true ? JSON.stringify([drawnPeople, drawnSelf]) : peopleVisualKey(drawnPeople, drawnSelf);
       if (nextPeopleKey !== peopleKey || !peopleBatch) {
         if (peopleBatch) root.remove(peopleBatch.group); disposeBatch(peopleBatch);
-        peopleBatch = peopleScene(resources, plan.participants, options.self); peopleBatch.group.name = 'voxel-characters'; root.add(peopleBatch.group); peopleKey = nextPeopleKey;
+        peopleBatch = peopleScene(resources, drawnPeople, drawnSelf); peopleBatch.group.name = 'voxel-characters'; root.add(peopleBatch.group); peopleKey = nextPeopleKey;
+      }
+      refreshPeoplePicks(peopleBatch, drawnPeople, drawnSelf);
+      // Saved blocks rebuild on their own, so placing or moving one block leaves the diorama alone.
+      const nextBlockKey = JSON.stringify([definition.id, definition.kind, plan.blocks, plan.parcels]);
+      if (nextBlockKey !== blockKey) {
+        if (blockBatch) root.remove(blockBatch.group); disposeBatch(blockBatch);
+        blockBatch = plan.blocks.length ? blocksScene(resources, definition, plan) : null;
+        if (blockBatch) root.add(blockBatch.group); blockKey = nextBlockKey;
       }
       lastPlan = plan;
       this.highlightParcel(options.parcelSelection, options.parcelHover);
-      pickables = [...staticBatch.pickables, ...peopleBatch.pickables];
-      stats = { cells: plan.cells.length, blocks: plan.blocks.length, participants: plan.participants.length,
-        cubes: staticBatch.cubes + peopleBatch.cubes + (parcelBatch?.cubes || 0), parcelCubes: parcelBatch?.cubes || 0,
-        drawBatches: staticBatch.batches + peopleBatch.batches + (parcelBatch?.batches || 0),
+      pickables = [...staticBatch.pickables, ...peopleBatch.pickables, ...(blockBatch?.pickables || [])];
+      stats = { cells: plan.cells.length, blocks: plan.blocks.length, participants: renderablePeople(drawnPeople, drawnSelf).length,
+        cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0), parcelCubes: parcelBatch?.cubes || 0,
+        drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0),
         parcels: plan.parcels.length, selectedParcel: parcelBatch?.group.userData.selectedParcel || null, window: plan.window };
       root.updateMatrixWorld(true); return stats;
     },
@@ -275,16 +350,16 @@ export function createVoxelScene() {
       if (parcelBatch) root.add(parcelBatch.group); parcelKey = nextKey; root.updateMatrixWorld(true);
       stats.selectedParcel = selected?.id || null;
       stats.parcelCubes = parcelBatch?.cubes || 0;
-      stats.cubes = (staticBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0);
-      stats.drawBatches = (staticBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0);
+      stats.cubes = (staticBatch?.cubes || 0) + (blockBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0);
+      stats.drawBatches = (staticBatch?.batches || 0) + (blockBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0);
     },
     get pickables() { return pickables; }, get stats() { return stats; },
-    destroy() { if (destroyed) return; destroyed = true; disposeBatch(staticBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); resources.dispose(); root.clear(); pickables = []; key = ''; lastPlan = null; }
+    destroy() { if (destroyed) return; destroyed = true; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; lastPlan = null; }
   };
 }
 
 /** Event-driven third-person view. No network, pointer lock, animation loop, or movement authority. */
-export function createVoxelWorld(canvas, { onPick, onHover, onUnavailable } = {}) {
+export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailable } = {}) {
   const unavailable = () => { onUnavailable?.('3D graphics are unavailable in this browser. The map view remains available.'); return null; };
   if (!canvas?.getContext || !canvas.addEventListener) return unavailable();
   let context;
@@ -304,7 +379,8 @@ export function createVoxelWorld(canvas, { onPick, onHover, onUnavailable } = {}
   const selectionMaterial = new THREE.LineBasicMaterial({ color: '#fff0b0', depthTest: false });
   const selection = new THREE.LineSegments(selectionGeometry, selectionMaterial); selection.visible = false; selection.renderOrder = 10; scene.add(selection);
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
-  let orbit = normalizeOrbit(), target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, hoveredParcel = null, lastHoverAt = -Infinity;
+  const orbitInput = createOrbitInput({ onLook });
+  let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, hoveredParcel = null, lastHoverAt = -Infinity;
   const previousTouchAction = canvas.style.touchAction; canvas.style.touchAction = 'pan-y';
   function resize() {
     const bounds = canvas.getBoundingClientRect(), width = Math.max(1, bounds.width || canvas.width || 800), height = Math.max(1, bounds.height || canvas.height || 560);
@@ -315,7 +391,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onUnavailable } = {}
   }
   function paint() {
     if (destroyed || lost || !lastSnapshot) return;
-    resize(); const placement = orbitCamera(target, orbit);
+    resize(); const placement = orbitInput.mode === 'first-person' ? firstPersonCamera(target, orbitInput.orbit) : orbitCamera(target, orbitInput.orbit);
     camera.position.set(placement.eye.x, placement.eye.y, placement.eye.z); camera.lookAt(placement.target.x, placement.target.y, placement.target.z); camera.updateMatrixWorld();
     const night = ['night', 'evening'].includes(lastOptions?.dayPhase || lastSnapshot.atmosphere?.phase);
     scene.background = new THREE.Color(night ? '#789495' : '#b8d5cd'); scene.fog = new THREE.Fog(scene.background, 25, 48);
@@ -337,7 +413,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onUnavailable } = {}
     }
     if (event.pointerId !== drag.id) return;
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y; drag.distance += Math.abs(dx) + Math.abs(dy);
-    if (drag.distance > 6) { orbit = normalizeOrbit({ ...orbit, yaw: orbit.yaw - dx * .008, pitch: orbit.pitch + dy * .006 }); paint(); }
+    if (drag.distance > 6) { orbitInput.drag(dx, dy); paint(); }
     drag.x = event.clientX; drag.y = event.clientY;
   };
   const down = event => { if (event.button !== 0 || destroyed || lost) return; drag = { id: event.pointerId, x: event.clientX, y: event.clientY, distance: 0 }; canvas.setPointerCapture?.(event.pointerId); };
@@ -365,13 +441,25 @@ export function createVoxelWorld(canvas, { onPick, onHover, onUnavailable } = {}
     render(snapshot, options = {}) {
       if (destroyed) return;
       const definition = options.definition || getWorldDefinition(snapshot.world || 'commons');
+      orbitInput.setMode(options.cameraMode ?? orbitInput.mode);
+      if (options.facing) orbitInput.set(options.facing);
       target = options.position || options.self || definition.start; lastSnapshot = snapshot; lastOptions = options;
-      contents.update(definition, snapshot, { ...options, parcelHover: hoveredParcel }); paint(); return contents.stats;
+      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, parcelHover: hoveredParcel }); paint(); return contents.stats;
     },
-    rotate(deltaYaw = 0, deltaPitch = 0) { if (destroyed) return; orbit = normalizeOrbit({ ...orbit, yaw: orbit.yaw + (Number.isFinite(deltaYaw) ? deltaYaw : 0), pitch: orbit.pitch + (Number.isFinite(deltaPitch) ? deltaPitch : 0) }); paint(); },
-    zoom(delta = 0) { if (destroyed) return; orbit = normalizeOrbit({ ...orbit, distance: orbit.distance + (Number.isFinite(delta) ? delta : 0) }); paint(); },
-    setOrbit(value = {}) { if (destroyed) return; orbit = normalizeOrbit({ ...orbit, ...value }); paint(); },
-    get orbit() { return { ...orbit }; }, get stats() { return contents.stats; },
+    rotate(deltaYaw = 0, deltaPitch = 0) { if (destroyed) return; orbitInput.rotate(deltaYaw, deltaPitch); paint(); },
+    zoom(delta = 0) { if (destroyed) return; orbitInput.zoom(delta); paint(); },
+    setOrbit(value = {}) { if (destroyed) return; orbitInput.set(value); paint(); },
+    setCameraMode(value) {
+      if (destroyed) return; orbitInput.setMode(value);
+      if (lastSnapshot) {
+        lastOptions = { ...lastOptions, cameraMode: orbitInput.mode };
+        const definition = lastOptions.definition || getWorldDefinition(lastSnapshot.world || 'commons');
+        contents.update(definition, lastSnapshot, { ...lastOptions, parcelHover: hoveredParcel });
+      }
+      paint();
+    },
+    get cameraMode() { return orbitInput.mode; },
+    get orbit() { return orbitInput.orbit; }, get stats() { return contents.stats; },
     destroy() {
       if (destroyed) return; destroyed = true; observer?.disconnect(); drag = null;
       for (const [name, handler] of listeners) canvas.removeEventListener(name, handler);

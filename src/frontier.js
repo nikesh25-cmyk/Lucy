@@ -1,8 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { COLS, ROWS, FRONTIER_SIZE, FRONTIER_COORDINATE_LIMIT, FRONTIER_MIN_COORDINATE, FRONTIER_MAX_COORDINATE, FRONTIER_PLOT_SIZE, frontierCoordinates, frontierGates, frontierPlotId, getWorldDefinition, walkable } from '../world.js';
+import { blockLayers, canStep, isGrounded, settle, surfaceAt } from './elevation.js';
+import { palette, rules } from './content.js';
 
-export const FRONTIER_PALETTE = Object.freeze(['stone', 'wood', 'glass', 'brick', 'sand', 'grass', 'path']);
-export const FRONTIER_LIMITS = Object.freeze({ sector_size: FRONTIER_SIZE, coordinate_limit: FRONTIER_COORDINATE_LIMIT, minimum_coordinate: FRONTIER_MIN_COORDINATE, maximum_coordinate: FRONTIER_MAX_COORDINATE, sectors: 256, expansions_per_operator_day: 8, blocks_per_sector: 2048, actions_per_operator_day: 500, action_interval_ms: 200, build_range: 6, maximum_z: 7 });
+export const FRONTIER_PALETTE = Object.freeze(palette('frontier'));
+// The stacking ceiling is the sealed block rule, not a second copy of the number.
+const maximumBlockLayer = Math.max(...rules('block').map(({ rules: block }) => block.stack.z_max));
+export const FRONTIER_LIMITS = Object.freeze({ sector_size: FRONTIER_SIZE, coordinate_limit: FRONTIER_COORDINATE_LIMIT, minimum_coordinate: FRONTIER_MIN_COORDINATE, maximum_coordinate: FRONTIER_MAX_COORDINATE, sectors: 256, expansions_per_operator_day: 8, blocks_per_sector: 2048, actions_per_operator_day: 500, action_interval_ms: 200, build_range: 6, maximum_z: maximumBlockLayer });
 export const LAND_WORLD = Object.freeze({ finite: true, virtual: true, minimum_coordinate: -8, maximum_coordinate: 7, areas_x: 16, areas_y: 16, total_areas: 256, cells_per_area: 48, metres_per_cell: 1, width_m: 768, height_m: 768, area_m2: 589824, plots_per_area: 64, total_plots: 16384, plot_width_m: 6, plot_height_m: 6, plot_area_m2: 36, units_note: 'Metres describe a conceptual virtual scale. Plots convey no real property rights, monetary value, or legal ownership.' });
 export const LAND_POLICY = Object.freeze({ stewardships_per_operator: 1, assignments_per_operator_day: 4, action_interval_ms: 1500, purpose_maximum_characters: 120, description_maximum_characters: 500, acquisition: 'Signed-in humans can steward one available plot for a stated purpose. Agent runtimes cannot acquire or release land.', building: 'Owned residents may build only inside their operator’s assigned plot. Roads, water and habitat reserves stay clear.', release: 'Remove construction before releasing a plot. There is no payment, transfer, property title or contribution-coin reward.' });
 export const FRONTIER_SCHEMA = `
@@ -62,22 +66,43 @@ function recordAction(platform, actor, agent, worldId, action) {
   platform.run('UPDATE agents SET last_seen=? WHERE id=?', platform.clock(), agent.id);
   platform.audit(actor.account.id, `frontier.${action}`, worldId);
 }
+// Stored z is a cache of the column surface. Every authoritative block write re-derives it
+// rather than trusting the previous value, so removing support always settles the resident.
+function settleColumn(platform, worldId, position) {
+  const layers = blockLayers(platform.all("SELECT x,y,z FROM frontier_blocks WHERE world_id=? AND type!='path' AND x=? AND y=?", worldId, position.x, position.y));
+  for (const standing of platform.all('SELECT id,x,y,z FROM agents WHERE world_id=? AND x=? AND y=?', worldId, position.x, position.y)) {
+    const landed = settle(standing, layers);
+    platform.run('UPDATE agents SET z=?,grounded=? WHERE id=?', landed.z, isGrounded(landed, layers) ? 1 : 0, standing.id);
+  }
+}
 function protectedTile(position, definition) {
   return position.x >= 23 && position.x <= 25 || position.y >= 23 && position.y <= 25 || distance(position, definition.start) <= 2 || definition.portals.some((gate) => distance(position, gate) <= 2);
 }
-function blockedColumns(platform, worldId, candidate) {
-  const blocked = new Set(platform.all("SELECT DISTINCT x,y FROM frontier_blocks WHERE world_id=? AND type!='path'", worldId).map(({ x, y }) => `${x},${y}`));
-  if (candidate && candidate.type !== 'path') blocked.add(`${candidate.x},${candidate.y}`);
-  return blocked;
-}
-function keepsResidentsConnected(platform, agent, candidate, definition) {
-  const blocked = blockedColumns(platform, agent.world_id, candidate);
+function publicEscapeColumns(definition, blocks, objects) {
+  const layers = blockLayers(blocks), context = { walkable, definition, layers, objects };
   const queue = [definition.start], seen = new Set([`${definition.start.x},${definition.start.y}`]);
-  for (let index = 0; index < queue.length; index++) for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+  // Reverse edges find residents who can reach the crossroads. A high roof can descend
+  // to a road even when a road resident could not climb onto that roof in one step.
+  for (let index = 0; index < queue.length; index++) for (const [dx, dy, direction] of [[0, -1, 'down'], [0, 1, 'up'], [-1, 0, 'right'], [1, 0, 'left']]) {
     const position = { x: queue[index].x + dx, y: queue[index].y + dy }, key = `${position.x},${position.y}`;
-    if (!seen.has(key) && !blocked.has(key) && walkable(position, definition)) { seen.add(key); queue.push(position); }
+    if (seen.has(key) || !walkable(position, definition)) continue;
+    const step = canStep({ ...position, z: surfaceAt(position.x, position.y, layers) }, direction, context, { allowAuthoredStepUp: true });
+    if (!step.blocked) { seen.add(key); queue.push(position); }
   }
-  return platform.all("SELECT x,y FROM agents WHERE world_id=? AND status!='deleted'", agent.world_id).every((position) => seen.has(`${position.x},${position.y}`));
+  return seen;
+}
+function keepsResidentsConnected(platform, agent, candidate, definition, removedId = null) {
+  const blocks = platform.all('SELECT id,x,y,z,type FROM frontier_blocks WHERE world_id=?', agent.world_id);
+  const objects = platform.all('SELECT x,y,type FROM world_objects WHERE world_id=?', agent.world_id);
+  const proposed = removedId ? blocks.filter(block => block.id !== removedId) : [...blocks, candidate];
+  const after = publicEscapeColumns(definition, proposed, objects);
+  const disconnected = platform.all("SELECT x,y FROM agents WHERE world_id=? AND status!='deleted'", agent.world_id).filter(position => !after.has(`${position.x},${position.y}`));
+  if (!disconnected.length) return true;
+  if (!removedId) return false;
+  // Legacy traps must remain removable one block at a time. Removal may not take away
+  // an existing escape, including by settling somebody below a surrounding wall.
+  const before = publicEscapeColumns(definition, blocks, objects);
+  return disconnected.every(position => !before.has(`${position.x},${position.y}`));
 }
 const parcelOccupied = 'EXISTS(SELECT 1 FROM frontier_blocks b WHERE b.world_id=p.world_id AND b.x>=p.x AND b.x<p.x+6 AND b.y>=p.y AND b.y<p.y+6)';
 const landState = `CASE WHEN p.reserved=1 THEN 'reserved' WHEN f.world_id IS NULL THEN 'unopened' WHEN s.plot_id IS NOT NULL THEN 'assigned' WHEN ${parcelOccupied} THEN 'reserved' ELSE 'available' END`;
@@ -240,8 +265,10 @@ export const frontierMethods = {
       const ownsBlock = existing.plot_id ? existing.creator_account_id === actor.account.id : existing.creator_agent_id === agent.id;
       if (!ownsBlock && !mayModerate) fail(403, 'Only the builder or a human moderator can remove this block.');
       if (this.get('SELECT id FROM frontier_blocks WHERE world_id=? AND x=? AND y=? AND z>?', agent.world_id, position.x, position.y, z)) fail(409, 'Remove the upper blocks first.');
+      if (existing.type !== 'path' && !keepsResidentsConnected(this, agent, null, definition, existing.id)) fail(409, 'Removing this support would cut a resident off from the public passages. Open a climbable exit first.');
       mutationBudget(this, actor);
       this.run('DELETE FROM frontier_blocks WHERE id=?', existing.id);
+      settleColumn(this, agent.world_id, position);
       recordAction(this, actor, agent, agent.world_id, 'remove');
       return { world_id: agent.world_id, ...position, z, removed: true, changed: true };
     }
@@ -261,11 +288,12 @@ export const frontierMethods = {
       if (support.creator_account_id !== actor.account.id || support.plot_id !== parcelId) fail(403, 'Build on your operator’s own plot foundation.');
     }
     if (type !== 'path' && this.get("SELECT id FROM agents WHERE world_id=? AND x=? AND y=? AND status!='deleted'", agent.world_id, position.x, position.y)) fail(409, 'Keep occupied resident tiles clear.');
-    if (type !== 'path' && !keepsResidentsConnected(this, agent, { ...position, type }, definition)) fail(409, 'This block would cut a resident off from the public passages.');
+    if (type !== 'path' && !keepsResidentsConnected(this, agent, { ...position, z, type }, definition)) fail(409, 'This block would cut a resident off from the public passages.');
     if (this.get('SELECT COUNT(*) AS n FROM frontier_blocks WHERE world_id=?', agent.world_id).n >= FRONTIER_LIMITS.blocks_per_sector) fail(429, 'This sector has reached its block limit.');
     mutationBudget(this, actor);
     const id = randomUUID();
     this.run('INSERT INTO frontier_blocks(id,world_id,x,y,z,type,creator_agent_id,creator_account_id,created_at,plot_id) VALUES(?,?,?,?,?,?,?,?,?,?)', id, agent.world_id, position.x, position.y, z, type, agent.id, actor.account.id, timestamp(this), parcelId);
+    settleColumn(this, agent.world_id, position);
     recordAction(this, actor, agent, agent.world_id, 'place');
     return { world_id: agent.world_id, ...position, z, type, id, plot_id: parcelId, removed: false, changed: true };
   },

@@ -21,10 +21,10 @@ An open-source decompiler's license does **not** license the game code or assets
 
 ## What we can use now
 
-1. **A stronger play loop:** first-person controls, an accessible hotbar, placement previews and clear interaction feedback. Add authoritative elevation, grounded state and collision before presenting jumping or climbing as simulation mechanics.
+1. **A stronger play loop:** first-person controls, an accessible hotbar, placement previews and clear interaction feedback. Authoritative column elevation, a stored grounded flag, one-layer step-up with a two-layer headroom check, and collision are now implemented server-side (`src/elevation.js`, `src/frontier.js`, `POST /climb`; see `VOXEL_WORLD.md`). Vertical physics, falling, jumping and acceleration remain unimplemented, so those are still not presented as simulation mechanics.
 2. **Chunk-focused rendering:** rebuild changed geometry, suppress hidden faces and stream nearby terrain. Benchmark these independently from agent inference and database throughput.
-3. **Typed content definitions:** give blocks, furniture, crops and NPC appearances versioned schemas and individual license manifests. A repository-wide license must not substitute for inspecting a particular asset's terms.
-4. **Explicit server permissions:** validate every placement, deletion, traversal and agent intent against NemoWorld's current account, scope, parcel, distance and action limits. UI previews and model output remain requests.
+3. **Typed content definitions:** implemented as the `content/` layer — blocks, furniture, crops, NPC appearances and cosmetics each carry a versioned schema and an individual license manifest (`content/README.md`, `src/content.js`, `scripts/seal-content.mjs`; see [content definitions](CONTENT_DEFINITIONS.md)). A repository-wide license must not substitute for inspecting a particular asset's terms.
+4. **Explicit server permissions:** validate every placement, deletion, traversal and agent intent against NemoWorld's current account, scope, parcel, distance and action limits, and back the placement rule with a storage-layer guard so a writer that bypasses the method still fails closed — the `world_objects_build_guard` trigger (schema version 13, `src/placement-policy.js`) covers garden and cottage objects, and the frontier triggers (`frontier_blocks_plot_insert`, `land_parcels_validate_insert`) cover parcel construction. UI previews and model output remain requests.
 
 These are original implementation recommendations. The study has not imported engine code or shipped these additional mechanics.
 

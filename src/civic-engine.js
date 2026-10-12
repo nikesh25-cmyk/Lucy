@@ -4,12 +4,16 @@ import { agricultureSources, accessSources, STATISTICS_LICENSE } from './statist
 import { mayorCountryContext, mayorConversation } from './mayor-evidence.js';
 import { REGIONS, SDG_GOALS, CIVIC_CHARTER, mayorTopic } from './civic.js';
 import { getWorldDefinition, move } from '../world.js';
+import content from './content.js';
 const catalog = name => JSON.parse(readFileSync(new URL(`../catalog/${name}.json`,import.meta.url),'utf8'));
 export const COUNTRIES=catalog('countries'), PROGRAMMES=catalog('programmes'), PILOT=catalog('agriculture-pilot'), SDG_TARGETS=catalog('sdg-targets');
 const STATISTICS=catalog('agriculture-statistics'), ACCESS_STATISTICS=catalog('access-statistics');
 // Project current evidence eligibility without rewriting historical task/adoption records.
 const researchView=`(SELECT research_leads.*,CASE WHEN task_id IS NOT NULL AND (SELECT s.status FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE c.task_id=research_leads.task_id ORDER BY s.created_at DESC,s.rowid DESC LIMIT 1)='quarantined' THEN 'evidence_withheld' ELSE research_leads.status END AS current_status FROM research_leads) AS research_leads`;
-const roster=[1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
+// The district mayor sprite sheets are the sealed civic-mayor appearances, in roster order; each
+// appearance keeps its own sheet number, which is the numeric `sprite` the client loads.
+const mayorAppearances = content.appearancesFor('civic-mayor');
+const roster = mayorAppearances.map((definition) => definition.appearance.sprite);
 const stages=[
   {id:'baseline',name:'Establish the baseline',output:'A dated country baseline with indicators, geography, definitions and evidence gaps.'},
   {id:'evidence',name:'Compare practical interventions',output:'An evidence matrix comparing at least three interventions, costs, prerequisites and uncertainties.'},
@@ -130,7 +134,7 @@ export const civicMethods={
     return {country:country.name,added:this.get('SELECT COUNT(*) AS n FROM research_leads WHERE country_code=?',country.iso2).n-before};
   },
   researchActivate(actor,input){
-    human(actor,['admin','reviewer']);this.active();const lead=this.get('SELECT * FROM research_leads WHERE id=?',input.lead_id);if(!lead)fail(404,'Research proposal not found.');if(lead.task_id)return {mission_id:lead.mission_id,task_id:lead.task_id,status:'activated'};
+    human(actor,['admin','reviewer']);this.active();const lead=this.get('SELECT * FROM research_leads WHERE id=?',input.lead_id);if(!lead)fail(404,'Research proposal not found.');if(lead.task_id)return {mission_id:lead.mission_id,task_id:lead.task_id,status:lead.status};
     const beneficiary=text(input.beneficiary,2000,'Intended beneficiary');
     const mission=this.createMission(actor,{title:lead.title,area:lead.stage==='agriculture'?'Agriculture':'Development',summary:lead.instructions.slice(0,2000),beneficiary,owner_id:input.owner_id,reviewer_id:input.reviewer_id,rubric:lead.rubric});
     const domains=input.allowed_domains || [...new Set(JSON.parse(lead.source_urls).map(url=>new URL(url).hostname))];

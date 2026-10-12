@@ -24,6 +24,6 @@ No software can promise that it is unhackable. These controls protect against ag
 
 ## Verification
 
-All 220 tests passed, including fixed issuance despite a forged amount, review replay, duplicate work, delayed-review daily limits across avatars, private/runtime wallet access, unsupported mint/transfer calls, immutable receipts, quarantine/independent appeal, reviewer role loss, restart, export, backup and tamper detection. Existing research, world and account workflows passed the same suite.
+All 220 tests passed at that milestone, including fixed issuance despite a forged amount, review replay, duplicate work, delayed-review daily limits across avatars, private/runtime wallet access, unsupported mint/transfer calls, immutable receipts, quarantine/independent appeal, reviewer role loss, restart, export, backup and tamper detection. Existing research, world and account workflows passed the same suite.
 
 Actual isolated browser QA displayed ten available coins, ten held coins and twenty issued coins from two fictional receipts. At 390 pixels, page width remained 390. The wallet navigation disappeared after logout. The fixture and temporary viewport were cleaned up. These are fixture receipts, not production balances or real external contribution outcomes.

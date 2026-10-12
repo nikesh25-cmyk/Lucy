@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "sculpture",
+  "kind": "furniture",
+  "label": "Sculpture",
+  "since": "1.0.0",
+  "order": 11,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#a4b9ab",
+    "geometry": "prop",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [
+      "garden",
+      "house"
+    ],
+    "walkable": true,
+    "footprint": "open",
+    "geometry": "prop"
+  },
+  "notes": [
+    "Tile renderer draws a dedicated sculpture (world.js). In the voxel scene it renders through the generic prop branch, which is what this entry records."
+  ]
+}

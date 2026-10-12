@@ -15,6 +15,7 @@ import { createLocalModel, boundedModel, mayorDraft, mayorCountryDraft } from '.
 import { mayorModelCountryContext } from './src/mayor-evidence.js';
 import { runAgent } from './runtime/agent.js';
 import { civicAtlas, REGIONS, mayorTopic } from './src/civic.js';
+import { manifest } from './src/content.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -56,14 +57,22 @@ for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout',
   files.set(`/assets/icons/${name}.svg`, [`assets/icons/${name}.svg`, 'image/svg+xml']);
 }
 for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22])for(const kind of ['characters','facesets'])files.set(`/assets/mayors/${kind}/${id}.png`,[`assets/mayors/${kind}/${id}.png`,'image/png']);
+// The typed content layer is a browser module: src/content.js imports content/index.js, which
+// statically imports every sealed definition file. Serve exactly what the sealed manifest lists.
+files.set('/src/camera-controls.js', ['src/camera-controls.js', 'text/javascript; charset=utf-8']);
+files.set('/src/content.js', ['src/content.js', 'text/javascript; charset=utf-8']);
+files.set('/content/content-manifest.json', ['content/content-manifest.json', 'application/json; charset=utf-8']);
+for (const item of manifest().entries) files.set(`/${item.file}`, [item.file, 'application/json; charset=utf-8']);
+for (const file of manifest().support) files.set(`/${file.path}`, [file.path, file.path.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'application/json; charset=utf-8']);
 const writes = new Map([
+  ['/callings/select', ['callingSelect', null]],
   ['/land/assign',['landAssign',null]], ['/land/release',['landRelease',null]], ['/frontier/expand',['frontierExpand','build']], ['/frontier/build',['frontierBuild','build']], ['/operations/registration',['registrationSettings',null]],
   ['/drafts', ['draftSave', null]], ['/drafts/resume', ['draftResume', null]], ['/drafts/archive', ['draftArchive', null]],
   ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]],
   ['/research/run', ['researchRun', null]], ['/research/cancel', ['researchCancel', null]], ['/mayors/talk', ['mayorTalk', 'chat']], ['/mayors/control', ['mayorControl', null]], ['/research/generate', ['researchGenerate', null]], ['/research/activate', ['researchActivate', null]],
   ['/invites', ['invite', null]], ['/agents', ['createAgent', null]],
   ['/agents/control', ['agentControl', null]], ['/runtime/start', ['runtime', null]],
-  ['/move', ['moveAgent', 'move']], ['/messages', ['message', 'chat']],
+  ['/move', ['moveAgent', 'move']], ['/climb', ['climbAgent', 'move']], ['/messages', ['message', 'chat']],
   ['/missions', ['createMission', null]], ['/missions/status', ['missionStatus', null]],
   ['/tasks', ['createTask', null]], ['/tasks/follow-up', ['createFollowUp', null]], ['/claims', ['claim', 'contribute']],
   ['/claims/release', ['releaseClaim', 'contribute']], ['/submissions', ['submit', 'contribute']],
@@ -80,7 +89,7 @@ const writes = new Map([
   ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
 ]);
-const gets = new Set(['/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
+const gets = new Set(['/callings','/callings/guilds','/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -153,10 +162,10 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       }
       if (!path.startsWith('/api/v1/')) return json(response, 404, { error: 'Not found.' });
       const route = path.slice(7);
-      const match = /^\/agents\/([^/]+)\/(travel|build|home|heartbeat|posture)$/.exec(route);
+      const match = /^\/agents\/([^/]+)\/(travel|build|home|heartbeat|posture|look|climb)$/.exec(route);
       let agentId;
       if (match) { try { agentId = decodeURIComponent(match[1]); } catch { fail(400, 'Invalid agent identifier.'); } }
-      const dynamic = match ? { id: agentId, action: match[2], method: match[2] === 'home' ? 'PATCH' : 'POST', scope: { travel: 'move', build: 'build', home: 'build', heartbeat: 'read', posture: 'move' }[match[2]] } : null;
+      const dynamic = match ? { id: agentId, action: match[2], method: match[2] === 'home' ? 'PATCH' : 'POST', scope: { travel: 'move', build: 'build', home: 'build', heartbeat: 'read', posture: 'move', look: 'move', climb: 'move' }[match[2]] } : null;
       const specialWrite = ['/auth/register', '/auth/login', '/operations/backup'].includes(route);
       if (!gets.has(route) && !writes.has(route) && !specialWrite && !dynamic) return json(response, 404, { error: 'Not found.' });
       if (!(request.method === 'GET' && gets.has(route)) && !(request.method === 'POST' && (writes.has(route) || specialWrite)) && !(request.method === 'DELETE' && route === '/me') && !(dynamic && request.method === dynamic.method)) {
@@ -188,7 +197,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/callings/guilds','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
@@ -201,10 +210,13 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         const result = platform.transaction(() => {
           let value;
           if(route==='/workers'){const view=run=>run?{job_id:run.id,agent_id:run.agent_id,status:'running'}:null;value={research:view(researchRuns.get(actor.account.id)),resident:view(residentRuns.get(actor.account.id))};}
+          else if(route==='/callings')value=platform.callings(actor,Object.fromEntries(url.searchParams));
+          else if(route==='/callings/guilds')value=platform.callingGuilds(Object.fromEntries(url.searchParams));
           else if(route==='/drafts')value={drafts:platform.drafts(actor,{archived:url.searchParams.get('archived')==='1'})};
           else if (route === '/countries') value=platform.countries(actor,Object.fromEntries(url.searchParams));
           else if (route === '/country-evidence') value=platform.countryEvidence(actor,Object.fromEntries(url.searchParams));
           else if (route === '/assembly') value=platform.assembly();
+          else if (route === '/content') value=manifest();
           else if (route === '/research') value=platform.research(actor,Object.fromEntries(url.searchParams));
           else if (route === '/mayors') value=platform.mayors(actor,Object.fromEntries(url.searchParams));
           else if (route === '/mayors/triage') value=platform.mayorTriage(actor);
@@ -316,7 +328,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       const [method] = writes.get(route) || [];
       const result = platform.transaction(() => {
         let value;
-        if (dynamic) value = platform[{ travel: 'travel', build: 'build', home: 'homeSettings', heartbeat: 'heartbeat', posture: 'posture' }[dynamic.action]](actor, dynamic.id, input);
+        if (dynamic) value = platform[{ travel: 'travel', build: 'build', home: 'homeSettings', heartbeat: 'heartbeat', posture: 'posture', look: 'lookAgent', climb: 'climbAgent' }[dynamic.action]](actor, dynamic.id, input);
         else if (route === '/frontier/build') value=platform.frontierBuild(actor,input.agent_id||actor.agent?.id,input);
         else if (route === '/frontier/expand') value=platform.frontierExpand(actor,input.agent_id||actor.agent?.id,input);
         else if (route === '/agents/control') value = platform.agentControl(actor, input.agent_id, input.status);
