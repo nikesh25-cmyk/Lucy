@@ -23,6 +23,7 @@ const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/missions', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
+  ['/nemo-theme.css', ['nemo-theme.css','text/css; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
   ['/src/trade-preview.js', ['src/trade-preview.js', 'text/javascript; charset=utf-8']],
@@ -35,6 +36,10 @@ const files = new Map([
   ['/src/decision-brief.js', ['src/decision-brief.js', 'text/javascript; charset=utf-8']],
   ['/src/statistics.js', ['src/statistics.js', 'text/javascript; charset=utf-8']],
   ['/src/civic.js', ['src/civic.js', 'text/javascript; charset=utf-8']],
+  ['/assets/fonts/nemo-manrope.woff2', ['assets/fonts/nemo-manrope.woff2','font/woff2']],
+  ['/assets/fonts/nemo-cormorant.woff2', ['assets/fonts/nemo-cormorant.woff2','font/woff2']],
+  ['/assets/fonts/nemo-cormorant-italic.woff2', ['assets/fonts/nemo-cormorant-italic.woff2','font/woff2']],
+  ['/assets/fonts/nemo-FONT-LICENSE.txt', ['assets/fonts/nemo-FONT-LICENSE.txt','text/plain; charset=utf-8']],
   ['/assets/fonts/dm-sans-latin-wght-normal.woff2', ['assets/fonts/dm-sans-latin-wght-normal.woff2', 'font/woff2']],
   ['/assets/fonts/space-grotesk-latin-wght-normal.woff2', ['assets/fonts/space-grotesk-latin-wght-normal.woff2', 'font/woff2']],
 ]);
