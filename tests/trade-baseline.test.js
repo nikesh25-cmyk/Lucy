@@ -13,3 +13,10 @@ test('cancelled baseline collection never fetches sources or turns missing evide
 test('provider refusal is classified without retaining upstream error bodies or inventing observations',async()=>{
  let reads=0;const {report}=await collectTradeBaseline(input,{startIntervalMs:0,read:async()=>{reads++;throw Object.assign(new Error('PRIVATE PROVIDER RESPONSE SHOULD NOT BE RETAINED'),{sourceStatus:429});}});assert.equal(report.records.length,0);assert.ok(reads<=2);assert.ok(report.gaps.some(gap=>gap.attempted===false));assert.ok(report.gaps.every(gap=>gap.cause==='rate_limited'));assert.doesNotMatch(JSON.stringify(report),/PRIVATE PROVIDER/);assert.equal(report.years[0].status,'collection-gap');
 });
+
+test('cancelling while paced distinguishes dispatched reader work from queries never requested',async()=>{
+ const controller=new AbortController();let reads=0;const result=await collectTradeBaseline(input,{signal:controller.signal,startIntervalMs:100,read:async(url,domains,{signal})=>{reads++;return new Promise((resolve,reject)=>{signal.addEventListener('abort',()=>reject(signal.reason),{once:true});setTimeout(()=>controller.abort(),10);});}});assert.equal(reads,1);assert.equal(result.report.records.length,0);assert.equal(result.report.gaps.filter(gap=>gap.attempted===true).length,1);assert.equal(result.report.gaps.filter(gap=>gap.attempted===false).length,9);assert.ok(result.report.gaps.every(gap=>gap.cause==='collection_stopped'));assert.doesNotMatch(tradeBaselineCSV(result.report),/rate_limited/);
+});
+test('unexpected reader failures remain bounded diagnostic gaps without reflecting thrown values',async()=>{
+ const {report}=await collectTradeBaseline({...input,endYear:2020},{startIntervalMs:0,read:async()=>{throw null;}});assert.equal(report.gaps.length,2);assert.ok(report.gaps.every(gap=>gap.cause==='unavailable'&&gap.attempted===true));assert.equal(report.records.length,0);
+});
