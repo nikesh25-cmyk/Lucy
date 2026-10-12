@@ -53,3 +53,7 @@ body:has([aria-current="page"][aria-label="Research desk"]) .hero,body:has([aria
 .decision-brief{margin:1rem 0;overflow-wrap:anywhere}.decision-brief>h3{font-size:1.3rem}.brief-decision{border-left:3px solid #6b895f;padding:1rem 1.2rem;background:#edf2e6;border-radius:0 10px 10px 0;margin:1rem 0}.brief-decision>p:nth-child(2){font-weight:600;font-size:1rem}.brief-findings,.brief-costs{padding:1rem;border:1px solid #d8ded0;border-radius:12px;margin:1.2rem 0;background:#fbfcf7}.decision-brief .card h2{font-size:1.05rem}.decision-brief details{margin:1rem 0}.brief-rationale{padding:.8rem 0}.brief-subtotal{font-weight:600;color:#294a38;margin-top:.8rem}.brief-gaps{border-top:1px solid #d8ded0;margin-top:1.2rem;padding-top:1rem}
 
 .brief-option h4{font-family:"Space Grotesk",sans-serif;font-size:1.05rem;font-weight:600;margin:.4rem 0 .8rem}
+
+.trade-table-scroll{overflow-x:auto}.trade-evidence-preview .evidence-table{min-width:480px}.trade-evidence-preview .evidence-table td{vertical-align:top}
+
+.sources span{overflow-wrap:anywhere}
