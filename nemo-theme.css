@@ -30,3 +30,5 @@ dialog,#auth-dialog,.mayor-dialog{background:linear-gradient(145deg,#12382e,#082
 @media print{body{background:white;color:#111}.sidebar,.masthead{display:none}.card,.record{background:white;border-color:#ccc;color:#111}.card p,.privacy{color:#333}h1,h2,h3{color:#111}}
 .tabs button[aria-current=page] .nav-icon{filter:grayscale(1) brightness(0) invert(.9)}
 .session-label strong,.session-profile strong{color:var(--ink)}.session-label small{color:var(--muted)}
+
+.country-globe-map{width:min(100%,650px);aspect-ratio:1/1;margin:24px auto;background:radial-gradient(ellipse at center,#274a3530,transparent 65%);border:0;box-shadow:none;overflow:visible}.country-globe-map .atlas-grid{stroke:#d8ddb42a;stroke-dasharray:none;stroke-width:.6}.country-globe-map .atlas-outline{stroke-width:.65}.globe-halo{fill:none;stroke:#c6d4a92a;stroke-width:2}.globe-ocean{stroke:#d4dab645;stroke-width:1.2}.country-atlas button[aria-pressed=true]{background:#ded6a518;border-color:#ded6a568;color:var(--ink)}
