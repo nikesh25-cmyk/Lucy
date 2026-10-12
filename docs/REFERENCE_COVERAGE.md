@@ -1,6 +1,6 @@
 # World Assembly reference coverage
 
-The independent reference desk now contains 74 records. Sixteen additions distinguish ten human rights treaty bodies, the Human Rights Council, Universal Periodic Review, Special Procedures and three UNFCCC constituted bodies: the Least Developed Countries Expert Group, Standing Committee on Finance and Technology Executive Committee. Bodies, review mechanisms and specialized agencies retain separate categories. Lucy has no UN affiliation or mandate.
+The independent reference desk now contains 79 records. Sixteen additions distinguish ten human rights treaty bodies, the Human Rights Council, Universal Periodic Review, Special Procedures and three UNFCCC constituted bodies: the Least Developed Countries Expert Group, Standing Committee on Finance and Technology Executive Committee. Bodies, review mechanisms and specialized agencies retain separate categories. Lucy has no UN affiliation or mandate.
 
 The treaty-body list and Charter/expert distinctions were checked against the official [OHCHR Bangkok overview](https://bangkok.ohchr.org/un-mechanisms) and [OHCHR Europe overview](https://europe.ohchr.org/human-rights/human-rights-mechanism). The [Treaty Body Database](https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx) supplies country-document and participation discovery routes. The [Universal Human Rights Index description](https://uhri.ohchr.org/en/about) explains review mechanisms and its coverage limits. Main OHCHR overview requests returned 403, so regional references are identified explicitly. No specific country participation, complaint eligibility, procedural deadline or compliance conclusion is established by the catalog.
 
@@ -14,3 +14,6 @@ Verification: 172 tests pass. Tests exercise the new categories, distinct Counci
 
 
 The 12 October expansion adds four peacebuilding, food-security and disaster-risk references; see `STABILITY_REFERENCES.md` for secured retrieval proof, country checks and verification. The earlier sixteen-record addition and its 172-test milestone above are historical.
+
+
+Five climate implementation/resilience references were added on 12 October; see `CLIMATE_REFERENCES.md`. The catalog now has seven climate constituted bodies and one technical-assistance network. Direct retrieval gaps are visible and country requirements remain task-specific.

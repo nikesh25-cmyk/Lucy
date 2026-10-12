@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {fixture} from './helpers.js';
 test('reference catalog distinguishes treaty experts, Charter bodies, review mechanisms and climate bodies',async t=>{
- const f=await fixture(t),catalog=f.platform.assembly().programmes;assert.equal(catalog.institutions.filter(i=>i.type==='human-rights-treaty-body').length,10);assert.equal(catalog.institutions.filter(i=>i.type==='climate-constituted-body').length,3);assert.equal(catalog.institutions.find(i=>i.id==='ccpr').name,'Human Rights Committee');assert.equal(catalog.institutions.find(i=>i.id==='human-rights-council').type,'charter-based-body');assert.equal(catalog.institutions.find(i=>i.id==='universal-periodic-review').type,'human-rights-review-mechanism');assert.equal(new Set(catalog.institutions.map(i=>i.id)).size,catalog.institutions.length);assert.ok(catalog.coverageGaps.some(g=>/participation/.test(g)));
+ const f=await fixture(t),catalog=f.platform.assembly().programmes;assert.equal(catalog.institutions.filter(i=>i.type==='human-rights-treaty-body').length,10);assert.equal(catalog.institutions.filter(i=>i.type==='climate-constituted-body').length,7);assert.equal(catalog.institutions.find(i=>i.id==='ccpr').name,'Human Rights Committee');assert.equal(catalog.institutions.find(i=>i.id==='human-rights-council').type,'charter-based-body');assert.equal(catalog.institutions.find(i=>i.id==='universal-periodic-review').type,'human-rights-review-mechanism');assert.equal(new Set(catalog.institutions.map(i=>i.id)).size,catalog.institutions.length);assert.ok(catalog.coverageGaps.some(g=>/participation/.test(g)));
  for(const record of catalog.institutions.filter(i=>i.sourceCheckedOn)){assert.ok(record.countryResearchChecks.length);assert.match(record.mappingStatus,/editorial/);assert.ok(record.evidenceLocator);assert.equal(new URL(record.sourceUrl).protocol,'https:');}
 });
 test('new country programme tasks preserve mechanism checks, official discovery hosts and independent review boundaries',async t=>{
@@ -13,7 +13,27 @@ test('new country programme tasks preserve mechanism checks, official discovery 
 });
 
 test('stability and food-security references retain scoped checks, retrieval proof and financing/authority limits',async t=>{
- const f=await fixture(t),catalog=f.platform.assembly().programmes;assert.equal(catalog.institutions.length,74);assert.equal(Object.values(catalog.coverage.countsByType).reduce((n,count)=>n+count,0),74);assert.equal(catalog.coverage.exclusions.includes('Treaty bodies'),false);
+ const f=await fixture(t),catalog=f.platform.assembly().programmes;assert.equal(catalog.institutions.length,79);assert.equal(Object.values(catalog.coverage.countsByType).reduce((n,count)=>n+count,0),79);assert.equal(catalog.coverage.exclusions.includes('Treaty bodies'),false);
  for(const id of ['peacebuilding-commission','peacebuilding-fund','committee-world-food-security','undrr']){const item=catalog.institutions.find(i=>i.id===id);assert.equal(item.sourceCheckedOn,'2026-10-12');assert.match(item.sourceVerification.sha256,/^[a-f0-9]{64}$/);assert.equal(f.tx('researchGenerate',f.actor('admin'),{country_code:'NP',institution_id:id}).added,2);assert.equal(f.tx('researchGenerate',f.actor('admin'),{country_code:'NP',institution_id:id}).added,0);const leads=f.platform.research(null,{country:'NP',institution:id}).leads;assert.equal(leads.length,2);for(const lead of leads)for(const check of item.countryResearchChecks)assert.ok(lead.instructions.includes(check));const activated=f.tx('researchActivate',f.actor('admin'),{lead_id:leads[0].id,beneficiary:'Fictional country evidence users; no consent or funding claim',reviewer_id:f.actor('reviewer').account.id}),task=f.platform.get('SELECT * FROM tasks WHERE id=?',activated.task_id);for(const check of item.countryResearchChecks)assert.ok(task.instructions.includes(check));assert.match(task.rights,/no outreach authorization/);}
  assert.match(catalog.institutions.find(i=>i.id==='peacebuilding-fund').countryResearchChecks.join(' '),/not a funding offer/);assert.match(catalog.institutions.find(i=>i.id==='committee-world-food-security').countryResearchChecks.join(' '),/not automatically binding/);assert.match(catalog.institutions.find(i=>i.id==='peacebuilding-commission').countryResearchChecks.join(' '),/country consent/);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM submissions').n,0);assert.equal(f.platform.verifyAudit(),true);
+});
+
+
+test('climate mechanisms carry country checks, honest retrieval gaps and distinct assistance/compliance boundaries',async t=>{
+ const f=await fixture(t),catalog=f.platform.assembly().programmes;
+ assert.equal(catalog.institutions.filter(i=>i.type==='climate-constituted-body').length,7);
+ assert.equal(catalog.institutions.filter(i=>i.type==='climate-technical-assistance-network').length,1);
+ const before=f.platform.get('SELECT COUNT(*) AS n FROM research_leads').n;
+ for(const id of ['adaptation-committee','paris-capacity-building','paris-implementation-compliance','wim-executive-committee','santiago-network']){
+  const item=catalog.institutions.find(i=>i.id===id);assert.equal(item.sourceVerification.directReaderStatus,'collection-gap');assert.equal(item.sourceVerification.sha256,undefined);assert.match(item.sourceCheckNote,/full live source retrieval remains unverified/);
+  assert.equal(f.tx('researchGenerate',f.actor('admin'),{country_code:'NP',institution_id:id}).added,2);assert.equal(f.tx('researchGenerate',f.actor('admin'),{country_code:'NP',institution_id:id}).added,0);
+  const leads=f.platform.research(null,{country:'NP',institution:id}).leads;for(const lead of leads){assert.ok(lead.instructions.includes(item.sourceCheckNote));for(const check of item.countryResearchChecks)assert.ok(lead.instructions.includes(check));for(const url of item.relatedSourceUrls)assert.ok(lead.source_urls.includes(url));}
+  const activated=f.tx('researchActivate',f.actor('admin'),{lead_id:leads[0].id,beneficiary:'Fictional workflow test; no actual country authority or support request',reviewer_id:f.actor('reviewer').account.id}),task=f.platform.get('SELECT * FROM tasks WHERE id=?',activated.task_id);
+  for(const check of item.countryResearchChecks)assert.ok(task.instructions.includes(check));assert.ok(JSON.parse(task.allowed_domains).includes('unfccc.int'));assert.ok(task.instructions.includes(item.sourceCheckNote));
+ }
+ assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM research_leads').n,before+10);
+ assert.match(catalog.institutions.find(i=>i.id==='paris-implementation-compliance').countryResearchChecks.join(' '),/missing search result does not establish non-compliance/);
+ assert.match(catalog.institutions.find(i=>i.id==='santiago-network').countryResearchChecks.join(' '),/technical assistance from project funding/);
+ assert.match(catalog.institutions.find(i=>i.id==='wim-executive-committee').countryResearchChecks.join(' '),/compensation entitlement/);
+ assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM submissions').n,0);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM adoptions').n,0);assert.equal(f.platform.verifyAudit(),true);
 });

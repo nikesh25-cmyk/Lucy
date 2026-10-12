@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "researchedOn": "2026-10-12",
   "status": "independent-research-reference",
-  "scope": "74 reference records: principal organs, General Assembly main committees, ECOSOC functional and regional commissions, specialized agency groups, funds/programmes and other entities, ten human rights treaty bodies, the Human Rights Council, two human rights review mechanisms, three UNFCCC constituted bodies, the Peacebuilding Commission, Peacebuilding Fund and Committee on World Food Security. UNDRR is included among other entities. Coverage does not enumerate every subsidiary body, mandate, treaty procedure or programme; bodies, funds and mechanisms are distinct categories.",
+  "scope": "79 reference records: principal organs, General Assembly main committees, ECOSOC functional and regional commissions, specialized agency groups, funds/programmes and other entities, ten human rights treaty bodies, the Human Rights Council, two human rights review mechanisms, seven UNFCCC constituted bodies and the Santiago technical-assistance network, the Peacebuilding Commission, Peacebuilding Fund and Committee on World Food Security. UNDRR is included among other entities. Coverage does not enumerate every subsidiary body, mandate, treaty procedure or programme; bodies, funds and mechanisms are distinct categories.",
   "affiliation": "Lucy has no UN affiliation, mandate or endorsement. Task suggestions and SDG mappings are Lucy editorial proposals, not UN instructions.",
   "institutions": [
     {
@@ -1772,6 +1772,198 @@
         "https://sdgs.un.org/goals/goal17"
       ],
       "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "adaptation-committee",
+      "name": "Adaptation Committee",
+      "type": "climate-constituted-body",
+      "mandate": "Promotes coordinated action on adaptation under the Convention and Paris Agreement.",
+      "sourceUrl": "https://unfccc.int/Adaptation-Committee",
+      "sdgs": [
+        13,
+        2,
+        6,
+        11
+      ],
+      "suggestedTaskTypes": [
+        "Map published national adaptation priorities to local agriculture evidence gaps",
+        "Compare adaptation implementation options and evidence for monitoring"
+      ],
+      "countryResearchChecks": [
+        "Locate dated national adaptation plans and official sector priorities; verify responsible institutions, geographic coverage and affected-community participation.",
+        "Separate guidance and proposed adaptation indicators from measured resilience outcomes; confirm applicable plans, implementation costs and actual support before proposing delivery."
+      ],
+      "evidenceLocator": "Introduction: adaptation coordination under the Cancun Adaptation Framework",
+      "relatedSourceUrls": [
+        "https://unfccc.int/process-and-meetings/bodies/constituted-bodies/areas-of-work-adaptation-committee"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Source contains no readable text."
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal11"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "paris-capacity-building",
+      "name": "Paris Committee on Capacity-building",
+      "type": "climate-constituted-body",
+      "mandate": "Identifies climate capacity needs and gaps and improves coordination of capacity-building in developing countries.",
+      "sourceUrl": "https://unfccc.int/process-and-meetings/bodies/constituted-bodies/paris-committee-on-capacity-building-pccb",
+      "sdgs": [
+        13,
+        4,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Inventory country climate implementation capacity needs and existing training",
+        "Propose a locally owned capacity-building package with measurable learning needs"
+      ],
+      "countryResearchChecks": [
+        "Verify country-identified needs, existing services and the responsible national institutions; participation or a network listing is not a support commitment.",
+        "Check current workplan scope and applicable access requirements; distinguish training outputs, demonstrated capacity and implementation outcomes, and document costs and local ownership."
+      ],
+      "evidenceLocator": "Background, vision and mission; corroborated by Introduction to Capacity-building",
+      "relatedSourceUrls": [
+        "https://unfccc.int/topics/capacity-building/introduction/introduction-to-capacity-building"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Source contains no readable text."
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "paris-implementation-compliance",
+      "name": "Paris Agreement Implementation and Compliance Committee",
+      "type": "climate-constituted-body",
+      "mandate": "Facilitates implementation of the Paris Agreement and promotes compliance through an expert, non-punitive process.",
+      "sourceUrl": "https://unfccc.int/process-and-meetings/bodies/constituted-bodies/paris-agreement-implementation-and-compliance-committee-paicc/more-about-paicc",
+      "sdgs": [
+        13,
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map published country reporting records and relevant support needs",
+        "Prepare a dated evidence checklist for an authorized national reporting team"
+      ],
+      "countryResearchChecks": [
+        "Verify Party status, the specific provision, applicable decisions and country circumstances using current official records; a missing search result does not establish non-compliance.",
+        "The committee is facilitative, non-adversarial and non-punitive; do not infer penalties, dispute jurisdiction or findings against a country. Verify initiation rules and competent national authority before suggesting engagement.",
+        "Separate observed filing dates, reporting quality and committee findings; verify any LDC or SIDS flexibility and deadlines for the actual provision, rather than copying a generic date."
+      ],
+      "evidenceLocator": "Nature and Function; How is PAICC initiated; How can PAICC help parties",
+      "relatedSourceUrls": [
+        "https://unfccc.int/PAICC"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Source contains no readable text."
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "wim-executive-committee",
+      "name": "Warsaw International Mechanism Executive Committee",
+      "type": "climate-constituted-body",
+      "mandate": "Guides the loss-and-damage mechanism through a rolling workplan, technical workstreams and collaboration.",
+      "sourceUrl": "https://unfccc.int/wim-excom",
+      "sdgs": [
+        13,
+        11,
+        2,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map publicly documented livelihood losses and country evidence gaps",
+        "Compare relevant loss-and-damage knowledge products and local research needs"
+      ],
+      "countryResearchChecks": [
+        "Locate dated country hazard, exposure and loss evidence, distinguishing slow-onset events, non-economic loss and uncertainty; do not assume climate attribution or compensation entitlement.",
+        "Verify current workplan and the responsible national institutions; a knowledge product or committee reference is not a funding decision or direct compensation route.",
+        "Protect affected-community participation and privacy; recommendations involving mobility or relocation require separate rights, consent and competent-authority review."
+      ],
+      "evidenceLocator": "Introduction and five strategic workstreams",
+      "relatedSourceUrls": [
+        "https://unfccc.int/topics/adaptation-and-resilience/workstreams/loss-and-damage/warsaw-international-mechanism"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Source contains no readable text."
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "santiago-network",
+      "name": "Santiago network for loss and damage",
+      "type": "climate-technical-assistance-network",
+      "mandate": "Catalyses demand-driven technical assistance for vulnerable developing countries to avert, minimize and address loss and damage.",
+      "sourceUrl": "https://unfccc.int/santiago-network/about",
+      "sdgs": [
+        13,
+        11,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Document a country-owned loss-and-damage technical assistance need",
+        "Map current technical-assistance request requirements and evidence gaps"
+      ],
+      "countryResearchChecks": [
+        "Verify current operational guidance, eligible request proponents, the national liaison and alignment with country priorities before drafting a request.",
+        "Distinguish technical assistance from project funding, compensation or guaranteed access; document needs, relevant expertise, local ownership and expected outputs.",
+        "Confirm current submission route, review process and any deadlines from the operational network; an older UNFCCC overview does not establish current application terms or authorize contact."
+      ],
+      "evidenceLocator": "Vision and Functions: demand-driven technical assistance",
+      "relatedSourceUrls": [
+        "https://unfccc.int/santiago-network"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. Lucy’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Source contains no readable text."
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "Lucy editorial task suggestions, country checks and SDG mapping; not a UN instruction."
     }
   ],
   "frameworks": [
@@ -1885,7 +2077,8 @@
     "food-security-platform": 1,
     "countsByType": {
       "charter-based-body": 1,
-      "climate-constituted-body": 3,
+      "climate-constituted-body": 7,
+      "climate-technical-assistance-network": 1,
       "food-security-platform": 1,
       "functional-commission": 8,
       "fund-programme": 6,
@@ -1904,6 +2097,7 @@
   "coverageGaps": [
     "Individual Special Procedures mandates and country coverage are not enumerated.",
     "UNFCCC constituted bodies, treaty secretariats and funding mechanisms remain partially covered.",
-    "Current country treaty participation, legal procedures, reporting cycles and programme eligibility require task-specific verification."
+    "Current country treaty participation, legal procedures, reporting cycles and programme eligibility require task-specific verification.",
+    "Listed climate mechanisms do not establish country compliance, support eligibility or delivery; full source retrieval gaps and current operational terms require task-specific review."
   ]
 }
