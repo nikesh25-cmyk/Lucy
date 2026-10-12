@@ -558,6 +558,39 @@ async function main() {
       return `403 build in ${outside.parcel.id} at ${outside.tile.x},${outside.tile.y} (${describe(refusal.body?.error)}); 403 runtime land acquisition; assigned plot unchanged (block_count=1)`;
     });
 
+    await step('10. country ambassadors: a paginated directory, a country-context answer and a refused mismatch', async () => {
+      // Walk every page over the shipped HTTP API and prove the union is exactly the catalog.
+      const seen = new Set();
+      let offset = 0, page = null;
+      for (;;) {
+        page = expectStatus(await get(`/ambassadors?limit=50&offset=${offset}`), 200, `GET /ambassadors?limit=50&offset=${offset}`);
+        expectThat(page.entries.length > 0, 'a directory page inside the catalog must not be empty', { expected: 'a non-empty page', actual: describe({ offset, total: page.total }) });
+        for (const entry of page.entries) seen.add(entry.id);
+        if (!page.has_more) break;
+        offset += 50;
+      }
+      expectThat(page.catalog.total === 248 && seen.size === 248, 'every catalog entry must be reachable through pagination', { expected: 'catalog.total=248 and 248 distinct ids', actual: describe({ catalog_total: page.catalog?.total, walked: seen.size }) });
+      expectThat([...seen].includes('amb-NPL'), 'the paginated directory must contain the Nepal ambassador', { expected: 'amb-NPL in the directory', actual: describe([...seen].slice(0, 4)) });
+
+      const profile = expectStatus(await get('/ambassador?id=amb-NPL'), 200, 'GET /ambassador?id=amb-NPL');
+      expectThat(profile.country_context?.country?.iso3 === 'NPL' && profile.ambassador?.world_id === 'country:NPL', 'the profile must carry the assigned country context and its own generated venue', { expected: 'country_context NPL with venue country:NPL', actual: describe({ country: profile.country_context?.country, world_id: profile.ambassador?.world_id }) });
+      expectThat(profile.venue?.kind === 'country' && profile.research?.evidence_routes?.length === 5, 'the venue must be a generated country venue and the research routes must resolve', { expected: 'kind=country with five registered routes', actual: describe({ kind: profile.venue?.kind, routes: profile.research?.evidence_routes?.length }) });
+
+      const talk = expectStatus(await post('/ambassadors/talk', { ambassador_id: 'amb-NPL', question: 'Help me research agriculture.' }, { token: world.adminToken }), 200, 'POST /ambassadors/talk for the Nepal ambassador');
+      expectThat(talk.country_context?.country?.name === 'Nepal', 'the answer must use the ambassador’s assigned country context automatically', { expected: 'country_context.country.name=Nepal', actual: describe(talk.country_context?.country) });
+      expectThat(Array.isArray(talk.source_numbers) && talk.source_numbers.length === 5, 'the answer must cite the retained source numbers without being asked', { expected: 'source_numbers=[1..5]', actual: describe(talk.source_numbers) });
+      expectThat(/fictional research guide/i.test(talk.answer || '') && !/\bUN official\b/.test(talk.answer || ''), 'the answer must state it is a fictional guide and never a UN official', { expected: 'a fictional-guide statement and no official claim', actual: describe(talk.answer) });
+
+      const mismatch = await post('/ambassadors/talk', { ambassador_id: 'amb-NPL', question: 'Agriculture exports?', country_code: 'BD' }, { token: world.adminToken });
+      expectStatus(mismatch, 400, 'POST /ambassadors/talk with a country_code that is not the ambassador’s country');
+      expectThat(/mismatch/i.test(mismatch.body?.error || ''), 'the refusal must name the country mismatch', { expected: 'an error naming the country mismatch', actual: describe(mismatch.body), request: mismatch.request, response: mismatch });
+
+      const legacy = expectStatus(await get('/mayors'), 200, 'GET /mayors (compatibility alias)');
+      expectThat(legacy.mayors.length === 20 && legacy.legacy_alias === true, 'the legacy guide listing must keep 20 historic guides and announce itself', { expected: 'mayors=20 with legacy_alias=true', actual: describe({ mayors: legacy.mayors?.length, legacy_alias: legacy.legacy_alias }) });
+      expectThat(legacy.mayors.every((guide) => String(guide.ambassador?.id || '').startsWith('amb-')), 'every historic guide must name its replacement ambassador', { expected: 'each guide with an ambassador id', actual: describe(legacy.mayors?.[0]?.ambassador) });
+      return `248 ambassadors walked over ${offset / 50 + 1} pages; GET /ambassador?id=amb-NPL -> 200 (country:NPL, 5 routes); 200 talk with country_context=Nepal and source_numbers=[1..5]; 400 country mismatch; legacy GET /mayors -> 20 guides mapped`;
+    });
+
     const shutdown = await stopServer();
     expectThat(shutdown.lockReleased, 'a graceful shutdown must release the process lock', { expected: `no ${join(state.workspace, 'server.lock')}`, actual: 'the lock file remained after shutdown' });
     expectThat(shutdown.workspaceRemoved, 'the temporary workspace must be removed', { expected: 'workspace removed', actual: state.workspace });

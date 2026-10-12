@@ -1,5 +1,7 @@
-// Fictional civic geography. Mayor residents have a separate persistent runtime;
+// Fictional civic geography. Country ambassadors have a separate persistent runtime;
 // human moderators retain enforcement authority.
+// The 20 regional guides below are the historic district roster, retained for compatibility and
+// mapped to replacement country ambassadors by src/civic-engine.js.
 const districts = [
   ['highlands','Highlands','Alpine ridges','Asha','Mountain access and watershed care'],
   ['snowline','Snowline','Glacial valleys','Tenzin','Climate adaptation and safe passage'],
@@ -27,7 +29,7 @@ const districts = [
 const regionalGoals={highlands:[6,11,13],snowline:[11,13],foothills:[2,8,15],riverlands:[6,11,13],wetlands:[6,14,15],woodlands:[13,15],rainforest:[13,15,16],grasslands:[2,13,15],farmlands:[2,8,12],drylands:[6,13,15],desert:[3,11,13],savanna:[2,15],coast:[8,13,14],islands:[7,13,14],harbor:[8,9,17],cities:[10,11,16],workshops:[4,8,9],gardens:[2,3,11],lakes:[3,6,15],commons:[16,17]};
 
 export const REGIONS = Object.freeze(districts.map(([id,name,landscape,mayor,focus], index) => Object.freeze({
-  id, name, landscape, researchGoals:Object.freeze(regionalGoals[id]), researchMapping:'NemoWorld editorial SDG research lens; not a country boundary, task assignment or UN mandate.', mayor: Object.freeze({ id: `mayor-${id}`, name: mayor, title: `Mayor of ${name}`, focus, status: 'active', kind: 'npc' }),
+  id, name, landscape, researchGoals:Object.freeze(regionalGoals[id]), researchMapping:'NemoWorld editorial SDG research lens; not a country boundary, task assignment or UN mandate.', mayor: Object.freeze({ id: `mayor-${id}`, name: mayor, title: `Regional guide of ${name}`, focus, status: 'active', kind: 'npc' }),
   order: index + 1,
 })));
 
@@ -42,11 +44,21 @@ export const SDG_GOALS = Object.freeze([
 export const CIVIC_CHARTER = Object.freeze({
   name: 'World Assembly', status: 'pilot', affiliation: 'Independent fictional institution; not part of the United Nations.',
   mandate: 'Coordinate source-based research and reviewed proposals across regions and countries.',
-  safeguard: 'Mayors guide research and provide advisory report triage. Human moderators decide reports, sanctions and appeals.',
+  safeguard: 'Country ambassadors guide research and provide advisory report triage. Human moderators decide reports, sanctions and appeals.',
   source: 'https://sdgs.un.org/goals',
 });
 
-export function civicAtlas() { return { regions: REGIONS, goals: SDG_GOALS, assembly: CIVIC_CHARTER }; }
+// The ambassador remit is a research remit over one catalog entry. It is never a government,
+// a diplomatic mission or a United Nations office, and it confers no authority.
+export const AMBASSADOR_REMIT = Object.freeze({
+  role: 'NemoWorld country ambassador',
+  fictional: 'A fictional NemoWorld research guide. Never a government, ministry, embassy or United Nations official or representative.',
+  scope: 'Answers only from the registered country context and its numbered sources, and only for the ambassador’s own catalog entry.',
+  limits: 'Cannot approve, sanction, endorse, contact, fund or commit anything on behalf of a state, a buyer or an institution. Human review decides any real contribution.',
+  grouping: 'Country groupings (LDC, LLDC, SIDS) come from the retrieved statistical catalog and are research filters, not political status.',
+});
+
+export function civicAtlas() { return { regions: REGIONS, goals: SDG_GOALS, assembly: CIVIC_CHARTER, ambassador_remit: AMBASSADOR_REMIT }; }
 
 // Choose relevant public context before model generation. Moderation takes priority.
 export function mayorTopic(question){

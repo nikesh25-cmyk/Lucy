@@ -298,6 +298,38 @@ function makeDistrict(id) {
     portals:[portal(24,31,'Return to the Commons','commons')]};
 }
 
+// One deterministic, generated venue per catalog entry, addressed as country:<iso3>.
+// It is an interior-like shared venue, never frontier land: no frontier sector, no land parcel
+// and no finite-perimeter registration is created for a country. Each venue holds one ambassador
+// stand on its own plaza, so two ambassadors never share a position.
+export const COUNTRY_VENUE_PLAZA = Object.freeze({ x: 12, y: 8, width: 16, height: 16 });
+function makeCountry(id, label) {
+  const iso3 = id.slice('country:'.length);
+  const seed = [...iso3].reduce((value, character) => (Math.imul(value + character.charCodeAt(0), 31) >>> 0), 7);
+  const columns = 40, rows = 28, grid = makeGrid(columns, rows, 'meadow'), objects = [];
+  // Public passages and a plaza: the venue is walkable in one connected piece, with no water.
+  road(grid, { x: 20, y: 2 }, { x: 20, y: 27 }); road(grid, { x: 2, y: 24 }, { x: 37, y: 24 });
+  paintGrid(grid, COUNTRY_VENUE_PLAZA.x, COUNTRY_VENUE_PLAZA.y, COUNTRY_VENUE_PLAZA.width, COUNTRY_VENUE_PLAZA.height, 'plaza');
+  // A small garden bed gives each venue the same cared-for shape without changing walkability.
+  paintGrid(grid, 24, 9, 3, 2, 'garden');
+  for (const [x, y] of [[12, 8], [27, 8], [12, 23], [27, 23]]) objects.push({ type: 'lantern', x, y });
+  for (const [x, y] of [[15, 23], [25, 23]]) objects.push({ type: 'bench', x, y });
+  objects.push({ type: 'flowers', x: 19, y: 9 }, { type: 'table', x: 13, y: 12 });
+  for (let y = 3; y < rows; y += 4) for (let x = 3; x < columns; x += 5) {
+    if (x >= COUNTRY_VENUE_PLAZA.x - 2 && x <= COUNTRY_VENUE_PLAZA.x + COUNTRY_VENUE_PLAZA.width + 1
+      && y >= COUNTRY_VENUE_PLAZA.y - 2 && y <= COUNTRY_VENUE_PLAZA.y + COUNTRY_VENUE_PLAZA.height + 1) continue;
+    if ((x + y + seed) % 7 !== 0) continue;
+    objects.push({ type: 'tree', x, y });
+  }
+  const venueName = label || `Country venue ${iso3}`;
+  return { id, name: venueName, kind: 'country', columns, rows, start: { x: 20, y: 25 }, terrain: grid, objects,
+    groundColor: ['#a4ba8c', '#adbf94', '#9fb183', '#b2c09a'][seed % 4],
+    description: `${venueName}: a NemoWorld research venue for one country or area. The ambassador here answers from registered country context only.`,
+    ambiance: ['Warm morning light over the plaza.', 'Quiet paths and a listening hall.', 'A calm garden and an open research desk.', 'Long shadows and a still courtyard.'][seed % 4],
+    landmarks: [{ x: 20, y: 9, name: `${venueName} research desk`, description: 'Ask the country ambassador here for source-based next steps. Guidance is advisory.', symbol: '✦', color: '#e9d4a1' }],
+    portals: [portal(20, 26, 'Return to the Commons', 'commons')] };
+}
+
 function makeInterior(id) {
   const names = { hall: 'Meeting Hall', pavilion: 'Peace Pavilion', gallery: 'Contribution Gallery', meditation: 'Meditation Sanctuary' };
   const grid = makeGrid(COLS, ROWS, 'floor');
@@ -359,12 +391,13 @@ export function getWorldDefinition(world = 'commons') {
     else if (['hall', 'pavilion', 'gallery', 'meditation'].includes(id)) definition = makeInterior(id);
     else if (Object.hasOwn(regionFacts, id)) definition = makeRegion(id);
     else if (id.startsWith('district:') && REGIONS.some(region => id === `district:${region.id}`)) definition = makeDistrict(id);
+    else if (/^country:[A-Z]{3}$/.test(id)) definition = makeCountry(id, descriptor?.name);
     else if (id.startsWith('home:')) definition = makeHome(id);
     else if (id.startsWith('house:')) definition = makeHouse(id);
     else if (frontierCoordinates(id, { allowLegacy: true })) definition = makeFrontier(id);
     else throw new RangeError(`Unknown world: ${id}`);
     if (definitions.size >= 36) {
-      const oldestHome = [...definitions.keys()].find((key) => key.startsWith('home:') || key.startsWith('house:') || key.startsWith('frontier:'));
+      const oldestHome = [...definitions.keys()].find((key) => key.startsWith('home:') || key.startsWith('house:') || key.startsWith('frontier:') || key.startsWith('country:'));
       if (oldestHome) definitions.delete(oldestHome);
     }
     definitions.set(id, definition);

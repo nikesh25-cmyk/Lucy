@@ -1,5 +1,12 @@
 # Mayor dialogue evaluation
 
+> **Historical record — pre-ambassador release.** This evaluation was run against the schema 11
+> mayor dialogues. Task 01 keeps the historic `/mayors/talk` alias working and reuses the same
+> conservative draft checks for the country ambassadors
+> (`ambassadorCountryDraft` in `runtime/model.js`), but the model prompt, identity context and stored
+> table have changed. The observations and corrections below describe the earlier release; see
+> [task 01 handoff](handoff/task-01-country-ambassadors.md) for the current behaviour.
+
 Verified 11 October 2026 using the installed official Qwen3-4B Q4_K_M model on this Mac, separate loopback model processes and isolated HTTP/database fixtures. No production account, real moderation decision, recommendation submission or external contact was created.
 
 ## Observed issues and corrections

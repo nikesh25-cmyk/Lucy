@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { COMMUNITY_TABLES } from './community.js';
 import { JOURNEY_TABLES } from './journey.js';
 import { verifyCallingReceipts } from './vocations.js';
+import { REGIONS } from './civic.js';
 import { GARDEN_PALETTE,HOUSE_PALETTE } from './placement-policy.js';
 
 const requiredTables = ['accounts', 'invites', 'agents', 'tokens', 'missions', 'tasks', 'claims', 'submissions', 'reviews', 'adoptions', 'messages', 'reports', 'appeals', 'jobs', 'settings', 'audit'];
@@ -24,7 +25,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -70,6 +71,17 @@ export function validateDatabase(path) {
       for(const [table,fields] of Object.entries(columns))if(!tables.has(table)||fields.some(column=>!db.prepare(`PRAGMA table_info(${table})`).all().some(field=>field.name===column)))throw new Error('Database calling schema is incomplete.');
       if(['world_objects_update_guard','calling_receipts_no_update','calling_receipts_validate_insert'].some(name=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name))||['calling_source_events','calling_objective_rules'].some(name=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='view' AND name=?").get(name)))throw new Error('Database calling and build protections are incomplete.');
       if(db.prepare("SELECT v.agent_id FROM resident_callings v JOIN agents a ON a.id=v.agent_id WHERE v.calling_id NOT IN (SELECT calling_id FROM calling_objective_rules) OR v.selected_at<0 OR (v.last_changed_day!='' AND (length(v.last_changed_day)!=10 OR date(v.last_changed_day) IS NULL))").get()||db.prepare('SELECT r.id FROM calling_receipts r JOIN agents a ON a.id=r.agent_id WHERE r.account_id!=a.operator_id').get()||!verifyCallingReceipts(db))throw new Error('Database calling progress validation failed.');
+    }
+    if (version >= 15) {
+      const columns={npc_ambassadors:['id','iso2','iso3','m49','name','region','subregion','ldc','lldc','sids','world_id','sprite','x','y','direction','status','created_at'],ambassador_legacy_map:['guide_id','region_id','ambassador_id','created_at'],ambassador_conversations:['id','account_id','ambassador_id','question','answer','created_at','mode','country_context','source_numbers']};
+      for(const [table,fields] of Object.entries(columns))if(!tables.has(table)||fields.some(column=>!db.prepare(`PRAGMA table_info(${table})`).all().some(field=>field.name===column)))throw new Error('Database country ambassador schema is incomplete.');
+      // One row per catalog entry, addressed by its own iso3, each in its own country venue. The
+      // catalog is sealed, so a mismatch means the migration did not complete.
+      if(db.prepare("SELECT id FROM npc_ambassadors WHERE id!='amb-'||iso3 OR iso3 NOT GLOB '[A-Z][A-Z][A-Z]' OR iso2 NOT GLOB '[A-Z][A-Z]' OR world_id!='country:'||iso3 OR status NOT IN ('active','paused') OR x<0 OR y<0 OR sprite<0").get()||db.prepare('SELECT iso3 FROM npc_ambassadors GROUP BY iso3 HAVING COUNT(*)>1').get())throw new Error('Database country ambassador identities are invalid.');
+      // The compatibility mapping must cover every historic regional guide with an existing replacement.
+      if(db.prepare('SELECT m.guide_id FROM ambassador_legacy_map m JOIN npc_mayors n ON n.id=m.guide_id LEFT JOIN npc_ambassadors a ON a.id=m.ambassador_id WHERE a.id IS NULL OR m.region_id!=n.region_id').get())throw new Error('Database country ambassador mapping is invalid.');
+      if(REGIONS.some(region=>!db.prepare('SELECT guide_id FROM ambassador_legacy_map WHERE guide_id=?').get(region.mayor.id)))throw new Error('Database country ambassador mapping is incomplete.');
+      if(db.prepare("SELECT c.id FROM ambassador_conversations c LEFT JOIN npc_ambassadors a ON a.id=c.ambassador_id WHERE a.id IS NULL").get())throw new Error('Database country ambassador conversations are invalid.');
     }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';

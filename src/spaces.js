@@ -82,8 +82,8 @@ export const spaceMethods = {
     const agentId = actor?.agent?.id || '';
     const condition = "w.kind='home' AND a.status!='deleted' AND o.status='active' AND (w.visibility='public' OR a.operator_id=? OR a.id=?) AND (instr(lower(w.name),lower(?))>0 OR instr(lower(a.name),lower(?))>0)";
     const total = this.get(`SELECT COUNT(*) AS n FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition}`, owner, agentId, query, query).n;
-    const shared = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)) AS agent_count FROM worlds w LEFT JOIN agents a ON a.id=w.owner_agent_id WHERE w.owner_agent_id IS NULL AND w.kind!='frontier' ORDER BY w.id`);
-    const homes = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)) AS agent_count FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition} ORDER BY w.name,w.id LIMIT ? OFFSET ?`, owner, agentId, query, query, limit, offset);
+    const shared = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)+(SELECT COUNT(*) FROM npc_ambassadors WHERE world_id=w.id)) AS agent_count FROM worlds w LEFT JOIN agents a ON a.id=w.owner_agent_id WHERE w.owner_agent_id IS NULL AND w.kind NOT IN ('frontier','country') ORDER BY w.id`);
+    const homes = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)+(SELECT COUNT(*) FROM npc_ambassadors WHERE world_id=w.id)) AS agent_count FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition} ORDER BY w.name,w.id LIMIT ? OFFSET ?`, owner, agentId, query, query, limit, offset);
     return { worlds: [...shared, ...homes], total, offset, limit, has_more: offset + limit < total, shared_count: shared.length };
   },
   world(actor, input = {}) {
@@ -101,7 +101,10 @@ export const spaceMethods = {
     const inViewportAgents = participants[0]?.in_viewport ?? 0;
     for (const participant of participants) delete participant.in_viewport;
     const agentCount = participants.length;
-    const npcs=this.mayors(actor,{world_id:id}).mayors.filter(mayor=>mayor.x>=camera.x&&mayor.x<camera.x+COLS&&mayor.y>=camera.y&&mayor.y<camera.y+ROWS);
+    // Ambient civic residents: the historic regional guides patrol, the country ambassadors hold a
+    // fixed stand in their own venue. Both are counted inside the same 200-participant bound.
+    const npcs=[...this.mayors(actor,{world_id:id}).mayors.filter(mayor=>mayor.x>=camera.x&&mayor.x<camera.x+COLS&&mayor.y>=camera.y&&mayor.y<camera.y+ROWS),
+      ...this.ambassadorResidents(id).filter(ambassador=>ambassador.x>=camera.x&&ambassador.x<camera.x+COLS&&ambassador.y>=camera.y&&ambassador.y<camera.y+ROWS)];
     const npcSlots = Math.max(0, participantLimit - agentCount);
     participants.push(...npcs.slice(0, npcSlots));
     const hiddenAgents = (inViewportAgents - agentCount) + Math.max(0, npcs.length - npcSlots);
@@ -136,7 +139,7 @@ export const spaceMethods = {
     return { world: { ...world, description: definition.description || '', lore: definition.lore || '', ambiance: definition.ambiance || '' }, participants, agents: participants.map(({calling,...legacy})=>legacy), messages, camera, objects, portals, own_home: ownHome, build_palette: world.kind === 'house' ? housePalette : palette,
       ...frontierView, terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
       bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null,
-      counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='agent'").n, registered_humans: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='human'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n, visible_agents: participants.length, hidden_agents: hiddenAgents },
+      counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='agent'").n, registered_humans: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='human'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n+this.get('SELECT COUNT(*) AS n FROM npc_ambassadors WHERE world_id=?',id).n, visible_agents: participants.length, hidden_agents: hiddenAgents },
       paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true' };
   },
   /**
@@ -180,7 +183,10 @@ export const spaceMethods = {
     const target = this.space(actor, input.world_id || '');
     const current = getWorldDefinition(this.space(actor, agent.world_id));
     const portal = (current.portals || []).find((p) => (p.targetWorldId || p.target_world_id) === target.id && Math.abs(p.x - agent.x) + Math.abs(p.y - agent.y) <= 1);
-    if (target.kind !== 'home' && !(agent.world_id.startsWith('home:') && target.id === 'commons') && !portal) fail(409, 'Walk to a doorway before entering.');
+    // A country venue is entered from the Commons, the shared directory. Its own exit portal returns
+    // the character, so movement stays server-authoritative without inventing frontier land.
+    const directoryEntry = target.kind === 'country' && agent.world_id === 'commons';
+    if (target.kind !== 'home' && !(agent.world_id.startsWith('home:') && target.id === 'commons') && !portal && !directoryEntry) fail(409, 'Walk to a doorway before entering.');
     if (this.clock() - agent.last_move < 120) fail(429, 'Travel more slowly.');
     const definition = getWorldDefinition(target), position = definition.start;
     // Return to the corresponding outdoor entrance when leaving an interior.

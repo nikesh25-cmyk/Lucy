@@ -107,11 +107,14 @@ export function mayorDraft(value, sourceUrls = []) {
 
 // Country statistics and dated provenance are rendered directly from the retained
 // snapshot. These conservative checks do not certify the remaining qualitative prose.
+// The country ambassador uses the same restriction as the historic guide draft: the record shape is
+// identical, so one validator keeps both paths honest.
 export function mayorCountryDraft(value, countryContext) {
   const answer=mayorDraft(value);
-  if(/\p{N}|https?:|www\.|%/iu.test(answer)||/\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|percent|percentage)\b/i.test(answer))throw new Error('Country mayor prose must be qualitative; exact figures belong to retained source cards.');
-  if(!Array.isArray(value.sources)||value.sources.length>5)throw new Error('Invalid country mayor source numbers.');
+  if(/\p{N}|https?:|www\.|%/iu.test(answer)||/\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|percent|percentage)\b/i.test(answer))throw new Error('Country guide prose must be qualitative; exact figures belong to retained source cards.');
+  if(!Array.isArray(value.sources)||value.sources.length>5)throw new Error('Invalid country guide source numbers.');
   const available=new Set(countryContext.sources.filter(source=>source.status==='retained').map(source=>source.number));
-  if(value.sources.some(number=>!Number.isInteger(number)||!available.has(number)))throw new Error('Country mayor references an unavailable source.');
+  if(value.sources.some(number=>!Number.isInteger(number)||!available.has(number)))throw new Error('Country guide references an unavailable source.');
   return {answer,source_numbers:[...new Set(value.sources)]};
 }
+export const ambassadorCountryDraft = mayorCountryDraft;

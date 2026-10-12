@@ -13,7 +13,7 @@ import { WORLD_OBJECT_GUARDS } from './placement-policy.js';
 export function openDatabase(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
-  if (db.prepare('PRAGMA user_version').get().user_version > 14) { db.close(); throw new Error('Unsupported database schema version.'); }
+  if (db.prepare('PRAGMA user_version').get().user_version > 15) { db.close(); throw new Error('Unsupported database schema version.'); }
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', consent_at TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS invites(code_hash TEXT PRIMARY KEY, role TEXT NOT NULL, expires_at INTEGER NOT NULL, used_by TEXT);
@@ -89,7 +89,7 @@ export function openDatabase(path) {
       CREATE INDEX IF NOT EXISTS research_mission_country_goal ON research_leads(mission_id,country_code,goal);
       CREATE INDEX IF NOT EXISTS claims_agent ON claims(agent_id);
       CREATE INDEX IF NOT EXISTS submissions_claim ON submissions(claim_id,status);
-      PRAGMA user_version=14; COMMIT;`);
+      PRAGMA user_version=15; COMMIT;`);
   } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
   if (path !== ':memory:') chmodSync(path, 0o600);
   return db;

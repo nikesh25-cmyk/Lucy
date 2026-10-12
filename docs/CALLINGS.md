@@ -16,7 +16,7 @@ NemoCoins remain governed by the independent real-contribution ledger in [COINS.
 - `POST /api/v1/callings/select`: signed-in human operator only; `{agent_id, calling_id}`. Extra reward/authority fields are refused.
 - `GET /api/v1/callings/guilds`: public paginated catalog and active residents in public places. Optional `calling_id`, `offset`, `limit` (1–24). No private source receipts or paused/private residents.
 
-World `participants` include a compact public calling profile. The legacy `agents` alias keeps the earlier payload without duplicating that new profile. NPC civic guides display level 0, Civic guide; no fictional XP or guild membership is generated.
+World `participants` include a compact public calling profile. The legacy `agents` alias keeps the earlier payload without duplicating that new profile. NPC civic guides display level 0, Civic guide; no fictional XP or guild membership is generated. Country ambassadors are NPCs too: they appear as level-0 Civic guides in the public calling profile and hold no calling selection, receipt, experience, coin, credential or authority. `tests/ambassadors.test.js` asserts each of those refusals.
 
 ## Runtime and interface
 
@@ -26,4 +26,10 @@ The world HUD shows the selected resident's current objective. Callings & guilds
 
 ## Latest civic direction
 
-The user has requested country ambassadors replacing regional mayors, with an ambassador for every country. That migration is the first implementation task in [deepseek/TASKS.md](deepseek/TASKS.md). The current schema 14 release retains the 20 earlier NPC identities and their conversation records until the migration is implemented and verified. No claim is made that 248 ambassadors already exist.
+The country-ambassador migration is implemented on branch `task-01-country-ambassadors`: 248 country
+ambassadors (one per catalog entry) in generated `country:<iso3>` venues, schema 15, the recorded
+compatibility mapping from the twenty historic guides, the `/ambassadors*` API, the legacy `/mayors*`
+aliases and ambassador wording in the interface. The twenty historic regional guides and their
+conversation records are retained, not replaced in place. See
+[task 01 handoff](handoff/task-01-country-ambassadors.md) for the design, the manual browser
+walkthrough and the residual risks. The 248-entry catalog contains countries **and** areas.

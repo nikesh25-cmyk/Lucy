@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { agricultureSources, accessSources, STATISTICS_LICENSE } from './statistics.js';
-import { mayorCountryContext, mayorConversation } from './mayor-evidence.js';
-import { REGIONS, SDG_GOALS, CIVIC_CHARTER, mayorTopic } from './civic.js';
+import { ambassadorCountryContext, ambassadorConversation, mayorConversation } from './mayor-evidence.js';
+import { REGIONS, SDG_GOALS, CIVIC_CHARTER, AMBASSADOR_REMIT, mayorTopic } from './civic.js';
 import { getWorldDefinition, move } from '../world.js';
 import content from './content.js';
 const catalog = name => JSON.parse(readFileSync(new URL(`../catalog/${name}.json`,import.meta.url),'utf8'));
@@ -10,10 +10,31 @@ export const COUNTRIES=catalog('countries'), PROGRAMMES=catalog('programmes'), P
 const STATISTICS=catalog('agriculture-statistics'), ACCESS_STATISTICS=catalog('access-statistics');
 // Project current evidence eligibility without rewriting historical task/adoption records.
 const researchView=`(SELECT research_leads.*,CASE WHEN task_id IS NOT NULL AND (SELECT s.status FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE c.task_id=research_leads.task_id ORDER BY s.created_at DESC,s.rowid DESC LIMIT 1)='quarantined' THEN 'evidence_withheld' ELSE research_leads.status END AS current_status FROM research_leads) AS research_leads`;
-// The district mayor sprite sheets are the sealed civic-mayor appearances, in roster order; each
-// appearance keeps its own sheet number, which is the numeric `sprite` the client loads.
-const mayorAppearances = content.appearancesFor('civic-mayor');
+// The guide sprite sheets are the sealed civic appearances, in roster order; each appearance keeps
+// its own sheet number, which is the numeric `sprite` the client loads. The same 20 sheets serve the
+// historic regional guides and the country ambassadors: 20 sheets repeat across 248 ambassadors, so
+// several countries share a portrait. No new art is introduced.
+const guideAppearances = content.appearancesFor('civic-mayor');
+const ambassadorAppearances = content.appearancesFor('civic-ambassador');
+const mayorAppearances = guideAppearances.length ? guideAppearances : ambassadorAppearances;
 const roster = mayorAppearances.map((definition) => definition.appearance.sprite);
+export const AMBASSADOR_SPRITES = Object.freeze([...roster]);
+// A stand inside the venue plaza, addressed by catalog position so that two ambassadors never share
+// a position even inside the same coordinate space. src/world.js paints exactly this plaza walkable.
+const VENUE = Object.freeze({ x: 12, y: 8, width: 16, height: 16 });
+const ambassadorId = (iso3) => `amb-${iso3}`;
+const standFor = (index) => ({ x: VENUE.x + (index % VENUE.width), y: VENUE.y + Math.floor(index / VENUE.width) });
+function ambassadorView(row) {
+  const groups = { ldc: Boolean(row.ldc), lldc: Boolean(row.lldc), sids: Boolean(row.sids) };
+  const labels = [groups.ldc ? 'LDC' : null, groups.lldc ? 'LLDC' : null, groups.sids ? 'SIDS' : null].filter(Boolean);
+  return { id: row.id, kind: 'npc', iso2: row.iso2, iso3: row.iso3, m49: row.m49, name: row.name, region: row.region, subregion: row.subregion,
+    groups, country_group: labels.join(' · ') || 'No special grouping', world_id: row.world_id, sprite: row.sprite, x: row.x, y: row.y,
+    status: row.status, presence: row.status === 'active' ? 'resident' : 'paused', mode: 'rules', title: `Country ambassador · ${row.name}`, focus: `Source-based research guidance for ${row.name}.` };
+}
+// The compatibility mapping is deterministic and arbitrary by design: the historic guides described
+// ecological territories, not countries. Region index i maps to catalog position floor(i*248/20), so
+// the alias is stable, recorded in ambassador_legacy_map and readable through the API.
+const legacyCountryFor = (index) => COUNTRIES.entries[Math.floor(index * COUNTRIES.entries.length / REGIONS.length)];
 const stages=[
   {id:'baseline',name:'Establish the baseline',output:'A dated country baseline with indicators, geography, definitions and evidence gaps.'},
   {id:'evidence',name:'Compare practical interventions',output:'An evidence matrix comparing at least three interventions, costs, prerequisites and uncertainties.'},
@@ -37,12 +58,20 @@ END;
 CREATE TRIGGER IF NOT EXISTS research_adoption AFTER INSERT ON adoptions BEGIN
 UPDATE research_leads SET status='adopted' WHERE task_id=(SELECT c.task_id FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE s.id=NEW.submission_id);
 END;
+CREATE TABLE IF NOT EXISTS npc_ambassadors(id TEXT PRIMARY KEY,iso2 TEXT NOT NULL,iso3 TEXT NOT NULL UNIQUE,m49 TEXT NOT NULL,name TEXT NOT NULL,region TEXT NOT NULL DEFAULT '',subregion TEXT NOT NULL DEFAULT '',ldc INTEGER NOT NULL DEFAULT 0,lldc INTEGER NOT NULL DEFAULT 0,sids INTEGER NOT NULL DEFAULT 0,world_id TEXT NOT NULL,sprite INTEGER NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,direction TEXT NOT NULL DEFAULT 'down',status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS npc_ambassadors_status ON npc_ambassadors(status,name);
+CREATE INDEX IF NOT EXISTS npc_ambassadors_world ON npc_ambassadors(world_id);
+CREATE TABLE IF NOT EXISTS ambassador_legacy_map(guide_id TEXT PRIMARY KEY,region_id TEXT NOT NULL,ambassador_id TEXT NOT NULL REFERENCES npc_ambassadors(id),created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS ambassador_legacy_map_ambassador ON ambassador_legacy_map(ambassador_id);
+CREATE TABLE IF NOT EXISTS ambassador_conversations(id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),ambassador_id TEXT NOT NULL REFERENCES npc_ambassadors(id),question TEXT NOT NULL,answer TEXT NOT NULL,created_at TEXT NOT NULL,mode TEXT NOT NULL DEFAULT 'rules',country_context TEXT,source_numbers TEXT NOT NULL DEFAULT '[]');
+CREATE INDEX IF NOT EXISTS ambassador_conversations_account ON ambassador_conversations(account_id,created_at);
 `;
 export const civicMethods={
   initCivic(){
     this.transaction(()=>{
       this.recoverWorkerJobs();
       REGIONS.forEach((region,index)=>this.run('INSERT OR IGNORE INTO npc_mayors(id,region_id,world_id,name,sprite,x,y) VALUES(?,?,?,?,?,?,?)',region.mayor.id,region.id,`district:${region.id}`,region.mayor.name,roster[index],24,18));
+      this.seedAmbassadors();
       for(const country of COUNTRIES.entries.filter(country=>country.ldc))this.seedCountryResearch(country);
       for(const [index,task] of (PILOT.tasks||[]).entries()){
         const sourceUrls=PILOT.sources.filter(source=>(task.sourceIds||PILOT.sources.map(item=>item.id)).includes(source.id)).map(source=>source.url);
@@ -143,10 +172,102 @@ export const civicMethods={
     this.run("UPDATE research_leads SET status='activated',mission_id=?,task_id=? WHERE id=?",mission.id,task.id,lead.id);this.audit(actor.account.id,'research.activated',lead.id);
     return {mission_id:mission.id,task_id:task.id,status:'activated'};
   },
+  // Idempotent per-boot seeding: exactly one ambassador row per catalog entry, one generated venue
+  // world per row, and the historic guide mapping. Re-running it changes nothing.
+  seedAmbassadors(){
+    const created_at=new Date(this.clock()).toISOString();
+    COUNTRIES.entries.forEach((country,index)=>{
+      const id=ambassadorId(country.iso3),world_id=`country:${country.iso3}`,stand=standFor(index);
+      this.run("INSERT OR IGNORE INTO worlds VALUES(?,?,?,NULL,'public',?,?,?)",world_id,`${country.name} research venue`,'country',40,28,created_at);
+      this.run('INSERT OR IGNORE INTO npc_ambassadors(id,iso2,iso3,m49,name,region,subregion,ldc,lldc,sids,world_id,sprite,x,y,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',id,country.iso2,country.iso3,country.m49,country.name,country.region||'',country.subregion||'',country.ldc?1:0,country.lldc?1:0,country.sids?1:0,world_id,roster[index%roster.length],stand.x,stand.y,created_at);
+    });
+    REGIONS.forEach((region,index)=>{
+      const country=legacyCountryFor(index),mapped=ambassadorId(country.iso3);
+      const inserted=this.run('INSERT OR IGNORE INTO ambassador_legacy_map(guide_id,region_id,ambassador_id,created_at) VALUES(?,?,?,?)',region.mayor.id,region.id,mapped,created_at).changes;
+      // A paused historic guide hands its paused state to its replacement exactly once, when the
+      // mapping is first recorded, so a later manual resume is not undone by the next boot.
+      if(inserted&&this.get("SELECT status FROM npc_mayors WHERE id=?",region.mayor.id)?.status==='paused')this.run("UPDATE npc_ambassadors SET status='paused' WHERE id=?",mapped);
+    });
+  },
+  ambassadorRow(id){const row=this.get('SELECT * FROM npc_ambassadors WHERE id=?',String(id||''));if(!row)fail(404,'Country ambassador not found.');return row;},
+  ambassadorContext(country,capturedAt){
+    const agriculture=this.countryEvidence(null,{country:country.iso2}),access=this.countryEvidence(null,{country:country.iso2,sector:'access'});
+    return ambassadorCountryContext(agriculture,access,capturedAt);
+  },
+  ambassadors(actor,input={}){
+    const q=String(input.q||'').trim().toLowerCase().slice(0,80),group=String(input.group||'');
+    if(group&&!['ldc','lldc','sids'].includes(group))fail(400,'Unknown country grouping.');
+    const privileged=actor?.kind==='session'&&['admin','moderator'].includes(actor.account.role);
+    const includePaused=privileged&&['1','true'].includes(String(input.include_paused||''));
+    const status=includePaused?String(input.status||'all'):'active';
+    if(!['active','paused','all'].includes(status))fail(400,'Choose active, paused or all.');
+    const offset=integer(input.offset,0,100000),limit=integer(input.limit,20,50);if(!limit)fail(400,'Page size must be positive.');
+    const matches=ambassador=>(!group||Boolean(ambassador[group]))&&(!q||`${ambassador.name} ${ambassador.iso2} ${ambassador.iso3} ${ambassador.m49} ${ambassador.region} ${ambassador.subregion}`.toLowerCase().includes(q));
+    const rows=this.all('SELECT * FROM npc_ambassadors ORDER BY name,iso3'),filtered=rows.filter(matches),visible=filtered.filter(row=>status==='all'||row.status===status);
+    return {catalog:{name:'Countries & areas',total:rows.length,source:COUNTRIES.metadata.sourceUrl,note:'A statistical catalog of countries or areas, not a list of sovereign states or UN members.'},
+      entries:visible.slice(offset,offset+limit).map(ambassadorView),total:visible.length,offset,limit,has_more:offset+limit<visible.length,status,
+      counts:{active:rows.filter(row=>row.status==='active').length,paused:rows.filter(row=>row.status==='paused').length,ldc:rows.filter(row=>row.ldc).length,lldc:rows.filter(row=>row.lldc).length,sids:rows.filter(row=>row.sids).length},
+      excluded:{not_shown:filtered.length-visible.length,reason:'Paused ambassadors are withheld from the public directory; a signed-in moderator can request include_paused=1.'},
+      remit:AMBASSADOR_REMIT,mode:'Scripted country ambassadors; responses follow published rules and catalog evidence.'};
+  },
+  ambassador(actor,input={}){
+    const row=this.ambassadorRow(input.id||input.ambassador_id),country=COUNTRIES.entries.find(item=>item.iso3===row.iso3),captured_at=new Date(this.clock()).toISOString();
+    const context=this.ambassadorContext(country,captured_at);
+    const legacy=this.get('SELECT guide_id,region_id FROM ambassador_legacy_map WHERE ambassador_id=?',row.id);
+    const conversations=actor?.kind==='session'?this.all('SELECT * FROM ambassador_conversations WHERE account_id=? AND ambassador_id=? ORDER BY created_at DESC LIMIT 20',actor.account.id,row.id).map(ambassadorConversation):[];
+    const legacy_conversations=actor?.kind==='session'&&legacy?this.all('SELECT * FROM mayor_conversations WHERE account_id=? AND npc_id=? ORDER BY created_at DESC LIMIT 20',actor.account.id,legacy.guide_id).map(mayorConversation):[];
+    return {ambassador:ambassadorView(row),
+      country:{name:country.name,iso2:country.iso2,iso3:country.iso3,m49:country.m49,region:country.region,subregion:country.subregion,groups:{ldc:country.ldc,lldc:country.lldc,sids:country.sids},source:COUNTRIES.metadata.sourceUrl},
+      remit:AMBASSADOR_REMIT,
+      venue:{world_id:row.world_id,name:`${country.name} research venue`,kind:'country',x:row.x,y:row.y,columns:40,rows:28,route:`GET /api/v1/world?world_id=${row.world_id}; the venue is generated and holds no frontier land.`},
+      country_context:context,
+      research:{leads:this.all('SELECT id,goal,stage,title,status,country_code FROM research_leads WHERE country_code=? ORDER BY goal,stage,id LIMIT 20',country.iso2),lead_total:this.get('SELECT COUNT(*) AS n FROM research_leads WHERE country_code=?',country.iso2).n,
+        evidence_routes:context.sources.map(source=>({number:source.number,sector:source.sector,indicator:source.indicator,name:source.name,status:source.status,url:source.url,definition_url:source.definition_url,metadata_url:source.metadata_url}))},
+      legacy:legacy?{...legacy,region_name:REGIONS.find(region=>region.id===legacy.region_id)?.name||null}:null,
+      conversations,legacy_conversations,mode:'Scripted country ambassadors; responses follow published rules and catalog evidence.'};
+  },
+  ambassadorTalk(actor,input={}){
+    human(actor,['admin','member','moderator','reviewer']);this.active();
+    const row=this.get("SELECT * FROM npc_ambassadors WHERE id=? AND status='active'",String(input.ambassador_id||input.id||input.npc_id||''));
+    if(!row)fail(404,'Active country ambassador not found.');
+    const supplied=String(input.country_code??'').trim().toUpperCase();
+    if(supplied&&![row.iso2.toUpperCase(),row.iso3.toUpperCase(),row.m49].includes(supplied))fail(400,`Country mismatch: this ambassador answers only for ${row.name} (${row.iso3}).`);
+    const last=this.get('SELECT created_at FROM ambassador_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 1',actor.account.id);if(last&&this.clock()-Date.parse(last.created_at)<1500)fail(429,'Please allow the ambassador to finish.');
+    const country=COUNTRIES.entries.find(item=>item.iso3===row.iso3),question=text(input.question,500,'Question'),topic=mayorTopic(question),created_at=new Date(this.clock()).toISOString();
+    // The canonical route always attaches the ambassador's assigned country context. The legacy alias
+    // passes context:false for a general question, which preserves its historic context-free answer.
+    const withContext=input.context!==false,country_context=withContext?this.ambassadorContext(country,created_at):null;
+    const retained=country_context?country_context.sources.filter(source=>source.status==='retained').length:0;
+    let answer=`I’m the NemoWorld country ambassador for ${country.name}. I am a fictional research guide: I do not represent ${country.name}, any government or the United Nations. My remit is source-based research for this country or area.`;
+    if(topic==='moderation')answer+=' Use the Safety desk to report a specific message or resident. Human moderators review evidence, decide actions, and provide an appeal route. I can guide you through the process; I cannot impose sanctions.';
+    else if(topic==='assembly')answer+=` World Assembly is an independent NemoWorld institution. Its reference desk contains ${PROGRAMMES.institutions.length} records covering principal organs, General Assembly committees, ECOSOC commissions, specialized agency groups, funds and other entities. It does not enumerate every UN programme or subsidiary body. UN sources inform NemoWorld proposals; NemoWorld has no UN endorsement.`;
+    else if(!withContext)answer+=` Choose a country or area to attach its registered country context and numbered sources before making findings.`;
+    else if(retained){answer+=` ${retained} registered ${retained===1?'series is':'series are'} retained for ${country.name}; the numbered cards below carry the exact values, observation years and source dates. Define a beneficiary and a scoped question, keep the evidence gaps visible, and treat national indicators as context only — they cannot establish current rules, buyers, prices or local feasibility. Register work as a proposal with an owner and an independent reviewer before it is used.`;}
+    else{answer+=` No registered baseline series is retained for ${country.name}. Treat that as an evidence gap: work with country-specific primary sources and record access and reuse rights before making findings. Register work as a proposal with an owner and an independent reviewer.`;}
+    if(withContext&&topic==='agriculture'&&retained)answer+=' Choose a producer, a municipality and a crop, then verify local production, product standards, buyer demand, shipping costs and applicable trade requirements separately.';
+    const source_numbers=!country_context||['moderation','assembly'].includes(topic)?[]:country_context.sources.filter(source=>source.status==='retained').map(source=>source.number);
+    const id=randomUUID();
+    this.run('INSERT INTO ambassador_conversations(id,account_id,ambassador_id,question,answer,created_at,country_context,source_numbers) VALUES(?,?,?,?,?,?,?,?)',id,actor.account.id,row.id,question,answer,created_at,country_context?JSON.stringify(country_context):null,JSON.stringify(source_numbers));
+    this.run('DELETE FROM ambassador_conversations WHERE account_id=? AND id NOT IN (SELECT id FROM ambassador_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 100)',actor.account.id,actor.account.id);
+    return {id,ambassador_id:row.id,country:{name:country.name,iso2:country.iso2,iso3:country.iso3,m49:country.m49},question,answer,created_at,mode:'rules',country_context,source_numbers};
+  },
+  // Pausing an ambassador also pauses its mapped historic guide, so the legacy patrol stops with it.
+  ambassadorControl(actor,input={}){human(actor,['admin','moderator']);if(!['active','paused'].includes(input.status))fail(400,'Choose active or paused.');const row=this.ambassadorRow(input.ambassador_id||input.id||input.npc_id);this.run('UPDATE npc_ambassadors SET status=? WHERE id=?',input.status,row.id);this.run('UPDATE npc_mayors SET status=? WHERE id IN (SELECT guide_id FROM ambassador_legacy_map WHERE ambassador_id=?)',input.status,row.id);this.audit(actor.account.id,'ambassador.'+input.status,row.id);return {status:input.status,ambassador_id:row.id};},
+  ambassadorResidents(worldId){return this.all("SELECT * FROM npc_ambassadors WHERE world_id=? AND status='active' ORDER BY name,iso3",worldId).map(ambassadorView);},
+  // Legacy listing: the 20 historic regional guides remain readable with their own patrol state,
+  // each annotated with the replacement country ambassador it is mapped to. New conversations are
+  // read from the ambassador store; the historic store is returned separately as legacy_conversations.
   mayors(actor,input={}){
-    this.tickMayors();const residents=this.all('SELECT * FROM npc_mayors ORDER BY region_id').map(mayor=>({...mayor,kind:'npc',mode:'rules',focus:REGIONS.find(region=>region.id===mayor.region_id).mayor.focus,title:`Mayor of ${REGIONS.find(region=>region.id===mayor.region_id).name}`,presence:mayor.status==='active'?'resident':'paused',color:'#397f79',symbol:'✦'}));
-    const conversations=actor?.kind==='session'?this.all('SELECT * FROM mayor_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 20',actor.account.id).map(mayorConversation):[];
-    return {mayors:input.world_id?residents.filter(mayor=>mayor.world_id===input.world_id):residents,conversations,mode:'Scripted civic residents; responses follow published rules and catalog evidence.'};
+    this.tickMayors();
+    const rows=this.all('SELECT * FROM npc_mayors ORDER BY region_id');
+    const residents=rows.map(mayor=>{
+      const region=REGIONS.find(region=>region.id===mayor.region_id);
+      const mapped=this.get('SELECT m.ambassador_id,a.name AS ambassador_name,a.iso3,a.iso2,a.world_id AS ambassador_world FROM ambassador_legacy_map m JOIN npc_ambassadors a ON a.id=m.ambassador_id WHERE m.guide_id=?',mayor.id);
+      return {...mayor,kind:'npc',mode:'rules',focus:region.mayor.focus,title:`Regional guide of ${region.name}`,legacy:true,presence:mayor.status==='active'?'resident':'paused',color:'#397f79',symbol:'✦',ambassador_id:mapped?.ambassador_id||null,ambassador:mapped?{id:mapped.ambassador_id,name:mapped.ambassador_name,iso2:mapped.iso2,iso3:mapped.iso3,world_id:mapped.ambassador_world}:null};
+    });
+    const conversations=actor?.kind==='session'?this.all('SELECT c.*,(SELECT guide_id FROM ambassador_legacy_map m WHERE m.ambassador_id=c.ambassador_id) AS guide_id FROM ambassador_conversations c WHERE c.account_id=? ORDER BY c.created_at DESC LIMIT 20',actor.account.id).map(record=>({...ambassadorConversation(record),npc_id:record.guide_id})).map(({guide_id,...turn})=>turn):[];
+    const legacy_conversations=actor?.kind==='session'?this.all('SELECT * FROM mayor_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 20',actor.account.id).map(mayorConversation):[];
+    return {mayors:input.world_id?residents.filter(mayor=>mayor.world_id===input.world_id):residents,conversations,legacy_conversations,legacy_alias:true,mode:'Scripted country ambassadors; responses follow published rules and catalog evidence.'};
   },
   tickMayors(){
     if(this.get("SELECT value FROM settings WHERE key='paused'").value==='true')return;
@@ -157,28 +278,35 @@ export const civicMethods={
       this.run('UPDATE npc_mayors SET x=?,y=?,direction=?,ticks=ticks+1,last_tick=? WHERE id=?',next.x,next.y,direction,this.clock(),mayor.id);
     }
   },
-  mayorTalk(actor,input){
-    human(actor,['admin','member','moderator','reviewer']);this.active();const mayor=this.get("SELECT * FROM npc_mayors WHERE id=? AND status='active'",input.npc_id);if(!mayor)fail(404,'Active mayor not found.');
-    const last=this.get('SELECT created_at FROM mayor_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 1',actor.account.id);if(last&&this.clock()-Date.parse(last.created_at)<1500)fail(429,'Please allow the mayor to finish.');
-    const question=text(input.question,500,'Question'),region=REGIONS.find(region=>region.id===mayor.region_id),topic=mayorTopic(question),created_at=new Date(this.clock()).toISOString();
-    const country_context=input.country_code==null||input.country_code===''?null:mayorCountryContext(this.countryEvidence(actor,{country:input.country_code}),this.countryEvidence(actor,{country:input.country_code,sector:'access'}),created_at);
-    let answer=`I’m ${mayor.name}, the civic guide for ${region.name}. Our focus is ${region.mayor.focus.toLowerCase()}. Visit the World Assembly research desk to choose a country, a goal and a concrete deliverable.`;
-    if(topic==='moderation')answer='Use the Safety desk to report a specific message or resident. Human moderators review evidence, decide actions, and provide an appeal route. I can guide you through the process; I cannot impose sanctions.';
-    else if(topic==='assembly')answer=`World Assembly is an independent NemoWorld institution. Its reference desk contains ${PROGRAMMES.institutions.length} records covering principal organs, General Assembly committees, ECOSOC commissions, specialized agency groups, funds and other entities. It does not enumerate every UN programme or subsidiary body. UN sources inform NemoWorld proposals; NemoWorld has no UN endorsement.`;
-    else if(country_context){
-      const retained=country_context.sources.some(source=>source.status==='retained'),name=country_context.country.name;
-      answer=`For ${name}, ${retained?'begin with the retained country baseline shown with this reply. Keep its source dates, definitions and evidence gaps visible.':'the registered baseline routes have no retained data here. Treat that as an evidence gap and consult country-specific primary sources before making findings.'} `+(topic==='agriculture'?'Choose a producer, municipality and crop, then verify local production, product standards, buyer demand, shipping costs and applicable trade requirements. Sector indicators alone cannot establish an export route.':'Define a beneficiary and a scoped research question. National agriculture, electricity access and Internet-use context cannot establish a local project design or outcomes. ')+` Use the ${name} research desk to prepare a proposal with an owner and independent reviewer. I can suggest next steps; human review is required before recommendations are used.`;
-    }
-    else if(topic==='agriculture')answer='Our first agriculture research starter studies Nepal tea exports to India. Verify the current applicable Tea Board India directive, product standards, buyer demand and shipment costs before recommending a route. The Assembly desk has '+PILOT.sources.length+' source records and six research proposals. No buyer or trade outcome is confirmed.';
-    else if(topic==='research')answer=`For ${region.name}, explore the regional research lens for SDGs ${region.researchGoals.join(', ')}: ${region.mayor.focus.toLowerCase()}. This is NemoWorld’s editorial focus, not a country boundary or an assigned mission. Start with a proposed country research task, define a beneficiary and reviewer, then activate it as a mission. Contributors claim one task, attach sources and limitations, and submit for independent human review. ${this.get('SELECT COUNT(*) AS n FROM research_leads').n} proposals are currently in the research catalog.`;
-    const source_numbers=country_context&&!['moderation','assembly'].includes(topic)?country_context.sources.filter(source=>source.status==='retained').map(source=>source.number):[];
-    const id=randomUUID();this.run('INSERT INTO mayor_conversations(id,account_id,npc_id,question,answer,created_at,country_context,source_numbers) VALUES(?,?,?,?,?,?,?,?)',id,actor.account.id,mayor.id,question,answer,created_at,country_context?JSON.stringify(country_context):null,JSON.stringify(source_numbers));
-    this.run('DELETE FROM mayor_conversations WHERE account_id=? AND id NOT IN (SELECT id FROM mayor_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 100)',actor.account.id,actor.account.id);
-    return {id,npc_id:mayor.id,question,answer,created_at,mode:'rules',country_context,source_numbers};
+  // Legacy alias: the historic guide id is recorded in the mapping, and a supplied country_code keeps
+  // its historical meaning by selecting that country's ambassador. The new /ambassadors/talk route is
+  // the one that refuses a country mismatch; this alias preserves the documented legacy behaviour.
+  mayorTalk(actor,input={}){
+    human(actor,['admin','member','moderator','reviewer']);this.active();
+    const guide=this.get('SELECT id FROM npc_mayors WHERE id=?',String(input.npc_id||''));
+    if(!guide)fail(404,'Active ambassador not found.');
+    const requested=input.country_code==null||input.country_code===''?null:COUNTRIES.entries.find(country=>[country.iso2,country.iso3,country.m49].includes(String(input.country_code).trim().toUpperCase()));
+    if(input.country_code!=null&&input.country_code!==''&&!requested)fail(400,'Choose a catalog country or area.');
+    const mapped=this.get('SELECT ambassador_id FROM ambassador_legacy_map WHERE guide_id=?',guide.id);
+    const ambassador=requested?ambassadorId(requested.iso3):mapped?.ambassador_id;
+    if(!ambassador)fail(404,'Active ambassador not found.');
+    const result=this.ambassadorTalk(actor,{ambassador_id:ambassador,question:input.question,country_code:requested?requested.iso2:undefined,context:Boolean(requested)});
+    return {...result,npc_id:guide.id,legacy_alias:true};
   },
-  mayorControl(actor,input){human(actor,['admin','moderator']);if(!['active','paused'].includes(input.status))fail(400,'Choose active or paused.');if(!this.get('SELECT id FROM npc_mayors WHERE id=?',input.npc_id))fail(404,'Mayor not found.');this.run('UPDATE npc_mayors SET status=? WHERE id=?',input.status,input.npc_id);this.audit(actor.account.id,'mayor.'+input.status,input.npc_id);return {status:input.status};},
+  // Legacy alias: pausing through the historic guide delegates to the ambassador control, which also
+  // stops the historic patrol row so the old listing and the new directory stay consistent.
+  mayorControl(actor,input={}){
+    human(actor,['admin','moderator']);
+    const guide=this.get('SELECT id FROM npc_mayors WHERE id=?',String(input.npc_id||''));
+    if(!guide)fail(404,'Ambassador not found.');
+    const mapped=this.get('SELECT ambassador_id FROM ambassador_legacy_map WHERE guide_id=?',guide.id);
+    const result=mapped?this.ambassadorControl(actor,{ambassador_id:mapped.ambassador_id,status:input.status}):{status:input.status};
+    return {...result,npc_id:guide.id,legacy_alias:true};
+  },
   mayorTriage(actor){
     human(actor,['admin','moderator']);return {mode:'rules',authority:'Advisory only; human moderators decide.',reports:this.all("SELECT id,target_type,target_id,reason,created_at FROM reports WHERE status='open' ORDER BY created_at LIMIT 100").map(report=>({...report,priority:/threat|violence|private|address|danger/i.test(report.reason)?'urgent human review':'standard human review',recommendation:'Inspect the reported record and context. Preserve evidence, apply community rules proportionately, and record reasons and appeal rights.'}))};
   },
-  civicExport(actor){return {conversations:this.all('SELECT * FROM mayor_conversations WHERE account_id=? ORDER BY created_at',actor.account.id).map(mayorConversation)};},
+  civicExport(actor){return {conversations:this.all('SELECT * FROM ambassador_conversations WHERE account_id=? ORDER BY created_at',actor.account.id).map(ambassadorConversation),
+    legacy_conversations:this.all('SELECT * FROM mayor_conversations WHERE account_id=? ORDER BY created_at',actor.account.id).map(mayorConversation),
+    ambassadors:this.all('SELECT id,iso2,iso3,name,world_id,sprite,status FROM npc_ambassadors WHERE id IN (SELECT ambassador_id FROM ambassador_conversations WHERE account_id=?) ORDER BY name',actor.account.id)};},
 };

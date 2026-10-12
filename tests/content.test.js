@@ -241,25 +241,29 @@ test('crop, recipe, cosmetic and appearance definitions cannot drift from the co
   const agent = source('runtime/agent.js');
   assert.deepEqual(cosmetics('expression'), literal(agent, /const EMOTES = new Set\((\[[^\]]*\])\);/, 'EMOTES'));
   const civic = source('src/civic-engine.js');
-  assert.ok(civic.includes("import content from './content.js'") && civic.includes("content.appearancesFor('civic-mayor')"),
-    'src/civic-engine.js must resolve the mayor roster from the content layer');
+  assert.ok(civic.includes("import content from './content.js'") && civic.includes("content.appearancesFor('civic-mayor')")
+    && civic.includes("content.appearancesFor('civic-ambassador')"),
+    'src/civic-engine.js must resolve both the historic guide roster and the country ambassador roster from the content layer');
   const roster = appearancesFor('civic-mayor').map((definition) => definition.appearance.sprite);
   assert.deepEqual(JSON.parse(source('assets/mayors/manifest.json')).recommendedAnimatedRoster, roster);
+  // The same 20 sealed sheets serve both roles, so the two rosters are one roster. The country
+  // ambassadors reuse these sheets; no new art is introduced and 248 ambassadors share 20 portraits.
+  assert.deepEqual(appearancesFor('civic-ambassador').map((definition) => definition.appearance.sprite), roster);
   for (const definition of appearancesFor('civic-mayor')) {
     const { sprite, served, frame } = definition.appearance;
     assert.equal(served.atlas, `/assets/mayors/characters/${sprite}.png`);
     assert.equal(served.faceset, `/assets/mayors/facesets/${sprite}.png`);
     assert.equal(frame.columns, 4);
     assert.ok(frame.walk_rows.includes(frame.idle_row) && frame.walk_rows.length === 4, `${definition.id} must keep the four-row walk layout`);
-    assert.deepEqual(definition.rules.roster_roles, ['civic-mayor']);
+    assert.deepEqual(definition.rules.roster_roles, ['civic-mayor', 'civic-ambassador']);
   }
   const app = source('app.js');
-  assert.ok(app.includes('/assets/mayors/characters/') && app.includes('/assets/mayors/facesets/'), 'app.js must keep loading the mayor atlas and portrait routes');
+  assert.ok(app.includes('/assets/mayors/characters/') && app.includes('/assets/mayors/facesets/'), 'app.js must keep loading the guide atlas and portrait routes');
   // The client still preloads the character sheets by their sheet number, so that list is the one
   // remaining copy of the roster and it must stay the sealed roster in the sealed order.
-  assert.deepEqual(literal(app, /for\(const id of (\[\d+(?:,\d+)*\])\)\{const image=new Image/, 'mayor sprite preload'), roster);
-  assert.deepEqual(appearancesFor('resident'), [], 'civic-mayor is the only role assigned today');
-  for (const definition of entries('appearance')) assert.deepEqual(definition.rules.roster_roles, ['civic-mayor']);
+  assert.deepEqual(literal(app, /for\(const id of (\[\d+(?:,\d+)*\])\)\{const image=new Image/, 'guide sprite preload'), roster);
+  assert.deepEqual(appearancesFor('resident'), [], 'the guide sheets are assigned to the historic guides and the country ambassadors only');
+  for (const definition of entries('appearance')) assert.deepEqual(definition.rules.roster_roles, ['civic-mayor', 'civic-ambassador']);
 });
 
 test('the runtime agent resolves its allow-lists from the content layer', () => {

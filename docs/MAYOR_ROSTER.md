@@ -1,5 +1,11 @@
 # Complete mayor roster verification
 
+> **Historical record — pre-ambassador release.** This verification describes the schema 14 release,
+> in which the twenty regional guides were the only civic residents. Since task 01 the guides are
+> retained as compatibility aliases mapped to the 248 country ambassadors; the roster, names and
+> patrol behaviour below still describe those guide rows accurately, but they are no longer the
+> primary civic identity. See [task 01 handoff](handoff/task-01-country-ambassadors.md).
+
 Verified 12 October 2026 against the current regional research release. Twenty sequential HTTP introductions used the installed official Qwen3-4B Q4_K_M runtime in an isolated database. All twenty returned local-model responses identifying the expected mayor and region; the stated civic focuses were also reviewed against the catalog. No production account or dialogue was created.
 
 | Mayor | Region | Mode | Identity |

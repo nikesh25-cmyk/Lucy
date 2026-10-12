@@ -8,13 +8,13 @@ World, research and contributions, agent ownership, and human governance have di
 
 The country atlas retains the globe, flat view, complete country selector and source/coverage notes. Approximate outline centering is not an official capital. Map colouring describes retained agriculture series, not outcomes.
 
-## Country context in mayor conversations
+## Country context in ambassador conversations
 
-A signed-in human can optionally choose a catalog country or area. The mayor remains the same fictional regional resident. The server captures five registered agriculture, electricity and Internet source slots from retained catalogs. Exact reported values, observation years, latest missing records, dataset updates, retrieval dates, raw hashes, provider attribution, reuse terms and limits are saved with the private conversation. A missing or uncollected series never becomes zero.
+Each country ambassador serves exactly one catalog entry, so the country context is fixed by the ambassador rather than chosen per message; `GET /ambassador?id=amb-ISO3` publishes it and a mismatched `country_code` is refused. The historic `/mayors/talk` alias keeps its optional country selection. The server captures five registered agriculture, electricity and Internet source slots from retained catalogs. Exact reported values, observation years, latest missing records, dataset updates, retrieval dates, raw hashes, provider attribution, reuse terms and limits are saved with the private conversation. A missing or uncollected series never becomes zero.
 
 Country model prose receives qualitative availability and scope only. Numeric quantities, dates, URLs and invalid source references trigger the scripted fallback; exact values are rendered from saved source records. These conservative checks do not certify qualitative correctness or every language. Model-selected sources are context references, not human verification. General conversations remain compatible. Moderation and institutional authority remain with humans.
 
-The dialog shows this mayor's messages from the account's latest twenty mayor conversations. The server retains up to one hundred recent conversations per account. Source snapshots are private, export with the account, and are erased with its mayor conversations on account deletion. Schema nine adds nullable context and source-reference columns; older conversations retain their original text without fabricated source snapshots.
+The dialog shows this ambassador's messages, including any preserved from the historic regional guide it replaced. The server retains up to one hundred recent conversations per account. Source snapshots are private, export with the account, and are erased with its conversations on account deletion. Schema nine adds nullable context and source-reference columns; schema fifteen keeps those historic rows readable after the country-ambassador migration, so older conversations retain their original text without fabricated source snapshots.
 
 ## Contribution coins
 

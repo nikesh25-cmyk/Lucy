@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "mayor-9",
   "kind": "appearance",
-  "label": "Civic mayor sprite 9",
+  "label": "Civic guide sprite 9",
   "since": "1.0.0",
   "order": 6,
   "license": {
@@ -49,7 +49,8 @@
   "rules": {
     "palettes": [],
     "roster_roles": [
-      "civic-mayor"
+      "civic-mayor",
+      "civic-ambassador"
     ],
     "sprite": 9,
     "directions": {
@@ -81,8 +82,9 @@
     }
   ],
   "notes": [
-    "Assigned to a region mayor by position in the roster declared in src/civic-engine.js; the numeric sprite id is stored in the npc_mayors.sprite column.",
+    "Assigned to the historic regional guides and the country ambassadors by position in the roster declared in src/civic-engine.js; the numeric sprite id is stored in the npc_mayors.sprite and npc_ambassadors.sprite columns.",
     "The portrait faceset is vendored at assets/mayors/facesets/, the route the client loads; it is byte-identical to the pack layout copy at assets/mayors/characters/faceset/.",
-    "Sheets 4 and 8 from the same pack are excluded: they carry only two rows and cannot serve the four-direction walk animation."
+    "Sheets 4 and 8 from the same pack are excluded: they carry only two rows and cannot serve the four-direction walk animation.",
+    "The 20 sheets repeat across the 248 country ambassadors: several countries share one portrait. This is deliberate reuse of the sealed CC0 pack, not 248 unique portraits."
   ]
 }

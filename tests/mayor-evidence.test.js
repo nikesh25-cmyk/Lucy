@@ -25,12 +25,13 @@ test('selected-country mayor context preserves exact retained provenance, missin
   assert.match(context.sources[4].publisher,/ITU/);assert.match(context.sources[4].license.attribution,/ITU/);
   assert.deepEqual(reply.source_numbers,[1,2,3,4,5]);assert.equal(f.platform.mayors(null).conversations.length,0);assert.equal(f.platform.mayors(f.actor('bob')).conversations.length,0);
   assert.deepEqual(f.platform.exportAccount(f.actor('alice')).civic.conversations[0].country_context,context);
-  assert.equal(f.platform.exportAccount(f.actor('alice')).format,'shared-world-account-v14');
+  assert.equal(f.platform.exportAccount(f.actor('alice')).format,'shared-world-account-v15');
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM research_leads').n,before);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM claims').n,0);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,0);
   f.advance();const other=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'BD'});assert.match(other.answer,/Bangladesh/);assert.doesNotMatch(other.answer,/Nepal tea|India/);
   f.advance();assert.throws(()=>f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'XX'}),{status:400});
-  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM mayor_conversations').n,2);
-  f.tx('deleteAccount',f.actor('alice'));assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM mayor_conversations').n,0);
+  // The migration stores new guidance in the ambassador table and leaves the historic table untouched.
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM ambassador_conversations').n,2);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM mayor_conversations').n,0);
+  f.tx('deleteAccount',f.actor('alice'));assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM ambassador_conversations').n,0);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM mayor_conversations').n,0);
 });
 
 test('country context preserves zero, all-null and uncollected series as different evidence states',async t=>{
@@ -46,16 +47,25 @@ test('country context preserves zero, all-null and uncollected series as differe
   f.advance();const partial=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'SN'});assert.deepEqual(partial.source_numbers,[4,5]);assert.equal(partial.country_context.sources[0].collection_gap.indicator,'NV.AGR.TOTL.ZS');
 });
 
-test('stored mayor country snapshots survive restart and backup; schema eight conversations migrate without fabricated context',async t=>{
-  const f=await fixture(t),reply=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'NP'}),backup=join(f.directory,'country-backup.sqlite');
-  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version,14);
+test('stored country snapshots survive restart and backup; schema eight guide conversations migrate and stay readable',async t=>{
+  const f=await fixture(t),aliceId=f.actor('alice').account.id,reply=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'NP'}),backup=join(f.directory,'country-backup.sqlite');
+  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version,15);
   f.platform.close();const reopened=new Platform(f.database);t.after(()=>{try{reopened.close();}catch{/* Closed again before testing migration. */}});
   assert.deepEqual(reopened.mayors(reopened.authenticate(f.credentials.alice.token)).conversations[0].country_context,reply.country_context);
-  // Recreate the previous schema without changing the pre-existing question or answer.
+  // Recreate the schema eight guide store and record one historic conversation in it. The migration is
+  // additive: the old row keeps its exact question and answer and gains no fabricated context.
   reopened.db.exec('ALTER TABLE mayor_conversations DROP COLUMN country_context; ALTER TABLE mayor_conversations DROP COLUMN source_numbers; PRAGMA user_version=8');
+  reopened.db.prepare("INSERT INTO mayor_conversations(id,account_id,npc_id,question,answer,created_at,mode) VALUES('historic-1',?,'mayor-highlands','Historic question','Historic answer','2026-09-01T00:00:00.000Z','rules')").run(aliceId);
   assert.equal(validateDatabase(f.database).schema_version,8);reopened.close();
-  const migrated=new Platform(f.database);t.after(()=>migrated.close());const old=migrated.mayors(migrated.authenticate(f.credentials.alice.token)).conversations[0];
-  assert.equal(old.question,reply.question);assert.equal(old.answer,reply.answer);assert.equal(old.country_context,null);assert.deepEqual(old.source_numbers,[]);assert.equal(validateDatabase(f.database).schema_version,14);assert.equal(migrated.verifyAudit(),true);
+  const migrated=new Platform(f.database);t.after(()=>migrated.close());const actor=migrated.authenticate(f.credentials.alice.token);
+  const old=migrated.mayors(actor).legacy_conversations[0];
+  assert.equal(old.question,'Historic question');assert.equal(old.answer,'Historic answer');assert.equal(old.country_context,null);assert.deepEqual(old.source_numbers,[]);
+  // The same historic row stays readable through the replacement ambassador named by the mapping.
+  const mapped=migrated.get("SELECT ambassador_id FROM ambassador_legacy_map WHERE guide_id='mayor-highlands'").ambassador_id;
+  const profile=migrated.ambassador(actor,{id:mapped});assert.equal(profile.legacy.guide_id,'mayor-highlands');
+  assert.deepEqual(profile.legacy_conversations.map(conversation=>conversation.question),['Historic question']);
+  assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_ambassadors').n,248);assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_mayors').n,20);
+  assert.equal(validateDatabase(f.database).schema_version,15);assert.equal(migrated.verifyAudit(),true);
   migrated.db.exec('ALTER TABLE mayor_conversations DROP COLUMN country_context');assert.throws(()=>validateDatabase(f.database),/mayor evidence schema/);
 });
 
@@ -78,11 +88,11 @@ test('HTTP country guidance uses bounded qualitative drafts, preserves exact sna
   f.advance();draft={answer:'The answer is 97.9%.',sources:[4]};const fallback=await call({...question,country_code:'NP'});assert.equal(fallback.body.mode,'rules');assert.equal(fallback.body.model_fallback,true);assert.deepEqual(fallback.body.country_context.sources,first.body.country_context.sources);assert.deepEqual(fallback.body.source_numbers,[1,2,3,4,5]);
   f.advance();draft={answer:'Consult country sources before proposing interventions.',sources:[1]};const unavailable=await call({...question,country_code:'AQ'});assert.equal(unavailable.body.mode,'rules');assert.deepEqual(unavailable.body.source_numbers,[]);
   const agent=f.agent('alice'),runtime=f.tx('runtime',f.actor('alice'),agent.id,{scopes:['read','chat'],minutes:4,max_calls:20});assert.equal((await call({...question,country_code:'NP'},runtime.token)).status,403);
-  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM mayor_conversations').n,3);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM claims').n,0);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,0);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM ambassador_conversations').n,3);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM mayor_conversations').n,0);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM claims').n,0);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,0);
 });
 
 test('a revoked human session cannot receive or persist a private country model reply after dispatch',async t=>{
   const f=await fixture(t);const app=createApp({platform:f.platform,mayorModel:async()=>{f.tx('logout',f.actor('alice'));return JSON.stringify({answer:'A private country draft.',sources:[1]});}});await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));t.after(async()=>{await app.stopWorkers();await new Promise(resolve=>{app.server.close(resolve);app.server.closeAllConnections();});});
   const response=await fetch('http://127.0.0.1:'+app.server.address().port+'/api/v1/mayors/talk',{method:'POST',headers:{Authorization:'Bearer '+f.credentials.alice.token,'Content-Type':'application/json'},body:JSON.stringify({...question,country_code:'NP'})});assert.equal(response.status,401);const body=await response.json();assert.equal(body.country_context,undefined);assert.equal(body.answer,undefined);
-  const stored=f.platform.get('SELECT answer,mode FROM mayor_conversations');assert.equal(stored.mode,'rules');assert.notEqual(stored.answer,'A private country draft.');
+  const stored=f.platform.get('SELECT answer,mode FROM ambassador_conversations');assert.equal(stored.mode,'rules');assert.notEqual(stored.answer,'A private country draft.');
 });

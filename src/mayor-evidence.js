@@ -1,6 +1,12 @@
 // Country context is captured from the retained catalog; chatting never fetches data.
 // Keep exact observations outside model prose so a draft cannot replace their values.
-export function mayorCountryContext(agriculture, access, capturedAt) {
+// Two format strings exist: 'nemoworld-mayor-country-v1' is the historical format stored before the
+// country-ambassador migration and must stay readable; 'nemoworld-ambassador-country-v1' is the
+// current format. Both describe the same fields, so record readers stay format-agnostic.
+export const MAYOR_CONTEXT_FORMAT = 'nemoworld-mayor-country-v1';
+export const AMBASSADOR_CONTEXT_FORMAT = 'nemoworld-ambassador-country-v1';
+
+function countryContext(agriculture, access, capturedAt, format) {
   const sources = [agriculture, access].flatMap(evidence => evidence.routes.map(route => {
     const series = evidence.snapshot?.series.find(item => item.indicator === route.id);
     const points = [...(series?.points || [])].sort((a, b) => b.year - a.year);
@@ -21,11 +27,26 @@ export function mayorCountryContext(agriculture, access, capturedAt) {
     };
   })).map((source, index) => ({ number: index + 1, ...source }));
   return {
-    format: 'nemoworld-mayor-country-v1',
+    format,
     country: { iso2: agriculture.country.iso2, iso3: agriculture.country.iso3, name: agriculture.country.name },
     captured_at: capturedAt, sources,
-    limitations: 'A retained, dated national baseline for agriculture, electricity access and Internet use. Missing values are not zero. Dataset update, retrieval and observation dates have different meanings. This context does not establish current rules, crop demand, buyers, funding, project viability or completed work. Mayor guidance is advisory and still requires independent human review.',
+    limitations: 'A retained, dated national baseline for agriculture, electricity access and Internet use. Missing values are not zero. Dataset update, retrieval and observation dates have different meanings. This context does not establish current rules, crop demand, buyers, funding, project viability or completed work. Ambassador guidance is advisory and still requires independent human review.',
   };
+}
+
+export function mayorCountryContext(agriculture, access, capturedAt) {
+  return countryContext(agriculture, access, capturedAt, MAYOR_CONTEXT_FORMAT);
+}
+
+export function ambassadorCountryContext(agriculture, access, capturedAt) {
+  return countryContext(agriculture, access, capturedAt, AMBASSADOR_CONTEXT_FORMAT);
+}
+
+// A country context is valid for its own catalog entry only. A profile built with a mismatched
+// context would let one ambassador speak for another country, so the check is explicit.
+export function contextMatchesCountry(context, country) {
+  const code = typeof country === 'string' ? country.toUpperCase() : String(country?.iso2 || country?.iso3 || '').toUpperCase();
+  return Boolean(context) && (context.country.iso2.toUpperCase() === code || context.country.iso3.toUpperCase() === code);
 }
 
 // The model sees availability and qualitative scope, never the statistical values,
@@ -46,3 +67,8 @@ export function mayorConversation(record) {
   return { ...record, country_context: record.country_context ? JSON.parse(record.country_context) : null,
     source_numbers: JSON.parse(record.source_numbers || '[]') };
 }
+
+// The ambassador conversation record has the same stored shape as the historical guide record, so
+// one reader serves both stores and an old row survives the migration unchanged.
+export const ambassadorConversation = mayorConversation;
+export const ambassadorModelCountryContext = mayorModelCountryContext;

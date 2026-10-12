@@ -13,7 +13,7 @@
       "id": "mayor-1",
       "kind": "appearance",
       "file": "content/appearances/mayor-1.json",
-      "sha256": "64758a3cf4860ec2bec141e1c81ac98ad2c71655a3420bd08ce05eb8f828c0e7",
+      "sha256": "e45addb1025697e2f3b5f495a9cd1e4edf54162ce7592e3a2dc36c0fe95e60d9",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -38,7 +38,7 @@
       "id": "mayor-10",
       "kind": "appearance",
       "file": "content/appearances/mayor-10.json",
-      "sha256": "1b3626c05211cfc23079a365bf934b3c4905b34b1326a42e401327edc44c1095",
+      "sha256": "d4ec07701bcf208d2265f9318494a7b1c29e2bb0b11fcaa351b6a17c06d7d40d",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -63,7 +63,7 @@
       "id": "mayor-11",
       "kind": "appearance",
       "file": "content/appearances/mayor-11.json",
-      "sha256": "8523789add1f78efabb3bf6bf7b270eb501062c518366c35aca9666a6bf98a22",
+      "sha256": "aff329675cbf4485243bccf247bb16910253a05f142f01870f8c9cc922c2b3b9",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -88,7 +88,7 @@
       "id": "mayor-12",
       "kind": "appearance",
       "file": "content/appearances/mayor-12.json",
-      "sha256": "17ee0625d5122bff3febc505724146add88872eafee7f2a7ce04a99cb14c7648",
+      "sha256": "3249f14b6f169534da9676805adbf84ee13cd58069761b0ee3c0640ea0bd1dba",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -113,7 +113,7 @@
       "id": "mayor-13",
       "kind": "appearance",
       "file": "content/appearances/mayor-13.json",
-      "sha256": "973767b153bb387f6ec5ea53b8634a5d11814a0be46f4c5ac89b83b5b7781b5f",
+      "sha256": "52f91b4d8c419336f6de3f3eb70801fb8bd8e8073cac62656dd4d1c362631044",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -138,7 +138,7 @@
       "id": "mayor-14",
       "kind": "appearance",
       "file": "content/appearances/mayor-14.json",
-      "sha256": "c6f91b569712f73e280584fab52a023bddfca330444d076b3bf39469572cf3d8",
+      "sha256": "2702e0f998cd862b335b0b6943cd78437a4938ff3fb3694c6f2763fdf36b562e",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -163,7 +163,7 @@
       "id": "mayor-15",
       "kind": "appearance",
       "file": "content/appearances/mayor-15.json",
-      "sha256": "f7f3d35f02d9177d7ff28d331e156663fe8d69653b160defbf8dd2bc4c5cd72f",
+      "sha256": "a7a1c17fc1bca11f89fb75648406bd26e8319e7979dfdc6e090695755306a659",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -188,7 +188,7 @@
       "id": "mayor-16",
       "kind": "appearance",
       "file": "content/appearances/mayor-16.json",
-      "sha256": "8394567eac697d62a89d651f78caadfaa7bdc920bf26b568de8a20742cc2238a",
+      "sha256": "0a594d00f0169ad0d28d45ce6abad06b705866aafc8bec2356517473a1ce1574",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -213,7 +213,7 @@
       "id": "mayor-17",
       "kind": "appearance",
       "file": "content/appearances/mayor-17.json",
-      "sha256": "790f6c512f88a64edeb965c1e396b8daf0cfede3e11fe938b4babae719ec576b",
+      "sha256": "f5db4c3af410050d51719ce3e7e4c44f62562b7714637ec156ecf1e579c4b20b",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -238,7 +238,7 @@
       "id": "mayor-18",
       "kind": "appearance",
       "file": "content/appearances/mayor-18.json",
-      "sha256": "ba797f34b98eaf883fdbfc3963ce233d22aed5b2474a4552ac74708ec8a91eb9",
+      "sha256": "4c4e827053d6a4c85ec9150dbc484fc554f1f66a3df38d134bff234dec09a535",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -263,7 +263,7 @@
       "id": "mayor-19",
       "kind": "appearance",
       "file": "content/appearances/mayor-19.json",
-      "sha256": "bf18eb347aff95ecb662d9f84d9618364b6732fee391ec9243cf651a3361481f",
+      "sha256": "20859a431b2762b4da3297878512d4b476ba2f9a6a35d421be5083d95ffc211b",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -288,7 +288,7 @@
       "id": "mayor-2",
       "kind": "appearance",
       "file": "content/appearances/mayor-2.json",
-      "sha256": "1112f1fcc1f4ddb4457a731bf174ef39371705f58db6bfe2081fc28da422b6ce",
+      "sha256": "38a857f4ee406503afe04c52e5e3f971308c33ec8898c1dd934ce08cc6f9e0e2",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -313,7 +313,7 @@
       "id": "mayor-20",
       "kind": "appearance",
       "file": "content/appearances/mayor-20.json",
-      "sha256": "2b3677fdf329932d391c31afae7da21c3489bf9c1464b66127175a23241ac12d",
+      "sha256": "3a81284a697a4938fb7a23d5d4a6e48b3f51e2654632c005e5f4b4567a7c00ea",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -338,7 +338,7 @@
       "id": "mayor-21",
       "kind": "appearance",
       "file": "content/appearances/mayor-21.json",
-      "sha256": "0f447a90b6a429f1517329bbdcf55ab99c907d7462c16eb124941c23c1fefbef",
+      "sha256": "ee0b2bf0a3e612dac5d4d09784dfd109761a35a015f37dffd139a634290d88a9",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -363,7 +363,7 @@
       "id": "mayor-22",
       "kind": "appearance",
       "file": "content/appearances/mayor-22.json",
-      "sha256": "132a400b7e3e9057d518b2173d480a1dcd27691e32f14efd9e8e3a49a5b0f43d",
+      "sha256": "75858ce0163be51d65cffe6ced330adc194a73092dbb40405e6c833f00cba5c6",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -388,7 +388,7 @@
       "id": "mayor-3",
       "kind": "appearance",
       "file": "content/appearances/mayor-3.json",
-      "sha256": "ac2c2dcb0f3418ed36e42473aa39488752ce252903e8d0392b45250bb92aab8e",
+      "sha256": "e36b5d81d30a7d046b93e3c9d8b8219a3b90a4c4b6ec5441d831a74f1e175668",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -413,7 +413,7 @@
       "id": "mayor-5",
       "kind": "appearance",
       "file": "content/appearances/mayor-5.json",
-      "sha256": "f68c63f985439b66592685a3ad20c7ba55c8a24dcf0e7e627e839d4c8e90b623",
+      "sha256": "edcf179251264e61c3b644f3f0743639c953fd50c54b3c795002a6cb5944076c",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -438,7 +438,7 @@
       "id": "mayor-6",
       "kind": "appearance",
       "file": "content/appearances/mayor-6.json",
-      "sha256": "0e9686933534148bcfaf5b4765014e4809be76faa0b07f2a6ac2860203a98b6c",
+      "sha256": "169f4034910576fb80a039a62483db459b5f669ccc312c7dcf5efedb7ee877cf",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -463,7 +463,7 @@
       "id": "mayor-7",
       "kind": "appearance",
       "file": "content/appearances/mayor-7.json",
-      "sha256": "14d08ed99f3aad38501ff905a685435386d9e77f0f05bc1264a9541f9f2af717",
+      "sha256": "876d2ffb417b961b284a2635c0aea6c7301a3b9231daad698f948980230a6bd0",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",
@@ -488,7 +488,7 @@
       "id": "mayor-9",
       "kind": "appearance",
       "file": "content/appearances/mayor-9.json",
-      "sha256": "ee89a5f535fac3d36ab8dbf1d104e12d83dffe419633c9d0d564218a8734259b",
+      "sha256": "e9c5503a5da3ebd727eb5f8979fb4317b267e1c9d30cf121c87aa5daed76a7df",
       "license": {
         "spdx": "CC0-1.0",
         "author": "Pixel-boy / Sparklin Labs",

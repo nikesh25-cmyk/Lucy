@@ -120,6 +120,9 @@ export const vocationMethods={
   const list=this.all(`SELECT a.id,a.status,COALESCE(v.calling_id,'explorer') AS calling_id FROM agents a LEFT JOIN resident_callings v ON v.agent_id=a.id WHERE a.id IN (${agentIds.map(()=>'?').join(',')}) AND a.status!='deleted'`,...agentIds);
   for(const agent of list){const definition=CALLINGS.find(c=>c.id===agent.calling_id),totals=summary(this,agent.id),points=totals.points,earnedToday=totals.today;const next=definition.objectives.find(o=>!earnedToday.some(r=>r.objective_id===`${definition.id}.${o.id}`&&r.available));const r=rank(points);result[agent.id]={id:definition.id,name:definition.name,rank:{level:r.level,title:r.title},current_objective:next?{id:`${definition.id}.${next.id}`,title:next.title,complete:false}:{id:'daily_complete',title:'Today’s calling objectives complete',complete:true}};}
   for(const npc of this.all(`SELECT id FROM npc_mayors WHERE id IN (${agentIds.map(()=>'?').join(',')})`,...agentIds))result[npc.id]={id:'steward',name:'Steward',rank:{level:0,title:'Civic guide'},current_objective:{id:'civic_guidance',title:'Offer guidance and route concerns to human moderators',complete:false}};
+  // Country ambassadors are NPCs too: they display a civic-guide label at level 0, never a calling,
+  // experience, rank progress or guild membership. They hold no account and no operator credentials.
+  for(const npc of this.all(`SELECT id FROM npc_ambassadors WHERE id IN (${agentIds.map(()=>'?').join(',')})`,...agentIds))result[npc.id]={id:'steward',name:'Steward',rank:{level:0,title:'Civic guide'},current_objective:{id:'civic_guidance',title:'Offer source-based guidance and route concerns to human moderators',complete:false}};
   return result;
  },
  callingGuilds(input={}){
