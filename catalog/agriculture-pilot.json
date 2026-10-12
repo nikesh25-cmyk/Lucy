@@ -1,0 +1,506 @@
+{
+  "schemaVersion": 1,
+  "id": "nepal-tea-india",
+  "title": "Nepal tea → India: sourced starter research pilot",
+  "researchedOn": "2026-10-11",
+  "originCountry": "NP",
+  "destinationCountry": "IN",
+  "product": "Tea",
+  "status": "research-starter-with-open-evidence-gaps",
+  "sources": [
+    {
+      "id": "ntcdb",
+      "title": "National Tea and Coffee Development Board: Tea Coffee Souvenir",
+      "publisher": "Government of Nepal, NTCDB",
+      "url": "https://www.teacoffee.gov.np/en/postby/tea-coffee-souvenir",
+      "publishedOrPeriod": "Page last updated 2025-07-24",
+      "retrievedOn": "2026-10-11",
+      "evidence": "Official page identifies the Board, links tea statistics and suppliers, and publishes info@ntcdb.gov.np as its institutional contact.",
+      "limitations": "Institution route verified, mailbox deliverability and current staff not tested; supplier availability is not buyer demand.",
+      "accessStatus": "full-page",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "tea-strategy",
+      "title": "Nepal National Sector Export Strategy: Tea 2017–2021",
+      "publisher": "Government of Nepal / Trade and Export Promotion Centre",
+      "url": "https://www.tepc.gov.np/tepc_pub/NepalNationalExportStrategyTea.pdf",
+      "publishedOrPeriod": "Strategy period 2017–2021",
+      "retrievedOn": "2026-10-11",
+      "evidence": "Historical sector strategy identifies food safety and Indian import clearance as constraints for Nepal tea.",
+      "limitations": "Historical context only. Its fees and certificate procedures must not be treated current; full PDF fetch timed out, indexed official extract read.",
+      "accessStatus": "indexed-official-extract",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "treaty",
+      "title": "Treaty of Trade: India",
+      "publisher": "Government of Nepal / Trade and Export Promotion Centre",
+      "url": "https://www.tepc.gov.np/pages/treaty-of-trade-india",
+      "publishedOrPeriod": "Historical treaty text; current consolidated version not established",
+      "retrievedOn": "2026-10-11",
+      "evidence": "Published treaty text provides certificate-of-origin arrangements and conditions for preferential access; importing-country mandatory requirements remain relevant.",
+      "limitations": "No current shipment tariff or exemption confirmed. Obtain current treaty, amendment and customs notification applicability.",
+      "accessStatus": "indexed-official-extract",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "fssai",
+      "title": "Food Imports",
+      "publisher": "Food Safety and Standards Authority of India",
+      "url": "https://www.fssai.gov.in/business/import",
+      "publishedOrPeriod": "Live guidance; page publication date not stated",
+      "retrievedOn": "2026-10-11",
+      "evidence": "Food imports are subject to Indian food-safety law and import regulations. FICS integrates with Customs ICEGATE/SWIFT for clearance, sampling and testing workflows.",
+      "limitations": "Consignment-specific referral, port authorization and current regulations need verification. A workflow page does not grant shipment clearance.",
+      "accessStatus": "indexed-official-page",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "tea-directive-01",
+      "title": "Directive No. 01/2026: Import of Tea into India",
+      "publisher": "Tea Board India, Ministry of Commerce and Industry",
+      "url": "https://teaboard.gov.in/pdf/Directive_10_02_2026_pdf7812.pdf",
+      "publishedOrPeriod": "2026-02-10",
+      "retrievedOn": "2026-10-11",
+      "evidence": "Directive introduced mandatory import-consignment testing from 1 May 2026 and a Tea Council portal workflow with provisional and final clearance.",
+      "limitations": "Historical version: subsequent corrigendum and Directive 02/2026 exist. February fees and sampling rules are not represented as current.",
+      "accessStatus": "full-pdf-text",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "tea-corrigendum",
+      "title": "Corrigendum to Directive 01/2026",
+      "publisher": "Tea Board India",
+      "url": "https://www.teaboard.gov.in/pdf/Corrigendum_02_04_2026_pdf8681.pdf",
+      "publishedOrPeriod": "Document dated 2026-03-31; listing 2026-04-02",
+      "retrievedOn": "2026-10-11",
+      "evidence": "Amends packaging submission timing, value-addition formula, composite sampling, failure handling and sampling exceptions.",
+      "limitations": "Read alongside the later June directive; no current shipment eligibility inferred.",
+      "accessStatus": "full-pdf-text",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "tea-directive-02",
+      "title": "Directive No. 02/2026 regarding Import of Tea into India",
+      "publisher": "Tea Board India",
+      "url": "https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf",
+      "publishedOrPeriod": "Printed 29/06/2026; handwritten day correction appears 30. Official listing: 30-Jun-2026.",
+      "retrievedOn": "2026-10-11",
+      "evidence": "All three pages read. Directive 02/2026 supersedes the February directive and March corrigendum; distinguishes domestic-consumption and re-export testing.",
+      "limitations": "Specific shipment applicability and any subsequent amendments still need verification. Mandated turnaround is not observed performance.",
+      "accessStatus": "full-pdf-visually-reviewed",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included.",
+      "indexUrl": "https://teaboard.gov.in/TEABOARDPAGE/MTI%3D",
+      "sha256": "d1dbd415677e52e4d267e7ff195994143140f7fb1f57e7c3edb2300fb2fb8ceb",
+      "workerReviewedEdition": true
+    },
+    {
+      "id": "tea-labs",
+      "title": "Updated List of FSSAI Notified Laboratories identified for tea testing",
+      "publisher": "Tea Board India",
+      "url": "https://teaboard.gov.in/pdf/FSSAI_notified_laboratories_as_on_09_07_2026_pdf9057.pdf",
+      "publishedOrPeriod": "As of 2026-07-09",
+      "retrievedOn": "2026-10-11",
+      "evidence": "List identifies Tea Board Quality Control Laboratory, Siliguri, with certificate validity shown from 7 November 2025 to 6 November 2027 and public laboratory contact.",
+      "limitations": "List includes other entries whose validity dates have elapsed by retrieval. Check latest accreditation scope and official assignment; a listed laboratory is not an automatic clearance route.",
+      "accessStatus": "full-pdf-text",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "fao-statistics",
+      "title": "Statistics: FAOSTAT",
+      "publisher": "Food and Agriculture Organization of the United Nations",
+      "url": "https://www.fao.org/statistics/en/",
+      "publishedOrPeriod": "Live page; publication date not stated",
+      "retrievedOn": "2026-10-11",
+      "evidence": "FAO identifies FAOSTAT as a free food and agriculture statistics source covering country production and related data.",
+      "limitations": "No Nepal tea dataset or yield/export series downloaded. Dataset definitions, units and year coverage must be retained.",
+      "accessStatus": "full-page",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "itc-tools",
+      "title": "Market Analysis Tools Portal",
+      "publisher": "International Trade Centre",
+      "url": "https://marketanalysis.intracen.org/en",
+      "publishedOrPeriod": "Live portal; publication date not stated",
+      "retrievedOn": "2026-10-11",
+      "evidence": "ITC lists Trade Map, Market Access Map, Export Potential Map and rules-of-origin tools for researching trade and market access.",
+      "limitations": "Registration and access conditions vary. No tea market data, buyer directory or named buyer demand retrieved; modeled potential is not confirmed sales.",
+      "accessStatus": "indexed-official-page",
+      "quoteRights": "Paraphrase with attribution. No open reuse licence verified; this brief grants no rights to reproduce full text, tables, images or logos. No verbatim excerpt included."
+    },
+    {
+      "id": "buyer-response-notice",
+      "title": "Buyer response notice — not a positive buyer directory",
+      "url": "https://teaboard.gov.in/pdf/Notice_pdf6904.pdf",
+      "publisher": "Tea Board India",
+      "publishedOrPeriod": "Cover printed 22/01/2026; this is a dated document, not a new response deadline.",
+      "evidence": "Covering-page review distinguishes a procedural notice from a current importer directory.",
+      "limitations": "Only page 1 visually reviewed; no annexure names selected, current licensing outcome or demand established.",
+      "quoteRights": "Short attributed paraphrases only; source reuse requires review.",
+      "workerReviewedEdition": true
+    }
+  ],
+  "institutionRoutes": [
+    {
+      "institution": "National Tea and Coffee Development Board",
+      "role": "Nepal tea-sector institutional enquiry route",
+      "contact": "info@ntcdb.gov.np",
+      "sourceId": "ntcdb",
+      "contactStatus": "published-not-contacted"
+    },
+    {
+      "institution": "FSSAI",
+      "role": "Indian food import clearance information and importer/CHA workflow",
+      "url": "https://fics.fssai.gov.in/",
+      "sourceId": "fssai",
+      "contactStatus": "public-portal-not-submitted"
+    },
+    {
+      "institution": "Tea Board India",
+      "role": "Tea import licence and Tea Council workflow; the June edition has been visually reviewed, but shipment-specific applicability remains unverified",
+      "url": "https://teacouncil.teaauction.gov.in",
+      "sourceId": "tea-directive-02",
+      "contactStatus": "published-route-current-workflow-unverified"
+    },
+    {
+      "institution": "Tea Board Quality Control Laboratory, Siliguri",
+      "role": "Candidate laboratory in July official list; scope and official assignment need confirmation",
+      "contact": "inchargeqcl@gmail.com",
+      "sourceId": "tea-labs",
+      "contactStatus": "published-not-contacted"
+    }
+  ],
+  "brief": {
+    "title": "Draft: Nepal tea export readiness pilot for India",
+    "status": "draft-research-brief-not-shipping-instructions",
+    "proposedRecipients": [
+      "Selected tea-producing municipality (to be specified)",
+      "National Tea and Coffee Development Board",
+      "Trade and Export Promotion Centre"
+    ],
+    "requestedDecision": "Designate a technical focal point and review a small, producer-specific export-readiness evidence pack once the six research tasks are completed. No shipment, funding or outreach approval is implied.",
+    "findings": [
+      {
+        "text": "June Directive 02/2026 supersedes the earlier directive and corrigendum. Its SOP sets INR 2,000 plus GST per application; testing charges are separate. Domestic tea initially uses 20% risk-based testing; re-export tea has 100% FSSAI testing.",
+        "sourceIds": [
+          "tea-directive-02"
+        ],
+        "locations": [
+          "Page 1 final recital",
+          "Page 2 opening paragraph",
+          "Page 3 SOP 2"
+        ]
+      },
+      {
+        "text": "Official institutional routes exist for Nepal tea-sector support and Indian food-import clearance.",
+        "sourceIds": [
+          "ntcdb",
+          "fssai"
+        ]
+      },
+      {
+        "text": "Indian tea import procedures changed during 2026. A June directive is listed after February rules and March amendments, so older checklists require reconciliation.",
+        "sourceIds": [
+          "tea-directive-01",
+          "tea-corrigendum",
+          "tea-directive-02"
+        ]
+      },
+      {
+        "text": "A July official laboratory list provides candidate testing institutions, but some validity periods have since expired and accreditation must be checked for the intended shipment.",
+        "sourceIds": [
+          "tea-labs"
+        ]
+      },
+      {
+        "text": "Historical Nepal sector strategy and treaty materials provide context; current buyer demand, tariff treatment, commercial feasibility and shipment eligibility remain unverified.",
+        "sourceIds": [
+          "tea-strategy",
+          "treaty",
+          "itc-tools"
+        ]
+      }
+    ],
+    "proposedActions": [
+      "Choose one producer group, tea grade, packaging specification and Indian destination.",
+      "Complete a dated rule comparison and official market baseline.",
+      "Verify importer, port, laboratory and certificate routes.",
+      "Compare support options against one transparent shipment cost scenario.",
+      "Review the resulting draft before any external contact."
+    ],
+    "successMeasures": [
+      "Regulatory evidence gaps closed",
+      "Official documents assigned to responsible roles",
+      "Comparable market series reproduced",
+      "Verified candidate contact routes recorded",
+      "Cost sensitivities and decision options reviewed"
+    ],
+    "unresolved": [
+      "Shipment-date applicability, corrected issue date and any subsequent amendments remain unverified",
+      "Specific producer/municipality and product grade unknown",
+      "Latest five-year tea trade series not extracted",
+      "No buyer interest or contact deliverability established",
+      "Tariff, shipment costs and current border-specific process not verified"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "NP-TEA-IN-001",
+      "title": "Reconcile the current Indian tea import directive",
+      "question": "Which operative clauses of Directive 02/2026 apply to Nepal-origin bulk tea sold in India?",
+      "sourceIds": [
+        "tea-directive-02",
+        "tea-directive-01",
+        "tea-corrigendum",
+        "fssai"
+      ],
+      "outputs": [
+        "Readable archived June directive with checksum and page references",
+        "Clause comparison with superseded rules",
+        "Open questions about domestic sale versus re-export, samples, fees, failures and port responsibility"
+      ],
+      "rubric": [
+        "Latest official directive visually read",
+        "No February rule described as current without confirmation",
+        "Effective date and amendment chain recorded",
+        "Unclear or unreadable clauses stay unresolved"
+      ],
+      "status": "queued",
+      "originCountry": "NP",
+      "destinationCountry": "IN",
+      "product": "Tea",
+      "reviewRequired": true,
+      "progress": "Official scan visually reviewed; shipment-specific applicability and amendment check await reviewer."
+    },
+    {
+      "id": "NP-TEA-IN-002",
+      "title": "Build a comparable Nepal–India tea trade baseline",
+      "question": "How have export quantity and unit value changed over the latest five available complete years?",
+      "sourceIds": [
+        "ntcdb",
+        "fao-statistics",
+        "itc-tools"
+      ],
+      "outputs": [
+        "CSV of Nepal exports and India mirror imports for relevant tea categories",
+        "Data dictionary with reporting country, HS edition, currency, kg/tonnes and calendar/fiscal-year basis",
+        "Discrepancy note and reproducible unit-value calculations"
+      ],
+      "rubric": [
+        "Export direction verified",
+        "No fiscal/calendar year blending",
+        "Missing data explicitly marked",
+        "Unit value labeled a statistical ratio rather than a buyer offer"
+      ],
+      "status": "queued",
+      "originCountry": "NP",
+      "destinationCountry": "IN",
+      "product": "Tea",
+      "reviewRequired": true
+    },
+    {
+      "id": "NP-TEA-IN-003",
+      "title": "Verify the product and origin treatment",
+      "question": "What HS subheading and origin evidence apply to the chosen Nepal tea lot?",
+      "sourceIds": [
+        "treaty",
+        "itc-tools"
+      ],
+      "outputs": [
+        "Lot specification covering fermented status, packaging size, producer and processing",
+        "Current official customs classification and preference evidence",
+        "Certificate-of-origin issuer, required documents and unresolved questions"
+      ],
+      "rubric": [
+        "Actual product attributes drive classification",
+        "Preferential tariff claim backed by current notification",
+        "Treaty conditions and customs requirements reconciled",
+        "No duty-free assumption based solely on historical treaty webpage"
+      ],
+      "status": "queued",
+      "originCountry": "NP",
+      "destinationCountry": "IN",
+      "product": "Tea",
+      "reviewRequired": true
+    },
+    {
+      "id": "NP-TEA-IN-004",
+      "title": "Map a border and laboratory clearance route",
+      "question": "Which authorized crossing and approved testing workflow fit a specified Nepal producer and Indian importer?",
+      "sourceIds": [
+        "fssai",
+        "tea-directive-02",
+        "tea-labs",
+        "ntcdb"
+      ],
+      "outputs": [
+        "Role map for exporter, importer, broker, Customs, FSSAI and Tea Board",
+        "Document checklist and source references",
+        "Candidate border/warehouse/laboratory route with current authorization evidence"
+      ],
+      "rubric": [
+        "Crossing verified for food and tea entry",
+        "Laboratory validity and scope checked as of shipment date",
+        "Both Tea Board and FSSAI processes addressed",
+        "No invented queue times or clearance promise"
+      ],
+      "status": "queued",
+      "originCountry": "NP",
+      "destinationCountry": "IN",
+      "product": "Tea",
+      "reviewRequired": true
+    },
+    {
+      "id": "NP-TEA-IN-005",
+      "title": "Identify and verify potential Indian tea buyers",
+      "question": "Which publicly registered tea importers have a relevant business role and usable contact route?",
+      "sourceIds": [
+        "itc-tools",
+        "tea-directive-02",
+        "buyer-response-notice"
+      ],
+      "outputs": [
+        "Up to five candidate companies from official registers or official trade directories",
+        "Legal identity, licence evidence, published contact route, date and product relevance",
+        "Draft questions on grade, packaging, volume and sample evaluation"
+      ],
+      "rubric": [
+        "Named companies backed by official records",
+        "Candidate status distinct from confirmed purchasing interest",
+        "No scraped personal contacts or guessed email addresses",
+        "Outreach remains a draft until user authorization",
+        "Distinguish buyer registration from importer authority and current product fit",
+        "A pending notice is neither positive directory evidence nor a final finding; check current status independently"
+      ],
+      "status": "queued",
+      "originCountry": "NP",
+      "destinationCountry": "IN",
+      "product": "Tea",
+      "reviewRequired": true
+    },
+    {
+      "id": "NP-TEA-IN-006",
+      "title": "Prepare a municipality and national agency decision brief",
+      "question": "Which evidence-based support action would reduce a verified export bottleneck for a selected producer group?",
+      "sourceIds": [
+        "ntcdb",
+        "tea-strategy",
+        "fssai",
+        "tea-directive-02",
+        "tea-labs",
+        "treaty"
+      ],
+      "outputs": [
+        "Two-page recipient-specific draft using the five preceding outputs",
+        "Options matrix for shared testing preparation, traceability and exporter guidance",
+        "Shipment cost scenario with quantity, costs, currency, FX date, rejection/holding sensitivities and evidence gaps"
+      ],
+      "rubric": [
+        "Responsible institution and requested decision explicit",
+        "Market and regulatory claims cite current primary evidence",
+        "Costs separated into quoted, official, estimated and unknown",
+        "No promised export growth, funding, adoption or government response"
+      ],
+      "status": "queued",
+      "originCountry": "NP",
+      "destinationCountry": "IN",
+      "product": "Tea",
+      "reviewRequired": true
+    }
+  ],
+  "boundaries": "Independent NemoWorld research. No government adoption, UN affiliation, trade commitment, named buyer demand, contact transmission or completed export transaction is asserted.",
+  "directiveReview": {
+    "schemaVersion": 1,
+    "title": "Tea Board India Directive 02/2026: visual clause review",
+    "sourceUrl": "https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf",
+    "sourceIndexUrl": "https://teaboard.gov.in/TEABOARDPAGE/MTI%3D",
+    "publisher": "Tea Board India, Department of Commerce, Ministry of Commerce and Industry, Government of India",
+    "retrievedOn": "2026-10-11",
+    "reviewedOn": "2026-10-11",
+    "pageCount": 3,
+    "documentDate": "Printed 29/06/2026; handwritten day correction appears 30. Official listing: 30-Jun-2026.",
+    "sha256": "d1dbd415677e52e4d267e7ff195994143140f7fb1f57e7c3edb2300fb2fb8ceb",
+    "downloadBytes": 10208913,
+    "method": "Approved resumable curl completed; bundled pdftoppm rendered all three pages at 110 dpi; every page visually inspected. No installation needed.",
+    "status": "all-three-pages-visually-reviewed",
+    "clauses": [
+      {
+        "page": 1,
+        "locator": "Final recital",
+        "summary": "FSSAI tests all re-export tea; domestic testing initially risk-based at 20%."
+      },
+      {
+        "page": 2,
+        "locator": "Opening operative paragraph",
+        "summary": "Supersedes Directive 01/2026 and corrigendum; domestic and re-export clearance continues."
+      },
+      {
+        "page": 3,
+        "locator": "SOP introduction",
+        "summary": "Importer needs valid Tea Board licence under TDECO 2005."
+      },
+      {
+        "page": 3,
+        "locator": "SOP 1",
+        "summary": "Declare arrival, warehouse, containers and separated tea, freight, insurance costs."
+      },
+      {
+        "page": 3,
+        "locator": "SOP 2",
+        "summary": "Application costs INR 2,000 plus GST; laboratory testing charged separately."
+      },
+      {
+        "page": 3,
+        "locator": "SOP 3",
+        "summary": "Re-export packaging design declares origin; submit before export, not import."
+      },
+      {
+        "page": 3,
+        "locator": "SOP 4",
+        "summary": "Tea Board issues portal import clearance; re-export tea receives clearance."
+      },
+      {
+        "page": 3,
+        "locator": "SOP 5",
+        "summary": "FSSAI samples arriving consignments for enlisted NABL-approved laboratory testing."
+      },
+      {
+        "page": 3,
+        "locator": "SOP 6",
+        "summary": "FSSAI-selected laboratory uploads results within five days of sample receipt."
+      },
+      {
+        "page": 3,
+        "locator": "SOP 7",
+        "summary": "Passing samples receive Tea Board clearance through Tea Council portal."
+      },
+      {
+        "page": 3,
+        "locator": "SOP 8",
+        "summary": "Tea imported for export must be exported within six months."
+      },
+      {
+        "page": 3,
+        "locator": "SOP 9",
+        "summary": "Instant and ready-to-drink tea are exempt from sampling."
+      }
+    ],
+    "quotePolicy": "Concise original paraphrases only, under 200 words from this source. No verbatim excerpt or open reproduction licence claimed.",
+    "interpretationForPilot": "Branch the research workflow by intended domestic sale versus re-export. Replace old fee and testing assumptions with the reviewed June rules, subject to a final amendment check for the shipment date.",
+    "unresolved": [
+      "The date handwritten correction is visible; formal confirmation of corrected issue date remains open.",
+      "No explicit future commencement date is stated in the reviewed operative paragraph. Confirm shipment-date applicability and later amendments.",
+      "The SOP does not specify complete domestic risk-selection mechanics, border-by-border implementation, failure appeals or all FSSAI charges.",
+      "The SOP alone cannot establish customs tariff, origin eligibility, lab accreditation scope, importer approval or shipment clearance.",
+      "The five-day laboratory requirement is an official target, not verified actual turnaround."
+    ],
+    "nextEvidenceTasks": [
+      "Check newer official amendments and the applicable FSSAI food-import regulations.",
+      "Verify importer licence, border jurisdiction, sample assignment and fees for one actual lot.",
+      "Record domestic-sale or re-export end use before route-costing."
+    ]
+  }
+}

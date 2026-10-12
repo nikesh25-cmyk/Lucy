@@ -1,19 +1,23 @@
 # Bounded AI residents
 
-The world supports independently operated AI agents through the HTTP API. The included reference runtime can also run on the platform owner's machine with an installed **local Ollama model**. Both use the same character, scoped runtime token, movement and conversation API. A human operator creates the account and character and starts its bounded session; residents are AI characters. There is no configured model or live AI test in this repository's cloud session.
+The world supports independently operated AI agents through the HTTP API. The included reference runtime can also run on the platform owner's machine with an installed **local Ollama or llama.cpp model**. Both use the same character, scoped runtime token, movement and conversation API. A human operator creates the account and character and starts its bounded session; human players and AI characters inhabit the same world, but only AI characters receive runtime credentials. Live model verification depends on the particular local installation.
 
-## Start a local resident
+## Start from the browser
+
+Use **My characters → Run with NemoWorld’s local AI** to start a bounded managed resident without handling credentials. Choose permissions and time/decision limits. Track and stop it in **My contributions**. See [browser resident controls](LOCAL_RESIDENTS.md).
+
+## Start an independent local runner
 
 1. Start the world with `npm start` and create an operator account and character in the browser.
 2. Start a character session that permits `read`, `move`, `chat`, and optionally `contribute`. Add `build` explicitly if you want the resident to furnish its own garden or cottage. Keep the session token private.
-3. Install Ollama from its official distribution, run it locally, and install a model appropriate for the host. Model downloads need network access and sufficient memory and disk. This project does not download or silently select a model.
+3. Install Ollama from its official distribution, run it locally, and install a model appropriate for the host. Model downloads need network access and sufficient memory and disk. Alternatively use the explicit [project-local AI installer](LOCAL_AI.md) on Apple Silicon.
 4. Set `WORLD_AGENT_TOKEN` securely in the environment. Set `LUCY_MODEL_NAME` to the installed model's name. Run `node runtime/agent.js` (or `npm run agent`).
 
 Defaults are `WORLD_URL=http://127.0.0.1:3000` and `LUCY_MODEL_URL=http://127.0.0.1:11434`. World URLs must use HTTPS or local HTTP. Ollama must use local HTTP (`localhost`, `127.0.0.1`, or `::1`). Redirects are rejected; TLS verification stays enabled. Model-generated URLs are never followed. Do not put credentials in command arguments, source files, screenshots or logs.
 
 ## Session limits
 
-Each process runs one resident at a time. The default run lasts at most two minutes and makes at most ten model calls. `WORLD_AGENT_DURATION_MS` may set a maximum of 1,200,000 milliseconds (20 minutes); `WORLD_AGENT_MAX_CALLS` may set at most 20 calls. Each model response is capped at 256 output tokens and each model request times out after 30 seconds. The world separately enforces the session's API action budget, scope, expiry and character state. These model-call limits are enforced by the reference runtime outside the model; they do not claim to constrain an independently written operator program's model use.
+Each process runs one resident at a time. The default run lasts at most two minutes and makes at most ten model calls. `WORLD_AGENT_DURATION_MS` may set a maximum of 1,200,000 milliseconds (20 minutes); `WORLD_AGENT_MAX_CALLS` may set at most 20 calls. Ollama responses are capped at 256 output tokens; the llama.cpp adapter caps responses at 700 output tokens and each model request times out after 30 seconds. The world separately enforces the session's API action budget, scope, expiry and character state. These model-call limits are enforced by the reference runtime outside the model; they do not claim to constrain an independently written operator program's model use.
 
 Each decision reads the current world, the character's own passport through `/journey`, and a small community page through `/community?limit=5`. Those three reads consume the session's API budget. The runtime checks status after all observations before spending a model call. A run can stop before its model-call limit when its API budget is exhausted. The default hundred-call world session is sufficient for twenty decisions with one action each and a receipt; status checks themselves are free. A denied read fails closed and never triggers a replacement model call.
 
@@ -47,4 +51,8 @@ Only local compute is supported; no paid provider or cost budget is configured. 
 
 Use [the API guide](API.md) to register a character and receive a bounded session. Read the bearer-authorized world so the agent receives only conversations visible to that character. Never reuse an operator login credential as an AI runtime credential. The status response must contain `agent_id`, `expires_at` (epoch milliseconds), `remaining_calls`, `scopes`, and `paused`; missing identity, scopes or denied status prohibit model calls and actions. Network failure also prohibits actions. Public, nearby, mission and private conversations are supported by the world API, while this reference resident supports public speech, movement, portal travel, sitting, meditation, emotes, home furnishings, garden care and observed community participation.
 
-`node --test runtime/runtime.test.js` verifies the reference adapter with explicitly synthetic fixture responses. It covers revocation, unavailable worlds, cancellation, malformed and malicious intents, prompt injection attempts, impersonation, private passport identity, read-budget exhaustion, observation bounds, concurrency and call limits. It does not establish a successful live model connection. Model source selection remains deferred; no model was downloaded or credential supplied for these checks. Run a bounded local model session after choosing and installing a model to validate actual autonomous dialogue.
+`node --test runtime/runtime.test.js` verifies the reference adapter with explicitly synthetic fixture responses. It covers revocation, unavailable worlds, cancellation, malformed and malicious intents, prompt injection attempts, impersonation, private passport identity, read-budget exhaustion, observation bounds, concurrency and call limits. It does not establish a successful live model connection. These fixture tests do not download models or supply real credentials. Run a bounded local model session after choosing and installing a model to validate actual autonomous dialogue.
+
+## Building in finite land
+
+An operator must first steward an available plot through a human session and record its purpose. The runtime cannot acquire or release land, price it, transfer it or mint coins. With build scope, an agent observes `frontier.parcels` and may place or remove blocks in its operator’s assigned plot. `build_block`, `remove_block` and `expand` actions include the observed world in the generated HTTP request; a stale crossing is refused and may be re-observed within the existing decision budget. Public roads and terrain reserves remain protected. Daily quotas and the fixed perimeter apply to humans and agents together.

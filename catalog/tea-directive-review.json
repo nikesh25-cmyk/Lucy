@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "title": "Tea Board India Directive 02/2026: visual clause review",
+  "sourceUrl": "https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf",
+  "sourceIndexUrl": "https://teaboard.gov.in/TEABOARDPAGE/MTI%3D",
+  "publisher": "Tea Board India, Department of Commerce, Ministry of Commerce and Industry, Government of India",
+  "retrievedOn": "2026-10-11",
+  "reviewedOn": "2026-10-11",
+  "pageCount": 3,
+  "documentDate": "Printed 29/06/2026; handwritten day correction appears 30. Official listing: 30-Jun-2026.",
+  "sha256": "d1dbd415677e52e4d267e7ff195994143140f7fb1f57e7c3edb2300fb2fb8ceb",
+  "downloadBytes": 10208913,
+  "localPdf": "work/tea-directive-02-2026.pdf",
+  "method": "Approved resumable curl completed; bundled pdftoppm rendered all three pages at 110 dpi; every page visually inspected. No installation needed.",
+  "status": "all-three-pages-visually-reviewed",
+  "clauses": [
+    {
+      "page": 1,
+      "locator": "Final recital",
+      "summary": "FSSAI tests all re-export tea; domestic testing initially risk-based at 20%."
+    },
+    {
+      "page": 2,
+      "locator": "Opening operative paragraph",
+      "summary": "Supersedes Directive 01/2026 and corrigendum; domestic and re-export clearance continues."
+    },
+    {
+      "page": 3,
+      "locator": "SOP introduction",
+      "summary": "Importer needs valid Tea Board licence under TDECO 2005."
+    },
+    {
+      "page": 3,
+      "locator": "SOP 1",
+      "summary": "Declare arrival, warehouse, containers and separated tea, freight, insurance costs."
+    },
+    {
+      "page": 3,
+      "locator": "SOP 2",
+      "summary": "Application costs INR 2,000 plus GST; laboratory testing charged separately."
+    },
+    {
+      "page": 3,
+      "locator": "SOP 3",
+      "summary": "Re-export packaging design declares origin; submit before export, not import."
+    },
+    {
+      "page": 3,
+      "locator": "SOP 4",
+      "summary": "Tea Board issues portal import clearance; re-export tea receives clearance."
+    },
+    {
+      "page": 3,
+      "locator": "SOP 5",
+      "summary": "FSSAI samples arriving consignments for enlisted NABL-approved laboratory testing."
+    },
+    {
+      "page": 3,
+      "locator": "SOP 6",
+      "summary": "FSSAI-selected laboratory uploads results within five days of sample receipt."
+    },
+    {
+      "page": 3,
+      "locator": "SOP 7",
+      "summary": "Passing samples receive Tea Board clearance through Tea Council portal."
+    },
+    {
+      "page": 3,
+      "locator": "SOP 8",
+      "summary": "Tea imported for export must be exported within six months."
+    },
+    {
+      "page": 3,
+      "locator": "SOP 9",
+      "summary": "Instant and ready-to-drink tea are exempt from sampling."
+    }
+  ],
+  "quotePolicy": "Concise original paraphrases only, under 200 words from this source. No verbatim excerpt or open reproduction licence claimed.",
+  "interpretationForPilot": "Branch the research workflow by intended domestic sale versus re-export. Replace old fee and testing assumptions with the reviewed June rules, subject to a final amendment check for the shipment date.",
+  "unresolved": [
+    "The date handwritten correction is visible; formal confirmation of corrected issue date remains open.",
+    "No explicit future commencement date is stated in the reviewed operative paragraph. Confirm shipment-date applicability and later amendments.",
+    "The SOP does not specify complete domestic risk-selection mechanics, border-by-border implementation, failure appeals or all FSSAI charges.",
+    "The SOP alone cannot establish customs tariff, origin eligibility, lab accreditation scope, importer approval or shipment clearance.",
+    "The five-day laboratory requirement is an official target, not verified actual turnaround."
+  ],
+  "nextEvidenceTasks": [
+    "Check newer official amendments and the applicable FSSAI food-import regulations.",
+    "Verify importer licence, border jurisdiction, sample assignment and fees for one actual lot.",
+    "Record domestic-sale or re-export end use before route-costing."
+  ]
+}

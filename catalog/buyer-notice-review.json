@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "title": "Tea Board buyer response notice: covering-page review",
+  "sourceUrl": "https://teaboard.gov.in/pdf/Notice_pdf6904.pdf",
+  "publisher": "Tea Board India",
+  "retrievedOn": "2026-10-12",
+  "reviewedOn": "2026-10-12",
+  "pageCount": 15,
+  "reviewedPages": [
+    1
+  ],
+  "documentDate": "Cover printed 22/01/2026; this is a dated document, not a new response deadline.",
+  "sha256": "ae068be60fa12c26facda5c39bc422b80bdc702ce6a13ffaff5d62d80155516f",
+  "downloadBytes": 1508820,
+  "method": "Official PDF retrieved over verified HTTPS; covering page rendered locally and visually inspected. Annexure names not extracted as candidate leads.",
+  "status": "covering-page-reviewed-annexure-not-assessed",
+  "evidenceRole": "procedural-notice-not-buyer-directory",
+  "clauses": [
+    {
+      "page": 1,
+      "locator": "Cover and addressee",
+      "summary": "This is a buyer response notice with an annexure, not a current importer directory."
+    },
+    {
+      "page": 1,
+      "locator": "Final operative paragraph",
+      "summary": "Requests a response after issuance; possible registration action is conditional, not a reported final outcome."
+    },
+    {
+      "page": 1,
+      "locator": "Review limitations",
+      "summary": "Annexure pages are not visually assessed here. No current company registration, wrongdoing or purchasing interest is established."
+    }
+  ]
+}

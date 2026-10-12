@@ -82,7 +82,62 @@ function road(grid, a, b) {
 }
 const portal = (x, y, name, targetWorldId) => ({ x, y, name, targetWorldId });
 
-export const sharedWorldIds = Object.freeze(['commons', 'hall', 'pavilion', 'gallery', 'meditation', 'library', 'workshop', 'observatory', 'orchard', 'harbor']);
+export const FRONTIER_SIZE = 48;
+export const FRONTIER_COORDINATE_LIMIT = 8;
+export const FRONTIER_MIN_COORDINATE = -8;
+export const FRONTIER_MAX_COORDINATE = 7;
+export const FRONTIER_PLOT_SIZE = 6;
+export const FRONTIER_BLOCK_COLORS = Object.freeze({ stone: '#879291', wood: '#b38b60', glass: '#9fcad0', brick: '#bc8876', sand: '#d9c99a', grass: '#91b376', path: '#d3c49c' });
+export const FRONTIER_DIRECTIONS = Object.freeze({ up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] });
+export function frontierCoordinates(id, { allowLegacy = false } = {}) {
+  const match = /^frontier:(-?\d+):(-?\d+)$/.exec(id);
+  if (!match) return null;
+  const x = Number(match[1]), y = Number(match[2]);
+  const minimum = allowLegacy ? -64 : FRONTIER_MIN_COORDINATE, maximum = allowLegacy ? 64 : FRONTIER_MAX_COORDINATE;
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < minimum || x > maximum || y < minimum || y > maximum || id !== `frontier:${x}:${y}`) return null;
+  return { x, y };
+}
+export function frontierPlotId(worldId, x, y) {
+  const sector = frontierCoordinates(worldId);
+  if (!sector || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= FRONTIER_SIZE || y < 0 || y >= FRONTIER_SIZE) return null;
+  return `plot:${sector.x}:${sector.y}:${Math.floor(x / FRONTIER_PLOT_SIZE)}:${Math.floor(y / FRONTIER_PLOT_SIZE)}`;
+}
+export function frontierGates(id) {
+  const sector = frontierCoordinates(id, { allowLegacy: true });
+  if (!sector) return [];
+  const gates = { up: [24, 1], down: [24, 46], left: [1, 24], right: [46, 24] };
+  const finite = Boolean(frontierCoordinates(id)), minimum = finite ? FRONTIER_MIN_COORDINATE : -64, maximum = finite ? FRONTIER_MAX_COORDINATE : 64;
+  return Object.entries(FRONTIER_DIRECTIONS).filter(([, [dx, dy]]) => sector.x + dx >= minimum && sector.x + dx <= maximum && sector.y + dy >= minimum && sector.y + dy <= maximum).map(([direction, [dx, dy]]) => ({ direction, x: gates[direction][0], y: gates[direction][1], targetWorldId: `frontier:${sector.x + dx}:${sector.y + dy}`, name: `${direction[0].toUpperCase() + direction.slice(1)} frontier passage` }));
+}
+
+function makeFrontier(id) {
+  const sector = frontierCoordinates(id, { allowLegacy: true });
+  if (!sector) throw new RangeError(`Unknown world: ${id}`);
+  const columns = FRONTIER_SIZE, rows = FRONTIER_SIZE, grid = makeGrid(columns, rows), objects = [];
+  const seed = Math.imul(sector.x + 71, 853) ^ Math.imul(sector.y + 97, 1543);
+  const biome = ['Meadow', 'Woodland', 'Dryland', 'Highland'][(seed >>> 0) % 4];
+  for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
+    const n = cellNoise(x + sector.x * columns, y + sector.y * rows, seed);
+    if (n < 65) { grid[y][x] = 'tree'; objects.push({ type: biome === 'Dryland' ? 'cactus' : biome === 'Highland' ? 'mountain' : 'tree', x, y }); }
+    else if ((x - 37) ** 2 + (y - 10) ** 2 < 22 && n < 900) grid[y][x] = 'water';
+    else if (n > 930) grid[y][x] = 'garden';
+  }
+  // Wide public passages form a connected, permanent route across every sector.
+  paintGrid(grid, 23, 0, 3, rows, 'path');
+  paintGrid(grid, 0, 23, columns, 3, 'path');
+  paintGrid(grid, 22, 22, 5, 5, 'plaza');
+  for (let index = objects.length - 1; index >= 0; index--) if (grid[objects[index].y][objects[index].x] !== 'tree') objects.splice(index, 1);
+  const portals = frontierGates(id);
+  if (!frontierCoordinates(id) || sector.x === 0 && sector.y === 0) portals.push(portal(24, 27, 'Return to the Commons', 'commons'));
+  return { id, name: `${biome} Frontier (${sector.x}, ${sector.y})`, kind: 'frontier', legacy: !frontierCoordinates(id), columns, rows, start: { x: 24, y: 24 }, terrain: grid, objects, portals,
+    groundColor: biome === 'Dryland' ? '#c8bd8e' : biome === 'Highland' ? '#bdcebd' : biome === 'Woodland' ? '#86a17d' : '#a4ba8c',
+    description: 'Part of a finite virtual landscape. Steward a plot for a named purpose, follow the public passages, and open existing neighboring areas.', ambiance: `${biome} terrain and a shared horizon.`,
+    landmarks: [{ x: 24, y: 24, name: 'Frontier Crossroads', description: 'Public routes stay clear while inhabitants build and expand the surrounding world.', symbol: '✦', color: '#d9c696' }] };
+}
+
+import { REGIONS } from './src/civic.js';
+
+export const sharedWorldIds = Object.freeze(['commons', 'hall', 'pavilion', 'gallery', 'meditation', 'library', 'workshop', 'observatory', 'orchard', 'harbor', ...REGIONS.map(region => `district:${region.id}`)]);
 export const regionFacts = Object.freeze({
   library: { name: 'The Lantern Library', columns: 28, rows: 20, kind: 'interior', door: { x: 62, y: 7 }, description: 'A warm library of reading alcoves, shared tables, and a quiet courtyard of ideas.', lore: 'Beside the river, inhabitants built a library around a simple promise: every useful idea should have a place to rest and be found again.', ambiance: 'Warm wood, amber lamps, and quiet reading nooks.' },
   workshop: { name: 'The Makers’ Workshop', columns: 28, rows: 20, kind: 'interior', door: { x: 35, y: 24 }, description: 'An open studio for sketching, sharing experiments, and working together around large tables.', lore: 'The theatre’s old scenery shed became a workshop. Its doors stay open for patient makers, unfinished ideas, and people willing to learn together.', ambiance: 'Terracotta tiles, work tables, and green trellises.' },
@@ -184,6 +239,7 @@ function makeCommons() {
     { x: 84, y: 53, name: 'Home District', description: 'Visit personal gardens and homes created by the inhabitants.', symbol: '⌂', color: '#d1ac8b' },
   ];
   const outdoorObjects = Object.entries(regionFacts).map(([id, facts]) => ({ type: 'gateway', region: id, name: facts.name, x: facts.door.x, y: facts.door.y }));
+  outdoorObjects.push({ type: 'gateway', name: 'Shared Frontier', x: 19, y: 6 });
   for (const site of sites.slice(6)) {
     paintGrid(grid, site.x - 3, site.y - 3, 7, 7, 'meadow');
     paintGrid(grid, site.x - 2, site.y - 2, 5, 5, 'plaza');
@@ -215,7 +271,31 @@ function makeCommons() {
     if (!['water', 'tree', 'building', 'fountain'].includes(grid[y][x]) && !seen.has(`${x},${y}`)) grid[y][x] = 'tree';
   }
   return { id: 'commons', name: 'The Commons', kind: 'outdoors', columns, rows, start, terrain: grid, landmarks: [...sites, ...Object.values(regionFacts).filter((facts) => !sites.some((site) => site.x === facts.door.x && site.y === facts.door.y)).map((facts) => ({ ...facts.door, name: facts.name, description: facts.description, color: '#abc2b9', symbol: '✧' }))], objects: outdoorObjects,
-    portals: [portal(11, 6, 'Meeting Hall', 'hall'), portal(15, 3, 'Peace Pavilion', 'pavilion'), portal(10, 10, 'Contribution Gallery', 'gallery'), portal(4, 3, 'Meditation Grove', 'meditation'), ...Object.entries(regionFacts).map(([id, facts]) => portal(facts.door.x, facts.door.y, facts.name, id))] };
+    portals: [portal(11, 6, 'Meeting Hall', 'hall'), portal(15, 3, 'Peace Pavilion', 'pavilion'), portal(10, 10, 'Contribution Gallery', 'gallery'), portal(4, 3, 'Meditation Grove', 'meditation'), portal(19, 6, 'Shared Frontier', 'frontier:0:0'), ...Object.entries(regionFacts).map(([id, facts]) => portal(facts.door.x, facts.door.y, facts.name, id)), ...REGIONS.map((region,index) => portal(25, 15+index*2, region.name, `district:${region.id}`))] };
+}
+
+function makeDistrict(id) {
+  const region = REGIONS.find(region => id === `district:${region.id}`);
+  const columns=48, rows=36, grid=makeGrid(columns,rows,'meadow'), objects=[];
+  const dry=['drylands','desert','savanna'].includes(region.id);
+  const snowy=['highlands','snowline'].includes(region.id);
+  const wet=['coast','islands','harbor','wetlands','lakes','riverlands'].includes(region.id);
+  for(let y=0;y<rows;y++)for(let x=0;x<columns;x++) {
+    if(wet && (x<5 || (region.id==='islands' && x>42)))grid[y][x]='water';
+    else if((x*17+y*31+region.order*7)%19===0 && x>7 && y>3) {grid[y][x]='tree';objects.push({type:snowy?'mountain':dry?'cactus':['coast','islands'].includes(region.id)?'palm':'tree',x,y});}
+  }
+  road(grid,{x:24,y:32},{x:24,y:5});road(grid,{x:8,y:18},{x:42,y:18});
+  paintGrid(grid,18,12,13,12,'plaza');
+  // Road and plaza construction clears scenery as well as collision tiles.
+  for (let index = objects.length - 1; index >= 0; index--) if (grid[objects[index].y][objects[index].x] !== 'tree') objects.splice(index, 1);
+  for(const [x,y] of [[18,13],[30,13],[18,22],[30,22]])objects.push({type:'lantern',x,y});
+  objects.push({type:region.id==='cities'?'civic-building':'shelter',x:24,y:10},{type:'bench',x:20,y:20},{type:'bench',x:28,y:20},{type:'flowers',x:22,y:14});
+  for(let x=10;x<40;x+=6)objects.push({type:region.id==='farmlands'||region.id==='gardens'?'farm':'cottage',x,y:27});
+  return {id,name:region.name,kind:'district',columns,rows,start:{x:24,y:24},terrain:grid,objects,
+    groundColor: snowy?'#dce8e8':dry?'#d8c692':region.id==='cities'?'#b8c1b6':region.id==='rainforest'?'#67987b':'#a4ba8c',
+    description:region.landscape+' · '+region.mayor.focus, ambiance:region.landscape,
+    landmarks:[{x:24,y:16,name:region.mayor.title+' · Civic square',description:region.mayor.focus,symbol:'✦',color:'#e9d4a1'}],
+    portals:[portal(24,31,'Return to the Commons','commons')]};
 }
 
 function makeInterior(id) {
@@ -278,11 +358,13 @@ export function getWorldDefinition(world = 'commons') {
     if (id === 'commons') definition = makeCommons();
     else if (['hall', 'pavilion', 'gallery', 'meditation'].includes(id)) definition = makeInterior(id);
     else if (Object.hasOwn(regionFacts, id)) definition = makeRegion(id);
+    else if (id.startsWith('district:') && REGIONS.some(region => id === `district:${region.id}`)) definition = makeDistrict(id);
     else if (id.startsWith('home:')) definition = makeHome(id);
     else if (id.startsWith('house:')) definition = makeHouse(id);
+    else if (frontierCoordinates(id, { allowLegacy: true })) definition = makeFrontier(id);
     else throw new RangeError(`Unknown world: ${id}`);
     if (definitions.size >= 36) {
-      const oldestHome = [...definitions.keys()].find((key) => key.startsWith('home:') || key.startsWith('house:'));
+      const oldestHome = [...definitions.keys()].find((key) => key.startsWith('home:') || key.startsWith('house:') || key.startsWith('frontier:'));
       if (oldestHome) definitions.delete(oldestHome);
     }
     definitions.set(id, definition);
@@ -377,7 +459,7 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
       const py = y * TILE;
       const n = (x * 47 + y * 91 + x * y * 13) % 19;
       const type = tiles[y][x];
-      rect(px, py, TILE, TILE, world.kind === 'interior' && type === 'building' ? theme.floor : world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : world.id === 'harbor' ? ['#90b5a0', '#98bba5', '#a0c2ac'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
+      rect(px, py, TILE, TILE, world.groundColor ? world.groundColor : world.kind === 'interior' && type === 'building' ? theme.floor : world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : world.id === 'harbor' ? ['#90b5a0', '#98bba5', '#a0c2ac'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
       if (type === 'water') {
         rect(px, py, TILE, TILE, n % 2 ? '#6baab1' : '#71b4bc');
         rect(px + 5 + n % 8, py + 11, 12, 2, '#a6d0ca');
@@ -526,8 +608,9 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
   }
   for (const [x, y] of [[552, 440], [586, 440], [544, 461], [578, 471], [729, 279], [743, 293]]) blossom(x, y, '#d9bac6');
   }
+  const sceneryTiles = new Set((world.objects || []).filter(object => ['tree', 'mountain', 'cactus', 'palm'].includes(object.type)).map(object => `${object.x},${object.y}`));
   for (let y = camera.y; y < Math.min(world.rows, camera.y + ROWS + 1); y++) for (let x = camera.x; x < Math.min(world.columns, camera.x + COLS + 1); x++) {
-    if (tiles[y][x] === 'tree') tree((x + 0.5) * TILE, (y + 0.5) * TILE + 6, (x + y) % 4 === 0);
+    if (tiles[y][x] === 'tree' && !sceneryTiles.has(`${x},${y}`)) tree((x + 0.5) * TILE, (y + 0.5) * TILE + 6, (x + y) % 4 === 0);
   }
   const drawObject = (object) => {
     if (object.x < camera.x - 2 || object.x > camera.x + COLS + 2 || object.y < camera.y - 2 || object.y > camera.y + ROWS + 2) return;
@@ -573,6 +656,15 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
         rect(x - 15, y - 5, 18, 9, '#ecdfc3'); rect(x - 11, y - 2, 10, 1, '#94a7a4');
         rect(x + 10, y - 4, 3, 11, '#7c9ca0'); rect(x + 7, y - 5, 10, 3, '#afc3bd');
         break;
+      case 'mountain':
+        for(let band=0;band<7;band++)rect(x-7-band*5,y-50+band*9,14+band*10,10,band<2?'#f2f6ed':band<4?'#a3b5b8':'#7d999d');
+        rect(x-28,y+11,56,6,'#617e8744');break;
+      case 'cactus':
+        rect(x-4,y-29,8,47,'#688b68');rect(x-17,y-12,13,7,'#688b68');rect(x-17,y-26,7,21,'#688b68');rect(x+4,y-3,12,7,'#75966c');rect(x+10,y-17,6,20,'#75966c');rect(x-2,y-26,2,35,'#a9b984');break;
+      case 'palm':
+        rect(x-3,y-21,7,43,'#aa8c69');rect(x-25,y-29,50,9,'#5f9575');rect(x-16,y-38,34,9,'#77aa7b');rect(x-33,y-20,20,9,'#77aa7b');rect(x+14,y-20,20,9,'#5f9575');break;
+      case 'civic-building':
+        rect(x-38,y-53,76,74,'#d3d0bd');rect(x-43,y-57,86,8,'#6f8490');for(let row=0;row<3;row++)for(let col=0;col<4;col++){rect(x-30+col*17,y-44+row*17,10,12,'#7797a0');rect(x-28+col*17,y-43+row*17,4,4,'#c0d7d2');}rect(x-8,y+3,16,18,'#526a6d');break;
       case 'telescope':
         rect(x - 2, y - 7, 4, 24, '#5d6f82');
         rect(x - 13, y + 16, 11, 3, '#5d6f82'); rect(x + 2, y + 16, 11, 3, '#5d6f82');
@@ -721,6 +813,19 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
   }
   for (const object of world.objects || []) drawObject(object);
   for (const object of options.objects || []) drawObject(object);
+  const blockColumns = new Map();
+  for (const block of (options.blocks || []).slice(0, 2048)) {
+    if (!Number.isInteger(block.x) || !Number.isInteger(block.y) || !Number.isInteger(block.z) || !Object.hasOwn(FRONTIER_BLOCK_COLORS, block.type) || block.x < camera.x || block.x >= camera.x + COLS || block.y < camera.y || block.y >= camera.y + ROWS) continue;
+    const key = `${block.x},${block.y}`, current = blockColumns.get(key);
+    if (!current || block.z > current.z) blockColumns.set(key, block);
+  }
+  for (const block of blockColumns.values()) {
+    const x = block.x * TILE, y = block.y * TILE;
+    rect(x + 2, y + 4, 36, 34, block.type === 'path' ? '#bfae8d' : '#3f514b');
+    rect(x + 4, y + 2, 32, 31, FRONTIER_BLOCK_COLORS[block.type]);
+    rect(x + 5, y + 3, 30, 3, '#f0ead777');
+    if (block.type !== 'path') pixelText(`${block.z + 1}`, x + 20, y + 20, '#263e36', 12);
+  }
   for (const gate of options.portals || world.portals || []) {
     if (gate.x < camera.x || gate.x >= camera.x + COLS || gate.y < camera.y || gate.y >= camera.y + ROWS) continue;
     const x = (gate.x + 0.5) * TILE;
@@ -830,6 +935,11 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
       rect(x - 13, y + 14, 3, 3, '#ffefb6');
       rect(x + 11, y + 14, 3, 3, '#ffefb6');
     }
+    const sprite=options.sprites?.get(avatar.sprite);
+    if(avatar.kind==='npc' && sprite?.complete && sprite.naturalWidth){
+      ctx.imageSmoothingEnabled=false; const column={down:0,up:1,left:2,right:3}[avatar.direction]||0;
+      ctx.drawImage(sprite,column*16,(avatar.status==='active'?Math.floor(now/220)%4:0)*16,16,16,x-20,y-25,40,40);
+    }else{
     // Friendly agent sprite, customizable clothes and chest emblem.
     rect(x - 8, y - 2, 16, 14, color);
     rect(x - 11, y, 3, 10, color);
@@ -854,6 +964,7 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
     rect(x + 3, y - 12, 2, 2, '#374952');
     rect(x - 2, y - 7, 4, 1, '#ba8d72');
     pixelText(avatar.symbol || '✦', x, y + 5, '#fff0d4', 9);
+    }
     const emote = { wave: '⌁', bow: '↧', cheer: '✦', think: '…', heart: '♥' }[avatar.emote];
     if (emote && Number(avatar.emote_until) > now) {
       rect(x + 11, y - 30, 20, 20, '#fff0d8'); rect(x + 11, y - 11, 4, 4, '#fff0d8');
@@ -932,6 +1043,7 @@ export function drawMiniMap(canvas, world = 'commons', options = {}) {
     ctx.fillRect(offsetX + (x + 0.5) * scale - size / 2, offsetY + (y + 0.5) * scale - size / 2, size, size);
   };
   for (const object of options.objects || []) marker(object.x, object.y, palette[object.type] || '#b69376', Math.max(2, scale * 0.65));
+  for (const block of (options.blocks || []).slice(0, 2048)) if (Number.isInteger(block.x) && Number.isInteger(block.y) && Object.hasOwn(FRONTIER_BLOCK_COLORS, block.type)) marker(block.x, block.y, FRONTIER_BLOCK_COLORS[block.type], Math.max(2, scale * 0.65));
   for (const place of definition.landmarks || []) marker(place.x, place.y, '#eee4c0', Math.max(3, scale));
   for (const gate of options.portals || definition.portals || []) marker(gate.x, gate.y, '#d3b6d2', Math.max(3, scale));
   if (options.camera) {

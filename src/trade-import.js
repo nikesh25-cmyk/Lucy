@@ -1,0 +1,13 @@
+import {tradeUrl} from './trade.js';
+export function tradeSubmissionDraft(value,allowedDomains){
+ if(!value||value.format!=='lucy-trade-submission-draft'||value.version!==1||Object.keys(value).some(key=>!['format','version','submission'].includes(key)))throw Error('Choose a prepared NemoWorld trade submission draft.');
+ const draft=value.submission;if(!draft||typeof draft!=='object'||Object.keys(draft).some(key=>!['artifact','sources','method','limitations','rights'].includes(key)))throw Error('Trade draft contains unsupported fields.');
+ for(const [key,max] of [['artifact',16000],['method',2000],['limitations',2000],['rights',2000]])if(typeof draft[key]!=='string'||!draft[key].trim()||draft[key].length>max)throw Error('Trade draft has a missing or oversized text field.');
+ if(!Array.isArray(draft.sources)||draft.sources.length<1||draft.sources.length>10||!Array.isArray(allowedDomains)||!allowedDomains.includes('comtradeapi.un.org'))throw Error('This task needs approved Comtrade sources and one to ten retained source records.');
+ for(const source of draft.sources){if(!source||Object.keys(source).some(key=>!['url','location','date'].includes(key))||typeof source.location!=='string'||!source.location.trim()||source.location.length>300||typeof source.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(source.date)||!Number.isFinite(Date.parse(source.date+'T00:00:00Z'))||new Date(source.date+'T00:00:00Z').toISOString().slice(0,10)!==source.date)throw Error('Trade draft source metadata is invalid.');const url=new URL(source.url),expected=tradeUrl({reporter:url.searchParams.get('reporterCode'),partner:url.searchParams.get('partnerCode'),commodity:url.searchParams.get('cmdCode')||'',year:url.searchParams.get('period'),flow:url.searchParams.get('flowCode')});if(url.href!==expected)throw Error('Trade draft source is not a bounded canonical Comtrade query.');}
+ return {artifact:draft.artifact,method:draft.method,limitations:draft.limitations,rights:draft.rights,sources:draft.sources.map(source=>({...source}))};
+}
+
+export function parseTradeSubmissionDraft(text,allowedDomains){
+ if(typeof text!=='string'||text.length>200000)throw Error('Prepared draft exceeds its text limit.');let value;try{value=JSON.parse(text);}catch{throw Error('Prepared trade draft is not valid JSON.');}return tradeSubmissionDraft(value,allowedDomains);
+}

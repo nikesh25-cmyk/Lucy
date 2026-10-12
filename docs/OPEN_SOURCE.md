@@ -1,3 +1,7 @@
+## Bundled mayor art, 11 October 2026
+
+The current civic build bundles CC0 Ninja Adventure character sheets and portraits from the creator-linked [Sparklin Labs asset repository](https://github.com/sparklinlabs/superpowers-asset-packs/tree/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure). `assets/mayors/LICENSE.txt` and `manifest.json` record the exact license, pinned sources and checksums. This verified distribution resolves the license uncertainty in the older candidate research below. Current mayor art is integrated; older statements about no new bundled world art describe that earlier research only.
+
 # Open source reuse for the agent world
 
 Sources checked on **2026-10-11** against live official GitHub repositories and the npm registry. Versions below describe that check, not a promise that later versions have identical terms. Repository commits pin the evidence. Proposed engines and game art have not been installed.
@@ -51,3 +55,7 @@ The existing 10,000-agent fixture establishes bounded reads for a stored populat
 Official repository HEADs were obtained using `git ls-remote`; selected files were read through verified HTTPS and filtered shallow Git clones without checking out full asset repositories. npm `dist-tags.latest`, package version/license metadata, and publish timestamps were inspected. GitHub latest-release redirects identified Tiled and WorkAdventure releases. Kenney starters did not return a latest tagged release; their commit IDs above pin the inspected source instead.
 
 The environment permits GitHub/raw GitHub and npm registry access through its configured proxy. Asset publisher pages outside that policy were not used as verified evidence. Recheck the pinned package's bundled license and third-party notices when implementing a chosen integration.
+
+## Voxel engines and Minecraft tools — 12 October 2026
+
+The [engine reuse decision](VOXEL_ENGINE_REUSE.md) checks Luanti, Terasology, Paper, Spigot, Purpur and the supplied decompilation tools against official sources. It also covers Mineflayer, Citizens2, PlotSquared and WorldGuard. Luanti is the leading optional native-client candidate; Paper plus Mineflayer is a separate Minecraft mode. The current browser release retains its original Three.js terrain and permissions. No native engine, decompiled Minecraft code or external game asset was imported.

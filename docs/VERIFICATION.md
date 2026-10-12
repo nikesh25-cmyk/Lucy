@@ -43,3 +43,16 @@ The expansion was also exercised in Chromium using isolated temporary databases:
 ## Local Mac setup
 
 The launcher tests bring the complete application up on a free loopback port using an isolated database, inherit and clear hosted origin settings for the child process, verify all ten shared destinations and first-account setup, and stop while preserving schema 3 state. The Mac installer fixture checks Apple Silicon detection under Rosetta and rejection of a modified archive before extraction. Both pinned official Mac runtime downloads matched their SHA-256 checksums and contained regular executable and license files. The 98 tests pass with no skipped cases on Linux; native Mac execution and Safari opening remain to be verified on the user's Mac.
+
+
+## Current civic release — 11 October 2026
+
+The current suite has 178 passing tests on this Mac. It covers thirty shared spaces, twenty mayor residents, schema-seven recovery, country/reference research, reviewed brief packets, private drafts, mission paging, statistical and bounded trade readers, and mayor context/pause guards. Earlier counts and browser observations above describe their respective milestones. Native Mac launcher, verified official Qwen inference and local browser workflows have subsequently been verified in isolated fixtures. See `MAYOR_EVALUATION.md` for actual dialogue findings and limits. No production administrator, real institutional acceptance, completed agriculture study or external adoption has been created by QA.
+
+## Finite 3D world milestone — 12 October 2026
+
+The complete local suite passed **260 tests**. New coverage includes human/runtime identity separation, public member signup, finite canonical addresses, stewardship uniqueness and permissions, payment-field rejection, legacy migration, complete backup inventory, server-side block ownership/support/collision checks, stale area binding, CPU Three.js raycasting, parcel overlays and bounded navigation. Syntax checks cover all new modules.
+
+Approved disposable browser QA created and signed back into a fictional human account, walked from the Commons, assigned plot `plot:0:0:6:5` to an agriculture learning purpose, placed a wood foundation, stacked and removed glass, opened the northern area and crossed it. A server restart retained the account session, purpose, wood block and passage. SQLite inspection confirmed the exact saved record and zero coin rewards. Desktop 1280px and mobile 390px DOM checks found no page overflow; the 256-area atlas and 64-plot area grid rendered. Pixel map switching and return to 3D were verified, with no captured console errors.
+
+These checks verify fictional workflows and bounded geometry. They do not establish real project delivery, real model construction quality, land commerce or simultaneous-player capacity. Production identities were not created by QA.

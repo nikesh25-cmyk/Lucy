@@ -1,0 +1,40 @@
+{
+  "packages": [
+    {
+      "name": "d3-geo",
+      "version": "3.1.1",
+      "registry_url": "https://registry.npmjs.org/d3-geo/3.1.1",
+      "tarball": "https://registry.npmjs.org/d3-geo/-/d3-geo-3.1.1.tgz",
+      "integrity": "sha512-637ln3gXKXOwhalDzinUgY83KzNWZRKbYubaG+fGVuc/dxO64RRljtCTnf5ecMyE1RIdtqpkVcq0IbtU2S8j2Q==",
+      "sha256": "fe1f2dd81a87d942790c5a7786f4aab03df2b357d46d8af56b613fb8a1bb9be5",
+      "bytes": 61257,
+      "license": "ISC"
+    },
+    {
+      "name": "d3-array",
+      "version": "3.2.4",
+      "registry_url": "https://registry.npmjs.org/d3-array/3.2.4",
+      "tarball": "https://registry.npmjs.org/d3-array/-/d3-array-3.2.4.tgz",
+      "integrity": "sha512-tdQAmyA18i4J7wprpYq8ClcxZy3SC31QMeByyCFyRt7BVHdREQZ5lpzoe5mFEYZUWe+oq8HBvk9JjpibyEV4Jg==",
+      "sha256": "6dbf3f2be39e48f86775be6e166a5d3e5a585ca7144453cd6ad1912f5ae4417f",
+      "bytes": 38377,
+      "license": "ISC"
+    },
+    {
+      "name": "internmap",
+      "version": "2.0.3",
+      "registry_url": "https://registry.npmjs.org/internmap/2.0.3",
+      "tarball": "https://registry.npmjs.org/internmap/-/internmap-2.0.3.tgz",
+      "integrity": "sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg==",
+      "sha256": "39d1936831a4d3f2bd6e088db28a10de4458d823f652c36b2c808bf5b978c48d",
+      "bytes": 3608,
+      "license": "ISC"
+    }
+  ],
+  "bundler": "esbuild 0.28.0; ESM browser bundle, ES2022, minified",
+  "bundle": {
+    "path": "assets/vendor/globe-geo.js",
+    "bytes": 23731,
+    "sha256": "4781a1fd372610976e1aacd20e230b5b630d5e0e84a3e3faf40014ca6dfa94cb"
+  }
+}

@@ -300,7 +300,7 @@ test('ten shared worlds expose scenic region metadata and doorway travel returns
   const f = await fixture(t);
   const agent = f.agent('alice');
   const listing = f.platform.worldList(f.actor('alice'));
-  assert.equal(listing.shared_count, 10);
+  assert.equal(listing.shared_count, 30);
   const commons = getWorldDefinition('commons');
   for (const id of ['library', 'workshop', 'observatory', 'orchard', 'harbor']) {
     assert.ok(listing.worlds.some((world) => world.id === id));

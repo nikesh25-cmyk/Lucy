@@ -44,11 +44,11 @@ test('local launcher selects a free loopback port, ignores hosted origin setting
   const setup = await fetch(`${url}/api/v1/bootstrap`).then((response) => response.json());
   assert.equal(setup.setup_required, true);
   assert.equal(setup.setup_code_required, false);
-  assert.equal((await fetch(`${url}/api/v1/worlds`).then((response) => response.json())).shared_count, 10);
+  assert.equal((await fetch(`${url}/api/v1/worlds`).then((response) => response.json())).shared_count, 30);
   child.kill('SIGTERM');
   assert.equal((await finished)[0], 0);
   const saved = new Platform(database);
-  try { assert.equal(saved.get('PRAGMA user_version').user_version, 3); assert.equal(saved.verifyAudit(), true); }
+  try { assert.equal(saved.get('PRAGMA user_version').user_version, 11); assert.equal(saved.verifyAudit(), true); }
   finally { saved.close(); }
 });
 

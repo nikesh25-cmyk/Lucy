@@ -1,10 +1,10 @@
 # Run the world on your own computer
 
-Shared World runs as one local Node.js process with an embedded SQLite database. Render, Docker, and a hosted database are optional. The **Mac launcher sets up its own verified Node.js 24 runtime automatically** when a compatible Node installation is absent. Windows/Linux require Node.js 24 or newer from <https://nodejs.org>.
+NemoWorld runs as one local Node.js process with an embedded SQLite database. Render, Docker, and a hosted database are optional. The **Mac launcher sets up its own verified Node.js 24 runtime automatically** when a compatible Node installation is absent. Windows/Linux require Node.js 24 or newer from <https://nodejs.org>.
 
 ## Click to start
 
-Download and extract [the latest project ZIP](https://github.com/nikesh25-cmyk/Lucy/archive/refs/heads/main.zip), or use your existing checkout. Keep the whole folder together.
+Download and extract [the NemoWorld development ZIP](https://github.com/nikesh25-cmyk/Lucy/archive/refs/heads/feat/civic-world-foundation.zip), or use your existing checkout. The development branch is under draft review; main does not yet contain this release. Keep the whole folder together.
 
 | Computer | Launcher |
 | --- | --- |
@@ -40,4 +40,8 @@ A Codex cloud task runs on its cloud machine. Commands there do not install soft
 
 ## Verification
 
-The launcher was exercised on the Linux cloud computer with an isolated database, browser opening disabled, a deliberately occupied port, and inherited hosted-origin settings. It selected a free loopback port, served all ten shared worlds, exposed first-account registration in local mode, stopped cleanly, and retained a valid schema 3 database. Shell syntax checks passed. Both official Mac archives were downloaded and matched the pinned checksums, and their executable/license members were verified. A controlled installer fixture verified Apple Silicon detection through Rosetta and rejection of a checksum mismatch before extraction. Native macOS/Windows execution and browser opening still need checking on those actual systems.
+The launcher was exercised on the Linux cloud computer with an isolated database, browser opening disabled, a deliberately occupied port, and inherited hosted-origin settings. It selected a free loopback port, served all ten shared worlds, exposed first-account registration in local mode, and stopped cleanly. Both official Mac archives were downloaded and matched the pinned checksums. On 11 October 2026, native macOS launch, browser response, schema 5 migration, thirty shared spaces, and the 106-test suite were verified locally. Windows execution still needs checking on Windows.
+
+## Enable local inference
+
+On Apple Silicon, open **Enable Local AI.command** to download and verify the optional 2.5 GB model, then restart **Start World.command**. See [local AI setup](LOCAL_AI.md) for resources, provenance, recovery and model limits. The world remains usable during installation.

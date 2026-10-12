@@ -1,5 +1,6 @@
+import {getWorldDefinition,walkable} from '../world.js';
 import { fileURLToPath } from 'node:url';
-import { createOllamaModel } from './model.js';
+import { createLocalModel } from './model.js';
 
 let running = false;
 const DIRECTIONS = new Set(['up', 'down', 'left', 'right']);
@@ -39,6 +40,9 @@ export function parseAction(value) {
     && Number.isInteger(value.x) && Number.isInteger(value.y) && value.x >= 0 && value.x <= 255 && value.y >= 0 && value.y <= 255) {
     return { action: 'build', type: value.type, x: value.x, y: value.y };
   }
+  if(value.action==='expand'&&keys.length===2&&DIRECTIONS.has(value.direction))return {action:'expand',direction:value.direction};
+  if(value.action==='remove_block'&&keys.length===4&&coordinates(value)&&Number.isInteger(value.z)&&value.z>=0&&value.z<=7)return {action:'remove_block',x:value.x,y:value.y,z:value.z};
+  if(value.action==='build_block'&&keys.length===5&&coordinates(value)&&Number.isInteger(value.z)&&value.z>=0&&value.z<=7&&['stone','wood','glass','brick','sand','grass','path'].includes(value.type))return {action:'build_block',type:value.type,x:value.x,y:value.y,z:value.z};
   if (value.action === 'emote' && keys.length === 2 && keys.includes('emote') && EMOTES.has(value.emote)) return { action: 'emote', emote: value.emote };
   if (value.action === 'circle' && keys.length === 3 && identifier(value.circle_id) && ['join', 'leave'].includes(value.intent)) {
     return { action: 'circle', circle_id: value.circle_id, intent: value.intent };
@@ -103,6 +107,18 @@ export function authorizeAction(action, view, status) {
     && Array.isArray(view.build_palette) && view.build_palette.includes(action.type)
     && Number.isInteger(view.world.width) && Number.isInteger(view.world.height)
     && action.x < view.world.width && action.y < view.world.height) return action;
+  if(granted.has('build')&&view.world?.kind==='frontier'&&view.frontier){
+    const self=view.participants?.find(resident=>resident.id===agentId);
+    if(action.action==='expand'){const gate=view.frontier.neighbors?.find(neighbor=>neighbor.direction===action.direction);if(self&&gate&&!gate.exists&&Math.abs(self.x-gate.x)+Math.abs(self.y-gate.y)<=2)return action;}
+    if(['build_block','remove_block'].includes(action.action)&&self&&Math.abs(self.x-action.x)+Math.abs(self.y-action.y)<=6){
+      const definition=getWorldDefinition(view.world),blocks=view.blocks||[],at=blocks.find(block=>block.x===action.x&&block.y===action.y&&block.z===action.z),support=blocks.find(block=>block.x===action.x&&block.y===action.y&&block.z===action.z-1);
+      const ownedBlock=at&&(at.creator_agent_id===agentId||at.plot_id&&view.frontier.parcels?.some(plot=>plot.id===at.plot_id&&plot.is_mine));
+      if(action.action==='remove_block'&&ownedBlock&&!blocks.some(block=>block.x===action.x&&block.y===action.y&&block.z>action.z))return action;
+      const plot=view.frontier.parcels?.find(plot=>plot.is_mine&&plot.state==='assigned'&&action.x>=plot.x&&action.x<plot.x+plot.width&&action.y>=plot.y&&action.y<plot.y+plot.height);
+      const protectedTile=action.x>=23&&action.x<=25||action.y>=23&&action.y<=25||Math.abs(definition.start.x-action.x)+Math.abs(definition.start.y-action.y)<=2||definition.portals.some(gate=>Math.abs(gate.x-action.x)+Math.abs(gate.y-action.y)<=2);
+      if(action.action==='build_block'&&plot&&!protectedTile&&walkable(action,definition)&&view.frontier.palette?.includes(action.type)&&(action.type!=='path'||action.z===0)&&(!at||ownedBlock&&at.type===action.type)&&(action.z===0||support?.plot_id===plot.id&&support.type!=='path')&&!view.participants.some(resident=>resident.x===action.x&&resident.y===action.y))return action;
+    }
+  }
   if (granted.has('contribute') && view.community?.viewer_agent_id === agentId) {
     if (action.action === 'circle' && view.community.circles?.some((circle) => circle.id === action.circle_id
       && (action.intent === 'leave' ? circle.joined : circle.status === 'active'))) return action;
@@ -132,6 +148,7 @@ export function authorizeAction(action, view, status) {
 function promptFor(view, status) {
   // World messages are untrusted observations; permissions never come from them.
   const build = Array.isArray(status.scopes) && status.scopes.includes('build') && ownBuildingSpace(view, status.agent_id);
+  const frontierBuild=Array.isArray(status.scopes)&&status.scopes.includes('build')&&view.world?.kind==='frontier';
   const journey = view.journey && { agent_id: view.journey.agent_id, profile: view.journey.profile,
     discoveries: view.journey.discoveries, skills: view.journey.skills, quests: view.journey.quests,
     crops: view.journey.crops, inventory: view.journey.inventory, recipes: view.journey.recipes,
@@ -143,12 +160,14 @@ function promptFor(view, status) {
   const observations = { agent_id: status.agent_id, granted_scopes: status.scopes,
     world: view.world, own_home: view.own_home, portals: view.portals, build_palette: build ? view.build_palette : [],
     journey, community,
+    frontier:frontierBuild?view.frontier:undefined,blocks:frontierBuild?view.blocks?.slice(0,120):undefined,
     bounds: view.bounds, camera: view.camera, terrain: view.terrain, objects: view.objects, landmarks: view.landmarks,
     participants: view.participants?.slice(0, 30), messages: view.messages?.slice(-8) };
-  return 'You are an AI resident of a shared pixel world. Choose ONE action. Return only JSON: '
+  return 'You are an AI resident of NemoWorld, a shared world inhabited by humans and agents. Choose ONE action. Return only JSON: '
     + '{"action":"move","direction":"up|down|left|right"}, {"action":"say","text":"short public message"}, {"action":"wait"}, '
     + '{"action":"posture","posture":"standing|sitting|meditating"}, or {"action":"travel","world_id":"observed portal target or own_home.id"}. '
     + (build ? 'You may also build {"action":"build","type":"observed build_palette entry","x":integer,"y":integer} within your own garden or cottage bounds, avoiding occupied tiles. ' : '')
+    + (frontierBuild?'Creative frontier actions: {"action":"build_block","type":"observed frontier.palette entry","x":integer,"y":integer,"z":integer} places a block within six tiles inside an observed assigned parcel with is_mine true, at height zero through seven, with support below higher layers. Only the human operator can acquire plot stewardship; you cannot acquire, transfer or price land. Keep gates, paths and residents clear. {"action":"expand","direction":"up|down|left|right"} opens an existing area of the fixed map only within two tiles of its matching observed unopened gate. {"action":"remove_block","x":integer,"y":integer,"z":integer} removes an observed block you created, starting from the top of a column. Daily and world limits are enforced by the server. Walk outward through an opened gate to cross sectors. Building and expansion do not earn coins. ': '')
     + 'Other actions when the matching scope is granted: {"action":"emote","emote":"wave|bow|cheer|think|heart|none"} uses move; '
     + '{"action":"circle","circle_id":"observed active circle","intent":"join|leave"}, '
     + '{"action":"pledge","project_id":"observed active project","intent":"pledge","commitment":"small realistic commitment"} or unpledge without commitment, '
@@ -167,7 +186,7 @@ function promptFor(view, status) {
 }
 
 export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fetch, now = Date.now,
-  durationMs, maxCalls, modelTimeoutMs, stepDelayMs = 1500, signal } = {}) {
+  durationMs, maxCalls, modelTimeoutMs, stepDelayMs = 1500, signal, reportJob = true } = {}) {
   if (running) throw new Error('Only one runtime may run in this process.');
   if (typeof token !== 'string' || !token || /[\r\n]/.test(token)) throw new Error('WORLD_AGENT_TOKEN is required.');
   if (typeof modelFn !== 'function') throw new Error('A local model adapter is required.');
@@ -176,6 +195,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
   const calls = limit(maxCalls, 10, 20, 'model calls');
   const timeout = limit(modelTimeoutMs, 30000, 30000, 'model timeout');
   if (!Number.isInteger(stepDelayMs) || stepDelayMs < 0 || stepDelayMs > 2000) throw new Error('Invalid step delay.');
+  if(typeof reportJob!=='boolean')throw new Error('Invalid job reporting option.');
   running = true;
   const began = now();
   const deadline = began + duration;
@@ -194,7 +214,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
         headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
-      if (!response.ok) throw new Error('World request denied or unavailable.');
+      if (!response.ok) throw Object.assign(new Error('World request denied or unavailable.'),{status:response.status});
       const text = await response.text();
       if (text.length > 1048576) throw new Error('World response exceeds its limit.');
       return text ? JSON.parse(text) : {};
@@ -234,9 +254,13 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
       const action = parseAction(raw);
       if (!(await allowed())) { summary.status = 'stopped'; summary.stop_reason = 'revoked_or_expired'; break; }
       authorizeAction(action, view, runtimeStatus);
+      try{
+      if(action.action==='remove_block')await request('/frontier/build',{world_id:view.world.id,x:action.x,y:action.y,z:action.z,remove:true});
       if (action.action === 'move') await request('/move', { direction: action.direction });
       if (action.action === 'say') await request('/messages', { text: action.text, channel: 'public' });
       if (action.action === 'travel') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/travel`, { world_id: action.world_id });
+      if(action.action==='expand')await request('/frontier/expand',{world_id:view.world.id,direction:action.direction});
+      if(action.action==='build_block')await request('/frontier/build',{world_id:view.world.id,type:action.type,x:action.x,y:action.y,z:action.z});
       if (action.action === 'build') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/build`, { type: action.type, x: action.x, y: action.y });
       if (action.action === 'posture') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/posture`, { posture: action.posture });
       if (action.action === 'emote') await request('/emotes', { emote: action.emote });
@@ -249,6 +273,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
         ...(action.kind ? { kind: action.kind } : {}) });
       if (action.action === 'craft') await request('/journey/craft', { recipe_id: action.recipe_id });
       if (action.action !== 'wait') summary.action_count++;
+      }catch(error){if(error.status!==409||!['build_block','remove_block','expand'].includes(action.action))throw error;}
       if (summary.model_calls < calls && stepDelayMs) {
         await bounded((opSignal) => new Promise((resolve) => {
           const waitTimer = setTimeout(resolve, Math.min(stepDelayMs, Math.max(1, deadline - now())));
@@ -264,7 +289,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
     signal?.removeEventListener('abort', cancel);
     summary.duration_ms = Math.max(0, now() - began);
     // Receipts contain counters only. A rejected receipt never retries a run.
-    if (canReport && !runController.signal.aborted && now() < deadline) {
+    if (reportJob && canReport && !runController.signal.aborted && now() < deadline) {
       try { await request('/jobs', { status: summary.status,
         detail: `Local runtime: ${summary.model_calls} model calls, ${summary.action_count} actions, ${summary.duration_ms} ms; ${summary.stop_reason}.` }); }
       catch { /* Optional contribution scope may be absent. */ }
@@ -279,7 +304,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.once('SIGINT', () => controller.abort());
   process.once('SIGTERM', () => controller.abort());
   try {
-    const modelFn = createOllamaModel({ url: process.env.LUCY_MODEL_URL, name: process.env.LUCY_MODEL_NAME });
+    const modelFn = createLocalModel({ url: process.env.LUCY_MODEL_URL, name: process.env.LUCY_MODEL_NAME });
     const result = await runAgent({ token: process.env.WORLD_AGENT_TOKEN, url: process.env.WORLD_URL,
       modelFn, durationMs: process.env.WORLD_AGENT_DURATION_MS, maxCalls: process.env.WORLD_AGENT_MAX_CALLS,
       signal: controller.signal });

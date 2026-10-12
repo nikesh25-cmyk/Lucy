@@ -1,3 +1,9 @@
+import {coinMethods,verifyCoinLedger} from './coins.js';
+import {missionDirectory} from './mission-directory.js';
+import { createDeliveryPacket } from './delivery-packet.js';
+import { assessmentReason } from './review-assessment.js';
+import { draftMethods } from './drafts.js';
+import { BRIEF_MARKER, normalizeDecisionBrief, serializeDecisionBrief, storedDecisionBrief } from './decision-brief.js';
 import { randomBytes, randomUUID, createHash, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { openDatabase } from './database.js';
@@ -5,6 +11,8 @@ import { start } from '../world.js';
 import { spaceMethods } from './spaces.js';
 import { communityMethods } from './community.js';
 import { journeyMethods } from './journey.js';
+import { civicMethods } from './civic-engine.js';
+import { REGIONS } from './civic.js';
 
 const scrypt = promisify(scryptCallback);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -20,7 +28,7 @@ const parse = (value) => JSON.parse(value);
 const publicAccount = ({ id, name, role: accountRole, status, created_at }) => ({ id, name, role: accountRole, status, created_at });
 
 export class Platform {
-  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); }
+  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); }
   get(sql, ...args) { return this.db.prepare(sql).get(...args); }
   all(sql, ...args) { return this.db.prepare(sql).all(...args); }
   run(sql, ...args) { return this.db.prepare(sql).run(...args); }
@@ -76,16 +84,33 @@ export class Platform {
       }
       let invite;
       if (!first) {
-        invite = this.get('SELECT * FROM invites WHERE code_hash=? AND used_by IS NULL AND expires_at>?', hash(String(input.invite || '')), this.clock());
-        if (!invite) fail(403, 'A valid invitation is required.');
+        if (input.invite !== undefined && input.invite !== null && input.invite !== '') {
+          if (typeof input.invite !== 'string' || input.invite.length > 256) fail(403, 'A valid invitation is required.');
+          invite = this.get('SELECT * FROM invites WHERE code_hash=? AND used_by IS NULL AND expires_at>?', hash(input.invite), this.clock());
+          if (!invite) fail(403, 'A valid invitation is required.');
+        } else if (this.registrationPolicy().mode !== 'open') fail(403, 'Public registration is closed. Ask an administrator for an invitation.');
       }
       if (this.get('SELECT id FROM accounts WHERE email=?', email)) fail(409, 'This account already exists.');
       const id = randomUUID();
-      this.run('INSERT INTO accounts(id,name,email,password,role,consent_at,created_at) VALUES(?,?,?,?,?,?,?)', id, name, email, digest, first ? 'admin' : invite.role, now(), now());
+      this.run('INSERT INTO accounts(id,name,email,password,role,consent_at,created_at) VALUES(?,?,?,?,?,?,?)', id, name, email, digest, first ? 'admin' : invite?.role || 'member', now(), now());
       if (invite) this.run('UPDATE invites SET used_by=? WHERE code_hash=?', id, invite.code_hash);
       this.audit(id, 'account.created', id);
       return this.loginToken(this.get('SELECT * FROM accounts WHERE id=?', id));
     });
+  }
+  registrationPolicy() {
+    const mode = this.get("SELECT value FROM settings WHERE key='registration'")?.value === 'open' ? 'open' : 'closed';
+    const first = this.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
+    return { mode, public_signup: !first && mode === 'open', first_admin_required: first };
+  }
+  registrationSettings(actor, input = {}) {
+    role(actor, ['admin']);
+    if (input.mode !== undefined) {
+      if (!['open', 'closed'].includes(input.mode)) fail(400, 'Choose open or closed registration.');
+      this.run("UPDATE settings SET value=? WHERE key='registration'", input.mode);
+      this.audit(actor.account.id, 'registration.' + input.mode);
+    }
+    return this.registrationPolicy();
   }
   async login(input) {
     const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
@@ -111,7 +136,7 @@ export class Platform {
     if (account.status !== 'active') fail(403, 'This operator account is suspended.');
     const agent = credential.agent_id ? this.get('SELECT * FROM agents WHERE id=?', credential.agent_id) : null;
     if (credential.kind === 'runtime') {
-      if (!agent || agent.status !== 'active') fail(403, 'This agent is paused or revoked.');
+      if (!agent || agent.kind !== 'agent' || agent.operator_id !== account.id || agent.status !== 'active') fail(403, 'This agent is paused, revoked, or unavailable to runtimes.');
       if (scope && credential.used_calls >= credential.max_calls) fail(429, 'The runtime action budget is exhausted.');
       if (scope && !parse(credential.scopes).includes(scope)) fail(403, 'This session does not permit that action.');
     }
@@ -119,6 +144,7 @@ export class Platform {
   }
   charge(actor) {
     if (actor.kind !== 'runtime') return;
+    if (actor.agent?.kind !== 'agent') fail(403, 'Human avatars cannot use runtime actions.');
     this.run('UPDATE tokens SET used_calls=used_calls+1 WHERE hash=?', actor.credential.hash);
     this.run('UPDATE agents SET last_seen=?,verified=1 WHERE id=?', this.clock(), actor.agent.id);
     const used = actor.credential.used_calls + 1;
@@ -128,7 +154,7 @@ export class Platform {
   me(actor) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']);
     const account = { ...publicAccount(actor.account), email: actor.account.email };
-    return { account, agents: this.all('SELECT id,name,color,symbol,capabilities,limitations,status,verified,x,y,last_seen,world_id,posture,emote,emote_until FROM agents WHERE operator_id=? ORDER BY created_at', account.id) };
+    return { account, agents: this.all('SELECT id,name,kind,color,symbol,capabilities,limitations,status,verified,x,y,last_seen,world_id,posture,emote,emote_until,region_id,country FROM agents WHERE operator_id=? ORDER BY created_at', account.id) };
   }
   invite(actor, input) {
     role(actor, ['admin']);
@@ -140,20 +166,26 @@ export class Platform {
   }
   createAgent(actor, input) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']); this.active();
-    if (this.get("SELECT COUNT(*) AS n FROM agents WHERE operator_id=? AND status!='deleted'", actor.account.id).n >= 5) fail(429, 'Each operator can register five agents.');
+    const kind = input.kind === undefined ? 'agent' : input.kind;
+    if (!['agent', 'human'].includes(kind)) fail(400, 'Choose an agent or human avatar.');
+    const existing = this.get("SELECT COUNT(*) AS n FROM agents WHERE operator_id=? AND kind=? AND status!='deleted'", actor.account.id, kind).n;
+    if (existing >= (kind === 'human' ? 1 : 5)) fail(429, kind === 'human' ? 'Each account can create one human avatar.' : 'Each operator can register five agents.');
     const id = randomUUID();
-    const name = text(input.name, 'Agent name', 40);
+    const name = text(input.name, kind === 'human' ? 'Avatar name' : 'Agent name', 40);
     const color = ['#3d5875', '#8c6ab1', '#cb725f', '#397f79', '#aa7845'].includes(input.color) ? input.color : '#397f79';
     const symbol = ['✦', '◆', '✿', '▲'].includes(input.symbol) ? input.symbol : '✦';
-    this.run('INSERT INTO agents(id,operator_id,name,color,symbol,capabilities,limitations,x,y,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', id, actor.account.id, name, color, symbol, text(input.capabilities, 'Capabilities', 300, true), text(input.limitations, 'Limitations', 300, true), start.x, start.y, now());
-    this.audit(actor.account.id, 'agent.created', id);
+    const region = input.region_id || 'commons';
+    if (!REGIONS.some((item) => item.id === region)) fail(400, 'Choose a listed home region.');
+    const country = text(input.country, 'Country of origin', 80, true);
+    this.run('INSERT INTO agents(id,operator_id,name,color,symbol,capabilities,limitations,x,y,created_at,region_id,country,kind) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)', id, actor.account.id, name, color, symbol, text(input.capabilities, 'Capabilities', 300, true), text(input.limitations, 'Limitations', 300, true), start.x, start.y, now(), region, country, kind);
+    this.audit(actor.account.id, kind === 'human' ? 'human.created' : 'agent.created', id);
     this.createHome(id, name);
     this.recordVisit(actor, id, 'commons');
-    return this.get('SELECT id,name,status FROM agents WHERE id=?', id);
+    return this.get('SELECT id,name,kind,status FROM agents WHERE id=?', id);
   }
   ownedAgent(actor, id) {
     const agent = this.get('SELECT * FROM agents WHERE id=?', id);
-    if (!agent || (actor.kind === 'runtime' ? actor.agent.id !== id : agent.operator_id !== actor.account.id)) fail(404, 'Agent not found.');
+    if (!agent || (actor.kind === 'runtime' ? actor.agent.id !== id || agent.kind !== 'agent' : agent.operator_id !== actor.account.id)) fail(404, 'Agent not found.');
     return agent;
   }
   emote(actor, input) {
@@ -179,6 +211,7 @@ export class Platform {
   runtime(actor, agentId, input) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']); this.active();
     const agent = this.ownedAgent(actor, agentId);
+    if (agent.kind !== 'agent') fail(403, 'Human avatars are controlled by their signed-in account and cannot receive runtime credentials.');
     if (agent.status !== 'active') fail(409, 'Resume the agent first.');
     if (this.get("SELECT hash FROM tokens WHERE account_id=? AND kind='runtime' AND agent_id!=? AND revoked=0 AND expires_at>? AND used_calls<max_calls", actor.account.id, agentId, this.clock())) fail(429, 'Each operator can run one active agent session. Stop the other session first.');
     const duration = Number(input.minutes ?? 10), maxCalls = Number(input.max_calls ?? 100);
@@ -193,7 +226,7 @@ export class Platform {
     return { token, agent_id: agentId, expires_at: expires, max_calls: maxCalls, scopes };
   }
   runtimeStatus(actor) {
-    if (actor.kind !== 'runtime') fail(403, 'Use a runtime credential.');
+    if (actor.kind !== 'runtime' || actor.agent?.kind !== 'agent') fail(403, 'Use an agent runtime credential.');
     return { agent_id: actor.agent.id, scopes: parse(actor.credential.scopes), expires_at: actor.credential.expires_at, remaining_calls: actor.credential.max_calls - actor.credential.used_calls, paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true' };
   }
   message(actor, input) {
@@ -229,11 +262,12 @@ export class Platform {
       this.audit(claim.account_id, 'claim.expired', claim.id);
     }
   }
-  missionList(actor = null) {
+  missionList(actor = null, options = {}) {
     this.expireClaims();
+    if(Object.keys(options).length)return missionDirectory(this,actor,options);
     const missions = this.all('SELECT m.*,o.name AS owner,r.name AS reviewer FROM missions m LEFT JOIN accounts o ON o.id=m.owner_id LEFT JOIN accounts r ON r.id=m.reviewer_id').filter((mission) => mission.status !== 'draft' || (actor?.kind === 'session' && (actor.account.role === 'admin' || [mission.owner_id, mission.reviewer_id].includes(actor.account.id))));
     const ids = new Set(missions.map((mission) => mission.id));
-    return { missions, tasks: this.all('SELECT * FROM tasks').filter((task) => ids.has(task.mission_id)).map((task) => ({ ...task, allowed_domains: parse(task.allowed_domains), allowed_actions: ['read-approved-sources', 'submit-evidence'], risk: 'low', lease_minutes: 20 })) };
+    return { missions, tasks: this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id').filter((task) => ids.has(task.mission_id)).map((task) => ({ ...task, allowed_domains: parse(task.allowed_domains), allowed_actions: ['read-approved-sources', 'submit-evidence'], risk: 'low', lease_minutes: 20 })) };
   }
   createMission(actor, input) {
     role(actor, ['admin', 'reviewer']); this.active();
@@ -243,7 +277,7 @@ export class Platform {
     if (!this.get("SELECT id FROM accounts WHERE id=? AND status='active'", owner)) fail(400, 'Assign an active mission owner.');
     const id = randomUUID();
     const area = text(input.area, 'Mission area', 40);
-    if (!['Climate', 'Peace', 'Accessibility'].includes(area)) fail(400, 'Choose a pilot mission area.');
+    if (!['Climate', 'Peace', 'Accessibility', 'Agriculture', 'Health', 'Education', 'Water', 'Energy', 'Trade', 'Governance', 'Biodiversity', 'Development'].includes(area)) fail(400, 'Choose a supported mission area.');
     this.run('INSERT INTO missions VALUES(?,?,?,?,?,?,?,?,?,0,?)', id, text(input.title, 'Title', 100), area, text(input.summary, 'Purpose and scope'), owner, text(input.beneficiary, 'Beneficiary'), reviewer.id, text(input.rubric, 'Acceptance rubric'), 'draft', now());
     this.audit(actor.account.id, 'mission.created', id);
     return { id };
@@ -269,6 +303,21 @@ export class Platform {
     this.run('INSERT INTO tasks(id,mission_id,title,instructions,rights,allowed_domains) VALUES(?,?,?,?,?,?)', id, mission.id, text(input.title, 'Task title', 100), text(input.instructions, 'Deliverable and evidence requirements'), text(input.rights, 'Input rights and permissions'), JSON.stringify(domains));
     this.audit(actor.account.id, 'task.created', id);
     return { id };
+  }
+  createFollowUp(actor,input,key){
+    role(actor,['admin','reviewer']);this.active();text(key,'Idempotency key',100);
+    const origin=this.get('SELECT s.id,s.status,s.version,t.mission_id,(SELECT COUNT(*) FROM reviews r WHERE r.submission_id=s.id AND r.decision=\'accepted\') AS accepted_reviews FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id WHERE s.id=?',input.submission_id||'');
+    if(!origin)fail(404,'Source contribution not found.');
+    const mission=this.get('SELECT * FROM missions WHERE id=?',origin.mission_id);
+    if(actor.account.role!=='admin'&&mission.owner_id!==actor.account.id)fail(403,'Mission owner permission required.');
+    if(origin.status!=='accepted'||!origin.accepted_reviews)fail(409,'The source contribution must still be accepted.');
+    if(!['open','demo'].includes(mission.status))fail(409,'Open the mission before creating follow-up work.');
+    const normalized={submission_id:origin.id,title:text(input.title,'Follow-up title',100),instructions:text(input.instructions,'Follow-up deliverable and evidence requirements'),rights:text(input.rights,'Follow-up rights and permissions'),allowed_domains:input.allowed_domains};
+    const fingerprint=hash(JSON.stringify(normalized)),previous=this.get('SELECT * FROM task_followups WHERE creator_id=? AND idempotency_key=?',actor.account.id,key);
+    if(previous){if(previous.fingerprint!==fingerprint)fail(409,'This follow-up key was used for different work.');return {id:previous.task_id,mission_id:mission.id,origin_submission_id:origin.id,origin_version:origin.version,repeated:true};}
+    const task=this.createTask(actor,{...normalized,mission_id:mission.id});
+    this.run('INSERT INTO task_followups VALUES(?,?,?,?,?,?)',task.id,origin.id,actor.account.id,key,fingerprint,now());this.audit(actor.account.id,'task.followup_created',task.id);
+    return {id:task.id,mission_id:mission.id,origin_submission_id:origin.id,origin_version:origin.version,repeated:false};
   }
   claim(actor, input, key) {
     this.active(); this.expireClaims();
@@ -309,14 +358,15 @@ export class Platform {
     this.active(); this.expireClaims(); text(key, 'Idempotency key', 100);
     const claim = this.ownedClaim(actor, input.claim_id);
     const previous = this.get('SELECT * FROM submissions WHERE claim_id=? AND idempotency_key=?', claim.id, key);
-    if (previous) return { ...previous, sources: parse(previous.sources) };
+    if (previous) return { ...previous, sources: parse(previous.sources), brief:storedDecisionBrief(previous.artifact,parse(previous.sources).length) };
     if (!['leased', 'changes_requested'].includes(claim.status)) fail(409, 'Claim has expired or already been submitted.');
     const count = this.get("SELECT COUNT(*) AS n FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE c.account_id=? AND date(s.created_at)=date('now')", actor.account.id).n;
     if (count >= 10) fail(429, 'The operator daily submission limit is ten.');
     const task = this.get('SELECT t.*,m.status AS mission_status FROM tasks t JOIN missions m ON m.id=t.mission_id WHERE t.id=?', claim.task_id);
     if (!['demo', 'open'].includes(task.mission_status)) fail(409, 'This mission is paused or closed.');
     this.reviewCapacity(task.mission_id);
-    const artifact = text(input.artifact, 'Plain text deliverable', 16000);
+    let artifact;
+    if(!input.brief){artifact=text(input.artifact,'Plain text deliverable',16000);if(artifact.startsWith(BRIEF_MARKER))fail(400,'Submit structured decision briefs using the brief field.');}
     if (input.mime && !['text/plain', 'application/json'].includes(input.mime)) fail(400, 'Only plain text or JSON evidence is supported. Active uploads are rejected.');
     const sources = input.sources;
     if (!Array.isArray(sources) || sources.length < 1 || sources.length > 10) fail(400, 'Provide 1–10 sources with exact locations.');
@@ -328,13 +378,15 @@ export class Platform {
       if (domains.length && !domains.includes(url.hostname)) fail(400, 'This source is outside the task approved domains.');
       return { url: url.href, location: text(source.location, 'Source page or section', 300), date: text(source.date, 'Source date', 100, true) };
     });
+    const brief=input.brief?normalizeDecisionBrief(input.brief,{sourceCount:normalized.length}):null;if(brief)artifact=serializeDecisionBrief(brief);
     const version = this.get('SELECT COALESCE(MAX(version),0)+1 AS n FROM submissions WHERE claim_id=?', claim.id).n;
     const id = randomUUID();
     this.run('INSERT INTO submissions VALUES(?,?,?,?,?,?,?,?,?,?,?)', id, claim.id, version, artifact, JSON.stringify(normalized), text(input.method, 'Method'), text(input.limitations, 'Limitations'), text(input.rights, 'Rights or permission statement'), 'pending_review', key, now());
     this.run("UPDATE claims SET status='submitted' WHERE id=?", claim.id);
+    this.run('UPDATE claim_drafts SET archived=1 WHERE claim_id=?',claim.id);
     this.run("UPDATE tasks SET status='under_review' WHERE id=?", claim.task_id);
     this.audit(actor.account.id, 'submission.created', id);
-    return { id, version, status: 'pending_review' };
+    return { id, version, status: 'pending_review',...(brief?{brief}:{} ) };
   }
   review(actor, input) {
     role(actor, ['admin', 'reviewer']); this.active();
@@ -345,12 +397,14 @@ export class Platform {
     if (submission.status !== 'pending_review') fail(409, 'This version has already been reviewed.');
     if (!['accepted', 'changes_requested', 'rejected'].includes(input.decision)) fail(400, 'Invalid review decision.');
     const id = randomUUID();
-    this.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', id, submission.id, actor.account.id, input.decision, text(input.reason, 'Review reason'), now());
+    this.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', id, submission.id, actor.account.id, input.decision, assessmentReason(input.reason,input.assessment,storedDecisionBrief(submission.artifact,parse(submission.sources).length),input.decision), now());
     this.run('UPDATE submissions SET status=? WHERE id=?', input.decision, submission.id);
     this.run('UPDATE claims SET status=?,expires_at=? WHERE id=?', input.decision, this.clock() + 20 * 60_000, submission.claim_id);
+    if(input.decision==='changes_requested')this.run('UPDATE claim_drafts SET archived=0 WHERE claim_id=?',submission.claim_id);
     this.run('UPDATE tasks SET status=? WHERE id=?', input.decision === 'rejected' ? 'open' : input.decision, submission.task_id);
     this.audit(actor.account.id, `review.${input.decision}`, id);
-    return { id, decision: input.decision };
+    const coin_reward=input.decision==='accepted'?this.awardCoins(actor,submission.id,id):null;
+    return { id, decision: input.decision,...(coin_reward?{coin_reward}:{}) };
   }
   reviewCapacity(missionId) {
     const mission = this.get('SELECT * FROM missions WHERE id=?', missionId);
@@ -363,17 +417,28 @@ export class Platform {
     const reviewer = actor.kind === 'session' && ['admin', 'reviewer'].includes(actor.account.role);
     const predicate = reviewer ? '(m.demo=1 OR m.reviewer_id=? OR ?=1 OR c.account_id=?)' : 'c.account_id=?';
     const args = reviewer ? [actor.account.id, actor.account.role === 'admin' ? 1 : 0, actor.account.id] : [actor.account.id];
-    const submissions = this.all(`SELECT s.*,c.task_id,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC`, ...args).filter((s) => actor.kind !== 'runtime' || s.agent_id === actor.agent.id).map((s) => ({ ...s, sources: parse(s.sources) }));
+    const submissions = this.all(`SELECT s.*,c.task_id,t.title AS task_title,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC`, ...args).filter((s) => actor.kind !== 'runtime' || s.agent_id === actor.agent.id).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
     const ids = new Set(submissions.map((s) => s.id));
+    const claims=this.all('SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=? ORDER BY c.created_at DESC',actor.account.id).filter(c=>actor.kind!=='runtime'||c.agent_id===actor.agent.id);
+    const contextIds=JSON.stringify([...new Set([...claims.map(c=>c.task_id),...submissions.map(s=>s.task_id)])]);
+    const tasks=this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id WHERE t.id IN (SELECT value FROM json_each(?))',contextIds).map(task=>({...task,allowed_domains:parse(task.allowed_domains)}));
+    const missions=this.all('SELECT m.* FROM missions m WHERE m.id IN (SELECT t.mission_id FROM tasks t WHERE t.id IN (SELECT value FROM json_each(?)))',contextIds);
     return {
-      claims: this.all('SELECT * FROM claims WHERE account_id=? ORDER BY created_at DESC', actor.account.id).filter((c) => actor.kind !== 'runtime' || c.agent_id === actor.agent.id),
+      claims,tasks,missions,
       submissions,
+      drafts:actor.kind==='session'?this.drafts(actor):[],
+      jobs: this.all(`SELECT j.*,a.name AS agent_name FROM jobs j JOIN agents a ON a.id=j.agent_id WHERE a.operator_id=?${actor.kind === 'runtime' ? ' AND j.agent_id=?' : ''} ORDER BY j.created_at DESC LIMIT 100`, actor.account.id, ...(actor.kind === 'runtime' ? [actor.agent.id] : [])),
       reviews: this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id').filter((r) => ids.has(r.submission_id)),
     };
   }
-  gallery() {
-    return this.all(`SELECT s.id,s.artifact,s.sources,s.method,s.limitations,s.rights,s.version,s.created_at,c.task_id,c.agent_id,m.title AS mission,m.demo,COALESCE(a.name,o.name) AS contributor,r.reason,r.created_at AS reviewed_at,h.name AS reviewer,
-      (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted' ORDER BY s.created_at DESC`).map((s) => ({ ...s, sources: parse(s.sources) }));
+  gallery(submissionId=null) {
+    return this.all(`SELECT s.id,s.status,s.artifact,s.sources,s.method,s.limitations,s.rights,s.version,s.created_at,c.task_id,c.agent_id,t.title AS task_title,m.title AS mission,m.demo,m.beneficiary,m.rubric,COALESCE(a.name,o.name) AS contributor,r.id AS review_id,r.decision AS review_decision,r.reason,r.created_at AS reviewed_at,h.name AS reviewer,
+      (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted'${submissionId?' AND s.id=?':''} ORDER BY s.created_at DESC`,...(submissionId?[submissionId]:[])).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
+  }
+  deliveryPacket(input){
+    const record=this.gallery(text(input.submission,'Submission identifier',100))[0];
+    if(!record)fail(404,'Accepted contribution not found.');
+    return createDeliveryPacket(record);
   }
   adoption(actor, input) {
     role(actor, ['admin', 'reviewer', 'member', 'moderator']);
@@ -462,7 +527,7 @@ export class Platform {
   }
   operations(actor) {
     role(actor, ['admin']);
-    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts'), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100'), audit_valid: this.verifyAudit(), audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100'), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100") };
+    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts'), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100'), audit_valid: this.verifyAudit(), coin_ledger_valid:verifyCoinLedger(this.db), coin_receipts:this.get('SELECT COUNT(*) AS n FROM coin_rewards').n, audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100'), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100") };
   }
   pause(actor, value) {
     role(actor, ['admin']);
@@ -491,13 +556,17 @@ export class Platform {
     const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at`, actor.account.id, actor.account.id);
     const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
     const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=?', actor.account.id);
-    return { format: 'shared-world-account-v3', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, ...history, messages, community: this.communityExport(actor), journey: this.journeyExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    return { format: 'shared-world-account-v11', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, frontier:this.frontierExport(actor), coins:this.coinExport(actor), ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=?',actor.account.id).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
     role(actor, ['member', 'reviewer', 'moderator']);
     if (this.get("SELECT id FROM missions WHERE (owner_id=? OR reviewer_id=?) AND status='open'", actor.account.id, actor.account.id)) fail(409, 'Transfer or close your active missions before deleting your account.');
+    this.run('DELETE FROM claim_drafts WHERE claim_id IN (SELECT id FROM claims WHERE account_id=?)',actor.account.id);
     this.deleteCommunity(actor);
     this.deleteJourney(actor);
+    this.run('DELETE FROM land_stewardships WHERE account_id=?', actor.account.id);
+    this.run("UPDATE land_events SET purpose='[removed]',description='' WHERE account_id=?", actor.account.id);
+    this.run("DELETE FROM mayor_conversations WHERE account_id=?", actor.account.id);
     for (const claim of this.all("SELECT * FROM claims WHERE account_id=? AND status IN ('leased','changes_requested')", actor.account.id)) {
       this.run("UPDATE claims SET status='cancelled' WHERE id=?", claim.id);
       this.run("UPDATE tasks SET status='open' WHERE id=?", claim.task_id);
@@ -511,8 +580,16 @@ export class Platform {
     this.run("UPDATE messages SET text='[removed]',status='deleted' WHERE account_id=?", actor.account.id);
     this.audit(actor.account.id, 'account.deleted', actor.account.id); return { deleted: true };
   }
+  recoverWorkerJobs() {
+    const interrupted = this.all("SELECT id FROM jobs WHERE status='running'");
+    for (const job of interrupted) {
+      this.run("UPDATE jobs SET status='stopped',detail=? WHERE id=?", 'Server restarted before this worker finished. Check contributions before retrying; release an unsubmitted claim or wait for its lease to expire.', job.id);
+      this.audit('system', 'research.worker.interrupted', job.id);
+    }
+    return interrupted.length;
+  }
   job(actor, input) {
-    if (actor.kind !== 'runtime') fail(403, 'A runtime credential is required.');
+    if (actor.kind !== 'runtime' || actor.agent?.kind !== 'agent') fail(403, 'An agent runtime credential is required.');
     if (!['completed', 'failed', 'stopped'].includes(input.status)) fail(400, 'Invalid job status.');
     const id = randomUUID();
     this.run('INSERT INTO jobs VALUES(?,?,?,?,?)', id, actor.agent.id, input.status, text(input.detail, 'Run summary', 500), now());
@@ -521,4 +598,8 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods);
+
+Object.assign(Platform.prototype,draftMethods);
+
+Object.assign(Platform.prototype,coinMethods);
