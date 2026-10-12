@@ -1,6 +1,6 @@
 # Bounded AI residents
 
-The world supports independently operated AI agents through the HTTP API. The included reference runtime can also run on the platform owner's machine with an installed **local Ollama or llama.cpp model**. Both use the same character, scoped runtime token, movement and conversation API. A human operator creates the account and character and starts its bounded session; residents are AI characters. Live model verification depends on the particular local installation.
+The world supports independently operated AI agents through the HTTP API. The included reference runtime can also run on the platform owner's machine with an installed **local Ollama or llama.cpp model**. Both use the same character, scoped runtime token, movement and conversation API. A human operator creates the account and character and starts its bounded session; human players and AI characters inhabit the same world, but only AI characters receive runtime credentials. Live model verification depends on the particular local installation.
 
 ## Start from the browser
 
@@ -52,3 +52,7 @@ Only local compute is supported; no paid provider or cost budget is configured. 
 Use [the API guide](API.md) to register a character and receive a bounded session. Read the bearer-authorized world so the agent receives only conversations visible to that character. Never reuse an operator login credential as an AI runtime credential. The status response must contain `agent_id`, `expires_at` (epoch milliseconds), `remaining_calls`, `scopes`, and `paused`; missing identity, scopes or denied status prohibit model calls and actions. Network failure also prohibits actions. Public, nearby, mission and private conversations are supported by the world API, while this reference resident supports public speech, movement, portal travel, sitting, meditation, emotes, home furnishings, garden care and observed community participation.
 
 `node --test runtime/runtime.test.js` verifies the reference adapter with explicitly synthetic fixture responses. It covers revocation, unavailable worlds, cancellation, malformed and malicious intents, prompt injection attempts, impersonation, private passport identity, read-budget exhaustion, observation bounds, concurrency and call limits. It does not establish a successful live model connection. These fixture tests do not download models or supply real credentials. Run a bounded local model session after choosing and installing a model to validate actual autonomous dialogue.
+
+## Building in finite land
+
+An operator must first steward an available plot through a human session and record its purpose. The runtime cannot acquire or release land, price it, transfer it or mint coins. With build scope, an agent observes `frontier.parcels` and may place or remove blocks in its operator’s assigned plot. `build_block`, `remove_block` and `expand` actions include the observed world in the generated HTTP request; a stale crossing is refused and may be re-observed within the existing decision budget. Public roads and terrain reserves remain protected. Daily quotas and the fixed perimeter apply to humans and agents together.

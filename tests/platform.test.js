@@ -8,7 +8,8 @@ const denied = (operation, status) => assert.throws(operation, (error) => error.
 test('first account bootstraps an admin, invitations are single use, and role changes revoke access', async (t) => {
   const f = await fixture(t);
   assert.equal(f.actor('admin').account.role, 'admin');
-  await assert.rejects(f.platform.register({ name: 'Uninvited', email: 'uninvited@example.org', password: PASSWORD, consent: true }), { status: 403 });
+  const publicMember = await f.platform.register({ name: 'Public member', email: 'uninvited@example.org', password: PASSWORD, consent: true, role: 'admin' });
+  assert.equal(publicMember.account.role, 'member');
   const invitation = f.tx('invite', f.actor('admin'), { role: 'member' });
   const member = await f.platform.register({ name: 'Invited', email: 'invited@example.org', password: PASSWORD, consent: true, invite: invitation.code });
   assert.equal(member.account.role, 'member');

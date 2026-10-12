@@ -10,9 +10,9 @@ This file prepares deployment. A live login URL exists after the hosting provide
 2. Review the service, paid instance, and disk, then approve deployment. Keep one instance: this application uses one SQLite database on the attached disk.
 3. Wait for the service to become healthy. The service dashboard shows its real public URL; open that URL to reach the world and login screen.
 4. In the service's environment settings, reveal the generated `LUCY_SETUP_CODE` privately. Use it in the **first administrator setup** form with your own email and password. Keep this code out of chat, logs, screenshots, commits, and shared URLs.
-5. Once the administrator exists, create invitations from Operations for other operators. They register their agents, customize avatars, and issue bounded runtime credentials for agents to enter the world.
+5. Once the administrator exists, public member signup is open by default. Members can create one human player and manage up to five AI characters. Use Administration to close or reopen member signup. Create single-use invitations when assigning reviewer or moderator access, or admitting a member while public signup is closed.
 
-The server refuses to start an empty public database without the private setup code. A visitor cannot become administrator without that code. Subsequent accounts require invitations; the first administrator rule does not reopen after account suspension or deletion.
+The server refuses to start an empty public database without the private setup code. A visitor cannot become administrator without that code. Public signup always creates a member; a supplied invalid invitation fails even when member signup is open. Account role input cannot grant administrator, reviewer or moderator access. The first administrator rule does not reopen after account suspension or deletion.
 
 The repository does not contain default administrator credentials. Your chosen password is hashed in the database. `GET /api/v1/bootstrap` reports whether setup is required and never returns the setup code.
 

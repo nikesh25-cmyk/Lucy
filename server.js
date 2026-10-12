@@ -19,6 +19,10 @@ import { civicAtlas, REGIONS, mayorTopic } from './src/civic.js';
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const files = new Map([
+  ['/src/voxel-world.js',['src/voxel-world.js','text/javascript; charset=utf-8']],
+  ['/src/voxel-geometry.js',['src/voxel-geometry.js','text/javascript; charset=utf-8']],
+  ['/assets/vendor/three-voxel.js',['assets/vendor/three-voxel.js','text/javascript; charset=utf-8']],
+  ['/src/world-walk.js',['src/world-walk.js','text/javascript; charset=utf-8']],
   ['/assets/nemoworld-mark.svg',['assets/nemoworld-mark.svg','image/svg+xml']],
   ['/src/country-globe.js',['src/country-globe.js','text/javascript; charset=utf-8']],
   ['/assets/vendor/globe-geo.js',['assets/vendor/globe-geo.js','text/javascript; charset=utf-8']],
@@ -53,6 +57,7 @@ for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout',
 }
 for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22])for(const kind of ['characters','facesets'])files.set(`/assets/mayors/${kind}/${id}.png`,[`assets/mayors/${kind}/${id}.png`,'image/png']);
 const writes = new Map([
+  ['/land/assign',['landAssign',null]], ['/land/release',['landRelease',null]], ['/frontier/expand',['frontierExpand','build']], ['/frontier/build',['frontierBuild','build']], ['/operations/registration',['registrationSettings',null]],
   ['/drafts', ['draftSave', null]], ['/drafts/resume', ['draftResume', null]], ['/drafts/archive', ['draftArchive', null]],
   ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]],
   ['/research/run', ['researchRun', null]], ['/research/cancel', ['researchCancel', null]], ['/mayors/talk', ['mayorTalk', 'chat']], ['/mayors/control', ['mayorControl', null]], ['/research/generate', ['researchGenerate', null]], ['/research/activate', ['researchActivate', null]],
@@ -75,7 +80,7 @@ const writes = new Map([
   ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
 ]);
-const gets = new Set(['/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
+const gets = new Set(['/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/mayors/triage', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -164,7 +169,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       }
       if (route === '/bootstrap') {
         const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
-        return json(response, 200, { setup_required: setupRequired, setup_code_required: setupRequired && Boolean(hosting.publicOrigin) });
+        return json(response, 200, { setup_required: setupRequired, setup_code_required: setupRequired && Boolean(hosting.publicOrigin), registration_open:platform.registrationPolicy().mode==='open', registration:platform.registrationPolicy() });
       }
       if (route === '/civic' && request.method === 'GET') return json(response, 200, civicAtlas());
       if (route === '/auth/register' || route === '/auth/login') {
@@ -183,7 +188,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/research', '/mayors', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
@@ -204,6 +209,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/mayors') value=platform.mayors(actor,Object.fromEntries(url.searchParams));
           else if (route === '/mayors/triage') value=platform.mayorTriage(actor);
           else if (route === '/world') { value = platform.world(actor, Object.fromEntries(url.searchParams)); value.atmosphere = worldAtmosphere(platform.clock()); }
+          else if (route === '/land') value=platform.land(actor,Object.fromEntries(url.searchParams));
+          else if (route === '/land/plot') value=platform.landPlot(actor,Object.fromEntries(url.searchParams));
+          else if (route === '/frontier') value=platform.frontierMap(actor,Object.fromEntries(url.searchParams));
           else if (route === '/worlds') value = platform.worldList(actor, Object.fromEntries(url.searchParams));
           else if (route === '/community') value = platform.community(actor, Object.fromEntries(url.searchParams));
           else if(route==='/coins')value=platform.coins(actor,Object.fromEntries(url.searchParams));
@@ -253,6 +261,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       }
       if(route==='/residents/run'){
         if(actor.kind!=='session')fail(403,'Human operator required.');
+        if(platform.ownedAgent(actor,input.agent_id).kind==='human')fail(403,'Choose an agent character for local AI work.');
         if(!civicModel)fail(409,'Configure a local model before running a resident.');
         if(activeWorker(actor.account.id))fail(409,'Stop your active worker before starting another.');
         if(residentRuns.size)fail(429,'The local resident worker is at capacity. Try again after it finishes.');
@@ -280,6 +289,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         researchRuns.get(actor.account.id)?.controller.abort();return json(response,200,{stopping:researchRuns.has(actor.account.id)});
       }
       if(route==='/research/run'){
+        if(actor.kind==='session'&&platform.ownedAgent(actor,input.agent_id).kind==='human')fail(403,'Choose an agent character for local AI work.');
         const configuration=researchOutput(input,Boolean(civicModel));
         if(actor.kind!=='session')fail(403,'Human operator required.');
         if(activeWorker(actor.account.id))fail(409,'Your worker is already running. Stop it before starting another.');
@@ -307,6 +317,8 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       const result = platform.transaction(() => {
         let value;
         if (dynamic) value = platform[{ travel: 'travel', build: 'build', home: 'homeSettings', heartbeat: 'heartbeat', posture: 'posture' }[dynamic.action]](actor, dynamic.id, input);
+        else if (route === '/frontier/build') value=platform.frontierBuild(actor,input.agent_id||actor.agent?.id,input);
+        else if (route === '/frontier/expand') value=platform.frontierExpand(actor,input.agent_id||actor.agent?.id,input);
         else if (route === '/agents/control') value = platform.agentControl(actor, input.agent_id, input.status);
         else if (route === '/runtime/start') value = platform.runtime(actor, input.agent_id, input);
         else if (route === '/missions/status') value = platform.missionStatus(actor, input.mission_id, input.status);
