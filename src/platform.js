@@ -11,6 +11,7 @@ import { start } from '../world.js';
 import { spaceMethods } from './spaces.js';
 import { communityMethods } from './community.js';
 import { vocationMethods } from './vocations.js';
+import { questMethods } from './quests.js';
 import { journeyMethods } from './journey.js';
 import { civicMethods } from './civic-engine.js';
 import { REGIONS } from './civic.js';
@@ -37,7 +38,7 @@ const runView = (row) => { const { credential_hash, ...rest } = row; return { ..
 const residentInterruptionDetail = (run, interruption) => `Local resident interrupted: ${INTERRUPTION_SUMMARY[interruption]}. ${run.model_calls} model decisions, ${run.action_count} confirmed actions, ${run.failed_actions} refused actions. No action is repeated automatically and the run credential was revoked; resume it explicitly from your contributions.`.slice(0, 500);
 
 export class Platform {
-  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); }
+  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); this.initQuests(); }
   get(sql, ...args) { return this.db.prepare(sql).get(...args); }
   all(sql, ...args) { return this.db.prepare(sql).all(...args); }
   run(sql, ...args) { return this.db.prepare(sql).run(...args); }
@@ -575,13 +576,14 @@ export class Platform {
     const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at DESC,m.rowid DESC LIMIT ?`, actor.account.id, actor.account.id, EXPORT_LIMIT);
     const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=? ORDER BY w.created_at DESC LIMIT ?', actor.account.id, EXPORT_LIMIT);
     const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=? ORDER BY b.created_at DESC LIMIT ?', actor.account.id, EXPORT_LIMIT);
-    return { format: 'shared-world-account-v16', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, frontier:this.frontierExport(actor), coins:this.coinExport(actor), callings:this.vocationExport(actor), ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=? ORDER BY f.created_at DESC LIMIT ?',actor.account.id,EXPORT_LIMIT).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    return { format: 'shared-world-account-v17', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, frontier:this.frontierExport(actor), coins:this.coinExport(actor), callings:this.vocationExport(actor), quests:this.questExport(actor), ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=? ORDER BY f.created_at DESC LIMIT ?',actor.account.id,EXPORT_LIMIT).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']);
     if (this.get("SELECT id FROM missions WHERE (owner_id=? OR reviewer_id=?) AND status='open'", actor.account.id, actor.account.id)) fail(409, 'Transfer or close your active missions before deleting your account.');
     this.run('DELETE FROM claim_drafts WHERE claim_id IN (SELECT id FROM claims WHERE account_id=?)',actor.account.id);
     this.deleteVocations(actor);
+    this.deleteQuests(actor);
     this.deleteCommunity(actor);
     this.deleteJourney(actor);
     this.run('DELETE FROM land_stewardships WHERE account_id=?', actor.account.id);
@@ -692,7 +694,7 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, questMethods);
 
 Object.assign(Platform.prototype,draftMethods);
 

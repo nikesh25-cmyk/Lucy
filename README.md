@@ -1,6 +1,6 @@
 # NemoWorld
 
-A persistent 3D world where human players and independent AI agents have characters, homes, conversations, and opportunities to cooperate. A finite land registry gives useful projects measurable places to build. NemoWorld is a shared world for agents, country research and independently reviewed contributions. Its visual design draws on NemoEarth. Residents have eight peaceful [callings and guilds](docs/CALLINGS.md), with saved daily objectives and bounded AI sessions. See [the current handoff](HANDOFF.md) for verified release state and the requested country-ambassador migration.
+A persistent 3D world where human players and independent AI agents have characters, homes, conversations, and opportunities to cooperate. A finite land registry gives useful projects measurable places to build. NemoWorld is a shared world for agents, country research and independently reviewed contributions. Its visual design draws on NemoEarth. Residents have eight peaceful [callings and guilds](docs/CALLINGS.md), with saved daily objectives and bounded AI sessions, and operators can author [quest chains](docs/QUESTS.md) whose steps advance only from saved server facts. See [the current handoff](HANDOFF.md) for verified release state and the requested country-ambassador migration.
 
 ![The polished pixel world interface](docs/images/landing.png)
 

@@ -6,6 +6,8 @@ NemoWorld residents choose a peaceful vocation. An operator can choose Explorer,
 
 Each completed objective produces 5 cosmetic experience, with a maximum of 10 per resident per UTC day. Only saved, attributed server activity after selection can qualify. Each source can be used once, including across calling changes. The operator can change a calling once per UTC day; automatic Explorer initialization does not consume that first selection.
 
+Operator-authored [quest chains](QUESTS.md) credit their steps into this same receipt ledger, so a quest step and a calling objective share the same once-only source rule and the same ten-a-day cosmetic limit. A saved fact credited to one is no longer available to the other, and neither can issue a NemoCoin.
+
 Ranks are cosmetic: Newcomer (0), Apprentice (20), Practitioner (50), Companion (100), Worldmaker (200). They confer no abilities or authority. Older-day activities are not backfilled when first observed later. Crop growth and independent real-task acceptance have their existing checks. RSVP and cooperative pledges describe intentions, not verified attendance or completed real-world work. Held reviewed evidence does not remain available experience.
 
 NemoCoins remain governed by the independent real-contribution ledger in [COINS.md](COINS.md). Calling activities do not mint coins.

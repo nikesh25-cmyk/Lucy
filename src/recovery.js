@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { COMMUNITY_TABLES } from './community.js';
 import { JOURNEY_TABLES } from './journey.js';
 import { verifyCallingReceipts } from './vocations.js';
+import { verifyQuestReceipts, verifyQuestStructure } from './quests.js';
 import { REGIONS } from './civic.js';
 import { GARDEN_PALETTE,HOUSE_PALETTE } from './placement-policy.js';
 
@@ -54,7 +55,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -128,6 +129,17 @@ export function validateDatabase(path) {
       // An interrupted classification is written only by recovery, and a resumed run points at the
       // interrupted run it continues. Nothing here repeats an action; it records what already happened.
       if(db.prepare("SELECT r.id FROM resident_runs r LEFT JOIN resident_runs p ON p.id=r.resumed_from WHERE r.resumed_from IS NOT NULL AND (p.id IS NULL OR p.status!='interrupted' OR p.interrupted='')").get())throw new Error('Database resident run resume history is invalid.');
+    }
+    if (version >= 17) {
+      const columns={quest_chains:['id','slug','title','route','summary','narrative','origin','author_account_id','status','practice','beneficiary','created_at','updated_at'],quest_steps:['id','chain_id','ordinal','slug','title','instructions','output_name','source_kind','requires_review','target','prerequisite_step_id','created_at'],quest_enrollments:['id','agent_id','account_id','chain_id','started_at','idempotency_key','created_at']};
+      for(const [table,fields] of Object.entries(columns))if(!tables.has(table)||fields.some(column=>!db.prepare(`PRAGMA table_info(${table})`).all().some(field=>field.name===column)))throw new Error('Database quest chain schema is incomplete.');
+      if(['quest_chains_identity_immutable','quest_steps_immutable','quest_chains_keep_steps'].some(name=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name)))throw new Error('Database quest chain protections are incomplete.');
+      // The replaced view must still carry the built-in objective rules and, while a chain is
+      // published, the published step rules the receipt trigger validates against.
+      const published=db.prepare("SELECT COUNT(*) AS n FROM quest_chains WHERE status='published'").get().n;
+      if(!db.prepare("SELECT calling_id FROM calling_objective_rules WHERE objective_id='builder.frontier_place'").get()||(published&&!db.prepare("SELECT objective_id FROM calling_objective_rules WHERE objective_id LIKE 'quest:%' LIMIT 1").get()))throw new Error('Database calling objective rules are incomplete.');
+      if(!verifyQuestStructure(db))throw new Error('Database quest chain validation failed.');
+      if(!verifyQuestReceipts(db))throw new Error('Database quest progression validation failed.');
     }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';

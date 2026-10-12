@@ -1,6 +1,7 @@
-import {createHash,randomUUID} from 'node:crypto';
+import {randomUUID} from 'node:crypto';
 import {contributionSource,contributionEligibility} from './journey.js';
 import {getWorldDefinition,walkable} from '../world.js';
+import {receiptProof,questObjectiveRules,reconcileQuests,questStepFor} from './quests.js';
 
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const objective=(kind,title,instructions,action)=>Object.freeze({id:kind,source_kind:kind,title,instructions,action_hint:action,target:1,experience:5});
@@ -17,7 +18,10 @@ export const CALLINGS=Object.freeze([
 ]);
 export const CALLING_POLICY=Object.freeze({version:1,default_calling:'explorer',experience_per_objective:5,daily_experience_limit:10,changes_per_utc_day:1,cosmetic:true,transferable:false,currency:false,description:'Calling experience records bounded world participation. It creates no coins, cash value, account role, land title, review authority or action scope.'});
 const ids=CALLINGS.map(c=>`'${c.id}'`).join(',');
-const rules=CALLINGS.flatMap(c=>c.objectives.map(o=>`SELECT '${c.id}' AS calling_id,'${c.id}.${o.id}' AS objective_id,'${o.source_kind}' AS source_kind`)).join(' UNION ALL ');
+// The receipt trigger validates an inserted row against this view, so the authored quest step rules
+// are appended here: every published step is a rule for whichever calling the resident currently
+// follows. Nothing else about the calling rules changes.
+const rules=[...CALLINGS.flatMap(c=>c.objectives.map(o=>`SELECT '${c.id}' AS calling_id,'${c.id}.${o.id}' AS objective_id,'${o.source_kind}' AS source_kind`)),questObjectiveRules(CALLINGS.map(c=>c.id))].join(' UNION ALL ');
 const isoMs=value=>`strftime('%Y-%m-%dT%H:%M:%fZ',(${value})/1000.0,'unixepoch')`;
 const epoch=value=>`CAST(round((julianday(${value})-2440587.5)*86400000) AS INTEGER)`;
 const source=(kind,agent,id,date,from,where='1')=>`SELECT ${agent} AS agent_id,'${kind}' AS source_kind,CAST(${id} AS TEXT) AS source_id,${date} AS occurred_at,${epoch(date)} AS occurred_ms FROM ${from} WHERE ${where}`;
@@ -37,7 +41,7 @@ const sources=[
  source('research_claim','c.agent_id','c.id','c.created_at','claims c JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts owner ON owner.id=m.owner_id JOIN accounts reviewer ON reviewer.id=m.reviewer_id',"m.demo=0 AND m.status IN ('open','closed') AND c.task_version=t.version AND c.status IN ('leased','submitted','changes_requested','accepted') AND owner.status='active' AND reviewer.status='active' AND reviewer.role IN ('admin','reviewer') AND reviewer.id!=c.account_id"),
  source('research_accepted','c.agent_id','r.id','r.created_at',contributionSource,contributionEligibility('c.agent_id')),
 ].join(' UNION ALL ');
-const proof=row=>createHash('sha256').update(JSON.stringify([row.id,row.agent_id,row.account_id,row.calling_id,row.objective_id,row.source_kind,row.source_id,row.source_at,row.selected_at,row.earned_day,row.points,row.created_at])).digest('hex');
+const proof=receiptProof;
 export const VOCATION_SCHEMA=`
  CREATE TABLE IF NOT EXISTS resident_callings(agent_id TEXT PRIMARY KEY REFERENCES agents(id),calling_id TEXT NOT NULL CHECK(calling_id IN (${ids})),selected_at INTEGER NOT NULL CHECK(selected_at>=0),last_changed_day TEXT NOT NULL DEFAULT '');
  CREATE TABLE IF NOT EXISTS calling_receipts(id TEXT PRIMARY KEY,agent_id TEXT NOT NULL REFERENCES agents(id),account_id TEXT NOT NULL REFERENCES accounts(id),calling_id TEXT NOT NULL CHECK(calling_id IN (${ids})),objective_id TEXT NOT NULL,source_kind TEXT NOT NULL,source_id TEXT NOT NULL,source_at TEXT NOT NULL,selected_at INTEGER NOT NULL,earned_day TEXT NOT NULL,points INTEGER NOT NULL CHECK(points=5),created_at TEXT NOT NULL,proof_hash TEXT NOT NULL,UNIQUE(agent_id,earned_day,objective_id),UNIQUE(agent_id,source_kind,source_id));
@@ -54,8 +58,11 @@ export const VOCATION_SCHEMA=`
 export function verifyCallingReceipts(db,agentId=null){
  const totals=new Map();
  for(const row of db.prepare(`SELECT * FROM calling_receipts${agentId?' WHERE agent_id=?':''} ORDER BY earned_day,id`).all(...(agentId?[agentId]:[]))){
-  const definition=CALLINGS.find(c=>c.id===row.calling_id),o=definition?.objectives.find(o=>`${definition.id}.${o.id}`===row.objective_id);
-  if(!o||o.source_kind!==row.source_kind||row.points!==5||!Number.isInteger(row.selected_at)||row.selected_at<0||row.proof_hash!==proof(row)||!/^\d{4}-\d{2}-\d{2}$/.test(row.earned_day)||row.earned_day!==row.source_at.slice(0,10)||row.earned_day!==row.created_at.slice(0,10)||!Number.isFinite(Date.parse(row.source_at))||!Number.isFinite(Date.parse(row.created_at))||Date.parse(row.source_at)<row.selected_at)return false;
+  // A quest step receipt is authored on top of the same table and proved against its own step
+  // definition; a receipt that names neither a calling objective nor an authored step is invalid.
+  const quest=questStepFor(db,row.objective_id),definition=CALLINGS.find(c=>c.id===row.calling_id),o=definition?.objectives.find(o=>`${definition.id}.${o.id}`===row.objective_id);
+  const source_kind=quest?quest.source_kind:o?.source_kind;
+  if(!source_kind||source_kind!==row.source_kind||row.points!==5||!Number.isInteger(row.selected_at)||row.selected_at<0||row.proof_hash!==proof(row)||!/^\d{4}-\d{2}-\d{2}$/.test(row.earned_day)||row.earned_day!==row.source_at.slice(0,10)||row.earned_day!==row.created_at.slice(0,10)||!Number.isFinite(Date.parse(row.source_at))||!Number.isFinite(Date.parse(row.created_at))||Date.parse(row.source_at)<row.selected_at)return false;
   const key=row.agent_id+':'+row.earned_day,amount=(totals.get(key)||0)+row.points;if(amount>10)return false;totals.set(key,amount);
  }
  return true;
@@ -85,6 +92,9 @@ function reconcile(platform,agent,selection){
   const row={id:randomUUID(),agent_id:agent.id,account_id:agent.operator_id,calling_id:definition.id,objective_id:objectiveId,source_kind:event.source_kind,source_id:event.source_id,source_at:event.occurred_at,selected_at:selection.selected_at,earned_day:today,points:5,created_at:new Date(platform.clock()).toISOString()};row.proof_hash=proof(row);
   platform.run('INSERT INTO calling_receipts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',row.id,row.agent_id,row.account_id,row.calling_id,row.objective_id,row.source_kind,row.source_id,row.source_at,row.selected_at,row.earned_day,row.points,row.created_at,row.proof_hash);used+=5;
  }
+ // Authored quest steps are credited in the same pass, after the daily objectives, so one saved fact
+ // is never counted twice and the ten-experience day limit is applied deterministically.
+ reconcileQuests(platform,agent,selection);
 }
 function targets(platform,agent){
  const home=`home:${agent.id}`;

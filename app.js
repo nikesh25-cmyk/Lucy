@@ -17,7 +17,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 const $ = (selector) => document.querySelector(selector);
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,quests:null,questCatalog:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -74,7 +74,7 @@ function form(parent, submitLabel, callback) {
 }
 function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
 function heading(title, description) { const node = element('div', null, 'section-title'); const text = element('div'); append(text, element('h2', title), paragraph(description)); node.append(text); return node; }
-async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.voxelSelection=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
+async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.quests=null;state.voxelSelection=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -190,7 +190,7 @@ async function refresh(all = true) {
   await loadDirectory();
   if(!state.assembly){const [countries,assembly]=await Promise.all([api('/countries?limit=248'),api('/assembly')]);state.countries=countries.entries;state.assembly=assembly;}
   await loadResearch();state.mayors=(await api('/mayors')).mayors;await loadAmbassadors();
-  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds()]);
+  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds(),loadQuests()]);
   if (state.account && all) {
     state.history = await api('/history');mergeMissionContext(); state.workers=await api('/workers'); state.safety = await api('/safety');
     if (state.account.role === 'admin') state.operations = await api('/operations');
@@ -248,13 +248,13 @@ function renderAuth() {
   login.hidden=state.authMode!=='login';signup.hidden=state.authMode!=='register';append(grid,login,signup);node.append(grid);
 }
 function renderTabs() {
-  const groups=[{title:'THE WORLD',items:[['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
+  const groups=[{title:'THE WORLD',items:[['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦'],['quests','Quest chains','◇']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
   if(state.account)groups.push({title:'YOUR RESIDENTS',items:[['coins','Coin wallet','✧'],['passport','Resident passport','♟'],['workshop','Garden & workshop','✿'],['characters','My characters','♟'],['history','My contributions','▤']]});
   const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'GOVERNANCE',items:care});groups.push({title:'',items:[['help','Guide','?']]});
-  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
+  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',quests:'clipboard-list'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
 }
 function renderView() { if(voxelView){state.voxelOrbit=voxelView.orbit;voxelView.destroy();voxelView=null;}document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons'));
-  const node = $('#view'); node.replaceChildren(); const views = { world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings };
+  const node = $('#view'); node.replaceChildren(); const views = { world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,quests:renderQuests };
   (views[state.tab] || renderWorld)(node);node.setAttribute('aria-busy','false');
 }
 function renderCivic(parent) {
@@ -914,7 +914,7 @@ async function loadCommunity() {
   state.community=await api(`/community?${query}`);
 }
 async function loadJourney(){state.journey=state.account&&selected()?await api(`/journey?agent_id=${encodeURIComponent(state.selected)}`):null;}
-async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds()]);if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
+async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds()]);if(tab==='quests')await loadQuests();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
 async function navigateSection(tab){const same=state.tab===tab;await openSection(tab);$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');if(same&&matchMedia('(max-width:1050px)').matches)$('#toggle-navigation').focus();}
 $('#toggle-navigation').addEventListener('click',()=>{const open=$('#toggle-navigation').getAttribute('aria-expanded')!=='true';$('#toggle-navigation').setAttribute('aria-expanded',String(open));$('.sidebar').classList.toggle('navigation-open',open);});
 function requireResident(parent){
@@ -1256,6 +1256,7 @@ function callingCard(){
  node.append(badge(`${view.rank.title} · level ${view.rank.level}`),paragraph(view.calling.purpose),paragraph(`${view.calling.guild_name} · ${view.experience.available} cosmetic experience`,'privacy'));
  for(const objective of view.today.objectives){const item=element('div',null,`calling-objective ${objective.complete?'complete':''}`);item.append(element('span',objective.complete?'✓':'◇','objective-mark'),paragraph(objective.title));node.append(item);}
  if(view.current_objective)node.append(button('Follow my calling',()=>callingAction(view.current_objective.action_hint),'small'));
+ if(state.quests?.next_action)node.append(questNextCard(state.quests.next_action,{compact:true}));
  node.append(button('Choose calling & meet guild',()=>openSection('callings'),'secondary small'));return node;
 }
 function callingWorkerForm(parent){
@@ -1289,6 +1290,104 @@ function renderCallings(parent){
  const guild=card('People with a shared purpose','GUILD DIRECTORY');const filters=element('div');const choice=field(filters,'guild','Guild',{options:[{value:'',label:'All guilds'},...(state.guilds?.groups||[]).map(group=>({value:group.calling_id,label:`${group.guild_name} · ${group.member_count} residents`}))],value:state.guildFilter,full:true});choice.addEventListener('change',()=>guarded(async()=>{state.guildFilter=choice.value;state.guildOffset=0;await loadGuilds();renderView();}));guild.append(filters);
  for(const resident of state.guilds?.members||[]){const row=element('article',null,'guild-member');row.append(element('strong',resident.name),badge(resident.kind==='human'?'human player':'AI resident'),paragraph(`${resident.calling.name} · ${resident.calling.rank.title} · ${getWorldDefinition(resident.world_id).name}`,'privacy'),button('Visit their public place',()=>visitWorld(resident.world_id),'secondary small'));guild.append(row);}if(!state.guilds?.members?.length)guild.append(empty('No active residents are visible in this guild’s public places yet.'));
  const pages=actions();if(state.guildOffset>0)pages.append(button('Previous residents',async()=>{state.guildOffset=Math.max(0,state.guildOffset-12);await loadGuilds();renderView();},'secondary small'));if(state.guilds?.has_more)pages.append(button('Next residents',async()=>{state.guildOffset+=12;await loadGuilds();renderView();},'secondary small'));guild.append(pages,paragraph('Only active residents in public places are listed. Private receipt history stays with the resident’s operator.','privacy'));parent.append(guild);
+}
+async function loadQuests(){
+ state.questCatalog=await api('/quests/catalog?limit=20');
+ state.quests=state.account&&selected()?await api(`/quests?agent_id=${encodeURIComponent(state.selected)}`):null;
+}
+// The next actual action is the only claim this interface makes: a concrete action the resident can
+// take, the named output the server will credit, and whether an independent human must accept it.
+function questNextCard(next,{compact=false}={}){
+ const node=element('section',null,compact?'quest-next compact':'card quest-next');
+ node.setAttribute('aria-label',next?`Next action for ${next.chain_title}: ${next.step_title}`:'No quest step is waiting');
+ if(!next)return node;
+ node.append(paragraph(compact?`QUEST · ${next.chain_title}`:'NEXT ACTUAL ACTION','eyebrow'),element(compact?'p':'h3',compact?next.step_title:`${next.chain_title} · step ${next.ordinal}: ${next.step_title}`));
+ if(!compact)node.append(paragraph(next.instructions));
+ node.append(paragraph(`Named output: ${next.output.name}`),paragraph(`Credited from a saved server fact: ${next.action.saved_fact}. Progress ${next.progress.have} of ${next.progress.target}.`,'privacy'));
+ if(next.requires_human_review)node.append(paragraph('This step needs a different, authorized human reviewer. You cannot accept your own work, and a quest never issues NemoCoins.','privacy'));
+ node.append(button('Open this step',()=>callingAction(next.action.kind),compact?'secondary small':'small'));
+ return node;
+}
+function questProgressCard(chain){
+ const node=card(chain.title,`${chain.route.replaceAll('_',' ').toUpperCase()} · ${chain.complete?'COMPLETE':chain.enrolled?'IN PROGRESS':'NOT STARTED'}`);
+ append(node,paragraph(chain.narrative,'muted'),paragraph(chain.summary,'privacy'));
+ if(chain.practice)node.append(badge('practice · cosmetic only'));
+ else node.append(badge(`real evidence work · beneficiary: ${chain.beneficiary}`,true));
+ const list=element('ol',null,'quest-steps');
+ for(const step of chain.steps){
+  // A catalogue entry carries the authored shape; a resident's entry carries the same shape plus
+  // this resident's progress, so both render from one reader.
+  const progress=step.progress||{have:0,target:step.output.target,complete:false},facts=step.saved_facts||[],stepState=step.state||'available';
+  const item=element('li',null,`quest-step ${stepState}`);
+  item.setAttribute('aria-label',`Step ${step.ordinal}: ${step.title}. ${stepState==='complete'?'Complete':stepState==='locked'?'Locked until its prerequisite is complete':'Waiting for your next action'}.`);
+  append(item,element('h3',`Step ${step.ordinal} · ${step.title}`),paragraph(step.instructions));
+  item.append(paragraph(`Named output: ${step.output.name}`),paragraph(`${progress.have} of ${progress.target} saved ${step.output.source_kind.replaceAll('_',' ')} fact${progress.target===1?'':'s'}`,'privacy'));
+  if(step.prerequisite)item.append(paragraph(`Comes after: ${step.prerequisite.title}`,'privacy'));
+  if(step.output.requires_review)item.append(paragraph('An independent human reviewer must accept this work. Neither the contributor nor a model can accept it.','privacy'));
+  for(const fact of facts)item.append(paragraph(`Saved fact ${fact.source_kind} · ${fact.source_id} · ${fact.earned_day}${fact.available?'':' · held after the source changed'}`,'plot-address'));
+  if(stepState==='available'&&chain.enrolled)item.append(button('Open this step',()=>callingAction(step.action.kind),'small'));
+  list.append(item);
+ }
+ node.append(list);
+ if(chain.enrolled)node.append(button('Refresh progress',async()=>{await loadQuests();renderView();},'secondary small'),button('Leave this chain',async()=>{await change('/quests/leave',{agent_id:state.selected,chain_id:chain.slug},'You left the chain. Recorded receipts stay historical.');await loadQuests();renderView();},'secondary small'));
+ else if(chain.status==='published'&&state.account&&selected()?.status==='active')node.append(button('Begin this chain',async()=>{await api('/quests/join','POST',{agent_id:state.selected,chain_id:chain.slug},true);await loadQuests();renderView();notice(`You began “${chain.title}”. The board shows the next action.`);},'small'));
+ return node;
+}
+function questManageButtons(node,chain){
+ if(!state.account||!isReviewer())return;
+ if(chain.origin==='built_in'&&state.account.role!=='admin')return;
+ if(chain.origin==='operator'&&state.account.role!=='admin'&&chain.author_account_id!==state.account.id)return;
+ const controls=[];
+ if(chain.status!=='published')controls.push(button('Publish chain',async()=>{await change('/quests/manage',{chain_id:chain.slug,action:'publish'},'Chain published to residents.');await loadQuests();renderView();},'small'));
+ if(chain.status!=='archived')controls.push(button('Archive chain',async()=>{await change('/quests/manage',{chain_id:chain.slug,action:'archive'},'Chain archived. Recorded receipts stay historical.');await loadQuests();renderView();},'secondary small'));
+ if(controls.length)node.append(actions(...controls));
+}
+function questAuthorForm(parent){
+ if(!isReviewer())return;
+ disclosure(parent,'Author a quest chain',body=>{
+  body.append(paragraph('An authored route with named outputs. Each step names one saved fact this world already records, so no model, author or client can mark a step complete.'));
+  const inputs=form(body,'Save draft chain',async values=>{
+   let steps;
+   try{steps=JSON.parse(values.steps);}catch{throw new Error('Steps must be a JSON array of step objects.');}
+   const chain=await api('/quests/author','POST',{slug:values.slug,title:values.title,route:values.route,summary:values.summary,narrative:values.narrative,practice:values.scope==='practice',beneficiary:values.scope==='practice'?'':values.beneficiary,steps});
+   await loadQuests();renderView();notice(`Draft chain “${chain.title}” saved. Publish it to open it to residents.`);
+  });
+  field(inputs,'slug','Chain slug',{max:40,full:true,hint:'Lowercase letters, digits and dashes.'});
+  field(inputs,'title','Title',{max:80,full:true});
+  field(inputs,'route','Route',{full:true,options:[{value:'world_building',label:'World building · saved blocks, paths, areas, home objects, shared visits'},{value:'gardening',label:'Gardening · planted and harvested crops, crafted keepsakes'},{value:'evidence_research',label:'Evidence research · a real mission claim and its independent acceptance'}]});
+  field(inputs,'scope','Scope',{full:true,options:[{value:'practice',label:'Practice and cosmetic only'},{value:'real',label:'Real evidence work with a named beneficiary'}]});
+  field(inputs,'beneficiary','Named beneficiary (real evidence chains only)',{required:false,max:120,full:true});
+  field(inputs,'summary','Summary',{type:'textarea',max:300,full:true});
+  field(inputs,'narrative','Narrative',{type:'textarea',max:4000,full:true});
+  field(inputs,'steps','Steps (JSON array, 2–8)',{type:'textarea',full:true,hint:'[{"slug":"first","title":"…","instructions":"…","output_name":"…","source_kind":"crop_plant","target":1},{"slug":"second","title":"…","instructions":"…","output_name":"…","source_kind":"crop_harvest","prerequisite":"first"}]'});
+ });
+}
+function renderQuests(parent){
+ parent.append(heading('A path with real steps','A quest chain is an authored route through this world: ordered steps, explicit prerequisites and a named output for each one. A step advances only from a saved, attributed server fact — never from a model, a client or the author saying so.'));
+ const policy=state.questCatalog?.policy||state.quests?.policy;
+ if(policy)parent.append(paragraph(`Step experience is cosmetic calling experience (${policy.experience_per_step} per step, ${policy.daily_experience_limit} per day) and is never currency. NemoCoins are issued only by the independent real-contribution ledger after a different, authorized human accepts a real scoped contribution. A quest chain cannot mint them, and this world has no route that lets one.`,'privacy'));
+ residentContext(parent);
+ const resident=state.account&&selected()?state.quests:null;
+ if(resident){
+  const nextCard=questNextCard(resident.next_action);
+  if(!resident.next_action)nextCard.append(paragraph(resident.enrolled_count?'Every authored step you joined is complete. Nothing further is owed.':'You have not begun a quest chain yet. Choose one below; progress is credited from what you actually save in the world.'));
+  parent.append(nextCard);
+  if(resident.enrolled_count){
+   const stack=element('div',null,'grid two');
+   for(const chain of resident.chains.filter(item=>item.enrolled))stack.append(questProgressCard(chain));
+   parent.append(stack);
+  }
+  const available=resident.chains.filter(chain=>chain.status==='published'&&!chain.enrolled);
+  if(available.length){const grid=element('div',null,'grid two');for(const chain of available){const node=questProgressCard(chain);questManageButtons(node,chain);grid.append(node);}parent.append(heading('Chains you can begin','Each chain is operator-authored. Beginning one is your operator’s choice and grants no authority.'),grid);}
+  const own=resident.chains.filter(chain=>chain.status!=='published');
+  if(own.length){const grid=element('div',null,'grid two');for(const chain of own){const node=questProgressCard(chain);questManageButtons(node,chain);grid.append(node);}parent.append(heading('Your drafts and archived chains','A draft or archived chain is visible to its author and to administrators only.'),grid);}
+  questAuthorForm(parent);
+ } else {
+  const catalog=state.questCatalog;
+  if(!catalog)parent.append(empty('Quest chains could not be loaded. Reopen this section to try again.'));
+  else if(!catalog.chains.length)parent.append(empty('No quest chain is published yet. An operator can author one.'));
+  else { const grid=element('div',null,'grid two');for(const chain of catalog.chains)grid.append(questProgressCard(chain));parent.append(heading('Published chains','Sign in and choose a character to begin one. Progress is credited from saved facts only.'),grid); }
+ }
 }
 function renderResidentInspection(){
  const parent=$('#resident-inspection');if(!parent)return;parent.replaceChildren();const resident=state.inspectedResident;if(!resident)return;

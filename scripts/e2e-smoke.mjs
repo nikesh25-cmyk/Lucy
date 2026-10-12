@@ -241,23 +241,23 @@ function pathTo(grid, origin, target, blocked = new Set()) {
   return path.slice(1);
 }
 
-async function moveOnce(token, direction) {
+async function moveOnce(token, direction, extra = {}) {
   let response;
   for (let attempt = 0; attempt < 4; attempt++) {
     await sleep(attempt === 0 ? MOVE_INTERVAL_MS : 400);
-    response = await post('/move', { direction }, { token });
+    response = await post('/move', { ...extra, direction }, { token });
     if (response.status !== 429) return response;
   }
   return response;
 }
 
-async function walkTo(token, from, target, grid, blocked) {
+async function walkTo(token, from, target, grid, blocked, extra = {}) {
   const path = pathTo(grid, from, target, blocked);
   expectThat(path !== null, `no walkable route from ${from.x},${from.y} to ${target.x},${target.y}`, { expected: 'a connected walkable route', actual: describe(grid[target.y]?.[target.x]) });
   let current = from;
   for (const next of path) {
     const direction = next.x > current.x ? 'right' : next.x < current.x ? 'left' : next.y > current.y ? 'down' : 'up';
-    const response = await moveOnce(token, direction);
+    const response = await moveOnce(token, direction, extra);
     expectStatus(response, 200, `POST /move ${direction} from ${current.x},${current.y}`);
     const body = response.body;
     expectThat(body.blocked === false, `POST /move ${direction} from ${current.x},${current.y} was blocked on a planned walkable tile`, { expected: `blocked=false arriving at ${next.x},${next.y}`, actual: `blocked=${describe(body.blocked)} at ${body.x},${body.y}`, request: response.request, response });
@@ -633,6 +633,88 @@ async function main() {
       expectThat(legacy.mayors.length === 20 && legacy.legacy_alias === true, 'the legacy guide listing must keep 20 historic guides and announce itself', { expected: 'mayors=20 with legacy_alias=true', actual: describe({ mayors: legacy.mayors?.length, legacy_alias: legacy.legacy_alias }) });
       expectThat(legacy.mayors.every((guide) => String(guide.ambassador?.id || '').startsWith('amb-')), 'every historic guide must name its replacement ambassador', { expected: 'each guide with an ambassador id', actual: describe(legacy.mayors?.[0]?.ambassador) });
       return `248 ambassadors walked over ${offset / 50 + 1} pages; GET /ambassador?id=amb-NPL -> 200 (country:NPL, 5 routes); 200 talk with country_context=Nepal and source_numbers=[1..5]; 400 country mismatch; legacy GET /mayors -> 20 guides mapped`;
+    });
+
+    await step('11. an authored quest chain advances only from saved facts, once, and mints no coins', async () => {
+      // A second resident follows a calling whose own objectives touch none of this chain's facts, so
+      // the day's shared cosmetic limit is spent on the chain itself rather than on a calling reward.
+      const steward = expectStatus(await post('/agents', { kind: 'agent', name: 'Steward of the plot', color: '#3d5875', symbol: '◆', capabilities: 'Walks authored routes', limitations: 'No external tools and no real-world claims' }, { token: world.adminToken }), 201, 'POST /agents (second resident)');
+      const selection = expectStatus(await post('/callings/select', { agent_id: steward.id, calling_id: 'researcher' }, { token: world.adminToken }), 200, 'POST /callings/select for the second resident');
+      expectThat(selection.calling?.id === 'researcher' && selection.today?.earned === 0 && selection.experience?.cosmetic === true, 'choosing a calling must grant no experience, coin or authority by itself', { expected: 'calling=researcher, today.earned=0, cosmetic experience', actual: describe({ calling: selection.calling?.id, earned: selection.today?.earned, cosmetic: selection.experience?.cosmetic }) });
+      const directory = expectStatus(await get('/me', { token: world.adminToken }), 200, 'GET /me');
+      const start = directory.agents.find((agent) => agent.id === steward.id);
+      expectThat(typeof start?.x === 'number' && start.world_id === 'commons', 'the second resident must start in the Commons', { expected: 'a Commons position', actual: describe(start) });
+
+      const authored = expectStatus(await post('/quests/author', {
+        slug: 'plot-path', title: 'A path inside the plot', route: 'world_building', practice: true,
+        summary: 'Two saved frontier steps inside one steward plot: a ground path, then one raised block.',
+        narrative: 'Written for the acceptance run. The first step leaves a path the plot can keep and the second raises one block beside it. Both are things the server already records, so no one has to be believed about them.',
+        steps: [
+          { slug: 'ground-path', title: 'Lay a saved ground path', instructions: 'Place a path block on the ground inside your operator’s plot.', output_name: 'One saved ground path', source_kind: 'path_place' },
+          { slug: 'raised-block', title: 'Raise one saved block', instructions: 'Place a permitted block on its own tile inside the same plot.', output_name: 'One saved frontier block', source_kind: 'frontier_place', prerequisite: 'ground-path' },
+        ],
+      }, { token: world.adminToken }), 201, 'POST /quests/author as the administrator');
+      expectThat(authored.status === 'draft' && authored.steps.length === 2 && authored.steps[0].prerequisite === null && authored.steps[1].prerequisite === 'ground-path', 'the authored chain must publish ordered steps with explicit prerequisites', { expected: 'a draft with two ordered steps', actual: describe(authored.steps?.map((step) => ({ slug: step.slug, prerequisite: step.prerequisite }))) });
+      expectThat(authored.steps.every((step) => step.output?.name && step.output?.requires_review === false), 'a practice chain must name every step output and claim no real review', { expected: 'named outputs with no review boundary', actual: describe(authored.steps?.map((step) => step.output)) });
+      const published = expectStatus(await post('/quests/manage', { chain_id: 'plot-path', action: 'publish' }, { token: world.adminToken }), 200, 'POST /quests/manage publish');
+      expectThat(published.status === 'published', 'the authorized author must be able to publish the chain', { expected: 'status=published', actual: describe(published.status) });
+      const catalogue = expectStatus(await get('/quests/catalog'), 200, 'GET /quests/catalog');
+      expectThat(catalogue.chains.some((chain) => chain.slug === 'plot-path') && catalogue.policy.coins_awarded === 0 && catalogue.policy.client_completion === false, 'the public catalogue must list the chain and state that coins and client completion are impossible', { expected: 'plot-path listed with coins_awarded=0', actual: describe({ listed: catalogue.chains.map((chain) => chain.slug), policy: catalogue.policy }) });
+
+      const spoof = await post('/quests/complete', { agent_id: steward.id, chain_id: 'plot-path' }, { token: world.adminToken });
+      expectStatus(spoof, 400, 'POST /quests/complete');
+      expectThat(/saved server fact/.test(spoof.body?.error || ''), 'a client completion claim must be refused with the derived-fact rule', { expected: 'an error naming the saved server fact', actual: describe(spoof.body), request: spoof.request, response: spoof });
+
+      const joined = expectStatus(await post('/quests/join', { agent_id: steward.id, chain_id: 'plot-path' }, { token: world.adminToken, headers: { 'Idempotency-Key': 'e2e-quest-join-1' } }), 201, 'POST /quests/join');
+      const repeated = expectStatus(await post('/quests/join', { agent_id: steward.id, chain_id: 'plot-path' }, { token: world.adminToken, headers: { 'Idempotency-Key': 'e2e-quest-join-1' } }), 201, 'POST /quests/join with the same idempotency key');
+      expectThat(joined.repeated === false && repeated.repeated === true, 'repeating the join key must return the same enrolment instead of a second one', { expected: 'repeated=false then repeated=true', actual: describe({ first: joined.repeated, second: repeated.repeated }) });
+      expectThat(joined.next_action?.step_slug === 'ground-path' && joined.next_action?.output?.source_kind === 'path_place' && joined.next_action?.action?.section === 'world', 'the board must show the concrete next action with its named output', { expected: 'ground-path with a path_place output and a world action', actual: describe(joined.next_action) });
+
+      // Walk the second resident to the frontier gateway, then leave two saved blocks in the plot.
+      const commonsView = expectStatus(await get('/world?world_id=commons'), 200, 'GET /world?world_id=commons');
+      const gateway = commonsView.portals.find((portal) => portal.target_world_id === 'frontier:0:0');
+      expectThat(gateway, 'the Commons must publish the frontier gateway', { expected: 'a portal to frontier:0:0', actual: describe(commonsView.portals.map((portal) => portal.target_world_id)) });
+      const commons = await readTerrain('commons', { minimumX: Math.min(start.x, gateway.x) - 4, maximumX: 38, minimumY: 0, maximumY: 20 });
+      const commonsBlocked = new Set(commons.solid);
+      const distances = distancesFrom(commons.grid, { x: start.x, y: start.y }, commonsBlocked);
+      let doorway = null;
+      for (const [dx, dy] of [[0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        const distance = distances.get(`${gateway.x + dx},${gateway.y + dy}`);
+        if (distance !== undefined && (!doorway || distance < doorway.distance)) doorway = { x: gateway.x + dx, y: gateway.y + dy, distance };
+      }
+      expectThat(doorway, 'the frontier gateway must be reachable from the second resident', { expected: 'a walkable tile beside the gateway', actual: `gateway ${gateway.x},${gateway.y}` });
+      await walkTo(world.adminToken, { x: start.x, y: start.y }, { x: doorway.x, y: doorway.y }, commons.grid, commonsBlocked, { agent_id: steward.id });
+      await sleep(MOVE_INTERVAL_MS);
+      const travelled = expectStatus(await post(`/agents/${steward.id}/travel`, { world_id: 'frontier:0:0' }, { token: world.adminToken }), 200, 'POST /agents/:id/travel for the second resident');
+      expectThat(travelled.entered === true && travelled.world_id === 'frontier:0:0', 'the second resident must arrive in the frontier', { expected: 'entered=true in frontier:0:0', actual: describe({ entered: travelled.entered, world_id: travelled.world_id }) });
+      const occupied = new Set([...world.frontier.blocked, `${world.buildPlan.tile.x},${world.buildPlan.tile.y}`]);
+      const sites = constructionOptions({ grid: world.frontier.grid, parcels: world.frontier.descriptor.frontier.parcels, origin: { x: travelled.x, y: travelled.y }, buildRange: world.buildRange, blocked: occupied }).options.filter((option) => option.parcel.id === world.plot.id && `${option.tile.x},${option.tile.y}` !== `${world.buildPlan.tile.x},${world.buildPlan.tile.y}`);
+      expectThat(sites.length >= 2, 'the stewarded plot must offer two more buildable tiles', { expected: 'two free plot tiles', actual: describe(sites.map((site) => `${site.tile.x},${site.tile.y}`)) });
+      const [pathSite, blockSite] = sites;
+      const pathPosition = await walkTo(world.adminToken, { x: travelled.x, y: travelled.y }, pathSite.stand, world.frontier.grid, world.frontier.blocked, { agent_id: steward.id });
+      await sleep(FRONTIER_ACTION_INTERVAL_MS);
+      const pathBlock = expectStatus(await post('/frontier/build', { agent_id: steward.id, world_id: 'frontier:0:0', x: pathSite.tile.x, y: pathSite.tile.y, z: 0, type: 'path' }, { token: world.adminToken }), 200, `POST /frontier/build path at ${pathSite.tile.x},${pathSite.tile.y}`);
+      expectThat(pathBlock.type === 'path' && pathBlock.plot_id === world.plot.id, 'the ground path must be saved inside the stewarded plot', { expected: `type=path in ${world.plot.id}`, actual: describe({ type: pathBlock.type, plot_id: pathBlock.plot_id }) });
+      const blockPosition = await walkTo(world.adminToken, pathPosition, blockSite.stand, world.frontier.grid, world.frontier.blocked, { agent_id: steward.id });
+      await sleep(FRONTIER_ACTION_INTERVAL_MS);
+      const raisedBlock = expectStatus(await post('/frontier/build', { agent_id: steward.id, world_id: 'frontier:0:0', x: blockSite.tile.x, y: blockSite.tile.y, z: 0, type: 'wood' }, { token: world.adminToken }), 200, `POST /frontier/build wood at ${blockSite.tile.x},${blockSite.tile.y}`);
+      expectThat(raisedBlock.changed === true && raisedBlock.plot_id === world.plot.id, 'the raised block must be saved inside the stewarded plot', { expected: `changed=true in ${world.plot.id}`, actual: describe({ changed: raisedBlock.changed, plot_id: raisedBlock.plot_id }) });
+
+      const settled = expectStatus(await get(`/quests?agent_id=${steward.id}`, { token: world.adminToken }), 200, 'GET /quests after the saved facts');
+      const settledChain = settled.chains.find((chain) => chain.slug === 'plot-path');
+      expectThat(settledChain.steps.every((step) => step.state === 'complete') && settled.progress[0].complete === true && settled.next_action === null, 'two saved facts must complete the two ordered steps', { expected: 'both steps complete with no next action', actual: describe(settled.progress) });
+      expectThat(settledChain.steps[0].saved_facts.length === 1 && settledChain.steps[1].saved_facts.length === 1, 'each step must be credited from exactly one saved fact', { expected: 'one saved fact per step', actual: describe(settledChain.steps.map((step) => step.saved_facts.length)) });
+      const replayed = expectStatus(await get(`/quests?agent_id=${steward.id}`, { token: world.adminToken }), 200, 'GET /quests again');
+      const replayedChain = replayed.chains.find((chain) => chain.slug === 'plot-path');
+      expectThat(replayedChain.steps.every((step) => step.saved_facts.length === 1), 'reading the board again must not credit the same saved block twice', { expected: 'one saved fact per step after a replay', actual: describe(replayedChain.steps.map((step) => step.saved_facts.length)) });
+      const calling = expectStatus(await get(`/callings?agent_id=${steward.id}`, { token: world.adminToken }), 200, 'GET /callings for the quest resident');
+      expectThat(calling.experience.available === 10 && calling.today.earned === 10 && calling.experience.cosmetic === true, 'the chain must credit cosmetic calling experience up to the shared daily limit', { expected: '10 cosmetic experience, none of it currency', actual: describe(calling.experience) });
+
+      const questWallet = expectStatus(await get(`/coins?agent_id=${steward.id}`, { token: world.adminToken }), 200, 'GET /coins for the quest resident');
+      expectThat(questWallet.balance === 0 && questWallet.issued === 0 && questWallet.receipt_count === 0, 'a completed practice chain must award no coins at all', { expected: 'zero coins', actual: describe({ balance: questWallet.balance, issued: questWallet.issued, receipts: questWallet.receipt_count }) });
+      const contributionWallet = expectStatus(await get(`/coins?agent_id=${world.agentId}`, { token: world.adminToken }), 200, 'GET /coins for the contribution resident');
+      expectThat(contributionWallet.balance === 10 && contributionWallet.receipt_count === 1 && contributionWallet.integrity_valid === true, 'the only coin receipt must still be the independently accepted contribution', { expected: 'one 10-coin receipt from independent review', actual: describe({ balance: contributionWallet.balance, receipts: contributionWallet.receipt_count, valid: contributionWallet.integrity_valid }) });
+      return `201 author draft; 200 publish; 400 refused client completion; 201 join (idempotent repeat); 200 travel; saved facts path ${pathBlock.x},${pathBlock.y} and wood ${raisedBlock.x},${raisedBlock.y} in ${world.plot.id} (block position ${blockPosition.x},${blockPosition.y}); both ordered steps complete once each (10 cosmetic experience); 0 coins from the chain, 10 coins still held by the independently accepted contribution`;
     });
 
     const shutdown = await stopServer();

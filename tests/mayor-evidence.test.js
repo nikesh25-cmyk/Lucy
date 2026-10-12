@@ -25,7 +25,7 @@ test('selected-country mayor context preserves exact retained provenance, missin
   assert.match(context.sources[4].publisher,/ITU/);assert.match(context.sources[4].license.attribution,/ITU/);
   assert.deepEqual(reply.source_numbers,[1,2,3,4,5]);assert.equal(f.platform.mayors(null).conversations.length,0);assert.equal(f.platform.mayors(f.actor('bob')).conversations.length,0);
   assert.deepEqual(f.platform.exportAccount(f.actor('alice')).civic.conversations[0].country_context,context);
-  assert.equal(f.platform.exportAccount(f.actor('alice')).format,'shared-world-account-v16');
+  assert.equal(f.platform.exportAccount(f.actor('alice')).format,'shared-world-account-v17');
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM research_leads').n,before);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM claims').n,0);assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,0);
   f.advance();const other=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'BD'});assert.match(other.answer,/Bangladesh/);assert.doesNotMatch(other.answer,/Nepal tea|India/);
   f.advance();assert.throws(()=>f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'XX'}),{status:400});
@@ -49,7 +49,7 @@ test('country context preserves zero, all-null and uncollected series as differe
 
 test('stored country snapshots survive restart and backup; schema eight guide conversations migrate and stay readable',async t=>{
   const f=await fixture(t),aliceId=f.actor('alice').account.id,reply=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'NP'}),backup=join(f.directory,'country-backup.sqlite');
-  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version,16);
+  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version, 17);
   f.platform.close();const reopened=new Platform(f.database);t.after(()=>{try{reopened.close();}catch{/* Closed again before testing migration. */}});
   assert.deepEqual(reopened.mayors(reopened.authenticate(f.credentials.alice.token)).conversations[0].country_context,reply.country_context);
   // Recreate the schema eight guide store and record one historic conversation in it. The migration is
@@ -65,7 +65,7 @@ test('stored country snapshots survive restart and backup; schema eight guide co
   const profile=migrated.ambassador(actor,{id:mapped});assert.equal(profile.legacy.guide_id,'mayor-highlands');
   assert.deepEqual(profile.legacy_conversations.map(conversation=>conversation.question),['Historic question']);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_ambassadors').n,248);assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_mayors').n,20);
-  assert.equal(validateDatabase(f.database).schema_version,16);assert.equal(migrated.verifyAudit(),true);
+  assert.equal(validateDatabase(f.database).schema_version, 17);assert.equal(migrated.verifyAudit(),true);
   migrated.db.exec('ALTER TABLE mayor_conversations DROP COLUMN country_context');assert.throws(()=>validateDatabase(f.database),/mayor evidence schema/);
 });
 

@@ -99,8 +99,10 @@ const writes = new Map([
   ['/community/manage', ['manageCommunity', null]],
   ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
+  ['/quests/author', ['questAuthor', null]], ['/quests/manage', ['questManage', null]],
+  ['/quests/join', ['questJoin', null]], ['/quests/leave', ['questLeave', null]], ['/quests/complete', ['questComplete', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -208,7 +210,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/callings/guilds','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/callings/guilds','/quests/catalog','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
@@ -223,6 +225,8 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           if(route==='/workers'){const view=run=>{if(!run)return null;const state=platform.residentRun(run.id);return {job_id:run.id,agent_id:run.agent_id,status:'running',...(state?{phase:state.phase,decision:state.decision,model_calls:state.model_calls,action_count:state.action_count,decisions_remaining:state.decisions_remaining,last_action:state.last_action.action||null}:{})};};value={research:view(researchRuns.get(actor.account.id)),resident:view(residentRuns.get(actor.account.id))};}
           else if(route==='/callings')value=platform.callings(actor,Object.fromEntries(url.searchParams));
           else if(route==='/callings/guilds')value=platform.callingGuilds(Object.fromEntries(url.searchParams));
+          else if(route==='/quests')value=platform.quests(actor,Object.fromEntries(url.searchParams));
+          else if(route==='/quests/catalog')value=platform.questCatalog(Object.fromEntries(url.searchParams));
           else if(route==='/drafts')value={drafts:platform.drafts(actor,{archived:url.searchParams.get('archived')==='1'})};
           else if (route === '/countries') value=platform.countries(actor,Object.fromEntries(url.searchParams));
           else if (route === '/country-evidence') value=platform.countryEvidence(actor,Object.fromEntries(url.searchParams));
@@ -361,7 +365,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         else if (route === '/operations/pause') {
           if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
           value = platform.pause(actor, input.paused);
-        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
         else value = platform[method](actor, input);
         platform.charge(actor);
         return value;
@@ -384,7 +388,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         }catch{platform.authenticate(token,scope);result.mode='rules';result.model_fallback=true;}
       }
       if (route === '/auth/logout') cookie(response, '', 0, hosting);
-      return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/tasks/follow-up', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs'].includes(route) ? 201 : 200, result);
+      return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/tasks/follow-up', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs', '/quests/author', '/quests/join'].includes(route) ? 201 : 200, result);
     } catch (error) {
       if (!error.status) console.error('HTTP request failed:', error.code || error.name || 'UnknownError');
       const status = error.status || (error.code === 'ERR_SQLITE_ERROR' && /constraint/i.test(error.message) ? 409 : 500);
