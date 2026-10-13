@@ -73,7 +73,11 @@ test('crops use server time, one bounded tending action, one harvest, and surviv
   denied(() => f.tx('gardenAction', f.actor('alice'), { ...action, action: 'harvest' }), 409);
   f.advance(1);
   const result = f.tx('gardenAction', f.actor('alice'), { ...action, action: 'harvest' });
-  assert.deepEqual(result.inventory, [{ kind: 'fiber', quantity: 2 }]);
+  // The tend arrived at the very start of the crop's life, so the gather carries the fullest care:
+  // the sealed yield of two, raised by the two the saved tend earned.
+  assert.equal(result.crop.care, 'bountiful');
+  assert.deepEqual(result.gathered, { kind: 'fiber', quantity: 4, base: 2, care: 'bountiful' });
+  assert.deepEqual(result.inventory, [{ kind: 'fiber', quantity: 4 }]);
   denied(() => f.tx('gardenAction', f.actor('alice'), { ...action, action: 'harvest' }), 409);
   assert.deepEqual(f.platform.journey(f.actor('alice'), { agent_id: agent.id }).merit, { accepted: 0, adopted: 0, total: 0 });
   f.platform.close();
@@ -81,7 +85,9 @@ test('crops use server time, one bounded tending action, one harvest, and surviv
   t.after(() => restored.close());
   restored.initJourney();
   const passport = restored.journey(restored.authenticate(f.credentials.alice.token), { agent_id: agent.id });
-  assert.deepEqual(passport.inventory, [{ kind: 'fiber', quantity: 2 }]);
+  assert.deepEqual(passport.inventory, [{ kind: 'fiber', quantity: 4 }]);
+  assert.equal(passport.crops[0].care, 'bountiful');
+  assert.equal(passport.crops[0].stage, 'ready');
   assert.equal(passport.crops[0].harvested_at, f.clock());
   assert.equal(passport.quests.find((quest) => quest.id === 'grow').progress, 1);
 });
