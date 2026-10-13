@@ -4,7 +4,7 @@
   "kinds": {
     "appearance": 20,
     "block": 7,
-    "cosmetic": 29,
+    "cosmetic": 32,
     "crop": 3,
     "furniture": 27
   },
@@ -718,6 +718,22 @@
       "assets": []
     },
     {
+      "id": "festival_banner",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/craft-festival_banner.json",
+      "sha256": "0ad66c9f463fe61e5665859f1915f15888b9840c090674b9cacfd2a8777b0089",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
       "id": "flower",
       "kind": "cosmetic",
       "file": "content/cosmetics/avatar-flower.json",
@@ -814,6 +830,22 @@
       "assets": []
     },
     {
+      "id": "herbal_wreath",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/craft-herbal_wreath.json",
+      "sha256": "f675abfc7070d186022f834aafbaa91a08f6384c321064dbd421624306fa960c",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
       "id": "lavender",
       "kind": "cosmetic",
       "file": "content/cosmetics/agent-color-lavender.json",
@@ -866,6 +898,22 @@
       "kind": "cosmetic",
       "file": "content/cosmetics/expression-none.json",
       "sha256": "ece574d53a2ec075af6ca2fe7f992b77f21840e93b95460c0688cd9c1a6a4be5",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "reed_whistle",
+      "kind": "cosmetic",
+      "file": "content/cosmetics/craft-reed_whistle.json",
+      "sha256": "8f83bf982f007081754fd9655f2b0a9a74f2c40c2be84e33de74e8d9d6c42680",
       "license": {
         "spdx": "LicenseRef-NemoWorld-Project-Authored",
         "author": "NemoWorld project contributors",
@@ -1577,7 +1625,7 @@
     },
     {
       "path": "content/index.js",
-      "sha256": "0fbcc0de969f48f55c26be57ff55c66a78670407fd5fbe3b07a4d38244fa9489"
+      "sha256": "c3588ee73cdbb74c27424c85ad495292b2aa0c062d00ce6c953a0aab68a40eb3"
     }
   ]
 }

@@ -5,7 +5,7 @@ import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { COMMUNITY_SCHEMA } from './community.js';
 import { CIVIC_SCHEMA } from './civic-engine.js';
-import { JOURNEY_SCHEMA } from './journey.js';
+import { JOURNEY_SCHEMA, RESOURCE_OFFER_SCHEMA } from './journey.js';
 import { FRONTIER_SCHEMA, LAND_SCHEMA, LAND_BLOCK_GUARDS, PLOT_GRANT_SCHEMA } from './frontier.js';
 import { VOCATION_SCHEMA } from './vocations.js';
 import { QUEST_SCHEMA } from './quests.js';
@@ -15,7 +15,7 @@ import { WORLD_OBJECT_GUARDS } from './placement-policy.js';
 export function openDatabase(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
-  if (db.prepare('PRAGMA user_version').get().user_version > 19) { db.close(); throw new Error('Unsupported database schema version.'); }
+  if (db.prepare('PRAGMA user_version').get().user_version > 20) { db.close(); throw new Error('Unsupported database schema version.'); }
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', consent_at TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS invites(code_hash TEXT PRIMARY KEY, role TEXT NOT NULL, expires_at INTEGER NOT NULL, used_by TEXT);
@@ -102,6 +102,13 @@ export function openDatabase(path) {
     const conversationColumns=new Set(db.prepare('PRAGMA table_info(mayor_conversations)').all().map(column=>column.name));
     if(!conversationColumns.has('country_context'))db.exec('ALTER TABLE mayor_conversations ADD COLUMN country_context TEXT');
     if(!conversationColumns.has('source_numbers'))db.exec("ALTER TABLE mayor_conversations ADD COLUMN source_numbers TEXT NOT NULL DEFAULT '[]'");
+    // Resident-to-resident resource offers (schema 20). The internal-resource economy is grown and
+    // crafted items only: an offer escrows the named items from one resident's shelf and either hands
+    // them to the named recipient once or returns them to the offerer once. It moves no NemoCoin, no
+    // money and no land. The tables are additive; the triggers refuse a non-positive item list, a
+    // self-offer or a settled offer changing again, and the existing journey_inventory CHECK keeps a
+    // shelf from ever going negative. recovery.js re-checks all of this from schema 20.
+    db.exec(RESOURCE_OFFER_SCHEMA);
     db.exec(`CREATE INDEX IF NOT EXISTS agents_spatial ON agents(world_id,x,y);
       CREATE INDEX IF NOT EXISTS agents_operator ON agents(operator_id);
       CREATE INDEX IF NOT EXISTS tokens_agent ON tokens(agent_id,kind,revoked,expires_at);
@@ -114,7 +121,7 @@ export function openDatabase(path) {
       CREATE INDEX IF NOT EXISTS research_mission_country_goal ON research_leads(mission_id,country_code,goal);
       CREATE INDEX IF NOT EXISTS claims_agent ON claims(agent_id);
       CREATE INDEX IF NOT EXISTS submissions_claim ON submissions(claim_id,status);
-      PRAGMA user_version=19; COMMIT;`);
+      PRAGMA user_version=20; COMMIT;`);
   } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
   if (path !== ':memory:') chmodSync(path, 0o600);
   return db;

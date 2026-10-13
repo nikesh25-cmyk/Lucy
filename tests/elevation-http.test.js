@@ -35,7 +35,7 @@ async function setup(t) {
 
 test('the elevation columns are stored and validation rejects a stored z outside the standable range', async (t) => {
   const f = await fixture(t), alice = f.agent('alice');
-  assert.equal(validateDatabase(f.database).schema_version, 19);
+  assert.equal(validateDatabase(f.database).schema_version, 20);
   const columns = new Set(f.platform.all('PRAGMA table_info(agents)').map((column) => column.name));
   for (const column of ['z', 'grounded', 'yaw', 'pitch', 'last_look']) assert.equal(columns.has(column), true);
   assert.deepEqual({ ...f.platform.get('SELECT z,grounded,yaw,pitch,last_look FROM agents WHERE id=?', alice.id) },

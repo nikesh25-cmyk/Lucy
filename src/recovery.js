@@ -59,7 +59,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -182,6 +182,34 @@ export function validateDatabase(path) {
       // (when the grant named one) the same resident, so an authorship cannot be re-pointed.
       if(db.prepare("SELECT b.id FROM frontier_blocks b JOIN plot_grants g ON g.id=b.grant_id WHERE b.plot_id!=g.plot_id OR b.creator_account_id!=g.guest_account_id OR (g.guest_agent_id!='' AND g.guest_agent_id!=b.creator_agent_id)").get())throw new Error('Database plot collaboration construction is invalid.');
     }
+    if (version >= 20) {
+      const offerColumns = ['id','offerer_agent_id','offerer_account_id','recipient_agent_id','recipient_account_id','items','note','status','propose_key','accept_key','proposed_at','expires_at','settled_at','settled_by_account_id'];
+      if (!tables.has('resource_offers') || offerColumns.some((column) => !db.prepare('PRAGMA table_info(resource_offers)').all().some((field) => field.name === column))) throw new Error('Database resource offer schema is incomplete.');
+      if (!tables.has('resource_offer_events') || ['id','offer_id','account_id','action','detail','created_at'].some((column) => !db.prepare('PRAGMA table_info(resource_offer_events)').all().some((field) => field.name === column))) throw new Error('Database resource offer history is incomplete.');
+      if (['resource_offers_validate_insert','resource_offers_lifecycle','resource_offer_events_no_update','resource_offer_events_no_delete'].some((name) => !db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name))) throw new Error('Database resource offer protections are incomplete.');
+      // The no-negative-stock rule at the storage layer: a resident shelf is never negative. The
+      // CHECK on journey_inventory already refuses a negative write; this re-checks what is stored.
+      if (db.prepare('SELECT agent_id FROM journey_inventory WHERE quantity<0 LIMIT 1').get()) throw new Error('Database resident inventory is invalid.');
+      // Every stored offer must still satisfy the rules that created it: two different residents of
+      // two different operators, a positive item list, a life that expires after it was proposed, a
+      // settlement consistent with its status, and exactly one settlement event. A replayed or a
+      // duplicated settlement cannot pass this, so a backup or a restore carries a coherent offer.
+      for (const offer of db.prepare('SELECT o.*,oa.operator_id AS offerer_operator,ra.operator_id AS recipient_operator FROM resource_offers o LEFT JOIN agents oa ON oa.id=o.offerer_agent_id LEFT JOIN agents ra ON ra.id=o.recipient_agent_id').all()) {
+        if (offer.offerer_operator == null || offer.recipient_operator == null || offer.offerer_agent_id === offer.recipient_agent_id || offer.offerer_account_id === offer.recipient_account_id || offer.offerer_account_id !== offer.offerer_operator || offer.recipient_account_id !== offer.recipient_operator) throw new Error('Database resource offer parties are invalid.');
+        if (!['proposed','accepted','declined','cancelled','expired'].includes(offer.status)) throw new Error('Database resource offer state is invalid.');
+        if (!Number.isInteger(offer.proposed_at) || offer.proposed_at < 0 || !Number.isInteger(offer.expires_at) || offer.expires_at <= offer.proposed_at) throw new Error('Database resource offer timeline is invalid.');
+        if ((offer.status === 'proposed') !== (offer.settled_at === null) || (offer.status === 'accepted') !== (offer.accept_key !== null) || (['accepted','declined','cancelled'].includes(offer.status)) !== (offer.settled_by_account_id !== null)) throw new Error('Database resource offer settlement is invalid.');
+        if (typeof offer.note !== 'string' || offer.note.length > 200) throw new Error('Database resource offer note is invalid.');
+        let items;
+        try { items = JSON.parse(offer.items); } catch { throw new Error('Database resource offer items are invalid.'); }
+        if (!items || typeof items !== 'object' || Array.isArray(items) || !Object.keys(items).length || Object.values(items).some((quantity) => !Number.isInteger(quantity) || quantity <= 0)) throw new Error('Database resource offer items are invalid.');
+        const events = db.prepare('SELECT action FROM resource_offer_events WHERE offer_id=?').all(offer.id);
+        const proposed = events.filter((event) => event.action === 'proposed').length, settled = events.length - proposed;
+        if (proposed !== 1 || (offer.status === 'proposed' ? settled !== 0 : settled !== 1)) throw new Error('Database resource offer history is invalid.');
+        if (offer.status !== 'proposed' && !events.some((event) => event.action === offer.status)) throw new Error('Database resource offer history is invalid.');
+      }
+      if (db.prepare("SELECT e.id FROM resource_offer_events e LEFT JOIN resource_offers o ON o.id=e.offer_id WHERE o.id IS NULL OR e.action NOT IN ('proposed','accepted','declined','cancelled','expired') OR e.created_at<0 OR length(e.detail)>200").get()) throw new Error('Database resource offer history is invalid.');
+    }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';
     for (const entry of db.prepare('SELECT * FROM audit ORDER BY seq').all()) {
@@ -299,8 +327,8 @@ export function restoreDatabase(source, destination, { lockPath = resolve(dirnam
 // The recovery point and the interruption limits an operator must know. These are the same values
 // the runbook (docs/OPERATIONS.md) states and the failure drills (scripts/ops-rehearsal.mjs) prove.
 export const RECOVERY_LIMITS = Object.freeze({
-  schema_version: 19,
-  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+  schema_version: 20,
+  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
   // A backup is one consistent VACUUM INTO copy taken inside a single read transaction.
   backup_point: 'The last committed transaction before the copy began; no half-applied transaction is ever inside a backup.',
   backup_loss: 'Everything committed after the copy began. A restore therefore rolls the world back to the backup moment.',

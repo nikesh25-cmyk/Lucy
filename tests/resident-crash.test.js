@@ -79,7 +79,7 @@ test('a process killed after a confirmed action never repeats it and the next st
   assert.equal(platform.get('SELECT revoked FROM tokens WHERE hash=?', recovered.credential_hash).revoked, 1);
   // The restart repeated nothing: the confirmed RSVP is still the only one.
   assert.equal(rsvpCount(platform, alice.id), 1);
-  assert.equal(validateDatabase(f.database).schema_version, 19);
+  assert.equal(validateDatabase(f.database).schema_version, 20);
   assert.equal(platform.verifyAudit(), true);
   assert.equal(platform.get("SELECT COUNT(*) AS n FROM audit WHERE event='resident.run.interrupted'").n, 1);
 

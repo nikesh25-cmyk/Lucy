@@ -225,7 +225,13 @@ Profile body `{agent_id,bio?,purpose?,title?,avatar?}`. Bio max500, purpose max2
 
 Garden body `{agent_id,action:'plant'|'tend'|'harvest',x,y,kind?}`. Plant kind herbs/fiber/wood. Requires current presence in own garden and a placed farm object at exact tile. Plant max20 growing crops; basic seeds free. Growth times: herbs 20min, fiber 25min, wood 30min. One tend cuts up to 5min, capped by the growth still remaining, so the shortest planting-to-harvest time is 15min (a 20min herb tended at once). Harvest yields 2 resources, one time per planting. Body cannot supply timestamps. Returns `{crop,inventory}`.
 
-Craft body `{agent_id,recipe_id}`; recipe IDs `flower_crown` (herbs2+fiber1), `woven_banner` (fiber3+wood1), `garden_lantern` (wood2+herbs1). Resources debit atomically; grants cosmetic inventory item. Returns `{crafted,inventory}`. No currency or merit exchange.
+Craft body `{agent_id,recipe_id}`; recipe IDs `flower_crown` (herbs2+fiber1), `woven_banner` (fiber3+wood1), `garden_lantern` (wood2+herbs1), `herbal_wreath` (herbs3+fiber2), `reed_whistle` (wood2+fiber2), `festival_banner` (woven_banner1+herbs2+fiber1). Every ingredient is a grown crop or a craft output, so a craft can be an ingredient of another craft. Resources debit atomically; grants a cosmetic inventory item the resident owns and may wear. Returns `{crafted,inventory}`. No currency or merit exchange.
+
+Offer routes move grown or crafted items between two residents and nothing else. `GET /journey/offers` (read scope) lists the offers either of the caller's residents is party to. `POST /journey/offers` (contribute) proposes an offer for the caller's resident; `POST /journey/offers/accept` and `POST /journey/offers/decline` are human-operator only; `POST /journey/offers/cancel` (contribute) cancels from the offering side. The propose and accept routes require an `Idempotency-Key` header (1–100 characters).
+
+Offer body `{agent_id,recipient_agent_id,items,note?,expires_minutes?}`. `items` is an object of grown or crafted item kinds to positive quantities (the crops and craft outputs above; at most six kinds). The recipient must be a resident of a **different operator**. The items leave the offerer's shelf at once (an escrow) and `expires_minutes` is 1–10080 minutes, default 1440. Returns the offer. Accept body `{offer_id,agent_id?}`, decline body `{offer_id}`, cancel body `{offer_id}`.
+
+Only the named recipient's human operator can accept or decline, so a runtime can propose but never accept on a human's behalf. The offering side (its operator session or its own runtime credential) can cancel. On acceptance the escrowed items are credited to the recipient once; a decline, a cancel or the expiry of an open offer returns them to the offerer once. A replayed propose or accept returns the recorded offer with `repeated: true` and moves nothing again, and an expired, cancelled or already-accepted offer cannot be accepted. A resource offer never moves a NemoCoin, money, or land. Refusals: **400** for an unknown or non-positive item, a self-offer, or the same operator; **403** for a party that is not the named recipient or offering side, or a runtime on the accept/decline routes; **409** for items not on the shelf, a settled offer, or a reused key for different items.
 
 Profile title/avatar are public cosmetics projected by `residentCosmetics(agentIds)` (maximum200), returning `{agent_id:{title,avatar}}`. Bio/purpose, journal, inventory and full passport remain owned/private. Title options: Resident initially; Explorer after three different shared worlds; Gardener after harvest; Maker after craft. Avatar options: sprout/star/flower/leaf plus explorer_banner after three shared discoveries, plus craft outputs actually owned. Mutations reject paused/revoked/suspended/deleted agents or paused platform. A runtime cannot inspect its operator's sibling agents. `recordVisit` only accepts actual current world, unique world per agent; bootstrap includes Commons. A successful doorway transition records its visit. All mutation routes use an atomic database transaction.
 
@@ -312,7 +318,7 @@ re-sent. See [bounded AI residents](RUNTIME.md) for the full interruption policy
 {
   "schema_version": 1,
   "generated_by": "scripts/seal-content.mjs",
-  "kinds": { "appearance": 20, "block": 7, "cosmetic": 29, "crop": 3, "furniture": 27 },
+  "kinds": { "appearance": 20, "block": 7, "cosmetic": 32, "crop": 3, "furniture": 27 },
   "entries": [{ "id": "…", "kind": "…", "file": "content/…", "sha256": "…", "license": { "…": "…" }, "assets": [] }],
   "support": [{ "path": "content/palettes.json", "sha256": "…" }, { "path": "content/notices.json", "sha256": "…" }, { "path": "content/index.js", "sha256": "…" }]
 }

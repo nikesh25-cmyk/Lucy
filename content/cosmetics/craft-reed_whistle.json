@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "reed_whistle",
+  "kind": "cosmetic",
+  "label": "Reed whistle",
+  "since": "1.0.0",
+  "order": 4,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": null,
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "cosmetic_kind": "craft",
+    "earned_by": "craft a small whistle at the crafting station from grown wood and fiber",
+    "name": "Reed whistle",
+    "ingredients": {
+      "wood": 2,
+      "fiber": 2
+    },
+    "output": "reed_whistle"
+  },
+  "notes": [
+    "Recipe reed_whistle: 2 wood + 2 fiber in, one reed_whistle out.",
+    "A small keepsake to carry and to gift a neighbour; both ingredients are grown in a garden."
+  ]
+}

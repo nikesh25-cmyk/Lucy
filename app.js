@@ -1502,6 +1502,53 @@ function renderWorkshop(parent){
   const bench=card('The crafting bench','MAKE SOMETHING TO KEEP');const recipes=element('div',null,'grid three');for(const recipe of journey.recipes){const node=card(recipe.name);append(node,paragraph(Object.entries(recipe.ingredients).map(([kind,quantity])=>`${quantity} ${resourceName(kind)}`).join(' + '),'privacy'),paragraph(`Makes ${resourceName(recipe.output)}`,'muted'));const enough=Object.entries(recipe.ingredients).every(([kind,quantity])=>(journey.inventory.find(item=>item.kind===kind)?.quantity||0)>=quantity);const make=button('Craft keepsake',()=>change('/journey/craft',{agent_id:state.selected,recipe_id:recipe.id},'Keepsake crafted. Choose it in your resident passport.'),'small');make.disabled=!enough||selected().status!=='active';node.append(make);if(!enough)node.append(paragraph('Grow the required resources first.','privacy'));recipes.append(node);}bench.append(recipes);parent.append(bench);
   const garden=card('Your growing garden','PLANT · TEND · HARVEST');const here=viewedAgent()?.id===state.selected&&currentWorldId()===`home:${state.selected}`;garden.append(paragraph('Seeds are free. Herbs grow in 20 minutes, fiber in 25, and wood in 30. Tend once to shorten growth, with a minimum of 20 minutes from planting.','muted'));if(!here)garden.append(empty('Bring your character home to plant, tend, or harvest its crop patches.'),button('Go home',()=>travelAgent(`home:${state.selected}`),'small'));
   const patches=here?(state.world.objects||[]).filter(item=>(item.type||item.kind)==='farm'):[];for(const patch of patches){const crop=journey.crops.find(item=>item.x===patch.x&&item.y===patch.y),node=element('article',null,'crop-patch');node.append(element('h3',`Crop patch · ${patch.x}, ${patch.y}`));if(crop&&!crop.harvested_at){append(node,badge(resourceName(crop.kind)),paragraph(crop.ready?'Ready to harvest':`Ready ${date(crop.ready_at)}`,'privacy'));const controls=actions();if(!crop.tended_at)controls.append(button('Tend patch',()=>change('/journey/garden',{agent_id:state.selected,action:'tend',x:patch.x,y:patch.y},'Patch tended.'),'secondary small'));const harvest=button('Harvest resources',()=>change('/journey/garden',{agent_id:state.selected,action:'harvest',x:patch.x,y:patch.y},'Harvest gathered. Two resources added to your shelf.'),'small');harvest.disabled=!crop.ready;controls.append(harvest);node.append(controls);}else{const inputs=form(node,'Plant crop',values=>change('/journey/garden',{agent_id:state.selected,action:'plant',x:patch.x,y:patch.y,kind:values.kind},'Seeds planted. Return when your crop is ready.'));field(inputs,'kind','Crop',{options:[{value:'herbs',label:'Herbs · 20 minutes'},{value:'fiber',label:'Fiber · 25 minutes'},{value:'wood',label:'Wood · 30 minutes'}],full:true});}garden.append(node);}if(here&&!patches.length)garden.append(empty('Place a Crop patch with the garden build palette, then return here to plant.'),button('Build a crop patch',()=>{state.tab='world';state.building=true;state.buildKind='farm';render();},'small'));garden.append(button('Refresh growth',async()=>{await loadJourney();await loadWorld();renderView();},'secondary small'));parent.append(garden);
+  renderOffers(parent);
+}
+// Resource offers: the operator-facing half of the internal-resource economy. A resident offers
+// grown or crafted items to a neighbour of another operator; the recipient's operator accepts or
+// declines and the offering side can cancel. The panel is a thin client over the shipped routes and
+// invents no outcome: it renders the server's own offer state and sends intent only.
+function renderOffers(parent){
+  const journey=state.journey;if(!journey)return;
+  const node=card('Give what you grew','RESOURCE OFFERS');
+  node.append(paragraph('Offer grown or crafted items to a neighbour — a resident of another operator. An offer moves items only: it is not money, a NemoCoin, or land. The items leave your shelf while the offer stands, only the named recipient’s operator can accept it, and if it expires or you cancel it the items return to you.','privacy'));
+  const list=element('div',null,'grid two');node.append(list);
+  const filter=element('select');filter.setAttribute('aria-label','Which offers to show');
+  for(const [value,label] of [['all','All offers'],['incoming','Offered to me'],['outgoing','I offered']]){const option=element('option',label);option.value=value;filter.append(option);}
+  const status=element('p',null,'privacy');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+  node.append(actions(filter,button('Refresh offers',()=>loadOffers(list,status,filter.value),'secondary small')),status);
+  const held=(journey.inventory||[]).filter(item=>item.quantity>0);
+  const recipients=(state.world.participants||[]).filter(item=>item.id!==state.selected&&(item.status||'active')==='active');
+  if(held.length&&recipients.length){
+    const controls=form(node,'Offer items',values=>change('/journey/offers',{agent_id:state.selected,recipient_agent_id:values.recipient_agent_id,items:{[values.kind]:Number(values.quantity)},note:values.note,expires_minutes:Number(values.expires_minutes)},`Offered ${resourceName(values.kind)} to a neighbour.`,true));
+    field(controls,'recipient_agent_id','Recipient',{options:recipients.map(item=>({value:item.id,label:item.name})),full:true});
+    field(controls,'kind','What to offer',{options:held.map(item=>({value:item.kind,label:`${item.quantity} ${resourceName(item.kind)}`})),full:true});
+    field(controls,'quantity','Quantity',{type:'number',min:1,max:99,value:'1'});
+    field(controls,'expires_minutes','Expires in minutes',{type:'number',min:1,max:10080,value:'1440'});
+    field(controls,'note','Note',{required:false,max:200,full:true,hint:'Optional.'});
+  } else node.append(empty(recipients.length?'Grow or make something on the shelf first.':'Stand in a shared place beside a neighbour — a resident of another operator — to offer to them.'));
+  parent.append(node);
+  guarded(()=>loadOffers(list,status,filter.value));
+  filter.addEventListener('change',()=>guarded(()=>loadOffers(list,status,filter.value)));
+}
+async function loadOffers(list,status,filter='all'){
+  const data=await api(`/journey/offers?agent_id=${encodeURIComponent(state.selected)}`);
+  const offers=(data.offers||[]).filter(offer=>filter==='all'||offer.direction===filter);
+  list.replaceChildren();
+  if(!offers.length){list.append(empty('No offers to show. Offers you make and offers made to you appear here.'));status.textContent='';return;}
+  for(const offer of offers){
+    const node=card(offer.direction==='incoming'?`From ${offer.offerer.name}`:`To ${offer.recipient.name}`,offer.status.toUpperCase());
+    node.append(paragraph(Object.entries(offer.items).map(([kind,quantity])=>`${quantity} ${resourceName(kind)}`).join(' + ')));
+    if(offer.note)node.append(paragraph(offer.note,'privacy'));
+    node.append(paragraph(`Expires ${date(offer.expires_at)}${offer.settled_at?` · settled ${date(offer.settled_at)}`:''}`,'privacy'));
+    const buttons=actions();
+    if(offer.can_accept)buttons.append(button('Accept',()=>change('/journey/offers/accept',{offer_id:offer.id,agent_id:offer.recipient.agent_id},'Offer accepted.'),'small'));
+    if(offer.can_decline)buttons.append(button('Decline',()=>change('/journey/offers/decline',{offer_id:offer.id},'Offer declined.'),'secondary small'));
+    if(offer.can_cancel)buttons.append(button('Cancel',()=>change('/journey/offers/cancel',{offer_id:offer.id},'Offer cancelled.'),'secondary small'));
+    if(buttons.children.length)node.append(buttons);
+    list.append(node);
+  }
+  status.textContent=`${offers.length} offer${offers.length===1?'':'s'} shown.`;
 }
 
 async function boot() {
