@@ -12,6 +12,7 @@ local busy = {}
 local motion = {}
 local reconciled = false
 local emerging = false
+local active_world = nil
 local motion_clock = 0
 local sync_elapsed = 0
 local move_cooldown = 0.16
@@ -36,8 +37,8 @@ local function request(path, payload, callback)
     end
     -- A malformed success response must still call back. In particular, sync() clears its busy
     -- flag only inside this callback; leaving it pending would stop future world refreshes.
-    if not parsed or type(body) ~= 'table' then callback(false, 'Bridge unavailable or invalid response.')
-    elseif response.code < 200 or response.code >= 300 then callback(false, body.error or 'Action refused.')
+    if not parsed or type(body) ~= 'table' then callback(false, 'Bridge unavailable or invalid response.', response and response.code)
+    elseif response.code < 200 or response.code >= 300 then callback(false, body.error or 'Action refused.', response.code)
     else callback(true, body) end
   end)
 end
@@ -101,15 +102,32 @@ sync = function(name, release_motion)
   local state = motion[name]
   local generation = state and state.generation
   busy[name] = state
-  request('/native/state', {player=name}, function(ok, data)
-    if motion[name] ~= state or state.generation ~= generation then return end
+  request('/native/state', {player=name}, function(ok, data, code)
+    if motion[name] ~= state or state.generation ~= generation then
+      -- A leave/re-pair may have installed a newer state. Release only this callback's slot;
+      -- never clear a newer request's busy marker.
+      if busy[name] == state then busy[name] = nil end
+      return
+    end
     busy[name] = nil
-    if not ok then paired[name] = nil; message(name, data); return end
+    if not ok then
+      if code == 401 then paired[name] = nil end
+      if code ~= 401 then
+        local state = motion[name]
+        if state then state.release_after = state.release_after or release_motion end
+      end
+      message(name, data)
+      return
+    end
     local function apply()
       if not paired[name] or motion[name] ~= state or state.generation ~= generation then
         emerging = false
         if paired[name] then sync(name) end
         return
+      end
+      if active_world ~= data.world_id then
+        active_world = data.world_id
+        reconciled = false
       end
       core.load_area({x=0,y=-1,z=0}, {x=47,y=7,z=47})
       for _, tile in ipairs(data.terrain or {}) do
@@ -161,13 +179,20 @@ sync = function(name, release_motion)
         if not seen[id] then if marker and marker:get_pos() then marker:remove() end; markers[id] = nil end
       end
       local player = core.get_player_by_name(name)
+      local release_now = release_motion or (state and state.release_after and not state.sync_after)
       if player and data.player then
-        set_anchor(name, player, data.player, release_motion)
+        set_anchor(name, player, data.player, release_now)
+      elseif data.player and release_now and state then
+        -- The server confirmed the step, but a player object may have vanished during sync (or
+        -- the server-only smoke probe may use a synthetic name). Do not strand motion in flight.
+        state.in_flight = false
+        state.last_direction = nil
       end
       local follow_up = state and state.sync_after
       local follow_release = state and state.release_after
       if follow_up then state.sync_after = nil end
-      if follow_up then state.release_after = nil; sync(name, follow_release) end
+      if follow_up then state.release_after = nil; sync(name, follow_release)
+      elseif state then state.release_after = nil end
     end
     if reconciled then apply() else
       emerging = true
@@ -258,7 +283,7 @@ core.register_chatcommand('nemo_pair', {params='CODE', description='Pair this pl
       motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=next_generation}
       paired[name] = true
       busy[name] = nil
-      message(name, 'Paired to frontier:0:0.'); sync(name)
+      message(name, 'Paired to the opened frontier.'); sync(name)
     else message(name, data) end
   end)
   return true, 'Pairing request sent.'

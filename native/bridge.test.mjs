@@ -18,6 +18,7 @@ test('operator token can only be forwarded to a literal local API origin', () =>
 });
 function fixture() {
   let revoked = false;
+  let agentWorld = 'frontier:0:0';
   const calls = [];
   let loginRequest;
   const fake = async (url, options) => {
@@ -25,14 +26,14 @@ function fixture() {
     calls.push({path, method:options.method, payload:options.body && JSON.parse(options.body)});
     if (revoked) return new Response(JSON.stringify({error:'revoked'}), {status:401});
     if (path === '/auth/login') { loginRequest = options; return Response.json({token, expires_at:Date.now()+60000, account:{id:'operator-1'}}); }
-    if (path === '/me') return Response.json({agents:[{id:'human-1',kind:'human',status:'active',world_id:'frontier:0:0',x:24,y:24,z:0}]});
-    if (path === '/world') return Response.json({blocks:[{id:'block-1',x:25,y:24,z:0,type:'stone'}],terrain:[],participants:[],camera:{x:0,y:0}});
-    if (path === '/frontier/build') return Response.json({world_id:'frontier:0:0', changed:true});
-    if (path === '/move') return Response.json({x:25,y:24,z:0,world_id:'frontier:0:0'});
+    if (path === '/me') return Response.json({agents:[{id:'human-1',kind:'human',status:'active',world_id:agentWorld,x:24,y:24,z:0}]});
+    if (path === '/world') return Response.json({world:{id:agentWorld},blocks:[{id:'block-1',x:25,y:24,z:0,type:'stone'}],terrain:[],participants:[],camera:{x:0,y:0},frontier:{neighbors:[{direction:'right',x:46,y:24,target_world_id:'frontier:1:0',exists:true}]}});
+    if (path === '/frontier/build') return Response.json({world_id:agentWorld, changed:true});
+    if (path === '/move') return Response.json({x:25,y:24,z:0,world_id:agentWorld});
     return new Response('{}', {status:404});
   };
   const server = createBridge({fetcher:fake, modKey:key});
-  return {server, calls, revoke:() => {revoked=true}, loginRequest:() => loginRequest};
+  return {server, calls, revoke:() => {revoked=true}, setWorld: value => {agentWorld=value}, loginRequest:() => loginRequest};
 }
 async function withServer(run) {
   const f = fixture();
@@ -68,6 +69,21 @@ test('one-time pairing, native callback build, web projection, revocation and mo
   assert.equal((await post('/native/action',{player:'Builder',action:'move',direction:'right'},true)).status,200);
   revoke();
   assert.equal((await post('/native/action',{player:'Builder',action:'move',direction:'right'},true)).status,401);
+}));
+
+test('native state and builds follow the owned human into an opened adjacent sector', async () => withServer(async ({post,calls,setWorld}) => {
+  const issued = await post('/pair/start', {token,agent_id:'human-1'});
+  assert.equal((await post('/native/pair',{player:'Walker',code:issued.body.code},true)).status,200);
+  setWorld('frontier:1:0');
+  const moved = await post('/native/action',{player:'Walker',action:'move',direction:'right'},true);
+  assert.equal(moved.status,200);
+  assert.equal(moved.body.result.world_id,'frontier:1:0');
+  const state = await post('/native/state',{player:'Walker'},true);
+  assert.equal(state.status,200);
+  assert.equal(state.body.world_id,'frontier:1:0');
+  const build = await post('/native/action',{player:'Walker',action:'place',type:'wood',pos:{x:25,y:0,z:24}},true);
+  assert.equal(build.status,200);
+  assert.equal(calls.at(-1).payload.world_id,'frontier:1:0');
 }));
 
 test('local browser sign-in returns only an in-memory handle and requires origin plus CSRF', async () => withServer(async ({post,calls,base,loginRequest}) => {

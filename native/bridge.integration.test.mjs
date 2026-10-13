@@ -46,6 +46,23 @@ test('real NemoWorld routes: native build and web build share rows, reject unaut
   assert.equal(projected.data.blocks.some(b=>b.x===32&&b.y===33&&b.type==='stone'),true);
   assert.equal(projected.data.terrain.length,48*48);
   assert.equal(projected.data.participants.some(p=>p.id===ai.id&&p.kind==='agent'&&p.x===31&&p.y===32),true);
+  // Open the east neighbor at the exact gate, then cross it through the same authoritative /move
+  // route used by the browser. The native bridge must follow the owned agent's returned world.
+  f.platform.run('UPDATE agents SET x=46,y=24,z=0,grounded=1 WHERE id=?',human.id);
+  f.advance(1000);
+  const crossed=await post('/native/action',{player:'Alice',action:'move',direction:'right'},true);
+  assert.equal(crossed.status,200,JSON.stringify(crossed.data));
+  assert.equal(crossed.data.result.world_id,'frontier:1:0');
+  const adjacent=await post('/native/state',{player:'Alice'},true);
+  assert.equal(adjacent.status,200,JSON.stringify(adjacent.data));
+  assert.equal(adjacent.data.world_id,'frontier:1:0');
+  // The next east neighbor is unopened. At its boundary the server keeps the resident in place.
+  f.platform.run('UPDATE agents SET x=47,y=24,z=0,grounded=1 WHERE id=?',human.id);
+  f.advance(1000);
+  const closed=await post('/native/action',{player:'Alice',action:'move',direction:'right'},true);
+  assert.equal(closed.status,200,JSON.stringify(closed.data));
+  assert.equal(closed.data.result.world_id,'frontier:1:0');
+  assert.equal(closed.data.result.blocked,true);
   const refused=await post('/native/action',{player:'Alice',action:'place',type:'wood',pos:{x:20,y:0,z:20}},true);
   assert.equal(refused.status,409);
   const reopened=new Platform(f.database); t.after(()=>reopened.close());

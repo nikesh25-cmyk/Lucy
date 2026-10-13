@@ -652,9 +652,15 @@ function describePlot(row, actor) {
 
 export const frontierMethods = {
   seedFrontier() {
-    const definition = getWorldDefinition('frontier:0:0');
-    this.run('INSERT OR IGNORE INTO worlds(id,name,kind,owner_agent_id,visibility,width,height,created_at) VALUES(?,?,?,NULL,?,?,?,?)', definition.id, definition.name, 'frontier', 'public', FRONTIER_SIZE, FRONTIER_SIZE, timestamp(this));
-    this.run('INSERT OR IGNORE INTO frontier_sectors(world_id,sector_x,sector_y,creator_account_id,creator_agent_id,created_at) VALUES(?,0,0,NULL,NULL,?)', definition.id, timestamp(this));
+    // Open a connected starter landscape on both new and existing installations. This only
+    // inserts missing canonical areas: authored blocks, prior openings and their creators stay
+    // untouched. Starter areas have no operator, expansion action, stewardship or coin award.
+    const created = timestamp(this);
+    for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) {
+      const definition = getWorldDefinition(`frontier:${x}:${y}`);
+      this.run('INSERT OR IGNORE INTO worlds(id,name,kind,owner_agent_id,visibility,width,height,created_at) VALUES(?,?,?,NULL,?,?,?,?)', definition.id, definition.name, 'frontier', 'public', FRONTIER_SIZE, FRONTIER_SIZE, created);
+      this.run('INSERT OR IGNORE INTO frontier_sectors(world_id,sector_x,sector_y,creator_account_id,creator_agent_id,created_at) VALUES(?,?,?,NULL,NULL,?)', definition.id, x, y, created);
+    }
     this.seedLand();
   },
   seedLand() {

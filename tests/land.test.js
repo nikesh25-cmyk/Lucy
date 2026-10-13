@@ -17,7 +17,7 @@ const build = (f, owner, agent, position, extra = {}) => f.tx('frontierBuild', f
 
 test('finite land registry has immutable canonical addresses and exact complete inventory, scale and reserves', async t => {
   const f = await fixture(t), data = f.platform.land(null, { world_id: world, limit: 50 });
-  assert.deepEqual(data.counts, { gross: 16384, reserved: 8192, permanent_reserved: 8192, assignable: 8192, opened: 64, assigned: 0, available: 32, unopened: 8160, occupied: 0, occupied_unassigned: 0, blocked_by_existing: 0, total: 16384, total_areas: 256, opened_areas: 1 });
+  assert.deepEqual(data.counts, { gross: 16384, reserved: 8192, permanent_reserved: 8192, assignable: 8192, opened: 576, assigned: 0, available: 288, unopened: 7904, occupied: 0, occupied_unassigned: 0, blocked_by_existing: 0, total: 16384, total_areas: 256, opened_areas: 9 });
   assert.equal(data.areas.length, 256); assert.equal(data.total, 64); assert.equal(data.has_more, true);
   assert.equal(data.world.width_m * data.world.height_m, 589824);
   assert.equal(data.world.plot_area_m2, 36); assert.match(data.world.units_note, /virtual.*no real property/i);
@@ -43,7 +43,7 @@ test('human stewardship is one plot per operator, purposeful, idempotent and tra
   assert.throws(() => assign(f, 'bob'), { status: 409 });
   assert.throws(() => assign(f, 'alice', 'plot:0:0:1:1'), { status: 409 });
   assert.throws(() => assign(f, 'bob', 'plot:0:0:4:5'), { status: 409 });
-  assert.throws(() => assign(f, 'bob', 'plot:1:0:5:5'), { status: 409 });
+  assert.throws(() => assign(f, 'bob', 'plot:2:0:5:5'), { status: 409 });
   for (const extra of [{ price: 0 }, { currency: 'NEMO' }, { payment: 'free' }, { account_id: f.actor('alice').account.id }, { transfer: true }]) assert.throws(() => assign(f, 'bob', 'plot:0:0:1:1', extra), { status: 400 });
   for (const changes of [{ purpose: '' }, { purpose: 'a'.repeat(121) }, { description: 'a'.repeat(501) }]) assert.throws(() => assign(f, 'bob', 'plot:0:0:1:1', changes), { status: 400 });
   assert.throws(() => f.platform.run('INSERT INTO land_stewardships VALUES(?,?,?,?,?)', 'plot:0:0:1:1', f.actor('alice').account.id, 'Duplicate account plot', '', new Date(f.clock()).toISOString()), /UNIQUE/);
@@ -88,7 +88,7 @@ test('legacy structures cannot be appropriated, are counted as occupied, and ret
   f.platform.run('INSERT INTO frontier_blocks(id,world_id,x,y,z,type,creator_agent_id,creator_account_id,created_at) VALUES(?,?,?,?,?,?,?,?,?)', randomUUID(), world, position.x, position.y, 0, 'wood', original.id, f.actor('alice').account.id, new Date(f.clock()).toISOString());
   f.platform.db.exec(LAND_BLOCK_GUARDS);
   const summary = f.platform.landSummary();
-  assert.equal(summary.counts.available, 31); assert.equal(summary.counts.reserved, 8192); assert.equal(summary.counts.occupied_unassigned, 1);
+  assert.equal(summary.counts.available, 287); assert.equal(summary.counts.reserved, 8192); assert.equal(summary.counts.occupied_unassigned, 1);
   assert.equal(summary.counts.gross, summary.counts.reserved + summary.counts.available + summary.counts.assigned + summary.counts.unopened + summary.counts.occupied);
   assert.equal(summary.areas.find(area => area.world_id === world).available_plots, 31);
   const legacy = f.platform.landPlot(null, { plot_id: plot }).plot;
@@ -97,7 +97,7 @@ test('legacy structures cannot be appropriated, are counted as occupied, and ret
   assert.throws(() => build(f, 'alice', sibling, position, { remove: true }), { status: 403 });
   assert.throws(() => build(f, 'bob', bob, position, { remove: true }), { status: 403 });
   assert.equal(build(f, 'alice', original, position, { remove: true }).removed, true);
-  assert.equal(f.platform.landSummary().counts.available, 32);
+  assert.equal(f.platform.landSummary().counts.available, 288);
   assert.equal(assign(f, 'bob').assigned, true);
 });
 
@@ -114,7 +114,7 @@ test('stewardship persists and account deletion releases identity while preservi
   assert.equal(restarted.get('SELECT COUNT(*) AS n FROM land_stewardships').n, 0);
   assert.equal(restarted.get('SELECT COUNT(*) AS n FROM frontier_blocks').n, 1);
   assert.equal(restarted.get('SELECT purpose,description FROM land_events').purpose, '[removed]');
-  assert.equal(restarted.landSummary().counts.available, 31);
+  assert.equal(restarted.landSummary().counts.available, 287);
   assert.equal(restarted.landPlot(null, { plot_id: plot }).plot.state, 'reserved');
   assert.equal(restarted.verifyAudit(), true);
 });
@@ -131,7 +131,7 @@ test('finite perimeter guards preserve legacy areas, while assignment quotas and
   f.platform.run('INSERT INTO worlds VALUES(?,?,?,NULL,?,?,?,?)', 'frontier:10:0', 'Legacy landscape', 'frontier', 'public', 48, 48, timestamp);
   f.platform.run('INSERT INTO frontier_sectors VALUES(?,?,?,NULL,NULL,?)', 'frontier:10:0', 10, 0, timestamp);
   f.platform.db.exec(LAND_SCHEMA);
-  assert.equal(f.platform.frontierMap(null).legacy_total, 1); assert.equal(f.platform.frontierMap(null).total, 1);
+  assert.equal(f.platform.frontierMap(null).legacy_total, 1); assert.equal(f.platform.frontierMap(null).total, 9);
   assert.equal(f.platform.world(null, { world_id: 'frontier:10:0' }).frontier.parcels.length, 0);
   assert.equal(f.platform.world(null, { world_id: 'frontier:10:0' }).portals.some(portal => portal.target_world_id === 'commons'), true);
   f.platform.run('UPDATE agents SET world_id=?,x=46,y=24 WHERE id=?', 'frontier:10:0', agent.id);

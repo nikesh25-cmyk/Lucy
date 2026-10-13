@@ -38,38 +38,76 @@ test('frontier terrain is deterministic and bounded with connected protected gat
   const portal = getWorldDefinition('commons').portals.find(p => p.targetWorldId === seed);
   assert.deepEqual({ x: portal.x, y: portal.y }, { x: 19, y: 6 });
   assert.equal(walkable(portal, 'commons'), true);
-  assert.equal(f.platform.frontierMap(null).total, 1);
-  assert.equal(f.platform.world(null, { world_id: seed }).portals.length, 1, 'Uncreated neighbors are not usable portals.');
-  assert.throws(() => f.platform.world(null, { world_id: 'frontier:1:0' }), { status: 404 });
+  assert.equal(f.platform.frontierMap(null).total, 9);
+  assert.equal(f.platform.world(null, { world_id: seed }).portals.length, 5, 'All four starter neighbors are usable passages.');
+  assert.throws(() => f.platform.world(null, { world_id: 'frontier:2:0' }), { status: 404 });
   assert.equal(f.platform.worldList(null).shared_count, 30, 'Frontier pages do not inflate the fixed shared directory.');
+});
+
+test('nine starter areas are connected, persist, and fill gaps without rewriting earlier construction', async t => {
+  const f = await fixture(t), alice = f.agent('alice');
+  const starter = f.platform.frontierMap(null, { limit: 9 });
+  assert.equal(starter.total, 9);
+  assert.deepEqual(starter.sectors.map(sector => sector.world_id).sort(),
+    Array.from({ length: 9 }, (_, index) => `frontier:${index % 3 - 1}:${Math.floor(index / 3) - 1}`).sort());
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_actions').n, 0);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n, 0);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM land_stewardships').n, 0);
+  position(f, alice, 46, 24);
+  const crossed = f.tx('moveAgent', f.actor('alice'), { agent_id: alice.id, direction: 'right' });
+  assert.deepEqual({ world_id: crossed.world_id, x: crossed.x, y: crossed.y }, { world_id: 'frontier:1:0', x: 1, y: 24 });
+  f.advance();
+  const returned = f.tx('moveAgent', f.actor('alice'), { agent_id: alice.id, direction: 'left' });
+  assert.deepEqual({ world_id: returned.world_id, x: returned.x, y: returned.y }, { world_id: seed, x: 46, y: 24 });
+  const authored = 'frontier:1:0', tile = openTile(authored);
+  steward(f, 'alice', authored); closeTo(f, alice, tile, authored);
+  assert.equal(build(f, 'alice', alice, tile, { type: 'wood' }).changed, true);
+  const original = f.platform.get('SELECT id,created_at,creator_agent_id FROM frontier_blocks WHERE world_id=?', authored);
+  const sector = f.platform.get('SELECT creator_account_id,creator_agent_id,created_at FROM frontier_sectors WHERE world_id=?', authored);
+  const actionCount = f.platform.get('SELECT COUNT(*) AS n FROM frontier_actions').n;
+  // A previously installed database may be missing some new starter areas. Reopening adds only
+  // those gaps, leaving all existing sector identities and their authored blocks untouched.
+  f.platform.run("DELETE FROM frontier_sectors WHERE world_id='frontier:0:1'");
+  f.platform.run("DELETE FROM worlds WHERE id='frontier:0:1'");
+  f.platform.close(); const reopened = new Platform(f.database, f.clock); t.after(() => reopened.close());
+  assert.equal(reopened.frontierMap(null).total, 9);
+  reopened.seedSpaces();
+  assert.equal(reopened.frontierMap(null).total, 9, 'Repeating the startup seeder adds no duplicate area.');
+  assert.deepEqual({ ...reopened.get('SELECT id,created_at,creator_agent_id FROM frontier_blocks WHERE world_id=?', authored) }, { ...original });
+  assert.deepEqual({ ...reopened.get('SELECT creator_account_id,creator_agent_id,created_at FROM frontier_sectors WHERE world_id=?', authored) }, { ...sector });
+  assert.equal(reopened.get('SELECT COUNT(*) AS n FROM frontier_actions').n, actionCount);
+  assert.equal(reopened.get('SELECT COUNT(*) AS n FROM coin_rewards').n, 0);
+  assert.equal(reopened.landSummary().counts.total, 16384);
+  assert.equal(reopened.get("SELECT COUNT(*) AS n FROM frontier_sectors WHERE creator_account_id IS NOT NULL").n, 0);
 });
 
 test('humans and scoped agents expand only adjacent passages with idempotency, quotas and continuous crossing', async t => {
   const f = await fixture(t), human = f.tx('createAgent', f.actor('alice'), { kind: 'human', name: 'Alice builder' }), agent = f.agent('alice');
   assert.throws(() => expand(f, null, human, { direction: 'right' }), { status: 401 });
   assert.throws(() => expand(f, f.actor('alice'), human, { direction: 'right' }), { status: 409 });
-  position(f, human, 24, 24);
+  position(f, human, 24, 24, 'frontier:1:0');
   assert.throws(() => expand(f, f.actor('alice'), human, { direction: 'right' }), { status: 409 });
   assert.throws(() => expand(f, f.actor('alice'), human, { direction: 'diagonal' }), { status: 400 });
-  position(f, human, 46, 24);
+  position(f, human, 46, 24, 'frontier:1:0');
   const first = expand(f, f.actor('alice'), human, { direction: 'right', target_world_id: 'frontier:44:44' });
-  assert.equal(first.target_world_id, 'frontier:1:0'); assert.equal(first.created, true);
+  assert.equal(first.target_world_id, 'frontier:2:0'); assert.equal(first.created, true);
   assert.equal(expand(f, f.actor('alice'), human, { direction: 'right' }).created, false);
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_actions').n, 1);
   const crossed = f.tx('moveAgent', f.actor('alice'), { agent_id: human.id, direction: 'right' });
-  assert.deepEqual({ x: crossed.x, y: crossed.y, world_id: crossed.world_id }, { x: 1, y: 24, world_id: 'frontier:1:0' });
+  assert.deepEqual({ x: crossed.x, y: crossed.y, world_id: crossed.world_id }, { x: 1, y: 24, world_id: 'frontier:2:0' });
   f.advance();
   const returned = f.tx('moveAgent', f.actor('alice'), { agent_id: human.id, direction: 'left' });
-  assert.deepEqual({ x: returned.x, y: returned.y, world_id: returned.world_id }, { x: 46, y: 24, world_id: seed });
+  assert.deepEqual({ x: returned.x, y: returned.y, world_id: returned.world_id }, { x: 46, y: 24, world_id: 'frontier:1:0' });
   const readOnly = f.tx('runtime', f.actor('alice'), agent.id, { scopes: ['read', 'move'], max_calls: 10 });
-  position(f, agent, 24, 1);
+  position(f, agent, 24, 1, 'frontier:0:-1');
   assert.throws(() => expand(f, f.platform.authenticate(readOnly.token), agent, { direction: 'up' }), { status: 403 });
   const worker = f.tx('runtime', f.actor('alice'), agent.id, { scopes: ['build', 'move'], max_calls: 20 });
   f.advance();
   assert.equal(expand(f, f.platform.authenticate(worker.token, 'build'), agent, { direction: 'up' }).created, true);
   // Shared account quota includes both human and agent residents.
-  for (let x = 1; x < 7; x++) { f.advance(); position(f, human, 46, 24, `frontier:${x}:0`); expand(f, f.actor('alice'), human, { direction: 'right' }); }
-  f.advance(); position(f, human, 24, 46, seed);
+  for (let x = 2; x < 7; x++) { f.advance(); position(f, human, 46, 24, `frontier:${x}:0`); expand(f, f.actor('alice'), human, { direction: 'right' }); }
+  f.advance(); position(f, human, 1, 24, 'frontier:-1:0'); expand(f, f.actor('alice'), human, { direction: 'left' });
+  f.advance(); position(f, human, 24, 46, 'frontier:0:1');
   assert.throws(() => expand(f, f.actor('alice'), human, { direction: 'down' }), { status: 429 });
   assert.equal(f.platform.frontierMap(null, { limit: 2 }).has_more, true);
   assert.equal(f.platform.frontierMap(null, { offset: 2, limit: 2 }).sectors.length, 2);
@@ -169,7 +207,6 @@ test('looking wraps yaw, clamps pitch and keeps its own throttle', async t => {
 test('frontier mutations require the observed area and reject stale requests after a resident crosses', async t => {
   const f = await fixture(t), alice = f.agent('alice');
   position(f, alice, 46, 24);
-  expand(f, f.actor('alice'), alice, { direction: 'right' });
   f.advance();
   const crossing = f.tx('moveAgent', f.actor('alice'), { agent_id: alice.id, direction: 'right' });
   assert.equal(crossing.world_id, 'frontier:1:0');
@@ -184,7 +221,7 @@ test('frontier mutations require the observed area and reject stale requests aft
   assert.throws(() => build(f, 'alice', alice, tile, { world_id: seed, remove: true }), { status: 409 });
   position(f, alice, 46, 24, 'frontier:1:0');
   assert.throws(() => expand(f, f.actor('alice'), alice, { world_id: seed, direction: 'right' }), { status: 409 });
-  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_sectors').n, 2);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_sectors').n, 9);
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_blocks').n, 0);
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_actions').n, actionCount);
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n, 0);
@@ -214,7 +251,7 @@ test('sector blocks, bounded public views and private building exports persist a
   f.platform.close(); const restarted = new Platform(f.database, f.clock); t.after(() => restarted.close());
   const restored = restarted.world(restarted.authenticate(f.credentials.alice.token), { agent_id: alice.id });
   assert.equal(restored.world.id, seed); assert.equal(restored.blocks.length, 2); assert.equal(restored.frontier.block_count, 2);
-  assert.equal(restarted.frontierMap(null).total, 1);
+  assert.equal(restarted.frontierMap(null).total, 9);
   assert.equal(restarted.get('SELECT COUNT(*) AS n FROM coin_rewards').n, 0);
   assert.equal(restarted.verifyAudit(), true);
 });
@@ -227,17 +264,15 @@ test('building daily budgets, global sector capacity, pause and coordinate edges
   assert.throws(() => build(f, 'alice', alice, tile), { status: 429 });
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM frontier_blocks').n, 0);
   f.advance(86400000); assert.equal(build(f, 'alice', alice, tile).changed, true);
-  f.advance(); position(f, alice, 24, 1);
+  f.advance(); position(f, alice, 24, 1, 'frontier:0:-1');
   f.platform.run("UPDATE settings SET value='true' WHERE key='paused'");
   assert.throws(() => expand(f, f.actor('alice'), alice, { direction: 'up' }), { status: 503 });
   f.platform.run("UPDATE settings SET value='false' WHERE key='paused'");
   f.platform.transaction(() => {
-    let created = 1;
-    for (let y = -8; y <= 7 && created < FRONTIER_LIMITS.sectors; y++) for (let x = -8; x <= 7 && created < FRONTIER_LIMITS.sectors; x++) {
-      if (x === 0 && y === 0) continue;
+    for (let y = -8; y <= 7; y++) for (let x = -8; x <= 7; x++) {
       const id = `frontier:${x}:${y}`, definition = getWorldDefinition(id);
-      f.platform.run('INSERT INTO worlds VALUES(?,?,?,NULL,?,?,?,?)', id, definition.name, 'frontier', 'public', 48, 48, oldTimestamp);
-      f.platform.run('INSERT INTO frontier_sectors VALUES(?,?,?,NULL,NULL,?)', id, x, y, oldTimestamp); created++;
+      f.platform.run('INSERT OR IGNORE INTO worlds VALUES(?,?,?,NULL,?,?,?,?)', id, definition.name, 'frontier', 'public', 48, 48, oldTimestamp);
+      f.platform.run('INSERT OR IGNORE INTO frontier_sectors VALUES(?,?,?,NULL,NULL,?)', id, x, y, oldTimestamp);
     }
   });
   assert.equal(expand(f, f.actor('alice'), alice, { direction: 'up' }).created, false);
