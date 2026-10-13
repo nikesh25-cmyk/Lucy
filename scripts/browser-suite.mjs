@@ -2214,8 +2214,15 @@ define('subscription-entitlement-and-revocation', async () => {
     await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'private' });
     const closed = await waitForClient(stranger.page, () => { const c = window.__nemoworld?.lastClosed?.(); return c && c.reason === 'access_revoked' ? c : null; }, null, 'the outsider’s subscription to be revoked', 5000);
     expect(closed.reason === 'access_revoked', 'the revocation must name the lost access', { expected: 'access_revoked', actual: describe(closed) });
-    // The client is told, and a direct subscription attempt while private is refused as well.
-    const notice = await stranger.page.locator('#notice').textContent().catch(() => '');
+    // The close event and the visible notice are separate client updates, so wait for the notice to
+    // carry the reason instead of reading it the instant the stream closes (a load-timing race).
+    let notice = '';
+    try {
+      notice = await waitForClient(stranger.page, () => {
+        const text = document.querySelector('#notice')?.textContent || '';
+        return /no longer open to you|garden is now private/i.test(text) ? text : null;
+      }, null, 'the client’s notice to explain why the live feed stopped', 5000);
+    } catch { notice = await stranger.page.locator('#notice').textContent().catch(() => ''); }
     expect(/no longer open to you|garden is now private/i.test(notice || ''), 'the client must explain why the live feed stopped', { actual: describe((notice || '').trim().slice(0, 160)) });
     const refused = await inPage(stranger.page, `/events?world_id=${encodeURIComponent(garden)}`, { method: 'GET' });
     expect(refused.status === 403, 'an authenticated but unentitled client must be refused the private channel', { expected: 'HTTP 403', actual: `HTTP ${refused.status}` });
