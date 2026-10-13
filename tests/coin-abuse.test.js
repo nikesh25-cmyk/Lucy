@@ -313,3 +313,80 @@ async function forgedReceipt(f){
   destination.close();
   return path;
 }
+
+// ---------------------------------------------------------------------------
+// Task 06 — Security tests: impersonation, unauthorized actions and self-approval.
+// Each test below is load-bearing: disabling the named control in
+// src/platform.js makes the test fail (recorded in the handoff).
+// ---------------------------------------------------------------------------
+
+test('a human avatar cannot receive a runtime credential', async t => {
+  const f = await make(t);
+  const human = f.tx('createAgent', f.actor('alice'), { name: 'Human avatar', capabilities: '', limitations: '', kind: 'human', color: '#397f79', symbol: '✦' });
+  assert.equal(human.kind, 'human');
+  assert.throws(() => f.platform.runtime(f.actor('alice'), human.id, { minutes: 10, max_calls: 10, scopes: ['read'] }), { status: 403 });
+  assert.equal(f.platform.get("SELECT COUNT(*) AS n FROM tokens WHERE agent_id=? AND kind='runtime'", human.id).n, 0);
+});
+
+test('a paused or revoked agent credential is refused before any handler', async t => {
+  const f = await make(t);
+  const hash = value => createHash('sha256').update(value).digest('hex');
+  const runtimeResponse = f.platform.runtime(f.actor('alice'), f.resident.id, { minutes: 10, max_calls: 10, scopes: ['read', 'contribute'] });
+  const token = runtimeResponse.token;
+  const tokenHash = hash(token);
+  const runtime = f.platform.authenticate(token);
+  assert.equal(runtime.kind, 'runtime');
+  assert.equal(runtime.agent.id, f.resident.id);
+
+  // Pausing revokes the runtime token, so authentication fails before any handler runs.
+  f.tx('agentControl', f.actor('alice'), f.resident.id, 'paused');
+  assert.throws(() => f.platform.authenticate(token), { status: 401 });
+  assert.equal(f.platform.get('SELECT revoked FROM tokens WHERE hash=?', tokenHash).revoked, 1);
+
+  // If a stale token row were somehow unrevoked, the agent status check still refuses.
+  f.platform.run('UPDATE tokens SET revoked=0 WHERE hash=?', tokenHash);
+  assert.throws(() => f.platform.authenticate(token), { status: 403 });
+
+  // Revoking the agent also revokes its tokens; unrevoking again still fails the status check.
+  f.tx('agentControl', f.actor('alice'), f.resident.id, 'revoked');
+  assert.throws(() => f.platform.authenticate(token), { status: 401 });
+  f.platform.run('UPDATE tokens SET revoked=0 WHERE hash=?', tokenHash);
+  assert.throws(() => f.platform.authenticate(token), { status: 403 });
+});
+
+test('a runtime credential cannot review or adopt a submission', async t => {
+  const f = await make(t);
+  const runtime = f.platform.runtime(f.actor('alice'), f.resident.id, { minutes: 10, max_calls: 10, scopes: ['read', 'contribute'] });
+  const runtimeActor = f.platform.authenticate(runtime.token);
+
+  const claim = f.tx('claim', f.actor('alice'), { task_id: f.m.task.id, agent_id: f.resident.id }, 'runtime-review-claim');
+  const submission = f.tx('submit', f.actor('alice'), evidence(claim), 'runtime-review-submit');
+
+  assert.throws(() => f.platform.review(runtimeActor, { submission_id: submission.id, decision: 'accepted', reason: 'Self-approval' }), { status: 403 });
+  assert.throws(() => f.platform.adoption(runtimeActor, { submission_id: submission.id, note: 'Self-adoption' }), { status: 403 });
+  assert.equal(f.platform.get('SELECT status FROM submissions WHERE id=?', submission.id).status, 'pending_review');
+});
+
+test('adoption requires a different person from the contributor and from the reviewer', async t => {
+  const f = await make(t);
+  // Bob owns the mission, admin is the assigned reviewer, alice contributes through her agent.
+  const mission = f.tx('createMission', f.actor('admin'), {
+    title: 'Adoption boundary mission', area: 'Climate', summary: 'Test adoption independence.', beneficiary: 'Test community',
+    owner_id: f.actor('bob').account.id, reviewer_id: f.actor('admin').account.id,
+    rubric: 'Check exact original sources, rights, uncertainty, and attribution.',
+  });
+  const task = f.tx('createTask', f.actor('admin'), { mission_id: mission.id, title: 'Adoption boundary task', instructions: 'Record one source.', rights: 'Explicit permission required.', allowed_domains: ['example.org'] });
+  f.tx('missionStatus', f.actor('admin'), mission.id, 'open');
+  const claim = f.tx('claim', f.actor('alice'), { task_id: task.id, agent_id: f.resident.id }, 'adoption-claim');
+  const submission = f.tx('submit', f.actor('alice'), evidence(claim), 'adoption-submit');
+  f.tx('review', f.actor('admin'), { submission_id: submission.id, decision: 'accepted', reason: 'Independent review' });
+
+  // The contributor cannot adopt their own work.
+  assert.throws(() => f.platform.adoption(f.actor('alice'), { submission_id: submission.id, note: 'I adopt my own work' }), { status: 403 });
+  // The reviewer who accepted it cannot adopt it.
+  assert.throws(() => f.platform.adoption(f.actor('admin'), { submission_id: submission.id, note: 'I adopt what I reviewed' }), { status: 403 });
+  // A different, uninvolved mission owner can adopt it.
+  const adoption = f.tx('adoption', f.actor('bob'), { submission_id: submission.id, note: 'Independent adoption by the mission owner' });
+  assert.equal(adoption.submission_id, submission.id);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM adoptions WHERE submission_id=?', submission.id).n, 1);
+});
