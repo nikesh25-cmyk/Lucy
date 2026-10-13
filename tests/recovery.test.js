@@ -5,9 +5,10 @@ import { mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Platform } from '../src/platform.js';
-import { acquireProcessLock, backupDatabase, restoreDatabase, validateDatabase } from '../src/recovery.js';
+import { acquireProcessLock, backupDatabase, redactDiagnostics, restoreDatabase, validateDatabase, EVIDENCE_LIMITS } from '../src/recovery.js';
 import { COMMUNITY_TABLES } from '../src/community.js';
 import { JOURNEY_TABLES } from '../src/journey.js';
+import { fixture } from './helpers.js';
 
 const setup = (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'world-recovery-'));
@@ -131,4 +132,67 @@ test('process locks recover after a reused PID or a different host boot', (t) =>
   writeFileSync(path, JSON.stringify({ pid: process.pid, nonce: 'previous-container', identity: { boot: 'a-previous-host-boot', start: '1' } }));
   const release = acquireProcessLock(path);
   try { assert.throws(() => acquireProcessLock(path), /running/); } finally { release(); }
+});
+
+// The evidence library's own rules, re-checked. Every rewrite below is one a tool with database
+// access can perform: the append-only trigger is dropped for the write and restored afterwards,
+// exactly as `tests/evidence-library.test.js` does, so validation — not the trigger — is the gate.
+const rewriteCapture = (platform, sql, ...values) => {
+  platform.db.exec('DROP TRIGGER evidence_captures_no_update');
+  try { platform.run(sql, ...values); }
+  finally { platform.db.exec("CREATE TRIGGER evidence_captures_no_update BEFORE UPDATE ON evidence_captures BEGIN SELECT RAISE(ABORT,'Evidence captures are append-only'); END"); }
+};
+
+test('a capture re-pointed at another source URL fails full validation', async (t) => {
+  const f = await fixture(t);
+  const capture = f.platform.get('SELECT * FROM evidence_captures ORDER BY sha256 LIMIT 1');
+  rewriteCapture(f.platform, 'UPDATE evidence_captures SET url=? WHERE id=?', 'https://elsewhere.example/other-response.json', capture.id);
+  // The row still names its own source and hash; only the address it is stored under has moved.
+  assert.equal(f.platform.get('SELECT source_key FROM evidence_captures WHERE id=?', capture.id).source_key, capture.source_key);
+  assert.equal(f.platform.get('SELECT url FROM evidence_captures WHERE id=?', capture.id).url, 'https://elsewhere.example/other-response.json');
+  assert.throws(() => validateDatabase(f.database), /evidence library validation failed/);
+});
+
+test('a retained-evidence total past its byte quota fails full validation', async (t) => {
+  const f = await fixture(t);
+  const capture = f.platform.get('SELECT * FROM evidence_captures WHERE retained=1 LIMIT 1');
+  const retained = f.platform.get('SELECT COALESCE(SUM(bytes),0) AS n FROM evidence_captures WHERE retained=1').n;
+  assert.ok(retained <= EVIDENCE_LIMITS.max_retained_bytes, 'the seeded library starts inside its quota');
+  rewriteCapture(f.platform, 'UPDATE evidence_captures SET retained_path=?,bytes=? WHERE id=?', 'catalog/fabricated-response.json', EVIDENCE_LIMITS.max_retained_bytes, capture.id);
+  assert.ok(f.platform.get('SELECT COALESCE(SUM(bytes),0) AS n FROM evidence_captures WHERE retained=1').n > EVIDENCE_LIMITS.max_retained_bytes);
+  assert.throws(() => validateDatabase(f.database), /evidence library validation failed/);
+});
+
+test('a withdrawn source without its recorded withdrawal fails full validation', async (t) => {
+  const f = await fixture(t);
+  const source = f.platform.get('SELECT * FROM evidence_sources ORDER BY source_key LIMIT 1');
+  assert.equal(source.status, 'active');
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM evidence_events WHERE source_id=?', source.id).n, 0);
+  // The identity trigger guards the source's address, not its status, so this rewrite needs no
+  // dropped trigger at all. A withdrawal is recorded by its own append-only event with its reason;
+  // a status and reason written without that event is not a withdrawal the world ever performed.
+  f.platform.run("UPDATE evidence_sources SET status='withdrawn',withdrawn_reason='Tampered withdrawal.' WHERE id=?", source.id);
+  assert.throws(() => validateDatabase(f.database), /evidence library validation failed/);
+});
+
+test('the diagnostics redaction drops private content fields and keeps the counters it names', () => {
+  const redacted = redactDiagnostics({
+    records: { accounts: 4, messages: 412, ambassador_conversations: 177 },
+    model: { state_note: 'The local model is idle: nothing is running and nothing is waiting.' },
+    integrity: { quick_check: 'ok', journal_mode: 'wal' },
+    recovery: { backup_point: 'The last committed transaction before the copy began.', replay_policy: 'A recorded action is never replayed.' },
+    message: 'PRIVATE-MESSAGE-MARKER', text: 'PRIVATE-TEXT-MARKER', journal_text: 'PRIVATE-JOURNAL-MARKER',
+    artifact: 'PRIVATE-ARTIFACT-MARKER', prompt: 'PRIVATE-PROMPT-MARKER', conversation: [{ answer: 'PRIVATE-ANSWER-MARKER' }],
+    excerpt: 'PRIVATE-EXCERPT-MARKER', transcript: 'PRIVATE-TRANSCRIPT-MARKER', body: { content: 'PRIVATE-BODY-MARKER' },
+  });
+  for (const field of ['message', 'text', 'journal_text', 'artifact', 'prompt', 'conversation', 'excerpt', 'transcript', 'body']) assert.equal(redacted[field], '[redacted-field]', `${field} must be dropped`);
+  assert.equal(JSON.stringify(redacted).includes('PRIVATE'), false);
+  // The named counters, their notes and their policy text are published unchanged.
+  assert.equal(redacted.records.accounts, 4);
+  assert.equal(redacted.records.messages, 412);
+  assert.equal(redacted.records.ambassador_conversations, 177);
+  assert.match(redacted.model.state_note, /idle/);
+  assert.equal(redacted.integrity.journal_mode, 'wal');
+  assert.match(redacted.recovery.backup_point, /committed transaction/);
+  assert.match(redacted.recovery.replay_policy, /never replayed/);
 });
