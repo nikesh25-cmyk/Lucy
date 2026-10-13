@@ -128,3 +128,50 @@ test('native and web read the same mission records; a repeated native claim and 
   // Native human mission work mints no coin.
   assert.equal(f.platform.get('SELECT COUNT(*) n FROM coin_rewards').n,0);
 });
+
+// Slice 3 — native text conversation over the same private records the browser uses.
+test('native reads and sends the same private messages as the browser, with recipient isolation', async t => {
+  const f = await fixture(t);
+  const human = f.tx('createAgent', f.actor('alice'), {kind:'human', name:'Talk Human', capabilities:'Talks', limitations:'Operator controlled'});
+  const bob = f.agent('bob', 'Bob resident');
+  const carol = f.agent('reviewer', 'Carol resident');
+  for (const [agent,x] of [[human,32],[bob,31],[carol,30]]) f.platform.run('UPDATE agents SET world_id=?,x=?,y=32,z=0,grounded=1 WHERE id=?','frontier:0:0',x,agent.id);
+  const app = createApp({platform:f.platform});
+  await new Promise(resolve => app.server.listen(0,'127.0.0.1',resolve));
+  t.after(async()=>{await app.stopWorkers(); await new Promise(resolve=>{app.server.close(resolve);app.server.closeAllConnections()})});
+  const api = `http://127.0.0.1:${app.server.address().port}`;
+  const bridge = createBridge({api,modKey:key});
+  await new Promise(resolve=>bridge.listen(0,'127.0.0.1',resolve));
+  t.after(()=>new Promise(resolve=>bridge.close(resolve)));
+  const base = `http://127.0.0.1:${bridge.address().port}`;
+  async function post(path, body, mod=false) {
+    const response=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...(mod?{'X-Nemo-Mod-Key':key}:{})},body:JSON.stringify(body)});
+    return {status:response.status,data:await response.json()};
+  }
+  const issued = await post('/pair/start',{token:f.credentials.alice.token,agent_id:human.id});
+  assert.equal((await post('/native/pair',{player:'Alice',code:issued.data.code},true)).status,200);
+  // Another operator privately messages the paired human.
+  const sent = await fetch(`${api}/api/v1/messages`,{method:'POST',headers:{Authorization:`Bearer ${f.credentials.bob.token}`,'Content-Type':'application/json',Origin:api},body:JSON.stringify({agent_id:bob.id,channel:'private',recipient_id:human.id,text:'A private hello.'})});
+  assert.equal(sent.status,200,JSON.stringify(await sent.clone().json().catch(()=>({}))));
+  const sentBody = await sent.json();
+  const read = await post('/native/messages',{player:'Alice'},true);
+  assert.equal(read.status,200,JSON.stringify(read.data));
+  assert.ok(read.data.messages.some(m=>m.id===sentBody.id && m.channel==='private' && m.text==='A private hello.'),'the native read shows the same private message id');
+  assert.ok(read.data.participants.some(p=>p.id===bob.id),'the native read lists the visible sender');
+  // The human replies privately to the visible Bob.
+  f.advance(2000);
+  const reply = await post('/native/say',{player:'Alice',to:bob.id,text:'A private reply.'},true);
+  assert.equal(reply.status,200,JSON.stringify(reply.data));
+  assert.equal(reply.data.message.channel,'private');
+  const replyRow = f.platform.get('SELECT * FROM messages WHERE id=?',reply.data.message.id);
+  assert.deepEqual(JSON.parse(replyRow.recipients).sort(),[human.id,bob.id].sort(),'the reply reaches only the two parties');
+  assert.equal(f.platform.canReadMessage(f.actor('reviewer'),replyRow),false,'a third party cannot read the reply');
+  // Addressing a resident that is not visible is refused.
+  f.advance(2000);
+  assert.equal((await post('/native/say',{player:'Alice',to:'not-a-resident',text:'Hidden.'},true)).status,404);
+  // A public say is a public message in the world, not a private one.
+  f.advance(2000);
+  const pub = await post('/native/say',{player:'Alice',text:'A public hello.'},true);
+  assert.equal(pub.data.message.channel,'public');
+  assert.equal(f.platform.get('SELECT COUNT(*) n FROM coin_rewards').n,0);
+});
