@@ -138,7 +138,10 @@ test('the stylesheet is a new file the main stylesheets do not import, so it can
   for (const [name, text] of [['style.css', base], ['nemo-theme.css', theme], ['game-theme.css', game]]) {
     assert.equal(text.includes('game-mobile'), false, `${name} must not import or reference game-mobile.css`);
   }
-  assert.equal(page.includes('game-mobile.css'), false, 'index.html is not this task’s to change: the integration owner adds the link tag');
+  // Task 37 left the link tag to the integration owner; task 38 adds it, so index.html is now the one
+  // place the layer is loaded from and the scoped stylesheet is still the only source of `.nm-touch`.
+  assert.equal(page.includes('<link rel="stylesheet" href="/game-mobile.css">'), true, 'the integration owner links the mobile layer from index.html exactly once');
+  assert.equal(page.split('game-mobile.css').length - 1, 1, 'the mobile layer is linked once, not twice');
   // The main stylesheets are untouched, so this stylesheet is the only new source of rules.
   assert.equal(/nm-touch/.test(base) || /nm-touch/.test(theme) || /nm-touch/.test(game), false, 'no touch selector exists in the main stylesheets');
 });

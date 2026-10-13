@@ -130,6 +130,10 @@ export const SCENARIOS = Object.freeze([
   { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
   { id: 'reviewer-workbench', title: 'A reviewer assesses each criterion, compares source versions, requests changes and the mission owner records an adoption', regression: null },
   { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
+  { id: 'live-observation-readonly', title: 'An anonymous observer sees public activity and can neither build nor control a resident', regression: null },
+  { id: 'game-shell-entry-and-continue', title: 'Play, Observe and Continue enter the world, and the shell keeps one overlay, one HUD and one drawer', regression: null },
+  { id: 'management-interface-and-roles', title: '/manage hosts the governance surfaces, and only a privileged role sees the entry', regression: null },
+  { id: 'private-memory-and-journal-boundaries', title: 'A private memory and a private journal are refused to another operator and to a sibling character', regression: null },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -3656,11 +3660,14 @@ define('signed-in-game-play', async () => {
   await settle(page);
   if (!await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, ACTORS.admin);
 
-  await step('the visible Play control enters as the saved human player in first person', async () => {
-    const play = page.locator('#game-mode-button');
+  await step('the entry screen Play control enters as the saved human player in first person', async () => {
+    // Task 38 moved the mode switch out of the quickbar and onto the entry screen, so Play is the
+    // door. Play, not Continue, is what resolves the human player for this operator.
+    const actions = page.locator('#hero-actions');
+    await actions.waitFor({ state: 'visible' });
+    const play = actions.getByRole('button', { name: 'Play', exact: true });
     await play.waitFor({ state: 'visible' });
-    expect((await play.textContent())?.trim() === 'Play as human',
-      'a signed-in visitor with no selected resident must have a direct Play action', { actual: (await play.textContent())?.trim() });
+    expect(await play.isVisible(), 'the entry screen must offer a Play control', { actual: 'no visible Play control' });
     await play.click();
     await page.waitForFunction((id) =>
       window.__nemoworld?.selected?.() === id &&
@@ -3752,19 +3759,305 @@ define('signed-in-game-play', async () => {
         const box = button.getBoundingClientRect();
         return { label: button.textContent?.trim(), x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), height: Math.round(box.height) };
       }));
-      expect(controls.length === 6, 'the phone quickbar must retain all six game actions', { actual: describe(controls) });
+      // The game-experience specification keeps the HUD at five actions: the mode switch moved to
+      // the world menu, so the quickbar is Interact, Build, Chat, Places, More.
+      expect(controls.length === 5, 'the phone quickbar must carry exactly the five world actions', { actual: describe(controls) });
       expect(controls.every((control) => control.x >= 0 && control.right <= 390 && control.height >= 40),
         'every phone quickbar action must fit the screen with a tappable height', { actual: describe(controls) });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
         'the signed-in game must fit a 390px phone without sideways scrolling');
       await page.screenshot({ path: join(RESULTS, 'signed-in-game-play', 'mobile-play.png') });
-      return `six quickbar actions fit a 390px phone, each at least 40px tall`;
+      return `five quickbar actions fit a 390px phone, each at least 40px tall`;
     } finally {
       await page.setViewportSize({ width: 1440, height: 900 });
     }
   });
 
   return 'the human player used the game HUD, walked by keyboard, and returned to the saved world position';
+});
+
+// Live observation. A visitor with no account and no resident reads the public world through the
+// read-only transport, sees the residents the server published, and cannot build or act for anyone.
+define('live-observation-readonly', async () => {
+  const visitor = await context('observer-visitor');
+  const page = visitor.page;
+  const walker = fixtures().characters.walker;
+  // Put a resident in the Commons where the observer's opening window looks, so "public activity"
+  // is a real stored position and not an assumption.
+  write('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE id=?', 'commons', 11, 7, walker.id);
+  const before = { tile: row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id), blocks: count('SELECT COUNT(*) FROM frontier_blocks'), messages: count('SELECT COUNT(*) FROM messages'), objects: count('SELECT COUNT(*) FROM world_objects') };
+
+  await step('the anonymous observer enters the Commons through Observe', async () => {
+    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    const actions = page.locator('#hero-actions');
+    await actions.waitFor({ state: 'visible' });
+    await actions.getByRole('button', { name: 'Observe', exact: true }).click();
+    await page.locator('#game-hud').waitFor({ state: 'visible' });
+    expect(await page.evaluate(() => document.body.classList.contains('signed-in')) === false, 'observation must need no account');
+    const observed = await page.evaluate(() => ({ world: window.__nemoworld?.worldId?.(), mode: window.__nemoworld?.gameMode?.(), selected: window.__nemoworld?.selected?.() }));
+    expect(observed.world === 'commons' && observed.mode === 'observe' && !observed.selected, 'Observe must load the public world with no resident selected', { actual: describe(observed) });
+    return 'the visitor observed commons with no session and no resident';
+  });
+
+  await step('the observer sees the public activity the server published, and its own connection state', async () => {
+    const spectator = await waitForCondition(async () => {
+      const view = await page.evaluate(() => window.__nemoworld?.spectator?.() || null);
+      return view && view.residents.length ? view : null;
+    }, 'the spectator view to publish the residents the server returned');
+    expect(spectator.status.live === false, 'an anonymous visitor holds no live channel, and the status says so', { actual: describe(spectator.status) });
+    expect(typeof spectator.status.detail === 'string' && spectator.status.detail.length > 0, 'the observer is told what its connection is');
+    const seen = spectator.residents.find((resident) => resident.id === walker.id);
+    expect(seen && seen.x === 11 && seen.y === 7, 'the observer must see the resident at its stored tile', { expected: '11, 7', actual: describe(spectator.residents) });
+    const line = (await page.locator('#game-observer-status').textContent())?.trim() || '';
+    expect(line.length > 0, 'the HUD must carry the observer status line', { actual: line });
+    return `the spectator published ${spectator.residents.length} public residents from the snapshot`;
+  });
+
+  await step('the observer can follow a resident and pan, and every attempt to act is refused', async () => {
+    const select = page.locator('#observer-follow');
+    await select.waitFor({ state: 'visible' });
+    await select.selectOption(walker.id);
+    const following = await waitForCondition(async () => {
+      const view = await page.evaluate(() => window.__nemoworld?.spectator?.() || null);
+      return view?.following === walker.id ? view : null;
+    }, 'the observer to follow the resident');
+    expect(following.target.x === 11 && following.target.y === 7, 'following targets the resident’s stored tile', { actual: describe(following.target) });
+    const cameraBefore = following.camera;
+    await page.locator('.game-observer-controls').getByRole('button', { name: 'Pan right', exact: true }).click();
+    const panned = await waitForCondition(async () => {
+      const view = await page.evaluate(() => window.__nemoworld?.spectator?.() || null);
+      return view && view.camera.x === cameraBefore.x + 1 ? view : null;
+    }, 'the observer camera to pan one tile without a resident');
+    expect(panned.following === null, 'a pan ends the follow: the camera has one target owner');
+    expect(panned.target.x === panned.camera.x && panned.target.y === panned.camera.y, 'with no follow, the camera target is the observer’s own tile', { actual: describe(panned.target) });
+
+    // Eight writes from the observer's own page, including one acting as the resident in the world.
+    const refusals = {};
+    for (const [path, body] of [['/move', { agent_id: walker.id, direction: 'right' }], ['/messages', { text: 'a visitor cannot speak for anyone', world_id: 'commons' }], ['/frontier/build', { world_id: 'frontier:0:0', x: 1, y: 1, z: 0, type: 'wood' }], ['/interact', { agent_id: walker.id, x: 11, y: 7, action: 'travel' }]]) {
+      refusals[path] = (await inPage(page, path, { body })).status;
+    }
+    expect(Object.values(refusals).every((status) => status >= 400), 'no observation write may be accepted', { actual: describe(refusals) });
+    const build = page.locator('#game-build-button');
+    await build.click();
+    const refusal = (await page.locator('#notice').textContent())?.trim() || '';
+    expect(/read-only/i.test(refusal), 'the observer’s Build control must refuse in the server’s own terms', { actual: refusal });
+    return `follow then pan; writes refused: ${describe(refusals)}`;
+  });
+
+  await step('observation changed nothing in the database', async () => {
+    expect(describe(row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id)) === describe(before.tile), 'the watched resident must not move', { expected: describe(before.tile), actual: describe(row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id)) });
+    expect(count('SELECT COUNT(*) FROM frontier_blocks') === before.blocks, 'no block may be stored by an observer');
+    expect(count('SELECT COUNT(*) FROM messages') === before.messages, 'no message may be stored by an observer');
+    expect(count('SELECT COUNT(*) FROM world_objects') === before.objects, 'no object may be stored by an observer');
+    return 'resident tile, blocks, messages and objects all unchanged after observation';
+  });
+
+  return 'an anonymous observer saw public activity, followed and panned, and could neither build nor control a resident';
+});
+
+// The game shell. The three entry controls, the five-action HUD, the drawers and the character
+// overlay, each asserted against the server rather than against a rendered string.
+define('game-shell-entry-and-continue', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const pathfinder = fixtures().characters.pathfinder;
+
+  await step('a first-time visitor sees Play and Observe, and the film as a text link', async () => {
+    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    const actions = page.locator('#hero-actions');
+    await actions.waitFor({ state: 'visible' });
+    const labels = (await actions.getByRole('button').allTextContents()).map((label) => label.trim());
+    expect(labels.includes('Play') && labels.includes('Observe'), 'a first-time visitor must see Play and Observe', { actual: describe(labels) });
+    expect(!labels.some((label) => label.startsWith('Continue')), 'Continue must be absent when there is nothing to continue', { actual: describe(labels) });
+    expect(await actions.locator('a.game-film-link').count() === 1, 'the film must be a text link under the controls');
+    expect((await page.locator('#game-hud').count()) === 0 || !await page.locator('#game-hud').isVisible(), 'the HUD must be hidden on the entry screen');
+    return `the entry screen offered ${describe(labels)}`;
+  });
+
+  await step('Continue enters the world as the character this browser remembers', async () => {
+    await signIn(page, ACTORS.admin);
+    const actions = page.locator('#hero-actions');
+    await actions.getByRole('button', { name: new RegExp('^Continue as ') }).waitFor({ state: 'visible' });
+    const label = (await actions.getByRole('button', { name: new RegExp('^Continue as ') }).textContent())?.trim() || '';
+    expect(label.includes(pathfinder.name), 'Continue must name the remembered character', { expected: pathfinder.name, actual: label });
+    await actions.getByRole('button', { name: new RegExp('^Continue as ') }).click();
+    await page.locator('#game-hud').waitFor({ state: 'visible' });
+    const entered = await waitForCondition(async () => {
+      const state_ = await page.evaluate(() => ({ selected: window.__nemoworld?.selected?.(), mode: window.__nemoworld?.gameMode?.() }));
+      return state_.selected === pathfinder.id && state_.mode === 'play' ? state_ : null;
+    }, 'Continue to enter the world as the remembered character');
+    expect(entered.selected === pathfinder.id, 'Continue must select the remembered character server-side', { actual: describe(entered) });
+    return `Continue entered as ${pathfinder.name}`;
+  });
+
+  await step('the HUD carries the five actions, and one drawer opens at a time', async () => {
+    const hud = page.locator('#game-hud');
+    const controls = await hud.locator('.game-quickbar button').allTextContents();
+    expect(describe(controls.map((label) => label.trim())) === describe(['Interact', 'Build', 'Chat', 'Places', 'More']),
+      'the HUD must carry exactly the five world actions, with the mode switch moved to the world menu', { actual: describe(controls) });
+    await hud.getByRole('button', { name: 'Chat', exact: true }).click();
+    await page.waitForFunction(() => window.__nemoworld?.drawer?.() === 'chat', null, { timeout: PAGE_TIMEOUT_MS });
+    await hud.getByRole('button', { name: 'More', exact: true }).click();
+    await page.waitForFunction(() => window.__nemoworld?.drawer?.() === 'tools', null, { timeout: PAGE_TIMEOUT_MS });
+    expect(await page.evaluate(() => document.body.dataset.gameDrawer) === 'tools', 'opening a second drawer must close the first');
+    // The Journal, Inventory and Projects drawers read the server payloads and name their fields.
+    for (const [name, id] of [['Journal', '#world-journal-card'], ['Inventory', '#world-inventory-card'], ['Projects', '#world-projects-card']]) {
+      expect(await page.locator(id).count() === 1, `the ${name} drawer must exist in the world tools`);
+    }
+    expect((await page.locator('#world-inventory-card').textContent()).includes('On the shelf'), 'the Inventory drawer must render the shelf the server returned');
+    await page.getByRole('button', { name: 'Close world tools', exact: true }).click();
+    expect(await page.evaluate(() => document.body.dataset.gameDrawer) === '', 'the labelled Close must dismiss the drawer');
+    return 'five HUD actions; Chat then More left exactly one drawer open, and its own Close dismissed it';
+  });
+
+  await step('the character overlay creates a resident, and the database gains exactly that row', async () => {
+    const before = count('SELECT COUNT(*) FROM agents');
+    // The character overlay opens from the world aside's own control.
+    await page.locator('#game-hud').getByRole('button', { name: 'More', exact: true }).click();
+    await page.getByRole('button', { name: 'Choose a character…', exact: true }).click();
+    const dialog = page.locator('#character-dialog');
+    await dialog.waitFor({ state: 'visible' });
+    expect(await dialog.evaluate((node) => node.open), 'the character overlay must be an open native dialog');
+    const listed = await dialog.locator('.record h3').allTextContents();
+    expect(listed.includes(pathfinder.name), 'the overlay must list the operator’s own characters from GET /me', { actual: describe(listed) });
+    const form = dialog.locator('form[data-draft-section="character-create"]');
+    await form.locator('[aria-label="Character name"]').fill('Overlay newcomer');
+    await form.getByRole('button', { name: 'Create character', exact: true }).click();
+    const created = await waitForCondition(async () => row("SELECT id,kind,status FROM agents WHERE name='Overlay newcomer'"), 'the overlay to create exactly one stored character');
+    expect(created.kind === 'agent' && created.status === 'active', 'the created row must be the kind the form chose', { actual: describe(created) });
+    expect(count('SELECT COUNT(*) FROM agents') === before + 1, 'the overlay must create exactly one character', { expected: `${before + 1}`, actual: `${count('SELECT COUNT(*) FROM agents')}` });
+    // The row is stored before the shell finishes re-reading the world, so wait for the overlay to
+    // close rather than reading its state the instant the database row appears.
+    const closed = await waitForCondition(async () => await dialog.evaluate((node) => node.open) === false ? true : null,
+      'the character overlay to close after a successful creation').then(() => true).catch(() => false);
+    expect(closed, 'a successful creation must close the overlay', { actual: `open=${await dialog.evaluate((node) => node.open)} notice=${(await page.locator('#notice').textContent())?.trim()}` });
+    const entered = await waitForCondition(async () => {
+      const selected = await page.evaluate(() => window.__nemoworld?.selected?.());
+      return selected === created.id ? selected : null;
+    }, 'the world to enter as the character the overlay created');
+    expect(entered === created.id, 'creating a character must enter the world as it', { expected: created.id, actual: entered });
+    return `the overlay listed ${listed.length} residents and stored one new character, entering as it`;
+  });
+
+  return 'Play, Observe and Continue are the entry door, the HUD carries five actions, and the character overlay creates a stored resident';
+});
+
+// The management interface: one role-gated entry out of the newcomer's path, and the same governance
+// sections in full behind it. The client gate only decides what is rendered; the server refuses a
+// privileged route to a member regardless.
+define('management-interface-and-roles', async () => {
+  const member = await actor('owner');
+  const operator = await context('manage-operator');
+
+  await step('a member never sees a management entry in the game menu', async () => {
+    await member.page.goto(`${baseUrl()}/?mode=workspace`, { waitUntil: 'domcontentloaded' });
+    await settle(member.page);
+    if (!await member.page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(member.page, ACTORS.owner);
+    await member.page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(member.page);
+    await member.page.locator('#game-menu-button').click();
+    await nav(member.page, 'Guide').waitFor({ state: 'visible' });
+    const labels = (await member.page.locator('#navigation button').allTextContents()).map((label) => label.trim());
+    expect(!labels.includes('Management'), 'a member must not see the management entry', { actual: describe(labels) });
+    for (const hidden of ['Review', 'Mission studio', 'Administration']) expect(!labels.includes(hidden), `${hidden} must leave the newcomer's path`, { actual: describe(labels) });
+    expect(await member.page.locator('.tabs button[aria-label="Safety"]').count() === 0, 'governance decisions leave the game menu; reporting does not');
+    return 'the member game menu held no governance or management entry';
+  });
+
+  await step('/manage serves the workspace presentation with the governance sections', async () => {
+    await operator.page.goto(`${baseUrl()}/manage`, { waitUntil: 'domcontentloaded' });
+    await settle(operator.page);
+    if (!await operator.page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(operator.page, ACTORS.admin);
+    await operator.page.goto(`${baseUrl()}/manage`, { waitUntil: 'domcontentloaded' });
+    await settle(operator.page);
+    expect(await operator.page.evaluate(() => document.body.classList.contains('game-world')) === false, '/manage must open the management presentation, not the game shell');
+    const labels = (await operator.page.locator('#navigation button').allTextContents()).map((label) => label.trim());
+    for (const shown of ['Review', 'Mission studio', 'Safety', 'Administration']) expect(labels.includes(shown), `${shown} must be offered in /manage`, { actual: describe(labels) });
+    await openTab(operator.page, 'Administration');
+    expect((await operator.page.locator('#view').textContent()).length > 0, 'the administration section must render for an administrator');
+    return `the management presentation offered ${describe(labels.filter((label) => ['Review', 'Mission studio', 'Safety', 'Administration'].includes(label)))}`;
+  });
+
+  await step('the management entry is offered to a privileged role in the game menu', async () => {
+    await operator.page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(operator.page);
+    await operator.page.locator('#game-menu-button').click();
+    await nav(operator.page, 'Guide').waitFor({ state: 'visible' });
+    const labels = (await operator.page.locator('#navigation button').allTextContents()).map((label) => label.trim());
+    expect(labels.includes('Management'), 'an administrator must be offered exactly one management entry', { actual: describe(labels) });
+    for (const hidden of ['Review', 'Mission studio', 'Administration']) expect(!labels.includes(hidden), `${hidden} must stay behind /manage even for an administrator`, { actual: describe(labels) });
+    return 'the administrator game menu held one Management entry and no governance group';
+  });
+
+  return '/manage hosts the governance surfaces; a member never sees the entry and an administrator sees exactly one';
+});
+
+// Private memory and the private journal. Another operator of the same world sees nothing, and a
+// sibling character of the same operator does not leak it through a runtime credential either.
+define('private-memory-and-journal-boundaries', async () => {
+  const owner = await actor('owner');
+  const page = owner.page;
+  const walker = fixtures().characters.walker, steward = fixtures().characters.steward;
+  const secret = 'A private purpose the acceptance run wrote.';
+
+  await step('the operator records a private purpose and the resident holds a private journal note', async () => {
+    const recorded = await apiExpect(fixtures().owner, 'POST', '/memory/manage', { action: 'record', agent_id: walker.id, kind: 'purpose', attribute: 'intent', value: secret });
+    expect(recorded.fact?.id, 'the operator must be able to record a memory fact', { actual: describe(recorded) });
+    // A record made by the owning operator is decided at write time; a resident proposal is not.
+    expect(count("SELECT COUNT(*) FROM resident_memory WHERE agent_id=? AND state='active'", walker.id) === 1, 'exactly one active fact must be stored', { actual: describe(rows('SELECT state FROM resident_memory WHERE agent_id=?', walker.id)) });
+    await apiExpect(fixtures().owner, 'POST', '/journey/journal', { agent_id: walker.id, text: secret });
+    expect(count('SELECT COUNT(*) FROM journey_journal WHERE agent_id=?', walker.id) === 1, 'exactly one private journal entry must be stored', { actual: `${count('SELECT COUNT(*) FROM journey_journal WHERE agent_id=?', walker.id)}` });
+    return 'one operator-recorded memory fact and one private journal entry stored for the walker';
+  });
+
+  await step('the owning operator reads it, and the resident’s own credential reads only its own record', async () => {
+    const owned = await apiRequest(`/memory?agent_id=${walker.id}`, { token: fixtures().owner.token });
+    expect(owned.status === 200 && owned.body.facts.some((fact) => fact.value === secret), 'the owning operator must read the approved purpose', { actual: `HTTP ${owned.status}` });
+    expect(JSON.stringify(owned.body).includes(secret), 'the operator’s own read must carry the stored value');
+    return 'the own-operator read returned the stored fact';
+  });
+
+  await step('another operator and a sibling character are both refused', async () => {
+    const stranger = await apiRequest(`/memory?agent_id=${walker.id}`, { token: fixtures().stranger.token });
+    expect(stranger.status === 404, 'another operator must see nothing at all', { actual: `HTTP ${stranger.status} ${describe(stranger.body)}` });
+    expect(JSON.stringify(stranger.body).includes(secret) === false, 'no other-operator response may carry the value');
+    const sibling = await apiExpect(fixtures().owner, 'POST', '/runtime/start', { agent_id: steward.id, minutes: 5, max_calls: 20, scopes: ['read', 'contribute'] });
+    const leaked = await apiRequest(`/memory?agent_id=${walker.id}`, { token: sibling.token });
+    expect(leaked.status === 404, 'a sibling character must not read another resident’s memory', { actual: `HTTP ${leaked.status} ${describe(leaked.body)}` });
+    expect(JSON.stringify(leaked.body).includes(secret) === false, 'a sibling read may not carry the value');
+    const self = await apiRequest('/memory', { token: sibling.token });
+    expect(self.status === 200 && self.body.agent_id === steward.id, 'a runtime credential reads exactly its own resident', { actual: describe(self.body?.agent_id) });
+    expect(JSON.stringify(self.body).includes(secret) === false, 'the sibling’s own record must not contain the walker’s fact');
+    // The private journal is operator-only: a sibling credential and an anonymous visitor are refused.
+    const journal = await apiRequest(`/journey?agent_id=${walker.id}`, { token: sibling.token });
+    expect(journal.status >= 400, 'a sibling credential must not read another resident’s journey', { actual: `HTTP ${journal.status}` });
+    const anonymous = await apiRequest(`/journey?agent_id=${walker.id}`);
+    expect(anonymous.status >= 400, 'the private journal is never public', { actual: `HTTP ${anonymous.status}` });
+    return `another operator ${stranger.status}, sibling credential ${leaked.status}, journey ${journal.status}/${anonymous.status}`;
+  });
+
+  await step('the walker’s own operator page shows the fact and another operator’s page does not', async () => {
+    await page.goto(`${baseUrl()}/?mode=workspace`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    if (!await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, ACTORS.owner);
+    await openTab(page, 'Callings & guilds');
+    await openWorldAs(page, walker.id);
+    await openTab(page, 'Callings & guilds');
+    const shown = await page.locator('#view').textContent();
+    expect(shown.includes(secret), 'the owning operator must see the approved purpose', { actual: 'the value is absent from the owner’s view' });
+    const outsider = await context('stranger');
+    await outsider.page.goto(`${baseUrl()}/?mode=workspace`, { waitUntil: 'domcontentloaded' });
+    await settle(outsider.page);
+    if (!await outsider.page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(outsider.page, ACTORS.stranger);
+    await openWorldAs(outsider.page, fixtures().characters.neighbour.id);
+    await openTab(outsider.page, 'Callings & guilds');
+    expect((await outsider.page.locator('#view').textContent()).includes(secret) === false, 'another operator’s page must never show the value');
+    return 'the owning operator saw the fact; the other operator’s page did not';
+  });
+
+  return 'private memory and the private journal stayed readable by the owning operator alone';
 });
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {

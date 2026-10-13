@@ -154,11 +154,16 @@ test('cosmetic calling experience and NemoCoins are described separately and agr
 
 test('the dialog contract holds: every dialog is named, escapable and marks what is required', () => {
   // index.html: each dialog is a native modal with an accessible name and a labelled close control.
+  // Task 38 adds a fourth: the character overlay (`#character-dialog`), which the game-experience
+  // specification requires as a short overlay over the world rather than a page. The count tracks
+  // the shipped dialogs; every per-dialog assertion below still applies to all of them.
   const dialogs = [...page.matchAll(/<dialog[^>]*>/g)].map((match) => match[0]);
-  assert.equal(dialogs.length, 3, 'account, credential and introduction dialogs are all named');
+  assert.equal(dialogs.length, 4, 'account, character, credential and introduction dialogs are all named');
   for (const dialog of dialogs) assert.match(dialog, /aria-labelledby="[^"]+"/, `${dialog} must be named by a heading`);
   assert.match(page, /id="close-auth" class="icon-button" aria-label="Close account dialog"/, 'the account dialog has a labelled close button');
   assert.match(page, /id="close-credential"/, 'the credential dialog has a close button');
+  assert.match(page, /id="close-characters" class="icon-button" aria-label="Close character dialog"/, 'the character overlay has a labelled close button');
+  assert.match(app, /\$\('#close-characters'\)\.addEventListener\('click',\(\)=>\$\('#character-dialog'\)\.close\(\)\);/, 'Escape or the labelled button closes the character overlay');
   // app.js must never trap the keyboard inside a dialog: no cancel interception, no world shortcut
   // that steals a key while a dialog is open, and an explicit close control on each dialog.
   assert.doesNotMatch(app, /addEventListener\(['"]cancel['"]/, 'a dialog cancel must never be intercepted');

@@ -6,7 +6,7 @@ The default route opens a shared 3D scene. A visitor can **Observe world** witho
 
 - **WASD / arrows:** walk a selected character, or pan an observer camera.
 - **Drag:** look around. **Click:** select a place or walk to open ground.
-- **E / Enter:** use the selected nearby door, crop, bench, station or ambassador desk.
+- **E:** turn the camera. **Enter, Space or I:** use the selected nearby door, crop, bench, station or ambassador desk (the HUD hint and the aim line name these keys).
 - **First person / turn / climb:** use the accessible camera and movement controls at the lower left.
 - **Build:** opens construction in the finite frontier, the owner's home tools, or the route to the frontier. Server rules still decide what can be placed.
 - **Chat, Places, More, World menu:** open the existing conversation, directory, world tools and platform sections. The **Open workspace** item exposes the full operator interface when needed.

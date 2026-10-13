@@ -77,6 +77,9 @@ for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22])for(const
 // The typed content layer is a browser module: src/content.js imports content/index.js, which
 // statically imports every sealed definition file. Serve exactly what the sealed manifest lists.
 files.set('/src/camera-controls.js', ['src/camera-controls.js', 'text/javascript; charset=utf-8']);
+files.set('/src/game-input.js', ['src/game-input.js', 'text/javascript; charset=utf-8']);
+files.set('/src/characters.js', ['src/characters.js', 'text/javascript; charset=utf-8']);
+files.set('/src/character-animation.js', ['src/character-animation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/footprints.js', ['src/footprints.js', 'text/javascript; charset=utf-8']);
 files.set('/src/elevation.js', ['src/elevation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/content.js', ['src/content.js', 'text/javascript; charset=utf-8']);
@@ -86,6 +89,15 @@ files.set('/src/content.js', ['src/content.js', 'text/javascript; charset=utf-8'
 for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'blocks', 'parcels', 'sky']) {
   files.set(`/src/scene/${scene}.js`, [`src/scene/${scene}.js`, 'text/javascript; charset=utf-8']);
 }
+// The interface components of the game shell. Each one is a browser module app.js imports, so the
+// hand-maintained table has to serve it; tests/content-http.test.js walks that graph from /app.js.
+for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls']) {
+  files.set(`/src/ui/${component}.js`, [`src/ui/${component}.js`, 'text/javascript; charset=utf-8']);
+}
+files.set('/game-mobile.css', ['game-mobile.css', 'text/css; charset=utf-8']);
+// The separate management interface is the same application in workspace presentation, on the same
+// account, world and API; `/manage` is its address and `?mode=workspace` stays the compatible form.
+files.set('/manage', ['index.html', 'text/html; charset=utf-8']);
 files.set('/content/content-manifest.json', ['content/content-manifest.json', 'application/json; charset=utf-8']);
 for (const item of manifest().entries) files.set(`/${item.file}`, [item.file, 'application/json; charset=utf-8']);
 for (const file of manifest().support) files.set(`/${file.path}`, [file.path, file.path.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'application/json; charset=utf-8']);

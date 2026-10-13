@@ -1,5 +1,12 @@
 import {createVoxelWorld} from './src/voxel-world.js';
-import {controlIntent,keyIntent,createLookScheduler,reticleText,INTERACTION_DISTANCE} from './src/camera-controls.js';
+import {controlIntent,keyIntent,createLookScheduler,reticleText,INTERACTION_DISTANCE,createViewBlocker,INTERACTION_KEY_LABEL,controlHint,targetHint} from './src/camera-controls.js';
+import {createGameInput} from './src/game-input.js';
+import {blockLayers,surfaceAt} from './src/elevation.js';
+import {createHotbar,createPlacementPreview,mount} from './src/ui/build-interface.js';
+import {createInventoryPanel} from './src/ui/inventory-panel.js';
+import {createInteractionPrompt,confirmationMessage,paintPrompt,paintOverlay} from './src/ui/interaction-prompt.js';
+import {createReadonlyTransport,createSpectatorView} from './src/ui/spectator.js';
+import {createTouchControls,hasCoarsePointer,prefersReducedMotion} from './src/ui/touch-controls.js';
 import {planWalk} from './src/world-walk.js';
 import {solidSceneryAt} from './src/footprints.js';
 import {globeScene,countryGlobeCenter,rotateGlobe} from './src/country-globe.js';
@@ -16,7 +23,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 import { createGameAudio } from './src/game-audio.js';
 
 const $ = (selector) => document.querySelector(selector);
-const gamePresentation = new URLSearchParams(location.search).get('mode') !== 'workspace';
+const gamePresentation = location.pathname !== '/manage' && new URLSearchParams(location.search).get('mode') !== 'workspace';
 let savedGameMode = 'entry';
 try { savedGameMode = sessionStorage.getItem('nemoworld-game-mode') || 'entry'; } catch { /* A private browser can still enter the world. */ }
 if (!['entry','play','observe'].includes(savedGameMode)) savedGameMode = 'entry';
@@ -32,6 +39,49 @@ Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixe
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
+
+// ---------------------------------------------------------------------------------------------
+// The game shell's modules. Four parallel tasks delivered components (build, inventory, interaction
+// prompt, spectator, touch) and one delivered the input controller; this is the one place they are
+// constructed, fed the server's own payloads and mounted. Nothing here authors a world fact: every
+// displayed value is a server field and every write still goes through the shipped `api()` call.
+// ---------------------------------------------------------------------------------------------
+let gameInput = null, spectator = null, touchControls = null;
+const pickListeners = new Set();
+const shellPicker = { currentPick: () => state.voxelSelection, subscribe: (listener) => { pickListeners.add(listener); return () => pickListeners.delete(listener); } };
+function notifyPick(pick) { for (const listener of [...pickListeners]) listener(pick); }
+const hotbar = createHotbar({ input: shellPicker, onSelect: (type) => { if (type) placement.setKind(type); } });
+const placement = createPlacementPreview({ api: (path, method, body) => api(path, method, body), input: shellPicker, onNotice: (text) => notice(text) });
+const inventory = createInventoryPanel({ api: (path, method, body, idempotent, key) => api(path, method, body, idempotent, key), onNotice: (text) => notice(text) });
+const interactionPrompt = createInteractionPrompt({
+  transport: {
+    interactRead: (query) => api(`/interact?${new URLSearchParams(query)}`),
+    interactWrite: (payload, key) => api('/interact', 'POST', payload, false, key),
+    sendMessage: (payload) => api('/messages', 'POST', { ...payload, world_id: currentWorldId() }),
+  },
+});
+const spectatorTransport = createReadonlyTransport({ fetch: (path, options) => fetch(path, options) });
+gameInput = createGameInput({
+  blocksView: createViewBlocker({
+    isSolid: (x, y) => !walkable({ x, y }, definition()) || Boolean(solidSceneryAt({ x, y }, state.world.objects || [])),
+    layerAt: (x, y) => surfaceAt(x, y, blockLayers(state.world.blocks || [])),
+  }),
+  worldContext: () => ({ frontier: definition().kind === 'frontier', palette: state.world.frontier?.palette || [], agent: Boolean(viewedAgent()), fixture: Boolean(state.interaction?.fixture), building: Boolean(state.building), lookMode: Boolean(state.lookMode) }),
+  isSuspended: () => Boolean(state.gameMenuOpen || state.gameDrawer || document.querySelector('dialog[open]') || interactionPrompt.suspendsShortcuts),
+  onIntent: handleIntent,
+});
+gameInput.setCameraMode(state.firstPerson ? 'first-person' : 'third-person', { silent: true });
+gameInput.setFacing(state.facing);
+
+/** The one place an intent becomes a shipped call. No intent carries a position the server did not store. */
+function handleIntent(intent) {
+  if (!intent) return;
+  if (intent.kind === 'move') return void (state.climbing ? climbAgent(intent.direction) : moveAgent(intent.direction));
+  if (intent.kind === 'look') { queueLook(intent.yaw, intent.pitch, { apply: false }); applyFacing(); return; }
+  if (intent.kind === 'interact') return void guarded(() => usePickedFixture());
+  if (intent.kind === 'build') { state.buildKind = intent.type; state.building = true; renderView(); return; }
+  if (intent.kind === 'camera') { setFirstPerson(intent.mode === 'first-person'); cancelLook(); gameInput.setFacing(state.facing); renderView(); return; }
+}
 const element = (tag, text, className) => { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; };
 const append = (parent, ...children) => { parent.append(...children.filter(Boolean)); return parent; };
 const button = (text, action, className = '') => { const node = element('button', text, className); node.type = 'button'; node.addEventListener('click', () => guarded(async () => { const result=action(); if(result && typeof result.then==='function'){node.disabled=true;node.setAttribute('aria-busy','true');try{return await result;}finally{node.disabled=false;node.removeAttribute('aria-busy');}}return result; })); return node; };
@@ -224,6 +274,8 @@ function displayed(item, now) { const record = presence.get(item.id); return rec
 function reconcilePresence(id) {
   const record = presence.get(id);
   if (record) { record.from = { ...record.confirmed }; record.at = 0; record.duration = 0; }
+  // The 3D view keeps its own tracker; a refusal snaps there too, so both views agree immediately.
+  voxelView?.reconcileCharacter?.(id);
   if (state.tab === 'world' && $('#world')) paintWorld();
 }
 function presenceSettling(now) { for (const record of presence.values()) if (record.duration > 0 && record.at + record.duration > now) return true; return false; }
@@ -232,7 +284,8 @@ function schedulePresence() {
   const step = () => {
     presenceFrame = 0;
     if (state.tab === 'world' && $('#world')) paintWorld();
-    if (presenceSettling(performance.now())) presenceFrame = requestAnimationFrame(step);
+    // A confirmed step glides in the 3D view too, so the loop keeps running while either tracker settles.
+    if (presenceSettling(performance.now()) || voxelView?.isAnimating?.()) presenceFrame = requestAnimationFrame(step);
   };
   presenceFrame = requestAnimationFrame(step);
 }
@@ -343,6 +396,10 @@ window.__nemoworld = {
   worldId: () => currentWorldId(),
   terrainExtent: () => { const tiles = definition().terrain; return { rows: tiles.length, columns: tiles[0]?.length || 0 }; },
   selected: () => state.selected,
+  gameMode: () => state.gameMode,
+  drawer: () => state.gameDrawer,
+  nextAction: () => nextActionLine(),
+  spectator: () => spectator ? { world: spectator.worldId(), status: spectator.status(), following: spectator.following(), target: spectator.target(), camera: spectator.camera(), refusal: spectator.lastRefusal(), residents: (spectator.snapshot()?.residents || []).map(resident => ({ id: resident.id, x: resident.x, y: resident.y })) } : null,
 };
 async function loadDirectory() { const result = await api(`/worlds?${new URLSearchParams({ q: state.worldQuery, offset: String(state.worldOffset), limit: '12' })}`); state.worlds = Array.isArray(result) ? result : result.worlds || result.items || []; state.worldTotal = result.total ?? state.worlds.length; state.directoryHasMore = result.has_more ?? state.worldOffset + state.worlds.length < state.worldTotal; }
 async function loadAmbassadors() { state.ambassadorPage = await api('/ambassadors?' + new URLSearchParams({ q: state.ambassadorQuery.q || '', group: state.ambassadorQuery.group || '', offset: String(state.ambassadorOffset || 0), limit: '20',...(isModerator()&&state.ambassadorIncludePaused?{include_paused:'1'}:{}) })); state.ambassadors = state.ambassadorPage.entries || []; }
@@ -457,10 +514,12 @@ function missionDirectoryControls(parent){
 }
 function missionDirectoryPages(parent){const page=state.missionPage,previous=button('Previous missions',async()=>{state.missionQuery.offset=String(Math.max(0,page.offset-page.limit));await loadMissionPage();renderView();},'secondary');previous.disabled=!page.offset;const next=button('Next missions',async()=>{state.missionQuery.offset=String(page.offset+page.limit);await loadMissionPage();renderView();},'secondary');next.disabled=!page.has_more;parent.append(actions(previous,paragraph(`Page ${Math.floor(page.offset/page.limit)+1} · ${page.total} matching missions`,'privacy'),next));}
 async function change(path, body, message, idempotent = false) { const result = await api(path, 'POST', body, idempotent); await refresh(); render(); if (message) notice(message); return result; }
-function setGameMode(mode){state.gameMode=mode;try{sessionStorage.setItem('nemoworld-game-mode',mode);}catch{}applyGameShell();}
-function setFirstPerson(enabled){state.firstPerson=Boolean(enabled);try{sessionStorage.setItem('nemoworld-first-person',String(state.firstPerson));}catch{}}
+function setGameMode(mode){state.gameMode=mode;try{sessionStorage.setItem('nemoworld-game-mode',mode);}catch{}if(mode!=='observe')spectator=null;applyGameShell();}
+function setFirstPerson(enabled){state.firstPerson=Boolean(enabled);try{sessionStorage.setItem('nemoworld-first-person',String(state.firstPerson));}catch{}gameInput.setCameraMode(state.firstPerson?'first-person':'third-person',{silent:true});}
 function applyGameShell(){
-  if(state.account&&state.gameMode==='entry')setGameMode('play');
+  // A signed-in operator lands on the entry screen: Play, Observe and Continue are the door, and one
+  // of them (or the world menu) is always how the world opens. `state.gameMode` is remembered in this
+  // tab, so choosing play or observe is not repeated on every refresh.
   const world=state.gamePresentation&&state.tab==='world';
   if(!world)gameAudio.stop();
   document.body.classList.toggle('game-world',world);
@@ -471,11 +530,25 @@ function applyGameShell(){
   document.body.dataset.gameDrawer=state.gameDrawer;
   $('#game-menu-button')?.setAttribute('aria-expanded',String(world&&state.gameMenuOpen));
 }
-function setGameDrawer(drawer){state.gameDrawer=state.gameDrawer===drawer?'':drawer;applyGameShell();if(state.gameDrawer==='chat')$('#world-chat-card')?.scrollIntoView({block:'nearest'});else if(state.gameDrawer==='tools')$('.world-aside')?.focus({preventScroll:true});}
+// One drawer at a time. `state.gameDrawer` holds a single value, so opening Chat closes the tools
+// drawer, and the same button closes the one it opened.
+function setGameDrawer(drawer){
+  state.gameDrawer=state.gameDrawer===drawer?'':drawer;applyGameShell();
+  if(state.gameDrawer==='chat')$('#world-chat-card')?.scrollIntoView({block:'nearest'});
+  else if(state.gameDrawer==='tools')$('.world-aside')?.focus({preventScroll:true});
+  else if(state.gameDrawer)$(`#world-${state.gameDrawer}-card`)?.scrollIntoView({block:'nearest'});
+}
 function toggleGameMenu(){state.gameMenuOpen=!state.gameMenuOpen;$('.sidebar')?.classList.toggle('navigation-open',state.gameMenuOpen);$('#toggle-navigation')?.setAttribute('aria-expanded',String(state.gameMenuOpen));applyGameShell();if(state.gameMenuOpen)$('#navigation button')?.focus({preventScroll:true});else $('#game-menu-button')?.focus({preventScroll:true});}
+// Observation. The observer reads the public world with no account and no resident, through the
+// read-only transport: the component can only issue the allow-listed public GETs, so nothing on this
+// path can build, move a resident or speak for one. The live channel needs a session, so a visitor
+// observes from the authoritative snapshot instead.
 async function observeWorld(){
   const id=state.gameMode==='entry'?'commons':currentWorldId();
-  const position=worldPosition();setGameMode('observe');state.viewWorld=id;state.focus=id==='commons'?getWorldDefinition('commons').start:{x:position.x,y:position.y};state.building=false;setFirstPerson(false);state.gameDrawer='';await loadWorld();state.tab='world';render();
+  const position=worldPosition();setGameMode('observe');state.viewWorld=id;state.focus=id==='commons'?getWorldDefinition('commons').start:{x:position.x,y:position.y};state.building=false;setFirstPerson(false);state.gameDrawer='';
+  spectator=createSpectatorView({read:spectatorTransport.get,start:getWorldDefinition(id).start,subscribe:state.account?liveSubscribe:undefined});
+  await spectator.open(id);
+  await loadWorld();state.tab='world';render();
 }
 function render() { if(state.account||state.tab!=='world')$('#hero-introduction')?.pause(); document.body.classList.toggle('signed-in', Boolean(state.account)); document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons')); applyGameShell();renderSession(); renderAuth(); renderTabs(); renderView(); paintHero(); }
 function paintHero(){
@@ -488,14 +561,39 @@ function openAuth(mode='login'){state.authMode=mode;renderAuth();$('#auth-notice
 $('#close-introduction').addEventListener('click',()=>{$('#introduction-film').pause();$('#introduction-dialog').close();});
 $('#introduction-dialog').addEventListener('close',()=>$('#introduction-film').pause());
 $('#close-auth').addEventListener('click',()=>$('#auth-dialog').close());
+$('#close-characters').addEventListener('click',()=>$('#character-dialog').close());
 function finishAuth(){if($('#auth-dialog').open)$('#auth-dialog').close();$('#auth-notice').hidden=true;}
+// The entry screen. Three controls over the drawn world — Play, Observe and, when this browser
+// remembers a character, Continue — plus the film as a text link under them. Each control is a real
+// button, so the whole door is reachable with Tab and Enter. Every state shown comes from the server:
+// `state.account` and `state.agents` from `GET /me`, and the world's pause from `GET /world`.
+function continueCandidate(){
+  if(!state.account||!state.agents.length)return null;
+  return state.agents.find(agent=>agent.id===state.selected)||state.agents.find(agent=>agent.status==='active')||null;
+}
+function renderEntryControls(hero){
+  const candidate=continueCandidate();
+  if(candidate&&candidate.status==='active'){
+    hero.append(button(`Continue as ${candidate.name}`,()=>selectAgent(candidate.id),'game-primary game-continue'));
+  }
+  hero.append(button('Play',()=>state.account?playAsHuman():openAuth('register'),candidate&&candidate.status==='active'?'game-secondary':'game-primary'));
+  hero.append(button('Observe',()=>observeWorld(),'game-secondary'));
+  if(candidate&&candidate.status!=='active'){
+    hero.append(paragraph(`${candidate.name} is ${candidate.status}. Resume the character before entering the world.`,'game-entry-note'));
+    hero.append(button('Manage characters',()=>openCharacterOverlay(),'game-secondary'));
+  }
+  const link=element('a','Watch the film (2 min)','game-film-link');link.href='#introduction-dialog';link.addEventListener('click',(event)=>{event.preventDefault();$('#hero-introduction')?.pause();$('#introduction-dialog').showModal();});
+  const note=element('p',null,'game-entry-note');
+  note.textContent=state.account?'Playing and continuing need an account; observing does not, and nothing observed is changed.':'No account is needed to look around. Playing needs an adult account, which is what manages the residents.';
+  hero.append(link,note);
+}
 function renderSession() {
   const node=$('#session-bar');node.replaceChildren();const hero=$('#hero-actions');hero.replaceChildren();
   node.append(button('Watch introduction',()=>{$('#hero-introduction')?.pause();$('#introduction-dialog').showModal();},'secondary small'));
   if(state.account){const profile=element('div',null,'session-profile');append(profile,element('span',state.account.name.slice(0,1).toUpperCase(),'profile-avatar'),append(element('span',null,'session-label'),element('strong',state.account.name),element('small',state.account.role)));node.append(profile,button('Sign out',async()=>{try{await api('/auth/logout','POST',{});}catch(error){if(error.status!==401)throw error;}clearBrowserOperator();await refresh(false);render();notice('Signed out. Your agents and their world positions are saved.');},'secondary small'));}
   else {node.append(button('Sign in',()=>openAuth('login'),'secondary small'),button(state.setup?'Create first account':'Create account',()=>openAuth('register'),'small'));}
   if(!state.gamePresentation)node.append(button('Back to game',()=>{location.href='/';},'secondary small'));
-  if(state.gamePresentation)hero.append(button(state.account?'Play as human':'Play as human',()=>state.account?playAsHuman():openAuth('register'),'game-primary'),button('Observe world',()=>observeWorld(),'game-secondary'),button('Watch the film',()=>{$('#hero-introduction')?.pause();$('#introduction-dialog').showModal();},'game-film-button'));
+  if(state.gamePresentation)renderEntryControls(hero);
   else hero.append(button(state.account?'Play in the world':'Create account & play',()=>state.account?playAsHuman():openAuth('register')),button('Explore the world',()=>{state.tab='world';renderTabs();renderView();$('#pixel-world-heading')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}),button('Find useful work',()=>browseResearch(),'secondary'),button(state.account?'Manage my characters':'Make a character',()=>state.account?openSection('characters'):openAuth('register'),'secondary'));
 }
 function renderAuth() {
@@ -517,9 +615,15 @@ function renderAuth() {
 function renderTabs() {
   const groups=[{title:'THE WORLD',items:[['start','Start here','◇'],['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦'],['guilds','Guild projects','⚒'],['restoration','World restoration','✿'],['quests','Quest chains','◇']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
   if(state.account)groups.push({title:'YOUR RESIDENTS',items:[['coins','Coin wallet','✧'],['passport','Resident passport','♟'],['workshop','Garden & workshop','✿'],['characters','My characters','♟'],['history','My contributions','▤']]});
-  const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'GOVERNANCE',items:care});groups.push({title:'',items:[['help','Guide','?']]});
+  // Governance, administration and diagnostics leave the newcomer's path. The game menu offers one
+  // role-gated Management entry that opens /manage, where the same sections are rendered in full; the
+  // workspace presentation keeps the complete governance group. The server's own role checks are the
+  // authority for every route behind it either way.
+  const privileged=isReviewer()||isModerator();
+  if(!state.gamePresentation){const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'GOVERNANCE',items:care});}
+  groups.push({title:'',items:[['help','Guide','?']]});
   const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list',restoration:'users-round',start:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
-  if(state.gamePresentation){const section=element('div',null,'nav-group game-workspace-link');section.append(paragraph('MORE CONTROLS','nav-heading'),button('Open workspace',()=>{location.href='/?mode=workspace';},'secondary small'));nav.append(section);}
+  if(state.gamePresentation){const section=element('div',null,'nav-group game-workspace-link');section.append(paragraph('MORE CONTROLS','nav-heading'));if(privileged)section.append(button('Management',()=>{location.href='/manage';},'secondary small'));section.append(button('Open workspace',()=>{location.href='/?mode=workspace';},'secondary small'));nav.append(section);}
   if(state.gamePresentation&&state.tab==='world'){const sound=element('div',null,'nav-group game-audio-menu');sound.append(paragraph('SOUND','nav-heading'),gameAudio.createControls(document));nav.prepend(sound);}
 }
 function renderView() { if(voxelView){state.voxelOrbit=voxelView.orbit;voxelView.destroy();voxelView=null;}document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons'));applyGameShell();
@@ -733,13 +837,18 @@ function renderWorld(parent) {
   const toolbar = element('div', null, 'world-toolbar'); const live = element('strong', `${state.world.paused ? 'Paused · ' : ''}${world.name}`); live.prepend(element('span', null, state.world.paused ? 'live-dot paused' : 'live-dot')); append(toolbar, live, element('span', `${state.world.counts?.world_agents ?? state.world.population ?? state.world.participants.length} characters · ${world.width || world.columns} × ${world.height || world.rows}`, 'muted')); if(state.world.atmosphere) toolbar.append(badge(state.world.atmosphere.label || state.world.atmosphere.phase)); toolbar.append(actions(button('3D world',async()=>{state.graphics='voxel';state.graphicsUnavailable=false;localStorage.setItem('nemoworld-graphics','voxel');await loadWorld();renderView();},state.graphics==='voxel'?'small':'secondary small'),button('Pixel map',async()=>{state.graphics='pixel';localStorage.setItem('nemoworld-graphics','pixel');await loadWorld();renderView();},state.graphics==='pixel'?'small':'secondary small'),button('Focus world',()=>map.requestFullscreen?.(),'secondary small')));map.append(toolbar);
   const canvas = element('canvas'); canvas.id = 'world'; canvas.width = 800; canvas.height = 560; canvas.tabIndex = 0;canvas.classList.toggle('voxel-canvas',state.graphics==='voxel'); canvas.setAttribute('aria-label', state.building ? 'Garden build map. Click a tile to place the selected object. The build form below provides keyboard controls.' : 'Pixel world viewport. Arrow keys or WASD move your selected agent, or pan the view while spectating. World list provides a text alternative.'); if(state.graphics==='voxel'){canvas.setAttribute('aria-label','3D open world. Drag to orbit, click open ground to walk, use WASD or arrow keys to move. The aim line under the view names the tile you are facing; coordinate and movement controls provide a text alternative.');canvas.setAttribute('aria-describedby','world-reticle');}canvas.addEventListener('click', (event) => { if (state.graphics==='voxel'||!state.building) { canvas.focus(); return; } const bounds = canvas.getBoundingClientRect(); const x = state.camera.x + Math.floor((event.clientX - bounds.left) / bounds.width * 20); const y = state.camera.y + Math.floor((event.clientY - bounds.top) / bounds.height * 14); guarded(() => buildAt(x, y)); });
   map.append(canvas);if(agent)map.append(callingHUD());
+  // The small interaction prompt and its compact overlay. The prompt is a live region anchored near
+  // the aim line and is `pointer-events:none` in the stylesheet, so it never covers the world.
+  const promptHost=element('div',null,'game-prompt-host');promptHost.id='game-prompt-host';
+  const overlayHost=element('div',null,'game-overlay-host');overlayHost.id='game-overlay-host';
+  if(state.gamePresentation)map.append(promptHost,overlayHost);
   if(state.graphics==='voxel'){const reticle=element('p','world-reticle');reticle.id='world-reticle';reticle.tabIndex=0;reticle.setAttribute('role','status');reticle.setAttribute('aria-live','polite');reticle.setAttribute('aria-label','Aim line: where the camera looks, what the last pick targets, and which keys walk or turn');reticle.textContent=reticleText({firstPerson:Boolean(agent&&state.firstPerson),facing:state.facing,position,fixture:state.interaction?.fixture||null});map.append(reticle);}
   const lower = element('div', null, 'world-bottom'); const journey = element('div'); const place = worldLandmarks().find((p) => p.x === position.x && p.y === position.y);
   append(journey, paragraph(agent ? `${agent.name} · ${place?.name || world.name}` : `Visiting ${world.name}`, 'eyebrow'), paragraph(place?.description || world.description || (world.kind === 'home' ? 'A personal garden, built and cared for by its agent.' : 'Explore the paths, gathering spaces, and entrances.')), element('small', `${agent ? 'Character' : 'View'} position ${position.x}, ${position.y} · ${agent ? 'Arrow keys / WASD to roam' : 'Arrow keys / WASD to look around'}`));
   const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => controlStep(direction)); item.setAttribute('aria-label', `${agent ? (state.lookMode ? 'Turn' : 'Move') : 'Look'} ${direction}`); item.disabled = Boolean(agent && (agent.status !== 'active' || state.world.paused)); movement.append(item); } movement.append(viewToggles(agent));
   journey.append(element('div',null,'nearby-portals'));
   if (agent) journey.append(walkToTileForm(agent, world));
-  append(lower, journey, movement);map.append(lower);if(state.graphics==='voxel')map.append(actions(button('Look left',()=>queueLook(state.facing.yaw+.35,state.facing.pitch),'secondary small'),button('Look right',()=>queueLook(state.facing.yaw-.35,state.facing.pitch),'secondary small'),button('Zoom in',()=>voxelView?.zoom(-3),'secondary small'),button('Zoom out',()=>voxelView?.zoom(3),'secondary small'),button('Reset camera',()=>{queueLook(.78,state.firstPerson?0:.68);voxelView?.setOrbit({distance:24});},'secondary small')));if(world.kind==='frontier')map.append(frontierHotbar());if(state.graphicsUnavailable)map.append(paragraph('3D graphics are unavailable in this browser. The interactive pixel map remains available.','privacy'));
+  append(lower, journey, movement);map.append(lower);if(state.graphics==='voxel')map.append(actions(button('Look left',()=>queueLook(state.facing.yaw+.35,state.facing.pitch),'secondary small'),button('Look right',()=>queueLook(state.facing.yaw-.35,state.facing.pitch),'secondary small'),button('Zoom in',()=>voxelView?.zoom(-3),'secondary small'),button('Zoom out',()=>voxelView?.zoom(3),'secondary small'),button('Reset camera',()=>{queueLook(.78,state.firstPerson?0:.68);voxelView?.setOrbit({distance:24});},'secondary small')));if(world.kind==='frontier'&&!state.gamePresentation)map.append(frontierHotbar());if(state.graphicsUnavailable)map.append(paragraph('3D graphics are unavailable in this browser. The interactive pixel map remains available.','privacy'));
   const aside = element('aside', null, 'world-aside');aside.tabIndex=-1;if(state.gamePresentation)aside.append(button('Close world tools',()=>setGameDrawer(''),'game-drawer-close'));if(agent)aside.append(callingCard());const inspection=element('div');inspection.id='resident-inspection';aside.append(inspection);if(world.kind==='frontier')aside.append(landCard(),frontierCard());else{const frontier=card('Beyond the Commons','OPEN FRONTIER');frontier.append(paragraph('Explore a finite landscape, steward a plot for a purpose and build with human players and agents.'),button('Enter the frontier',()=>enterFrontier()),button('Explore as a visitor',()=>visitWorld('frontier:0:0'),'secondary small'));aside.append(frontier);} const arrival = card(agent ? (agent.kind==='human'?'Your player':'Your agent') : 'Visiting the world', 'HERE & NOW');
   if (state.agents.length) {
     const controls = element('div'); const select = field(controls, 'agent', 'Character', { options: state.agents.map((a) => ({ value: a.id, label: `${a.name} · ${a.status}` })), value: state.selected }); select.addEventListener('change', () => guarded(() => selectAgent(select.value))); arrival.append(controls);
@@ -749,6 +858,7 @@ function renderWorld(parent) {
     if(agent)disclosure(arrival,'Express yourself',(body)=>body.append(actions(...[['wave','Wave'],['bow','Bow'],['cheer','Cheer'],['think','Thinking'],['heart','Appreciate'],['none','Clear']].map(([emote,label])=>button(label,async()=>{const result=await api('/emotes','POST',{agent_id:agent.id,emote});Object.assign(agent,result.agent||result);await loadWorld();paintWorld();},'secondary small')))));
     arrival.append(actions(button('Resident passport',()=>openSection('passport'),'secondary small'),button('Community',()=>openSection('community'),'secondary small')));
     arrival.append(actions(button('Manage characters →', () => { state.tab = 'characters'; render(); }, 'secondary small')));
+    if(state.gamePresentation)arrival.append(button('Choose a character…',()=>openCharacterOverlay(),'secondary small'));
   } else append(arrival, paragraph('Play as yourself, build a home, and explore alongside AI agents. Visitors can look around without an account.', 'muted'), button(state.account ? 'Play as myself' : 'Create account & play', () => state.account?playAsHuman():openAuth('register'), 'small'));
   arrival.append(button('Discover worlds and gardens →', () => openSection('explore'), 'secondary small')); aside.append(arrival);
   if (['home','house'].includes(world.kind) && world.owner_agent_id === selected()?.id) {aside.append(buildCard(world));aside.append(button('Tend crops & craft',()=>openSection('workshop'),'secondary'));}
@@ -758,8 +868,18 @@ function renderWorld(parent) {
   const locations = card('Your place in the world', 'THE BIGGER PICTURE'); const list = element('div', null, 'landmark-list');
   for (const landmark of worldLandmarks()) { const item = button(landmark.name, () => { notice(`${landmark.name}: ${landmark.description || 'Explore this place.'} Position ${landmark.x}, ${landmark.y}.`); }); item.append(element('small', `${landmark.x}, ${landmark.y}`)); list.append(item); }
   for (const portal of worldPortals()) { const item = button(portal.label || portal.name || 'Entrance', () => { if (agent && Math.abs(portal.x-agent.x)+Math.abs(portal.y-agent.y)<=1) return travelAgent(portalTarget(portal)); if (agent) return notice(`Walk to the entrance at ${portal.x}, ${portal.y} to enter as ${agent.name}.`); return visitWorld(portalTarget(portal)); }); item.append(element('small', `Entrance · ${portal.x}, ${portal.y}`));list.append(item); }
-  const overview=card(null);overview.classList.add('minimap-card');const minimap=element('canvas');minimap.id='world-overview';minimap.width=240;minimap.height=160;minimap.setAttribute('aria-label','Overview of the entire world. The outlined rectangle marks the current map view.');minimap.addEventListener('click',(event)=>{if(viewedAgent())return notice('The outline follows your character. Use movement controls to explore.');const bounds=minimap.getBoundingClientRect(),world=definition(),scale=Math.min(240/world.columns,160/world.rows),offsetX=(240-world.columns*scale)/2,offsetY=(160-world.rows*scale)/2;const px=(event.clientX-bounds.left)/bounds.width*240,py=(event.clientY-bounds.top)/bounds.height*160;state.focus={x:Math.max(0,Math.min(world.columns-1,Math.floor((px-offsetX)/scale))),y:Math.max(0,Math.min(world.rows-1,Math.floor((py-offsetY)/scale)))};guarded(async()=>{await loadWorld();paintWorld();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`View position ${state.focus.x}, ${state.focus.y} · Arrow keys / WASD to look around`;});});overview.append(minimap,paragraph('Your view of the whole world. Click to look around while visiting.'));if(!state.gamePresentation)locations.append(overview);disclosure(locations,'Places & entrances',(body)=>body.append(list));const mayor=state.world.participants.find(resident=>resident.kind==='npc');if(mayor){const office=card(mayor.name,String(mayor.id).startsWith('amb-')?'COUNTRY AMBASSADOR':'REGIONAL GUIDE');office.append(guidePortrait(mayor),paragraph(mayor.focus),button('Talk to '+mayor.name,()=>talkAmbassador(mayor.id),'small'));aside.append(office);}aside.append(interactionCard(),chatCard(),locations);if(state.gamePresentation){map.append(overview,gameHud(world,agent,position));}append(layout, map, aside); parent.append(layout);renderResidentInspection(); paintWorld();
+  const overview=card(null);overview.classList.add('minimap-card');const minimap=element('canvas');minimap.id='world-overview';minimap.width=240;minimap.height=160;minimap.setAttribute('aria-label','Overview of the entire world. The outlined rectangle marks the current map view.');minimap.addEventListener('click',(event)=>{if(viewedAgent())return notice('The outline follows your character. Use movement controls to explore.');const bounds=minimap.getBoundingClientRect(),world=definition(),scale=Math.min(240/world.columns,160/world.rows),offsetX=(240-world.columns*scale)/2,offsetY=(160-world.rows*scale)/2;const px=(event.clientX-bounds.left)/bounds.width*240,py=(event.clientY-bounds.top)/bounds.height*160;state.focus={x:Math.max(0,Math.min(world.columns-1,Math.floor((px-offsetX)/scale))),y:Math.max(0,Math.min(world.rows-1,Math.floor((py-offsetY)/scale)))};guarded(async()=>{await loadWorld();paintWorld();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`View position ${state.focus.x}, ${state.focus.y} · Arrow keys / WASD to look around`;});});overview.append(minimap,paragraph('Your view of the whole world. Click to look around while visiting.'));if(!state.gamePresentation)locations.append(overview);disclosure(locations,'Places & entrances',(body)=>body.append(list));const mayor=state.world.participants.find(resident=>resident.kind==='npc');if(mayor){const office=card(mayor.name,String(mayor.id).startsWith('amb-')?'COUNTRY AMBASSADOR':'REGIONAL GUIDE');office.append(guidePortrait(mayor),paragraph(mayor.focus),button('Talk to '+mayor.name,()=>talkAmbassador(mayor.id),'small'));aside.append(office);}aside.append(interactionCard(),chatCard(),journalCard(),inventoryCard(),projectsCard());aside.append(locations);if(state.gamePresentation){map.append(overview,gameHud(world,agent,position));mountShellTools(map,canvas,world,agent,position);}append(layout, map, aside); parent.append(layout);renderResidentInspection(); paintWorld();
   if(!state.interaction&&viewedAgent())queueMicrotask(()=>guarded(()=>loadInteraction({})));
+}
+// The one next action the HUD shows: the resident's current calling objective, else the quest's next
+// step, else nothing at all. It is one line, never a list, and never a count.
+function nextActionLine(){
+  const objective=state.callings?.current_objective?.title;
+  if(typeof objective==='string'&&objective.trim())return objective;
+  const step=state.quests?.next_action?.step_title;
+  if(typeof step==='string'&&step.trim())return step;
+  const title=state.quests?.next_action?.title;
+  return typeof title==='string'&&title.trim()?title:null;
 }
 function gameHud(world,agent,position){
   const hud=element('div',null,'game-hud');hud.id='game-hud';
@@ -768,20 +888,34 @@ function gameHud(world,agent,position){
   append(place,paragraph(state.world.paused?'WORLD PAUSED':!agent||state.gameMode==='observe'?'LOOKING AROUND':'LIVE WORLD','game-kicker'),element('strong',world.name),pos,element('span',`${world.width||world.columns} × ${world.height||world.rows} tiles`,'game-extent'));
   const count=element('span',String(state.world.counts?.world_agents??state.world.population??state.world.participants.length));count.id='game-population';
   top.append(place,append(element('div',null,'game-live-count'),count,element('span',' residents here')));hud.append(top);
-  const bottom=element('div',null,'game-hud-bottom'),hint=element('p',agent?'WASD to walk · Drag to look · Enter to interact':'Drag to look · Click the map to explore','game-control-hint');
+  const bottom=element('div',null,'game-hud-bottom');
+  // H4 appears only when the server returned an objective or a next step, so an empty line is never
+  // invented. Its wording is the server's own title.
+  const next=nextActionLine();
+  if(next){const line=element('p',next,'game-next');line.id='game-next-action';bottom.append(line);}
+  // H5 and the control hint print the keys that actually act: Enter, Space or I. `E` turns the camera.
+  const hint=element('p',controlHint({playing:Boolean(agent&&state.gameMode!=='observe'),mode:state.firstPerson?'first-person':'third-person'}),'game-control-hint');hint.id='game-control-hint';
   const actionsRow=element('div',null,'game-quickbar');actionsRow.setAttribute('role','group');actionsRow.setAttribute('aria-label','World actions');
-  const canPlayHuman=agent?.kind!=='human'||state.gameMode==='observe';
-  const mode=button(canPlayHuman?'Play as human':'Observe',()=>canPlayHuman?playAsHuman():observeWorld(),'game-quick game-mode');mode.id='game-mode-button';
   const interact=button('Interact',()=>usePickedFixture(),'game-quick');interact.id='game-interact-button';interact.disabled=!agent||!state.interaction?.fixture;
   const build=button(state.building?'Finish building':'Build',()=>{
+    // Observing is read-only, and the refusal says so rather than opening a door that cannot work.
+    if(state.gameMode==='observe')return notice('Observing is read-only. Play as a resident to build.');
     if(!agent)return state.account?playAsHuman():openAuth('register');
     if(world.kind==='frontier'){state.building=!state.building;renderView();return;}
-    if(['home','house'].includes(world.kind)){state.gameDrawer='tools';applyGameShell();$('#home-build-card')?.scrollIntoView({block:'nearest'});return;}
+    if(['home','house'].includes(world.kind)){setGameDrawer('tools');$('#home-build-card')?.scrollIntoView({block:'nearest'});return;}
     return enterFrontier();
-  },'game-quick');
+  },'game-quick');build.id='game-build-button';
   const chat=button('Chat',()=>setGameDrawer('chat'),'game-quick');const places=button('Places',()=>openSection('explore'),'game-quick');const tools=button('More',()=>setGameDrawer('tools'),'game-quick');
-  actionsRow.append(mode,interact,build,chat,places,tools);bottom.append(hint,actionsRow);hud.append(bottom);
-  const target=element('p',state.interaction?.fixture?`${state.interaction.fixture.action?.label||state.interaction.fixture.label} · Enter to interact`:'Aim at a place or object to interact','game-target');target.id='game-target';hud.append(target);
+  actionsRow.append(interact,build,chat,places,tools);bottom.append(hint,actionsRow);hud.append(bottom);
+  const target=element('p',targetHint(state.interaction?.fixture),'game-target');target.id='game-target';hud.append(target);
+  // The observer's own honest connection line, and the refusal when a read was refused.
+  if(state.gameMode==='observe'&&spectator){
+    const line=element('p',null,'game-observer');line.id='game-observer-status';
+    const refusal=spectator.lastRefusal();
+    if(refusal){line.setAttribute('role','alert');line.textContent=`${refusal.message} ${refusal.next_step||''}`.trim();}
+    else {line.setAttribute('role','status');line.textContent=spectator.status().detail;}
+    hud.append(line);
+  }
   return hud;
 }
 function buildCard(world) {
@@ -836,7 +970,7 @@ async function walkTo(x,y){
  return true;}finally{walkActive=false;}
 }
 async function pickWorld(pick){
- if(state.tab!=='world')return;state.voxelSelection={x:pick.x,y:pick.y,z:pick.z||0};if(state.world.frontier?.parcels){state.parcelSelection=state.world.frontier.parcels.find(plot=>pick.x>=plot.x&&pick.x<plot.x+plot.width&&pick.y>=plot.y&&pick.y<plot.y+plot.height)||null;updatePlotPanel();}
+ if(state.tab!=='world')return;state.voxelSelection={x:pick.x,y:pick.y,z:pick.z||0};notifyPick(state.voxelSelection);if(state.world.frontier?.parcels){state.parcelSelection=state.world.frontier.parcels.find(plot=>pick.x>=plot.x&&pick.x<plot.x+plot.width&&pick.y>=plot.y&&pick.y<plot.y+plot.height)||null;updatePlotPanel();}
  if(state.building){const point=state.buildKind==='remove'?pick:pick.adjacent||pick;await buildAt(point.x,point.y,point.z||0,pick);return;}
  // Selecting a tile reads what it offers from the server, so the interaction panel always shows the
  // same fixture, requirement and next step the server would enforce.
@@ -854,6 +988,8 @@ function syncWorldControls(){
  for(const node of document.querySelectorAll('[data-frontier-expand]')){const gate=state.world.frontier?.neighbors.find(item=>item.direction===node.dataset.frontierExpand);node.disabled=!player||player.status!=='active'||state.world.paused||!gate||gate.exists||Math.abs(player.x-gate.x)+Math.abs(player.y-gate.y)>2;}
  const climb=$('[data-climb]');if(climb)climb.disabled=!player||player.status!=='active'||state.world.paused||!climbDirection();
  const tally=$('.frontier-block-tally');if(tally)tally.textContent=`${state.world.frontier?.block_count??state.world.blocks?.length??0} blocks in this area`;
+ // H4 and the observer's own status line follow the same refresh the rest of the HUD does.
+ syncGameHud();
 }
 function lookToggle(agent){
  const item=button('Turn mode',()=>{state.lookMode=!state.lookMode;renderView();},'secondary small');
@@ -1121,7 +1257,24 @@ async function moveAgent(direction,automatic=false) {
     await loadWorld();if(state.tab==='world'&&state.graphics==='voxel'&&!crossed){paintWorld();return;}if(state.tab==='world'){const focusedMap=document.activeElement?.id==='world';renderView();if(focusedMap)$('#world')?.focus({preventScroll:true});}
   } finally {moving=false;}
 }
-document.addEventListener('keydown',(event)=>{if(state.tab!=='world'||/INPUT|SELECT|TEXTAREA|BUTTON/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]')||event.ctrlKey||event.metaKey||event.altKey)return;const intent=keyIntent(event.key,{frontier:definition().kind==='frontier',palette:state.world.frontier?.palette||[],agent:Boolean(viewedAgent()),fixture:Boolean(state.interaction?.fixture),building:Boolean(state.building)});if(!intent)return;if(intent.kind==='build'){state.buildKind=intent.type;state.building=true;event.preventDefault();renderView();return;}if(intent.kind==='turn'){event.preventDefault();if(viewedAgent())queueLook(state.facing.yaw+intent.yaw,state.facing.pitch+intent.pitch);return;}if(intent.kind==='interact'){event.preventDefault();guarded(()=>usePickedFixture());return;}event.preventDefault();guarded(()=>controlStep(intent.direction,{keyboard:true}));});
+// One keydown handler. The interaction prompt claims the keys it owns first (Enter, Space, I and the
+// arrows while it has a focus), then the game-input controller turns a key into an intent. The
+// controller applies the shipped guard — a focused control, an open dialog, a held modifier or the
+// shell's own menu/drawer state — so the world stands down exactly when it did before.
+document.addEventListener('keydown',(event)=>{
+  if(state.tab!=='world')return;
+  const promptIntent=interactionPrompt.handleKey(event.key);
+  if(promptIntent){
+    event.preventDefault();
+    const repaint=()=>interactionPrompt.paint(document,{promptHost:$('#game-prompt-host'),overlayHost:$('#game-overlay-host')});
+    if(promptIntent.pending)guarded(async()=>{await promptIntent.pending;repaint();const confirmed=interactionPrompt.confirmed;if(confirmed)notice(confirmationMessage(confirmed));refreshInteractionPanel();});
+    else repaint();
+    return;
+  }
+  const intent=gameInput.press(event.key,{tagName:event.target.tagName,isContentEditable:event.target.isContentEditable,ctrlKey:event.ctrlKey,metaKey:event.metaKey,altKey:event.altKey});
+  if(!intent)return;
+  event.preventDefault();handleIntent(intent);
+});
 function chatCard() {
   const node = card('Conversation', 'VOICES IN THE WORLD');node.id='world-chat-card'; const messages = element('div', null, 'message-list'); messages.setAttribute('aria-label', 'Recent world conversations');
   if (!state.world.messages.length) messages.append(paragraph('The plaza is quiet. Start a conversation.', 'muted'));
@@ -1169,8 +1322,9 @@ function renderCharacters(parent) {
     if (agent.kind!=='human'&&agent.status === 'active') disclosure(row, 'Connect an independent AI agent', (body) => { body.append(paragraph('Issue a short session for this character. Its permissions, duration, and action budget are enforced by the world.', 'muted')); const inputs = form(body, 'Create connection credential', async (data) => { const result = await api('/runtime/start', 'POST', {agent_id:agent.id,minutes:Number(data.minutes),max_calls:Number(data.max_calls),scopes:data.permission === 'read' ? ['read'] : data.permission === 'explore' ? ['read','move','chat'] : ['read','move','chat','contribute','build']}); showCredential(result.token, `${agent.name} · expires ${date(result.expires_at)} · ${result.max_calls} calls · ${result.scopes.join(', ')}. Use Authorization: Bearer in your agent connection.`); }); field(inputs,'minutes','Session minutes',{type:'number',min:1,max:20,value:10}); field(inputs,'max_calls','Action budget',{type:'number',min:1,max:500,value:100}); field(inputs,'permission','Allowed activity',{full:true,options:[{value:'explore',label:'Explore and converse'},{value:'all',label:'Explore, build, converse, and contribute'},{value:'read',label:'Observe only'}]}); body.append(paragraph('API guide: /api/v1/world. Connect a model through the supplied agent runner or any HTTP client. A credential is not an AI model; your agent supplies its own reasoning.', 'privacy')); });
     current.append(row);
   }
-  const create = card('Create a character', 'A NEW ARRIVAL'); const inputs = form(create, 'Create character', async (data, node) => { const {calling_id,...profile}=data;const result = await api('/agents', 'POST', profile);if(calling_id)await api('/callings/select','POST',{agent_id:result.id,calling_id}); node.reset(); await refresh(); await selectAgent(result.id); notice('Your character is ready. Enter the world or create an agent connection.'); }, 'character-create');
-  field(inputs,'kind','Resident type',{options:[{value:'agent',label:'AI agent'},{value:'human',label:'Human player'}],value:'agent',full:true});field(inputs,'calling_id','Calling',{options:(state.guilds?.catalog||[]).map(c=>({value:c.id,label:`${c.name} · ${c.guild_name}`})),value:'explorer',full:true,hint:'A peaceful vocation and guild affiliation. Your human operator chooses it.'});field(inputs,'name','Character name',{max:40,full:true}); field(inputs,'region_id','Home region',{options:REGIONS.map((region)=>({value:region.id,label:region.name})),full:true}); field(inputs,'country','Country or area of origin (self-declared)',{options:[{value:'',label:'Prefer not to say'},...state.countries.map(country=>({value:country.name,label:country.name}))],required:false,full:true,hint:'Optional. Origin is distinct from your fictional home region.'}); field(inputs,'color','Color',{options:[{value:'#397f79',label:'River teal'},{value:'#3d5875',label:'Night blue'},{value:'#8c6ab1',label:'Orchid purple'},{value:'#cb725f',label:'Sunset coral'},{value:'#aa7845',label:'Harvest gold'}]}); field(inputs,'symbol','Emblem',{options:['✦','◆','✿','▲']}); field(inputs,'capabilities','Capabilities or interests',{type:'textarea',max:300,required:false,full:true}); field(inputs,'limitations','What should others know about its limits?',{type:'textarea',max:300,required:false,full:true});
+  const create = card('Create a character', 'A NEW ARRIVAL'); create.append(paragraph('The character overlay opens the same form from the world, so a resident can be made without leaving the game.','privacy'));
+  const inputs = form(create, 'Create character', createCharacter, 'character-create');
+  characterCreateFields(inputs);
   append(grid,current,create); parent.append(grid);
   const privacy = card('Your data'); privacy.append(paragraph('Export your account’s characters, conversations, contributions, and moderation records.', 'muted'), actions(button('Export my data', async () => { const data = await api('/export'); download(data, 'shared-world-account.json'); }, 'secondary')));
   if (state.account.role !== 'admin') disclosure(privacy, 'Delete my account', (body) => { body.append(paragraph('This removes access, character profiles, and your message text. Contribution and review records are retained for accountability. Close your active missions first.', 'privacy'), button('Delete my account', async () => { if (!confirm('Delete your account and all character access? This cannot be undone.')) return; await api('/me','DELETE');clearBrowserOperator();await refresh(false);render();notice('Your account was deleted.'); },'danger')); });
@@ -2579,7 +2733,7 @@ function refreshInteractionPanel() {
   host.replaceChildren();
   interactionBody(host);
   const fixture=state.interaction?.fixture,target=$('#game-target'),control=$('#game-interact-button');
-  if(target)target.textContent=fixture?`${fixture.action?.label||fixture.label} · Enter to interact`:'Aim at a place or object to interact';
+  if(target)target.textContent=fixture?`${fixture.label} · ${fixture.x}, ${fixture.y} · ${INTERACTION_KEY_LABEL} to interact`:targetHint(null);
   if(control)control.disabled=!viewedAgent()||!fixture;
 }
 function interactionTile(fixture) { return `${fixture.x}, ${fixture.y}`; }
@@ -2775,4 +2929,200 @@ async function enterCountryVenue(worldId){
   else{const exit=worldPortals().find(portal=>portalTarget(portal)==='commons');if(!exit)return notice('Return to the Commons through this place’s exit before entering a country venue.');if(!await walkTo(exit.x,exit.y)||selected()?.id!==id)return;if(selected()?.world_id!=='commons')await travelAgent('commons');}
  }
  if(selected()?.id===id&&selected().world_id==='commons')await travelAgent(worldId);
+}
+
+// ---------------------------------------------------------------------------------------------
+// The game shell, part two: the four optional panels, the observation controls, the character
+// overlay and the touch layer. Every value below is a server field; nothing is inferred.
+// ---------------------------------------------------------------------------------------------
+
+/** The live channel, in the shape the spectator view asks for. Only a session may open it. */
+function liveSubscribe(worldId,handlers={}){
+  if(typeof EventSource!=='function')throw Object.assign(new Error('This browser cannot open a live feed.'),{status:0});
+  const source=new EventSource(`/api/v1/events?world_id=${encodeURIComponent(worldId)}`);
+  let ready=false,errors=0;
+  source.addEventListener('ready',()=>{ready=true;errors=0;handlers.onReady?.();});
+  source.addEventListener('update',(event)=>{try{handlers.onFrame?.(JSON.parse(event.data));}catch{/* a malformed frame is ignored */}});
+  source.addEventListener('closed',(event)=>{let reason='closed';try{reason=JSON.parse(event.data).reason||reason;}catch{}try{source.close();}catch{}handlers.onClosed?.(reason);});
+  source.addEventListener('error',()=>{errors+=1;if(ready)return;if(errors>=3){try{source.close();}catch{}handlers.onError?.({status:401});}});
+  return {close(){try{source.close();}catch{/* already closed */}}};
+}
+
+/** The observer's read-only controls. Panning moves the viewpoint only; nothing here writes. */
+function observerControls(){
+  const row=element('div',null,'game-observer-controls');row.setAttribute('role','group');row.setAttribute('aria-label','Observer controls');
+  for(const[direction,label]of[['up','Pan up'],['left','Pan left'],['down','Pan down'],['right','Pan right']]){
+    row.append(button(label,()=>{if(!spectator)return;spectator.intent({kind:'pan',direction});state.focus=spectator.target();paintWorld();},'secondary small'));
+  }
+  const follow=element('select');follow.name='observer-follow';follow.id='observer-follow';follow.setAttribute('aria-label','Follow a resident present in this world');
+  follow.append(element('option','Choose a resident to follow'));
+  for(const resident of state.world.participants.filter(person=>person.status==='active')){const option=element('option',`${resident.name} · ${resident.x}, ${resident.y}`);option.value=resident.id;follow.append(option);}
+  follow.addEventListener('change',()=>{if(!spectator||!follow.value)return;const result=spectator.intent({kind:'follow',resident_id:follow.value});if(result?.ok){state.focus=spectator.target();paintWorld();}else notice(result?.message||'That resident is not in this world view.',true);});
+  row.append(follow);
+  return row;
+}
+
+/** The four panels' hosts in the world aside. Only what the server returned is rendered. */
+function journalCard(){
+  const node=card('Journal','PRIVATE · GET /journey → journal');node.id='world-journal-card';
+  const agent=viewedAgent();
+  if(!state.account||!agent){node.append(paragraph('Sign in and play as a resident to keep a private journal. It is never public.','privacy'));return node;}
+  const list=element('div',null,'journal-entries');const entries=state.journey?.journal||[];
+  if(!entries.length)list.append(paragraph('No entries yet. Write the first note.','privacy'));
+  for(const entry of [...entries].slice(-12).reverse()){const row=element('article',null,'journal-entry');append(row,element('small',date(entry.created_at)),paragraph(entry.text));list.append(row);}
+  node.append(list);
+  const inputs=form(node,'Save entry',async(data,formNode)=>{await api('/journey/journal','POST',{agent_id:agent.id,text:data.text});await loadJourney();formNode.reset();renderView();notice('Journal entry saved.');});
+  field(inputs,'text','New entry',{type:'textarea',max:1500,full:true});
+  node.append(paragraph('Private to you and this resident’s operator.','privacy'));
+  return node;
+}
+function inventoryCard(){
+  const node=card('Inventory','YOUR SHELF · GET /journey');node.id='world-inventory-card';
+  const host=element('div');host.id='inventory-panel-host';node.append(host);
+  const agent=viewedAgent();
+  if(!state.gamePresentation){node.append(button('Open Garden & workshop →',()=>openSection('workshop'),'secondary small'));return node;}
+  if(!state.account||!agent){host.append(paragraph('Sign in and play as a resident to see its shelf, crops and recipes. Coins are not inventory.','privacy'));return node;}
+  inventory.update({journey:state.journey,offers:null,agentId:state.selected});
+  mount(host,inventory.view());
+  return node;
+}
+function projectsCard(){
+  const node=card('Projects','WHAT YOU ARE PART OF · READ ONLY');node.id='world-projects-card';
+  if(!state.account||!selected()){node.append(paragraph('Sign in and play as a resident to see the guild projects, quest chains and community records it belongs to.','privacy'));return node;}
+  const guilds=state.guildProjects?.projects||[];const participated=guilds.filter(project=>(project.participants||[]).some(person=>person.agent_id===state.selected));
+  const chains=state.quests?.chains||[];const enrolled=chains.filter(chain=>chain.enrolment);
+  const community=state.community?.counts;
+  const list=element('ul',null,'project-drawer-list');
+  for(const project of participated){
+    const mine=(project.contributions||[]).filter(item=>item.agent_id===state.selected);
+    const item=element('li');item.append(paragraph(project.title,'eyebrow'));
+    for(const contribution of mine)item.append(paragraph(`${contribution.workstream} · ${contribution.outcome?.verified?'verified':'not a completed outcome'}`,contribution.outcome?.verified?undefined:'privacy'));
+    list.append(item);
+  }
+  for(const chain of enrolled){const item=element('li');item.append(paragraph(`${chain.title} · ${chain.enrolment.status}`,'privacy'));list.append(item);}
+  if(!list.children.length)list.append(element('li',null,'empty').append(paragraph('No guild project, quest chain or community record is part of this resident yet.','privacy')));
+  node.append(list);
+  node.append(paragraph(community?.circles!==undefined?`Community records the server reports for this resident: ${community.circles} circles, ${community.projects} projects, ${community.events} gatherings, ${community.thanks} appreciations.`:'Community records are read from GET /community.','privacy'));
+  node.append(actions(button('Guild projects →',()=>openSection('guilds'),'secondary small'),button('Quest chains →',()=>openSection('quests'),'secondary small'),button('Community →',()=>openSection('community'),'secondary small')));
+  return node;
+}
+
+/**
+ * Mount everything the shell adds to the world view: the small interaction prompt, the pointer-first
+ * build tools in a frontier area, the observer controls, and the touch layer on a coarse pointer.
+ * Re-called on every world render; every host is rebuilt, so nothing stale survives a re-render.
+ */
+function mountShellTools(map,canvas,world,agent,position){
+  // The prompt reads `GET /interact` on approach and paints the server's own hint, requirement and
+  // next step. It writes only through the shipped interaction route.
+  if(agent){
+    interactionPrompt.setWorld(world.id);interactionPrompt.setAgent(agent.id);
+    interactionPrompt.setResidents(state.world.participants.filter(person=>person.id!==agent.id));
+    interactionPrompt.setPosition({x:Math.floor(position.x),y:Math.floor(position.y)});
+    queueMicrotask(()=>guarded(async()=>{await interactionPrompt.approach();interactionPrompt.paint(document,{promptHost:$('#game-prompt-host'),overlayHost:$('#game-overlay-host')});}));
+  } else {
+    interactionPrompt.setAgent(null);interactionPrompt.setResidents([]);interactionPrompt.setPosition(null);
+    interactionPrompt.reset();interactionPrompt.paint(document,{promptHost:$('#game-prompt-host'),overlayHost:$('#game-overlay-host')});
+  }
+  if(world.kind==='frontier'){
+    const host=element('div',null,'game-build-host');host.id='game-build-host';
+    const session={agentId:state.selected,worldId:world.id,player:agent||null,moderator:isModerator()};
+    hotbar.update({world:state.world,pick:state.voxelSelection,moderator:isModerator()});
+    placement.update({world:state.world,pick:state.voxelSelection,session});
+    const palette=element('div',null,'ui-hotbar-host');mount(palette,hotbar.view());
+    const preview=element('div',null,'ui-placement-host');mount(preview,placement.view());
+    host.append(palette,preview);map.append(host);
+  }
+  if(state.gameMode==='observe'&&spectator)map.append(observerControls());
+  mountTouchControls(map,canvas,world,agent);
+  syncGameHud();
+}
+
+/** Keep the HUD's one next action and the observer's own status line current after a refresh. */
+function syncGameHud(){
+  if(!state.gamePresentation)return;
+  const line=$('#game-next-action');const next=nextActionLine();
+  if(line)line.textContent=next||'';
+  if(line)line.hidden=!next;
+  const status=$('#game-observer-status');
+  if(status&&spectator&&state.gameMode==='observe'){const refusal=spectator.lastRefusal();if(refusal){status.setAttribute('role','alert');status.textContent=`${refusal.message} ${refusal.next_step||''}`.trim();}else{status.setAttribute('role','status');status.textContent=spectator.status().detail;}}
+  touchControls?.refresh();
+}
+
+// The touch layer (task 37) needs a coarse pointer or a narrow screen. It binds no key event, so the
+// shipped keyboard map is untouched, and it decides no world rule: every gesture becomes an intent
+// handed to the same calls the buttons use. The `look` contract is relative, so the shell adds it to
+// the stored facing before queueing.
+function mountTouchControls(map,canvas,world,agent){
+  touchControls?.destroy();touchControls=null;
+  if(typeof window==='undefined'||typeof window.matchMedia!=='function')return;
+  if(!hasCoarsePointer(window.matchMedia)&&!window.matchMedia('(max-width: 900px)').matches)return;
+  touchControls=createTouchControls({
+    document,mount:map,surface:canvas,
+    input:{
+      walk:(direction)=>controlStep(direction),
+      look:({yaw,pitch})=>queueLook(state.facing.yaw+yaw,state.facing.pitch+pitch),
+      interact:()=>guarded(()=>usePickedFixture()),
+      build:()=>document.querySelector('#game-build-button')?.click(),
+      affordance:(name)=>setGameDrawer(name==='chat'?'chat':'tools'),
+    },
+    canWalk:()=>{const acting=viewedAgent();if(state.world.paused)return false;return acting?acting.status==='active':true;},
+    hasFixture:()=>Boolean(state.interaction?.fixture),
+    isBuilding:()=>Boolean(state.building),
+    status:()=>!agent?'Observing. Drag the world to look; the Look buttons turn it one step at a time.':state.world.paused?'The world is paused. Movement and interaction are refused by the server.':state.building?'Building. Choose a block and tap the ground to place it.':'Press a direction to walk one tile, and hold it to keep walking. Drag the world to look.',
+    reducedMotion:()=>prefersReducedMotion(window.matchMedia),
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// The character overlay: a short dialog with two jobs — pick a resident, or create one. The section
+// keeps every management control (pause, revoke, credential, export, delete); this is "who is going
+// into the world". Both use the same fields and the same server rules.
+// ---------------------------------------------------------------------------------------------
+function characterCreateFields(inputs){
+  field(inputs,'kind','Resident type',{options:[{value:'agent',label:'AI agent'},{value:'human',label:'Human player'}],value:'agent',full:true});
+  field(inputs,'calling_id','Calling',{options:(state.guilds?.catalog||[]).map(c=>({value:c.id,label:`${c.name} · ${c.guild_name}`})),value:'explorer',full:true,hint:'A peaceful vocation and guild affiliation. Your human operator chooses it.'});
+  field(inputs,'name','Character name',{max:40,full:true});
+  field(inputs,'region_id','Home region',{options:REGIONS.map((region)=>({value:region.id,label:region.name})),full:true});
+  field(inputs,'country','Country or area of origin (self-declared)',{options:[{value:'',label:'Prefer not to say'},...state.countries.map(country=>({value:country.name,label:country.name}))],required:false,full:true,hint:'Optional. Origin is distinct from your fictional home region.'});
+  field(inputs,'color','Color',{options:[{value:'#397f79',label:'River teal'},{value:'#3d5875',label:'Night blue'},{value:'#8c6ab1',label:'Orchid purple'},{value:'#cb725f',label:'Sunset coral'},{value:'#aa7845',label:'Harvest gold'}]});
+  field(inputs,'symbol','Emblem',{options:['✦','◆','✿','▲']});
+  field(inputs,'capabilities','Capabilities or interests',{type:'textarea',max:300,required:false,full:true});
+  field(inputs,'limitations','What should others know about its limits?',{type:'textarea',max:300,required:false,full:true});
+}
+async function createCharacter(data,node){
+  const {calling_id,...profile}=data;
+  const result=await api('/agents','POST',profile);
+  if(calling_id)await api('/callings/select','POST',{agent_id:result.id,calling_id});
+  node.reset();await refresh();await selectAgent(result.id);
+  if($('#character-dialog').open)$('#character-dialog').close();
+  notice('Your character is ready. Enter the world or create an agent connection.');
+}
+function renderCharacterOverlay(){
+  const node=$('#character-area');if(!node)return;
+  node.replaceChildren();
+  const pick=card('Pick a resident','WHO IS GOING INTO THE WORLD?');
+  if(!state.account){pick.append(paragraph('Sign in to choose or create a character.','privacy'));node.append(pick);return;}
+  if(!state.agents.length)pick.append(paragraph('No character yet. Create your first resident below.','privacy'));
+  for(const agent of state.agents){
+    const row=element('div',null,'record');const top=element('div',null,'agent-row');const bio=element('div');
+    append(bio,element('h3',agent.name),badge(agent.kind==='human'?'human player':'AI resident'),badge(agent.status,agent.status!=='active'),paragraph(`${REGIONS.find(region=>region.id===agent.region_id)?.name||'Commons'} · ${agent.world_id||'commons'}`,'privacy'));
+    append(top,agentMark(agent),bio);row.append(top);
+    const controls=actions();
+    const enter=button('Enter the world',()=>{selectAgent(agent.id).then(()=>{$('#character-dialog').close();});},'small');
+    enter.disabled=agent.status!=='active';controls.append(enter);
+    if(agent.status!=='active')controls.append(button(agent.status==='revoked'?'Resume access':'Resume',()=>change('/agents/control',{agent_id:agent.id,status:'active'},'Character updated.'),'secondary small'));
+    row.append(controls);pick.append(row);
+  }
+  const create=card('Create a resident','A NEW ARRIVAL');
+  create.append(paragraph('One human player and up to five AI characters per operator. The server refuses the sixth AI character, a second human player and an unlisted colour.','privacy'));
+  const inputs=form(create,'Create character',createCharacter,'character-create');
+  characterCreateFields(inputs);
+  node.append(pick,create);
+}
+function openCharacterOverlay(){
+  if(!state.account){openAuth('register');return;}
+  renderCharacterOverlay();
+  $('#character-dialog').showModal();
+  $('#character-area input,#character-area button')?.focus?.();
 }

@@ -323,6 +323,8 @@ export function createVoxelScene() {
       stats.layers = { ...(staticBatch?.layers || {}), sky: skyBatch?.cubes || 0 };
     },
     get pickables() { return pickables; }, get stats() { return stats; }, get animating() { return animating; },
+    isAnimating() { return animating; },
+    reconcileCharacter(id) { return motionTracker.reconcile(id); },
     destroy() { if (destroyed) return; destroyed = true; motionTracker.clear(); animating = false; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(skyBatch); disposeDistantGround(groundMesh); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; skyKey = ''; groundKey = ''; lastPlan = null; }
   };
 }
@@ -471,6 +473,8 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     },
     get cameraMode() { return orbitInput.mode; },
     get orbit() { return orbitInput.orbit; }, get stats() { return contents.stats; },
+    isAnimating() { return contents.isAnimating(); },
+    reconcileCharacter(id) { const changed = contents.reconcileCharacter(id); if (changed) paint(); return changed; },
     /** What the last paint actually applied: the phase light, the fog band and the shadow frustum. */
     get atmosphere() { return lastAtmosphere; },
     destroy() {

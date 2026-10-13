@@ -122,3 +122,87 @@ dialog,#auth-dialog,.mayor-dialog{background:linear-gradient(145deg,#12382e,#082
 .hero-film{align-self:center;min-width:0}.hero-film video,.introduction-dialog video{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#031710}.hero-film .hero-art-caption{position:static}.hero-film .hero-art-caption small{line-height:1.6}.introduction-dialog{width:min(1040px,94vw);max-height:92vh;overflow:auto}.introduction-dialog .dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem}.introduction-dialog p{margin-top:1rem;color:var(--muted)}
 .hero-film{transform:none}
 @media(max-width:650px){.welcome .hero-film{order:-1;width:100%}.welcome h1 em{display:block}.welcome h1{line-height:1.08}}
+
+/* ---------------------------------------------------------------------------------------------
+   The game shell, as built by task 38. These rules extend the shipped game screen; they add no new
+   colour (the tokens above are reused) and they touch no desktop surface beyond `body.game-world`.
+   The touch layer keeps its own scoped stylesheet, so nothing here reaches it.
+   --------------------------------------------------------------------------------------------- */
+
+/* Entry screen. Three controls over the drawn world, the film as a text link under them, and one
+   honest line about what an account is for. */
+body.game-world.game-entry #hero-actions .game-continue{background:#e5dea8;color:#133429;border:1px solid #f0edc8}
+body.game-world.game-entry .game-film-link{display:inline-block;margin:4px 0 0;color:var(--gold);font-size:.72rem;text-decoration:underline;text-underline-offset:3px}
+body.game-world.game-entry .game-entry-note{color:#ccd9c4;font-size:.66rem;line-height:1.7;margin:8px 0 0;max-width:520px}
+
+/* H4: one next action, never a list and never a count. Manrope, like the other HUD indicators. */
+body.game-world .game-next{margin:0!important;padding:6px 14px;background:#092a24cc;border:1px solid #d9d8b545;border-radius:100px;color:#f6f3dd!important;font-size:.66rem!important;letter-spacing:.02em;text-align:center;max-width:min(560px,calc(100vw - 40px));white-space:normal}
+body.game-world .game-next[hidden]{display:none}
+
+/* The small interaction prompt. It is a live region anchored near the aim line and it never covers
+   the world: the host is transparent to the pointer, so the canvas keeps its drag and its clicks. */
+body.game-world .game-prompt-host{position:absolute;z-index:10;left:20px;bottom:172px;max-width:min(430px,60vw);pointer-events:none}
+body.game-world .game-prompt-host[hidden]{display:none}
+body.game-world .game-prompt-host .interaction-prompt{background:var(--game-glass);border:1px solid var(--game-edge);border-radius:12px;padding:9px 12px;color:#f3f1db;font-size:.68rem;box-shadow:0 10px 28px #04150f66}
+body.game-world .game-prompt-host .interaction-prompt strong{display:block;color:#fff8dd}
+body.game-world .game-prompt-host .interaction-prompt p{margin:3px 0 0;color:#d8e2d0}
+body.game-world .game-prompt-host .interaction-prompt .interaction-prompt-key{color:var(--gold)}
+
+/* Compact overlays for a conversation or an activity. Dismissible by Escape and by their own
+   labelled Close; they are not modal, so focus is never trapped. */
+body.game-world .game-overlay-host{position:absolute;z-index:13;left:50%;bottom:120px;transform:translateX(-50%);width:min(430px,calc(100vw - 32px));pointer-events:none}
+body.game-world .game-overlay-host[hidden]{display:none}
+body.game-world .game-overlay-host .interaction-overlay{pointer-events:auto;background:linear-gradient(145deg,#12382e,#08271f);border:1px solid #bacba652;border-radius:18px;padding:16px 18px;color:var(--ink);box-shadow:0 22px 60px #00140fb0}
+body.game-world .game-overlay-host .interaction-overlay h3{margin:0 0 10px;font:500 1.2rem/1.2 NemoCormorant,Georgia,serif}
+body.game-world .game-overlay-host .interaction-overlay label{display:block;margin:8px 0 4px}
+body.game-world .game-overlay-host .interaction-overlay .interaction-overlay-note{color:var(--muted);font-size:.72rem}
+body.game-world .game-overlay-host .interaction-overlay .interaction-overlay-refusal{color:var(--danger)}
+
+/* The pointer-first build tools. They appear only while build mode is on, and the palette comes
+   from the world payload, never from a literal in this stylesheet. */
+body.game-world .game-build-host{position:absolute;z-index:11;bottom:104px;left:50%;transform:translateX(-50%);display:none;width:max-content;max-width:min(880px,calc(100vw - 60px));pointer-events:auto}
+body.game-world.game-building .game-build-host{display:block}
+body.game-world .game-build-host .ui-hotbar{border:1px solid #d8daad70;border-radius:14px;background:#092a24eb;padding:8px;box-shadow:0 12px 32px #04161188}
+body.game-world .game-build-host .game-hotbar-palette{display:flex;gap:6px;flex-wrap:wrap}
+body.game-world .game-build-host .game-hot{min-height:42px;background:#0a2b25de;color:#f6f0d8;border:1px solid #d2d8ac75;border-radius:10px;font-size:.64rem;padding:7px 10px}
+body.game-world .game-build-host .game-hot.active{background:var(--gold);color:var(--bg);border-color:var(--gold)}
+body.game-world .game-build-host .ui-placement{border:1px solid #d8daad70;border-radius:14px;background:#092a24f2;padding:10px;margin-top:6px;max-height:44vh;overflow:auto;color:var(--ink)}
+body.game-world .game-build-host .ui-placement h2{font-size:1.05rem;margin:0 0 6px}
+
+/* Observation. The observer reads; the status line says what it is, and a refusal names its rule. */
+body.game-world .game-observer{position:absolute;z-index:9;left:20px;bottom:96px;margin:0!important;padding:5px 12px;max-width:min(430px,60vw);background:#092a24cc;border:1px solid #d9d8b53b;border-radius:100px;color:#edf0dc!important;font-size:.6rem!important}
+body.game-world .game-observer-controls{position:absolute;z-index:9;right:20px;bottom:150px;display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:min(360px,50vw);pointer-events:auto}
+body.game-world .game-observer-controls button{min-height:38px;font-size:.6rem;padding:6px 9px;background:#0a2b25de;color:#f6f0d8;border:1px solid #d2d8ac75;border-radius:10px}
+body.game-world .game-observer-controls select{min-height:38px;font-size:.62rem;max-width:190px}
+
+/* The four drawers. Each is one card in the existing aside, so the shipped Close, Escape and the
+   HUD button all dismiss it. */
+body.game-world .world-aside .journal-entry{padding:10px 0;border-top:1px solid var(--line)}
+body.game-world .world-aside .journal-entry:first-child{border-top:0}
+body.game-world .world-aside .project-drawer-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+body.game-world .world-aside .project-drawer-list li{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+body.game-world .world-aside .project-drawer-list p{margin:2px 0}
+body.game-world .world-aside .ui-inventory h2,body.game-world .world-aside .ui-hotbar h2{font-size:1.2rem}
+
+/* The character overlay reuses the shipped dialog treatment; the pick list is a compact record row. */
+#character-dialog{width:min(760px,94vw);max-height:92vh;overflow:auto}
+#character-dialog .dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+#character-dialog .record+.record{margin-top:8px}
+#character-dialog .agent-row{display:flex;gap:12px;align-items:flex-start}
+
+@media(max-width:650px){
+  body.game-world .game-prompt-host{left:10px;right:10px;bottom:238px;max-width:none}
+  body.game-world .game-overlay-host{bottom:112px}
+  body.game-world .game-observer{left:10px;bottom:150px;max-width:calc(100vw - 20px)}
+  body.game-world .game-observer-controls{right:10px;bottom:196px;max-width:calc(100vw - 20px)}
+  body.game-world .game-build-host{bottom:150px;max-width:calc(100vw - 20px)}
+}
+@media(prefers-reduced-motion:reduce){body.game-world .game-prompt-host,body.game-world .game-overlay-host{transition:none}}
+
+/* The HUD hint names four keys now, so on a narrow screen it wraps instead of forcing the whole HUD
+   bottom row wider than the viewport. The quickbar keeps its five equal controls. */
+body.game-world .game-hud-bottom .game-control-hint{white-space:normal;max-width:100%;text-wrap:balance}
+@media(max-width:900px){
+  body.game-world .game-hud-bottom{max-width:calc(100vw - 20px)}
+  body.game-world .game-hud-bottom .game-control-hint{padding:4px 10px}
+}

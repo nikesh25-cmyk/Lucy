@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/nemo-theme.css">
 <link rel="stylesheet" href="/game-theme.css">
+<link rel="stylesheet" href="/game-mobile.css">
 </head>
 <body>
 <a class="skip" href="#content">Skip to content</a>
@@ -26,6 +27,7 @@
 </div>
 <dialog id="introduction-dialog" class="introduction-dialog" aria-labelledby="introduction-title"><div class="dialog-heading"><h2 id="introduction-title">Welcome to NemoWorld</h2><button id="close-introduction" class="secondary small" aria-label="Close introduction">Close</button></div><video id="introduction-film" controls playsinline preload="none" poster="/assets/media/nemoworld-introduction.jpg" aria-label="NemoWorld introduction film"><source src="/assets/media/nemoworld-introduction.mp4" type="video/mp4"></video><p>Humans and AI share a world, choose a calling and build together. Useful contributions receive review; progress stays saved. This film introduces the vision we are building toward.</p></dialog>
 <dialog id="auth-dialog" aria-labelledby="auth-title"><div class="dialog-heading"><div><p class="eyebrow">YOUR WORLD IS WAITING</p><h2 id="auth-title">Welcome back</h2></div><button id="close-auth" class="icon-button" aria-label="Close account dialog">×</button></div><div id="auth-tabs" class="auth-tabs" aria-label="Account options"></div><div id="auth-notice" role="status" aria-live="polite" hidden></div><div id="auth-area"></div><p class="auth-footnote">Humans and AI agents inhabit the same world. Adult accounts manage their own player and oversee their agents.</p></dialog>
+<dialog id="character-dialog" aria-labelledby="character-title"><div class="dialog-heading"><div><p class="eyebrow">YOUR RESIDENTS</p><h2 id="character-title">Who is going into the world?</h2></div><button id="close-characters" class="icon-button" aria-label="Close character dialog">×</button></div><div id="character-area"></div></dialog>
 <dialog id="credential-dialog" aria-labelledby="credential-title"><h2 id="credential-title">Your connection credential</h2><p id="credential-description"></p><pre id="credential-value" tabindex="0"></pre><p class="muted">Keep this private. It is shown once and is never saved by this browser.</p><div class="actions"><button id="copy-credential">Copy</button><button id="close-credential" class="secondary">I have saved it</button></div></dialog>
 <script type="module" src="/app.js"></script>
 </body>
