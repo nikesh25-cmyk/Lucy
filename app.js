@@ -140,7 +140,12 @@ function restoreRememberedFocus() {
 }
 function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
 function heading(title, description) { const node = element('div', null, 'section-title'); const text = element('div'); append(text, element('h2', title), paragraph(description)); node.append(text); return node; }
-async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
+function facingForResident(resident) {
+  // A new human starts toward the long open Commons, while a stored look always wins.
+  if(resident?.kind==='human'&&resident.last_look===0&&resident.world_id==='commons'&&resident.x===10&&resident.y===6)return {yaw:-3*Math.PI/4,pitch:-.08};
+  return {yaw:Number.isFinite(resident?.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident?.pitch)?resident.pitch:.62};
+}
+async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration()]);const resident=selected();if(resident)state.facing=facingForResident(resident); render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -151,7 +156,9 @@ $('#copy-credential').addEventListener('click', () => guarded(async () => { awai
 
 function currentWorldId() { return state.viewWorld || selected()?.world_id || 'commons'; }
 function viewedAgent() { if (state.viewWorld) return null; const agent = selected(); return agent && (!agent.world_id || agent.world_id === currentWorldId()) ? agent : null; }
-function definition() { const current = state.world.world || { id: currentWorldId() }; return { ...getWorldDefinition(current.id), ...current }; }
+// The server's world metadata can include an observed terrain viewport. The renderer needs the
+// whole authored map for tiles beyond that viewport; state.world remains the observed overlay.
+function definition() { const current = state.world.world || { id: currentWorldId() }; const authored = getWorldDefinition(current.id); return { ...authored, ...current, terrain: authored.terrain }; }
 function worldPosition() { return viewedAgent() || state.focus || definition().start || start; }
 function worldLandmarks() { return state.world.landmarks || definition().landmarks || landmarks; }
 function worldPortals() { return state.world.portals || definition().portals || []; }
@@ -334,6 +341,7 @@ window.__nemoworld = {
   lastClosed: () => state.eventStreamClosed || null,
   world: () => state.world,
   worldId: () => currentWorldId(),
+  terrainExtent: () => { const tiles = definition().terrain; return { rows: tiles.length, columns: tiles[0]?.length || 0 }; },
   selected: () => state.selected,
 };
 async function loadDirectory() { const result = await api(`/worlds?${new URLSearchParams({ q: state.worldQuery, offset: String(state.worldOffset), limit: '12' })}`); state.worlds = Array.isArray(result) ? result : result.worlds || result.items || []; state.worldTotal = result.total ?? state.worlds.length; state.directoryHasMore = result.has_more ?? state.worldOffset + state.worlds.length < state.worldTotal; }
@@ -512,7 +520,7 @@ function renderTabs() {
   const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'GOVERNANCE',items:care});groups.push({title:'',items:[['help','Guide','?']]});
   const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list',restoration:'users-round',start:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
   if(state.gamePresentation){const section=element('div',null,'nav-group game-workspace-link');section.append(paragraph('MORE CONTROLS','nav-heading'),button('Open workspace',()=>{location.href='/?mode=workspace';},'secondary small'));nav.append(section);}
-  if(state.gamePresentation&&state.tab==='world'){const sound=element('div',null,'nav-group game-audio-menu');sound.append(paragraph('SOUND','nav-heading'),gameAudio.createControls(document));nav.append(sound);}
+  if(state.gamePresentation&&state.tab==='world'){const sound=element('div',null,'nav-group game-audio-menu');sound.append(paragraph('SOUND','nav-heading'),gameAudio.createControls(document));nav.prepend(sound);}
 }
 function renderView() { if(voxelView){state.voxelOrbit=voxelView.orbit;voxelView.destroy();voxelView=null;}document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons'));applyGameShell();
   const node = $('#view'); node.replaceChildren(); const views = { start: renderStartJourney, world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,restoration:renderRestoration,quests:renderQuests };
@@ -791,10 +799,9 @@ async function playAsHuman(){
  if(!player){player=await api('/agents','POST',{kind:'human',name:state.account.name,region_id:'commons',capabilities:'Human player',limitations:'Controlled by its signed-in human',color:'#3d5875',symbol:'◆'});await refresh();}
  if(player.status!=='active'){await openSection('characters');notice('Resume your human player before entering the world.');return;}
  await selectAgent(player.id);setFirstPerson(true);state.tab='world';
- // The Commons arrival faces its fountain at arm's length with the default look.
- // Turn a still-default arrival toward the open path; store the look like any player turn.
+ // Save the initial inward look once. A returning player keeps the facing they last chose.
  const avatar=selected();
- if(currentWorldId()==='commons'&&avatar?.x===10&&avatar?.y===6&&Math.abs(state.facing.yaw-Math.PI/4)<.001)queueLook(Math.PI/2,0,{apply:false});
+ if(currentWorldId()==='commons'&&avatar?.x===10&&avatar?.y===6&&avatar?.last_look===0)queueLook(-3*Math.PI/4,-.08,{apply:false});
  render();notice('You are playing as '+player.name+'. Use WASD, arrow keys or tap the ground to walk.');
 }
 async function enterFrontier(hops=0,expectedId=selected()?.id){
@@ -1747,7 +1754,7 @@ async function loadOffers(list,status,filter='all'){
 }
 
 async function boot() {
-  try {const bootstrap=await api('/bootstrap');state.setup=bootstrap.setup_required;state.setupCodeRequired=bootstrap.setup_code_required===true;state.registrationOpen=bootstrap.registration_open!==false;try{const me=await api('/me');state.account=me.account;state.agents=me.agents;}catch{}await refresh();render();resumePendingWork();}catch(error){notice(`Could not connect to the world: ${error.message}`,true);render();}
+  try {const bootstrap=await api('/bootstrap');state.setup=bootstrap.setup_required;state.setupCodeRequired=bootstrap.setup_code_required===true;state.registrationOpen=bootstrap.registration_open!==false;try{const me=await api('/me');state.account=me.account;state.agents=me.agents;}catch{}await refresh();if(selected())state.facing=facingForResident(selected());render();resumePendingWork();}catch(error){notice(`Could not connect to the world: ${error.message}`,true);render();}
 }
 // Restore the signed-in operator’s ordinary unfinished form and its remembered focus.
 function resumePendingWork() {

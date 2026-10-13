@@ -10,10 +10,13 @@ Task 32's deliverable. Written 2026-10-13 on branch `task-32-characters`, based 
 | `tests/characters.test.js`, `tests/character-animation.test.js` | The module contract, driven with real server payloads |
 | [`docs/handoff/task-32-characters.md`](handoff/task-32-characters.md) | The integration interface, the exact wiring steps and the honest limitations |
 
-**The module is not wired into the game.** `src/voxel-world.js` and `src/scene/**` belong to a parallel
-task and `app.js`/`index.html`/the stylesheets to the integration task, so this task delivers a module
-with an explicit interface and demonstrates it with module tests. Nothing here is visible in a browser
-yet, and no browser check was performed (see *What this does not claim*).
+`src/voxel-world.js` now owns a motion tracker and calls this module's batch builder for the live
+character layer. It also creates a sibling DOM label layer over the WebGL canvas. Each paint projects
+the module's tracker-aware anchors through the actual camera, so camera movement, resize, walking and
+expression repaint keep labels attached to the drawn residents. The layer is removed with the renderer;
+first-person mode omits the viewer. During a walk or active expression window it schedules a 100 ms
+repaint; idle scenes remain event driven. The repaint key includes the current pose, so each animation
+tick rebuilds the character batch when a frame changes while terrain, blocks and sky remain reused.
 
 ## 1. One appearance system
 
@@ -181,19 +184,17 @@ reuse test (which uses a string `emote_until`) keeps its meaning.
 
 ## 6. What this does not claim
 
-- **Not wired, not visible.** No change to `src/voxel-world.js`, `src/scene/**`, `app.js`,
-  `index.html`, `style.css`, `nemo-theme.css` or `src/camera-controls.js`. The module is exercised by
-  module tests only.
-- **No browser check, and no screenshot.** `npm run browser` cannot be used by this task: the suite's
-  scenarios live in `scripts/browser-suite.mjs`, which this task does not own, and adding a scenario
-  is outside its file ownership. No page was opened, no click was made, no frame was measured.
-- **No FPS, latency or capacity claim.** Nothing here was run on a GPU or in a browser. The rebuild
-  bounds below are arithmetic on the module's own behaviour, not measurements of a rendered scene.
+- **Batch cost.** Character pose changes rebuild the full visible character batch (up to 220
+  participants) because the retained cube batch has no per-instance pose update API. The animation
+  timer is limited to active walks and expression windows, at 100 ms, and static terrain, blocks and
+  sky batches are reused. This is a bounded implementation rule rather than an FPS claim.
+- **Browser scope.** Real Chrome acceptance exercises first-person entry, movement, saved look and
+  shared presence. Focused renderer tests exercise the nameplate and animation rules. There is no
+  measured crowd frame rate, long-session latency or nameplate contrast result.
 - **Legibility is a contract, not a measurement.** The 12 px minimum, the 18 m/40 m tiers and the
   24-label bound are stated rules for the renderer that draws the labels; no contrast or pixel height
   was measured in a browser.
-- **No texturing.** Nameplates are for the renderer's own label layer (DOM or 2D canvas). The pinned
-  Three.js bundle has no image decoder and no font support, so the module deliberately does not try to
-  draw text into WebGL.
+- **DOM labels.** Nameplates are ordinary text nodes in the renderer's sibling overlay, positioned from
+  the live camera projection. The pinned Three.js bundle has no font support, so text stays out of WebGL.
 - **Stride geometry is a pose, not a rig.** Four frames of limb offset, in the box grammar the rest of
   the family uses. There is no skeleton, no skinning, no imported animation and no engine asset.

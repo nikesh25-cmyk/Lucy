@@ -233,14 +233,14 @@ export function characterNameplates(participants, self = null, { tracker = null,
 /** The participants the module draws: self appended when the roster omits it, then bounded and placed. */
 export const renderableCharacters = (participants, self) => {
   const people = self && !(participants || []).some((item) => item.id === self.id) ? [...(participants || []), self] : participants || [];
-  return people.slice(0, CHARACTER_LIMITS.participants).filter((item) => Number.isInteger(item?.x) && Number.isInteger(item?.y));
+  return people.slice(0, CHARACTER_LIMITS.participants).filter((item) => Number.isInteger(item?.x) && Number.isInteger(item?.y) && (item?.z === undefined || Number.isInteger(item.z)));
 };
 
 /** The nearby participants that get a limb-swinging walk cycle: at most `animated` of them. */
 export function animatedCharacters(participants, viewer, limit = CHARACTER_LIMITS.animated) {
   const bound = Number.isInteger(limit) && limit > 0 ? limit : CHARACTER_LIMITS.animated;
   const origin = Number.isInteger(viewer?.x) && Number.isInteger(viewer?.y) ? viewer : null;
-  const ordered = origin ? [...participants].sort((a, b) => Math.hypot(a.x - origin.x, a.y - origin.y) - Math.hypot(b.x - origin.x, b.y - origin.y)) : [...participants];
+  const ordered = origin ? [...participants].sort((a, b) => Math.hypot(a.x - origin.x, a.y - origin.y) - Math.hypot(b.x - origin.x, b.y - origin.y) || String(a.id).localeCompare(String(b.id))) : [...participants].sort((a, b) => String(a.id).localeCompare(String(b.id)));
   return new Set(ordered.slice(0, bound).map((item) => item.id));
 }
 
@@ -286,7 +286,7 @@ export function paintCharacter(batch, item, self, { tracker = null, time = Date.
   const pose = characterPose(state);
   const x = state.position.x + .5, y = state.position.y + .5, elevation = state.elevation, height = elevation + pose.lift;
   const direction = facingStep(state.facing);
-  const pick = { x: item.x, y: item.y, z: Number.isFinite(item.z) ? item.z : 0, type: 'participant', participant: item };
+  const pick = { x: item.x, y: item.y, z: Number.isInteger(item.z) ? item.z : 0, type: 'participant', participant: item };
   const lean = pose.lean ? { x: direction.x * LEAN_DISTANCE, y: direction.y * LEAN_DISTANCE } : { x: 0, y: 0 };
   // The stride: a leg swings along the confirmed direction of travel, and the arm on that side moves
   // the other way. Both swings are zero unless the display is between two confirmed tiles.

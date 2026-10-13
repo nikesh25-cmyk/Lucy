@@ -44,7 +44,7 @@ export const MOTION_LIMITS = Object.freeze({
 
 const CARDINAL = Object.freeze({ up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } });
 const clamp01 = (value) => value < 0 ? 0 : value > 1 ? 1 : value;
-const tile = (item) => ({ x: Number.isFinite(item?.x) ? item.x : 0, y: Number.isFinite(item?.y) ? item.y : 0, z: Number.isFinite(item?.z) ? item.z : 0 });
+const tile = (item) => ({ x: Number.isFinite(item?.x) ? item.x : 0, y: Number.isFinite(item?.y) ? item.y : 0, z: Number.isInteger(item?.z) ? item.z : 0 });
 
 /** The unit grid step for a confirmed facing. */
 export const facingStep = (facing) => CARDINAL[FACINGS.includes(facing) ? facing : 'down'];
@@ -128,7 +128,7 @@ export function createMotionTracker({ tweenMs = MOTION_TWEEN_MS, limit = MOTION_
     confirm(item) {
       // A *confirmed* position is a whole stored tile: a fractional or unplaced value is refused
       // rather than tracked, so no caller can seed a position the server never stored.
-      if (!item || typeof item.id !== 'string' || !Number.isInteger(item.x) || !Number.isInteger(item.y)) return { changed: false, snapped: false };
+      if (!item || typeof item.id !== 'string' || !Number.isInteger(item.x) || !Number.isInteger(item.y) || (item.z !== undefined && !Number.isInteger(item.z))) return { changed: false, snapped: false };
       const target = tile(item), world = typeof item.world_id === 'string' ? item.world_id : null, known = records.get(item.id);
       touched += 1;
       if (!known) {

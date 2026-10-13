@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import * as THREE from '../assets/vendor/three-voxel.js';
 import { getWorldDefinition } from '../world.js';
-import { createVoxelScene, createVoxelWorld, peopleVisualKey } from '../src/voxel-world.js';
-import { VOXEL_LIMITS, voxelWindow, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, normalizeOrbit, voxelParcelAddress, voxelParcels, cellOccludedBelow, inVoxelWindow, createOrbitInput } from '../src/voxel-geometry.js';
+import { createVoxelScene, createVoxelWorld, peopleVisualKey, DISTANT_GROUND_LIMITS } from '../src/voxel-world.js';
+import { VOXEL_LIMITS, voxelWindow, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, normalizeOrbit, voxelParcelAddress, voxelParcels, cellOccludedBelow, createOrbitInput } from '../src/voxel-geometry.js';
 
 const definition = (columns = 48, rows = 48) => ({ id: 'test-sector', columns, rows, kind: 'outdoors', start: { x: 24, y: 24 },
   terrain: Array.from({ length: rows }, () => Array(columns).fill('meadow')), objects: [], portals: [], landmarks: [] });
@@ -22,9 +22,9 @@ const topOf = group => group.children.reduce((top, mesh) => {
   for (let index = 0; index < mesh.count; index++) { mesh.getMatrixAt(index, matrix); top = Math.max(top, matrix.elements[13] + Math.abs(matrix.elements[5]) / 2); }
   return top;
 }, -Infinity);
-/** Interior bases recomputed from the retained terrain and the window, independent of the predicate. */
+/** Bases recomputed from retained terrain, including neighbors just beyond the render window. */
 const hiddenCellCount = (world, plan) => plan.cells.filter(({ x, y, type }) => !['water', 'bridge'].includes(type) &&
-  [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dy]) => inVoxelWindow({ x: x + dx, y: y + dy }, plan.window) &&
+  [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dy]) =>
     typeof world.terrain[y + dy]?.[x + dx] === 'string' && world.terrain[y + dy][x + dx] !== 'water')).length;
 
 test('voxel viewport remains bounded at world edges and rejects invalid or duplicate records', () => {
@@ -54,6 +54,32 @@ test('actual Three.js raycasts select authored layers and convert cube faces to 
   assert.equal(castDown(scene, 12, 12), undefined); scene.destroy(); assert.equal(scene.pickables.length, 0); assert.equal(scene.root.children.length, 0);
 });
 
+test('distant ground is one finite render-only mesh that follows world switches and cleans up', () => {
+  const scene = createVoxelScene(), first = definition(8, 6);
+  first.groundColor = '#829b77';
+  scene.update(first, {}, { position: first.start });
+  const mesh = scene.root.getObjectByName('voxel-distant-ground');
+  assert.ok(mesh); assert.equal(mesh.geometry.parameters.width, 8); assert.equal(mesh.geometry.parameters.depth, 6);
+  assert.deepEqual(mesh.position.toArray(), [4, DISTANT_GROUND_LIMITS.y - .02, 3]);
+  assert.equal(mesh.geometry.attributes.position.count, DISTANT_GROUND_LIMITS.vertices);
+  assert.equal(mesh.castShadow, false); assert.equal(mesh.receiveShadow, true); assert.equal(mesh.userData.renderOnly, true);
+  assert.equal(scene.pickables.includes(mesh), false);
+  assert.equal(scene.stats.distantGround, 1, 'the extra draw is included in the scene report');
+  let geometryDisposed = 0, materialDisposed = 0;
+  mesh.geometry.addEventListener('dispose', () => geometryDisposed++); mesh.material.addEventListener('dispose', () => materialDisposed++);
+
+  const second = definition(11, 9); second.id = 'second-sector'; second.groundColor = '#b29a72';
+  scene.update(second, {}, { position: second.start });
+  const switched = scene.root.getObjectByName('voxel-distant-ground');
+  assert.notEqual(switched, mesh); assert.deepEqual(switched.position.toArray(), [5.5, DISTANT_GROUND_LIMITS.y - .02, 4.5]);
+  assert.equal(geometryDisposed, 1); assert.equal(materialDisposed, 1);
+  const room = { ...definition(6, 5), id: 'test-room', kind: 'interior' };
+  scene.update(room, {}, { position: room.start });
+  assert.equal(scene.root.getObjectByName('voxel-distant-ground'), undefined, 'interior rooms have no distant outdoor surface');
+  assert.equal(scene.stats.distantGround, 0);
+  scene.destroy(); assert.equal(scene.root.getObjectByName('voxel-distant-ground'), undefined);
+});
+
 test('scene renders the nearby shared world with real characters and reuses static terrain during movement', () => {
   const scene = createVoxelScene(), world = getWorldDefinition('commons'), participants = [{ id: 'human', name: 'Human', x: 10, y: 6, color: '#cb725f', status: 'active' }];
   const stats = scene.update(world, { participants }, { position: world.start, self: participants[0] });
@@ -79,7 +105,7 @@ test('interior base cubes are culled whole, the surface pick survives, and a wat
   world.terrain = grid.terrain.map((row, y) => row.map((type, x) => x === 30 ? 'water' : type));
   const parcel = voxelParcelAddress(world.id, { x: 24, y: 24 }), snapshot = { frontier: { parcels: [{ ...parcel, state: 'assigned', purpose: 'learning', steward_name: 'Ada' }] } }, position = { x: 24, y: 24 };
   const plan = voxelPlan(world, snapshot, position), hidden = hiddenCellCount(world, plan);
-  assert.equal(hidden, 1120, '35 interior rows x 32 cells: 37 window columns less two borders and the three water-column cells');
+  assert.equal(hidden, 1258, 'retained terrain beyond the viewport also occludes internal window edges');
   const full = scene.update(world, snapshot, { position, cullHidden: false }), fullInstances = groupInstances(scene, 'voxel-terrain');
   assert.equal(instancesAt(scene, 24, 24), 2, 'the base cube and the slab both carry the interior cell pick');
   const culled = scene.update(world, snapshot, { position });
@@ -94,7 +120,9 @@ test('interior base cubes are culled whole, the surface pick survives, and a wat
   assert.equal(cellOccludedBelow(world, snapshot, plan, 24, 24), true);
   assert.equal(cellOccludedBelow(world, snapshot, plan, 29, 24), false, 'water never occludes');
   assert.equal(cellOccludedBelow(world, snapshot, plan, 30, 24), false, 'a water base is never culled');
-  assert.equal(cellOccludedBelow(world, snapshot, plan, plan.window.x, 24), false, 'the window edge stays open');
+  assert.equal(cellOccludedBelow(world, snapshot, plan, plan.window.x, 24), true, 'an internal window edge is occluded by the retained world neighbor');
+  const edgePlan = voxelPlan(world, snapshot, { x: 0, y: 0 });
+  assert.equal(cellOccludedBelow(world, snapshot, edgePlan, 0, 0), false, 'the actual world edge keeps its exposed base');
   assert.equal(cellOccludedBelow(world, snapshot, plan, 24, 24.5), false, 'only integer cells are addressed');
   assert.equal(cellOccludedBelow(world, snapshot, null, 24, 24), false);
   scene.destroy();
@@ -226,6 +254,17 @@ test('true first-person projection picks the forward block and hides only the vi
   assert.equal(scene.root.getObjectByName('voxel-characters'), fpPeople);
   scene.update(world, snapshot, options); assert.equal(castDown(scene, 16, 16).participant.id, self.id);
   assert.equal(scene.root.getObjectByName('voxel-terrain'), terrain); assert.equal(scene.root.getObjectByName('voxel-blocks'), blocks); scene.destroy();
+});
+
+test('live nameplates follow the confirmed tracker and omit self in first-person', () => {
+  const scene = createVoxelScene(), world = getWorldDefinition('commons');
+  const self = { id: 'viewer', name: 'Viewer', x: 16, y: 16, z: 0, kind: 'human', status: 'active' };
+  const peer = { id: 'peer', name: 'Peer', x: 18, y: 16, z: 0, kind: 'human', status: 'active' };
+  const far = { id: 'far', name: 'Far', x: 60, y: 60, z: 0, kind: 'human', status: 'active' };
+  scene.update(world, { participants: [self, peer, far] }, { position: self, self, time: 1000 });
+  assert.deepEqual(scene.nameplates([self, peer, far], self, { time: 1000 }).map(label => label.id), ['viewer', 'peer']);
+  assert.deepEqual(scene.nameplates([self, peer, far], self, { cameraMode: 'first-person', time: 1000 }).map(label => label.id), ['peer']);
+  scene.destroy();
 });
 
 test('an unchanged payload reuses every batch while a one-block edit rebuilds only the saved blocks', () => {

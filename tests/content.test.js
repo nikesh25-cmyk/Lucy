@@ -154,12 +154,15 @@ test('the retained asset manifests are pinned and their files verified', () => {
 
 test('renderer colours and palettes cannot drift from the content layer', () => {
   const voxel = source('src/voxel-world.js');
-  // The renderer resolves the frontier block colours and the agent colours from the content layer
-  // and keeps only the tints that have no definition. These guards fail if that wiring is removed
-  // and a parallel literal is pasted back in.
-  assert.ok(voxel.includes("import content from './content.js'") && voxel.includes("content.palette('frontier')")
-    && voxel.includes("content.cosmetics('agent_color')"), 'src/voxel-world.js must resolve its block and agent colours from the content layer');
-  assert.ok(voxel.includes('AGENT_COLORS[item.color]'), 'the character builder must resolve a named agent colour');
+  const characters = source('src/characters.js');
+  // Frontier blocks and the extracted character renderer each resolve their own sealed colours.
+  // These guards fail if either replaces that wiring with a parallel literal palette.
+  assert.ok(voxel.includes("import content from './content.js'") && voxel.includes("content.palette('frontier')"),
+    'src/voxel-world.js must resolve block colours from the content layer');
+  assert.ok(voxel.includes("import { charactersScene") && characters.includes("content.cosmetics('agent_color')")
+    && characters.includes('AGENT_COLORS[item.color]') && characters.includes("content.cosmetics('skin_tone')")
+    && characters.includes('SKIN_TONES[hash(id) % SKIN_TONES.length]'),
+  'the live character builder must resolve named agent colours and skin tones');
   const LOCAL_COLORS = literal(voxel, /const LOCAL_COLORS = Object\.freeze\((\{[\s\S]*?\})\);/, 'LOCAL_COLORS');
   const COLORS = { ...LOCAL_COLORS, ...Object.fromEntries(palette('frontier').map((id) => [id, color(id, 'block')])) };
   for (const id of [...palette('frontier'), ...palette('garden'), ...palette('house')]) {
@@ -218,11 +221,11 @@ test('renderer colours and palettes cannot drift from the content layer', () => 
     assert.ok(['occupied', 'open'].includes(definition.rules.footprint));
   }
   for (const definition of entries('crop')) assert.ok(furniturePaint.has(definition.appearance.color.toLowerCase()), `${definition.id} must use a colour the farm tile paints`);
-  const everywhere = new Set([...furniturePaint, ...paints(voxel)]);
-  // The seven agent colours are the designed exception: the character builder resolves a named
-  // colour through the content layer instead of carrying the hex, so they are added from the
-  // resolver here and the wiring above is what keeps the two in step.
-  for (const id of cosmetics('agent_color')) everywhere.add(color(id, 'cosmetic').toLowerCase());
+  const everywhere = new Set([...furniturePaint, ...paints(voxel), ...paints(characters)]);
+  // The extracted character builder resolves these sealed colours without repeating their hex.
+  // The wiring guard above is what keeps the renderer and the content entries in step.
+  for (const category of ['agent_color', 'skin_tone'])
+    for (const id of cosmetics(category)) everywhere.add(color(id, 'cosmetic').toLowerCase());
   for (const definition of entries('cosmetic')) if (definition.appearance.color) assert.ok(everywhere.has(definition.appearance.color.toLowerCase()), `${definition.id} must use an authored colour`);
 });
 

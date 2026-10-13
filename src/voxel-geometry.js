@@ -113,8 +113,10 @@ const BASE_ALWAYS_VISIBLE = new Set(['water', 'bridge']);
 
 /**
  * Whole-node cull for the terrain base cube, the analogue of Luanti's `if (!faces) return;`.
- * A land cell whose four axis neighbours are all land cells inside the window has no exposed side:
- * every neighbour's base cube covers the shared face and the surface slab above is always drawn.
+ * A land cell whose four axis neighbours are all land cells has no exposed side: every neighbour's
+ * base cube covers the shared face and the surface slab above is always drawn. Neighbours beyond the
+ * render window are resolved from the retained world terrain too, so moving the viewport cannot
+ * create a dark clipping wall. An undefined neighbour is retained as an actual world edge.
  * `water` never occludes because its base sits 0.32 lower, so a land/water seam keeps its side face.
  */
 export function cellOccludedBelow(definition, snapshot, plan, x, y) {
@@ -122,7 +124,7 @@ export function cellOccludedBelow(definition, snapshot, plan, x, y) {
   const camera = snapshot?.camera || { x: 0, y: 0 }, type = resolvedCellType(definition, snapshot, camera, x, y);
   if (typeof type !== 'string' || BASE_ALWAYS_VISIBLE.has(type)) return false;
   for (const [dx, dy] of OCCLUSION_NEIGHBOURS) {
-    const nearX = x + dx, nearY = y + dy, near = inVoxelWindow({ x: nearX, y: nearY }, plan.window) ? resolvedCellType(definition, snapshot, camera, nearX, nearY) : undefined;
+    const nearX = x + dx, nearY = y + dy, near = resolvedCellType(definition, snapshot, camera, nearX, nearY);
     if (typeof near !== 'string' || near === 'water') return false;
   }
   return true;

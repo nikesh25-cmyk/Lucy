@@ -35,6 +35,8 @@ const files = new Map([
   ['/assets/media/nemoworld-introduction.jpg', ['assets/media/nemoworld-introduction.jpg', 'image/jpeg']],
   ['/src/voxel-world.js',['src/voxel-world.js','text/javascript; charset=utf-8']],
   ['/src/voxel-geometry.js',['src/voxel-geometry.js','text/javascript; charset=utf-8']],
+  ['/src/characters.js',['src/characters.js','text/javascript; charset=utf-8']],
+  ['/src/character-animation.js',['src/character-animation.js','text/javascript; charset=utf-8']],
   ['/assets/vendor/three-voxel.js',['assets/vendor/three-voxel.js','text/javascript; charset=utf-8']],
   ['/src/world-walk.js',['src/world-walk.js','text/javascript; charset=utf-8']],
   ['/assets/nemoworld-mark.svg',['assets/nemoworld-mark.svg','image/svg+xml']],

@@ -103,6 +103,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'hero-introduction-film', title: 'The supplied introduction plays on the landing page and fits mobile', regression: null },
   { id: 'game-entry-and-observation', title: 'The game opens to Play and Observe with a full world stage and usable mobile controls', regression: null },
   { id: 'accounts-and-switching', title: 'Signup, login, logout and account switching', regression: null },
+  { id: 'world-sound-controls', title: 'World sound is opt in, configurable, persistent and stopped when leaving the game', regression: null },
   { id: 'signed-in-game-play', title: 'A human enters the game, walks with the keyboard, opens its drawers and returns to the saved position', regression: null },
   { id: 'credential-exclusion', title: 'Credential exclusion from browser storage', regression: 'queue review correction 2' },
   { id: 'private-draft-isolation', title: 'Private draft isolation between operators', regression: 'queue review correction 2' },
@@ -3576,6 +3577,77 @@ define('game-entry-and-observation', async () => {
   return 'visitors can choose Play or Observe, explore the public world on desktop, and use its menu on a phone';
 });
 
+define('world-sound-controls', async () => {
+  const visitor = await context('sound-visitor');
+  const page = visitor.page;
+  await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+  await settle(page);
+
+  await step('the world starts silent until the visitor explicitly enables sound', async () => {
+    await page.locator('#hero-actions').getByRole('button', { name: /Observe/i }).first().click();
+    await page.locator('#game-hud').waitFor({ state: 'visible' });
+    await page.locator('#game-menu-button').click();
+    const controls = page.locator('.game-audio-controls');
+    await controls.waitFor({ state: 'visible' });
+    const mute = controls.getByRole('button').first();
+    const volume = controls.getByRole('slider', { name: 'Ambience volume' });
+    const initial = {
+      label: (await mute.textContent())?.trim(),
+      pressed: await mute.getAttribute('aria-pressed'),
+      disabled: await mute.isDisabled(),
+      volume: await volume.inputValue(),
+    };
+    expect(initial.label === 'Enable sound' && initial.pressed === 'false' && !initial.disabled,
+      'sound must be available but opt in through an explicit control', { actual: describe(initial) });
+    expect(Number(initial.volume) > 0 && Number(initial.volume) <= 1,
+      'the ambience volume control must expose a usable default', { actual: describe(initial) });
+    await mute.click();
+    await waitForCondition(async () => (await mute.textContent())?.trim() === 'Mute sound' ? true : null, 'the explicit sound gesture to start playback');
+    return `initially ${initial.label}; explicit click enabled the ambience bed`;
+  });
+
+  await step('mute and volume controls are accessible and survive a reload', async () => {
+    const controls = page.locator('.game-audio-controls');
+    const mute = controls.getByRole('button').first();
+    const volume = controls.getByRole('slider', { name: 'Ambience volume' });
+    await volume.fill('0.37');
+    await waitForCondition(async () => Math.abs(Number(await volume.inputValue()) - 0.37) < 0.001 ? true : null, 'the volume slider to accept the requested level');
+    await mute.click();
+    await waitForCondition(async () => (await mute.textContent())?.trim() === 'Sound on' ? true : null, 'the mute control to report its state');
+    expect(await mute.getAttribute('aria-pressed') === 'true', 'muting must expose its state to assistive technology');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await page.locator('#game-menu-button').click();
+    const restored = page.locator('.game-audio-controls');
+    const restoredMute = restored.getByRole('button').first();
+    const restoredVolume = restored.getByRole('slider', { name: 'Ambience volume' });
+    await restored.waitFor({ state: 'visible' });
+    const persisted = {
+      label: (await restoredMute.textContent())?.trim(),
+      pressed: await restoredMute.getAttribute('aria-pressed'),
+      volume: await restoredVolume.inputValue(),
+    };
+    expect(persisted.label === 'Enable sound' && persisted.pressed === 'true' && Math.abs(Number(persisted.volume) - 0.37) < 0.001,
+      'mute and volume preferences must persist without auto-starting playback', { expected: '{ Enable sound, true, 0.37 }', actual: describe(persisted) });
+    return `mute persisted as ${persisted.pressed}; volume persisted at ${persisted.volume}`;
+  });
+
+  await step('leaving the game stops playback and returning keeps sound opt in', async () => {
+    await openTab(page, 'Guide');
+    expect(await page.locator('.game-audio-controls').count() === 0, 'leaving the game must remove its live sound controls');
+    await openTab(page, 'Open world');
+    await page.locator('#game-menu-button').click();
+    const controls = page.locator('.game-audio-controls');
+    const mute = controls.getByRole('button').first();
+    await controls.waitFor({ state: 'visible' });
+    expect((await mute.textContent())?.trim() === 'Enable sound',
+      'returning to the game must show stopped playback and require opt in again', { actual: (await mute.textContent())?.trim() });
+    return 'Guide stopped playback; returning to the world required an explicit enable click again';
+  });
+
+  return 'world ambience is opt in, keyboard accessible, persistent and stopped when leaving the game';
+});
+
 define('signed-in-game-play', async () => {
   const admin = await actor('admin');
   const page = admin.page;
@@ -3596,6 +3668,13 @@ define('signed-in-game-play', async () => {
     { timeout: PAGE_TIMEOUT_MS });
     const stored = row('SELECT world_id,x,y,z,kind FROM agents WHERE id=?', player.id);
     expect(stored?.kind === 'human', 'Play must select the stored human player', { actual: describe(stored) });
+    const arrival = await waitForCondition(() => { const saved = row('SELECT yaw,pitch,last_look FROM agents WHERE id=?', player.id); return saved.last_look > 0 ? saved : null; }, 'the first human look to be saved');
+    expect(Math.abs(arrival.yaw + 3 * Math.PI / 4) < 0.001 && Math.abs(arrival.pitch + 0.08) < 0.001,
+      'a new human must first face southeast along the Commons approach', { actual: describe(arrival) });
+    const terrain = await page.evaluate(() => ({ drawn: window.__nemoworld?.terrainExtent?.(), world: window.__nemoworld?.world?.()?.world }));
+    expect(terrain.drawn?.rows === terrain.world?.height && terrain.drawn?.columns === terrain.world?.width,
+      'the first-person renderer must use the full authored world beyond the server observation viewport',
+      { expected: `${terrain.world?.width}×${terrain.world?.height}`, actual: describe(terrain.drawn) });
     const canvas = page.locator('#world');
     expect(await canvas.isVisible(), 'the first-person world canvas must be visible');
     await mkdir(join(RESULTS, 'signed-in-game-play'), { recursive: true });
@@ -3618,6 +3697,21 @@ define('signed-in-game-play', async () => {
     expect(moved, 'one keyboard walking direction must move the human player one tile', { expected: `one step from ${before.x},${before.y}`, actual: describe(row('SELECT world_id,x,y FROM agents WHERE id=?', player.id)) });
     await page.waitForFunction(([x,y]) => (document.querySelector('#world-reticle')?.textContent || '').includes(`at ${x}, ${y}`), [moved.x, moved.y], { timeout: PAGE_TIMEOUT_MS });
     return `${before.x},${before.y} → ${moved.x},${moved.y} saved in the database`;
+  });
+
+  await step('nearby residents have projected public nameplates while first person hides the player', async () => {
+    const selfLabel = page.locator(`.voxel-nameplate[data-participant-id="${player.id}"]`);
+    expect(await selfLabel.count() === 0, 'first person must omit the local player from its scene labels');
+    const mode = page.getByRole('button', { name: 'First person camera that follows your resident' });
+    await mode.click();
+    const other = page.locator(`.voxel-nameplate[data-participant-id="${fixtures().characters.pathfinder.id}"]`);
+    await other.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const label = (await other.textContent())?.trim() || '';
+    expect(label.includes('Pathfinder') && label.includes('AI resident'),
+      'an observed AI resident must have a public name and role attached to the live 3D scene', { actual: label });
+    await mode.click();
+    await page.waitForFunction(() => (document.querySelector('#world-reticle')?.textContent || '').startsWith('First person'), null, { timeout: PAGE_TIMEOUT_MS });
+    return 'the orbit view showed Pathfinder as an AI resident; first person omitted the local player';
   });
 
   await step('Chat and More reveal the existing world tools from the game HUD', async () => {
@@ -3646,6 +3740,7 @@ define('signed-in-game-play', async () => {
     expect(shown === `${current.x}, ${current.y}`, 'the game HUD must show the saved tile after reload', { expected: `${current.x}, ${current.y}`, actual: shown });
     const aim = (await page.locator('#world-reticle').textContent())?.trim() || '';
     expect(aim.startsWith('First person'), 'the same tab must restore first-person play after reload', { actual: aim.slice(0, 180) });
+    expect(aim.includes('facing south-east'), 'the server-saved human facing must survive reload', { actual: aim.slice(0, 180) });
     return `${player.name} restored at ${current.world_id}:${current.x},${current.y}`;
   });
 

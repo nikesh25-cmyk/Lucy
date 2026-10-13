@@ -230,7 +230,7 @@ export class Platform {
   me(actor) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']);
     const account = { ...publicAccount(actor.account), email: actor.account.email };
-    return { account, agents: this.all('SELECT id,name,kind,color,symbol,capabilities,limitations,status,verified,x,y,last_seen,world_id,posture,emote,emote_until,region_id,country FROM agents WHERE operator_id=? ORDER BY created_at', account.id) };
+    return { account, agents: this.all('SELECT id,name,kind,color,symbol,capabilities,limitations,status,verified,x,y,z,yaw,pitch,last_look,last_seen,world_id,posture,emote,emote_until,region_id,country FROM agents WHERE operator_id=? ORDER BY created_at', account.id) };
   }
   invite(actor, input) {
     role(actor, ['admin']);

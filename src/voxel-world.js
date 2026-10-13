@@ -9,28 +9,48 @@ import { blocksScene } from './scene/blocks.js';
 import { parcelScene } from './scene/parcels.js';
 import { WATER_TINTS, waterBasin } from './scene/water.js';
 import { SHADOW_LIMITS, applyPhase, phaseLighting, resolvedPhase, skyScene } from './scene/sky.js';
+import { charactersScene, charactersVisualKey, renderableCharacters, characterNameplates, createMotionTracker } from './characters.js';
+import { confirmedExpression } from './character-animation.js';
 
 // Renderer-only tints: terrain, foliage, trim and the interior palette, none of which owns a typed
 // definition. `gold` stays local because the agent cosmetic of that id is a deeper tone
 // (#cbb46c) than this lantern glow (#e2ca83): two different colours share the name, so neither may
-// stand in for the other. The frontier block colours and the agent colours are resolved from the
-// content layer below, where each one is a sealed definition.
+// stand in for the other. Frontier block colours resolve through the sealed content layer.
 const LOCAL_COLORS = Object.freeze({ dirt: '#927052', meadow: '#79a86d', leaf: '#468969', leaves: '#468969', water: '#4b9dad', waterglint: '#9bcfc4', snow: '#e5eeee',
   plaza: '#e3d7b4', floor: '#c8aa82', rug: '#869e8c', trunk: '#81664a', roof: '#bd7961', dark: '#324842', cream: '#f1e9cb', gold: '#e2ca83' });
 const COLORS = Object.freeze({ ...LOCAL_COLORS, ...Object.fromEntries(content.palette('frontier').map((id) => [id, content.color(id, 'block')])) });
-const AGENT_COLORS = Object.freeze(Object.fromEntries(content.cosmetics('agent_color').map((id) => [id, content.color(id, 'cosmetic')])));
-// Original calling emblems represent an operator's explicit choice, never an account privilege.
-const CALLING_STYLES = Object.freeze({
-  explorer: { color: '#7bc0c9', mark: 'cross' }, builder: { color: '#d39170', mark: 'arch' },
-  cultivator: { color: '#95c681', mark: 'sprout' }, researcher: { color: '#ada6d7', mark: 'book' },
-  steward: { color: '#d7c48a', mark: 'cross' }, mediator: { color: '#e4dfbe', mark: 'bridge' },
-  artisan: { color: '#d39bac', mark: 'diamond' }, host: { color: '#88b7d0', mark: 'arch' },
-});
-const callingStyle = item => typeof item.calling?.id === 'string' && Object.hasOwn(CALLING_STYLES, item.calling.id) ? CALLING_STYLES[item.calling.id] : null;
 
 // The renderer's two hard caps on the delivered image. Neither is raised here: a scene module can
 // change what a tile looks like, never how large the frame or the shadow map may be.
 export const RENDER_CAPS = Object.freeze({ pixel_ratio: 1.5, render_width: 1440, render_height: 900 });
+
+// One finite, render-only backdrop closes the authored world's horizon behind the bounded voxel
+// window. It sits below the deepest water bed and owns no pick or movement surface.
+export const DISTANT_GROUND_LIMITS = Object.freeze({ y: -1.36, draw_calls: 1, vertices: 24 });
+
+function distantGround(definition) {
+  const columns = Number.isInteger(definition?.columns) ? definition.columns : 0;
+  const rows = Number.isInteger(definition?.rows) ? definition.rows : 0;
+  if (definition?.kind === 'interior' || columns < 1 || rows < 1) return null;
+  // The retained Three.js bundle intentionally exposes only BoxGeometry. A very thin box keeps the
+  // same single-surface role while providing a stable, bounded renderable in the GPU-independent
+  // test bundle; its top is the documented backdrop height.
+  const geometry = new THREE.BoxGeometry(columns, .04, rows);
+  const material = new THREE.MeshLambertMaterial({ color: definition.groundColor || COLORS.meadow });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'voxel-distant-ground';
+  mesh.position.set(columns / 2, DISTANT_GROUND_LIMITS.y - .02, rows / 2);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  mesh.userData.renderOnly = true;
+  return mesh;
+}
+
+function disposeDistantGround(mesh) {
+  if (!mesh) return;
+  mesh.geometry.dispose();
+  mesh.material.dispose();
+}
 
 // ---------------------------------------------------------------------------------------------
 // The sealed scenery builders. They stay in this module on purpose: tests/content.test.js reads
@@ -187,16 +207,8 @@ function terrainScene(resources, definition, snapshot, plan, cullHidden = true) 
   return result;
 }
 
-// Every field peopleScene reads, including `z`: elevation moves the whole body. Roster order is
-// deliberately not part of the key, because instance order is invisible and the server re-sorts by
-// `last_seen` on each poll.
-const PEOPLE_FIELDS = Object.freeze(['id', 'x', 'y', 'z', 'posture', 'color', 'kind']);
-
 /** The participants peopleScene draws: self is appended when the roster omits it, then bounded and placed. */
-const renderablePeople = (participants, self) => {
-  const people = self && !participants.some(item => item.id === self.id) ? [...participants, self] : participants;
-  return people.slice(0, VOXEL_LIMITS.participants).filter(item => Number.isInteger(item?.x) && Number.isInteger(item?.y));
-};
+const renderablePeople = renderableCharacters;
 
 /**
  * Character batch key projected onto the visible fields above. Polls that only refresh `last_seen`,
@@ -204,8 +216,7 @@ const renderablePeople = (participants, self) => {
  * of disposing and rebuilding all avatars every few seconds.
  */
 export function peopleVisualKey(participants, self) {
-  return JSON.stringify([self?.id || null, renderablePeople(participants, self)
-    .map(item => [...PEOPLE_FIELDS.map(field => item[field] ?? null), callingStyle(item) ? item.calling.id : null]).sort()]);
+  return charactersVisualKey(participants, self);
 }
 
 // Fresh names, public profiles and presence belong to current picks even when their geometry is reused.
@@ -216,42 +227,17 @@ function refreshPeoplePicks(batch, participants, self) {
   for (const mesh of batch.pickables) mesh.userData.picks = mesh.userData.picks.map(pick => pick ? records.get(pick.participant?.id) || null : null);
 }
 
-function peopleScene(resources, participants, self) {
-  const batch = cubeBatch(resources);
-  for (const item of renderablePeople(participants, self)) {
-    const npc = item.kind === 'npc', elevation = item.z || 0, pick = { x: item.x, y: item.y, z: item.z || 0, type: 'participant', participant: item };
-    const color = validColor(item.color) || AGENT_COLORS[item.color] || '#649b8a', n = hash(item.id), skin = ['#d4a17b', '#b27f59', '#e4b995', '#997456'][n % 4];
-    const x = item.x + .5, y = item.y + .5, sitting = ['sitting', 'meditating'].includes(item.posture), height = elevation + (sitting ? -.26 : 0);
-    batch.add(x, .04 + elevation, y, .62, .06, .62, item.id === self?.id ? COLORS.gold : '#607b65');
-    for (const dx of [-.12, .12]) batch.add(x + dx, .22 + elevation, y, .18, sitting ? .25 : .4, .21, COLORS.dark, pick);
-    batch.add(x, .68 + height, y, .46, .54, .26, color, pick);
-    for (const dx of [-.31, .31]) { batch.add(x + dx, .7 + height, y, .13, .4, .19, color, pick); batch.add(x + dx, .46 + height, y, .13, .12, .18, skin, pick); }
-    batch.add(x, 1.12 + height, y, .42, .4, .4, skin, pick);
-    batch.add(x, 1.33 + height, y - .025, .44, .1, .43, npc ? COLORS.gold : COLORS.dark, pick);
-    for (const dx of [-.09, .09]) batch.add(x + dx, 1.13 + height, y + .205, .045, .05, .035, COLORS.dark, pick);
-    const calling = callingStyle(item);
-    if (calling) {
-      const emblemX = x - .13, emblemHeight = .82 + height, emblemY = y + .164;
-      batch.add(emblemX, emblemHeight, emblemY, .14, .18, .052, calling.color, pick);
-      const pixel = (dx, dy, width = .027, depth = .028) => batch.add(emblemX + dx, emblemHeight + dy, emblemY + .03, width, depth, .014, COLORS.cream, pick);
-      if (calling.mark === 'cross') { pixel(0, 0, .026, .1); pixel(0, 0, .09, .026); }
-      else if (calling.mark === 'arch' || calling.mark === 'bridge') { pixel(-.03, -.018, .022, .08); pixel(.03, -.018, .022, .08); pixel(0, .027, .084, .022); }
-      else if (calling.mark === 'sprout') { pixel(0, -.019, .022, .07); pixel(-.025, .025, .039, .025); pixel(.025, .041, .039, .025); }
-      else if (calling.mark === 'book') { pixel(-.023, 0, .027, .1); pixel(.023, 0, .027, .1); }
-      else { pixel(0, .039); pixel(-.029, 0); pixel(.029, 0); pixel(0, -.039); }
-    }
-    if (npc) { batch.add(x, .84 + height, y + .15, .065, .38, .045, COLORS.gold, pick); for (const dx of [-.14, 0, .14]) batch.add(x + dx, 1.43 + height, y, .07, .17, .07, COLORS.gold, pick); }
-  }
-  return batch.finish();
+function peopleScene(resources, participants, self, options = {}) {
+  return charactersScene(cubeBatch(resources), participants, self, options);
 }
 
 /** A GPU-independent scene builder used by rendering and real Raycaster tests. */
 export function createVoxelScene() {
-  const resources = createResources(), root = new THREE.Group(); let staticBatch, blockBatch, peopleBatch, parcelBatch, skyBatch, key = '', blockKey = '', peopleKey = '', parcelKey = '', skyKey = '', lastPlan, destroyed = false;
+  const resources = createResources(), root = new THREE.Group(), motionTracker = createMotionTracker(); let staticBatch, blockBatch, peopleBatch, parcelBatch, skyBatch, groundMesh, key = '', blockKey = '', peopleKey = '', parcelKey = '', skyKey = '', groundKey = '', lastPlan, destroyed = false, animating = false;
   let stats = { cells: 0, blocks: 0, participants: 0, cubes: 0, drawBatches: 0, layers: {} }, pickables = [];
   // The one child order for both the tests and the renderer: terrain, characters, blocks, plots, sky.
   const managed = () => [staticBatch, peopleBatch, blockBatch, parcelBatch, skyBatch].filter(Boolean);
-  const settle = () => { for (const batch of managed()) root.add(batch.group); };
+  const settle = () => { for (const batch of managed()) root.add(batch.group); if (groundMesh) root.add(groundMesh); };
   return { root,
     update(definition, snapshot = {}, options = {}) {
       if (destroyed) throw new Error('The voxel scene has been destroyed.');
@@ -265,10 +251,12 @@ export function createVoxelScene() {
       const firstPerson = options.cameraMode === 'first-person', drawnSelf = firstPerson ? null : options.self;
       const drawnPeople = firstPerson ? plan.participants.filter(item => item.id !== options.self?.id) : plan.participants;
       // The projected key ignores volatile roster fields; `rebuildPeople` restores the raw payload key.
-      const nextPeopleKey = options.rebuildPeople === true ? JSON.stringify([drawnPeople, drawnSelf]) : peopleVisualKey(drawnPeople, drawnSelf);
+      const now = Number.isFinite(options.time) ? options.time : Date.now();
+      for (const person of renderableCharacters(drawnPeople, drawnSelf)) motionTracker.confirm(person);
+      const nextPeopleKey = options.rebuildPeople === true ? JSON.stringify([drawnPeople, drawnSelf, now]) : peopleVisualKey(drawnPeople, drawnSelf, { tracker: motionTracker, time: now });
       if (nextPeopleKey !== peopleKey || !peopleBatch) {
         if (peopleBatch) root.remove(peopleBatch.group); disposeBatch(peopleBatch);
-        peopleBatch = peopleScene(resources, drawnPeople, drawnSelf); peopleBatch.group.name = 'voxel-characters'; root.add(peopleBatch.group); peopleKey = nextPeopleKey;
+        peopleBatch = peopleScene(resources, drawnPeople, drawnSelf, { tracker: motionTracker, time: now }); peopleBatch.group.name = 'voxel-characters'; root.add(peopleBatch.group); peopleKey = nextPeopleKey;
       }
       refreshPeoplePicks(peopleBatch, drawnPeople, drawnSelf);
       // Saved blocks rebuild on their own, so placing or moving one block leaves the diorama alone.
@@ -288,17 +276,37 @@ export function createVoxelScene() {
         if (skyBatch) root.add(skyBatch.group);
         skyKey = nextSkyKey;
       }
+      // The backdrop is keyed to the authored world, not the moving 37 x 37 window. It is a single
+      // non-pickable plane below every tile and is rebuilt only when a world switch changes its bounds
+      // or tint; its geometry never participates in occupancy, collision, or interaction.
+      const nextGroundKey = JSON.stringify([definition.id, definition.kind, definition.columns, definition.rows, definition.groundColor || COLORS.meadow]);
+      if (nextGroundKey !== groundKey) {
+        if (groundMesh) root.remove(groundMesh); disposeDistantGround(groundMesh);
+        groundMesh = distantGround(definition);
+        if (groundMesh) root.add(groundMesh);
+        groundKey = nextGroundKey;
+      }
       settle();
       lastPlan = plan;
       this.highlightParcel(options.parcelSelection, options.parcelHover);
       pickables = [...staticBatch.pickables, ...peopleBatch.pickables, ...(blockBatch?.pickables || [])];
+      animating = motionTracker.isSettling(now) || renderableCharacters(drawnPeople, drawnSelf).some((person) => confirmedExpression(person, now));
       stats = { cells: plan.cells.length, blocks: plan.blocks.length, participants: renderablePeople(drawnPeople, drawnSelf).length,
         cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0) + (skyBatch?.cubes || 0),
         parcelCubes: parcelBatch?.cubes || 0, skyCubes: skyBatch?.cubes || 0,
-        drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0),
+        drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0),
+        distantGround: groundMesh ? 1 : 0,
         parcels: plan.parcels.length, selectedParcel: parcelBatch?.group.userData.selectedParcel || null, window: plan.window,
         layers: { ...staticBatch.layers, sky: skyBatch?.cubes || 0 } };
       root.updateMatrixWorld(true); return stats;
+    },
+    /** Public label projection for the live renderer; positions use the same confirmed tracker as bodies. */
+    nameplates(participants, self, { time = Date.now(), cameraMode = 'orbit' } = {}) {
+      const firstPerson = cameraMode === 'first-person';
+      const drawnPeople = firstPerson ? (participants || []).filter(item => item?.id !== self?.id) : participants;
+      // Keep self as the distance origin in first-person, then remove its generated label.
+      const labels = characterNameplates(drawnPeople, self, { tracker: motionTracker, time });
+      return firstPerson ? labels.filter(label => label.id !== self?.id) : labels;
     },
     highlightParcel(selection, hover) {
       if (destroyed || !lastPlan) return;
@@ -311,11 +319,11 @@ export function createVoxelScene() {
       stats.selectedParcel = selected?.id || null;
       stats.parcelCubes = parcelBatch?.cubes || 0;
       stats.cubes = (staticBatch?.cubes || 0) + (blockBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0) + (skyBatch?.cubes || 0);
-      stats.drawBatches = (staticBatch?.batches || 0) + (blockBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0);
+      stats.drawBatches = (staticBatch?.batches || 0) + (blockBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0);
       stats.layers = { ...(staticBatch?.layers || {}), sky: skyBatch?.cubes || 0 };
     },
-    get pickables() { return pickables; }, get stats() { return stats; },
-    destroy() { if (destroyed) return; destroyed = true; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(skyBatch); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; skyKey = ''; lastPlan = null; }
+    get pickables() { return pickables; }, get stats() { return stats; }, get animating() { return animating; },
+    destroy() { if (destroyed) return; destroyed = true; motionTracker.clear(); animating = false; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(skyBatch); disposeDistantGround(groundMesh); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; skyKey = ''; groundKey = ''; lastPlan = null; }
   };
 }
 
@@ -342,8 +350,21 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   const selectionMaterial = new THREE.LineBasicMaterial({ color: '#fff0b0', depthTest: false });
   const selection = new THREE.LineSegments(selectionGeometry, selectionMaterial); selection.visible = false; selection.renderOrder = 10; scene.add(selection);
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+  const ownerDocument = canvas.ownerDocument || (typeof document !== 'undefined' ? document : null);
+  const overlayParent = canvas.parentElement;
+  const nameplateLayer = ownerDocument && overlayParent?.appendChild ? ownerDocument.createElement('div') : null;
+  if (nameplateLayer) {
+    nameplateLayer.className = 'voxel-nameplates';
+    // These labels mirror the accessible participant list. Avoid announcing all of them again
+    // whenever a confirmed movement repaints the projected layer.
+    nameplateLayer.setAttribute('aria-hidden', 'true');
+    nameplateLayer.style.pointerEvents = 'none';
+    if (overlayParent && globalThis.getComputedStyle?.(overlayParent).position === 'static') overlayParent.style.position = 'relative';
+    overlayParent.appendChild(nameplateLayer);
+  }
+  const projected = new THREE.Vector3();
   const orbitInput = createOrbitInput({ onLook });
-  let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, lastAtmosphere = null, hoveredParcel = null, lastHoverAt = -Infinity;
+  let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, lastAtmosphere = null, hoveredParcel = null, lastHoverAt = -Infinity, animationTimer = null;
   const previousTouchAction = canvas.style.touchAction; canvas.style.touchAction = 'pan-y';
   function resize() {
     const bounds = canvas.getBoundingClientRect(), width = Math.max(1, bounds.width || canvas.width || 800), height = Math.max(1, bounds.height || canvas.height || 560);
@@ -363,7 +384,34 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     const selected = lastOptions?.selection;
     selection.visible = !!selected && Number.isInteger(selected.x) && Number.isInteger(selected.y);
     if (selection.visible) selection.position.set(selected.x + .5, Math.max(0, selected.z || 0) + .5, selected.y + .5);
+    updateNameplates();
     renderer.render(scene, camera);
+  }
+  function updateNameplates() {
+    if (!nameplateLayer || !lastSnapshot || !lastOptions) return;
+    const participants = lastSnapshot.participants || lastSnapshot.agents || [];
+    const labels = contents.nameplates(participants, lastOptions.self, { cameraMode: orbitInput.mode, time: Date.now() });
+    nameplateLayer.replaceChildren();
+    for (const label of labels) {
+      projected.set(label.anchor.x, label.anchor.y, label.anchor.z).project(camera);
+      if (!Number.isFinite(projected.x) || !Number.isFinite(projected.y) || projected.z < -1 || projected.z > 1 || projected.x < -1.05 || projected.x > 1.05 || projected.y < -1.05 || projected.y > 1.05) continue;
+      const element = ownerDocument.createElement('div'); element.className = `voxel-nameplate voxel-nameplate-${label.tier}`;
+      element.dataset.participantId = label.id;
+      element.style.left = `${(projected.x + 1) * 50}%`; element.style.top = `${(1 - projected.y) * 50}%`;
+      const name = ownerDocument.createElement('span'); name.className = 'voxel-nameplate-name'; name.textContent = label.name; element.appendChild(name);
+      if (label.tier === 'full') { const role = ownerDocument.createElement('span'); role.className = 'voxel-nameplate-role'; role.textContent = label.role; element.appendChild(role); }
+      nameplateLayer.appendChild(element);
+    }
+  }
+  function scheduleAnimation() {
+    if (animationTimer !== null || destroyed || lost || !contents.animating || !lastSnapshot) return;
+    animationTimer = setTimeout(() => {
+      animationTimer = null;
+      if (destroyed || !lastSnapshot) return;
+      const definition = lastOptions?.definition || getWorldDefinition(lastSnapshot.world || 'commons');
+      contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel });
+      paint(); scheduleAnimation();
+    }, 100);
   }
   const movePointer = event => {
     if (!drag) {
@@ -407,7 +455,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       orbitInput.setMode(options.cameraMode ?? orbitInput.mode);
       if (options.facing) orbitInput.set(options.facing);
       target = options.position || options.self || definition.start; lastSnapshot = snapshot; lastOptions = options;
-      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, parcelHover: hoveredParcel }); paint(); return contents.stats;
+      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, time: Date.now(), parcelHover: hoveredParcel }); paint(); scheduleAnimation(); return contents.stats;
     },
     rotate(deltaYaw = 0, deltaPitch = 0) { if (destroyed) return; orbitInput.rotate(deltaYaw, deltaPitch); paint(); },
     zoom(delta = 0) { if (destroyed) return; orbitInput.zoom(delta); paint(); },
@@ -417,7 +465,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       if (lastSnapshot) {
         lastOptions = { ...lastOptions, cameraMode: orbitInput.mode };
         const definition = lastOptions.definition || getWorldDefinition(lastSnapshot.world || 'commons');
-        contents.update(definition, lastSnapshot, { ...lastOptions, parcelHover: hoveredParcel });
+        contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel }); scheduleAnimation();
       }
       paint();
     },
@@ -426,9 +474,10 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     /** What the last paint actually applied: the phase light, the fog band and the shadow frustum. */
     get atmosphere() { return lastAtmosphere; },
     destroy() {
-      if (destroyed) return; destroyed = true; observer?.disconnect(); drag = null;
+      if (destroyed) return; destroyed = true; if (animationTimer !== null) clearTimeout(animationTimer); animationTimer = null; observer?.disconnect(); drag = null;
       for (const [name, handler] of listeners) canvas.removeEventListener(name, handler);
       canvas.style.touchAction = previousTouchAction; contents.destroy(); selectionGeometry.dispose(); selectionMaterial.dispose();
+      nameplateLayer?.remove();
       sun.shadow.map?.dispose(); renderer.dispose(); renderer.forceContextLoss(); lastSnapshot = null; lastOptions = null;
     }
   };

@@ -20,13 +20,20 @@ body.game-world .world-title,body.game-world .start-here,body.game-world footer{
 body.game-world .world-layout{position:relative;display:block;width:100%;height:100%;margin:0;gap:0}
 body.game-world .world-panel{position:relative;width:100%;height:100%;padding:0;margin:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;background:linear-gradient(180deg,#9fbcc0,#80a999 55%,#305c4f)}
 body.game-world .world-panel>canvas,body.game-world .world-panel>canvas.voxel-canvas{display:block;width:100%;height:100%;min-height:0;max-height:none;aspect-ratio:auto;border:0;border-radius:0;filter:none;touch-action:none}
+/* The WebGL canvas cannot draw text; voxel-world.js keeps this sibling layer projected from the same camera. */
+.voxel-nameplates{position:absolute;inset:0;z-index:4;overflow:hidden;pointer-events:none;font-family:NemoManrope,Arial,sans-serif}
+.voxel-nameplate{position:absolute;display:grid;gap:2px;min-width:0;max-width:180px;transform:translate(-50%,-100%);padding:4px 7px;border:1px solid #d9ddad70;border-radius:6px;background:#092a24d9;color:#f3f4df;box-shadow:0 4px 12px #04161166;text-align:center;white-space:nowrap;line-height:1.08;text-shadow:0 1px 2px #041611}
+.voxel-nameplate-name{overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:700}
+.voxel-nameplate-role{overflow:hidden;text-overflow:ellipsis;color:#c4d5c4;font-size:10px}
+.voxel-nameplate-compact{padding:3px 6px;border-radius:999px;background:#092a24c7}
+.voxel-nameplate-compact .voxel-nameplate-name{font-size:12px}
 body.game-world .world-toolbar,body.game-world .world-panel>.actions,body.game-world .calling-hud{display:none}
 body.game-world .world-reticle{position:absolute;z-index:10;top:18px;left:50%;transform:translateX(-50%);width:min(570px,calc(100% - 620px));margin:0!important;padding:10px 14px;background:var(--game-glass);border:1px solid var(--game-edge);border-radius:12px;box-shadow:0 12px 28px #04161166;color:var(--game-ink);font-size:.75rem;line-height:1.45;text-align:center;overflow-wrap:anywhere;pointer-events:none;backdrop-filter:blur(12px)}
-body.game-world .sidebar{position:fixed;z-index:34;left:0;top:66px;bottom:0;width:min(345px,88vw);max-height:none;overflow-y:auto;padding:24px 18px;background:#0a2b25f7;border-right:1px solid #d3d8af54;box-shadow:20px 0 50px #03130f88;transform:translateX(-105%);visibility:hidden;transition:transform .24s ease,visibility .24s;scrollbar-color:#9cb39855 transparent}
+body.game-world .sidebar{position:fixed;z-index:34;left:0;top:66px;bottom:0;width:min(345px,88vw);height:calc(100dvh - 66px);max-height:none;overflow-y:auto;padding:24px 18px;background:#0a2b25f7;border-right:1px solid #d3d8af54;box-shadow:20px 0 50px #03130f88;transform:translateX(-105%);visibility:hidden;transition:transform .24s ease,visibility .24s;scrollbar-color:#9cb39855 transparent}
 body.game-world.game-menu-open .sidebar{transform:translateX(0);visibility:visible}
 body.game-world .sidebar-intro{margin:0 0 16px;color:#d4deb3}
 body.game-world .sidebar-foot{display:none}
-body.game-world .sidebar .tabs,body.game-world .sidebar.navigation-open .tabs{display:grid;grid-template-columns:1fr;gap:11px;padding:0!important;overflow:visible}
+body.game-world .sidebar .tabs,body.game-world .sidebar.navigation-open .tabs{display:grid;flex:none;grid-template-columns:1fr;gap:11px;padding:0!important;overflow:visible}
 body.game-world .sidebar .nav-group{display:grid;gap:4px}
 body.game-world .sidebar .nav-heading{display:block;color:#bbd0b4;font-size:.62rem;letter-spacing:.13em;margin:7px 10px 4px}
 body.game-world .sidebar .tabs button{width:100%;justify-content:flex-start;text-align:left;white-space:normal;min-height:42px;padding:10px 12px;border-radius:10px}

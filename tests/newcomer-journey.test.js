@@ -183,7 +183,8 @@ test('focus, drafts and guided progress are persisted in this browser and restor
   assert.match(app, /if \(section\) \{ node\.dataset\.draftSection = section; attachLocalDraft\(node, section\); \}/, 'opt-in forms attach the draft');
   assert.match(app, /node\.addEventListener\('focusin', \(event\) => \{ if \(event\.target\?\.name\) rememberFocus\(section, event\.target\.name\); \}\);/, 'focus memory follows the cursor');
   assert.match(app, /if \(section\) \{ clearDraftValues\(section\); forgetFocus\(\); \}/, 'a successful submit clears its own draft');
-  assert.match(app, /await refresh\(\);render\(\);resumePendingWork\(\);/, 'boot restores the remembered work');
+  assert.match(app, /await refresh\(\);if\(selected\(\)\)state\.facing=facingForResident\(selected\(\)\);render\(\);resumePendingWork\(\);/,
+    'boot restores the saved look and remembered work');
   assert.match(app, /if \(!remembered\.section \|\| !Object\.keys\(draftValues\(remembered\.section\)\)\.length\) return false;/, 'nothing is reopened without a draft');
   // Guided progress is remembered, and the review acknowledgement is explicit.
   assert.match(app, /function newcomerComplete\(id,\s*acknowledged\s*=\s*null\)/, 'guided progress is written to this browser only');
