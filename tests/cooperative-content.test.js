@@ -240,6 +240,55 @@ test('commons-trail accepts only a review of the claim credited by its first ste
  assert.equal(verifyQuestReceipts(f.platform.db),true,'older stored progress stays readable after this rule changes');
 });
 
+for(const firstOutcome of ['rejected','released','expired'])test(`commons-trail can finish ${firstOutcome==='expired'?'an':'a'} ${firstOutcome} claim through a later claim for the same task version`,async t=>{
+ const f=await fixture(t),agent=f.agent('alice');
+ f.tx('questJoin',f.actor('alice'),{agent_id:agent.id,chain_id:'commons-trail'},`join-retry-${firstOutcome}`);
+ const {task}=realMission(f);
+ const first=f.tx('claim',f.actor('alice'),{task_id:task.id,agent_id:agent.id},`first-${firstOutcome}`);
+ f.platform.quests(f.actor('alice'),{agent_id:agent.id});
+ assert.equal(f.platform.get("SELECT source_id FROM calling_receipts WHERE objective_id='quest:commons-trail.claim-a-task' AND agent_id=?",agent.id).source_id,first.id);
+ if(firstOutcome==='rejected'){
+  const answer=f.tx('submit',f.actor('alice'),evidence(first),`submit-${firstOutcome}`);
+  f.tx('review',f.actor('reviewer'),{submission_id:answer.id,decision:'rejected',reason:'The first answer needs a fresh attempt.'});
+ }else if(firstOutcome==='released')f.tx('releaseClaim',f.actor('alice'),first.id);
+ else {f.advance(20*60_000+1);f.tx('expireClaims');}
+ assert.equal(f.platform.get('SELECT status FROM claims WHERE id=?',first.id).status,firstOutcome);
+
+ const retry=f.tx('claim',f.actor('alice'),{task_id:task.id,agent_id:agent.id},`retry-${firstOutcome}`);
+ assert.equal(retry.task_id,first.task_id);
+ assert.equal(retry.task_version,first.task_version);
+ const answer=f.tx('submit',f.actor('alice'),evidence(retry),`resubmit-${firstOutcome}`);
+ const accepted=f.tx('review',f.actor('reviewer'),{submission_id:answer.id,decision:'accepted',reason:'The scoped retry now meets the rubric.'});
+ assert.equal(stepsBySlug(f,agent,'commons-trail')[1].state,'complete');
+ assert.equal(f.platform.get("SELECT source_id FROM calling_receipts WHERE objective_id='quest:commons-trail.submit-and-accept' AND agent_id=?",agent.id).source_id,accepted.id);
+ assert.equal(questReceipts(f),2);
+ assert.equal(verifyQuestReceipts(f.platform.db),true);
+ assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,1);
+ if(firstOutcome==='rejected'){
+  f.platform.close();
+  assert.equal(validateDatabase(f.database).schema_version,22);
+  const restarted=new Platform(f.database,f.clock);
+  t.after(()=>restarted.close());
+  const saved=restarted.quests(restarted.authenticate(f.credentials.alice.token),{agent_id:agent.id});
+  assert.equal(saved.chains.find(chain=>chain.slug==='commons-trail').complete,true);
+ }
+});
+
+test('commons-trail retry does not cross a revised task version',async t=>{
+ const f=await fixture(t),agent=f.agent('alice');
+ f.tx('questJoin',f.actor('alice'),{agent_id:agent.id,chain_id:'commons-trail'},'join-revised-task');
+ const {task}=realMission(f),first=f.tx('claim',f.actor('alice'),{task_id:task.id,agent_id:agent.id},'claim-original-version');
+ f.platform.quests(f.actor('alice'),{agent_id:agent.id});
+ f.tx('releaseClaim',f.actor('alice'),first.id);
+ f.platform.run('UPDATE tasks SET version=version+1 WHERE id=?',task.id);
+ const revised=f.tx('claim',f.actor('alice'),{task_id:task.id,agent_id:agent.id},'claim-revised-version');
+ assert.notEqual(revised.task_version,first.task_version);
+ const answer=f.tx('submit',f.actor('alice'),evidence(revised),'submit-revised-version');
+ f.tx('review',f.actor('reviewer'),{submission_id:answer.id,decision:'accepted',reason:'Valid work on the revised question.'});
+ assert.equal(stepsBySlug(f,agent,'commons-trail')[1].state,'available');
+ assert.equal(questReceipts(f),1);
+});
+
 test('the commons-cartography guild plan keeps verification independent, pledges uncounted, and coins out of the guild flow',async t=>{
  const f=await fixture(t),alice=f.agent('alice'),bob=f.agent('bob'),reviewer=f.agent('reviewer');
  const plan=samplePlan();

@@ -147,12 +147,33 @@ function insertChain(platform,spec,{origin,author,status}){
 }
 function chainSteps(platform,chain){return platform.all('SELECT * FROM quest_steps WHERE chain_id=? ORDER BY ordinal',chain.id);}
 // An evidence chain's acceptance answers the most recent claim step before it. The claim receipt
-// stores a claim ID, which itself pins the exact task and task version. A review of any other claim
-// can still be valid real work, but it cannot complete this chain's scoped question.
+// stores a claim ID, which pins the scoped task and task version. A retry can answer that same
+// question after the original lease ended, but another task or a revised version cannot.
 function creditedClaimStep(steps,step){
  if(step.source_kind!=='research_accepted')return null;
  return steps.filter(candidate=>candidate.ordinal<step.ordinal&&candidate.source_kind==='research_claim').at(-1)||null;
 }
+// Shared by reconciliation and integrity validation. The two variable expressions are fixed SQL
+// written by this module (never client input); the one parameter is the claim-step objective.
+// claim.created audit sequence proves a retry was made later, even when timestamps share a tick.
+function scopedAcceptanceSql(reviewRef,agentRef){return `EXISTS (
+ SELECT 1 FROM reviews accepted JOIN submissions answer ON answer.id=accepted.submission_id
+ JOIN claims reviewed ON reviewed.id=answer.claim_id
+ JOIN claims credited ON credited.task_id=reviewed.task_id
+   AND credited.task_version=reviewed.task_version
+   AND credited.agent_id=reviewed.agent_id AND credited.account_id=reviewed.account_id
+ JOIN calling_receipts claim_receipt ON claim_receipt.agent_id=${agentRef}
+   AND claim_receipt.source_kind='research_claim' AND claim_receipt.source_id=credited.id
+ WHERE accepted.id=${reviewRef} AND claim_receipt.objective_id=?
+   AND (reviewed.id=credited.id OR (
+     credited.status IN ('rejected','released','expired') AND EXISTS (
+       SELECT 1 FROM audit original JOIN audit retry
+         ON retry.event='claim.created' AND retry.record_id=reviewed.id
+       WHERE original.event='claim.created' AND original.record_id=credited.id
+         AND retry.seq>original.seq
+     )
+   ))
+ )`;}
 export function chainView(platform,chain,{steps=true}={}){
  const view={id:chain.id,slug:chain.slug,title:chain.title,route:chain.route,summary:chain.summary,narrative:chain.narrative,origin:chain.origin,status:chain.status,practice:Boolean(chain.practice),beneficiary:chain.beneficiary,author_account_id:chain.author_account_id,created_at:chain.created_at,updated_at:chain.updated_at};
  if(steps)view.steps=chainSteps(platform,chain).map(step=>({slug:step.slug,ordinal:step.ordinal,title:step.title,instructions:step.instructions,output:{name:step.output_name,source_kind:step.source_kind,requires_review:Boolean(step.requires_review),target:step.target},prerequisite:step.prerequisite_step_id?step.prerequisite_step_id.split('.').pop():null,action:QUEST_ACTIONS[step.source_kind]}));
@@ -214,13 +235,7 @@ export function reconcileQuests(platform,agent,selection){
    // A saved, attributed server fact from this chain's own enrolment onward. A source already used
    // for any other receipt cannot be credited twice, and facts recorded before joining never count.
    const claimStep=chain.route==='evidence_research'?creditedClaimStep(steps,step):null;
-   const linkedClaim=claimStep?`AND EXISTS (
-     SELECT 1 FROM reviews accepted JOIN submissions answer ON answer.id=accepted.submission_id
-     JOIN claims credited ON credited.id=answer.claim_id
-     JOIN calling_receipts claim_receipt ON claim_receipt.agent_id=e.agent_id
-       AND claim_receipt.source_kind='research_claim' AND claim_receipt.source_id=credited.id
-     WHERE accepted.id=e.source_id AND claim_receipt.objective_id=?
-   )`:'';
+   const linkedClaim=claimStep?`AND ${scopedAcceptanceSql('e.source_id','e.agent_id')}`:'';
    const event=platform.get(`SELECT e.* FROM calling_source_events e WHERE e.agent_id=? AND e.source_kind=? AND e.occurred_ms>=? AND substr(e.occurred_at,1,10)=? AND NOT EXISTS(SELECT 1 FROM calling_receipts r WHERE r.agent_id=e.agent_id AND r.source_kind=e.source_kind AND r.source_id=e.source_id) ${linkedClaim} ORDER BY e.occurred_at,e.source_id LIMIT 1`,
     agent.id,step.source_kind,Math.max(selection.selected_at,enrollment.started_at),today,...(claimStep?[objectiveId(chain.slug,claimStep.slug)]:[]));
    if(!event)break;
