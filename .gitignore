@@ -6,3 +6,6 @@ data/
 node_modules/
 .runtime/
 test-results/
+
+# Local native Luanti world and transient bridge configuration.
+native/.local/
