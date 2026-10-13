@@ -17,7 +17,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 const $ = (selector) => document.querySelector(selector);
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,interaction:null,interactionRefusal:null,interactionError:null});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',interaction:null,interactionRefusal:null,interactionError:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -63,7 +63,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -129,7 +129,7 @@ function restoreRememberedFocus() {
 }
 function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
 function heading(title, description) { const node = element('div', null, 'section-title'); const text = element('div'); append(text, element('h2', title), paragraph(description)); node.append(text); return node; }
-async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
+async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -412,7 +412,7 @@ async function refresh(all = true) {
   await loadDirectory();
   if(!state.assembly){const [countries,assembly]=await Promise.all([api('/countries?limit=248'),api('/assembly')]);state.countries=countries.entries;state.assembly=assembly;}
   await loadResearch();state.mayors=(await api('/mayors')).mayors;await loadAmbassadors();
-  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds(),loadQuests(),loadGuildProjects()]);
+  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds(),loadQuests(),loadGuildProjects(),loadRestoration()]);
   if (state.account && all) {
     state.history = await api('/history');mergeMissionContext(); state.workers=await api('/workers'); state.safety = await api('/safety');
     if (state.account.role === 'admin') state.operations = await api('/operations');
@@ -470,13 +470,13 @@ function renderAuth() {
   login.hidden=state.authMode!=='login';signup.hidden=state.authMode!=='register';append(grid,login,signup);node.append(grid);
 }
 function renderTabs() {
-  const groups=[{title:'THE WORLD',items:[['start','Start here','◇'],['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦'],['guilds','Guild projects','⚒'],['quests','Quest chains','◇']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
+  const groups=[{title:'THE WORLD',items:[['start','Start here','◇'],['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦'],['guilds','Guild projects','⚒'],['restoration','World restoration','✿'],['quests','Quest chains','◇']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
   if(state.account)groups.push({title:'YOUR RESIDENTS',items:[['coins','Coin wallet','✧'],['passport','Resident passport','♟'],['workshop','Garden & workshop','✿'],['characters','My characters','♟'],['history','My contributions','▤']]});
   const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'GOVERNANCE',items:care});groups.push({title:'',items:[['help','Guide','?']]});
-  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list',start:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
+  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list',restoration:'users-round',start:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
 }
 function renderView() { if(voxelView){state.voxelOrbit=voxelView.orbit;voxelView.destroy();voxelView=null;}document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons'));
-  const node = $('#view'); node.replaceChildren(); const views = { start: renderStartJourney, world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,quests:renderQuests };
+  const node = $('#view'); node.replaceChildren(); const views = { start: renderStartJourney, world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,restoration:renderRestoration,quests:renderQuests };
   (views[state.tab] || renderWorld)(node);node.setAttribute('aria-busy','false');
 }
 function renderCivic(parent) {
@@ -1428,7 +1428,7 @@ async function loadCommunity() {
   state.community=await api(`/community?${query}`);
 }
 async function loadJourney(){state.journey=state.account&&selected()?await api(`/journey?agent_id=${encodeURIComponent(state.selected)}`):null;}
-async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds(),loadMemory()]);if(tab==='quests')await loadQuests();if(tab==='guilds')await loadGuildProjects();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
+async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds(),loadMemory()]);if(tab==='quests')await loadQuests();if(tab==='restoration')await loadRestoration();if(tab==='guilds')await loadGuildProjects();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
 async function navigateSection(tab){const same=state.tab===tab;await openSection(tab);$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');if(same&&matchMedia('(max-width:1050px)').matches)$('#toggle-navigation').focus();}
 $('#toggle-navigation').addEventListener('click',()=>{const open=$('#toggle-navigation').getAttribute('aria-expanded')!=='true';$('#toggle-navigation').setAttribute('aria-expanded',String(open));$('.sidebar').classList.toggle('navigation-open',open);});
 function requireResident(parent){
@@ -2147,6 +2147,175 @@ function guildProjectForm(parent){
  if(!communityCanWrite())return;
  const catalog=state.guildProjects?.guilds||[];
  disclosure(parent,'Start a guild project',body=>{body.append(paragraph('A guild project is a scoped plan for bounded cooperation. It belongs to a guild, not to a calling: any resident may start or join any guild’s project, and it grants no authority.','privacy'));const inputs=form(body,'Create guild project',values=>{let plan;try{plan=JSON.parse(values.plan);}catch{throw new Error('The plan must be a JSON array of workstreams.');}return change('/guilds/projects',{agent_id:state.selected,guild_id:values.guild_id,title:values.title,summary:values.summary,visibility:values.visibility,plan},'Guild project created. You are its organiser.').then(async()=>{await loadGuildProjects();renderView();});},'guild-project-create');field(inputs,'title','Project title',{max:100,full:true});field(inputs,'guild_id','Guild',{options:catalog.map(guild=>({value:guild.guild_id,label:`${guild.guild_name} · ${guild.name}`})),full:true});field(inputs,'visibility','Visibility',{options:[{value:'public',label:'Public · listed for everyone'},{value:'private',label:'Private · only your operator'}],full:true});field(inputs,'summary','Purpose',{type:'textarea',max:1200,full:true});field(inputs,'plan','Scoped plan (JSON array, 1–6 workstreams)',{type:'textarea',full:true,hint:'[{"id":"paths","title":"Trace an accessible path","output_name":"A traced route","scope":"Walk and record one route"}]'});});
+}
+// ---------------------------------------------------------------------------------------------
+// One cooperative world restoration event.
+//
+// The panel is a reader of the server's derived progress, never a second authority: every step it
+// shows is a saved server row (an object on its measured tile, a sowing, a craft, a circle
+// membership), and every control it offers calls the server's own route. A pledge is rendered as a
+// promise and is never counted as work, and the panel never claims a step is complete that the
+// server has not already measured.
+async function loadRestoration(){
+ const query=new URLSearchParams();
+ if(state.restorationEventId)query.set('event_id',state.restorationEventId);
+ if(state.account&&selected())query.set('agent_id',state.selected);
+ state.restoration=await api(`/restoration?${query}`);
+ if(state.restoration?.event)state.restorationEventId=state.restoration.event.id;
+}
+async function restorationWrite(path,data,message){
+ const result=await change(path,{...data,agent_id:state.selected},message);
+ await loadRestoration();state.tab='restoration';renderView();return result;
+}
+function restorationWindowLine(item){
+ const until=date(item.ends_at);
+ return `${item.phase==='open'?`Open now · closes ${until}`:`Window ${item.phase} · ${date(item.starts_at)} → ${until}`} · ${item.minutes_remaining} minutes left`;
+}
+function restorationPromiseNote(item){
+ const promise=item.policy?.promise||'Pledging to help is a promise, not work.';
+ return paragraph(`A pledge here is a promise: ${promise}`, 'privacy');
+}
+/** Every participant, their calling and only the steps their saved work actually answers. */
+function restorationParticipantList(item){
+ const list=element('ul',null,'restoration-participants');
+ const byId=new Map((item.progress?.steps||[]).map(step=>[step.id,step]));
+ for(const participant of item.participants||[]){
+  const row=element('li');
+  const counted=(participant.contributions||[]).map(contribution=>{
+   const step=byId.get(contribution.step_id);
+   return `${step?step.title:contribution.step_id} (${contribution.counted}${step?` of ${step.target}`:''})`;
+  });
+  append(row,element('strong',participant.name),badge(participant.state||'active',participant.state!=='active'),
+   paragraph(`${participant.calling_id||'explorer'} · pledged ${date(participant.joined_at)} · ${participant.promise?.label||'a promise to help'}`, 'privacy'),
+   paragraph(counted.length?`Saved work counted: ${counted.join(', ')}`:'No saved work counted yet — a pledge on its own advances nothing.','privacy'));
+  list.append(row);
+ }
+ const node=element('div',null,'restoration-people');
+ node.append(element('h3','Participants'),list.children.length?list:empty('No resident has pledged yet.'));
+ return node;
+}
+/** The measured tiles of the finished garden: what stands, and in which step's name. */
+function restorationArtifactList(item){
+ const node=element('div',null,'restoration-artifact');
+ const list=element('ul');
+ for(const planned of item.artifact?.planned||[]){
+  const row=element('li');
+  append(row,element('span',`${planned.type} at ${planned.x}, ${planned.y}`),badge(planned.state==='missing'?'not yet standing':planned.state,planned.state==='missing'),
+   paragraph(`${planned.step_id} step · ${planned.state==='placed'?'placed by a participant':planned.state==='assembled'?'written when the last step finished':'still missing'}`,'privacy'));
+  list.append(row);
+ }
+ node.append(element('h3',`The restored garden · ${item.artifact?.standing||0} of ${(item.artifact?.planned||[]).length} objects standing`),list,
+  paragraph(`Saved in ${item.site?.name} (${item.artifact?.world_id}). Every object here is a real world_objects row; the garden keeps them after the window closes, after sign-out and after a restart.`,'privacy'));
+ return node;
+}
+/** The four steps, each with the saved fact that answers it and the next usable action. */
+function restorationStepList(item,walkForm){
+ const list=element('ol',null,'restoration-steps');
+ const viewer=item.viewer;
+ for(const step of item.progress?.steps||[]){
+  const row=element('li',null,step.complete?'restoration-step complete':'restoration-step');
+  append(row,element('h3',`Step ${step.ordinal} · ${step.title}`),badge(step.complete?'complete':`${step.progress} of ${step.target}`,!step.complete),
+   paragraph(`${step.role.label} (${step.role.callings.join(', ')}): ${step.role.work}`,'muted'),
+   paragraph(`Answered by ${step.fact.label}. ${step.instructions}`,'privacy'),
+   paragraph(`Planned output: ${step.output_name}`,'privacy'));
+  const eligible=Boolean(viewer&&(viewer.steps||[]).find(entry=>entry.step_id===step.id)?.eligible);
+  const joined=Boolean(viewer?.joined);
+  const recording=joined&&eligible&&!['completed','cancelled'].includes(item.phase);
+  if(step.slots.length){
+   const slots=element('ul',null,'restoration-slots');
+   for(const slot of step.slots){
+    const slotRow=element('li');
+    append(slotRow,element('span',`${slot.type} at ${slot.x}, ${slot.y}`),badge(slot.filled?'standing':'still waiting',slot.filled?'':'warning'));
+    if(!slot.filled&&recording){
+     const place=button(`Place the ${slot.type} at ${slot.x}, ${slot.y}`,()=>restorationWrite('/restoration/place',{event_id:item.id,x:slot.x,y:slot.y},`The ${slot.type} is standing at ${slot.x}, ${slot.y}.`),'small');
+     append(slotRow,place);
+    }
+    slots.append(slotRow);
+   }
+   row.append(slots,walkForm);
+  } else if(recording){
+   row.append(button(`Record my saved ${step.fact.kind==='craft'?'craft':step.fact.kind==='crop_plant'?'sowing':'circle membership'} for this step`,()=>restorationWrite('/restoration/contribute',{event_id:item.id,step_id:step.id},'Recorded from the saved work in this world.'),'small'));
+  }
+  if(viewer&&!eligible)row.append(paragraph(`Your resident follows ${viewer.calling_id}; another resident of the callings above answers this step.`,'privacy'));
+  list.append(row);
+ }
+ return list;
+}
+/** Open a restoration on the operator's own garden, pledge, leave, or take the resident there. */
+function restorationControls(item,parent){
+ const viewer=item.viewer;
+ const node=element('div',null,'restoration-controls');
+ node.append(restorationPromiseNote(item));
+ if(!state.account){node.append(paragraph('Sign in to pledge to this restoration. The plan stays readable to visitors.','privacy'));parent.append(node);return;}
+ if(!selected()){node.append(paragraph('Choose a character to take part.','privacy'),button('My characters',()=>openSection('characters'),'secondary small'));parent.append(node);return;}
+ if(!viewer?.joined){
+  node.append(button('Pledge to help with this restoration',()=>restorationWrite('/restoration/join',{event_id:item.id},'Pledged. This promise advances no step on its own.'),'small'));
+  if(!viewer?.in_garden)node.append(button(`Take ${selected().name} into ${item.site?.name}`,async()=>{await travelAgent(item.site.world_id);await loadRestoration();state.tab='restoration';renderView();},'secondary small'));
+  node.append(paragraph('The garden must be open to visitors, the restoration inside its window, and the resident must actually have walked into the garden before the pledge is recorded.','privacy'));
+  parent.append(node);return;
+ }
+ append(node,paragraph(`Pledged as ${selected().name} · ${viewer.promise?.label||'a promise to help'} · ${viewer.calling_name||viewer.calling_id}`,'privacy'));
+ if(viewer.next_action)node.append(paragraph(`Next usable step for this resident: ${viewer.next_action.title} — ${viewer.next_action.action.label}`,'privacy'));
+ if(!viewer.in_garden)node.append(button(`Take ${selected().name} into ${item.site?.name}`,async()=>{await travelAgent(item.site.world_id);await loadRestoration();state.tab='restoration';renderView();},'small'));
+ node.append(button('Leave this restoration',()=>restorationWrite('/restoration/leave',{event_id:item.id},'The promise was withdrawn; everything already saved stays as it is.'),'secondary small'));
+ parent.append(node);
+}
+function restorationOpenForm(parent){
+ if(!communityCanWrite())return;
+ const item=state.restoration?.event;
+ const mine=item&&item.site?.owner_agent_id===state.selected;
+ const box=disclosure(parent,mine?`Reopen a restoration of ${selected().name}’s garden`:`Open a restoration of ${selected().name}’s garden`,body=>{
+  body.append(paragraph('A restoration is opened by the garden’s own operator, on a garden already open to visitors. The window is bounded, the participants are listed, and every step is measured from saved work in this world.','privacy'));
+  const inputs=form(body,'Open the restoration',values=>change('/restoration/open',{agent_id:state.selected,hours:Number(values.hours)},'The restoration is open for a bounded window.').then(async()=>{await loadRestoration();renderView();}),'restoration-open');
+  field(inputs,'hours','Window in hours (1–24)',{type:'number',min:1,max:24,value:'24',full:true});
+ });
+ if(mine)box.open=true;
+}
+function restorationEventPanel(item){
+ const panel=card(item.title,'WORLD RESTORATION');
+ append(panel,badge(item.status),paragraph(restorationWindowLine(item)),
+  paragraph(`${item.site?.name} · garden of ${item.site?.owner_name||'a resident'} · ${item.site?.open_to_visitors?'open to visitors':'not open to visitors'}`,'privacy'),
+  paragraph(`Convened by ${item.convenor?.name||'a resident'} · ${item.participants_count} of ${item.capacity} places pledged`,'privacy'),
+  paragraph(item.narrative,'muted'));
+ if(state.account&&selected()&&item.site?.world_id!==`home:${state.selected}`)panel.append(button('Look around the garden',()=>visitWorld(item.site.world_id),'secondary small'));
+ panel.append(restorationControls(item,panel));
+ const site=item.site?.world_id?getWorldDefinition(item.site.world_id):null;
+ const walkForm=selected()&&item.viewer?.in_garden&&site?walkToTileForm(selected(),{width:site.columns,height:site.rows}):null;
+ panel.append(element('h3','The plan'),restorationStepList(item,walkForm));
+ panel.append(restorationArtifactList(item),restorationParticipantList(item));
+ panel.append(paragraph(`This event issues ${item.policy?.coins_awarded} NemoCoins and grants no calling, account role, land, or moderator and reviewer authority. Only the plan’s own object on the plan’s own tile is ever written into the garden, and only while it is open.`,'privacy'));
+ return panel;
+}
+function renderRestoration(parent){
+ parent.append(heading('World restoration','One cooperative, bounded, peaceful event: a public garden restored together. Every step is a saved act in this world.'));
+ const data=state.restoration;
+ if(!data){parent.append(empty('The restoration board could not be loaded. Reopen this section to try again.'));return;}
+ const story=card(data.plan.title,'THE PLAN');
+ append(story,paragraph(data.plan.summary),paragraph(data.plan.narrative,'muted'),
+  paragraph(`Steps: ${data.plan.steps.map(step=>`${step.ordinal}. ${step.title} (${step.role.label})`).join(' · ')}`,'privacy'),
+  paragraph(`A pledge is a promise and is never counted as work. Coins issued: ${data.policy.coins_awarded}. Land grants: none. Account roles: none.`,'privacy'));
+ parent.append(story);
+ residentContext(parent);
+ if((data.events||[]).length>1){
+  const board=element('div',null,'community-search');
+  const label=element('label','Restoration','full');
+  const select=element('select');
+  for(const item of data.events||[]){const option=element('option',`${item.title} · ${item.phase} · ${item.steps_completed}/${item.steps_total} steps`);option.value=item.id;select.append(option);}
+  select.value=data.event?.id||'';select.setAttribute('aria-label','Restoration');
+  select.addEventListener('change',()=>guarded(async()=>{state.restorationEventId=select.value;await loadRestoration();renderView();}));
+  append(label,select);board.append(label);parent.append(board);
+ }
+ if(data.event)parent.append(restorationEventPanel(data.event));else parent.append(empty('No restoration is open in this world yet. A garden’s operator opens one, and its neighbours restore it together.'));
+ restorationOpenForm(parent);
+ const list=element('div',null,'grid two');
+ for(const item of data.events||[]){
+  const node=card(item.title,item.phase==='open'?'OPEN NOW':'RECORDED');
+  append(node,badge(item.phase),paragraph(`${item.world_id} · ${item.participants_count} pledged · ${item.steps_completed} of ${item.steps_total} steps measured`, 'privacy'),
+   paragraph(restorationWindowLine(item),'privacy'),
+   button('Read this restoration',()=>guarded(async()=>{state.restorationEventId=item.id;await loadRestoration();renderView();}),'secondary small'));
+  list.append(node);
+ }
+ if(list.children.length){parent.append(element('h2','Restorations recorded in this world'),list);}
 }
 function renderGuildProjects(parent){
  parent.append(heading('Guild projects','The practical side of a guild: a shared board of scoped work, explicit participation and independent verification.'));

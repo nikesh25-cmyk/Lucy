@@ -22,6 +22,8 @@ import { fileURLToPath } from 'node:url';
 import { createServer as createTcpServer } from 'node:net';
 import { request as httpRequest } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
+import { RESTORATION_PLAN } from '../src/community.js';
+import { validateDatabase } from '../src/recovery.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const RESULTS = join(ROOT, 'test-results');
@@ -117,6 +119,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'interaction-door-and-crafting', title: 'A doorway travels to another world and a crafting station crafts once per click', regression: null },
   { id: 'interaction-ambassador-desk', title: 'A country ambassador desk answers through the existing conversation action', regression: null },
   { id: 'interaction-state-refusals', title: 'Paused, revoked, wrong-owner and observer refusals keep the server authoritative', regression: null },
+  { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -2503,6 +2506,409 @@ define('interaction-state-refusals', async () => {
   });
   return 'paused, revoked, wrong-owner and observer refusals all kept the server authoritative and left the world unchanged';
 });
+
+// ---------------------------------------------------------------------------------------------
+// Scenario — one cooperative world restoration walked through by two operators
+//
+// Two browser contexts, two operators, one public garden. Every contribution is an action the
+// server records on its own: a resident walks into the garden (the recorded visit that participation
+// requires), the grower sows real crops in its own garden, the maker crafts real keepsakes at a
+// crafting station, the keeper joins a circle another operator keeps, and the groundskeepers place
+// the plan's own objects on the plan's own tiles. Then the finished garden is read back from the
+// database, from the world's own interaction panel, and after the server process has been restarted.
+// ---------------------------------------------------------------------------------------------
+const RESTORATION_TITLE = 'The Gathering Garden';
+
+/**
+ * Waits until the *browser* has finished a navigation, not merely the server: the same race the
+ * country-venue fix closed. A travel writes its database row before the page has re-rendered, so a
+ * tab switch issued at that moment is overwritten by the travel's own trailing render. This waits for
+ * the loaded world payload and a settled view, and the panel opener below retries within bounds.
+ */
+async function browserShows(page, worldId, tab = null, timeout = 25_000) {
+  const deadline = Date.now() + timeout;
+  let last = null;
+  while (Date.now() < deadline) {
+    last = await page.evaluate(() => ({
+      loaded: window.__nemoworld?.world?.()?.world?.id || '',
+      shown: window.__nemoworld?.worldId?.() || '',
+      tab: document.querySelector('#navigation button[aria-current="page"]')?.getAttribute('aria-label') || '',
+      busy: document.querySelector('#view')?.getAttribute('aria-busy') === 'true',
+    })).catch((error) => ({ error: error.message }));
+    if (last?.loaded === worldId && !last.busy && (!tab || last.tab === tab)) return last;
+    await sleep(300);
+  }
+  throw new BrowserSuiteFailure(`the browser never finished showing ${worldId}`, { expected: `the loaded world ${worldId}${tab ? ` on “${tab}”` : ''}`, actual: describe(last) });
+}
+
+/**
+ * Opens a navigation section and waits until the page itself reports that section as current. The
+ * section name lives in the menu toggle, which is independent of focus styling and of a stale view,
+ * so a navigation issued while an earlier handler is still rendering is retried within bounds
+ * instead of being swallowed by a rebuilt navigation node.
+ */
+async function openSectionNamed(page, label, attempts = 4) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    await nav(page, label).click();
+    await page.waitForTimeout(250);
+    const shown = await page.evaluate(() => ({
+      section: (document.querySelector('#toggle-navigation')?.textContent || '').replace(/^Menu · /, ''),
+      notice: (document.querySelector('#notice')?.textContent || '').trim(),
+    }));
+    if (shown.section === label) { await settle(page); return shown; }
+    await page.waitForTimeout(500);
+  }
+  throw new BrowserSuiteFailure(`the “${label}” section never became current`, { expected: label, actual: describe(await page.evaluate(() => ({ section: document.querySelector('#toggle-navigation')?.textContent || '', notice: document.querySelector('#notice')?.textContent || '' }))) });
+}
+
+/** Selects one resident through My characters and waits until the browser reports the switch. */
+async function selectResident(page, agentId, name) {
+  const already = await page.evaluate(() => window.__nemoworld?.selected?.() || '');
+  if (already === agentId) return { selected: agentId };
+  await openSectionNamed(page, 'My characters');
+  const row = page.locator('#view .record', { hasText: name }).first();
+  await row.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+  const enter = row.getByRole('button', { name: 'Enter as this character', exact: true });
+  if (await enter.count()) await enter.click();
+  const shown = await waitForCondition(async () => {
+    const observed = await page.evaluate(() => ({
+      selected: window.__nemoworld?.selected?.() || '',
+      notice: document.querySelector('#notice')?.textContent || '',
+    }));
+    return observed.selected === agentId ? observed : null;
+  }, `the browser to select resident ${agentId}`).catch(async (error) => {
+    const notice = ((await page.locator('#notice').textContent().catch(() => '')) || '').trim();
+    throw new BrowserSuiteFailure('the interface did not select that resident', { expected: agentId, actual: `${error.message}; the interface said “${notice}”` });
+  });
+  await settle(page);
+  return shown;
+}
+
+/**
+ * Waits until the interface itself has reported the outcome of a control it was given, so a later
+ * navigation is never clobbered by the trailing render of an action that is still finishing.
+ */
+async function waitForNotice(page, pattern, label) {
+  return waitForCondition(async () => {
+    const text = ((await page.locator('#notice').textContent().catch(() => '')) || '').trim();
+    return pattern.test(text) ? text : null;
+  }, label);
+}
+
+/** Opens the restoration panel and waits until it is the current section with its plan on screen. */
+async function openRestoration(page) {
+  const shown = await openSectionNamed(page, 'World restoration');
+  await waitForText(page, RESTORATION_TITLE);
+  return shown;
+}
+const RESTORATION_GROUND = RESTORATION_PLAN.steps.find((step) => step.id === 'ground');
+const RESTORATION_TILES = RESTORATION_PLAN.steps.flatMap((step) => [...step.slots, ...step.assembles]);
+const panelText = async (page) => ((await page.locator('#view').textContent().catch(() => '')) || '').replace(/\s+/g, ' ');
+
+define('cooperative-restoration-two-operators', async () => {
+  const owner = await actor('owner');
+  const stranger = await actor('stranger');
+  const walker = fixtures().characters.walker;
+  const steward = fixtures().characters.steward;
+  const garden = `home:${walker.id}`;
+  const eventId = `restoration:${garden}`;
+  const gardenObjects = () => count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden);
+  // This garden is shared with the rest of the suite, so every "nothing was written" assertion is a
+  // comparison against the count this scenario itself started from, and the artifact is counted on
+  // the plan's own tiles only.
+  const plannedStanding = () => RESTORATION_TILES.filter((tile) => row('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, tile.x, tile.y)?.type === tile.type).length;
+  // The suite shares one database, so "mints nothing" is a delta on the very accounts that took part
+  // rather than a global zero: an earlier scenario may legitimately have earned a coin or a plot.
+  const operators = [state.fixtures.owner.id, state.fixtures.stranger.id];
+  const mintedSince = () => ({
+    coins: count('SELECT COUNT(*) AS n FROM coin_rewards'),
+    their_coins: count('SELECT COUNT(*) AS n FROM coin_rewards WHERE account_id IN (?,?)', operators[0], operators[1]),
+    their_land: count('SELECT COUNT(*) AS n FROM land_stewardships WHERE account_id IN (?,?)', operators[0], operators[1]),
+    their_blocks: count('SELECT COUNT(*) AS n FROM frontier_blocks WHERE creator_account_id IN (?,?)', operators[0], operators[1]),
+  });
+  const progressOf = async (stepId) => {
+    const read = await inPage(owner.page, `/restoration?event_id=${encodeURIComponent(eventId)}`, { method: 'GET' });
+    return read.body.event.progress.steps.find((step) => step.id === stepId);
+  };
+
+  // A fresh operator session and a fresh resident for the second operator. An earlier scenario
+  // revokes every session token of this account and leaves the resident it used standing in this very
+  // garden, so the walkthrough starts from a resident that has genuinely never been there — which is
+  // exactly the prerequisite this scenario has to refuse.
+  const strangerTicket = await apiOperatorSession(ACTORS.stranger.email, PASSWORD);
+  const grower = await apiExpect(strangerTicket, 'POST', '/agents', { name: 'Beacon', kind: 'agent', color: '#aa7845', symbol: '✿', capabilities: 'Sows crops and crafts keepsakes', limitations: 'No external tools and no real-world claims' });
+  // The callings the plan draws on are chosen once, before the event, exactly as a resident chooses
+  // its calling in the interface: the garden's builder, its researcher keeper and a grower-maker.
+  await apiExpect(fixtures().owner, 'POST', '/callings/select', { agent_id: walker.id, calling_id: 'builder' });
+  await apiExpect(strangerTicket, 'POST', '/callings/select', { agent_id: grower.id, calling_id: 'cultivator' });
+
+  await step('the garden is opened to visitors and one bounded restoration window is stored', async () => {
+    const objectsBefore = gardenObjects(), mintedBefore = mintedSince();
+    state.fixtures.restoration = { objectsBefore };
+    await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'public' });
+    await openApp(owner.page, ACTORS.owner);
+    await openWorldAs(owner.page, walker.id);
+    await owner.page.locator('#view').getByRole('button', { name: 'Go home', exact: true }).first().click();
+    await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', walker.id).world_id === garden
+      && count('SELECT COUNT(*) AS n FROM journey_visits WHERE agent_id=? AND world_id=?', walker.id, garden) === 1 ? true : null,
+      'the garden’s own resident to walk home, recording the visit');
+    await browserShows(owner.page, garden);
+    await openRestoration(owner.page);
+    await waitForText(owner.page, RESTORATION_TITLE);
+    await openDisclosure(owner.page, 'Open a restoration');
+    const form = owner.page.locator('form[data-draft-section="restoration-open"]');
+    await form.locator('[name="hours"]').fill('3');
+    await form.getByRole('button', { name: 'Open the restoration', exact: true }).click();
+    await waitForNotice(owner.page, /The restoration is open for a bounded window/, 'the interface to report the open restoration');
+    const stored = await waitForCondition(async () => row('SELECT * FROM community_events WHERE id=?', eventId) || null, 'the restoration occurrence to be stored by the server');
+    expect(stored.status === 'scheduled', 'the occurrence must be scheduled', { actual: describe(stored.status) });
+    expect(stored.world_id === garden && stored.creator_agent_id === walker.id, 'the occurrence must name the garden and its convenor', { actual: describe(stored) });
+    expect(Date.parse(stored.ends_at) - Date.parse(stored.starts_at) === 3 * 3600000, 'the window must be the bounded one that was asked for', { actual: `${stored.starts_at} → ${stored.ends_at}` });
+    expect(gardenObjects() === objectsBefore, 'opening a restoration writes no world object', { actual: `${objectsBefore} → ${gardenObjects()} objects` });
+    state.fixtures.restoration = { id: eventId, garden, objectsBefore, mintedBefore };
+    return `community_events row ${eventId}, window ${stored.starts_at} → ${stored.ends_at}, zero objects written`;
+  });
+
+  await step('a resident that has not walked into the garden cannot pledge', async () => {
+    await openApp(stranger.page, ACTORS.stranger);
+    await selectResident(stranger.page, grower.id, 'Beacon');
+    await openRestoration(stranger.page);
+    await stranger.page.locator('#view').getByRole('button', { name: 'Pledge to help with this restoration', exact: true }).click();
+    const refusal = await waitForCondition(async () => {
+      const text = ((await stranger.page.locator('#notice').textContent().catch(() => '')) || '').trim();
+      return /Walk into/.test(text) ? text : null;
+    }, 'the pledge to be refused until the resident has stood in the garden');
+    expect(count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=? AND agent_id=?', eventId, grower.id) === 0, 'a refused pledge must write no participation row', { actual: 'a row appeared' });
+    expect(/Step 1 · Lay the gathering ground/.test(await panelText(stranger.page)), 'the plan must be readable before anyone takes part', { actual: (await panelText(stranger.page)).slice(0, 200) });
+    return `refused: ${refusal.slice(0, 140)}`;
+  });
+
+  await step('both operators pledge after actually walking into the garden, and no pledge advances a step', async () => {
+    // The visitor takes its own resident through the garden’s door: a real travel that records the visit.
+    await stranger.page.locator('#view').getByRole('button', { name: /^Take Beacon into/ }).first().click();
+    await browserShows(stranger.page, garden);
+    await openRestoration(stranger.page);
+    await stranger.page.locator('#view').getByRole('button', { name: 'Pledge to help with this restoration', exact: true }).click();
+    await waitForNotice(stranger.page, /Pledged\. This promise advances no step/, 'the visitor’s pledge to be reported');
+    await waitForCondition(async () => count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=? AND agent_id=?', eventId, grower.id) === 1 ? true : null, 'the visitor’s pledge to be stored');
+    // The garden’s own builder pledges, and so does its keeper.
+    await openRestoration(owner.page);
+    await owner.page.locator('#view').getByRole('button', { name: 'Pledge to help with this restoration', exact: true }).click();
+    await waitForNotice(owner.page, /Pledged\. This promise advances no step/, 'the garden builder’s pledge to be reported');
+    await waitForCondition(async () => count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=? AND agent_id=?', eventId, walker.id) === 1 ? true : null, 'the garden builder’s pledge to be stored');
+    await selectResident(owner.page, steward.id, 'Steward');
+    await openRestoration(owner.page);
+    // The keeper travels with the panel's own control when it is not already standing in the garden.
+    if (count('SELECT COUNT(*) AS n FROM agents WHERE id=? AND world_id=?', steward.id, garden) === 0) {
+      await owner.page.locator('#view').getByRole('button', { name: /^Take Steward into/ }).first().click();
+      await browserShows(owner.page, garden);
+      await openRestoration(owner.page);
+    }
+    await owner.page.locator('#view').getByRole('button', { name: 'Pledge to help with this restoration', exact: true }).click();
+    await waitForNotice(owner.page, /Pledged\. This promise advances no step/, 'the keeper’s pledge to be reported');
+    await waitForCondition(async () => count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=?', eventId) === 3 ? true : null, 'all three pledges to be stored');
+    const promises = rows('SELECT a.name FROM community_rsvps r JOIN agents a ON a.id=r.agent_id WHERE r.event_id=? ORDER BY a.name', eventId);
+    expect(promises.length === 3, 'three residents must be pledged across two operators', { actual: describe(promises) });
+    expect(rows('SELECT DISTINCT a.operator_id FROM community_rsvps r JOIN agents a ON a.id=r.agent_id WHERE r.event_id=?', eventId).length === 2, 'the pledges must come from two operators', { actual: 'one operator pledged' });
+    const view = await inPage(owner.page, `/restoration?event_id=${encodeURIComponent(eventId)}`, { method: 'GET' });
+    expect(view.body.event.progress.steps.every((step) => step.progress === 0), 'a pledge is not work: no step may move', { actual: describe(view.body.event.progress.steps.map((step) => [step.id, step.progress])) });
+    expect(view.body.event.progress.steps_completed === 0 && view.body.event.artifact.standing === 0, 'a pledge must write no object and complete nothing', { actual: describe(view.body.event.artifact) });
+    expect(gardenObjects() === state.fixtures.restoration.objectsBefore, 'three pledges must write no object at all', { actual: `${state.fixtures.restoration.objectsBefore} → ${gardenObjects()} objects` });
+    expect(/is a promise, not work/i.test(view.body.policy.promise) && /never advances a single step/i.test(view.body.policy.promise), 'the payload must label a pledge as a promise that advances nothing', { actual: describe(view.body.policy.promise) });
+    state.notes.push(`restoration pledges: ${promises.map((row_) => row_.name).join(', ')} — progress ${view.body.event.progress.steps_completed}/${view.body.event.progress.steps_total}`);
+    return `three pledges from two operators, ${view.body.event.progress.steps_completed} of ${view.body.event.progress.steps_total} steps measured, zero objects written`;
+  });
+
+  await step('a wrong calling and a missing saved fact are both refused by the server', async () => {
+    const wrongCalling = await inPage(stranger.page, '/restoration/contribute', { body: { agent_id: grower.id, event_id: eventId, step_id: 'keep' } });
+    expect(wrongCalling.status === 403, 'a step answers its own callings only', { expected: 'HTTP 403', actual: `HTTP ${wrongCalling.status} ${describe(wrongCalling.body)}` });
+    expect(/Keepers step/.test(wrongCalling.body?.error || ''), 'the refusal must name the role', { actual: describe(wrongCalling.body?.error) });
+    const missing = await inPage(stranger.page, '/restoration/contribute', { body: { agent_id: grower.id, event_id: eventId, step_id: 'beds' } });
+    expect(missing.status === 409, 'a step with no saved fact must be refused, never credited', { expected: 'HTTP 409', actual: `HTTP ${missing.status} ${describe(missing.body)}` });
+    expect(/not recorded for/.test(missing.body?.error || ''), 'the refusal must say which saved fact is missing', { actual: describe(missing.body?.error) });
+    const unplanned = await inPage(owner.page, '/restoration/place', { body: { agent_id: walker.id, event_id: eventId, x: 12, y: 15 } });
+    expect(unplanned.status === 409, 'a tile outside the plan must be refused', { expected: 'HTTP 409', actual: `HTTP ${unplanned.status}` });
+    expect(gardenObjects() === state.fixtures.restoration.objectsBefore, 'three refusals must write nothing at all', { actual: `${state.fixtures.restoration.objectsBefore} → ${gardenObjects()} objects` });
+    return `403 ${wrongCalling.body.error} · 409 ${describe(missing.body.error)} · 409 ${describe(unplanned.body.error)}`;
+  });
+
+  await step('the grower sows two real crops and the shared beds are measured from them', async () => {
+    await selectResident(stranger.page, grower.id, 'Beacon');
+    await openSectionNamed(stranger.page, 'Open world');
+    await stranger.page.locator('#view').getByRole('button', { name: 'Go home', exact: true }).first().click();
+    await browserShows(stranger.page, `home:${grower.id}`);
+    await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', grower.id).world_id === `home:${grower.id}` ? true : null, 'the grower to go home');
+    await stranger.page.locator('#view').getByRole('button', { name: 'Start building', exact: true }).click();
+    const build = stranger.page.locator('#view form').filter({ has: stranger.page.getByRole('button', { name: 'Apply at tile', exact: true }) });
+    // Two crop patches on one row, two tiles apart so both stay clear of the arrival and both are
+    // within one tile of the tile the resident stands on.
+    for (const column of [8, 10]) {
+      await stranger.page.locator('#view select[name="kind"]').selectOption('farm');
+      await build.locator('[aria-label="Tile X"]').fill(String(column));
+      await build.locator('[aria-label="Tile Y"]').fill('7');
+      await build.getByRole('button', { name: 'Apply at tile', exact: true }).click();
+      await waitForCondition(async () => row('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=7', `home:${grower.id}`, column) ? true : null, `the crop patch at ${column}, 7 to be saved`);
+    }
+    await walkResidentTo(stranger.page, grower.id, 9, 7);
+    for (const [column, kind] of [[8, 'herbs'], [10, 'fiber']]) {
+      await readInteractionTile(stranger.page, column, 7);
+      await interactionActionForm(stranger.page).locator('select[name="garden_action"]').selectOption(`plant:${kind}`);
+      await interactionActionForm(stranger.page).getByRole('button', { name: /^Plant a crop\b/ }).click();
+      await waitForCondition(async () => row('SELECT kind FROM journey_crops WHERE agent_id=? AND x=? AND y=7', grower.id, column) ? true : null, `the ${kind} sowing at ${column}, 7 to be stored`);
+      // The panel finished reporting the planting before the next tile is read: the same client-side
+      // signal the shipped interaction scenario uses, so a rebuild cannot swallow the next fill.
+      await waitForCondition(async () => {
+        const hint = ((await stranger.page.locator('#interaction-hint').textContent().catch(() => '')) || '').trim();
+        return /Tend the crop/.test(hint) ? hint : null;
+      }, `the panel to report the ${kind} sowing at ${column}, 7`);
+    }
+    const sown = count('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=? AND harvested_at IS NULL', grower.id);
+    expect(sown === 2, 'two real sowings must be stored', { actual: `${sown} planted crops` });
+    await openRestoration(stranger.page);
+    await stranger.page.locator('#view').getByRole('button', { name: 'Record my saved sowing for this step', exact: true }).click();
+    await waitForNotice(stranger.page, /Recorded from the saved work/, 'the sowing to be reported');
+    const beds = await waitForCondition(async () => { const step_ = await progressOf('beds'); return step_.progress === 2 ? step_ : null; }, 'the shared beds to be measured from the two sowings');
+    expect(beds.complete === true, 'two sowings must answer the beds step', { actual: describe(beds) });
+    expect(/2 of 2/.test(await panelText(stranger.page)), 'the panel must show the measured progress', { actual: (await panelText(stranger.page)).slice(0, 200) });
+    return `beds ${beds.progress} of ${beds.target} measured from journey_crops rows at 8,7 and 10,7`;
+  });
+
+  await step('the maker crafts two keepsakes and the garden’s light is measured from them', async () => {
+    // The grown resources a real garden would have produced, granted as scenario setup: the harvest
+    // itself takes twenty minutes of server time and is not what this step tests. The craft is real.
+    for (const [kind, quantity] of [['herbs', 6], ['fiber', 4], ['wood', 4]]) {
+      write('INSERT INTO journey_inventory(agent_id,kind,quantity) VALUES(?,?,?) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=excluded.quantity', grower.id, kind, quantity);
+    }
+    placeResident(grower.id, 'workshop', 13, 10);
+    await stranger.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(stranger.page);
+    await selectResident(stranger.page, grower.id, 'Beacon');
+    const hint = await readInteractionTile(stranger.page, 13, 11);
+    expect(/Crafting station at 13, 11/.test(hint), 'the maker must stand beside a crafting station', { actual: hint });
+    for (const recipe of ['flower_crown', 'garden_lantern']) {
+      const before = count('SELECT crafts FROM journey_profiles WHERE agent_id=?', grower.id);
+      await restorationCraft(stranger.page, grower.id, recipe, before);
+      await stranger.page.waitForTimeout(800);
+    }
+    const crafts = count('SELECT crafts FROM journey_profiles WHERE agent_id=?', grower.id);
+    expect(crafts === 2, 'two separate crafts must be recorded', { actual: `crafts=${crafts}` });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='journey.crafted' AND record_id=?", grower.id) === 2, 'the world must hold two craft records', { actual: 'the craft count differs' });
+    await openRestoration(stranger.page);
+    await stranger.page.locator('#view').getByRole('button', { name: 'Record my saved craft for this step', exact: true }).click();
+    await waitForNotice(stranger.page, /Recorded from the saved work/, 'the craft to be reported');
+    const light = await waitForCondition(async () => { const step_ = await progressOf('light'); return step_.progress === 2 ? step_ : null; }, 'the garden’s light to be measured from the two crafts');
+    expect(light.complete === true, 'two crafts must answer the makers’ step', { actual: describe(light) });
+    return `light ${light.progress} of ${light.target} measured from two journey.crafted records`;
+  });
+
+  await step('the keeper joins a circle another operator keeps, and the garden is left in that keeping', async () => {
+    await selectResident(stranger.page, grower.id, 'Beacon');
+    await openSectionNamed(stranger.page, 'Community');
+    await openDisclosure(stranger.page, 'Start a circle');
+    const create = stranger.page.locator('#view form').filter({ has: stranger.page.getByRole('button', { name: 'Create circle', exact: true }) });
+    await create.locator('[name="name"]').fill('Garden keepers');
+    await create.locator('[name="focus"]').selectOption('Care');
+    await create.locator('[name="summary"]').fill('Keep the restored garden open after the event.');
+    await create.getByRole('button', { name: 'Create circle', exact: true }).click();
+    const circle = await waitForCondition(async () => row("SELECT id,name,creator_agent_id FROM community_circles WHERE name='Garden keepers'") || null, 'the neighbouring circle to be stored');
+    expect(circle.creator_agent_id === grower.id, 'the circle must belong to the other operator', { actual: describe(circle.creator_agent_id) });
+    await selectResident(owner.page, steward.id, 'Steward');
+    await openSectionNamed(owner.page, 'Community');
+    const card = owner.page.locator('#view .card', { hasText: 'Garden keepers' }).first();
+    await card.getByRole('button', { name: 'Join circle', exact: true }).click();
+    await waitForCondition(async () => count('SELECT COUNT(*) AS n FROM community_members WHERE circle_id=? AND agent_id=?', circle.id, steward.id) === 1 ? true : null, 'the keeper to join the neighbouring circle');
+    await openRestoration(owner.page);
+    await owner.page.locator('#view').getByRole('button', { name: 'Record my saved circle membership for this step', exact: true }).click();
+    await waitForNotice(owner.page, /Recorded from the saved work/, 'the keeping to be reported');
+    const keep = await waitForCondition(async () => { const step_ = await progressOf('keep'); return step_.progress === 1 ? step_ : null; }, 'the keeping to be measured from the membership');
+    expect(keep.complete === true, 'a circle another operator keeps must answer the keepers’ step', { actual: describe(keep) });
+    return `keep ${keep.progress} of ${keep.target} measured from a community_members row for ${circle.name}`;
+  });
+
+  await step('the groundskeepers lay the measured tiles, and one planned tile is filled exactly once', async () => {
+    await selectResident(owner.page, walker.id, 'Walker');
+    await browserShows(owner.page, garden);
+    await openRestoration(owner.page);
+    const first = RESTORATION_GROUND.slots[0];
+    await owner.page.locator('#view').getByRole('button', { name: `Place the ${first.type} at ${first.x}, ${first.y}`, exact: true }).click();
+    const away = await waitForCondition(async () => {
+      const text = ((await owner.page.locator('#notice').textContent().catch(() => '')) || '').trim();
+      return /tiles? from/.test(text) ? text : null;
+    }, 'the placement to be refused while the resident is away from the tile');
+    expect(gardenObjects() === state.fixtures.restoration.objectsBefore, 'a refused placement must write nothing', { actual: `${state.fixtures.restoration.objectsBefore} → ${gardenObjects()} objects` });
+    state.notes.push(`restoration placement refusal: ${away.slice(0, 120)}`);
+    for (const slot of RESTORATION_GROUND.slots) {
+      await walkResidentTo(owner.page, walker.id, slot.x, slot.y - 1);
+      await owner.page.locator('#view').getByRole('button', { name: `Place the ${slot.type} at ${slot.x}, ${slot.y}`, exact: true }).click();
+      await waitForNotice(owner.page, new RegExp(`standing at ${slot.x}, ${slot.y}`), `the ${slot.type} placement to be reported`);
+      const saved = await waitForCondition(async () => row('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, slot.x, slot.y) || null, `the ${slot.type} at ${slot.x}, ${slot.y} to be saved`);
+      expect(saved.type === slot.type, 'the saved object must be the object the plan named', { expected: slot.type, actual: describe(saved.type) });
+    }
+    const repeat = await inPage(owner.page, '/restoration/place', { body: { agent_id: walker.id, event_id: eventId, x: first.x, y: first.y } });
+    expect(repeat.status === 409, 'a filled planned tile must be refused instead of filled twice', { expected: 'HTTP 409', actual: `HTTP ${repeat.status} ${describe(repeat.body)}` });
+    for (const slot of RESTORATION_GROUND.slots) {
+      expect(row('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, slot.x, slot.y)?.type === slot.type, `${slot.type} at ${slot.x}, ${slot.y} must stand once`, { actual: describe(row('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, slot.x, slot.y)) });
+    }
+    expect(count('SELECT COUNT(*) AS n FROM audit WHERE event=? AND substr(record_id,1,?)>0', 'restoration.placed', 0) === 3, 'exactly three placements must be recorded', { actual: 'the placement count differs' });
+    return `three placements filled once each after one distance refusal; ${plannedStanding()} of the plan’s ${RESTORATION_TILES.length} objects stand`;
+  });
+
+  await step('finishing the plan writes the garden once, and the world agrees from three directions', async () => {
+    const view = await waitForCondition(async () => {
+      const read = await inPage(owner.page, `/restoration?event_id=${encodeURIComponent(eventId)}`, { method: 'GET' });
+      return read.body.event.phase === 'completed' ? read.body.event : null;
+    }, 'the restoration to be recorded completed');
+    expect(view.progress.steps_completed === view.progress.steps_total, 'every step must be measured', { actual: describe(view.progress.steps.map((step) => [step.id, step.progress, step.target])) });
+    expect(view.artifact.standing === RESTORATION_TILES.length && view.artifact.missing === 0, 'every planned object must stand', { actual: describe(view.artifact) });
+    for (const tile of RESTORATION_TILES) {
+      const saved = row('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, tile.x, tile.y);
+      expect(saved?.type === tile.type, `${tile.type} at ${tile.x}, ${tile.y} must be saved in the garden`, { actual: describe(saved) });
+    }
+    expect(plannedStanding() === RESTORATION_TILES.length, 'every planned tile holds the object the plan named', { actual: `${plannedStanding()} of ${RESTORATION_TILES.length} planned objects` });
+    // The world's own interaction panel reads the placed bench back as a real fixture of this garden.
+    await openSectionNamed(owner.page, 'Open world');
+    const hint = await readInteractionTile(owner.page, RESTORATION_GROUND.slots[0].x, RESTORATION_GROUND.slots[0].y);
+    expect(/Bench at 9, 15/.test(hint), 'the world’s own panel must read the placed bench back', { actual: hint });
+    // Nothing a whole restoration grants: no coin, no land, no role, and no power over anyone.
+    const accounts = rows('SELECT id,role FROM accounts WHERE id IN (?,?)', operators[0], operators[1]);
+    expect(accounts.every((account_) => account_.role === 'member'), 'a restoration must grant no account role', { actual: describe(accounts.map((account_) => account_.role)) });
+    const mintedAfter = mintedSince();
+    expect(mintedAfter.coins === state.fixtures.restoration.mintedBefore.coins, 'a restoration must mint no coin at all', { actual: describe({ before: state.fixtures.restoration.mintedBefore, after: mintedAfter }) });
+    expect(mintedAfter.their_coins === state.fixtures.restoration.mintedBefore.their_coins, 'neither participating operator may gain a coin receipt', { actual: describe(mintedAfter) });
+    expect(mintedAfter.their_land === state.fixtures.restoration.mintedBefore.their_land, 'a restoration must grant no stewardship', { actual: describe(mintedAfter) });
+    expect(mintedAfter.their_blocks === state.fixtures.restoration.mintedBefore.their_blocks, 'a restoration must write no frontier block for its participants', { actual: describe(mintedAfter) });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.completed'") === 1, 'the finished garden is written exactly once', { actual: 'the completion count differs' });
+    return `${view.progress.steps_completed} of ${view.progress.steps_total} steps measured, ${view.artifact.standing} objects standing, no coin, no land, no role, no frontier block`;
+  });
+
+  await step('the restored garden survives a restart of the world server', async () => {
+    await stopServer();
+    await startServer();
+    await owner.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(owner.page);
+    const validation = validateDatabase(state.database);
+    expect(validation.schema_version === 21, 'the database must still validate after the restart', { actual: describe(validation) });
+    const read = await inPage(owner.page, `/restoration?event_id=${encodeURIComponent(eventId)}`, { method: 'GET' });
+    expect(read.body.event.phase === 'completed', 'the recorded outcome must survive the restart', { actual: describe(read.body.event.phase) });
+    expect(read.body.event.artifact.standing === RESTORATION_TILES.length, 'every restored object must survive the restart', { actual: describe(read.body.event.artifact) });
+    for (const tile of RESTORATION_TILES) {
+      const saved = row('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, tile.x, tile.y);
+      expect(saved?.type === tile.type, `${tile.type} at ${tile.x}, ${tile.y} must still stand after the restart`, { actual: describe(saved) });
+    }
+    await openRestoration(owner.page);
+    await waitForText(owner.page, 'The restored garden');
+    return `schema ${validation.schema_version}, ${read.body.event.artifact.standing} objects standing, the event still reads ${read.body.event.phase}`;
+  });
+
+  return `two operators restored ${garden} together: ${plannedStanding()} saved objects on the plan’s own tiles, ${count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=?', eventId)} pledges, no coin, no land and no role`;
+});
+
+/** One craft at the crafting station the resident already stands beside, waiting for its record. */
+async function restorationCraft(page, agentId, recipe, before) {
+  await interactionActionForm(page).locator('select[name="recipe_id"]').selectOption(recipe);
+  await interactionActionForm(page).getByRole('button', { name: /^Craft a keepsake\b/ }).click();
+  await waitForCondition(async () => count('SELECT crafts FROM journey_profiles WHERE agent_id=?', agentId) > before ? true : null, `the ${recipe} to be recorded`);
+}
 
 // The suite runs only when it is the entry point, so a unit test can import the pure helpers above
 // (and `npm test` keeps passing with no node_modules directory).

@@ -110,8 +110,14 @@ const writes = new Map([
   // A resident proposes a bounded memory fact (scope `contribute`, the same scope a resident needs to
   // write its private journal); the owning operator records, decides, corrects and deletes memory.
   ['/memory/propose', ['memoryPropose', 'contribute']], ['/memory/manage', ['memoryManage', null]],
+  // One cooperative world restoration event. Opening or reopening one is a human operator decision
+  // (no runtime scope); joining, leaving and recording a saved contribution are ordinary community
+  // writes; the planned placement needs the same `build` scope the shipped garden build route needs.
+  ['/restoration/open', ['restorationOpen', null]], ['/restoration/join', ['restorationJoin', 'contribute']],
+  ['/restoration/leave', ['restorationLeave', 'contribute']], ['/restoration/contribute', ['restorationContribute', 'contribute']],
+  ['/restoration/place', ['restorationPlace', 'build']],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/restoration']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -457,7 +463,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact', '/restoration'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
@@ -498,6 +504,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/journey/offers') value = platform.resourceOffers(actor, Object.fromEntries(url.searchParams));
           else if (route === '/interact') value = platform.interactionView(actor, Object.fromEntries(url.searchParams));
           else if (route === '/memory') value = platform.memory(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/restoration') value = platform.restoration(actor, Object.fromEntries(url.searchParams));
           else if (route === '/missions') value = platform.missionList(actor,Object.fromEntries(url.searchParams));
           else if (route === '/gallery') value = platform.gallery();
           else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));
@@ -633,6 +640,14 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         const delta = frontierDelta(result);
         if (delta && delta.length) hub.publish(result.world_id, { blocks: delta });
       }
+      // A restoration placement is one saved garden object, and finishing the last step writes the
+      // rest of the plan at once. Both reach every subscriber of the garden as ordinary object deltas.
+      if (route === '/restoration/place') {
+        const objects = [...(result.placed ? [{ op: 'set', x: result.placed.x, y: result.placed.y, type: result.placed.type }] : []),
+          ...(result.assembled || []).map((item) => ({ op: 'set', x: item.x, y: item.y, type: item.type }))];
+        if (objects.length) hub.publish(result.artifact.world_id, { objects });
+      }
+      if (route === '/restoration/contribute' && Array.isArray(result.assembled) && result.assembled.length) hub.publish(result.artifact.world_id, { objects: result.assembled.map((item) => ({ op: 'set', x: item.x, y: item.y, type: item.type })) });
       if (route === '/frontier/expand' && result?.created === true) hub.publish(result.target_world_id, { refresh: true });
       if((route==='/ambassadors/talk'||route==='/mayors/talk') && civicModel){
         try{
