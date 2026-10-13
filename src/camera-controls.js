@@ -24,12 +24,22 @@ export const TURN_KEYS = Object.freeze({
   r: Object.freeze({ yaw: 0, pitch: 0.25 }), f: Object.freeze({ yaw: 0, pitch: -0.25 }),
 });
 
+// Direct interaction with a nearby fixture. The reach is the same one-tile Manhattan adjacency the
+// server already requires for a doorway, and the keys are the keyboard equivalent of the interface's
+// own action control, so no interaction is available by mouse alone.
+export const INTERACTION_DISTANCE = 1;
+export const INTERACTION_KEYS = Object.freeze(['Enter', ' ', 'i']);
+export function isInteractionKey(key) { return INTERACTION_KEYS.includes(key); }
+
 /** What a single key press asks for, or null when the key is not a control. */
-export function keyIntent(key, { frontier = false, palette = [], agent = false } = {}) {
+export function keyIntent(key, { frontier = false, palette = [], agent = false, fixture = false, building = false } = {}) {
   if (frontier && agent && /^[1-7]$/.test(key)) {
     const type = palette[Number(key) - 1];
     return type ? { kind: 'build', type } : null;
   }
+  // Enter, Space or I use the fixture the aim line names. Building keeps its own keys first, and a
+  // key with no fixture picked stays unbound, so the walking and turning controls never change meaning.
+  if (fixture && !building && isInteractionKey(key)) return { kind: 'interact' };
   const turn = TURN_KEYS[key];
   if (turn) return { kind: 'turn', yaw: turn.yaw, pitch: turn.pitch };
   const direction = WALK_KEYS[key];
@@ -81,9 +91,10 @@ const KINDS = { terrain: 'ground', object: 'scenery', block: 'block', participan
 
 /**
  * The readable aim line under the first-person view: where the camera is, what the last pick targets,
- * and which keys walk or turn. Text only, so the interface never injects markup.
+ * which fixture that pick can be used with, and which keys walk or turn. Text only, so the interface
+ * never injects markup.
  */
-export function reticleText({ firstPerson = false, facing = {}, position = null, selection = null, blocked = null } = {}) {
+export function reticleText({ firstPerson = false, facing = {}, position = null, selection = null, blocked = null, fixture = null } = {}) {
   const parts = [];
   parts.push(firstPerson ? 'First person' : 'Orbiting view');
   parts.push(`facing ${facingLabel(facing.yaw)}`);
@@ -93,6 +104,13 @@ export function reticleText({ firstPerson = false, facing = {}, position = null,
     const detail = typeof blocked === 'boolean' ? blocked ? 'solid, walk around it' : 'walkable' : null;
     parts.push(`aimed at ${kind} ${selection.x}, ${selection.y}${selection.z ? `, layer ${selection.z}` : ''}${detail ? ` · ${detail}` : ''}`);
   } else parts.push('no tile picked yet');
+  // The picked fixture and how to use it, in plain text, so the hint is never only graphical.
+  if (fixture && Number.isInteger(fixture.x) && Number.isInteger(fixture.y)) {
+    const label = String(fixture.label || 'fixture').toLowerCase();
+    parts.push(fixture.in_range
+      ? `${fixture.action?.label || 'Use it'} with Enter, Space or I`
+      : `stand within ${fixture.required_distance || INTERACTION_DISTANCE} tile of the ${label} at ${fixture.x}, ${fixture.y}`);
+  }
   parts.push(firstPerson ? 'WASD walks the way you face · Q/E turn · R/F tilt · arrow keys also walk' : 'drag to orbit · click open ground to walk · arrow keys or WASD walk');
   return parts.join(' · ');
 }

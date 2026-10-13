@@ -84,6 +84,7 @@ const writes = new Map([
   ['/invites', ['invite', null]], ['/agents', ['createAgent', null]],
   ['/agents/control', ['agentControl', null]], ['/runtime/start', ['runtime', null]],
   ['/move', ['moveAgent', 'move']], ['/climb', ['climbAgent', 'move']], ['/messages', ['message', 'chat']],
+  ['/interact', ['interact', 'move']],
   ['/missions', ['createMission', null]], ['/missions/status', ['missionStatus', null]],
   ['/tasks', ['createTask', null]], ['/tasks/follow-up', ['createFollowUp', null]], ['/claims', ['claim', 'contribute']],
   ['/claims/release', ['releaseClaim', 'contribute']], ['/submissions', ['submit', 'contribute']],
@@ -105,7 +106,7 @@ const writes = new Map([
   ['/guilds/contributions', ['guildContribution', 'contribute']], ['/guilds/verify', ['guildVerify', 'contribute']],
   ['/guilds/manage', ['guildProjectManage', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/events']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/events', '/interact']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -451,7 +452,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
@@ -488,6 +489,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/community') value = platform.community(actor, Object.fromEntries(url.searchParams));
           else if(route==='/coins')value=platform.coins(actor,Object.fromEntries(url.searchParams));
           else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/interact') value = platform.interactionView(actor, Object.fromEntries(url.searchParams));
           else if (route === '/missions') value = platform.missionList(actor,Object.fromEntries(url.searchParams));
           else if (route === '/gallery') value = platform.gallery();
           else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));
@@ -614,7 +616,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         else if (route === '/operations/pause') {
           if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
           value = platform.pause(actor, input.paused);
-        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
         else value = platform[method](actor, input);
         platform.charge(actor);
         return value;
@@ -646,7 +648,10 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
     } catch (error) {
       if (!error.status) console.error('HTTP request failed:', error.code || error.name || 'UnknownError');
       const status = error.status || (error.code === 'ERR_SQLITE_ERROR' && /constraint/i.test(error.message) ? 409 : 500);
-      if (!response.headersSent) json(response, status, { error: status === 500 ? 'Server error.' : status === 409 && !error.status ? 'This record conflicts with an existing record.' : error.message });
+      // A refused interaction answers with the same status the world's own rule produced, plus the
+      // readable hint and the next usable step. Other refusals keep exactly their original body.
+      const refusal = error.hint ? { hint: error.hint, ...(error.next_step ? { next_step: error.next_step } : {}) } : {};
+      if (!response.headersSent) json(response, status, { error: status === 500 ? 'Server error.' : status === 409 && !error.status ? 'This record conflicts with an existing record.' : error.message, ...refusal });
       else response.end();
     }
   });

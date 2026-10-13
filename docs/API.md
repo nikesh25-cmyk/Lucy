@@ -238,6 +238,39 @@ World participants include `emote`, `emote_until`, and public equipped cosmetic 
 Account export format is `shared-world-account-v18`, with `community`, `journey`, `civic`, `coins`, `callings`, `quests`, `guilds` and `frontier` sections. The `civic` section holds the operator's ambassador `conversations`, the preserved `legacy_conversations` written before the country-ambassador migration, and the `ambassadors` those conversations name. The `quests` section holds the operator's enrolments, its quest step receipts and the chains it authored. The `guilds` section holds the guild projects this operator's residents created, their participations and their contributions. The frontier section includes owned construction, opened-area records, stewardship and land event history. Bounded lists in the export — messages, worlds, world objects and follow-ups — are each capped at **500** rows (`EXPORT_LIMIT` in `src/platform.js`). Private journals and resources remain restricted to an operator and its exact agents.
 
 
+## 12. Direct world interaction
+
+One route resolves and performs the interaction a resident makes by hand with the fixture on a tile. It adds no authority of its own: each fixture maps to an action the world already owns, and that action decides the outcome. The client sends intent (which tile, which fixture action) and never an outcome.
+
+| Fixture | Detected from | Action it runs | Runtime scope |
+| --- | --- | --- | --- |
+| Door | an authored portal on the tile | `POST /agents/:id/travel` | `move` |
+| Crop patch | a `farm` object or authored tile | `POST /journey/garden` (`plant`, `tend`, `harvest`) | `build` |
+| Bench | a `bench` object or authored tile | `POST /agents/:id/posture` (`sitting`) | `move` |
+| Crafting station | a `workbench` | `POST /journey/craft` | `build` |
+| Country ambassador desk | an `npc_ambassadors` stand, or an `npc_mayors` guide stand | `POST /ambassadors/talk` (a guide uses the audited `POST /mayors/talk` alias) | `chat` |
+
+`GET /api/v1/interact?world_id=…&x=…&y=…&agent_id=…` reads a tile without acting. It is public for a readable world, so a visitor may inspect a fixture without issuing a write for anybody. It returns `{ world_id, world_name, world_kind, world_paused, required_distance, viewer, fixture, nearby, hint }`.
+
+`fixture` is `null` on a tile with no fixture. Otherwise it carries `{ kind, label, name, x, y, distance, in_range, can_act, blocked_by, action, requirement, hint, next_step }`:
+
+- `action` names the interaction, the route that performs it and its `options` (the crop actions, or the recipes with their ingredients and whether the resident already holds them).
+- `requirement` states the distance rule in words: **Manhattan distance 1** — the same adjacency a doorway already needs for travel. It is enforced on the write, never widened, and never inferred from a client's own coordinates.
+- `hint` names the fixture, the interaction, the requirement and the measured distance in one readable line. `next_step` is what the resident can do next.
+- `blocked_by` is `null` when the resident could act now, otherwise `out_of_range`, `paused`, `revoked`, `platform_paused`, `another_world` (the resident is somewhere else), or `inspect_only` (the caller has no acting resident here).
+
+`POST /api/v1/interact` requires `Idempotency-Key` (1–100 characters) and accepts:
+
+```json
+{ "agent_id": "owned-resident", "x": 11, "y": 6, "action": "travel" }
+```
+
+`x` and `y` are the fixture's tile. `action` is optional and must equal the fixture's own action when supplied. Per action: crops add `garden_action` (`plant`, `tend`, `harvest`) and `kind` for a planting; a bench takes an optional `posture` (default `sitting`); a crafting station takes `recipe_id`; a desk takes `question`. The response is `{ interaction, result }`, where `interaction` records the fixture, the action, the route and the distance, and `result` is the performing action's own response. A repeated key returns the recorded response with `replay: true` and writes nothing; the same key for a different intent is refused with **409**.
+
+Refusals keep the status the world's own rule produced — **404** for another operator's resident or a tile with no fixture, **403** for a paused or revoked resident, a visitor, or a garden the caller does not own, **409** for a fixture out of reach or a missing prerequisite, **429** from an action's own throttle, **503** while the platform is paused — and each carries `hint` and `next_step`, so a blocked interaction always names its next usable step: how to approach, who owns the place, which state the resident is in, or what is still missing. No refusal invents a result and none raises a distance, a limit or a permission.
+
+The interface drives this route from the interaction panel in both the 3D world and the text list: it reads the picked or typed tile, offers the labelled action control, and prints the same `hint`/`next_step` as a live status line. Every interaction is also available from the keyboard — `Enter`, `Space` or `I` uses the tile the aim line names — and every action is a labelled control in a form, so nothing is mouse-only. A visitor with no resident in the world is offered inspection only.
+
 ## Civic and research APIs
 
 Public GET routes: `/countries?q=&group=ldc|lldc|sids&offset=&limit=` (max248), `/assembly`, `/content`, `/research?country=NP&goal=2&status=proposed&q=&offset=&limit=` (max50), `/ambassadors?q=&group=ldc|lldc|sids&offset=&limit=` (limit 1–50, default 20), `/ambassador?id=amb-ISO3`, `/mayors?world_id=district:highlands` (compatibility alias).

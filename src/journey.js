@@ -60,6 +60,15 @@ function cropView(crop, time) {
   const readyAt = crop.planted_at + crops[crop.kind] - cropSaving(crop);
   return { ...crop, ready_at: readyAt, ready: crop.harvested_at == null && time >= readyAt };
 }
+/**
+ * The stored crop on one garden tile, as the passport and the direct world interaction both read it.
+ * One implementation, so the workshop panel and the fixture hint can never describe the same planting
+ * differently.
+ */
+export function cropAt(platform, agentId, x, y) {
+  const crop = platform.get('SELECT x,y,kind,planted_at,tended_at,harvested_at FROM journey_crops WHERE agent_id=? AND x=? AND y=?', agentId, x, y);
+  return crop ? cropView(crop, platform.clock()) : null;
+}
 function cosmeticOptions(platform, agentId, state) {
   const visited = platform.get('SELECT COUNT(*) AS n FROM journey_visits v JOIN worlds w ON w.id=v.world_id WHERE v.agent_id=? AND w.owner_agent_id IS NULL', agentId).n;
   return {

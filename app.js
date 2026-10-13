@@ -1,5 +1,5 @@
 import {createVoxelWorld} from './src/voxel-world.js';
-import {controlIntent,keyIntent,createLookScheduler,reticleText} from './src/camera-controls.js';
+import {controlIntent,keyIntent,createLookScheduler,reticleText,INTERACTION_DISTANCE} from './src/camera-controls.js';
 import {planWalk} from './src/world-walk.js';
 import {solidSceneryAt} from './src/footprints.js';
 import {globeScene,countryGlobeCenter,rotateGlobe} from './src/country-globe.js';
@@ -17,7 +17,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 const $ = (selector) => document.querySelector(selector);
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,interaction:null,interactionRefusal:null,interactionError:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -63,7 +63,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -76,7 +76,7 @@ async function api(path, method = 'GET', body, idempotent = false, requestKey=nu
   const content = await response.json().catch(() => ({}));
   if(sessionEpoch!==(state.sessionEpoch||0))throw Object.assign(new Error('The operator session changed while this request was pending.'),{status:401,sessionEnded:true});
   if(operator&&(response.status===401||response.headers.get('X-Lucy-Session')==='expired')&&!path.startsWith('/auth/')){await recoverBrowserSession();throw Object.assign(new Error('Your session ended.'),{status:401,sessionEnded:true});}
-  if (!response.ok) throw Object.assign(new Error(content.error || `Request failed (${response.status}).`),{status:response.status});
+  if (!response.ok) throw Object.assign(new Error(content.error || `Request failed (${response.status}).`),{status:response.status,body:content});
   return content;
 }
 function field(form, name, labelText, { type = 'text', options, required = true, value = '', max, min, hint, full = false } = {}) {
@@ -129,7 +129,7 @@ function restoreRememberedFocus() {
 }
 function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
 function heading(title, description) { const node = element('div', null, 'section-title'); const text = element('div'); append(text, element('h2', title), paragraph(description)); node.append(text); return node; }
-async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.quests=null;state.guildProjects=null;state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
+async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.quests=null;state.guildProjects=null;state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -327,7 +327,7 @@ window.__nemoworld = {
 async function loadDirectory() { const result = await api(`/worlds?${new URLSearchParams({ q: state.worldQuery, offset: String(state.worldOffset), limit: '12' })}`); state.worlds = Array.isArray(result) ? result : result.worlds || result.items || []; state.worldTotal = result.total ?? state.worlds.length; state.directoryHasMore = result.has_more ?? state.worldOffset + state.worlds.length < state.worldTotal; }
 async function loadAmbassadors() { state.ambassadorPage = await api('/ambassadors?' + new URLSearchParams({ q: state.ambassadorQuery.q || '', group: state.ambassadorQuery.group || '', offset: String(state.ambassadorOffset || 0), limit: '20',...(isModerator()&&state.ambassadorIncludePaused?{include_paused:'1'}:{}) })); state.ambassadors = state.ambassadorPage.entries || []; }
 async function openAmbassador(id) { state.ambassadorProfile = await api('/ambassador?id=' + encodeURIComponent(id)); newcomerComplete('ambassador'); await openSection('civic'); }
-async function visitWorld(id) { walkVersion++;$('#notice').hidden=true; state.viewWorld = id; state.focus = getWorldDefinition(id).start; state.building = false; await loadWorld(); state.tab = 'world'; render(); }
+async function visitWorld(id) { walkVersion++;$('#notice').hidden=true; state.viewWorld = id; state.focus = getWorldDefinition(id).start; state.building = false; state.interaction=null; state.interactionRefusal=null; await loadWorld(); state.tab = 'world'; render(); }
 let lastMotionAt = 0;
 async function motionRequest(path, body) { const delay = Math.max(0, 160 - (performance.now() - lastMotionAt)); if (delay) await new Promise((resolve) => setTimeout(resolve, delay)); lastMotionAt = performance.now(); return api(path, 'POST', body); }
 const wrapFacing = (value) => value >= -Math.PI && value <= Math.PI ? value : ((value + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
@@ -400,7 +400,7 @@ async function climbPreview() {
   if (!direction) return notice('Pick a neighbouring tile first, then climb one block layer onto it.');
   await climbAgent(direction);
 }
-async function travelAgent(id) { walkVersion++;motionRevision++;if (!selected()) return; const result = await motionRequest(`/agents/${state.selected}/travel`, { world_id: id }); Object.assign(selected(), result.agent || result); selected().world_id = id; state.viewWorld = ''; state.focus = null; state.building = false; await refresh(); state.tab = 'world'; render(); notice(`Arrived in ${definition().name}.`); }
+async function travelAgent(id) { walkVersion++;motionRevision++;if (!selected()) return; const result = await motionRequest(`/agents/${state.selected}/travel`, { world_id: id }); Object.assign(selected(), result.agent || result); selected().world_id = id; state.viewWorld = ''; state.focus = null; state.building = false; state.interaction=null; state.interactionRefusal=null; await refresh(); state.tab = 'world'; render(); notice(`Arrived in ${definition().name}.`); }
 async function refresh(all = true) {
   if (state.account && all) {
     const me = await api('/me'); state.account = me.account; state.agents = me.agents;
@@ -686,7 +686,7 @@ function renderWorld(parent) {
   const toolbar = element('div', null, 'world-toolbar'); const live = element('strong', `${state.world.paused ? 'Paused · ' : ''}${world.name}`); live.prepend(element('span', null, state.world.paused ? 'live-dot paused' : 'live-dot')); append(toolbar, live, element('span', `${state.world.counts?.world_agents ?? state.world.population ?? state.world.participants.length} characters · ${world.width || world.columns} × ${world.height || world.rows}`, 'muted')); if(state.world.atmosphere) toolbar.append(badge(state.world.atmosphere.label || state.world.atmosphere.phase)); toolbar.append(actions(button('3D world',async()=>{state.graphics='voxel';state.graphicsUnavailable=false;localStorage.setItem('nemoworld-graphics','voxel');await loadWorld();renderView();},state.graphics==='voxel'?'small':'secondary small'),button('Pixel map',async()=>{state.graphics='pixel';localStorage.setItem('nemoworld-graphics','pixel');await loadWorld();renderView();},state.graphics==='pixel'?'small':'secondary small'),button('Focus world',()=>map.requestFullscreen?.(),'secondary small')));map.append(toolbar);
   const canvas = element('canvas'); canvas.id = 'world'; canvas.width = 800; canvas.height = 560; canvas.tabIndex = 0;canvas.classList.toggle('voxel-canvas',state.graphics==='voxel'); canvas.setAttribute('aria-label', state.building ? 'Garden build map. Click a tile to place the selected object. The build form below provides keyboard controls.' : 'Pixel world viewport. Arrow keys or WASD move your selected agent, or pan the view while spectating. World list provides a text alternative.'); if(state.graphics==='voxel'){canvas.setAttribute('aria-label','3D open world. Drag to orbit, click open ground to walk, use WASD or arrow keys to move. The aim line under the view names the tile you are facing; coordinate and movement controls provide a text alternative.');canvas.setAttribute('aria-describedby','world-reticle');}canvas.addEventListener('click', (event) => { if (state.graphics==='voxel'||!state.building) { canvas.focus(); return; } const bounds = canvas.getBoundingClientRect(); const x = state.camera.x + Math.floor((event.clientX - bounds.left) / bounds.width * 20); const y = state.camera.y + Math.floor((event.clientY - bounds.top) / bounds.height * 14); guarded(() => buildAt(x, y)); });
   map.append(canvas);if(agent)map.append(callingHUD());
-  if(state.graphics==='voxel'){const reticle=element('p','world-reticle');reticle.id='world-reticle';reticle.tabIndex=0;reticle.setAttribute('role','status');reticle.setAttribute('aria-live','polite');reticle.setAttribute('aria-label','Aim line: where the camera looks, what the last pick targets, and which keys walk or turn');reticle.textContent=reticleText({firstPerson:Boolean(agent&&state.firstPerson),facing:state.facing,position});map.append(reticle);}
+  if(state.graphics==='voxel'){const reticle=element('p','world-reticle');reticle.id='world-reticle';reticle.tabIndex=0;reticle.setAttribute('role','status');reticle.setAttribute('aria-live','polite');reticle.setAttribute('aria-label','Aim line: where the camera looks, what the last pick targets, and which keys walk or turn');reticle.textContent=reticleText({firstPerson:Boolean(agent&&state.firstPerson),facing:state.facing,position,fixture:state.interaction?.fixture||null});map.append(reticle);}
   const lower = element('div', null, 'world-bottom'); const journey = element('div'); const place = worldLandmarks().find((p) => p.x === position.x && p.y === position.y);
   append(journey, paragraph(agent ? `${agent.name} · ${place?.name || world.name}` : `Visiting ${world.name}`, 'eyebrow'), paragraph(place?.description || world.description || (world.kind === 'home' ? 'A personal garden, built and cared for by its agent.' : 'Explore the paths, gathering spaces, and entrances.')), element('small', `${agent ? 'Character' : 'View'} position ${position.x}, ${position.y} · ${agent ? 'Arrow keys / WASD to roam' : 'Arrow keys / WASD to look around'}`));
   const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => controlStep(direction)); item.setAttribute('aria-label', `${agent ? (state.lookMode ? 'Turn' : 'Move') : 'Look'} ${direction}`); item.disabled = Boolean(agent && (agent.status !== 'active' || state.world.paused)); movement.append(item); } movement.append(viewToggles(agent));
@@ -711,7 +711,8 @@ function renderWorld(parent) {
   const locations = card('Your place in the world', 'THE BIGGER PICTURE'); const list = element('div', null, 'landmark-list');
   for (const landmark of worldLandmarks()) { const item = button(landmark.name, () => { notice(`${landmark.name}: ${landmark.description || 'Explore this place.'} Position ${landmark.x}, ${landmark.y}.`); }); item.append(element('small', `${landmark.x}, ${landmark.y}`)); list.append(item); }
   for (const portal of worldPortals()) { const item = button(portal.label || portal.name || 'Entrance', () => { if (agent && Math.abs(portal.x-agent.x)+Math.abs(portal.y-agent.y)<=1) return travelAgent(portalTarget(portal)); if (agent) return notice(`Walk to the entrance at ${portal.x}, ${portal.y} to enter as ${agent.name}.`); return visitWorld(portalTarget(portal)); }); item.append(element('small', `Entrance · ${portal.x}, ${portal.y}`));list.append(item); }
-  const overview=card(null);overview.classList.add('minimap-card');const minimap=element('canvas');minimap.id='world-overview';minimap.width=240;minimap.height=160;minimap.setAttribute('aria-label','Overview of the entire world. The outlined rectangle marks the current map view.');minimap.addEventListener('click',(event)=>{if(viewedAgent())return notice('The outline follows your character. Use movement controls to explore.');const bounds=minimap.getBoundingClientRect(),world=definition(),scale=Math.min(240/world.columns,160/world.rows),offsetX=(240-world.columns*scale)/2,offsetY=(160-world.rows*scale)/2;const px=(event.clientX-bounds.left)/bounds.width*240,py=(event.clientY-bounds.top)/bounds.height*160;state.focus={x:Math.max(0,Math.min(world.columns-1,Math.floor((px-offsetX)/scale))),y:Math.max(0,Math.min(world.rows-1,Math.floor((py-offsetY)/scale)))};guarded(async()=>{await loadWorld();paintWorld();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`View position ${state.focus.x}, ${state.focus.y} · Arrow keys / WASD to look around`;});});overview.append(minimap,paragraph('Your view of the whole world. Click to look around while visiting.'));locations.append(overview);disclosure(locations,'Places & entrances',(body)=>body.append(list));const mayor=state.world.participants.find(resident=>resident.kind==='npc');if(mayor){const office=card(mayor.name,String(mayor.id).startsWith('amb-')?'COUNTRY AMBASSADOR':'REGIONAL GUIDE');office.append(guidePortrait(mayor),paragraph(mayor.focus),button('Talk to '+mayor.name,()=>talkAmbassador(mayor.id),'small'));aside.append(office);}aside.append(chatCard(),locations); append(layout, map, aside); parent.append(layout);renderResidentInspection(); paintWorld();
+  const overview=card(null);overview.classList.add('minimap-card');const minimap=element('canvas');minimap.id='world-overview';minimap.width=240;minimap.height=160;minimap.setAttribute('aria-label','Overview of the entire world. The outlined rectangle marks the current map view.');minimap.addEventListener('click',(event)=>{if(viewedAgent())return notice('The outline follows your character. Use movement controls to explore.');const bounds=minimap.getBoundingClientRect(),world=definition(),scale=Math.min(240/world.columns,160/world.rows),offsetX=(240-world.columns*scale)/2,offsetY=(160-world.rows*scale)/2;const px=(event.clientX-bounds.left)/bounds.width*240,py=(event.clientY-bounds.top)/bounds.height*160;state.focus={x:Math.max(0,Math.min(world.columns-1,Math.floor((px-offsetX)/scale))),y:Math.max(0,Math.min(world.rows-1,Math.floor((py-offsetY)/scale)))};guarded(async()=>{await loadWorld();paintWorld();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`View position ${state.focus.x}, ${state.focus.y} · Arrow keys / WASD to look around`;});});overview.append(minimap,paragraph('Your view of the whole world. Click to look around while visiting.'));locations.append(overview);disclosure(locations,'Places & entrances',(body)=>body.append(list));const mayor=state.world.participants.find(resident=>resident.kind==='npc');if(mayor){const office=card(mayor.name,String(mayor.id).startsWith('amb-')?'COUNTRY AMBASSADOR':'REGIONAL GUIDE');office.append(guidePortrait(mayor),paragraph(mayor.focus),button('Talk to '+mayor.name,()=>talkAmbassador(mayor.id),'small'));aside.append(office);}aside.append(interactionCard(),chatCard(),locations); append(layout, map, aside); parent.append(layout);renderResidentInspection(); paintWorld();
+  if(!state.interaction&&viewedAgent())queueMicrotask(()=>guarded(()=>loadInteraction({})));
 }
 function buildCard(world) {
   const node = card(world.kind==='house'?'Furnish your cottage':'Shape your garden', 'YOUR OWN SPACE'); node.append(paragraph(world.kind==='house'?'Make room for reading, gathering, and quiet reflection. The arrival area and permanent furniture stay clear.':'Plant a garden, make paths, build gathering places, and welcome visitors.', 'muted'));
@@ -763,14 +764,18 @@ async function walkTo(x,y){
 async function pickWorld(pick){
  if(state.tab!=='world')return;state.voxelSelection={x:pick.x,y:pick.y,z:pick.z||0};if(state.world.frontier?.parcels){state.parcelSelection=state.world.frontier.parcels.find(plot=>pick.x>=plot.x&&pick.x<plot.x+plot.width&&pick.y>=plot.y&&pick.y<plot.y+plot.height)||null;updatePlotPanel();}
  if(state.building){const point=state.buildKind==='remove'?pick:pick.adjacent||pick;await buildAt(point.x,point.y,point.z||0,pick);return;}
- if(pick.type==='participant'){state.inspectedResident=pick.participant;renderResidentInspection();paintWorld();return;}
- if(!viewedAgent()){if(pick.portal?.target_world_id||pick.portal?.targetWorldId)return visitWorld(portalTarget(pick.portal));state.focus={x:pick.x,y:pick.y};await loadWorld();paintWorld();return;}
- if(pick.type==='block'){notice(`Block ${pick.block?.type||''} · ${pick.x}, ${pick.y}, height ${pick.z}. Enable building to place beside it or remove your own block.`);paintWorld();return;}
+ // Selecting a tile reads what it offers from the server, so the interaction panel always shows the
+ // same fixture, requirement and next step the server would enforce.
+ const readTile=async()=>{state.interactionRefusal=null;await guarded(()=>loadInteraction({x:pick.x,y:pick.y})).catch(()=>{});};
+ if(pick.type==='participant'){state.inspectedResident=pick.participant;renderResidentInspection();await readTile();paintWorld();return;}
+ if(!viewedAgent()){if(pick.portal?.target_world_id||pick.portal?.targetWorldId)return visitWorld(portalTarget(pick.portal));state.focus={x:pick.x,y:pick.y};await loadWorld();await readTile();paintWorld();return;}
+ if(pick.type==='block'){notice(`Block ${pick.block?.type||''} · ${pick.x}, ${pick.y}, height ${pick.z}. Enable building to place beside it or remove your own block.`);await readTile();paintWorld();return;}
+ await readTile();
  if(await walkTo(pick.x,pick.y)){if(pick.portal)await travelAgent(portalTarget(pick.portal));else if(pick.type==='gate')notice('You reached a frontier gate. Use the expansion controls to open the neighboring area.');}
 }
 function syncWorldControls(){
  const player=viewedAgent(),position=worldPosition();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`${player?'Player':'View'} position ${position.x}, ${position.y}${player&&position.z>0?`, layer ${position.z}`:''} · ${state.graphics==='voxel'?(state.firstPerson?'First person · drag to look · WASD relative to view':'Drag to orbit · click ground to walk'):'Arrow keys / WASD'}`;
- const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null});}
+ const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null,fixture:state.interaction?.fixture||null});}
  const nearby=$('.nearby-portals');if(nearby){nearby.replaceChildren();if(player)for(const portal of worldPortals().filter(p=>Math.abs(p.x-position.x)+Math.abs(p.y-position.y)<=1))nearby.append(button(portalLabel(portal),()=>travelAgent(portalTarget(portal)),'small'));}
  for(const node of document.querySelectorAll('[data-frontier-expand]')){const gate=state.world.frontier?.neighbors.find(item=>item.direction===node.dataset.frontierExpand);node.disabled=!player||player.status!=='active'||state.world.paused||!gate||gate.exists||Math.abs(player.x-gate.x)+Math.abs(player.y-gate.y)>2;}
  const climb=$('[data-climb]');if(climb)climb.disabled=!player||player.status!=='active'||state.world.paused||!climbDirection();
@@ -963,7 +968,7 @@ async function moveAgent(direction,automatic=false) {
     await loadWorld();if(state.tab==='world'&&state.graphics==='voxel'&&!crossed){paintWorld();return;}if(state.tab==='world'){const focusedMap=document.activeElement?.id==='world';renderView();if(focusedMap)$('#world')?.focus({preventScroll:true});}
   } finally {moving=false;}
 }
-document.addEventListener('keydown',(event)=>{if(state.tab!=='world'||/INPUT|SELECT|TEXTAREA|BUTTON/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]')||event.ctrlKey||event.metaKey||event.altKey)return;const intent=keyIntent(event.key,{frontier:definition().kind==='frontier',palette:state.world.frontier?.palette||[],agent:Boolean(viewedAgent())});if(!intent)return;if(intent.kind==='build'){state.buildKind=intent.type;state.building=true;event.preventDefault();renderView();return;}if(intent.kind==='turn'){event.preventDefault();if(viewedAgent())queueLook(state.facing.yaw+intent.yaw,state.facing.pitch+intent.pitch);return;}event.preventDefault();guarded(()=>controlStep(intent.direction,{keyboard:true}));});
+document.addEventListener('keydown',(event)=>{if(state.tab!=='world'||/INPUT|SELECT|TEXTAREA|BUTTON/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]')||event.ctrlKey||event.metaKey||event.altKey)return;const intent=keyIntent(event.key,{frontier:definition().kind==='frontier',palette:state.world.frontier?.palette||[],agent:Boolean(viewedAgent()),fixture:Boolean(state.interaction?.fixture),building:Boolean(state.building)});if(!intent)return;if(intent.kind==='build'){state.buildKind=intent.type;state.building=true;event.preventDefault();renderView();return;}if(intent.kind==='turn'){event.preventDefault();if(viewedAgent())queueLook(state.facing.yaw+intent.yaw,state.facing.pitch+intent.pitch);return;}if(intent.kind==='interact'){event.preventDefault();guarded(()=>usePickedFixture());return;}event.preventDefault();guarded(()=>controlStep(intent.direction,{keyboard:true}));});
 function chatCard() {
   const node = card('Conversation', 'VOICES IN THE WORLD'); const messages = element('div', null, 'message-list'); messages.setAttribute('aria-label', 'Recent world conversations');
   if (!state.world.messages.length) messages.append(paragraph('The plaza is quiet. Start a conversation.', 'muted'));
@@ -990,7 +995,7 @@ function renderList(parent) {
       const row=element('div',null,'agent-row'),bio=element('div');append(bio,element('strong',agent.name),paragraph(`${agent.title} · ${agent.status==='active'?'resident':'paused'} · ${agent.x}, ${agent.y}`),paragraph(agent.focus),paragraph('Fictional country ambassador. Human moderators decide reports, sanctions and appeals.','privacy'));append(row,guidePortrait(agent),bio,button('Talk to this ambassador',()=>talkAmbassador(agent.id),'secondary small'));people.append(row);continue;
     }
     const row = element('div', null, 'agent-row'); const bio = element('div'); append(bio, element('strong', agent.name), paragraph(`${(agent.presence || agent.status).replaceAll('_',' ')} · ${agent.posture || 'standing'} · ${agent.x}, ${agent.y} · Operator: ${agent.operator}`), paragraph(`${agent.title||'Resident'} · ${resourceName(agent.avatar||'sprout')}`, 'privacy'), paragraph(`Capabilities: ${agent.capabilities || 'Not provided'}. Limits: ${agent.limitations || 'Not provided'}.`), element('small', `${agent.verified ? 'Has used the agent API' : 'Operator controlled character'} · last activity ${date(agent.last_seen)} · ${agent.accepted_contributions || 0} accepted contributions`)); append(row, agentMark(agent), bio); if (state.account) row.append(button('Report', () => reportPrompt('agent', agent.id), 'secondary small')); people.append(row); }
-  append(grid, places, people); parent.append(grid, chatCard());
+  append(grid, places, people); parent.append(grid, interactionCard(), chatCard());
 }
 function renderCharacters(parent) {
   if (!state.account) return;
@@ -1917,6 +1922,216 @@ function renderGuildProjects(parent){
  parent.append(grid);
  const prev=button('Previous',async()=>{state.guildProjectOffset=Math.max(0,state.guildProjectOffset-12);await loadGuildProjects();renderView();},'secondary small');prev.disabled=state.guildProjectOffset===0;const next=button('More',async()=>{state.guildProjectOffset+=12;await loadGuildProjects();renderView();},'secondary small');next.disabled=!data.has_more;parent.append(actions(prev,paragraph(`Page ${Math.floor(state.guildProjectOffset/12)+1} · ${data.total} guild projects`,'privacy'),next));
  guildProjectForm(parent);
+}
+// ---------------------------------------------------------------------------------------------
+// Direct world interaction, in both views.
+//
+// The panel is a reader, never a second authority: it asks the server what the picked tile offers,
+// and every action it offers is the server's own route (travel, the crop patch, posture, crafting,
+// the ambassador conversation). One click issues at most one write: a second click while a request is
+// in flight is coalesced into it, one gesture keeps one `Idempotency-Key`, and the server replays a
+// repeated key instead of acting twice. Nothing here is mouse-only — every action is a labelled
+// control in a form, and Enter, Space or I use the tile the aim line names.
+// ---------------------------------------------------------------------------------------------
+const INTERACTION_COALESCE_MS = 700;
+let interactionFlight = null, interactionIntent = null;
+
+function interactionQuery({ x = null, y = null } = {}) {
+  const query = new URLSearchParams({ world_id: currentWorldId() });
+  if (Number.isInteger(x) && Number.isInteger(y)) { query.set('x', String(x)); query.set('y', String(y)); }
+  const agent = viewedAgent();
+  if (agent) query.set('agent_id', agent.id);
+  return query;
+}
+async function loadInteraction({ x = null, y = null } = {}) {
+  const world = currentWorldId();
+  let view = null, failure = null;
+  try {
+    view = await api(`/interact?${interactionQuery({ x, y })}`);
+  } catch (error) {
+    // A panel read never nags: a world that cannot be read (a garden that just became private, say)
+    // is reported in the panel itself, so it never overwrites an unrelated notice.
+    if (error.sessionEnded) throw error;
+    failure = error.message || 'This world could not be read.';
+  }
+  if (world !== currentWorldId()) return null; // the view moved on, so a stale read is dropped
+  state.interaction = view;
+  state.interactionError = failure;
+  refreshInteractionPanel();
+  return view;
+}
+function refreshInteractionPanel() {
+  const host = $('#interaction-body');
+  if (!host) return;
+  host.replaceChildren();
+  interactionBody(host);
+}
+function interactionTile(fixture) { return `${fixture.x}, ${fixture.y}`; }
+function interactionMessage(info, result) {
+  if (info.kind === 'door') return `Entered ${getWorldDefinition(result.world_id).name}.`;
+  if (info.kind === 'bench') return `Sitting on the bench at ${interactionTile(info)}.`;
+  if (info.kind === 'crafting_station') return `Crafted ${resourceName(result.crafted)} at the crafting station.`;
+  if (info.kind === 'crop_patch') {
+    if (result.crop?.harvested_at) return 'Harvest gathered: two resources were added to your shelf.';
+    if (result.crop?.tended_at) return `Tended the ${resourceName(result.crop.kind)}; its growth is shorter now.`;
+    return `${resourceName(result.crop?.kind || 'crop')} planted at ${interactionTile(info)}.`;
+  }
+  return `Asked ${info.name}.`;
+}
+/** The action a key press asks for, from the fixture's own options. A question is typed, not guessed. */
+function defaultInteractionPayload(fixture) {
+  const tile = { x: fixture.x, y: fixture.y };
+  if (fixture.kind === 'crop_patch') {
+    const options = fixture.action.options || [];
+    const option = options.find((item) => item.action === 'harvest' && item.available) || options.find((item) => item.action === 'tend') || options[0];
+    return option ? { ...tile, action: 'garden', garden_action: option.action, ...(option.kind ? { kind: option.kind } : {}) } : null;
+  }
+  if (fixture.kind === 'crafting_station') {
+    const recipe = (fixture.action.options || []).find((item) => item.available);
+    return recipe ? { ...tile, action: 'craft', recipe_id: recipe.recipe_id } : null;
+  }
+  if (fixture.kind === 'bench') return { ...tile, action: 'posture', posture: 'sitting' };
+  if (fixture.kind === 'ambassador_desk') return null;
+  return { ...tile, action: 'travel' };
+}
+async function showInteractionRefusal(error, payload) {
+  const body = error.body || {};
+  state.interactionRefusal = { error: error.message || 'This interaction could not be completed.', next_step: body.next_step || '' };
+  if (payload && Number.isInteger(payload.x)) await guarded(() => loadInteraction({ x: payload.x, y: payload.y })).catch(() => {});
+  refreshInteractionPanel();
+  notice(body.hint || error.message || 'This interaction could not be completed.', true);
+}
+/**
+ * One click, one write. A second click while a request is in flight is coalesced into it, and a
+ * repeated gesture inside the coalescing window reuses the same idempotency key, so the server
+ * replays the recorded outcome instead of acting twice.
+ */
+async function performInteraction(payload) {
+  const agent = viewedAgent();
+  if (!agent) { notice('Bring your own resident into this world to act; a visitor can only inspect.', true); return null; }
+  if (interactionFlight) return interactionFlight;
+  const target = `${payload.x},${payload.y},${payload.action}`;
+  const now = performance.now();
+  const key = interactionIntent && interactionIntent.target === target && now - interactionIntent.at < INTERACTION_COALESCE_MS ? interactionIntent.key : crypto.randomUUID();
+  interactionIntent = { target, key, at: now };
+  state.interactionRefusal = null;
+  const attempt = (async () => {
+    try {
+      const result = await api('/interact', 'POST', { ...payload, agent_id: agent.id }, false, key);
+      notice(interactionMessage(result.interaction || {}, result.result || {}));
+      await loadWorld();
+      if ((result.interaction || {}).kind === 'door') await refresh(); else await loadJourney();
+      await guarded(() => loadInteraction({ x: payload.x, y: payload.y })).catch(() => {});
+      renderView();
+      if (document.activeElement === document.body) $('#interaction-panel')?.focus({ preventScroll: true });
+      return result;
+    } catch (error) {
+      if (error.sessionEnded) throw error;
+      await showInteractionRefusal(error, payload);
+      return null;
+    }
+  })();
+  interactionFlight = attempt.finally(() => { interactionFlight = null; });
+  return interactionFlight;
+}
+/** Walk to the nearest clear tile beside a fixture: the readable way to satisfy the distance rule. */
+async function approachFixture(fixture) {
+  const agent = viewedAgent();
+  if (!agent) return notice('Bring your own resident into this world to approach a fixture.', true);
+  const world = definition();
+  const candidates = [[0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]].map(([dx, dy]) => ({ x: fixture.x + dx, y: fixture.y + dy }));
+  const target = candidates.filter((tile) => tile.x >= 0 && tile.y >= 0 && tile.x < (world.width || world.columns) && tile.y < (world.height || world.rows) && walkable(tile, world) && !solidSceneryAt(tile, state.world.objects || []))
+    .sort((left, right) => Math.abs(left.x - agent.x) + Math.abs(left.y - agent.y) - (Math.abs(right.x - agent.x) + Math.abs(right.y - agent.y)))[0];
+  if (!target) return notice(`There is no clear tile beside the ${fixture.label.toLowerCase()} at ${interactionTile(fixture)}.`, true);
+  if (await walkTo(target.x, target.y)) {
+    notice(`Walked to ${target.x}, ${target.y}, beside the ${fixture.label.toLowerCase()}.`);
+    await guarded(() => loadInteraction({ x: fixture.x, y: fixture.y })).catch(() => {});
+    paintWorld();
+  }
+}
+/** The keyboard equivalent of the action control: Enter, Space or I on the tile the aim line names. */
+async function usePickedFixture() {
+  const fixture = state.interaction?.fixture;
+  if (!fixture) return notice('Pick a tile with a door, crop patch, bench, crafting station or country ambassador desk first.', true);
+  if (!viewedAgent()) return notice('Bring your own resident into this world to act; a visitor can only inspect.', true);
+  const payload = defaultInteractionPayload(fixture);
+  if (!payload) { focusInteractionControl(); return notice(`${fixture.action.label}: type your question and send it from the interaction panel.`); }
+  await performInteraction(payload);
+}
+function interactionPayload(fixture, data) {
+  const tile = { x: fixture.x, y: fixture.y, action: fixture.action.id };
+  if (fixture.kind === 'crop_patch') {
+    const [action, kind] = String(data.get('garden_action') || '').split(':');
+    return { ...tile, garden_action: action, ...(kind ? { kind } : {}) };
+  }
+  if (fixture.kind === 'bench') return { ...tile, posture: 'sitting' };
+  if (fixture.kind === 'crafting_station') return { ...tile, recipe_id: String(data.get('recipe_id') || '') };
+  if (fixture.kind === 'ambassador_desk') return { ...tile, question: String(data.get('question') || '') };
+  return tile;
+}
+function focusInteractionControl() {
+  const panel = $('#interaction-panel');
+  if (!panel) return;
+  panel.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  panel.querySelector('.interaction-form [name]')?.focus({ preventScroll: true });
+}
+function interactionActionForm(fixture, resident) {
+  const node = element('form', null, 'interaction-form');
+  node.setAttribute('aria-label', `${fixture.action.label} at ${fixture.x}, ${fixture.y}`);
+  const grid = element('div', null, 'field-grid'); node.append(grid);
+  if (fixture.kind === 'crop_patch') field(grid, 'garden_action', 'Crop patch action', { options: fixture.action.options.map((option) => ({ value: option.action === 'plant' ? `plant:${option.kind}` : option.action, label: option.label })) });
+  if (fixture.kind === 'crafting_station') field(grid, 'recipe_id', 'Recipe', { options: fixture.action.options.map((option) => ({ value: option.recipe_id, label: `${option.label}${option.available ? '' : ' — gather the ingredients first'}` })) });
+  if (fixture.kind === 'ambassador_desk') field(grid, 'question', 'Your question', { max: 500, full: true, hint: `Country context stays fixed to ${fixture.name}.` });
+  const submit = element('button', fixture.action.label); submit.type = 'submit';
+  // The control stays live whenever this view has an acting resident: the server owns the decision, so
+  // an out-of-range, paused or wrong-owner click reads the server's own refusal and next step instead
+  // of a button that silently refuses. A visitor with no resident gets no live control.
+  submit.disabled = !resident;
+  submit.setAttribute('aria-label', `${fixture.action.label} at ${interactionTile(fixture)}`);
+  node.append(submit);
+  node.addEventListener('submit', (event) => { event.preventDefault(); guarded(() => performInteraction(interactionPayload(fixture, new FormData(node)))); });
+  const controls = actions();
+  if (fixture.blocked_by === 'out_of_range') controls.append(button(`Approach the ${fixture.label.toLowerCase()}`, () => approachFixture(fixture), 'secondary small'));
+  if (!resident) node.append(paragraph('Inspection only: a visitor may examine this fixture, never act for another resident. Sign in and bring your own resident here to use it.', 'privacy'));
+  if (controls.children.length) node.append(controls);
+  return node;
+}
+function interactionBody(host) {
+  const view = state.interaction, fixture = view?.fixture || null, resident = viewedAgent(), refusal = state.interactionRefusal;
+  host.append(paragraph('Every interaction runs the world’s own action — travel, the crop patch, posture, crafting or the ambassador conversation — and the server decides whether it may happen. Acting requires standing on or beside the fixture: one tile, the same adjacency a doorway already needs.', 'privacy'));
+  const hint = element('p', refusal ? [refusal.error, refusal.next_step].filter(Boolean).join(' ') : state.interactionError || (fixture ? fixture.hint : (view?.hint || 'Pick a tile in the world, or type its coordinates below, to read what it offers.')), refusal || state.interactionError ? 'interaction-hint error' : 'interaction-hint');
+  hint.id = 'interaction-hint'; hint.setAttribute('role', refusal || state.interactionError ? 'alert' : 'status'); hint.setAttribute('aria-live', 'polite');
+  host.append(hint);
+  if (fixture) {
+    host.append(element('h3', `${fixture.label} · ${fixture.name}`), paragraph(`${fixture.action.label} · ${fixture.requirement}.`, 'privacy'));
+    host.append(paragraph(fixture.distance === null
+      ? `No acting resident here. ${fixture.next_step}`
+      : `Distance ${fixture.distance} of ${view.required_distance || INTERACTION_DISTANCE} — ${fixture.in_range ? 'in reach' : 'out of reach'}. ${fixture.next_step}`, 'interaction-next'));
+    host.append(interactionActionForm(fixture, resident));
+  }
+  const readForm = form(host, 'Read this tile', async (values) => {
+    const x = Number(values.x), y = Number(values.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y)) throw new Error('Enter whole tile coordinates.');
+    state.interactionRefusal = null;
+    await loadInteraction({ x, y });
+  });
+  field(readForm, 'x', 'Tile X', { type: 'number', min: 0, max: (definition().width || definition().columns || 1) - 1 });
+  field(readForm, 'y', 'Tile Y', { type: 'number', min: 0, max: (definition().height || definition().rows || 1) - 1 });
+  if (view?.nearby?.length) {
+    const list = element('ul', null, 'interaction-nearby');
+    for (const near of view.nearby) {
+      const item = element('li');
+      item.append(button(`${near.label} at ${near.x}, ${near.y} · ${near.distance} tile${near.distance === 1 ? '' : 's'}`, async () => { state.interactionRefusal = null; await loadInteraction({ x: near.x, y: near.y }); }, 'secondary small'));
+      list.append(item);
+    }
+    host.append(paragraph('Fixtures near your resident', 'eyebrow'), list);
+  }
+  host.append(paragraph('The aim line names the tile you are facing; Enter, Space or I use the fixture you have read. Nothing in this panel needs a mouse.', 'privacy'));
+}
+function interactionCard() {
+  const node = card('Interact here', 'DOORS · CROPS · BENCHES · STATIONS · AMBASSADOR DESKS'); node.id = 'interaction-panel'; node.tabIndex = -1;
+  const host = element('div', null, 'interaction-body'); host.id = 'interaction-body';
+  node.append(host); interactionBody(host); return node;
 }
 function renderResidentInspection(){
  const parent=$('#resident-inspection');if(!parent)return;parent.replaceChildren();const resident=state.inspectedResident;if(!resident)return;

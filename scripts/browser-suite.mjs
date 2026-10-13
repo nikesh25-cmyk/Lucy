@@ -112,6 +112,11 @@ export const SCENARIOS = Object.freeze([
   { id: 'resident-run-resume-refusal', title: 'An interrupted resident run and the bounded resume refusal', regression: 'queue review correction 4' },
   { id: 'shared-presence-two-clients', title: 'Two browser clients see each other move and build over the event channel', regression: null },
   { id: 'subscription-entitlement-and-revocation', title: 'A private world and a revoked session both lose their live feed', regression: null },
+  { id: 'interaction-hint-and-distance', title: 'The interaction hint, its one-tile requirement and an out-of-range refusal', regression: null },
+  { id: 'interaction-saved-world-changes', title: 'A planted crop patch and a bench posture survive a reload', regression: null },
+  { id: 'interaction-door-and-crafting', title: 'A doorway travels to another world and a crafting station crafts once per click', regression: null },
+  { id: 'interaction-ambassador-desk', title: 'A country ambassador desk answers through the existing conversation action', regression: null },
+  { id: 'interaction-state-refusals', title: 'Paused, revoked, wrong-owner and observer refusals keep the server authoritative', regression: null },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -411,16 +416,16 @@ function storage(page) {
   }));
 }
 
-async function inPage(page, path, { method = 'POST', body } = {}) {
-  return page.evaluate(async ([target, verb, payload]) => {
+async function inPage(page, path, { method = 'POST', body, headers = {} } = {}) {
+  return page.evaluate(async ([target, verb, payload, extra]) => {
     const response = await fetch(`/api/v1${target}`, {
       method: verb,
       credentials: 'same-origin',
-      headers: payload === undefined ? {} : { 'Content-Type': 'application/json' },
+      headers: { ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }), ...extra },
       body: payload === undefined ? undefined : JSON.stringify(payload),
     });
     return { status: response.status, body: await response.json().catch(() => null) };
-  }, [path, method, body]);
+  }, [path, method, body, headers]);
 }
 
 /** Opens a disclosure if it is closed, so a restored draft that already opened it is not toggled shut. */
@@ -1974,6 +1979,439 @@ define('subscription-entitlement-and-revocation', async () => {
   });
 
   return 'a private world and a revoked session both ended the live feed for a client that lost its right to it';
+});
+
+// ---------------------------------------------------------------------------------------------
+// Scenarios 17–21 — direct, purposeful world interaction
+//
+// Every scenario here drives the real interaction panel in a real browser: it types or picks a tile,
+// reads what the server says the tile offers, uses the action control, and then reads the server's own
+// records to confirm the change. The panel is only a reader and a sender; the fixture, the distance
+// requirement, the refusal and the saved effect all come from the server.
+// ---------------------------------------------------------------------------------------------
+
+/** One interaction panel form: the action control, not the tile reader. */
+const interactionActionForm = (page) => page.locator('#interaction-panel form.interaction-form');
+const interactionReadForm = (page) => page.locator('#interaction-panel form').filter({ has: page.getByRole('button', { name: 'Read this tile', exact: true }) });
+
+/** Reads one tile through the panel's typed coordinates — the keyboard and text equivalent. */
+async function readInteractionTile(page, x, y) {
+  const form = interactionReadForm(page);
+  await form.locator('[aria-label="Tile X"]').fill(String(x));
+  await form.locator('[aria-label="Tile Y"]').fill(String(y));
+  await form.getByRole('button', { name: 'Read this tile', exact: true }).click();
+  return waitForCondition(async () => {
+    const text = (await page.locator('#interaction-hint').textContent().catch(() => ''))?.trim() || '';
+    return text.includes(`${x}, ${y}`) ? text : null;
+  }, `the interaction panel to read tile ${x}, ${y}`);
+}
+
+/** Walks the resident to a tile with the documented typed walk form, and waits for the stored step. */
+async function walkResidentTo(page, agentId, x, y) {
+  const form = page.locator('#view .walk-to-tile form');
+  await form.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+  await form.locator('[aria-label="Tile X"]').fill(String(x));
+  await form.locator('[aria-label="Tile Y"]').fill(String(y));
+  await form.getByRole('button', { name: 'Walk to tile', exact: true }).click();
+  // One grid step at a time, and each step re-reads the voxel snapshot, so a long walk is slow.
+  return waitForCondition(async () => {
+    const position = row('SELECT x,y,world_id FROM agents WHERE id=?', agentId);
+    return position && position.x === x && position.y === y ? position : null;
+  }, `the resident to walk to ${x}, ${y}`, { timeout: 180_000 });
+}
+
+/** One documented travel route, waiting out the server's own 120 ms movement throttle. */
+async function travelTo(ticket, agentId, worldId) {
+  let last = null;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const response = await api(ticket, 'POST', `/agents/${agentId}/travel`, { world_id: worldId });
+    if (response.status === 200) return response.body;
+    last = `HTTP ${response.status} ${response.raw}`;
+    if (response.status !== 429) break;
+    await sleep(250);
+  }
+  throw new BrowserSuiteFailure(`fixture travel to ${worldId} was refused`, { expected: 'HTTP 200', actual: last });
+}
+
+/**
+ * Places a resident on one tile with a fixture write. This is scenario setup only — the walk, the
+ * travel and every action afterwards are real server actions — so a forty-step walk across the
+ * Commons does not stand between the scenario and the interaction it is testing.
+ */
+function placeResident(agentId, worldId, x, y) {
+  write('UPDATE agents SET world_id=?,x=?,y=? WHERE id=?', worldId, x, y, agentId);
+}
+
+/** Returns a resident to the Commons arrival through the documented travel route (home, then commons). */
+async function sendToCommons(ticket, agentId) {
+  const world = () => row('SELECT world_id FROM agents WHERE id=?', agentId).world_id;
+  if (world() !== `home:${agentId}` && world() !== 'commons') await travelTo(ticket, agentId, `home:${agentId}`);
+  if (world() !== 'commons') await travelTo(ticket, agentId, 'commons');
+}
+
+define('interaction-hint-and-distance', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const wanderer = fixtures().characters.wanderer;
+
+  await step('the panel names the fixture beside the resident, the interaction and the requirement', async () => {
+    await sendToCommons(fixtures().admin, wanderer.id);
+    await openApp(page, ACTORS.admin);
+    await openWorldAs(page, wanderer.id);
+    const hint = await readInteractionTile(page, 11, 6);
+    expect(/Door at 11, 6/.test(hint), 'the hint must name the fixture and its tile', { actual: hint });
+    expect(/Enter Meeting Hall/.test(hint), 'the hint must name the available interaction', { actual: hint });
+    expect(/Manhattan distance 1/.test(hint), 'the hint must state the distance requirement', { actual: hint });
+    expect(/1 tile away, so you can use it now/.test(hint), 'the hint must state the measured distance', { actual: hint });
+    const panel = await page.locator('#interaction-panel').textContent();
+    expect(/Available now/.test(panel), 'the panel must name the next usable step', { actual: panel?.replace(/\s+/g, ' ').slice(0, 300) });
+    expect(/Door · Meeting Hall/.test(panel), 'the panel must head the fixture it read', { actual: panel?.slice(0, 120) });
+    state.notes.push(`interaction hint: ${hint.slice(0, 170)}`);
+    return hint.slice(0, 150);
+  });
+
+  await step('a fixture out of reach is refused with its own status and the way to approach', async () => {
+    const hint = await readInteractionTile(page, 35, 24);
+    expect(/Door at 35, 24/.test(hint), 'the hint must still name the fixture it read', { actual: hint });
+    const panel = await page.locator('#interaction-panel').textContent();
+    expect(/out of reach/.test(panel), 'the panel must report the distance as out of reach', { actual: panel?.replace(/\s+/g, ' ').slice(0, 300) });
+    expect(/Step onto or beside 35, 24/.test(panel), 'the next step must explain how to approach', { actual: panel?.replace(/\s+/g, ' ').slice(0, 300) });
+    const before = row('SELECT world_id,x,y FROM agents WHERE id=?', wanderer.id);
+    // The interface sends the intent and the server refuses it: the status is the server's own.
+    const refused = await inPage(page, '/interact', { body: { agent_id: wanderer.id, x: 35, y: 24, action: 'travel' }, headers: { 'Idempotency-Key': 'browser-interaction-far-door' } });
+    expect(refused.status === 409, 'an out-of-range interaction must fail with its own status', { expected: 'HTTP 409', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    expect(/43 tiles away/.test(refused.body?.error || ''), 'the refusal must state the measured distance', { actual: describe(refused.body?.error) });
+    expect(/Step onto or beside 35, 24/.test(refused.body?.next_step || ''), 'the refusal must state the next usable step', { actual: describe(refused.body?.next_step) });
+    const after = row('SELECT world_id,x,y FROM agents WHERE id=?', wanderer.id);
+    expect(after.world_id === before.world_id && after.x === before.x && after.y === before.y, 'a refused interaction must not move the resident', { expected: describe(before), actual: describe(after) });
+    // The same refusal reaches the interface itself: the action control is a real request, not a
+    // disabled button, so the user reads the server's own answer and how to satisfy it.
+    await interactionActionForm(page).getByRole('button', { name: /^Enter The Makers/ }).click();
+    const surfaced = await waitForCondition(async () => {
+      const text = (await page.locator('#interaction-hint').textContent().catch(() => ''))?.trim() || '';
+      return /Step onto or beside 35, 24/.test(text) ? text : null;
+    }, 'the interface to show the server’s refusal and the way to approach');
+    expect(/43 tiles away/.test(surfaced), 'the interface must repeat the server’s own refusal', { actual: surfaced });
+    expect(row('SELECT world_id FROM agents WHERE id=?', wanderer.id).world_id === 'commons', 'the refused click must leave the resident where it stood', { actual: describe(row('SELECT world_id FROM agents WHERE id=?', wanderer.id)) });
+    return `409 ${refused.body.error} · the panel then showed “${surfaced.slice(0, 120)}…”`;
+  });
+  return 'the hint named the fixture, the interaction and the one-tile requirement, and an out-of-range click failed with the server’s own status and next step';
+});
+
+define('interaction-saved-world-changes', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const pathfinder = fixtures().characters.pathfinder;
+  const garden = `home:${pathfinder.id}`;
+
+  await step('the resident goes home, places a crop patch and plants on it from the panel', async () => {
+    await openApp(page, ACTORS.admin);
+    await openWorldAs(page, pathfinder.id);
+    await page.locator('#view').getByRole('button', { name: 'Go home', exact: true }).first().click();
+    await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', pathfinder.id).world_id === garden ? garden : null, 'the resident to arrive in its own garden');
+    await page.locator('#view').getByRole('button', { name: 'Start building', exact: true }).click();
+    // The palette is its own control beside the coordinate form, so both halves are addressed here.
+    const build = page.locator('#view form').filter({ has: page.getByRole('button', { name: 'Apply at tile', exact: true }) });
+    await page.locator('#view select[name="kind"]').selectOption('farm');
+    await build.locator('[aria-label="Tile X"]').fill('8');
+    await build.locator('[aria-label="Tile Y"]').fill('7');
+    await build.getByRole('button', { name: 'Apply at tile', exact: true }).click();
+    const placed = await waitForCondition(async () => row('SELECT type FROM world_objects WHERE world_id=? AND x=8 AND y=7', garden), 'the crop patch to be saved in the garden');
+    expect(placed.type === 'farm', 'the saved object must be the chosen crop patch', { expected: 'farm', actual: describe(placed.type) });
+    // The resident stands two tiles from the patch, so the panel says so and offers the approach.
+    const outOfReach = await readInteractionTile(page, 8, 7);
+    expect(/Crop patch at 8, 7/.test(outOfReach), 'the hint must name the crop patch', { actual: outOfReach });
+    expect(/you are 2 tiles away/.test(outOfReach), 'the hint must state the measured distance', { actual: outOfReach });
+    await page.locator('#interaction-panel').getByRole('button', { name: 'Approach the crop patch', exact: true }).click();
+    await waitForCondition(async () => { const position = row('SELECT x,y FROM agents WHERE id=?', pathfinder.id); return position.x === 7 && position.y === 7 ? position : null; }, 'the resident to walk beside the crop patch');
+    const hint = await readInteractionTile(page, 8, 7);
+    expect(/you are 1 tile away, so you can use it now/.test(hint), 'the approach must satisfy the requirement', { actual: hint });
+    expect(/Plant a crop/.test(hint), 'the hint must name the available interaction for an empty patch', { actual: hint });
+    await interactionActionForm(page).locator('select[name="garden_action"]').selectOption('plant:herbs');
+    await interactionActionForm(page).getByRole('button', { name: /^Plant a crop\b/ }).click();
+    const crop = await waitForCondition(async () => row('SELECT kind,planted_at,tended_at,harvested_at FROM journey_crops WHERE agent_id=? AND x=8 AND y=7', pathfinder.id), 'the planting to be stored');
+    expect(crop.kind === 'herbs' && crop.harvested_at === null, 'the stored crop must be the planted herbs, still growing', { actual: describe(crop) });
+    state.fixtures.planted = crop;
+    return `journey_crops row for ${pathfinder.id} at 8,7 (${crop.kind}), planted through the panel`;
+  });
+
+  await step('the planting survives a reload and the panel then describes the growing crop', async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await openWorldAs(page, pathfinder.id);
+    const crop = row('SELECT kind,planted_at,tended_at,harvested_at FROM journey_crops WHERE agent_id=? AND x=8 AND y=7', pathfinder.id);
+    expect(crop && crop.kind === 'herbs' && crop.planted_at === state.fixtures.planted.planted_at, 'the same planting must be stored after the reload', { expected: describe(state.fixtures.planted), actual: describe(crop) });
+    const hint = await readInteractionTile(page, 8, 7);
+    expect(/Tend the crop/.test(hint), 'the hint must describe the growing crop now', { actual: hint });
+    await interactionActionForm(page).getByRole('button', { name: /^Tend the crop\b/ }).dblclick();
+    const tended = await waitForCondition(async () => { const current = row('SELECT tended_at FROM journey_crops WHERE agent_id=? AND x=8 AND y=7', pathfinder.id); return current.tended_at !== null ? current : null; }, 'the tend to be stored');
+    expect(tended.tended_at >= crop.planted_at, 'a tend must be recorded on the stored crop', { actual: describe(tended) });
+    expect(count('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=?', pathfinder.id) === 1, 'a rapid double click must leave exactly one crop row', { actual: count('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=?', pathfinder.id) });
+    expect(row('SELECT harvested_at FROM journey_crops WHERE agent_id=? AND x=8 AND y=7', pathfinder.id).harvested_at === null, 'a double click must not also harvest the crop', { actual: 'the crop was harvested' });
+    return 'the crop survived the reload, the panel offered tend, and a double click added no second record';
+  });
+
+  await step('a bench in the same garden sits the resident, and the posture survives a reload', async () => {
+    await page.locator('#view').getByRole('button', { name: 'Start building', exact: true }).click();
+    const build = page.locator('#view form').filter({ has: page.getByRole('button', { name: 'Apply at tile', exact: true }) });
+    await page.locator('#view select[name="kind"]').selectOption('bench');
+    await build.locator('[aria-label="Tile X"]').fill('10');
+    await build.locator('[aria-label="Tile Y"]').fill('8');
+    await build.getByRole('button', { name: 'Apply at tile', exact: true }).click();
+    const placed = await waitForCondition(async () => row('SELECT type FROM world_objects WHERE world_id=? AND x=10 AND y=8', garden), 'the bench to be saved in the garden');
+    expect(placed.type === 'bench', 'the saved object must be the bench', { expected: 'bench', actual: describe(placed.type) });
+    await walkResidentTo(page, pathfinder.id, 9, 8);
+    const hint = await readInteractionTile(page, 10, 8);
+    expect(/Bench at 10, 8/.test(hint) && /Sit on the bench/.test(hint), 'the hint must name the bench and the interaction', { actual: hint });
+    expect(/Manhattan distance 1/.test(hint), 'the hint must state the distance requirement for a bench', { actual: hint });
+    await interactionActionForm(page).getByRole('button', { name: /^Sit on the bench\b/ }).click();
+    const sat = await waitForCondition(async () => row('SELECT posture FROM agents WHERE id=?', pathfinder.id).posture === 'sitting' ? 'sitting' : null, 'the posture to be stored', { timeout: 30_000 });
+    expect(sat === 'sitting', 'the server must store the sitting posture', { actual: describe(sat) });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await openWorldAs(page, pathfinder.id);
+    expect(row('SELECT posture FROM agents WHERE id=?', pathfinder.id).posture === 'sitting', 'the posture must survive the reload', { actual: describe(row('SELECT posture FROM agents WHERE id=?', pathfinder.id)) });
+    return 'a bench interaction stored agents.posture=sitting, and the reload did not undo it';
+  });
+  return 'a planted crop and a bench posture were both saved by server actions and both survived a reload';
+});
+
+define('interaction-door-and-crafting', async () => {
+  const owner = await actor('owner');
+  const page = owner.page;
+  const steward = fixtures().characters.steward;
+
+  await step('a doorway travels the resident into the Meeting Hall and the new world survives a reload', async () => {
+    await sendToCommons(fixtures().owner, steward.id);
+    await openApp(page, ACTORS.owner);
+    await openWorldAs(page, steward.id);
+    const hint = await readInteractionTile(page, 11, 6);
+    expect(/you are 1 tile away, so you can use it now/.test(hint), 'the doorway beside the arrival must be in reach', { actual: hint });
+    await interactionActionForm(page).getByRole('button', { name: /^Enter Meeting Hall\b/ }).click();
+    const arrived = await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', steward.id).world_id === 'hall' ? 'hall' : null, 'the doorway to travel');
+    expect(arrived === 'hall', 'the stored world must be the one behind the doorway', { actual: describe(arrived) });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await openWorldAs(page, steward.id);
+    expect(row('SELECT world_id FROM agents WHERE id=?', steward.id).world_id === 'hall', 'the new world must survive a reload', { actual: describe(row('SELECT world_id FROM agents WHERE id=?', steward.id)) });
+    await waitForText(page, 'Meeting Hall');
+    return 'the resident travelled through a doorway and the reload showed the same world';
+  });
+
+  await step('the resident returns through the hall doorway and enters the Makers’ Workshop through its door', async () => {
+    const back = await readInteractionTile(page, 10, 11);
+    expect(/Return to the Commons/.test(back), 'the hall exit must read as its own interaction', { actual: back });
+    await interactionActionForm(page).getByRole('button', { name: /^Return to the Commons\b/ }).click();
+    await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', steward.id).world_id === 'commons' ? 'commons' : null, 'the resident to return to the Commons');
+    const commons = row('SELECT x,y FROM agents WHERE id=?', steward.id);
+    expect(commons.x === 11 && commons.y === 6, 'the return must arrive at the Commons doorway it came through', { expected: '11,6', actual: describe(commons) });
+    // The resident is placed beside the workshop doorway with a fixture write: the doorway is forty
+    // tiles from the arrival, and the walk is not what this step tests. The door itself, the travel
+    // and everything after it are the interface and the server.
+    placeResident(steward.id, 'commons', 34, 24);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await openWorldAs(page, steward.id);
+    const hint = await readInteractionTile(page, 35, 24);
+    expect(/Door at 35, 24/.test(hint) && /The Makers’ Workshop/.test(hint), 'the workshop doorway must be the fixture on that tile', { actual: hint });
+    expect(/1 tile away, so you can use it now/.test(hint), 'standing beside the doorway must satisfy the requirement', { actual: hint });
+    await interactionActionForm(page).getByRole('button', { name: /^Enter The Makers’ Workshop\b/ }).click();
+    const arrived = await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', steward.id).world_id === 'workshop' ? 'workshop' : null, 'the workshop doorway to travel');
+    expect(arrived === 'workshop', 'the resident must arrive in the Makers’ Workshop', { actual: describe(arrived) });
+    return 'the panel read the workshop doorway, the door travelled, and the resident stands in the crafting world';
+  });
+
+  await step('a crafting station crafts exactly once for one double click', async () => {
+    placeResident(steward.id, 'workshop', 13, 10);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await openWorldAs(page, steward.id);
+    expect(row('SELECT x,y FROM agents WHERE id=?', steward.id).x === 13, 'the resident must stand beside the crafting station', { actual: describe(row('SELECT x,y FROM agents WHERE id=?', steward.id)) });
+    // The grown resources a real garden would have produced, granted as scenario setup. The craft
+    // itself is the shipped action and every assertion below reads its real effect.
+    for (const [kind, quantity] of [['herbs', 4], ['fiber', 2]]) {
+      write('INSERT INTO journey_inventory(agent_id,kind,quantity) VALUES(?,?,?) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=excluded.quantity', steward.id, kind, quantity);
+    }
+    const hint = await readInteractionTile(page, 13, 11);
+    expect(/Crafting station at 13, 11/.test(hint), 'the hint must name the crafting station', { actual: hint });
+    expect(/Craft a keepsake/.test(hint), 'the hint must name the available interaction', { actual: hint });
+    await interactionActionForm(page).locator('select[name="recipe_id"]').selectOption('flower_crown');
+    await interactionActionForm(page).getByRole('button', { name: /^Craft a keepsake\b/ }).dblclick();
+    const recorded = await waitForCondition(async () => { const profile = row('SELECT crafts FROM journey_profiles WHERE agent_id=?', steward.id); return profile?.crafts >= 1 ? profile : null; }, 'the craft to be recorded');
+    expect(recorded.crafts === 1, 'one double click must craft exactly once', { expected: 'crafts=1', actual: `crafts=${recorded.crafts}` });
+    const shelf = Object.fromEntries(rows('SELECT kind,quantity FROM journey_inventory WHERE agent_id=?', steward.id).map((item) => [item.kind, item.quantity]));
+    expect(shelf.flower_crown === 1, 'exactly one keepsake must be on the shelf', { expected: 'flower_crown=1', actual: describe(shelf) });
+    expect(shelf.herbs === 2 && shelf.fiber === 1, 'one craft must debit one recipe, not two', { expected: 'herbs=2 fiber=1', actual: describe(shelf) });
+    return `one craft recorded (crafts=${recorded.crafts}) and the shelf holds ${describe(shelf)}`;
+  });
+  return 'a doorway changed the stored world and a double click at a crafting station produced exactly one keepsake';
+});
+
+define('interaction-ambassador-desk', async () => {
+  const owner = await actor('owner');
+  const page = owner.page;
+  const walker = fixtures().characters.walker;
+
+  await step('the resident enters a country venue and walks to the ambassador’s stand', async () => {
+    await sendToCommons(fixtures().owner, walker.id);
+    await openApp(page, ACTORS.owner);
+    await openTab(page, 'Open world');
+    await page.locator('#view select[name="agent"]').selectOption(walker.id);
+    await settle(page);
+    await openTab(page, 'Regions & ambassadors');
+    await waitForText(page, 'COUNTRY PROFILES', { scope: '#view' }).catch(() => {});
+    await page.locator('#view').getByRole('button', { name: 'Enter with my resident', exact: true }).first().click();
+    const arrived = await waitForCondition(async () => {
+      const world = row('SELECT world_id FROM agents WHERE id=?', walker.id).world_id;
+      return /^country:/.test(world) ? world : null;
+    }, 'the resident to enter a country venue');
+    expect(/^country:/.test(arrived), 'the resident must be inside a generated country venue', { actual: describe(arrived) });
+    const stand = row('SELECT x,y FROM npc_ambassadors WHERE world_id=?', arrived);
+    await walkResidentTo(page, walker.id, stand.x, stand.y - 1);
+    state.fixtures.stand = { world: arrived, ...stand };
+    return `the resident stands beside the ambassador at ${stand.x}, ${stand.y - 1} in ${arrived}`;
+  });
+
+  await step('the panel names the desk, and Enter focuses the question rather than guessing one', async () => {
+    const { world, x, y } = state.fixtures.stand;
+    const hint = await readInteractionTile(page, x, y);
+    expect(/Country ambassador desk at/.test(hint), 'the hint must name the desk as the fixture', { actual: hint });
+    expect(/Talk to /.test(hint), 'the hint must name the available interaction', { actual: hint });
+    expect(/ambassador’s stand/.test(hint) && /Manhattan distance 1/.test(hint), 'the hint must state the requirement', { actual: hint });
+    await page.locator('#interaction-panel').scrollIntoViewIfNeeded();
+    await page.keyboard.press('Enter');
+    const focused = await waitForCondition(async () => {
+      const name = await page.evaluate(() => document.activeElement?.name || null);
+      return name === 'question' ? name : null;
+    }, 'the interaction key to move focus to the question field');
+    expect(focused === 'question', 'the keyboard equivalent must reach the typed question', { actual: describe(focused) });
+    expect(row('SELECT world_id FROM agents WHERE id=?', walker.id).world_id === world, 'reading a desk must never move the resident', { actual: describe(row('SELECT world_id FROM agents WHERE id=?', walker.id)) });
+    return 'the desk hint named the fixture, the interaction and the requirement';
+  });
+
+  await step('the question is stored as a private conversation turn through the desk', async () => {
+    const before = count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', state.fixtures.owner.id);
+    const form = interactionActionForm(page);
+    await form.locator('[name="question"]').fill('Which registered sources should we read first?');
+    await form.getByRole('button', { name: /^Talk to / }).click();
+    const stored = await waitForCondition(async () => row('SELECT account_id,ambassador_id,question FROM ambassador_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 1', state.fixtures.owner.id), 'the conversation turn to be stored');
+    expect(count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', state.fixtures.owner.id) === before + 1, 'the desk must store exactly one turn', { expected: `${before + 1} turns`, actual: count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', state.fixtures.owner.id) });
+    expect(/^amb-/.test(stored.ambassador_id), 'the stored turn must name the ambassador', { actual: describe(stored.ambassador_id) });
+    expect(stored.account_id === state.fixtures.owner.id, 'the turn must belong to the signed-in operator', { actual: describe(stored.account_id) });
+    expect(count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', state.fixtures.stranger.id) === 0, 'another operator must hold no turn with this ambassador', { actual: 'a stranger turn appeared' });
+    // The desk keeps its own rule for a rapid second question: sent straight from the page, without
+    // the interface's own click coalescing, the world refuses it and stores nothing.
+    const rapid = await inPage(page, '/interact', { body: { agent_id: walker.id, x: stored.ambassador_id ? state.fixtures.stand.x : 0, y: state.fixtures.stand.y, action: 'talk', question: 'And a second question straight away?' }, headers: { 'Idempotency-Key': 'browser-interaction-rapid-turn' } });
+    expect(rapid.status === 429, 'a rapid second question must be refused by the desk’s own rule', { expected: 'HTTP 429', actual: `HTTP ${rapid.status} ${describe(rapid.body)}` });
+    expect(/Wait a moment/.test(rapid.body?.next_step || ''), 'the refusal must say what to do next', { actual: describe(rapid.body?.next_step) });
+    expect(count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', state.fixtures.owner.id) === before + 1, 'the refused second question must store nothing', { expected: `${before + 1} turns`, actual: count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', state.fixtures.owner.id) });
+    return `one stored turn for ${stored.ambassador_id}; a rapid second question answered ${rapid.status}`;
+  });
+  return 'a country ambassador desk answered through the existing conversation action and stored exactly one private turn';
+});
+
+define('interaction-state-refusals', async () => {
+  const admin = await actor('admin');
+  const owner = await actor('owner');
+  const stranger = await actor('stranger');
+  const wanderer = fixtures().characters.wanderer;
+  const walker = fixtures().characters.walker;
+  const neighbour = fixtures().characters.neighbour;
+  const walkerGarden = `home:${walker.id}`;
+
+  await step('a paused resident is refused with its state named, and resumed afterwards', async () => {
+    await sendToCommons(fixtures().admin, wanderer.id);
+    await openApp(admin.page, ACTORS.admin);
+    await openWorldAs(admin.page, wanderer.id);
+    await readInteractionTile(admin.page, 11, 6);
+    await apiExpect(fixtures().admin, 'POST', '/agents/control', { agent_id: wanderer.id, status: 'paused' });
+    const refused = await inPage(admin.page, '/interact', { body: { agent_id: wanderer.id, x: 11, y: 6, action: 'travel' }, headers: { 'Idempotency-Key': 'browser-interaction-paused' } });
+    expect(refused.status === 403, 'a paused resident must be refused', { expected: 'HTTP 403', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    expect(/is paused/.test(refused.body?.error || ''), 'the refusal must name the state', { actual: describe(refused.body?.error) });
+    expect(/Resume .* in My characters/.test(refused.body?.next_step || ''), 'the refusal must say what to do next', { actual: describe(refused.body?.next_step) });
+    expect(row('SELECT world_id FROM agents WHERE id=?', wanderer.id).world_id === 'commons', 'a paused resident must not travel', { actual: describe(row('SELECT world_id FROM agents WHERE id=?', wanderer.id)) });
+    await apiExpect(fixtures().admin, 'POST', '/agents/control', { agent_id: wanderer.id, status: 'active' });
+    expect(row('SELECT status FROM agents WHERE id=?', wanderer.id).status === 'active', 'the resident must be runnable again', { actual: 'still paused' });
+    return `403 ${refused.body.error}`;
+  });
+
+  await step('a revoked resident is refused with its state named', async () => {
+    await apiExpect(fixtures().admin, 'POST', '/agents/control', { agent_id: wanderer.id, status: 'revoked' });
+    const refused = await inPage(admin.page, '/interact', { body: { agent_id: wanderer.id, x: 11, y: 6, action: 'travel' }, headers: { 'Idempotency-Key': 'browser-interaction-revoked' } });
+    expect(refused.status === 403, 'a revoked resident must be refused', { expected: 'HTTP 403', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    expect(/revoked/.test(refused.body?.error || ''), 'the refusal must name the state', { actual: describe(refused.body?.error) });
+    expect(/must resume this resident/.test(refused.body?.next_step || ''), 'the refusal must say what the operator can do', { actual: describe(refused.body?.next_step) });
+    expect(row('SELECT world_id FROM agents WHERE id=?', wanderer.id).world_id === 'commons', 'a revoked resident must not travel', { actual: describe(row('SELECT world_id FROM agents WHERE id=?', wanderer.id)) });
+    await apiExpect(fixtures().admin, 'POST', '/agents/control', { agent_id: wanderer.id, status: 'active' });
+    return `403 ${refused.body.error}`;
+  });
+
+  await step('a crop patch in another operator’s garden names its owner and writes nothing', async () => {
+    await sendToCommons(fixtures().owner, walker.id);
+    // The garden is public for this step, whichever scenario ran before it.
+    await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'public' });
+    await openApp(owner.page, ACTORS.owner);
+    await openWorldAs(owner.page, walker.id);
+    await owner.page.locator('#view').getByRole('button', { name: 'Go home', exact: true }).first().click();
+    await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', walker.id).world_id === walkerGarden ? walkerGarden : null, 'the owner’s resident to arrive in its garden');
+    await owner.page.locator('#view').getByRole('button', { name: 'Start building', exact: true }).click();
+    const build = owner.page.locator('#view form').filter({ has: owner.page.getByRole('button', { name: 'Apply at tile', exact: true }) });
+    await owner.page.locator('#view select[name="kind"]').selectOption('farm');
+    await build.locator('[aria-label="Tile X"]').fill('8');
+    await build.locator('[aria-label="Tile Y"]').fill('7');
+    await build.getByRole('button', { name: 'Apply at tile', exact: true }).click();
+    await waitForCondition(async () => row('SELECT type FROM world_objects WHERE world_id=? AND x=8 AND y=7', walkerGarden), 'the owner’s crop patch to be saved');
+
+    // The other operator visits the public garden and stands on the patch. A fresh operator session is
+    // used here: an earlier scenario deliberately revokes the stranger’s stored session credential.
+    const strangerTicket = await apiOperatorSession(ACTORS.stranger.email, ACTORS.stranger.password);
+    await travelTo(strangerTicket, neighbour.id, walkerGarden);
+    await openApp(stranger.page, ACTORS.stranger);
+    await openWorldAs(stranger.page, neighbour.id);
+    await walkResidentTo(stranger.page, neighbour.id, 8, 8);
+    const hint = await readInteractionTile(stranger.page, 8, 7);
+    expect(/Crop patch at 8, 7/.test(hint), 'the visitor must be able to read the fixture', { actual: hint });
+    expect(/Walker’s garden/.test(hint), 'the panel must name the garden’s owner before the click', { actual: hint });
+    const before = count('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=?', neighbour.id);
+    await interactionActionForm(stranger.page).locator('select[name="garden_action"]').selectOption('plant:herbs');
+    await interactionActionForm(stranger.page).getByRole('button', { name: /^Plant a crop\b/ }).click();
+    const surfaced = await waitForCondition(async () => {
+      const text = (await stranger.page.locator('#interaction-hint').textContent().catch(() => ''))?.trim() || '';
+      return /own garden/.test(text) ? text : null;
+    }, 'the wrong-owner refusal to reach the interface');
+    expect(/Walker’s garden/.test(surfaced), 'the refusal must name who owns the patch', { actual: surfaced });
+    expect(count('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=?', neighbour.id) === before, 'a refused planting must write nothing', { expected: `${before} crops`, actual: count('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=?', neighbour.id) });
+    const refused = await inPage(stranger.page, '/interact', { body: { agent_id: neighbour.id, x: 8, y: 7, action: 'garden', garden_action: 'plant', kind: 'herbs' }, headers: { 'Idempotency-Key': 'browser-interaction-foreign-crop' } });
+    expect(refused.status === 403, 'the wrong owner must be refused with its own status', { expected: 'HTTP 403', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    return `403 ${refused.body.error} · ${refused.body.next_step?.slice(0, 90)}…`;
+  });
+
+  await step('an observer of another world can inspect a fixture and never act as its resident', async () => {
+    const entered = count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered'");
+    await openApp(stranger.page, ACTORS.stranger);
+    await openTab(stranger.page, 'Explore worlds');
+    const card = stranger.page.locator('#view .world-directory-card', { hasText: 'Meeting Hall' }).first();
+    await card.waitFor({ state: 'visible' });
+    await card.getByRole('button', { name: 'Look around', exact: true }).click();
+    await settle(stranger.page);
+    await waitForCondition(async () => (await stranger.page.evaluate(() => window.__nemoworld?.worldId?.() || null)) === 'hall' ? 'hall' : null, 'the visitor to look at the Meeting Hall');
+    const hint = await readInteractionTile(stranger.page, 10, 11);
+    expect(/Door at 10, 11|Return to the Commons/.test(hint), 'a visitor must be able to read the fixture', { actual: hint });
+    expect(/inspection only/i.test(hint), 'a visitor must be told it is inspection only', { actual: hint });
+    const panel = await stranger.page.locator('#interaction-panel').textContent();
+    expect(/Inspection only/.test(panel), 'the panel must refuse to act for the visitor', { actual: panel?.replace(/\s+/g, ' ').slice(0, 240) });
+    expect(/a visitor may examine this fixture, never act for another resident/.test(panel), 'the panel must say what a visitor may do', { actual: panel?.replace(/\s+/g, ' ').slice(0, 300) });
+    const action = interactionActionForm(stranger.page).getByRole('button', { name: /^Return to the Commons\b/ });
+    expect(await action.isDisabled(), 'a visitor must not be offered an action control for another resident', { actual: 'the control was enabled for a visitor' });
+    expect(row('SELECT world_id FROM agents WHERE id=?', neighbour.id).world_id === walkerGarden, 'looking around must not move the visitor’s own resident', { actual: describe(row('SELECT world_id FROM agents WHERE id=?', neighbour.id)) });
+    // Acting as another operator’s resident is not a refusal of scope but of ownership.
+    const impersonated = await inPage(stranger.page, '/interact', { body: { agent_id: walker.id, x: 10, y: 11, action: 'travel' }, headers: { 'Idempotency-Key': 'browser-interaction-impersonate' } });
+    expect(impersonated.status === 404, 'another operator’s resident must not be usable', { expected: 'HTTP 404', actual: `HTTP ${impersonated.status} ${describe(impersonated.body)}` });
+    expect(row('SELECT world_id FROM agents WHERE id=?', walker.id).world_id === walkerGarden, 'the impersonation attempt must change nothing', { actual: describe(row('SELECT world_id FROM agents WHERE id=?', walker.id)) });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered'") === entered, 'inspection must write nothing at all', { expected: `${entered} entries`, actual: count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered'") });
+    return `inspection only for the visitor, and acting as ${walker.name} answered ${impersonated.status}`;
+  });
+  return 'paused, revoked, wrong-owner and observer refusals all kept the server authoritative and left the world unchanged';
 });
 
 // The suite runs only when it is the entry point, so a unit test can import the pure helpers above
