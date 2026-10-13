@@ -375,6 +375,34 @@ test('meeting requires this characterâ€™s own saved message to another operatorâ
   assert.equal(met(alice), true);
 });
 
+test('a saved first-play step survives better than a bounded page can drop', async (t) => {
+  const f = await fixture(t);
+  const alice = f.agent('alice'), bob = f.agent('bob');
+  const account = f.actor('alice').account.id;
+  // A real meeting: this character's own private message to another operator's nearby AI resident.
+  f.platform.run("UPDATE agents SET world_id='commons',x=?,y=? WHERE id=?", position(f, alice.id).x + 2, position(f, alice.id).y, bob.id);
+  f.advance();
+  f.tx('message', f.actor('alice'), { agent_id: alice.id, channel: 'private', recipient_id: bob.id, text: 'Hello, Bob AI resident.' });
+  assert.equal(step(guide(f, 'alice', alice), 'meet').done, true);
+
+  // Push unrelated saved rows past every bounded read, so the credited message cannot be inside the
+  // page the world feed or the conversation view returns.
+  for (let index = 0; index < 260; index++) {
+    f.platform.run("INSERT INTO messages(id,agent_id,account_id,channel,recipients,text,status,created_at,world_id) VALUES(?,?,?,?,?,?,?,?,?)",
+      `pressure-${index}`, bob.id, f.actor('bob').account.id, 'public', '[]', `Unrelated broadcast ${index}.`, 'visible', new Date(f.platform.clock() + index).toISOString(), 'commons');
+  }
+  assert.equal(count(f, 'SELECT COUNT(*) AS n FROM messages'), 261);
+  assert.ok(!f.platform.world(f.actor('alice'), { world_id: 'commons' }).messages.some((message) => message.text === 'Hello, Bob AI resident.'),
+    'the credited message is now outside the bounded world feed');
+  assert.ok(!JSON.stringify(f.platform.history(f.actor('alice'))).includes('Hello, Bob AI resident.'),
+    'the credited message is now outside the bounded history page');
+
+  // The step still counts, because the guide asks the database for the fact itself rather than
+  // reading whichever rows happen to be on a page. Reading it again credits nothing new.
+  assert.equal(step(guide(f, 'alice', alice), 'meet').done, true);
+  assert.equal(count(f, "SELECT COUNT(*) AS n FROM audit WHERE actor=? AND event='firstplay.resident_met'", account), 1);
+});
+
 test('remote private chat stays private but only a nearby AI conversation proves a meeting', async (t) => {
   const f = await fixture(t);
   const alice = f.agent('alice'), bob = f.agent('bob');
