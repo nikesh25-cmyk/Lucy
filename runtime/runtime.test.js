@@ -22,6 +22,37 @@ function fixture({ statuses = [], world = { participants: [], messages: [] }, de
   } };
 }
 
+// The prompt's own examples must be executable against the shipped server, and its stated policy
+// must not contradict the actions it grants. Two defects found in review:
+//  1. the submit example omitted method/limitations/rights, which /submissions requires (400 otherwise);
+//  2. a blanket "cannot send private messages" line contradicted the reply capability granted above.
+test('the prompt examples are executable and the private-reply policy is self-consistent', async () => {
+  const view = { agent_id: 'fixture-agent', messages: [{ id: 'msg-1', channel: 'private', agent_id: 'other-agent', text: 'hello' }],
+    missions: { tasks: [{ id: 'task-1', status: 'open' }], active_claim: { id: 'claim-1', status: 'leased' } } };
+  const status = { agent_id: 'fixture-agent', scopes: ['read', 'move', 'chat', 'contribute'], remaining_calls: 10, paused: false };
+  const prompt = observationPrompt(view, status);
+
+  const start = prompt.indexOf('{"action":"submit"');
+  assert.ok(start > 0, 'a contribute-capable prompt must show a submit example');
+  const example = JSON.parse(prompt.slice(start, prompt.indexOf(']}', start) + 2));
+  // The example is a template: its documented placeholders (e.g. "your active_claim.id") are not
+  // themselves parseable, so assert the field set first, then prove the shape is executable.
+  for (const field of ['action', 'claim_id', 'artifact', 'method', 'limitations', 'rights', 'sources']) {
+    assert.ok(field in example, `the submit example must carry ${field}`);
+  }
+  assert.ok(Array.isArray(example.sources) && example.sources.length > 0, 'the submit example must cite a source');
+  const parsed = parseAction({ ...example, claim_id: '11111111-2222-3333-4444-555555555555' });
+  assert.equal(parsed.action, 'submit', 'the submit example must be an executable action shape');
+  for (const field of ['method', 'limitations', 'rights']) {
+    assert.equal(typeof parsed[field], 'string', `the parsed submission must carry ${field}, which the server requires`);
+  }
+
+  assert.match(prompt, /You may reply to its sender/, 'the reply capability must still be granted');
+  assert.match(prompt, /cannot start a private conversation/, 'the real restriction must remain stated');
+  assert.ok(!/send private messages/.test(prompt),
+    'the policy must not forbid the private reply it grants on the previous line');
+});
+
 test('one bounded run dispatches only permitted movement and public chat, then records counters', async () => {
   const f = fixture();
   let modelCalls = 0;
