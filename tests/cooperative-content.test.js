@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
 import {join} from 'node:path';
 import {fixture, realMission, evidence} from './helpers.js';
 import {Platform} from '../src/platform.js';
-import {SEED_QUESTS, verifyQuestReceipts, verifyQuestStructure} from '../src/quests.js';
+import {SEED_QUESTS, receiptProof, verifyQuestReceipts, verifyQuestStructure} from '../src/quests.js';
 import {SAMPLE_GUILD_PLANS, GUILD_PROJECT_POLICY, verifyGuildRecords} from '../src/guilds.js';
 import {backupDatabase, validateDatabase} from '../src/recovery.js';
 import {getWorldDefinition, walkable, frontierGates} from '../world.js';
@@ -202,6 +203,44 @@ test('the commons-trail evidence chain ends only in an independent human accepta
  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,1);
  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,1);
  assert.equal(f.platform.coins(f.actor('alice'),{agent_id:agent.id}).balance,10);
+});
+
+test('commons-trail accepts only a review of the claim credited by its first step',async t=>{
+ const f=await fixture(t),agent=f.agent('alice');
+ f.tx('questJoin',f.actor('alice'),{agent_id:agent.id,chain_id:'commons-trail'},'join-bound-trail');
+ const first=realMission(f),claimA=f.tx('claim',f.actor('alice'),{task_id:first.task.id,agent_id:agent.id},'claim-question-a');
+ f.platform.quests(f.actor('alice'),{agent_id:agent.id});
+ const credited=f.platform.get("SELECT * FROM calling_receipts WHERE agent_id=? AND objective_id='quest:commons-trail.claim-a-task'",agent.id);
+ assert.equal(credited.source_id,claimA.id);
+ assert.equal(f.platform.get('SELECT task_version FROM claims WHERE id=?',claimA.id).task_version,
+  f.platform.get('SELECT version FROM tasks WHERE id=?',first.task.id).version);
+
+ // The first answer is rejected by an independent reviewer, freeing the one active-claim slot.
+ // The stored quest receipt still names that first claim and its specific task version.
+ const submittedA=f.tx('submit',f.actor('alice'),evidence(claimA),'submit-question-a');
+ f.tx('review',f.actor('reviewer'),{submission_id:submittedA.id,decision:'rejected',reason:'This answer does not meet the task rubric.'});
+ // A different task receives a valid independent review. It is real work, but it is not the
+ // scoped question this chain recorded in its first step.
+ const second=realMission(f),claimB=f.tx('claim',f.actor('alice'),{task_id:second.task.id,agent_id:agent.id},'claim-question-b');
+ const submittedB=f.tx('submit',f.actor('alice'),evidence(claimB),'submit-question-b');
+ const reviewB=f.tx('review',f.actor('reviewer'),{submission_id:submittedB.id,decision:'accepted',reason:'Valid independent review for the other question.'});
+ assert.equal(stepsBySlug(f,agent,'commons-trail')[1].state,'available');
+ assert.equal(questReceipts(f),1,'the other question cannot write the chain acceptance receipt');
+ assert.equal(verifyQuestReceipts(f.platform.db),true);
+ assert.equal(verifyQuestStructure(f.platform.db),true);
+
+ // The older receipt trigger validates the accepted review as a real source but has no chain
+ // relationship column. The structural audit must detect a recomputed, otherwise valid receipt
+ // that tries to bind that unrelated review to this chain.
+ const event=f.platform.get("SELECT * FROM calling_source_events WHERE agent_id=? AND source_kind='research_accepted' AND source_id=?",agent.id,reviewB.id);
+ assert.ok(event);
+ const forged={id:randomUUID(),agent_id:agent.id,account_id:credited.account_id,calling_id:credited.calling_id,
+  objective_id:'quest:commons-trail.submit-and-accept',source_kind:'research_accepted',source_id:reviewB.id,
+  source_at:event.occurred_at,selected_at:credited.selected_at,earned_day:event.occurred_at.slice(0,10),
+  points:5,created_at:new Date(f.clock()).toISOString()};
+ forged.proof_hash=receiptProof(forged);
+ f.platform.run('INSERT INTO calling_receipts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',...Object.values(forged));
+ assert.equal(verifyQuestReceipts(f.platform.db),false,'integrity audit rejects the unrelated claim even with a recomputed receipt hash');
 });
 
 test('the commons-cartography guild plan keeps verification independent, pledges uncounted, and coins out of the guild flow',async t=>{

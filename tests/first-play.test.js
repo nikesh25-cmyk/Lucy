@@ -700,6 +700,50 @@ test('account-specific restoration read stays visible past the global newest-eig
   assert.equal(count(f, 'SELECT COUNT(*) AS n FROM coin_rewards'), 0);
 });
 
+test('requested garden keeps its counted step after the same account works in nine other gardens', async (t) => {
+  const f = await fixture(t);
+  const alice = f.agent('alice'), bob = f.agent('bob');
+  f.tx('callingSelect', f.actor('alice'), { agent_id: alice.id, calling_id: 'builder' });
+  f.tx('callingSelect', f.actor('bob'), { agent_id: bob.id, calling_id: 'builder' });
+  const original = openedGarden(f, 'alice', alice);
+  const originalGarden = `home:${alice.id}`;
+  visit(f, 'alice', alice, originalGarden);
+  pledge(f, 'alice', alice, original);
+  visit(f, 'bob', bob, originalGarden);
+  pledge(f, 'bob', bob, original);
+  place(f, 'alice', alice, original, RESTORATION_PLACEMENT_STEP.slots[0]);
+  place(f, 'bob', bob, original, RESTORATION_PLACEMENT_STEP.slots[1]);
+  assert.equal(step(guide(f, 'alice', alice), 'restore').done, true);
+
+  // These are real newer counted placements by Alice, not merely events opened elsewhere.
+  for (const owner of ['reviewer', 'moderator']) {
+    for (let i = 0; i < (owner === 'reviewer' ? 5 : 4); i += 1) {
+      const keeper = f.agent(owner, `${owner} keeper ${i}`);
+      const newer = openedGarden(f, owner, keeper);
+      const garden = `home:${keeper.id}`;
+      visit(f, 'alice', alice, garden);
+      pledge(f, 'alice', alice, newer);
+      place(f, 'alice', alice, newer, RESTORATION_PLACEMENT_STEP.slots[0]);
+      assert.equal(count(f, 'SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden), 1);
+    }
+  }
+  assert.equal(count(f, "SELECT COUNT(DISTINCT substr(record_id,1,instr(record_id,'|')-1)) AS n FROM audit WHERE actor=? AND event='restoration.placed'", f.actor('alice').account.id), 10);
+
+  const requested = f.platform.restorationForAccount(f.actor('alice'), alice.id, originalGarden);
+  assert.equal(requested.id, original.id);
+  const view = f.platform.firstPlay(f.actor('alice'), { agent_id: alice.id, world_id: originalGarden });
+  assert.equal(view.restoration.event_id, original.id);
+  assert.equal(step(view, 'restore').done, true);
+  assert.equal(count(f, 'SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', originalGarden), 2);
+
+  f.platform.close();
+  const reopened = new Platform(f.database, f.clock);
+  t.after(() => reopened.close());
+  const returning = reopened.firstPlay(reopened.authenticate(f.credentials.alice.token), { agent_id: alice.id, world_id: originalGarden });
+  assert.equal(returning.restoration.event_id, original.id);
+  assert.equal(step(returning, 'restore').done, true);
+});
+
 test('account-specific restoration read persists across server restart', async (t) => {
   const f = await fixture(t);
   const alice = f.agent('alice'), bob = f.agent('bob');

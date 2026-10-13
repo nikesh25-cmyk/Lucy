@@ -629,13 +629,19 @@ export const communityMethods = {
     const scope = typeof worldId === 'string' && worldId ? worldId : null;
     // Counted work is recorded in the audit trail: an object placed on a planned tile, or an
     // explicit contribution of a sowing, craft or circle membership. Pledges are not counted work.
-    const eventIds = this.all(`SELECT DISTINCT substr(record_id, 1, instr(record_id, '|') - 1) AS event_id
-      FROM audit
-      WHERE actor=? AND event IN ('restoration.placed','restoration.contributed') AND substr(record_id, 1, ?)=?
-      ORDER BY seq DESC LIMIT ?`, actor.account.id, RESTORATION_PREFIX.length, RESTORATION_PREFIX, limit).map((row) => row.event_id);
+    // Resolve and scope the event before LIMIT. Otherwise eight newer contributions in other
+    // gardens can evict the saved work in the garden the returning player explicitly requested.
+    const eventIds = this.all(`SELECT occurrence.id AS event_id
+      FROM audit work JOIN community_events occurrence
+        ON occurrence.id=substr(work.record_id,1,instr(work.record_id,'|')-1)
+      WHERE work.actor=? AND work.event IN ('restoration.placed','restoration.contributed')
+        AND substr(work.record_id,1,?)=? AND (? IS NULL OR occurrence.world_id=?)
+        AND occurrence.status IN ('scheduled','completed')
+      GROUP BY occurrence.id ORDER BY MAX(work.seq) DESC LIMIT ?`,
+      actor.account.id, RESTORATION_PREFIX.length, RESTORATION_PREFIX, scope, scope, limit).map((row) => row.event_id);
     for (const eventId of eventIds) {
       const event = this.restorationEventRecord(eventId);
-      if ((scope === null || event.world_id === scope) && this.restorationPhase(event) !== 'cancelled') return this.restorationEventView(event, agent.id);
+      return this.restorationEventView(event, agent.id);
     }
     return null;
   },
