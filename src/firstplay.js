@@ -367,10 +367,14 @@ export const firstPlayMethods = {
     const calling = viewer ? callingFor(this, viewer.id) : null;
     const purpose = viewer ? this.get('SELECT purpose FROM journey_profiles WHERE agent_id=?', viewer.id)?.purpose || '' : '';
 
-    // One shared restoration read, the same occurrence the shipped `restoration()` read picks.
+    // Prefer a bounded account-specific restoration where this viewer has saved counted work,
+    // so older contributions stay visible when many newer events arrive. Fall back to the global
+    // newest-eight list when there is no account work.
     const restorationInput = viewer ? { agent_id: viewer.id } : {};
     if (input.world_id) restorationInput.world_id = input.world_id;
-    const eventView = this.restoration(actor, restorationInput).event;
+    const eventView = viewer
+      ? this.restorationForAccount(actor, viewer.id) || this.restoration(actor, restorationInput).event
+      : this.restoration(actor, restorationInput).event;
     const operators = new Map();
     if (eventView?.participants.length) {
       const ids = eventView.participants.map((participant) => participant.agent_id);

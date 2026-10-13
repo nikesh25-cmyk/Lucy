@@ -50,7 +50,7 @@ export const normalizeSources = (sources = []) => {
 // in the garden its own operator opened.
 // ---------------------------------------------------------------------------------------------
 const RESTORATION_PREFIX = 'restoration:';
-const RESTORATION_LIST = 8;
+export const RESTORATION_LIST = 8;
 const RESTORATION_PARTICIPANTS = 24;
 // The same one-tile adjacency the shipped direct interaction requires: a planned object is placed
 // from beside its tile, never from across the garden.
@@ -613,6 +613,26 @@ export const communityMethods = {
       capacity: event.capacity, participants_count: participants.length, participants,
       progress, artifact: progress.artifact, viewer, policy: RESTORATION_POLICY, server_time: this.clock(),
     };
+  },
+  /**
+   * Bounded account-specific restoration lookup. Returns the most recent event where this account
+   * has saved counted restoration work, so a returning player still sees their contribution even
+   * when many newer events have been opened. No census is re-run: the event view is built with the
+   * existing helpers once an event is selected.
+   */
+  restorationForAccount(actor, agentId, limit = RESTORATION_LIST) {
+    const agent = this.ownedAgent(actor, agentId);
+    // Counted work is recorded in the audit trail: an object placed on a planned tile, or an
+    // explicit contribution of a sowing, craft or circle membership. Pledges are not counted work.
+    const eventIds = this.all(`SELECT DISTINCT substr(record_id, 1, instr(record_id, '|') - 1) AS event_id
+      FROM audit
+      WHERE actor=? AND event IN ('restoration.placed','restoration.contributed') AND substr(record_id, 1, ?)=?
+      ORDER BY seq DESC LIMIT ?`, actor.account.id, RESTORATION_PREFIX.length, RESTORATION_PREFIX, limit).map((row) => row.event_id);
+    for (const eventId of eventIds) {
+      const event = this.restorationEventRecord(eventId);
+      if (this.restorationPhase(event) !== 'cancelled') return this.restorationEventView(event, agent.id);
+    }
+    return null;
   },
   /** The one read: the authored plan, the visible occurrences, and one occurrence in full. */
   restoration(actor, input = {}) {
