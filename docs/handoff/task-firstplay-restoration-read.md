@@ -4,7 +4,7 @@
 
 **Branch:** `task-firstplay-restoration-read`  
 **Base:** `46fb135ab147cc2b09c048809036303aec88b09e` (`integration/nemoworld-completed`)  
-**Tip:** `23032dd77e0de018eb247bae3d10350d5ab09c21`  
+**Tip:** `6d536234c57b6b7a8ee99740a7019f5c442f5c2d`  
 **Changed files:** `src/firstplay.js`, `src/community.js`, `tests/first-play.test.js`
 
 ---
@@ -80,7 +80,7 @@ This is an environment limitation, not a code regression.
 The patch is the commit on `task-firstplay-restoration-read`:
 
 ```
-23032dd77e0de018eb247bae3d10350d5ab09c21 Add bounded account-specific restoration read for first-play guide
+6d536234c57b6b7a8ee99740a7019f5c442f5c2d Add bounded account-specific restoration read for first-play guide
 ```
 
 Summary:
