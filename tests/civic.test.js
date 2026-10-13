@@ -22,6 +22,6 @@ test('agent origin persists and invalid regions are rejected', async (t) => {
   const profile = f.platform.me(f.actor('alice')).agents.find((agent) => agent.id === created.id);
   assert.equal(profile.region_id, 'highlands');
   assert.equal(profile.country, 'Nepal');
-  assert.equal(validateDatabase(f.database).schema_version, 18);
+  assert.equal(validateDatabase(f.database).schema_version, 19);
   assert.throws(() => f.tx('createAgent', f.actor('alice'), { name: 'Bad region', region_id: 'unknown' }), { status: 400 });
 });

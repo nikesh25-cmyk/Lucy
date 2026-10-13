@@ -33,7 +33,55 @@ export const LAND_SCHEMA = `
   CREATE TRIGGER IF NOT EXISTS frontier_sectors_finite_insert BEFORE INSERT ON frontier_sectors WHEN NEW.sector_x NOT BETWEEN -8 AND 7 OR NEW.sector_y NOT BETWEEN -8 AND 7 OR NEW.world_id!=printf('frontier:%d:%d',NEW.sector_x,NEW.sector_y) BEGIN SELECT RAISE(ABORT,'Outside the finite land boundary'); END;
   CREATE TRIGGER IF NOT EXISTS frontier_sectors_identity_immutable BEFORE UPDATE OF world_id,sector_x,sector_y ON frontier_sectors WHEN NEW.world_id IS NOT OLD.world_id OR NEW.sector_x IS NOT OLD.sector_x OR NEW.sector_y IS NOT OLD.sector_y BEGIN SELECT RAISE(ABORT,'Frontier area identity is immutable'); END;
 `;
-export const LAND_BLOCK_GUARDS = `CREATE TRIGGER IF NOT EXISTS frontier_blocks_plot_insert BEFORE INSERT ON frontier_blocks WHEN NEW.plot_id IS NULL OR NOT EXISTS(SELECT 1 FROM land_parcels p JOIN land_stewardships s ON s.plot_id=p.id JOIN agents a ON a.id=NEW.creator_agent_id JOIN accounts o ON o.id=NEW.creator_account_id WHERE p.id=NEW.plot_id AND p.reserved=0 AND p.world_id=NEW.world_id AND NEW.x>=p.x AND NEW.x<p.x+6 AND NEW.y>=p.y AND NEW.y<p.y+6 AND s.account_id=NEW.creator_account_id AND a.operator_id=NEW.creator_account_id AND a.status='active' AND o.status='active') BEGIN SELECT RAISE(ABORT,'Building requires operator land stewardship'); END;`;
+// ---- Plot collaboration grants (schema 19) ----------------------------------------------------
+//
+// A plot steward's human operator may invite one specific operator — or one specific resident of
+// that operator — to build on that one plot, for a stated purpose, a stated duration and a
+// deliberately narrow scope. The grant is a plain storage row; the trigger below is its second
+// enforcement point, so a writer that bypassed the build method still cannot place a block outside
+// a live grant. Two facts are read live on every write from both points: the grant's own status and
+// expiry, and that its steward still stewards the plot.
+//
+// What "narrow scope" means, concretely and identically in the route, in this trigger and in
+// recovery: **one plot**, at most **four** sealed block types, at most **two** layers, an explicit
+// action subset (place, and optionally remove) and a hard cap of at most **thirty-six** standing
+// blocks written under the grant. A scope cannot be widened by a runtime credential, and nothing
+// here can enlarge the land inventory, assign a stewardship or mint a coin.
+export const GRANT_SCOPE_LIMITS = Object.freeze({ block_types: 4, layers: 2, max_blocks: 36, duration_minutes_min: 15, duration_minutes_max: 20160, grants_per_plot_per_day: 8 });
+export const PLOT_GRANT_POLICY = Object.freeze({
+  creator: 'Only the plot’s signed-in human steward creates or revokes a grant. A runtime credential, a guest and an agent cannot create, extend or re-grant one.',
+  scope: `One plot, at most ${GRANT_SCOPE_LIMITS.block_types} block types, at most ${GRANT_SCOPE_LIMITS.layers} layers, an explicit action subset and at most ${GRANT_SCOPE_LIMITS.max_blocks} standing blocks.`,
+  duration: 'Fifteen minutes to fourteen days. The grant expires by itself; every build re-reads the grant from storage, so a cached credential cannot outlive a revocation or an expiry.',
+  budget: 'A guest build spends the guest operator’s own daily frontier actions and its own 200 ms interval. The steward’s daily action budget is not spent, because the action ledger attributes every write to the account that made it.',
+  land: 'A grant conveys no stewardship, no land, no coin and no authority to grant anything onward. It never changes land_stewardships, land_parcels or the 16,384-slot registry.',
+});
+// The storage-layer twin of the build method's own grant check.
+const GRANT_CONSTRUCTION = `EXISTS(SELECT 1 FROM land_parcels p JOIN plot_grants g ON g.plot_id=p.id JOIN land_stewardships s ON s.plot_id=p.id AND s.account_id=g.steward_account_id JOIN agents a ON a.id=NEW.creator_agent_id JOIN accounts o ON o.id=NEW.creator_account_id JOIN accounts sa ON sa.id=g.steward_account_id WHERE g.id=NEW.grant_id AND p.id=NEW.plot_id AND p.reserved=0 AND p.world_id=NEW.world_id AND NEW.x>=p.x AND NEW.x<p.x+6 AND NEW.y>=p.y AND NEW.y<p.y+6 AND g.guest_account_id=NEW.creator_account_id AND (g.guest_agent_id='' OR g.guest_agent_id=NEW.creator_agent_id) AND g.status='active' AND g.revoked_at IS NULL AND g.expires_at>NEW.created_at AND a.operator_id=NEW.creator_account_id AND a.status='active' AND o.status='active' AND sa.status='active' AND NEW.type IN (SELECT value FROM json_each(g.scope,'$.block_types')) AND NEW.z IN (SELECT value FROM json_each(g.scope,'$.layers')) AND EXISTS(SELECT 1 FROM json_each(g.scope,'$.actions') WHERE value='place') AND (SELECT COUNT(*) FROM frontier_blocks b WHERE b.grant_id=g.id)<json_extract(g.scope,'$.max_blocks'))`;
+const STEWARD_CONSTRUCTION = `EXISTS(SELECT 1 FROM land_parcels p JOIN land_stewardships s ON s.plot_id=p.id JOIN agents a ON a.id=NEW.creator_agent_id JOIN accounts o ON o.id=NEW.creator_account_id WHERE p.id=NEW.plot_id AND p.reserved=0 AND p.world_id=NEW.world_id AND NEW.x>=p.x AND NEW.x<p.x+6 AND NEW.y>=p.y AND NEW.y<p.y+6 AND s.account_id=NEW.creator_account_id AND a.operator_id=NEW.creator_account_id AND a.status='active' AND o.status='active')`;
+export const LAND_BLOCK_GUARDS = `CREATE TRIGGER IF NOT EXISTS frontier_blocks_plot_insert BEFORE INSERT ON frontier_blocks WHEN NEW.plot_id IS NULL OR (NOT ${STEWARD_CONSTRUCTION} AND NOT ${GRANT_CONSTRUCTION}) BEGIN SELECT RAISE(ABORT,'Building requires operator land stewardship or a live plot collaboration grant'); END;`;
+
+// The grant tables. Every invariant an operator relies on is re-checked at storage level: a grant
+// names a real unreserved plot with a current steward, a different guest operator, a purposeful
+// text, a narrow scope and a future expiry; its events are append-only history; and a stewardship
+// that disappears revokes the grants it created instead of leaving them usable.
+const grantScopeIsNarrow = (scope) => `json_valid(${scope}) AND json_type(${scope})='object' AND json_type(${scope},'$.block_types')='array' AND json_array_length(json_extract(${scope},'$.block_types')) BETWEEN 1 AND ${GRANT_SCOPE_LIMITS.block_types} AND json_type(${scope},'$.layers')='array' AND json_array_length(json_extract(${scope},'$.layers')) BETWEEN 1 AND ${GRANT_SCOPE_LIMITS.layers} AND json_type(${scope},'$.actions')='array' AND json_array_length(json_extract(${scope},'$.actions')) BETWEEN 1 AND 2 AND json_type(${scope},'$.max_blocks')='integer' AND json_extract(${scope},'$.max_blocks') BETWEEN 1 AND ${GRANT_SCOPE_LIMITS.max_blocks} AND NOT EXISTS(SELECT 1 FROM json_each(${scope},'$.block_types') WHERE value NOT IN ('stone','wood','glass','brick','sand','grass','path')) AND NOT EXISTS(SELECT 1 FROM json_each(${scope},'$.layers') WHERE value NOT BETWEEN 0 AND 7) AND NOT EXISTS(SELECT 1 FROM json_each(${scope},'$.actions') WHERE value NOT IN ('place','remove')) AND EXISTS(SELECT 1 FROM json_each(${scope},'$.actions') WHERE value='place')`;
+export const PLOT_GRANT_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS plot_grants(id TEXT PRIMARY KEY,plot_id TEXT NOT NULL REFERENCES land_parcels(id),steward_account_id TEXT NOT NULL REFERENCES accounts(id),guest_account_id TEXT NOT NULL REFERENCES accounts(id),guest_agent_id TEXT NOT NULL DEFAULT '',purpose TEXT NOT NULL CHECK(length(trim(purpose)) BETWEEN 1 AND 120),scope TEXT NOT NULL CHECK(json_valid(scope) AND json_type(scope)='object'),expires_at TEXT NOT NULL,created_at TEXT NOT NULL,revoked_at TEXT,revoked_by TEXT REFERENCES accounts(id),uses INTEGER NOT NULL DEFAULT 0 CHECK(uses>=0),last_used_at TEXT NOT NULL DEFAULT '',status TEXT NOT NULL CHECK(status IN ('active','revoked')));
+  CREATE INDEX IF NOT EXISTS plot_grants_plot ON plot_grants(plot_id,status);
+  CREATE INDEX IF NOT EXISTS plot_grants_guest ON plot_grants(guest_account_id,status);
+  CREATE UNIQUE INDEX IF NOT EXISTS one_active_plot_grant ON plot_grants(plot_id,guest_account_id,guest_agent_id) WHERE status='active';
+  CREATE TABLE IF NOT EXISTS plot_grant_events(id TEXT PRIMARY KEY,grant_id TEXT NOT NULL REFERENCES plot_grants(id),plot_id TEXT NOT NULL REFERENCES land_parcels(id),account_id TEXT NOT NULL REFERENCES accounts(id),action TEXT NOT NULL CHECK(action IN ('create','revoke')),detail TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL);
+  CREATE INDEX IF NOT EXISTS plot_grant_events_grant ON plot_grant_events(grant_id,created_at);
+  CREATE TRIGGER IF NOT EXISTS plot_grants_validate_insert BEFORE INSERT ON plot_grants WHEN NEW.guest_account_id=NEW.steward_account_id OR NEW.status!='active' OR NEW.revoked_at IS NOT NULL OR NEW.revoked_by IS NOT NULL OR NEW.uses!=0 OR NEW.last_used_at!='' OR length(NEW.expires_at)!=24 OR length(NEW.created_at)!=24 OR NEW.expires_at<=NEW.created_at OR NEW.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ',NEW.created_at,'+' || ${GRANT_SCOPE_LIMITS.duration_minutes_max} || ' minutes') OR NOT (${grantScopeIsNarrow('NEW.scope')}) OR (NEW.guest_agent_id!='' AND NOT EXISTS(SELECT 1 FROM agents a WHERE a.id=NEW.guest_agent_id AND a.operator_id=NEW.guest_account_id)) OR NOT EXISTS(SELECT 1 FROM land_parcels p JOIN land_stewardships s ON s.plot_id=p.id WHERE p.id=NEW.plot_id AND p.reserved=0 AND s.account_id=NEW.steward_account_id) OR NOT EXISTS(SELECT 1 FROM accounts a WHERE a.id=NEW.guest_account_id AND a.status='active') BEGIN SELECT RAISE(ABORT,'Invalid plot collaboration grant'); END;
+  CREATE TRIGGER IF NOT EXISTS plot_grants_lifecycle BEFORE UPDATE ON plot_grants WHEN NEW.id IS NOT OLD.id OR NEW.plot_id IS NOT OLD.plot_id OR NEW.steward_account_id IS NOT OLD.steward_account_id OR NEW.guest_account_id IS NOT OLD.guest_account_id OR NEW.guest_agent_id IS NOT OLD.guest_agent_id OR NEW.purpose IS NOT OLD.purpose OR NEW.scope IS NOT OLD.scope OR NEW.expires_at IS NOT OLD.expires_at OR NEW.created_at IS NOT OLD.created_at OR NEW.uses<OLD.uses OR NEW.status NOT IN ('active','revoked') OR OLD.status!='active' OR (NEW.status='active' AND (NEW.revoked_at IS NOT NULL OR NEW.revoked_by IS NOT NULL)) OR (NEW.status='revoked' AND (NEW.revoked_at IS NULL OR NEW.revoked_by IS NULL)) BEGIN SELECT RAISE(ABORT,'A plot collaboration grant can only be revoked or counted, never rewritten'); END;
+  CREATE TRIGGER IF NOT EXISTS plot_grant_events_append_only BEFORE UPDATE ON plot_grant_events BEGIN SELECT RAISE(ABORT,'Plot collaboration history is append-only'); END;
+  CREATE TRIGGER IF NOT EXISTS plot_grant_events_no_delete BEFORE DELETE ON plot_grant_events BEGIN SELECT RAISE(ABORT,'Plot collaboration history is append-only'); END;
+  CREATE TRIGGER IF NOT EXISTS plot_grants_no_delete BEFORE DELETE ON plot_grants BEGIN SELECT RAISE(ABORT,'A plot collaboration grant is recorded history: revoke it instead of deleting it'); END;
+  CREATE TRIGGER IF NOT EXISTS land_stewardships_revoke_grants AFTER DELETE ON land_stewardships BEGIN
+    INSERT INTO plot_grant_events(id,grant_id,plot_id,account_id,action,detail,created_at) SELECT lower(hex(randomblob(16))),g.id,g.plot_id,OLD.account_id,'revoke','Revoked because the plot’s stewardship was removed.',strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM plot_grants g WHERE g.plot_id=OLD.plot_id AND g.status='active';
+    UPDATE plot_grants SET status='revoked',revoked_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),revoked_by=OLD.account_id WHERE plot_id=OLD.plot_id AND status='active';
+  END;
+`;
 
 // ---------------------------------------------------------------------------
 // Construction blueprints
@@ -148,6 +196,175 @@ function blockBudget(platform, actor, blocks) {
   const today = actionsToday(platform, actor), remaining = Math.max(0, FRONTIER_LIMITS.actions_per_operator_day - today);
   if (blocks > remaining) fail(429, `This operator has ${remaining} of the ${FRONTIER_LIMITS.actions_per_operator_day} daily frontier actions left; this structure needs ${blocks}.`);
 }
+// ---- Plot collaboration helpers ----------------------------------------------------------------
+// The live grant for this exact (plot, operator, resident) is read from storage on every request.
+// Nothing about it is cached on the credential or on the actor, so a revoked, expired or orphaned
+// grant refuses the very next build from the same session.
+//
+// Budget attribution, stated once and tested: a guest build is charged to the **guest operator**,
+// because `frontier_actions.account_id` records the account that actually made the write. The
+// steward's daily action budget and interval are untouched by a guest, and `grant_id` on the block
+// keeps the two records honest.
+function liveGrant(platform, actor, agent, plotIdentifier) {
+  const at = timestamp(platform);
+  const rows = platform.all("SELECT g.*,s.account_id AS current_steward,sa.status AS steward_status FROM plot_grants g LEFT JOIN land_stewardships s ON s.plot_id=g.plot_id LEFT JOIN accounts sa ON sa.id=g.steward_account_id WHERE g.plot_id=? AND g.guest_account_id=? AND (g.guest_agent_id='' OR g.guest_agent_id=?) AND g.status='active' ORDER BY g.expires_at DESC, g.id", plotIdentifier, actor.account.id, agent.id);
+  for (const row of rows) {
+    if (row.current_steward !== row.steward_account_id) continue;
+    if (row.steward_status !== 'active') continue;
+    if (!(row.expires_at > at)) continue;
+    let scope;
+    try { scope = JSON.parse(row.scope); } catch { continue; }
+    return { ...row, scope, used_blocks: platform.get('SELECT COUNT(*) AS n FROM frontier_blocks WHERE grant_id=?', row.id).n };
+  }
+  return null;
+}
+/** The one refusal a guest build gets when it leaves the granted scope. Null means allowed. */
+function grantRefusal(grant, request) {
+  const scope = grant.scope;
+  if (!scope.actions.includes(request.action)) return `This collaboration grant does not allow ${request.action === 'remove' ? 'removal' : 'placement'}.`;
+  if (!scope.block_types.includes(request.type)) return `The ${request.type} block is outside this collaboration grant.`;
+  if (!scope.layers.includes(request.z)) return `Layer ${request.z} is outside this collaboration grant.`;
+  if (request.action === 'place' && grant.used_blocks >= scope.max_blocks) return `This collaboration grant allows ${scope.max_blocks} standing blocks and they are all placed.`;
+  return null;
+}
+function requireGrantScope(grant, request) {
+  if (!grant) return;
+  const refusal = grantRefusal(grant, request);
+  if (refusal) fail(403, refusal);
+}
+const grantFields = ['plot_id', 'guest_agent_id', 'guest_account_id', 'purpose', 'duration_minutes', 'block_types', 'layers', 'actions', 'max_blocks', 'preview'];
+const GRANT_ACTIONS = Object.freeze(['place', 'remove']);
+/**
+ * Revoke the active grants of one plot (all of them when a stewardship is released, or one named
+ * grant on an explicit revocation). Each revocation is written once, with its own append-only event
+ * and an audit-chain entry, so the history of who held what, until when, is never rewritten.
+ */
+function revokePlotGrants(platform, plotIdentifier, actor, onlyId = null) {
+  const at = timestamp(platform);
+  const active = onlyId
+    ? platform.all("SELECT id FROM plot_grants WHERE plot_id=? AND id=? AND status='active'", plotIdentifier, onlyId)
+    : platform.all("SELECT id FROM plot_grants WHERE plot_id=? AND status='active'", plotIdentifier);
+  for (const grant of active) {
+    platform.run("UPDATE plot_grants SET status='revoked',revoked_at=?,revoked_by=? WHERE id=? AND status='active'", at, actor.account.id, grant.id);
+    platform.run("INSERT INTO plot_grant_events(id,grant_id,plot_id,account_id,action,detail,created_at) VALUES(?,?,?,?,?,?,?)", randomUUID(), grant.id, plotIdentifier, actor.account.id, 'revoke', onlyId ? 'Revoked by the plot’s steward.' : 'Revoked because the plot’s stewardship was released.', at);
+    platform.audit(actor.account.id, 'land.grant_revoked', `${plotIdentifier} ${grant.id}`);
+  }
+  return active.length;
+}
+/**
+ * The single definition of a narrow scope, used by the preview, the create, the storage trigger and
+ * recovery. Anything wider is refused rather than silently trimmed.
+ */
+export function grantScopeNarrow(scope) {
+  if (!scope || typeof scope !== 'object' || Array.isArray(scope)) return false;
+  const types = scope.block_types, layers = scope.layers, actions = scope.actions, maximum = scope.max_blocks;
+  return Array.isArray(types) && types.length >= 1 && types.length <= GRANT_SCOPE_LIMITS.block_types && new Set(types).size === types.length && types.every((type) => FRONTIER_PALETTE.includes(type))
+    && Array.isArray(layers) && layers.length >= 1 && layers.length <= GRANT_SCOPE_LIMITS.layers && new Set(layers).size === layers.length && layers.every((z) => Number.isInteger(z) && z >= 0 && z <= FRONTIER_LIMITS.maximum_z)
+    && Array.isArray(actions) && actions.length >= 1 && actions.length <= GRANT_ACTIONS.length && new Set(actions).size === actions.length && actions.every((action) => GRANT_ACTIONS.includes(action)) && actions.includes('place')
+    && Number.isInteger(maximum) && maximum >= 1 && maximum <= GRANT_SCOPE_LIMITS.max_blocks;
+}
+/** A stored scope, or null when it is not readable JSON. Recovery reports the invalid case itself. */
+export function grantScopeValue(row) {
+  try { return JSON.parse(row.scope); } catch { return null; }
+}
+function grantScope(input) {
+  const types = input?.block_types, layers = input?.layers, actions = input?.actions, maximum = input?.max_blocks;
+  if (!Array.isArray(types) || !types.length || types.length > GRANT_SCOPE_LIMITS.block_types || new Set(types).size !== types.length || types.some((type) => !FRONTIER_PALETTE.includes(type))) fail(400, `Choose one to ${GRANT_SCOPE_LIMITS.block_types} frontier block types for this grant.`);
+  if (!Array.isArray(layers) || !layers.length || layers.length > GRANT_SCOPE_LIMITS.layers || new Set(layers).size !== layers.length || layers.some((z) => !Number.isInteger(z) || z < 0 || z > FRONTIER_LIMITS.maximum_z)) fail(400, `Choose one or two block layers between 0 and ${FRONTIER_LIMITS.maximum_z}.`);
+  if (!Array.isArray(actions) || !actions.length || new Set(actions).size !== actions.length || actions.some((action) => !GRANT_ACTIONS.includes(action)) || !actions.includes('place')) fail(400, 'Choose placement, or placement and removal, as the actions this grant allows.');
+  if (!Number.isInteger(maximum) || maximum < 1 || maximum > GRANT_SCOPE_LIMITS.max_blocks) fail(400, `Choose a maximum of one to ${GRANT_SCOPE_LIMITS.max_blocks} standing blocks.`);
+  return { block_types: [...types].sort(), layers: [...layers].sort((left, right) => left - right), actions: GRANT_ACTIONS.filter((action) => actions.includes(action)), max_blocks: maximum };
+}
+/** Exactly one named guest: a specific operator, or a specific resident of that operator. */
+function grantGuest(platform, input) {
+  const agentId = typeof input?.guest_agent_id === 'string' ? input.guest_agent_id.trim() : '';
+  const accountId = typeof input?.guest_account_id === 'string' ? input.guest_account_id.trim() : '';
+  if (Boolean(agentId) === Boolean(accountId)) fail(400, 'Name exactly one guest resident or one guest operator.');
+  if (agentId) {
+    const agent = platform.get('SELECT id,operator_id,name,status FROM agents WHERE id=?', agentId);
+    if (!agent || agent.status === 'deleted') fail(404, 'Guest resident not found.');
+    return { account_id: agent.operator_id, agent_id: agent.id, name: agent.name, operator: platform.get('SELECT name FROM accounts WHERE id=?', agent.operator_id)?.name || 'Resident' };
+  }
+  const account = platform.get('SELECT id,name,status FROM accounts WHERE id=?', accountId);
+  if (!account) fail(404, 'Guest operator not found.');
+  return { account_id: account.id, agent_id: '', name: account.name, operator: account.name };
+}
+function grantDuration(input) {
+  const minutes = Number(input?.duration_minutes);
+  if (!Number.isInteger(minutes) || minutes < GRANT_SCOPE_LIMITS.duration_minutes_min || minutes > GRANT_SCOPE_LIMITS.duration_minutes_max) fail(400, 'Choose a duration between 15 minutes and 14 days.');
+  return minutes;
+}
+function grantBudget(platform, actor, plotIdentifier) {
+  const latest = platform.get('SELECT created_at FROM plot_grant_events WHERE account_id=? ORDER BY created_at DESC LIMIT 1', actor.account.id);
+  if (latest && platform.clock() - Date.parse(latest.created_at) < LAND_POLICY.action_interval_ms) fail(429, 'Allow a moment between collaboration changes.');
+  if (platform.get("SELECT COUNT(*) AS n FROM plot_grant_events WHERE plot_id=? AND action='create' AND created_at>=?", plotIdentifier, dayStart(platform)).n >= GRANT_SCOPE_LIMITS.grants_per_plot_per_day) fail(429, 'This plot has reached its daily collaboration grant limit.');
+}
+const grantPermissionText = (scope) => `May ${scope.actions.includes('remove') ? 'place and remove' : 'place'} ${scope.block_types.join(', ')} on ${scope.layers.length === 1 ? `layer ${scope.layers[0]}` : `layers ${scope.layers.join(' and ')}`}, up to ${scope.max_blocks} standing blocks.`;
+/** Every validation the preview and the create share. It reads storage and writes nothing. */
+function planGrant(platform, actor, input) {
+  const plot = plotId(input.plot_id);
+  const stewardship = platform.get('SELECT plot_id,account_id,purpose FROM land_stewardships WHERE plot_id=?', plot);
+  if (!stewardship || stewardship.account_id !== actor.account.id) fail(403, 'Only this plot’s signed-in human steward can grant building access to it.');
+  const purpose = landText(input.purpose, 'Purpose', LAND_POLICY.purpose_maximum_characters);
+  const minutes = grantDuration(input), scope = grantScope(input), guest = grantGuest(platform, input);
+  if (guest.account_id === actor.account.id) fail(400, 'Choose a different operator: a steward cannot grant to their own account.');
+  const guestAccount = platform.get('SELECT id,status FROM accounts WHERE id=?', guest.account_id);
+  if (!guestAccount || guestAccount.status !== 'active') fail(409, 'This operator account is not active, so it cannot be invited.');
+  if (guest.agent_id) {
+    const resident = platform.get('SELECT status FROM agents WHERE id=?', guest.agent_id);
+    if (!resident || resident.status === 'deleted') fail(409, 'This resident is unavailable, so it cannot be invited.');
+  }
+  const existing = platform.get("SELECT id,expires_at FROM plot_grants WHERE plot_id=? AND guest_account_id=? AND guest_agent_id=? AND status='active'", plot, guest.account_id, guest.agent_id);
+  const created = timestamp(platform), expires = new Date(platform.clock() + minutes * 60000).toISOString();
+  // A grant that has already expired is closed on the record and replaced, never silently extended;
+  // a live one must be revoked first.
+  if (existing && existing.expires_at > created) fail(409, 'This guest already holds a live grant on this plot. Revoke it before granting another.');
+  const row = platform.get(`${landRows} WHERE p.id=?`, plot);
+  return {
+    grant: {
+      id: null, plot_id: plot, plot_address: row ? describePlot(row, actor).address : plot,
+      plot_purpose: stewardship.purpose, purpose, duration_minutes: minutes, scope,
+      created_at: created, expires_at: expires, status: 'active', uses: 0, used_blocks: 0,
+      steward: { account_id: actor.account.id, name: actor.account.name },
+      guest: { account_id: guest.account_id, name: guest.name, operator: guest.operator, agent_id: guest.agent_id || null },
+      permissions: grantPermissionText(scope),
+    },
+    replaces: existing?.id || null,
+    writes: 0,
+  };
+}
+/** The operator-facing view of one grant row. Names, never contact details or credentials. */
+function grantView(row, at, usedBlocks = 0) {
+  let scope = null;
+  try { scope = JSON.parse(row.scope); } catch { scope = null; }
+  const status = row.status === 'revoked' ? 'revoked'
+    : row.expires_at <= at ? 'expired'
+    : row.current_steward !== row.steward_account_id ? 'stewardship_changed'
+    : row.steward_status !== 'active' ? 'steward_paused'
+    : 'active';
+  return {
+    id: row.id, plot_id: row.plot_id, purpose: row.purpose, scope, status,
+    created_at: row.created_at, expires_at: row.expires_at, revoked_at: row.revoked_at,
+    duration_minutes: Math.round((Date.parse(row.expires_at) - Date.parse(row.created_at)) / 60000),
+    uses: row.uses, used_blocks: usedBlocks, permissions: scope ? grantPermissionText(scope) : '',
+    steward_name: row.steward_name || 'Steward', guest_name: row.guest_agent_name || row.guest_name || 'Guest',
+    guest_agent_id: row.guest_agent_id || null, guest_agent_name: row.guest_agent_name || null,
+    live: status === 'active',
+  };
+}
+/** The bounded grant view carried in the authenticated world payload and on `GET /frontier/grants`. */
+function grantListing(platform, accountId) {
+  const at = timestamp(platform);
+  const select = `SELECT g.*,sa.name AS steward_name,ga.name AS guest_name,ra.name AS guest_agent_name,s.account_id AS current_steward,saccount.status AS steward_status,(SELECT COUNT(*) FROM frontier_blocks b WHERE b.grant_id=g.id) AS used_blocks FROM plot_grants g JOIN accounts sa ON sa.id=g.steward_account_id JOIN accounts ga ON ga.id=g.guest_account_id LEFT JOIN agents ra ON ra.id=g.guest_agent_id LEFT JOIN land_stewardships s ON s.plot_id=g.plot_id LEFT JOIN accounts saccount ON saccount.id=g.steward_account_id`;
+  const view = (row) => grantView(row, at, row.used_blocks);
+  return {
+    as_steward: platform.all(`${select} WHERE g.steward_account_id=? ORDER BY g.created_at DESC,g.id DESC LIMIT 20`, accountId).map(view),
+    as_guest: platform.all(`${select} WHERE g.guest_account_id=? ORDER BY g.created_at DESC,g.id DESC LIMIT 20`, accountId).map(view),
+    events: platform.all('SELECT e.id,e.grant_id,e.plot_id,e.action,e.detail,e.created_at FROM plot_grant_events e JOIN plot_grants g ON g.id=e.grant_id WHERE g.steward_account_id=? OR g.guest_account_id=? ORDER BY e.created_at DESC,e.id DESC LIMIT 50', accountId, accountId),
+  };
+}
+// Attribution, recorded once per authoritative write: the account in the ledger is always the
+// account that made the write. A guest build therefore spends the guest's own daily action budget.
 function recordAction(platform, actor, agent, worldId, action) {
   platform.run('INSERT INTO frontier_actions(id,account_id,agent_id,world_id,action,created_at) VALUES(?,?,?,?,?,?)', randomUUID(), actor.account.id, agent.id, worldId, action, timestamp(platform));
   platform.run('UPDATE agents SET last_seen=? WHERE id=?', platform.clock(), agent.id);
@@ -263,7 +480,10 @@ function blueprintPlan(platform, actor, agent, input) {
   const blockedGround = cells.filter((cell) => !walkable(cell, definition));
   if (blockedGround.length) reject(409, 'blocked-tile', `Clear the site first: ${blockedGround.length} of the blueprint’s cells are not walkable ground (${coordinateText(blockedGround)}).`);
   if (!plotId) reject(403, 'out_of_plot', 'The whole blueprint must sit inside one 6 × 6 land plot. Choose an anchor that keeps its footprint inside a single plot.');
-  else if (!isMine) reject(403, 'out_of_plot', stewardship ? 'Build inside your operator’s assigned land plot only.' : 'Build inside your operator’s assigned land plot. A signed-in human must first steward an available plot for a named purpose.');
+  else if (!isMine) {
+    const granted = liveGrant(platform, actor, agent, plotId);
+    reject(403, 'out_of_plot', granted ? 'Blueprints belong to the plot’s steward. A collaboration grant lets you place and remove single blocks inside its scope.' : stewardship ? 'Build inside your operator’s assigned land plot only.' : 'Build inside your operator’s assigned land plot. A signed-in human must first steward an available plot for a named purpose.');
+  }
   const far = cells.filter((cell) => distance(agent, cell) > FRONTIER_LIMITS.build_range);
   if (far.length) reject(409, 'out-of-range', `Walk closer: ${far.length} of the blueprint’s cells are further than ${FRONTIER_LIMITS.build_range} tiles away (${coordinateText(far)}).`);
   const unsupported = cells.filter((cell) => !FRONTIER_PALETTE.includes(cell.type) || cell.z < 0 || cell.z > FRONTIER_LIMITS.maximum_z || cell.type === 'path' && cell.z !== 0);
@@ -505,10 +725,68 @@ export const frontierMethods = {
     const { plot } = this.landPlot(actor, { plot_id: id });
     if (plot.block_count) fail(409, 'Remove the plot’s construction before releasing its stewardship.');
     landBudget(this, actor, false);
+    // A released plot cannot leave a guest holding access to land nobody stewards. The active grants
+    // are revoked explicitly here — with their own history and audit entry — and the storage trigger
+    // revokes any that a direct stewardship deletion (account removal) would otherwise leave behind.
+    revokePlotGrants(this, id, actor);
     this.run('DELETE FROM land_stewardships WHERE plot_id=?', id);
     this.run('INSERT INTO land_events VALUES(?,?,?,?,?,?,?)', randomUUID(), id, actor.account.id, 'release', stewardship.purpose, stewardship.description, timestamp(this));
     this.audit(actor.account.id, 'land.released', id);
     return { ...this.landPlot(actor, { plot_id: id }), released: true, mine: null };
+  },
+  /**
+   * The exact access about to be granted, before it exists: plot, purpose, guest, scope, duration
+   * and expiry, computed from storage. It writes nothing at all, and it is available only to the
+   * plot's own signed-in human steward — the same `landHuman` rule that owns every land decision.
+   */
+  plotGrantPreview(actor, input) {
+    landHuman(this, actor); strictLandInput(input, grantFields);
+    return planGrant(this, actor, input);
+  },
+  /** Create the grant. Human-controlled: a runtime credential is refused by `landHuman` here and by
+   *  the route's own runtime refusal, and the storage trigger refuses a wider or nameless grant. */
+  plotGrantCreate(actor, input) {
+    landHuman(this, actor); strictLandInput(input, grantFields);
+    const plan = planGrant(this, actor, input);
+    // The panel asks the same route to preview first: a preview is one read of storage and no write
+    // at all, so what the operator confirms is exactly what a create would record.
+    if (input.preview === true) return plan;
+    grantBudget(this, actor, plan.grant.plot_id);
+    const id = randomUUID(), created = plan.grant.created_at;
+    const detail = `${plan.grant.plot_id} · ${plan.grant.guest.name} · ${plan.grant.purpose}`.slice(0, 200);
+    atomic(this, () => {
+      if (plan.replaces) revokePlotGrants(this, plan.grant.plot_id, actor, plan.replaces);
+      this.run("INSERT INTO plot_grants(id,plot_id,steward_account_id,guest_account_id,guest_agent_id,purpose,scope,expires_at,created_at,revoked_at,revoked_by,uses,last_used_at,status) VALUES(?,?,?,?,?,?,?,?,?,NULL,NULL,0,'','active')", id, plan.grant.plot_id, actor.account.id, plan.grant.guest.account_id, plan.grant.guest.agent_id || '', plan.grant.purpose, JSON.stringify(plan.grant.scope), plan.grant.expires_at, created);
+      this.run("INSERT INTO plot_grant_events(id,grant_id,plot_id,account_id,action,detail,created_at) VALUES(?,?,?,?,?,?,?)", randomUUID(), id, plan.grant.plot_id, actor.account.id, 'create', detail, created);
+      this.audit(actor.account.id, 'land.grant_created', detail);
+    });
+    return { ...plan, grant: { ...plan.grant, id }, created: true, changed: true, writes: 1 };
+  },
+  /** Revoke it. Only the steward who created it, and only a signed-in human session. */
+  plotGrantRevoke(actor, input) {
+    landHuman(this, actor); strictLandInput(input, ['grant_id']);
+    const id = typeof input.grant_id === 'string' && input.grant_id.length <= 80 ? input.grant_id : fail(400, 'Choose the collaboration grant to revoke.');
+    const row = this.get('SELECT * FROM plot_grants WHERE id=?', id);
+    if (!row) fail(404, 'Collaboration grant not found.');
+    if (row.steward_account_id !== actor.account.id) fail(403, 'Only the steward who created this grant can revoke it.');
+    const listing = grantListing(this, actor.account.id).as_steward.find((grant) => grant.id === id);
+    if (row.status !== 'active') return { grant: listing, revoked: false, changed: false, writes: 0 };
+    grantBudget(this, actor, row.plot_id);
+    revokePlotGrants(this, row.plot_id, actor, id);
+    return { grant: { ...listing, status: 'revoked', live: false }, revoked: true, changed: true, writes: 1 };
+  },
+  /** The collaboration record for one operator: grants it steward, grants it holds, and their
+   *  append-only history. Human session only; nothing here is public. */
+  plotGrants(actor, input = {}) {
+    landHuman(this, actor);
+    const plot = input.plot_id ? plotId(input.plot_id) : this.get('SELECT plot_id FROM land_stewardships WHERE account_id=?', actor.account.id)?.plot_id || null;
+    const listing = grantListing(this, actor.account.id);
+    return {
+      ...listing,
+      plot_id: plot,
+      my_plot: plot ? this.landPlot(actor, { plot_id: plot }).plot : null,
+      policy: PLOT_GRANT_POLICY, limits: GRANT_SCOPE_LIMITS, palette: FRONTIER_PALETTE, actions: [...GRANT_ACTIONS],
+    };
   },
   frontierMap(actor, input = {}) {
     const offset = pageNumber(input.offset, 0, 1_000_000), limit = pageNumber(input.limit, 25, 50);
@@ -526,7 +804,8 @@ export const frontierMethods = {
     const blocks = this.all("SELECT b.id,b.x,b.y,b.z,b.type,b.plot_id,b.creator_agent_id,b.created_at,CASE WHEN a.status!='deleted' THEN a.name ELSE NULL END AS builder_name FROM frontier_blocks b LEFT JOIN agents a ON a.id=b.creator_agent_id WHERE b.world_id=? AND b.x>=? AND b.x<? AND b.y>=? AND b.y<? ORDER BY b.y,b.x,b.z LIMIT 2048", worldId, camera.x, camera.x + columns, camera.y, camera.y + rows);
     const parcels = this.all(`${landRows} WHERE p.world_id=? ORDER BY p.plot_y,p.plot_x`, worldId).map(row => describePlot(row, actor));
     const myRow = actor?.account ? this.get(`${landRows} WHERE s.account_id=?`, actor.account.id) : null;
-    return { blocks, block_window: { x: camera.x, y: camera.y, columns, rows }, frontier: { ...sector, legacy: !frontierCoordinates(worldId), neighbors, limits: FRONTIER_LIMITS, palette: FRONTIER_PALETTE, blueprints: BLUEPRINT_CATALOGUE, parcels, my_plot: myRow ? describePlot(myRow, actor) : null, land_world: LAND_WORLD, land_policy: LAND_POLICY, block_count: this.get('SELECT COUNT(*) AS n FROM frontier_blocks WHERE world_id=?', worldId).n } };
+    const grants = actor?.account ? grantListing(this, actor.account.id) : { as_steward: [], as_guest: [], events: [] };
+    return { blocks, block_window: { x: camera.x, y: camera.y, columns, rows }, frontier: { ...sector, legacy: !frontierCoordinates(worldId), neighbors, limits: FRONTIER_LIMITS, palette: FRONTIER_PALETTE, blueprints: BLUEPRINT_CATALOGUE, parcels, my_plot: myRow ? describePlot(myRow, actor) : null, grants: { ...grants, policy: PLOT_GRANT_POLICY, limits: GRANT_SCOPE_LIMITS }, land_world: LAND_WORLD, land_policy: LAND_POLICY, block_count: this.get('SELECT COUNT(*) AS n FROM frontier_blocks WHERE world_id=?', worldId).n } };
   },
   frontierExpand(actor, agentId, input) {
     const agent = resident(this, actor, agentId);
@@ -557,42 +836,57 @@ export const frontierMethods = {
     if (distance(agent, position) > FRONTIER_LIMITS.build_range) fail(409, 'Walk closer before building.');
     const existing = this.get('SELECT * FROM frontier_blocks WHERE world_id=? AND x=? AND y=? AND z=?', agent.world_id, position.x, position.y, z);
     const mayModerate = actor.kind === 'session' && ['admin', 'moderator'].includes(actor.account.role);
+    // The plot this tile belongs to, whether the acting account stewards it, and — when it does not
+    // — the live collaboration grant that would allow this exact operator and resident to build
+    // here. The grant is read from storage on every request, never carried on the credential.
+    const parcelId = frontierPlotId(agent.world_id, position.x, position.y), stewardship = parcelId ? this.get('SELECT account_id,purpose FROM land_stewardships WHERE plot_id=?', parcelId) : null;
+    const isSteward = Boolean(stewardship && stewardship.account_id === actor.account.id);
+    const grant = !isSteward && parcelId ? liveGrant(this, actor, agent, parcelId) : null;
     if (input.remove === true) {
       if (!existing) return { world_id: agent.world_id, ...position, z, removed: false, changed: false };
       const ownsBlock = existing.plot_id ? existing.creator_account_id === actor.account.id : existing.creator_agent_id === agent.id;
       if (!ownsBlock && !mayModerate) fail(403, 'Only the builder or a human moderator can remove this block.');
+      // Inside a live grant the scope also governs removal. A revoked or expired grant no longer
+      // governs anything, but it still lets its own builder take their own block down: construction
+      // may never be stranded on a plot, and a removal only ever reduces what that builder placed.
+      requireGrantScope(grant, { action: 'remove', type: existing.type, z: existing.z });
       if (this.get('SELECT id FROM frontier_blocks WHERE world_id=? AND x=? AND y=? AND z>?', agent.world_id, position.x, position.y, z)) fail(409, 'Remove the upper blocks first.');
       if (blockOccupiesTile(existing.type) && !keepsResidentsConnected(this, agent, null, definition, existing.id)) fail(409, 'Removing this support would cut a resident off from the public passages. Open a climbable exit first.');
       mutationBudget(this, actor);
       this.run('DELETE FROM frontier_blocks WHERE id=?', existing.id);
       settleColumn(this, agent.world_id, position);
       recordAction(this, actor, agent, agent.world_id, 'remove');
-      return { world_id: agent.world_id, ...position, z, removed: true, changed: true };
+      return { world_id: agent.world_id, ...position, z, removed: true, changed: true, grant_id: existing.grant_id || null };
     }
     if (protectedTile(position, definition)) fail(409, 'Keep the public passages and arrivals clear.');
-    const parcelId = frontierPlotId(agent.world_id, position.x, position.y), stewardship = parcelId ? this.get('SELECT account_id FROM land_stewardships WHERE plot_id=?', parcelId) : null;
-    if (!stewardship || stewardship.account_id !== actor.account.id) fail(403, 'Build inside your operator’s assigned land plot. A signed-in human must first steward an available plot for a named purpose.');
+    if (!isSteward && !grant) fail(403, 'Build inside your operator’s assigned land plot. A signed-in human must first steward an available plot for a named purpose, or that plot’s steward must grant you a live collaboration on it.');
     if (existing && !existing.plot_id) fail(403, 'Legacy construction is preserved for removal by its original builder or a human moderator.');
     const type = input.type || input.kind;
     if (!FRONTIER_PALETTE.includes(type) || type === 'path' && z !== 0) fail(400, 'Choose a supported block; paths belong on the ground.');
+    requireGrantScope(grant, { action: 'place', type, z });
     if (existing) {
-      if (existing.creator_account_id === actor.account.id && existing.type === type) return { world_id: agent.world_id, ...position, z, type, id: existing.id, plot_id: parcelId, removed: false, changed: false };
+      if (existing.creator_account_id === actor.account.id && existing.type === type) return { world_id: agent.world_id, ...position, z, type, id: existing.id, plot_id: parcelId, grant_id: existing.grant_id || null, removed: false, changed: false };
       fail(existing.creator_account_id === actor.account.id ? 409 : 403, 'Remove your existing block before replacing it.');
     }
     if (z > 0) {
       const support = this.get('SELECT type,creator_account_id,plot_id FROM frontier_blocks WHERE world_id=? AND x=? AND y=? AND z=?', agent.world_id, position.x, position.y, z - 1);
       if (!support || support.type === 'path') fail(409, 'Stack a solid block directly below this layer first.');
-      if (support.creator_account_id !== actor.account.id || support.plot_id !== parcelId) fail(403, 'Build on your operator’s own plot foundation.');
+      // A steward builds on their own foundation. A guest builds on the plot's own lawful
+      // construction, because every block standing inside this plot belongs to it.
+      if (isSteward ? support.creator_account_id !== actor.account.id : support.plot_id !== parcelId) fail(403, 'Build on your operator’s own plot foundation.');
     }
     if (blockOccupiesTile(type) && this.get("SELECT id FROM agents WHERE world_id=? AND x=? AND y=? AND status!='deleted'", agent.world_id, position.x, position.y)) fail(409, 'Keep occupied resident tiles clear.');
     if (blockOccupiesTile(type) && !keepsResidentsConnected(this, agent, { ...position, z, type }, definition)) fail(409, 'This block would cut a resident off from the public passages.');
     if (this.get('SELECT COUNT(*) AS n FROM frontier_blocks WHERE world_id=?', agent.world_id).n >= FRONTIER_LIMITS.blocks_per_sector) fail(429, 'This sector has reached its block limit.');
     mutationBudget(this, actor);
     const id = randomUUID();
-    this.run('INSERT INTO frontier_blocks(id,world_id,x,y,z,type,creator_agent_id,creator_account_id,created_at,plot_id) VALUES(?,?,?,?,?,?,?,?,?,?)', id, agent.world_id, position.x, position.y, z, type, agent.id, actor.account.id, timestamp(this), parcelId);
+    this.run('INSERT INTO frontier_blocks(id,world_id,x,y,z,type,creator_agent_id,creator_account_id,created_at,plot_id,grant_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)', id, agent.world_id, position.x, position.y, z, type, agent.id, actor.account.id, timestamp(this), parcelId, grant?.id || null);
     settleColumn(this, agent.world_id, position);
     recordAction(this, actor, agent, agent.world_id, 'place');
-    return { world_id: agent.world_id, ...position, z, type, id, plot_id: parcelId, removed: false, changed: true };
+    // The grant's own counter is bounded and live: the storage trigger re-checks the same standing
+    // block count, so the two enforcement points cannot drift.
+    if (grant) this.run('UPDATE plot_grants SET uses=uses+1,last_used_at=? WHERE id=?', timestamp(this), grant.id);
+    return { world_id: agent.world_id, ...position, z, type, id, plot_id: parcelId, grant_id: grant?.id || null, removed: false, changed: true };
   },
   frontierExport(actor) {
     if (actor?.kind !== 'session') fail(403, 'Only your operator can export building records.');
@@ -602,6 +896,10 @@ export const frontierMethods = {
       actions: this.all('SELECT * FROM frontier_actions WHERE account_id=? ORDER BY created_at,id', actor.account.id),
       stewardships: this.all('SELECT * FROM land_stewardships WHERE account_id=?', actor.account.id),
       land_events: this.all('SELECT * FROM land_events WHERE account_id=? ORDER BY created_at,id', actor.account.id),
+      // The operator's own collaboration record: the grants it issued and the grants it holds, with
+      // their append-only history. Nothing here is another operator's private record.
+      grants: this.all('SELECT * FROM plot_grants WHERE steward_account_id=? OR guest_account_id=? ORDER BY created_at,id', actor.account.id, actor.account.id),
+      grant_events: this.all('SELECT e.* FROM plot_grant_events e JOIN plot_grants g ON g.id=e.grant_id WHERE g.steward_account_id=? OR g.guest_account_id=? ORDER BY e.created_at,e.id', actor.account.id, actor.account.id),
     };
   },
 };
