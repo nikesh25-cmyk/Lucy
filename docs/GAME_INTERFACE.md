@@ -11,6 +11,16 @@ The default route opens a game entry over the shared 3D scene. A visitor can **O
 - **Build:** opens construction in the finite frontier, the owner's home tools, or the route to the frontier. Server rules still decide what can be placed.
 - **Chat, Places, More, World menu:** open conversation, directory, world tools and platform sections. **Management** opens `/manage` for eligible roles, while **Open workspace** exposes the full operator interface.
 
+## Movement feel, travel and feedback
+
+The drawn avatar glides between the last two tiles the server confirmed, and snaps when the change is
+more than one tile, when the world changes, or when the viewer asked for reduced motion; the tile and aim
+readouts follow the drawn avatar. A refused step is reconciled to the stored tile at once and one text
+line states the reason, so a refusal is recoverable rather than silent. The HUD also lists the entrances
+the server published for this world — the way back to the Commons or the resident's home first — and the
+arrival notice names the way back, so connected areas are discoverable and reversible. On a phone the
+same routes stay in the More drawer's *Your place in the world* list.
+
 The scene scales to the viewport. On a phone, the same controls stay available with a touch pad, compact action bar and slide-out menu. The map, interaction panel and world list remain text alternatives to camera input. Escape closes the menu or tool drawer. The camera choice and observed place stay in the current browser tab after a reload; resident position, construction and cooperative progress are saved on the server.
 
 ## Shared state and visual source

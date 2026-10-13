@@ -63,6 +63,25 @@ body.game-world .game-quickbar button:hover,body.game-world .game-quickbar butto
 body.game-world .game-quickbar button:disabled{color:#a3b8ac;opacity:.65}
 body.game-world .game-quickbar .game-mode{background:#d8d6a925;border-color:#d8d6a94b;color:#f3ecbd}
 body.game-world .game-target{position:absolute;right:20px;bottom:93px;max-width:270px;margin:0!important;padding:9px 12px;background:var(--game-glass);border:1px solid var(--game-edge);border-radius:11px;color:#f3f1db!important;font-size:.68rem!important;text-align:right;pointer-events:none}
+/* One line of input feedback, floating just above the bottom control band so it reads with the
+   controls it describes: the accepted step, the refusal and its reason, or the reconcile after a
+   refusal. It is `pointer-events:none`, so it can never stand between a tap and a control. */
+body.game-world .game-feedback{position:absolute;z-index:9;left:50%;bottom:152px;transform:translateX(-50%);margin:0!important;padding:6px 14px;max-width:min(560px,calc(100vw - 24px));background:#092a24eb;border:1px solid #d9d8b556;border-radius:100px;color:#f3f1db!important;font-size:.66rem!important;text-align:center;pointer-events:none}
+body.game-world .game-feedback[hidden]{display:none}
+body.game-world .game-feedback-step{color:#dbecc2!important}
+body.game-world .game-feedback-travel{border-color:#d9ddad8c;color:#f3ecbd!important}
+body.game-world .game-feedback-refused,body.game-world .game-feedback-restored{border-color:#e3b7a0a0;background:#3a1c14eb;color:#ffe6d2!important}
+/* The travel affordance: the entrances the server published for this world, the way back first. It
+   reads the same `portals` payload the world list does, so it can offer no destination the server
+   did not send. The way-back route keeps a 44px target and is marked, so a journey is reversible. */
+body.game-world .game-travel{position:absolute;z-index:9;top:150px;right:20px;display:grid;gap:6px;width:206px;padding:11px 12px;background:var(--game-glass);border:1px solid var(--game-edge);border-radius:14px;box-shadow:0 12px 30px #07151166;backdrop-filter:blur(12px);pointer-events:auto}
+body.game-world .game-travel[hidden]{display:none}
+body.game-world .game-travel-kicker{margin:0!important;color:#dcdea9!important;font-size:.55rem!important;letter-spacing:.16em;font-weight:700}
+body.game-world .game-travel-route{display:grid;gap:1px;justify-items:start;min-height:44px;padding:7px 10px;border:1px solid #d2d8ac52;border-radius:10px;background:#103a31d9;color:var(--game-ink);font-size:.7rem;line-height:1.25;text-align:left}
+body.game-world .game-travel-route small{color:#c4d5c4;font-size:.58rem}
+body.game-world .game-travel-route:hover,body.game-world .game-travel-route:focus-visible{background:#154a3e;border-color:#e4dfb7}
+body.game-world .game-travel-route:disabled{border-color:#6d7f6859;color:#c4d5c4;cursor:not-allowed}
+body.game-world .game-travel-back{border-color:#d9ddad8c;background:#123f34}
 body.game-world .world-panel>.minimap-card{position:absolute;z-index:8;top:18px;right:20px;width:172px;height:117px;margin:0;padding:7px!important;border:1px solid var(--game-edge);border-radius:14px;background:var(--game-glass);box-shadow:0 12px 30px #07151166;backdrop-filter:blur(12px)}
 body.game-world .world-panel>.minimap-card canvas{display:block;width:100%;height:100%;border:0;border-radius:8px;cursor:crosshair}
 body.game-world .world-panel>.minimap-card p{display:none}
@@ -175,6 +194,8 @@ body.game-world.game-chat-open .world-reticle,
 body.game-world.game-chat-open .game-target,
 body.game-world.game-chat-open .game-prompt-host,
 body.game-world.game-chat-open .game-overlay-host,
+body.game-world.game-chat-open .game-travel,
+body.game-world.game-chat-open .game-feedback,
 body.game-world.game-chat-open .game-control-hint{display:none}
 body.game-world.game-chat-open .game-guide{top:84px;bottom:auto;max-height:48px;width:min(340px,calc(100vw - 40px));overflow:hidden;pointer-events:none}
 body.game-world.game-chat-open .game-guide-card:not(.game-guide-next){display:none}
@@ -203,11 +224,24 @@ body.game-world #game-conversation-host #world-chat-card form>button{min-height:
 @media(max-width:650px){
   body.game-world.game-chat-open .game-guide{top:68px;left:10px;right:10px;width:min(320px,calc(100vw - 20px));max-height:36px}
   body.game-world.game-chat-open .game-guide-next{height:35px;padding:5px 9px}
+  /* The touch layer is *not* hidden here: it is switched off through its own control in app.js
+     (`touchControls.setEnabled(false)`), which hides it and stops a held gesture. A stylesheet rule
+     could not stop the pad's repeat timers, and the touch layer keeps its own stylesheet. */
   body.game-world.game-chat-open .world-bottom,
-  body.game-world.game-chat-open .game-hud-bottom,
+  body.game-world.game-chat-open .game-hud-bottom{display:none}
   body.game-world #game-conversation-host{top:110px;max-height:min(340px,calc(100dvh - 250px))}
   body.game-world #game-conversation-host #world-chat-card .field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   body.game-world #game-conversation-host #world-chat-card .message-list{max-height:66px}
   body.game-world #game-conversation-host #world-chat-card>.eyebrow{display:none}
   body.game-world .game-conversation-header span{font-size:.78rem}
 }
+
+/* The travel panel sits in the right column under the minimap. Where the aim line moves down to
+   `top:120px` it drops below the line instead of over it. A phone has no free column left — the guide
+   spans the full width and the control band reaches the d-pad — so the phone keeps the same routes in
+   the More drawer's "Your place in the world" list, which names every entrance and the way back. */
+@media(max-width:1279px){body.game-world .game-travel{top:210px}}
+@media(max-width:650px){body.game-world .game-travel{display:none}}
+/* On a phone the control band already reaches the d-pad, so the feedback line lifts above the d-pad
+   instead of into it. Measured: the pad's top edge sits 110 px + its own height above the bottom. */
+@media(max-width:650px){body.game-world .game-feedback{bottom:196px;padding:5px 11px;font-size:.56rem!important}}

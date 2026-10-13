@@ -1,5 +1,5 @@
 import {createVoxelWorld} from './src/voxel-world.js';
-import {controlIntent,createLookScheduler,reticleText,INTERACTION_DISTANCE,createViewBlocker,INTERACTION_KEY_LABEL,controlHint,targetHint} from './src/camera-controls.js';
+import {controlIntent,createLookScheduler,reticleText,INTERACTION_DISTANCE,createViewBlocker,INTERACTION_KEY_LABEL,controlHint,targetHint,createPresenceTracker,displayCoords,moveFeedback,blockedCause,travelRoutes,routeHint} from './src/camera-controls.js';
 import {createGameInput} from './src/game-input.js';
 import {createMovementQueue} from './src/movement-queue.js';
 import {createPortalJourney} from './src/world-navigation.js';
@@ -21,7 +21,7 @@ import {parseResearchFailure} from './src/research-failure.js';
 import { ASSESSMENT_RESULTS } from './src/review-assessment.js';
 import { clearOperatorState } from './src/browser-session.js';
 import { normalizeDecisionBrief, serializeDecisionBrief, decisionBriefText } from './src/decision-brief.js';
-import { draw, landmarkAt, start, landmarks, getWorldDefinition, walkable, drawMiniMap } from './world.js';
+import { draw, landmarkAt, start, landmarks, getWorldDefinition, walkable, terrainAt, drawMiniMap } from './world.js';
 import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 import { createGameAudio } from './src/game-audio.js';
 
@@ -43,7 +43,7 @@ Object.assign(state,{gamePresentation,gameMode:savedGameMode,gameDrawer:'',gameM
 // sound-producing call only happens from a control click in the game menu.
 const gameAudio = createGameAudio();
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',firstPlay:null,firstPlayRefusal:null,interaction:null,interactionRefusal:null,interactionError:null,evidenceLibrary:null});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',firstPlay:null,firstPlayRefusal:null,interaction:null,interactionRefusal:null,interactionError:null,evidenceLibrary:null,moveFeedback:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const movementQueue = createMovementQueue({ move: performMove });
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
@@ -172,7 +172,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- gameAudio.stop();spectator?.close();spectator=null;firstPlayGuide.reset();cancelFirstPlayRead();movementQueue.reset('session-ended');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.evidenceLibrary=null;clearOperatorState(state);state.workbenches=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}try{localStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ gameAudio.stop();spectator?.close();spectator=null;firstPlayGuide.reset();cancelFirstPlayRead();movementQueue.reset('session-ended');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.evidenceLibrary=null;state.moveFeedback=null;clearOperatorState(state);state.workbenches=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}try{localStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -245,7 +245,7 @@ function facingForResident(resident) {
   if(resident?.kind==='human'&&resident.last_look===0&&resident.world_id==='commons'&&resident.x===10&&resident.y===6)return {yaw:-3*Math.PI/4,pitch:-.08};
   return {yaw:Number.isFinite(resident?.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident?.pitch)?resident.pitch:.62};
 }
-async function selectAgent(id) { cancelFirstPlayRead();movementQueue.reset('character-changed');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration(),loadFirstPlay()]);const resident=selected();if(resident){state.facing=facingForResident(resident);gameInput.setFacing(state.facing);}render(); }
+async function selectAgent(id) { cancelFirstPlayRead();movementQueue.reset('character-changed');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.moveFeedback=null;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration(),loadFirstPlay()]);const resident=selected();if(resident){state.facing=facingForResident(resident);gameInput.setFacing(state.facing);}render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -286,51 +286,37 @@ async function loadWorld() { state.world = normalizeWorld(await api(worldURL()))
 
 // ---------------------------------------------------------------------------------------------
 // Shared-world presence. One bounded event subscription per client, and a presentation-only
-// interpolation between the server's confirmed tiles.
+// interpolation between the server's confirmed tiles (src/camera-controls.js `createPresenceTracker`).
 //
 // The authoritative position is always the server's: `state.world.participants` and the selected
 // agent hold exactly what the server stored. Interpolation only ever draws the segment between two
 // consecutive confirmed tiles and never passes the newest one, so the display can never claim a tile
-// the server has not confirmed. A refused step is reconciled immediately: the tween is dropped and
-// the avatar is drawn at its stored tile again.
+// the server has not confirmed. A step of one tile glides; a longer jump (a travel or a world change)
+// snaps. A refused step is reconciled immediately: the tween is dropped and the avatar is drawn at
+// its stored tile again. A viewer who asked for reduced motion snaps on every step.
 // ---------------------------------------------------------------------------------------------
-const DISPLAY_TWEEN_MS = 180; // the longest glide between two confirmed tiles (the server steps every 120 ms)
-const presence = new Map();
+const presence = createPresenceTracker({ now: () => performance.now(), reducedMotion: () => prefersReducedMotion(globalThis.matchMedia) });
 let presenceFrame = 0;
 
-function displayCoords(record, now) {
-  const t = record.duration > 0 ? Math.min(1, Math.max(0, (now - record.at) / record.duration)) : 1;
-  if (t >= 1) return { ...record.confirmed };
-  const eased = t * t * (3 - 2 * t);
-  return {
-    x: record.from.x + (record.confirmed.x - record.from.x) * eased,
-    y: record.from.y + (record.confirmed.y - record.from.y) * eased,
-    z: (record.from.z || 0) + ((record.confirmed.z || 0) - (record.from.z || 0)) * eased,
-  };
-}
-/** Remember one server-confirmed position. A tile change glides from wherever the avatar is drawn. */
+/** Remember one server-confirmed position. A one-tile change glides from wherever the avatar is drawn. */
 function noteConfirmed(item) {
-  if (!item || typeof item.id !== 'string' || !Number.isFinite(item.x) || !Number.isFinite(item.y)) return;
-  const target = { x: item.x, y: item.y, z: Number.isFinite(item.z) ? item.z : 0 };
-  const record = presence.get(item.id);
-  if (!record) { presence.set(item.id, { confirmed: target, from: { ...target }, at: performance.now(), duration: 0 }); return; }
-  if (record.confirmed.x === target.x && record.confirmed.y === target.y && record.confirmed.z === target.z) return;
-  const now = performance.now();
-  presence.set(item.id, { confirmed: target, from: displayCoords(record, now), at: now, duration: DISPLAY_TWEEN_MS });
-  schedulePresence();
+  const record = presence.confirm(item);
+  if (record && record.duration > 0) { schedulePresence(); return record; }
+  return record;
 }
 function seedPresence(participants) { for (const item of participants || []) noteConfirmed(item); }
 /** Draw an avatar where the interpolation currently places it; the record it came from is unchanged. */
-function displayed(item, now) { const record = presence.get(item.id); return record ? { ...item, ...displayCoords(record, now) } : item; }
+function displayed(item, now) { return presence.record(item, now); }
+/** The integer tile a drawn point falls in, for any text that must name one tile and not a fraction. */
+function tileOf(point) { return { x: Math.floor(point.x), y: Math.floor(point.y), z: Number.isFinite(point.z) ? Math.round(point.z) : 0 }; }
 /** Snap one avatar back to its stored tile: used when the server refuses a step. */
 function reconcilePresence(id) {
-  const record = presence.get(id);
-  if (record) { record.from = { ...record.confirmed }; record.at = 0; record.duration = 0; }
+  presence.reconcile(id);
   // The 3D view keeps its own tracker; a refusal snaps there too, so both views agree immediately.
   voxelView?.reconcileCharacter?.(id);
   if (state.tab === 'world' && $('#world')) paintWorld();
 }
-function presenceSettling(now) { for (const record of presence.values()) if (record.duration > 0 && record.at + record.duration > now) return true; return false; }
+function presenceSettling(now) { return presence.settling(now); }
 function schedulePresence() {
   if (presenceFrame || state.tab !== 'world') return;
   const step = () => {
@@ -444,7 +430,7 @@ function refreshMessageList() {
   if (replacement) messages.replaceWith(replacement);
 }
 window.__nemoworld = {
-  presence: () => [...presence.entries()].map(([id, record]) => ({ id, confirmed: { ...record.confirmed }, display: displayCoords(record, performance.now()), tweening: record.duration > 0 && record.at + record.duration > performance.now() })),
+  presence: () => presence.entries().map(([id, record]) => ({ id, confirmed: { ...record.confirmed }, display: displayCoords(record, performance.now()), tweening: presence.tweening(id) })),
   stream: () => state.gameMode==='observe'&&spectator ? {world:spectator.worldId(),ready:spectator.status().live,closed:!spectator.status().live,reason:spectator.status().reason,updates:spectator.frames()} : (state.eventStream ? { world: state.eventStream.world, ready: state.eventStream.ready, closed: state.eventStream.closed, reason: state.eventStream.reason || null, errors: state.eventStream.errors, updates: state.eventStream.updates, lastLatencyMs: state.eventStream.lastLatencyMs ?? null } : null),
   lastClosed: () => state.eventStreamClosed || null,
   world: () => state.world,
@@ -536,7 +522,12 @@ async function climbPreview() {
   if (!direction) return notice('Pick a neighbouring tile first, then climb one block layer onto it.');
   await climbAgent(direction);
 }
-async function travelAgent(id) { movementQueue.reset('world-travel');walkVersion++;motionRevision++;if (!selected()) return; const result = await motionRequest(`/agents/${state.selected}/travel`, { world_id: id }); Object.assign(selected(), result.agent || result); selected().world_id = id; state.viewWorld = ''; state.focus = null; state.building = false; state.interaction=null; state.interactionRefusal=null;setGameMode('play'); await refresh(); state.tab = 'world'; render(); notice(`Arrived in ${definition().name}.`); }
+async function travelAgent(id) { movementQueue.reset('world-travel');walkVersion++;motionRevision++;if (!selected()) return; const result = await motionRequest(`/agents/${state.selected}/travel`, { world_id: id }); Object.assign(selected(), result.agent || result); selected().world_id = id; state.viewWorld = ''; state.focus = null; state.building = false; state.interaction=null; state.interactionRefusal=null;setGameMode('play'); await refresh(); state.tab = 'world'; render();
+ // The arrival names the way back, so a journey is reversible in one action without opening a menu.
+ const back=travelRoutes(worldPortals(),worldPosition(),{limit:1,home:`home:${state.selected}`})[0];
+ const arrived=`Arrived in ${definition().name}.`;notice(back?`${arrived} ${back.label} at ${back.x}, ${back.y} leads back.`:arrived);
+ reportMoveOutcome(moveFeedback({outcome:'travel',message:back?`Arrived in ${definition().name} · ${back.label} leads back.`:arrived}));
+}
 const portalJourney=createPortalJourney({
   walkTo,
   travelAgent,
@@ -617,7 +608,13 @@ function applyGameShell(){
   document.body.classList.toggle('game-building',world&&state.building);
   document.body.dataset.gameDrawer=state.gameDrawer;
   $('#game-menu-button')?.setAttribute('aria-expanded',String(world&&state.gameMenuOpen));
+  // A conversation owns the keyboard and the screen, so the touch layer is switched off through its
+  // own control (which hides it *and* stops a held gesture) rather than by a stylesheet rule that
+  // could not stop the pad's timers. This is the one place the layer's visibility is decided.
+  syncTouchEnabled();
 }
+/** The touch layer is live only while the world is on screen and no conversation owns it. */
+function syncTouchEnabled(){touchControls?.setEnabled(Boolean(state.gamePresentation&&state.tab==='world'&&state.gameDrawer!=='chat'));}
 // One drawer at a time. `state.gameDrawer` holds a single value, so opening Chat closes the tools
 // drawer, and the same button closes the one it opened.
 function setGameDrawer(drawer){
@@ -1010,6 +1007,13 @@ function gameHud(world,agent,position){
   actionsRow.append(interact,build,chat,places,tools);bottom.append(hint,actionsRow);hud.append(bottom);
   const fixture=state.interaction?.fixture;
   const target=element('p',fixture?`${fixture.action?.label||fixture.label} · ${fixture.x}, ${fixture.y} · ${INTERACTION_KEY_LABEL} to interact`:targetHint(null),'game-target');target.id='game-target';hud.append(target);
+  // One line of input feedback: the accepted step, the refusal and its reason, or a reconcile after a
+  // refusal. It is the same wording the movement path produced, so it can never describe a step the
+  // server did not take, and it is a polite live region so it is announced, not only drawn. It floats
+  // just above the control band so it reads with the controls without pushing the band into the pad.
+  hud.append(moveFeedbackElement());
+  // The travel affordance: the entrances the server published for this world, the way back first.
+  hud.append(travelPanel(world,agent,position));
   // The observer's own honest connection line, and the refusal when a read was refused.
   if(state.gameMode==='observe'&&spectator){
     const line=element('p',null,'game-observer');line.id='game-observer-status';
@@ -1019,6 +1023,49 @@ function gameHud(world,agent,position){
     hud.append(line);
   }
   return hud;
+}
+/** The HUD's one line of input feedback, built from the outcome the movement path last produced. */
+function moveFeedbackElement(){
+  const feedback=state.moveFeedback;
+  const line=element('p',feedback?.text||'',feedback?`game-feedback game-feedback-${feedback.tone}`:'game-feedback');
+  line.id='game-move-feedback';line.setAttribute('role','status');line.setAttribute('aria-live','polite');
+  line.hidden=!feedback;return line;
+}
+/** Remember and show the result of one movement attempt. A refusal stays until the next step. */
+function reportMoveOutcome(feedback){state.moveFeedback=feedback||null;syncMoveFeedback();}
+function syncMoveFeedback(){
+  const line=$('#game-move-feedback');if(!line)return;
+  const feedback=state.moveFeedback;
+  line.hidden=!feedback;
+  line.textContent=feedback?.text||'';
+  line.className=feedback?`game-feedback game-feedback-${feedback.tone}`:'game-feedback';
+}
+/** The doors we can actually see: the entrances the server published, the way back sorted first. */
+function travelPanel(world,agent,position){
+  const routes=travelRoutes(worldPortals(),position,{limit:3,home:agent?`home:${agent.id}`:null});
+  const node=element('div',null,'game-travel');node.id='game-travel';
+  node.dataset.signature=routes.map(route=>`${route.id}:${route.distance}:${route.back}`).join('|');
+  if(!routes.length){node.hidden=true;return node;}
+  node.setAttribute('role','group');node.setAttribute('aria-label','Entrances from here');
+  node.append(paragraph('WAYS OUT','game-travel-kicker'));
+  for(const route of routes){
+    const item=button(route.label,()=>enterPortal(route.portal),`game-travel-route${route.back?' game-travel-back':''}`);
+    item.dataset.portal=route.id;
+    item.setAttribute('aria-label',routeHint(route));
+    item.append(element('small',route.back?'the way back':`${route.distance} tile${route.distance===1?'':'s'} away`));
+    item.disabled=Boolean(world.paused)||Boolean(agent&&agent.status!=='active');
+    node.append(item);
+  }
+  return node;
+}
+/** Rebuild the travel list only when the routes themselves change, so a tween never thrashes the DOM. */
+function syncTravelPanel(){
+  const node=$('#game-travel');if(!node)return;
+  const agent=viewedAgent(),world=definition(),position=worldPosition();
+  const routes=travelRoutes(worldPortals(),position,{limit:3,home:agent?`home:${agent.id}`:null});
+  const signature=routes.map(route=>`${route.id}:${route.distance}:${route.back}`).join('|');
+  if(node.dataset.signature===signature)return;
+  node.replaceWith(travelPanel(world,agent,position));
 }
 function buildCard(world) {
   const node = card(world.kind==='house'?'Furnish your cottage':'Shape your garden', 'YOUR OWN SPACE');node.id='home-build-card'; node.append(paragraph(world.kind==='house'?'Make room for reading, gathering, and quiet reflection. The arrival area and permanent furniture stay clear.':'Plant a garden, make paths, build gathering places, and welcome visitors.', 'muted'));
@@ -1085,8 +1132,13 @@ async function pickWorld(pick){
  if(await walkTo(pick.x,pick.y)&&pick.type==='gate')notice('You reached a frontier gate. Use the expansion controls to open the neighboring area.');
 }
 function syncWorldControls(){
- const player=viewedAgent(),position=worldPosition();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`${player?'Player':'View'} position ${position.x}, ${position.y}${player&&position.z>0?`, layer ${position.z}`:''} · ${state.graphics==='voxel'?(state.firstPerson?'First person · drag to look · WASD relative to view':'Drag to orbit · click ground to walk'):'Arrow keys / WASD'}`;
- const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null,fixture:state.interaction?.fixture||null});}
+ const player=viewedAgent(),position=worldPosition();
+ // The aim line and the position readout follow the tile the avatar is *drawn* at, which is on the
+ // segment between the last two confirmed tiles, so a mid-step the view matches what the player sees.
+ // Everything the server itself decides (portal adjacency, gate range) still reads the stored tile.
+ const drawn=player?tileOf(displayed(player,performance.now())):position;
+ const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`${player?'Player':'View'} position ${drawn.x}, ${drawn.y}${player&&drawn.z>0?`, layer ${drawn.z}`:''} · ${state.graphics==='voxel'?(state.firstPerson?'First person · drag to look · WASD relative to view':'Drag to orbit · click ground to walk'):'Arrow keys / WASD'}`;
+ const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position:drawn,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null,fixture:state.interaction?.fixture||null});}
  const nearby=$('.nearby-portals');if(nearby){nearby.replaceChildren();if(player)for(const portal of worldPortals().filter(p=>Math.abs(p.x-position.x)+Math.abs(p.y-position.y)<=1))nearby.append(button(portalLabel(portal),()=>enterPortal(portal),'small'));}
  for(const node of document.querySelectorAll('[data-frontier-expand]')){const gate=state.world.frontier?.neighbors.find(item=>item.direction===node.dataset.frontierExpand);node.disabled=!player||player.status!=='active'||state.world.paused||!gate||gate.exists||Math.abs(player.x-gate.x)+Math.abs(player.y-gate.y)>2;}
  const climb=$('[data-climb]');if(climb)climb.disabled=!player||player.status!=='active'||state.world.paused||!climbDirection();
@@ -1360,12 +1412,28 @@ async function performMove(direction, context) {
   motionRevision++;
   const agent=viewedAgent();let crossed=false,moved=false;
   if(agent){
+    const before={x:agent.x,y:agent.y,z:agent.z||0};
     let position;
     try{position=await motionRequest('/move',{agent_id:context.actorId,direction});}
-    catch(error){if(sameMoveContext(context))reconcilePresence(context.actorId);throw error;}
+    catch(error){
+      // A failed request is a refused step too: reconcile to the stored tile and say why, so the
+      // player is never left believing they moved. The reason is the server's own message.
+      if(sameMoveContext(context)){
+        reconcilePresence(context.actorId);
+        if(!context.automatic)reportMoveOutcome(moveFeedback({outcome:'restored',from:before,message:error.message}));
+      }
+      throw error;
+    }
     if(!sameMoveContext(context))return {cancelled:true,reason:'character-changed'};
     crossed=position.world_id!==agent.world_id;moved=!position.blocked;Object.assign(agent,position);
-    if(position.blocked)reconcilePresence(agent.id);
+    if(position.blocked){
+      // The server kept the stored tile. Snap the drawn avatar back to it and name the obstacle, so a
+      // refusal is visible and recoverable rather than a step that silently did nothing.
+      reconcilePresence(agent.id);
+      if(!context.automatic)reportMoveOutcome(moveFeedback({outcome:'blocked',direction,from:before,cause:blockedCauseAt(direction,before)}));
+    }else if(!context.automatic&&!crossed){
+      reportMoveOutcome(moveFeedback({outcome:'step',direction,to:position}));
+    }
     if(crossed){state.focus=null;state.voxelSelection=null;state.building=false;}
   }else{
     const delta={up:[0,-3],down:[0,3],left:[-3,0],right:[3,0]}[direction];
@@ -1380,9 +1448,17 @@ async function performMove(direction, context) {
   if(state.tab==='world'){const focusedMap=document.activeElement?.id==='world';renderView();if(focusedMap)$('#world')?.focus({preventScroll:true});}
   return {saved:true,crossed};
 }
+/** The obstacle that refused a step, named from the terrain and scenery this client already holds. */
+function blockedCauseAt(direction,from){
+  const delta={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[direction];
+  if(!delta)return '';
+  const tile={x:from.x+delta[0],y:from.y+delta[1]},world=definition();
+  const outside=tile.x<0||tile.y<0||tile.x>=(world.width||world.columns)||tile.y>=(world.height||world.rows);
+  return blockedCause({terrain:terrainAt(tile,world),scenery:solidSceneryAt(tile,state.world.objects||[]),outside});
+}
 function moveAgent(direction,automatic=false){
   if(!automatic)walkVersion++;
-  return movementQueue.enqueue(direction,moveContext());
+  return movementQueue.enqueue(direction,{...moveContext(),automatic:Boolean(automatic)});
 }
 // One keydown handler. Native controls and dialogs keep their own keys; then the interaction prompt
 // handles its shortcuts (Enter, Space, I and arrows while it has a focus), and finally the game-input
@@ -3284,6 +3360,8 @@ function syncGameHud(){
   if(line)line.hidden=!next;
   const status=$('#game-observer-status');
   if(status&&spectator&&state.gameMode==='observe'){const refusal=spectator.lastRefusal();if(refusal){status.setAttribute('role','alert');status.textContent=`${refusal.message} ${refusal.next_step||''}`.trim();}else{status.setAttribute('role','status');status.textContent=spectator.status().detail;}}
+  syncMoveFeedback();
+  syncTravelPanel();
   touchControls?.refresh();
   mountFirstPlayGuide();
 }
@@ -3326,6 +3404,9 @@ function mountTouchControls(map,canvas,world,agent){
     status:()=>!agent?'Observing. Drag the world to look; the Look buttons turn it one step at a time.':state.world.paused?'The world is paused. Movement and interaction are refused by the server.':state.building?'Building. Choose a block and tap the ground to place it.':'Press a direction to walk one tile, and hold it to keep walking. Drag the world to look.',
     reducedMotion:()=>prefersReducedMotion(window.matchMedia),
   });
+  // The freshly mounted layer takes the same on/off state the shell would give it, so a rebuild while
+  // a conversation is open does not briefly re-arm a pad the conversation just stood down.
+  syncTouchEnabled();
 }
 
 // ---------------------------------------------------------------------------------------------
