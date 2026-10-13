@@ -77,7 +77,7 @@ for (const item of manifest().entries) files.set(`/${item.file}`, [item.file, 'a
 for (const file of manifest().support) files.set(`/${file.path}`, [file.path, file.path.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'application/json; charset=utf-8']);
 const writes = new Map([
   ['/callings/select', ['callingSelect', null]],
-  ['/land/assign',['landAssign',null]], ['/land/release',['landRelease',null]], ['/frontier/expand',['frontierExpand','build']], ['/frontier/build',['frontierBuild','build']], ['/operations/registration',['registrationSettings',null]],
+  ['/land/assign',['landAssign',null]], ['/land/release',['landRelease',null]], ['/frontier/expand',['frontierExpand','build']], ['/frontier/build',['frontierBuild','build']], ['/frontier/grant',['plotGrantCreate',null]], ['/frontier/grant/revoke',['plotGrantRevoke',null]], ['/operations/registration',['registrationSettings',null]],
   ['/drafts', ['draftSave', null]], ['/drafts/resume', ['draftResume', null]], ['/drafts/archive', ['draftArchive', null]],
   ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]], ['/residents/resume', ['residentResume', null]],
   ['/research/run', ['researchRun', null]], ['/research/cancel', ['researchCancel', null]], ['/mayors/talk', ['mayorTalk', 'chat']], ['/mayors/control', ['mayorControl', null]], ['/ambassadors/talk', ['ambassadorTalk', 'chat']], ['/ambassadors/control', ['ambassadorControl', null]], ['/research/generate', ['researchGenerate', null]], ['/research/activate', ['researchActivate', null]],
@@ -106,7 +106,7 @@ const writes = new Map([
   ['/guilds/contributions', ['guildContribution', 'contribute']], ['/guilds/verify', ['guildVerify', 'contribute']],
   ['/guilds/manage', ['guildProjectManage', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/events', '/interact']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/events', '/interact']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -485,6 +485,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/land') value=platform.land(actor,Object.fromEntries(url.searchParams));
           else if (route === '/land/plot') value=platform.landPlot(actor,Object.fromEntries(url.searchParams));
           else if (route === '/frontier') value=platform.frontierMap(actor,Object.fromEntries(url.searchParams));
+          else if (route === '/frontier/grants') value=platform.plotGrants(actor,Object.fromEntries(url.searchParams));
           else if (route === '/worlds') value = platform.worldList(actor, Object.fromEntries(url.searchParams));
           else if (route === '/community') value = platform.community(actor, Object.fromEntries(url.searchParams));
           else if(route==='/coins')value=platform.coins(actor,Object.fromEntries(url.searchParams));
