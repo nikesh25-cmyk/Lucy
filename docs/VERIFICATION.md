@@ -2,7 +2,7 @@
 
 Run `npm test` with Node.js 24. Tests use isolated temporary SQLite databases and loopback HTTP servers; they do not modify the development database.
 
-**Current authoritative source count (combined queue review, schema 18): `npm test` runs 448 tests — 448 passed, 0 failed, 0 skipped; `npm run check` passes; `npm run e2e` passes 15/15 steps; the seal verifies 86 definitions, 3 support files and 42 notices/assets. See `docs/reviews/queue-tasks-02-14.md` for this review's actual browser coverage and limitations. Per-release figures below are historical milestones.**
+**Current authoritative source count (Batch 02 integration, schema 18): `npm test` runs 513 tests — 513 passed, 0 failed, 0 skipped; HTTP acceptance has 15 steps; the integrated browser gate has 22 scenarios; syntax and the seal verify 86 definitions, 3 support files and 42 notices/assets. See `docs/reviews/batch02-integration.md` for exact run results and limitations. Per-release figures below are historical milestones.**
 
 Latest local check on 2026-10-11 (an earlier milestone): syntax checks passed, and `npm test` then executed **98 tests: 98 passed, zero failed, zero skipped**. Starting and restarting `npm start` served the expanded world and three demonstration missions with a healthy SQLite status. The documented backup, verification, and restore CLI commands also succeeded against a separate restore destination. GitHub CI is configured to repeat syntax and automated workflow checks on Node 24; a remote CI result has not been observed in this session.
 

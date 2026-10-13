@@ -117,6 +117,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'interaction-door-and-crafting', title: 'A doorway travels to another world and a crafting station crafts once per click', regression: null },
   { id: 'interaction-ambassador-desk', title: 'A country ambassador desk answers through the existing conversation action', regression: null },
   { id: 'interaction-state-refusals', title: 'Paused, revoked, wrong-owner and observer refusals keep the server authoritative', regression: null },
+  { id: 'consolidated-proposal-history', title: 'Retired research templates remain readable but cannot become missions', regression: 'batch 02 integration correction' },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -1187,9 +1188,9 @@ define('plot-and-blueprints', async () => {
     const purpose = 'A browser acceptance learning garden';
     await page.locator('#plot-detail [aria-label="What will this place do?"]').fill(purpose);
     await page.locator('#plot-detail').getByRole('button', { name: 'Steward this plot', exact: true }).click();
-    await page.waitForFunction(() => /Steward this plot/.test(document.querySelector('#plot-detail')?.textContent || '') === false, null, { timeout: PAGE_TIMEOUT_MS }).catch(() => {});
-    await settle(page);
-    const stored = row('SELECT s.plot_id,s.account_id,s.purpose FROM land_stewardships s WHERE s.plot_id=?', plotId);
+    // An incremental world repaint can replace the form before its write has finished. Wait for
+    // the authoritative record; disappearance of a button is not evidence of saved stewardship.
+    const stored = await waitForCondition(async () => row('SELECT s.plot_id,s.account_id,s.purpose FROM land_stewardships s WHERE s.plot_id=?', plotId), 'the server to save the clicked stewardship');
     expect(stored, 'the stewardship must be stored', { expected: `a land_stewardships row for ${plotId}`, actual: describe(stored) });
     expect(stored.account_id === state.fixtures.admin.id, 'the stewardship must belong to the signed-in operator', { expected: state.fixtures.admin.id, actual: describe(stored.account_id) });
     expect(stored.purpose === purpose, 'the stored purpose must be the one typed in the browser', { expected: purpose, actual: describe(stored.purpose) });
@@ -1579,6 +1580,61 @@ define('character-switch-clears-preview', async () => {
 // ---------------------------------------------------------------------------------------------
 // Scenario 12 — sign-out clears cached private quests, guilds, blueprints and land state
 // ---------------------------------------------------------------------------------------------
+
+define('consolidated-proposal-history', async () => {
+  const admin = await actor('admin');
+  const legacyId = 'NP-2-evidence';
+  write('INSERT INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
+    legacyId, 'NP', 2, 'evidence', 'Retired browser fixture', 'A retained interchangeable template.', 'Historical rubric.', '["https://sdgs.un.org/goals/goal2"]', '2026-01-01T00:00:00.000Z');
+  const before = row('SELECT * FROM research_leads WHERE id=?', legacyId);
+  write('INSERT INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
+    'NP-3-evidence', 'NP', 3, 'evidence', 'Unscoped browser fixture', 'No answerable subject selected.', 'Historical rubric.', '[]', '2026-01-01T00:00:00.000Z');
+  const unscopedBefore = row('SELECT * FROM research_leads WHERE id=?', 'NP-3-evidence');
+  const generated = await apiPost('/research/generate', { country_code: 'NP' }, { token: fixtures().admin.token });
+  expect(generated.status === 200, 'the normal generator must classify the old fixture', { actual: describe(generated) });
+  await step('the research desk displays consolidation and names its replacement', async () => {
+    await openApp(admin.page, ACTORS.admin);
+    await openTab(admin.page, 'Research desk');
+    const form = admin.page.locator('#view form').filter({ has: admin.page.getByRole('button', { name: 'Search research', exact: true }) });
+    await form.locator('[name="q"]').fill('Retired browser fixture');
+    await form.locator('[name="country"]').selectOption('NP');
+    await form.locator('[name="status"]').selectOption('consolidated');
+    await form.getByRole('button', { name: 'Search research', exact: true }).click();
+    await waitForCondition(async () => {
+      const text = await admin.page.locator('#view').textContent();
+      return text.includes('Replacement: NP-2-interventions') ? text : null;
+    }, 'the retired proposal and its replacement to be visible');
+    expect(await admin.page.getByText('Activate a reviewed mission', { exact: true }).count() === 0,
+      'the retired proposal must not offer an activation form');
+    return 'consolidated historical proposal; replacement NP-2-interventions; no activation control';
+  });
+  await step('the server refuses activation and preserves the original proposal', async () => {
+    const missions = count('SELECT COUNT(*) AS n FROM missions');
+    const refused = await inPage(admin.page, '/research/activate', { body: { lead_id: legacyId, beneficiary: 'Fictional browser fixture' } });
+    expect(refused.status === 409, 'retired proposal activation must fail', { actual: describe(refused) });
+    expect(count('SELECT COUNT(*) AS n FROM missions') === missions, 'no mission may be created');
+    expect(JSON.stringify(row('SELECT * FROM research_leads WHERE id=?', legacyId)) === JSON.stringify(before), 'the historical row must remain unchanged');
+    return '409 refusal; no new mission; original proposal retained unchanged';
+  });
+  await step('a template without a scoped successor is retired without inventing a replacement', async () => {
+    const form = admin.page.locator('#view form').filter({ has: admin.page.getByRole('button', { name: 'Search research', exact: true }) });
+    await form.locator('[name="q"]').fill('Unscoped browser fixture');
+    await form.locator('[name="status"]').selectOption('retired');
+    await form.getByRole('button', { name: 'Search research', exact: true }).click();
+    await waitForCondition(async () => {
+      const text = await admin.page.locator('#view').textContent();
+      return text.includes('No scoped replacement has been authored') ? text : null;
+    }, 'the unscoped template to be shown as retired');
+    expect(await admin.page.getByText('Activate a reviewed mission', { exact: true }).count() === 0, 'an unscoped retired template must not offer activation');
+    const missions = count('SELECT COUNT(*) AS n FROM missions');
+    const refused = await inPage(admin.page, '/research/activate', { body: { lead_id: 'NP-3-evidence', beneficiary: 'Fictional browser fixture' } });
+    expect(refused.status === 409 && /without a scoped replacement/.test(refused.body.error), 'retirement must be enforced by the server', { actual: describe(refused) });
+    expect(count('SELECT COUNT(*) AS n FROM missions') === missions, 'no unscoped mission may be created');
+    expect(JSON.stringify(row('SELECT * FROM research_leads WHERE id=?', 'NP-3-evidence')) === JSON.stringify(unscopedBefore), 'the unscoped historical row must remain unchanged');
+    return 'retired without a replacement; 409 activation refusal; original row retained';
+  });
+  return 'the UI and server agree that consolidation is history, not an active proposal';
+});
 
 define('signout-privacy', async () => {
   const admin = await actor('admin');

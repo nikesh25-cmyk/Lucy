@@ -40,11 +40,9 @@ services:
     buildCommand: npm run check
     startCommand: npm start
     healthCheckPath: /api/v1/health
-    # Fails closed before the new release serves traffic when an existing database cannot be
-    # validated (corrupt file, foreign file, or a schema newer than this build accepts). A missing
-    # database — a first deploy — is skipped, so the check never blocks the first release. It takes
-    # no lock and writes nothing, so it is safe while the previous instance is still draining.
-    preDeployCommand: sh -c 'if [ -f /var/data/world.sqlite ]; then node scripts/recovery.js verify /var/data/world.sqlite; fi'
+    # server.js validates an existing database at runtime, under its process lock, before migration
+    # or listening. Render's build/pre-deploy compute cannot access this service's persistent disk:
+    # https://render.com/docs/disks . A pre-deploy file check would silently skip the real database.
     envVars:
       - key: NODE_VERSION
         value: 24.19.0

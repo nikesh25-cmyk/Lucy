@@ -3,11 +3,12 @@ import {researchOutput} from './runtime/research-brief.js';
 import { deliveryPacketHTML, deliveryPacketFilename } from './src/delivery-packet.js';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID, createHash } from 'node:crypto';
 import { Platform } from './src/platform.js';
-import { acquireProcessLock, backupDatabase, backupInventory } from './src/recovery.js';
+import { acquireProcessLock, backupDatabase, backupInventory, validateDatabase } from './src/recovery.js';
 import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from './src/hosting.js';
 import { worldAtmosphere } from './src/atmosphere.js';
 import { runResearch, approvedSource } from './runtime/research-worker.js';
@@ -669,6 +670,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const hosting = hostingConfiguration();
     const databasePath = process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite');
     releaseLock = acquireProcessLock(join(dirname(databasePath), 'server.lock'));
+    // Persistent disks are mounted at runtime. Validate the existing world while holding its lock,
+    // before migrations or seeding can change it and before any listener serves requests.
+    if (existsSync(databasePath)) validateDatabase(databasePath);
     platform = new Platform(databasePath);
     ({ server, stopWorkers, stopEvents } = createApp({ platform, backupDir: join(dirname(databasePath), 'backups'), publicOrigin: hosting.publicOrigin || '', setupCode: hosting.setupCode }));
     let closing = false;

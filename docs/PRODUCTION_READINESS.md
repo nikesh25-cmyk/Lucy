@@ -41,7 +41,7 @@ be reviewed before approving it.
 | `startCommand` | `npm start` (`node server.js`) | the shipped entry point |
 | `healthCheckPath` | `/api/v1/health` | the shipped aggregate health endpoint (`server.js:411-414`), reachable by the provider through the public origin |
 | `maxShutdownDelaySeconds` | `60` | the process ends event streams, aborts worker runs and releases its lock on `SIGTERM` (`server.js:670-678`); 60 s leaves room before the host escalates to `SIGKILL` |
-| `preDeployCommand` | `sh -c 'if [ -f /var/data/world.sqlite ]; then node scripts/recovery.js verify /var/data/world.sqlite; fi'` | fails closed before serving when an existing database is corrupt, foreign or newer than this build; skips a first deploy with no database and takes no lock, so it is safe while the previous instance drains. Rehearsed (see §4) |
+| Runtime integrity gate | `server.js` after acquiring `server.lock`, before `new Platform()` or listening | Existing databases are validated before migration/seeding. Missing databases follow first-start setup. Render build/pre-deploy compute cannot access persistent disks; see [Render disk documentation](https://render.com/docs/disks). |
 | `disk` | `shared-world-data`, `/var/data`, 1 GB | the database, its WAL and `backups/` must survive restarts and deploys. Size is a ceiling, not a quota |
 | `envVars` | see §3 | `NODE_VERSION`, `LUCY_BIND_HOST`, `LUCY_DATABASE`, generated `LUCY_SETUP_CODE`, plus commented optional overrides |
 
@@ -88,9 +88,9 @@ Corrected here (files this task owns):
    and `README.md` stale — see item 7.**
 2. **`render.yaml` — added `autoDeployTrigger: 'off'`.** Render's `autoDeploy` field is deprecated in
    favour of `autoDeployTrigger`. Disabling auto-deploy is what makes the release checklist meaningful.
-3. **`render.yaml` — added `preDeployCommand`, `maxShutdownDelaySeconds`, comments and the optional
+3. **`render.yaml` — added `maxShutdownDelaySeconds`, comments and the optional
    `LUCY_PUBLIC_ORIGIN` / `LUCY_MODEL_*` entries.** The previous file contained no explanation of the
-   single-instance and disk invariants and no fail-closed check before a release serves traffic.
+   single-instance and disk invariants. Integration moved integrity validation into `server.js` at runtime: a pre-deploy command cannot see the persistent disk.
 4. **`render.yaml` — corrected the start-up comment.** The old comment implied the disk alone implies a
    paid instance; the file now states what the code enforces (origin required for a public bind, private
    setup code required for an empty public database, one instance because one process owns the writer).
@@ -123,7 +123,7 @@ and its behaviour matches what §2 and §3 describe.
    price for them. **This step is the operator's decision and their cost.**
 2. Confirm the service uses one instance. Do not add replicas, and do not mount the same database from
    two machines.
-3. Deploy the Blueprint. First start: no database exists, the `preDeployCommand` verify is skipped, the
+3. Deploy the Blueprint. First start: no database exists, runtime validation is skipped, the
    service migrates an empty file to schema 18 and becomes healthy on `/api/v1/health`.
 4. Confirm the service starts at all. If it fails with `Set the private LUCY_SETUP_CODE before starting a
    public server with no administrator.`, the generated value is missing — set it with `sync: false`. If
@@ -329,3 +329,7 @@ backup, `.env`, token or setup code. Never enable a second instance against the 
   with different scenarios failing) and belongs to the browser-suite owner; see §7 of the release
   checklist and the handoff for the raw evidence.
 - The threat model is a code review, not an audit, and its residual-risk list is part of the assessment.
+
+## Integration correction — 13 October 2026
+
+The proposed pre-deploy check silently skipped the service database because [Render persistent disks are unavailable during build and pre-deploy commands](https://render.com/docs/disks). It was removed from `render.yaml`. `server.js` now validates any existing database while holding its process lock, before migrations, seed writes or listening. `tests/startup-integrity.test.js` executes the real server entry point against corrupt, foreign and newer-schema worlds (refusal without source bytes changing) and a valid world (successful restart with audited records preserved). The earlier shell-only rehearsal did not prove this hosting boundary. No hosted deployment has been performed.

@@ -31,6 +31,6 @@ The e2e harness starts and removes its own temporary database. Browser testing u
 
 ## Work order
 
-**Batch 01 (Tasks 01–14) is combined and reviewed on `review/nemoworld-queue`, schema 18, with 448 passing tests and 15 HTTP acceptance steps.** Read `docs/reviews/queue-tasks-02-14.md`. Begin **Batch 02, Task 15 — executable browser acceptance suite** from that reviewed source. One code task should edit shared backend/UI files at a time. Research Task 24 and Task 20 design briefs can be prepared separately.
+**Batch 01 is reviewed. Batch 02 Tasks 15, 16, 17, 20, 24, 27 and 28 are integrated on `review/nemoworld-batch02`, schema 18.** Read `docs/reviews/batch02-integration.md` and use that reviewed source. The next code task is **18 — inventory exchange and crafting depth**, followed by 19, 21, 22, 23, 25 and 26. One code task should edit shared backend/UI files at a time.
 
-Detailed new tasks: [TASKS_BATCH_02.md](TASKS_BATCH_02.md). Historical Batch 01 briefs: [TASKS.md](TASKS.md).
+Detailed task briefs and current status: [TASKS_BATCH_02.md](TASKS_BATCH_02.md). Historical Batch 01 briefs: [TASKS.md](TASKS.md).

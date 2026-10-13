@@ -122,6 +122,29 @@ test('an installation seeded by the older generator has its retired interchangea
   assert.equal(legacy.instructions, 'An interchangeable template that names no commodity or destination.');
   assert.equal(legacy.status, 'proposed');
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM research_lead_versions WHERE lead_id=?', 'NP-2-evidence').n, 0);
+  // Retirement must reach the actual desk and activation route, while preserving the stored row.
+  const retired = f.platform.research(null, { country: 'NP', q: 'interchangeable template', status: 'consolidated' });
+  assert.equal(retired.total, 1);
+  assert.equal(retired.leads[0].status, 'consolidated');
+  assert.equal(retired.leads[0].recorded_status, 'proposed');
+  assert.equal(retired.leads[0].replacement_id, 'NP-2-interventions');
+  assert.equal(f.platform.research(null, { country: 'NP', q: 'interchangeable template', status: 'proposed' }).total, 0);
+  assert.equal(retired.retained_total, retired.catalog_total + 1);
+  const beforeMissions = f.platform.get('SELECT COUNT(*) AS n FROM missions').n;
+  assert.throws(() => f.tx('researchActivate', f.actor('admin'), { lead_id: legacy.id, beneficiary: 'Fictional fixture' }), error => error.status === 409 && /NP-2-interventions/.test(error.message));
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM missions').n, beforeMissions);
+  assert.deepEqual(f.platform.get('SELECT * FROM research_leads WHERE id=?', legacy.id), legacy);
+  // Unsupported concerns must retire too; a baseline is not falsely called their replacement.
+  f.platform.run('INSERT INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
+    'NP-3-evidence', 'NP', 3, 'evidence', 'Unscoped older template', 'No answerable subject selected.', 'Historical rubric.', '[]', created);
+  const unscopedBefore = f.platform.get('SELECT * FROM research_leads WHERE id=?', 'NP-3-evidence');
+  f.platform.initCivic();
+  const unscoped = f.platform.research(null, { country: 'NP', q: 'Unscoped older template', status: 'retired' });
+  assert.equal(unscoped.total, 1);
+  assert.equal(unscoped.leads[0].replacement_id, '');
+  assert.equal(unscoped.retained_total, unscoped.catalog_total + 2);
+  assert.throws(() => f.tx('researchActivate', f.actor('admin'), { lead_id: 'NP-3-evidence', beneficiary: 'Fictional fixture' }), error => error.status === 409 && /without a scoped replacement/.test(error.message));
+  assert.deepEqual(f.platform.get('SELECT * FROM research_leads WHERE id=?', 'NP-3-evidence'), unscopedBefore);
   // Idempotent across restarts.
   f.platform.initCivic();
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM research_lead_consolidations WHERE consolidated_id=?', 'NP-2-evidence').n, 1);

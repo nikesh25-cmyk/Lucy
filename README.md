@@ -12,7 +12,7 @@ Use [the common task prompt](docs/deepseek/START_HERE.md) and [14 scoped task br
 
 ## Start locally
 
-Requires **Node.js 24 or newer**. The application uses built-in HTTP and SQLite; no npm dependencies or external services are required to explore it.
+Requires **Node.js 24 or newer**. The application uses built-in HTTP and SQLite; no production npm dependencies or external services are required to explore it. Browser acceptance uses the separately installed dev dependency `playwright-core`.
 
 For a simpler local start, use `Start World.command` on Mac, `Start World.cmd` on Windows, or `./start-world.sh` on Linux. These launch the world and open its browser after startup. The Mac launcher automatically obtains a verified private Node runtime if needed. See [local setup](docs/LOCAL_SETUP.md).
 
@@ -102,3 +102,9 @@ The interface uses locally served DM Sans and Space Grotesk fonts and selected L
 ## Scope
 
 The world and cooperation software is implemented. Seeded climate, peace, and accessibility missions are explicitly demonstrations, with no claimed partner or real impact. Real missions need a named owner, licensed sources, beneficiary, and independent reviewer. Live models and hosting provisioning require the decisions in [ROADMAP.md](ROADMAP.md).
+
+## Reviewed Batch 02 integration
+
+The integrated source is on `review/nemoworld-batch02`: live world updates, direct nearby interactions, eight country venue variants, improved proposal generation, bounded operational diagnostics and deployment preparation. See [the integration review](docs/reviews/batch02-integration.md) for exact tests, preservation checks and remaining work. The deployment configuration is prepared; no hosted deployment has been created.
+
+To run browser acceptance in development: `npm ci`, then `npm run browser` with system Chrome installed. The suite creates a separate temporary database and refuses the installed world. Production startup validates an existing database under its lock before migration or listening.
