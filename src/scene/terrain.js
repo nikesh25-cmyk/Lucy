@@ -5,7 +5,7 @@
 // `wall` — are drawn as the blocking mass `TERRAIN_BLOCKING` declares them to be, and `water` goes to
 // src/scene/water.js. The `tree` and `fountain` terrain types reuse the sealed scenery builders from
 // src/voxel-world.js, passed in as `builders`, so a terrain tree and an authored tree look the same.
-import { cellOccludedBelow, cellTypeAt, inVoxelWindow } from '../voxel-geometry.js';
+import { cellOccludedBelow, cellTypeAt, inDetail, inVoxelWindow } from '../voxel-geometry.js';
 import { accountLayer, variant } from './batch.js';
 import { shoreSides, waterDepth, waterTile } from './water.js';
 import { buildingTile, wallTile } from './buildings.js';
@@ -23,12 +23,17 @@ export function groundPass({ batch, definition, snapshot, plan, cullHidden, scen
   const typeAt = (x, y) => cellTypeAt(definition, snapshot, x, y);
   for (const item of plan.cells) {
     const { x, y, type } = item, pick = { x, y, z: 0, type: 'terrain', terrain: type, ...(item.parcel ? { parcel: item.parcel } : {}) };
+    // The detail tier decides only how the ground *reads*: the slab, the base cube and every type's
+    // own detail — its obstacle, its pickable garden flowers — are drawn at both tiers, so a coarse
+    // tile is still exactly what the server says it is. Only the water reads below its surface follow
+    // the tier, and those carry no pick. See `LOD_LIMITS` in src/voxel-geometry.js.
+    const detail = inDetail(x, y, plan.anchor, plan.detailRadius);
     const base = ['water', 'bridge'].includes(type) ? colors.dirt
       : type === 'building' || type === 'tree' || type === 'fountain' ? definition.groundColor || colors.grass
         : colors[type] || definition.groundColor || colors.grass;
     const before = batch.size;
     if (type === 'water') {
-      waterTile(batch, { x, y, pick, dirt: colors.dirt, depth: waterDepth(typeAt, x, y), sides: shoreSides(typeAt, x, y) });
+      waterTile(batch, { x, y, pick, dirt: colors.dirt, depth: waterDepth(typeAt, x, y), sides: shoreSides(typeAt, x, y), detail });
     } else {
       // An interior base cube has no exposed face, so it is skipped; the slab below always stays.
       if (!cullHidden || !cellOccludedBelow(definition, snapshot, plan, x, y)) batch.add(x + .5, -.5, y + .5, 1, 1, 1, variant(colors.dirt, x, y), pick);

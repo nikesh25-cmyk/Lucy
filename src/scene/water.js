@@ -29,14 +29,18 @@ export function shoreSides(typeAt, x, y) {
 }
 
 /**
- * One water tile: a bed, the sub-surface slab and the surface that carries the pick, then the
- * unpicked reads — depth tone, glints, a lighter break on each shore side, and reeds when the tile
- * is shallow. `depth` and `sides` come from the two predicates above.
+ * One water tile: a bed, the sub-surface slab and the surface that carries the pick — three pickable
+ * instances at every detail tier — then the unpicked reads: depth tone, glints, a lighter break on
+ * each shore side, and reeds when the tile is shallow. `depth` and `sides` come from the two
+ * predicates above. `detail: false` is the coarse tier: the tile keeps what it *is* (its water, its
+ * pick, its depth tone) and drops the reads below the surface, which is the same water with none of
+ * the fine glinting at a distance where the phase's own fog has taken over.
  */
-export function waterTile(batch, { x, y, pick, dirt, depth, sides }) {
+export function waterTile(batch, { x, y, pick, dirt, depth, sides, detail = true }) {
   batch.add(x + .5, -.82, y + .5, 1, 1, 1, variant(dirt, x, y), pick);
   batch.add(x + .5, -.16, y + .5, 1, .08, 1, variant(dirt, x, y), pick);
   batch.add(x + .5, -.095, y + .5, .99, .08, .99, depth === 'deep' ? WATER_TINTS.deep : WATER_TINTS.shallow, pick);
+  if (!detail) return;
   // Two glide directions rather than one, so a still surface reads as water from any orbit angle.
   const glide = hash(`${x},${y},glide`) % 4;
   if (glide === 0) batch.add(x + .34, -.05, y + .3, .42, .014, .03, WATER_TINTS.glint, null, 'detail');
