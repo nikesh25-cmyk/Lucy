@@ -128,7 +128,10 @@ test('version two state upgrades atomically and version three recovery requires 
 
 test('process locks recover after a reused PID or a different host boot', (t) => {
   const directory = setup(t), path = join(directory, 'server.lock');
+  // Simulate two host boots directly. macOS process inspection is unavailable in some test
+  // sandboxes, while production still uses the real process identity provider by default.
+  const identityOf = () => ({ boot: 'current-host-boot', start: 'current-process-start' });
   writeFileSync(path, JSON.stringify({ pid: process.pid, nonce: 'previous-container', identity: { boot: 'a-previous-host-boot', start: '1' } }));
-  const release = acquireProcessLock(path);
-  try { assert.throws(() => acquireProcessLock(path), /running/); } finally { release(); }
+  const release = acquireProcessLock(path, { identityOf });
+  try { assert.throws(() => acquireProcessLock(path, { identityOf }), /running/); } finally { release(); }
 });

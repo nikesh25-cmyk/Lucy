@@ -335,10 +335,10 @@ function processIdentity(pid) {
   } catch { return null; }
 }
 
-export function acquireProcessLock(lockPath) {
+export function acquireProcessLock(lockPath, { identityOf = processIdentity } = {}) {
   const path = resolve(lockPath);
   privateDirectory(dirname(path));
-  const marker = { pid: process.pid, nonce: randomUUID(), identity: processIdentity(process.pid) };
+  const marker = { pid: process.pid, nonce: randomUUID(), identity: identityOf(process.pid) };
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       writeFileSync(path, JSON.stringify(marker), { flag: 'wx', mode: 0o600 });
@@ -350,7 +350,7 @@ export function acquireProcessLock(lockPath) {
       let stored;
       try { stored = JSON.parse(readFileSync(path, 'utf8')); } catch { throw new Error('Unrecognized process lock; inspect it before recovery.'); }
       if (!Number.isSafeInteger(stored.pid) || stored.pid <= 0 || !stored.nonce) throw new Error('Unrecognized process lock; inspect it before recovery.');
-      const currentIdentity = processIdentity(stored.pid);
+      const currentIdentity = identityOf(stored.pid);
       const reusedPid = stored.identity && currentIdentity && (stored.identity.boot !== currentIdentity.boot || stored.identity.start !== currentIdentity.start);
       if (!reusedPid) {
         try { process.kill(stored.pid, 0); throw new Error('The world server or another recovery operation is running. Stop it before recovery.'); }
