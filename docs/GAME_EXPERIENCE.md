@@ -1,16 +1,19 @@
 # NemoWorld game experience — entry, HUD, panels and management
 
-**Status: specification of a target. Nothing in this document is implemented by this task.** Task 29
-changes Markdown only. The brief for it is Task 29 in
-[DeepSeek Batch 02](deepseek/TASKS_BATCH_02.md); the surrounding product intent is in
-[NEMOWORLD.md](NEMOWORLD.md) and [GAME_INTERFACE.md](GAME_INTERFACE.md), and the visual language it must
-extend is [NEMOEARTH_DESIGN.md](NEMOEARTH_DESIGN.md).
+**Status: specification of a target, now partly built.** Task 29 wrote this document as Markdown only.
+Task 38 then built the shell, and §13 below states exactly what is implemented, what a later task
+still owns, and what remains only a target. The §1–§12 text is kept as written so the target and the
+build can be compared line by line; where a decision changed during the build it is recorded in §13.
 
-**No browser check was performed by this task.** No page was opened, no click was made and no
-screenshot was taken. Every statement about the current interface below is read from the source in this
+**Task 29 performed no browser check.** No page was opened, no click was made and no screenshot was
+taken by that task. Every statement about the interface in §1–§12 is read from the source in that
 working tree (`app.js`, `index.html`, `game-theme.css`, `nemo-theme.css`, `src/camera-controls.js`,
 `server.js`) and from the reviewed documents it references. Where the spec says "today", it means the
 source at base commit `d59b691`; it is a reading of code, not an observation.
+
+**Task 38 did run the browser.** The acceptance suite in `scripts/browser-suite.mjs` drives the shell
+in the system Chrome build against a temporary database; §13 names the scenarios and the database
+effects each asserts, and `docs/handoff/task-38-frontend-integration.md` carries the run output.
 
 Screen layouts and interaction flows are in [`docs/specs/`](specs/INDEX.md).
 
@@ -468,3 +471,44 @@ prints: it currently advertises `E`, which turns the camera, while the bound int
   release.
 - **The two overlay designs do not invent policy.** Character limits, colours, password length, consent
   and invitation behaviour are the server's and are cited, not decided, here.
+
+## 13. What task 38 built, and what is still a target
+
+Task 38 is the integration task: the only task permitted to wire the shell. This section is the
+scorecard against §1–§12, in the same order. Every "built" line names the file that carries it.
+
+| § | Decision | State after task 38 |
+|---|---|---|
+| 3 | **Entry screen — Play · Observe · Continue** | **Built.** `renderEntryControls()` in `app.js` renders the three controls over the drawn Commons, the film as a text link (`a.game-film-link`), and one honest line about what an account is for. Continue appears only when `GET /me` returns an active character this browser remembers (`localStorage selected-agent`, falling back to the operator's first active character); a paused or revoked candidate is named with its state and replaced by **Manage characters**. A signed-in operator now lands on the entry screen instead of being pushed straight into play, which is what makes Continue visible at all. |
+| 4.1 | **Account overlay** | **Unchanged and reused.** `index.html`'s `#auth-dialog`, `renderAuth()`, the field set, the escape path and the secret-draft exclusion are exactly as shipped. |
+| 4.2 | **Character overlay** | **Built.** `#character-dialog` is a fourth named native dialog with a labelled Close (`#close-characters`). `renderCharacterOverlay()` lists the operator's characters from `GET /me` with their kind, status and world, offers **Enter the world** and **Resume**, and carries the creation form built from the same `characterCreateFields()` the `My characters` section uses, so the two cannot drift. The section keeps pause, revoke, credential, export and delete. |
+| 5.1 | **H1–H3, H5** | **Kept.** `.game-place` (world name and pause state), `#game-coordinates` and `#game-population` are as shipped. |
+| 5.1 | **H4 — one next action** | **Built, differently from the wireframe.** Rather than re-enabling the shipped `.calling-hud` (which also carries a progress bar and a button, both of which §5.1 forbids on the HUD), the HUD carries a new one-line element `#game-next-action` filled by `nextActionLine()` from `GET /callings`' `current_objective.title`, else `GET /quests`' `next_action.step_title`, else nothing. No count, no bar, and the line disappears when the server returned neither. `.calling-hud` stays hidden in game presentation, exactly as shipped. |
+| 5.1 | **H5 must print the bound keys** | **Built.** `gameHud` uses `controlHint({playing, mode})` and `targetHint(fixture)`; the interaction panel's target line uses `INTERACTION_KEY_LABEL`. The three "E to interact" strings are gone, and `docs/GAME_INTERFACE.md` now says `E` turns while Enter, Space or I use the fixture. |
+| 5.2 | **Five HUD actions** | **Built.** The quickbar is Interact, Build, Chat, Places, More (`#game-interact-button`, `#game-build-button`, and three `.game-quick` buttons). The mode switch moved to the world menu, which now carries the three entry controls. |
+| 5.3 | **Not on the HUD** | **Held.** No coin, experience, rank, count, board, governance, account-management or run-internal value is rendered on the world surface, and nothing the server does not store is shown at all. |
+| 6 | **Four dismissible panels** | **Built.** Chat is the shipped `#world-chat-card`; Journal (`#world-journal-card`, `GET /journey` → `journal`, `POST /journey/journal`), Inventory (`#world-inventory-card`, the task-34 panel over `GET /journey` and the offers routes) and Projects (`#world-projects-card`, read-only, linking to the guild, quest and community surfaces) are new cards in the same aside. All four reuse `setGameDrawer` and are dismissed by their own labelled Close, by the aside's **Close world tools**, and by Escape returning focus to the HUD. `state.gameDrawer` still holds one value, so only one is open at a time. |
+| 7 | **A separate `/manage` interface** | **Built.** `server.js` serves `/manage` from `index.html`; `gamePresentation` is false there, so the workspace presentation and the full governance group are what the address opens. The game menu's governance group is replaced by a single **Management** entry rendered only for `reviewer`, `moderator` or `admin`. The client gate only decides what is rendered; every route keeps its own server-side role check. |
+| 8 | **Server-state map** | **Held, with two additions.** The shell exposes `window.__nemoworld.gameMode()`, `drawer()`, `nextAction()` and `spectator()` for the acceptance suite; all four read the same `state` the interface reads. |
+| 9 | **Surfaces owned elsewhere** | **Integrated after task 38.** Task 22's pathways, task 23's restoration events, task 25's evidence library and task 26's reviewer workbench are now in the combined source. Their detailed work stays in the workspace and `/manage`, outside the game HUD. |
+
+### 13.1 What is still only a target
+
+- **The platform-paused entry state.** The HUD kicker reads `WORLD PAUSED`, but the entry screen does
+  not yet print the paused state beside the controls (§3.1, `entry-screen.md` state 5).
+- **Observe's stated capability line.** The entry screen says an account is not needed to look, but it
+  does not enumerate the world directory, the ambassadors, the country evidence and the research desk
+  one by one as `entry-screen.md` asks.
+- **The `Continue` control is browser-local.** There is still no per-account "last played character"
+  column; §8.1 records that this would be a schema change and is deliberately not made here.
+- **Named tone/contrast measurement for the new surfaces.** The new shell rules reuse only existing
+  tokens, but no new measured contrast pair was added to `tests/newcomer-journey.test.js`.
+- **The newcomer step list** stays a text section, as §11.4 requires, and is not promoted into the HUD.
+
+### 13.2 Deliberate deviations from the wireframes
+
+| Wireframe | Build | Why |
+|---|---|---|
+| H4 re-enables `.calling-hud` | A new one-line `#game-next-action` | `.calling-hud` also renders a `progress` bar and a **Calling & guild** button; §5.1 forbids both on the world surface, and the bar is a value that changes while you play. |
+| The interaction prompt is drawn by the shipped panel | The shipped panel stays in the `More` drawer, and task 35's prompt is mounted over the world | The panel is the typed, keyboard-first text path the fallback rule requires; the prompt is the small contextual read. Both read the same `GET /interact`. |
+| `Escape` releases the renderer's pointer capture | Left to the renderer | `src/voxel-world.js` is owned by this task only for the character wiring; its drag ends on `pointerup`/`pointercancel`, and Escape closes the menu or drawer as before. |

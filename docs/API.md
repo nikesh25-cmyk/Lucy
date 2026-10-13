@@ -594,3 +594,7 @@ So the four roles stay distinct: the **proposer** (the mission owner who propose
 ```
 
 The comparison **never edits either version** and never invents one: a later capture only changes the state a reviewer reads, and a `missing`, `stale`, `replaced` or `withdrawn` citation is a documented reason a reviewer may refuse acceptance. It is a human judgment, not an automatic block.
+
+## Interface addresses
+
+The game shell adds no `/api/v1` route or new authority. `/` opens the game presentation. `/manage` serves the detailed management presentation from the same server; `/?mode=workspace` remains a compatible detailed view. The client shows management entry only to eligible roles, while every API route behind it still checks its own server-side permissions.

@@ -2,7 +2,7 @@
 
 Run `npm test` with Node.js 24. Tests use isolated temporary SQLite databases and loopback HTTP servers; they do not modify the development database.
 
-**Current authoritative source count (Batch 02 integration, schema 18): `npm test` runs 513 tests — 513 passed, 0 failed, 0 skipped; HTTP acceptance has 15 steps; the integrated browser gate has 22 scenarios; syntax and the seal verify 86 definitions, 3 support files and 42 notices/assets. See `docs/reviews/batch02-integration.md` for exact run results and limitations. Per-release figures below are historical milestones.**
+**Current authoritative source state (combined Tasks 22, 23, 25 and 26 plus Tasks 29–38, schema 22): Node 24 `npm test` passed 774/774 tests; HTTP acceptance passed 15/15 steps; real Chrome passed 35/35 scenarios; syntax and the seal passed with 89 definitions, 3 support files and 42 referenced notices/assets. The test and browser gates used disposable data; the installed database remained untouched. Per-release figures below are historical milestones.**
 
 Latest local check on 2026-10-11 (an earlier milestone): syntax checks passed, and `npm test` then executed **98 tests: 98 passed, zero failed, zero skipped**. Starting and restarting `npm start` served the expanded world and three demonstration missions with a healthy SQLite status. The documented backup, verification, and restore CLI commands also succeeded against a separate restore destination. GitHub CI is configured to repeat syntax and automated workflow checks on Node 24; a remote CI result has not been observed in this session.
 
@@ -20,7 +20,7 @@ Before a real pilot, the operator must supply actual mission owners, eligible so
 
 ## Browser workflow validation
 
-The interface was exercised in headless Chromium with isolated temporary databases and loopback servers, using real browser sessions and the delivered HTTP routes. The checks covered:
+The current browser gate passed **35/35 real Chrome scenarios** with an isolated temporary database and loopback server; teardown released the process lock and the shipped database remained unchanged. The interface was exercised through real browser sessions and the delivered HTTP routes. The checks covered:
 
 - First administrator registration, consent, sign-in, invitation creation, invited operator registration, and character creation.
 - Scoped connection credential creation and clearing its displayed value when the dialog closes. The browser stores only the selected character ID; operator sessions use the HTTP-only cookie.
@@ -47,7 +47,7 @@ The expansion was also exercised in Chromium using isolated temporary databases:
 The launcher tests bring the complete application up on a free loopback port using an isolated database, inherit and clear hosted origin settings for the child process, verify the shared-world count of thirty and first-account setup, and stop while preserving schema 3 state. The Mac installer fixture checks Apple Silicon detection under Rosetta and rejection of a modified archive before extraction. Both pinned official Mac runtime downloads matched their SHA-256 checksums and contained regular executable and license files. The 98 tests of that milestone passed with no skipped cases on Linux; native Mac execution and Safari opening remain to be verified on the user's Mac.
 
 
-## Current civic release — 11 October 2026
+## Historical civic release — 11 October 2026
 
 The suite at this milestone had 178 passing tests on this Mac. It covers thirty shared spaces, twenty mayor residents, schema-seven recovery, country/reference research, reviewed brief packets, private drafts, mission paging, statistical and bounded trade readers, and mayor context/pause guards. Earlier counts and browser observations above describe their respective milestones. Native Mac launcher, verified official Qwen inference and local browser workflows have subsequently been verified in isolated fixtures. See `MAYOR_EVALUATION.md` for actual dialogue findings and limits. No production administrator, real institutional acceptance, completed agriculture study or external adoption has been created by QA.
 

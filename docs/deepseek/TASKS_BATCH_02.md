@@ -2,9 +2,9 @@
 
 The first 14 tasks are reviewed. New work has been combined on `review/nemoworld-batch02` (schema 18). Read `HANDOFF.md`, `docs/reviews/batch02-integration.md`, `docs/API.md` and `docs/ARCHITECTURE.md`. Use Node 24+: `PATH="$PWD/../node-bin:$PATH"` in `work/Lucy-repo`.
 
-## Integration status — 13 October 2026
+## Historical batch — all tasks integrated by 13 October 2026
 
-Integrated: **15, 16, 17, 20, 24, 27, 28** (including the original Task 20 design brief). Next: **18**, then **19, 21, 22, 23, 25, 26**. The original briefs below remain the scope reference; do not redo integrated tasks. Prior task branches are preserved. Start new branches from the reviewed Batch 02 integration source.
+Tasks **15–28** are completed in the integrated source, including 18, 19, 21, 22, 23, 25 and 26. The original briefs below remain scope history; do not assign or redo them. Tasks **29–38** also have delivered source. Use the current integration branch as the base for any new work, and check `HANDOFF.md` before taking a number or shared file.
 
 One code task per branch; return a focused diff, meaningful tests and actual evidence. Keep the zero-dependency production server, local assets, finite land inventory, independent coin acceptance, privacy, pause/revocation and bounded model budgets. Leave `outputs/Lucy`, installed accounts/database, credentials and model weights untouched. No automatic installation, publication, paid services, outreach or real-world mission activation. Do not claim a browser check, performance target or real-world result unless actually measured.
 

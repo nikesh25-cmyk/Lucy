@@ -1206,25 +1206,41 @@ async function walkIntoPlot(page, agentId, plotId, parcel, { timeout = 100_000 }
   const deadline = Date.now() + timeout;
   const inside = (position) => Boolean(position) && position.x >= parcel.x && position.x < parcel.x + parcel.width && position.y >= parcel.y && position.y < parcel.y + parcel.height;
   let retries = 0;
-  for (let attempt = 0; attempt < 5 && Date.now() < deadline; attempt++) {
-    if (attempt > 0) {
-      retries += 1;
-      console.log(`        walk retry       the server’s own movement throttle refused a step; resuming the walk into ${plotId}`);
-      await page.waitForTimeout(800);
-    }
-    await page.locator('#plot-detail').getByRole('button', { name: 'Walk to plot', exact: true }).click();
-    const reached = await waitForCondition(() => (inside(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId)) ? true : null), 'the resident to step into the plot', { timeout: Math.min(60_000, Math.max(2000, deadline - Date.now())) }).catch(() => null);
-    if (reached) {
-      const position = await waitForResidentToSettle(agentId);
-      if (inside(position)) {
-        if (retries) state.notes.push(`the walk into ${plotId} was resumed ${retries} time(s) after the server’s own movement throttle refused a step`);
-        return position;
+  let movementThrottle = false;
+  const onResponse = (response) => {
+    if (response.status() !== 429) return;
+    try {
+      if (new URL(response.url()).pathname.endsWith('/api/v1/move')) movementThrottle = true;
+    } catch { /* A malformed diagnostic URL cannot affect the walk result. */ }
+  };
+  page.on('response', onResponse);
+  try {
+    for (let attempt = 0; attempt < 5 && Date.now() < deadline; attempt++) {
+      if (attempt > 0) {
+        retries += 1;
+        console.log(`        walk retry       the server’s own movement throttle refused a step; resuming the walk into ${plotId}`);
+        await page.waitForTimeout(800);
+      }
+      movementThrottle = false;
+      await page.locator('#plot-detail').getByRole('button', { name: 'Walk to plot', exact: true }).click();
+      const reached = await waitForCondition(() => {
+        if (movementThrottle) return 'movement-throttle';
+        return inside(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId)) ? 'inside' : null;
+      }, 'the resident to step into the plot', { timeout: Math.min(30_000, Math.max(2000, deadline - Date.now())) }).catch(() => null);
+      if (reached === 'inside') {
+        const position = await waitForResidentToSettle(agentId);
+        if (inside(position)) {
+          if (retries) state.notes.push(`the walk into ${plotId} was resumed ${retries} time(s) after the server’s own movement throttle refused a step`);
+          return position;
+        }
+      }
+      const notice = ((await page.locator('#notice').textContent().catch(() => '')) || '').trim();
+      if (reached !== 'movement-throttle' && !throttleRefusal(notice)) {
+        throw new BrowserSuiteFailure(`the walk into ${plotId} stopped short of the plot`, { expected: `a tile inside ${plotId}`, actual: `${describe(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId))}; the interface said “${notice}”` });
       }
     }
-    const notice = ((await page.locator('#notice').textContent().catch(() => '')) || '').trim();
-    if (!throttleRefusal(notice)) {
-      throw new BrowserSuiteFailure(`the walk into ${plotId} stopped short of the plot`, { expected: `a tile inside ${plotId}`, actual: `${describe(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId))}; the interface said “${notice}”` });
-    }
+  } finally {
+    page.off('response', onResponse);
   }
   throw new BrowserSuiteFailure(`the resident never reached ${plotId}`, { expected: `a tile inside ${plotId}`, actual: describe(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId)) });
 }
@@ -2106,24 +2122,25 @@ define('subscription-entitlement-and-revocation', async () => {
   });
 
   await step('a session revoked mid-subscription loses its live feed', async () => {
-    // Reopen the public garden (the step above made it private), then establish a *fresh* subscription
-    // and revoke the stored session credential directly. This is the server-side revocation the
-    // channel must notice by itself: the client keeps its stream open and is not the one that closes
-    // it. A client that was told its access was revoked stops retrying that world, so the subscription
-    // is rebuilt from a reloaded page instead of assuming the visitor's page resubscribes on its own
-    // (or depending on whichever world an earlier scenario left that page showing).
+    // Reopen the public garden, then use a fresh signed-in browser context. The earlier browser's
+    // spectator was intentionally stopped by access_revoked and has a remembered private-world view;
+    // it must not stand in for a new subscription. Revoke only this context's cookie hash so later
+    // scenarios keep their own fixture account session.
     await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'public' });
     expect(count('SELECT COUNT(*) AS n FROM worlds WHERE id=? AND visibility=?', garden, 'public') === 1, 'the garden must be public again before the visitor resubscribes', { actual: describe(row('SELECT id,visibility FROM worlds WHERE id=?', garden)) });
-    await stranger.page.reload({ waitUntil: 'domcontentloaded' });
-    await settle(stranger.page);
-    const stream = await outsiderLooksAtPublicGarden(stranger.page, walker.name, garden);
+    const revocationClient = await context('revocation-client');
+    await openApp(revocationClient.page, ACTORS.stranger);
+    const stream = await outsiderLooksAtPublicGarden(revocationClient.page, walker.name, garden);
     expect(stream.ready && stream.world === garden, 'the visitor must hold a fresh subscription to the reopened garden', { expected: `a ready stream on ${garden}`, actual: describe(stream) });
-    write("UPDATE tokens SET revoked=1 WHERE kind='session' AND account_id=?", state.fixtures.stranger.id);
-    const closed = await waitForClient(stranger.page, () => { const c = window.__nemoworld?.lastClosed?.(); return c && c.reason === 'session_revoked' ? c : null; }, null, 'the revoked session to lose its subscription', 8000);
+    const cookie=(await revocationClient.context.cookies(baseUrl())).find((item)=>item.name==='world_session');
+    expect(cookie?.value, 'the browser must hold a distinct HttpOnly session cookie before revocation');
+    const hash=createHash('sha256').update(cookie.value).digest('hex');
+    write("UPDATE tokens SET revoked=1 WHERE kind='session' AND hash=?", hash);
+    const closed = await waitForClient(revocationClient.page, () => { const c = window.__nemoworld?.lastClosed?.(); return c && c.reason === 'session_revoked' ? c : null; }, null, 'the revoked session to lose its subscription', 8000);
     expect(closed.reason === 'session_revoked', 'a revoked credential must end the subscription', { expected: 'session_revoked', actual: describe(closed) });
-    const live = count("SELECT COUNT(*) AS n FROM tokens t JOIN accounts a ON a.id=t.account_id WHERE a.email=? AND t.kind='session' AND t.revoked=0", ACTORS.stranger.email);
-    expect(live === 0, 'the session credential must be revoked in the database', { actual: `live=${live}` });
-    return `session_revoked closed the feed while the stored session token is revoked`;
+    const revoked=row("SELECT revoked FROM tokens WHERE hash=? AND kind='session'",hash);
+    expect(revoked?.revoked===1, 'the exact browser credential must be revoked in the database', { actual: describe(revoked) });
+    return 'session_revoked closed the feed while that browser’s exact session token was revoked';
   });
 
   return 'a private world and a revoked session both ended the live feed for a client that lost its right to it';
@@ -2289,7 +2306,7 @@ define('game-hud-interaction-prompt-and-aim', async () => {
     const hint = await readInteractionTile(page, 11, 6);
     expect(/Door at 11, 6/.test(hint) && /Enter Meeting Hall/.test(hint), 'the real interaction read must identify the doorway and action', { actual: hint });
     const target = ((await page.locator('#game-target').textContent()) || '').trim();
-    expect(target === 'Enter Meeting Hall · Enter to interact', 'the game HUD must expose the server-provided action prompt', { expected: 'Enter Meeting Hall · Enter to interact', actual: target });
+    expect(target === 'Enter Meeting Hall · 11, 6 · Enter, Space or I to interact', 'the game HUD must expose the server-provided action and its bound keys', { expected: 'Enter Meeting Hall · 11, 6 · Enter, Space or I to interact', actual: target });
     const interact = page.locator('#game-interact-button');
     expect(await interact.isEnabled(), 'an in-range fixture must enable the HUD interaction control', { actual: 'the Interact button stayed disabled' });
     const aim = ((await page.locator('#world-reticle').textContent()) || '').trim();
@@ -3472,7 +3489,7 @@ define('hero-introduction-film',async()=>{
     return 'user-started playback, native sound/seek/fullscreen controls, poster, no preload';
   });
   await step('Chrome decodes the supplied film and closing its introduction pauses playback',async()=>{
-    await visitor.page.locator('#hero-actions').getByRole('button',{name:'Watch the film',exact:true}).click();
+    await visitor.page.locator('#hero-actions').getByRole('link',{name:'Watch the film (2 min)',exact:true}).click();
     const video=visitor.page.locator('#introduction-film');
     await video.evaluate(async v=>{v.muted=true;await v.play();});
     const info=await waitForCondition(async()=>video.evaluate(v=>v.currentTime>0.2?{duration:v.duration,width:v.videoWidth,height:v.videoHeight}:null),'Chrome to decode and advance the film');
@@ -3853,31 +3870,56 @@ define('live-observation-readonly', async () => {
     return 'resident tile, blocks, messages and objects all unchanged after observation';
   });
 
-  return 'an anonymous observer saw public activity, followed and panned, and could neither build nor control a resident';
+  await step('a signed-in observer sees only public conversation and public resident fields', async () => {
+    const owner = await actor('owner');
+    const steward = fixtures().characters.steward;
+    const secret = 'Private note hidden from observation mode';
+    await apiExpect(fixtures().owner, 'POST', '/messages', { agent_id: walker.id, channel: 'private', recipient_id: steward.id, text: secret }, [200]);
+    await openApp(owner.page, ACTORS.owner);
+    await owner.page.evaluate(() => sessionStorage.setItem('nemoworld-game-mode', 'entry'));
+    await owner.page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(owner.page);
+    await owner.page.locator('#hero-actions').getByRole('button', { name: 'Observe', exact: true }).click();
+    await owner.page.locator('#game-hud').waitFor({ state: 'visible' });
+    const observed = await owner.page.evaluate((residentId) => ({ messages: window.__nemoworld.world().messages, resident: window.__nemoworld.world().participants.find((item) => item.id === residentId) }), walker.id);
+    expect(!observed.messages.some((message) => message.text === secret), 'private conversation must not enter the observer view model', { actual: describe(observed.messages.map((message) => message.text)) });
+    expect(observed.resident && observed.resident.operator_id === undefined && observed.resident.capabilities === undefined, 'even an owned resident is shown through public fields while observing', { actual: describe(observed.resident) });
+    expect(!(await owner.page.locator('#view').textContent()).includes(secret), 'private conversation must not appear in the observer UI');
+    expect(await owner.page.locator('#world-chat-card form').count() === 0, 'observation offers no Send message form');
+    return 'the signed-in observer saw public residents without private messages or a write form';
+  });
+
+  return 'anonymous and signed-in observation stayed public and read-only';
 });
 
 // The game shell. The three entry controls, the five-action HUD, the drawers and the character
 // overlay, each asserted against the server rather than against a rendered string.
 define('game-shell-entry-and-continue', async () => {
-  const admin = await actor('admin');
-  const page = admin.page;
+  const visitor = await context('shell-first-visitor');
+  const operator = await context('shell-admin');
+  const page = operator.page;
   const pathfinder = fixtures().characters.pathfinder;
 
   await step('a first-time visitor sees Play and Observe, and the film as a text link', async () => {
-    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
-    await settle(page);
-    const actions = page.locator('#hero-actions');
+    await visitor.page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(visitor.page);
+    const actions = visitor.page.locator('#hero-actions');
     await actions.waitFor({ state: 'visible' });
     const labels = (await actions.getByRole('button').allTextContents()).map((label) => label.trim());
     expect(labels.includes('Play') && labels.includes('Observe'), 'a first-time visitor must see Play and Observe', { actual: describe(labels) });
     expect(!labels.some((label) => label.startsWith('Continue')), 'Continue must be absent when there is nothing to continue', { actual: describe(labels) });
     expect(await actions.locator('a.game-film-link').count() === 1, 'the film must be a text link under the controls');
-    expect((await page.locator('#game-hud').count()) === 0 || !await page.locator('#game-hud').isVisible(), 'the HUD must be hidden on the entry screen');
+    expect((await visitor.page.locator('#game-hud').count()) === 0 || !await visitor.page.locator('#game-hud').isVisible(), 'the HUD must be hidden on the entry screen');
     return `the entry screen offered ${describe(labels)}`;
   });
 
   await step('Continue enters the world as the character this browser remembers', async () => {
+    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
     await signIn(page, ACTORS.admin);
+    await page.evaluate((id) => { localStorage.setItem('selected-agent', id); sessionStorage.setItem('nemoworld-game-mode', 'entry'); }, pathfinder.id);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
     const actions = page.locator('#hero-actions');
     await actions.getByRole('button', { name: new RegExp('^Continue as ') }).waitFor({ state: 'visible' });
     const label = (await actions.getByRole('button', { name: new RegExp('^Continue as ') }).textContent())?.trim() || '';
@@ -3999,51 +4041,53 @@ define('management-interface-and-roles', async () => {
 define('private-memory-and-journal-boundaries', async () => {
   const owner = await actor('owner');
   const page = owner.page;
-  const walker = fixtures().characters.walker, steward = fixtures().characters.steward;
+  // Walker already has an operator-approved fact from shared-build-and-restart. Use the untouched
+  // steward as the subject so this scenario owns exactly one active fact and one journal entry.
+  const subject = fixtures().characters.steward, siblingResident = fixtures().characters.walker;
   const secret = 'A private purpose the acceptance run wrote.';
 
   await step('the operator records a private purpose and the resident holds a private journal note', async () => {
-    const recorded = await apiExpect(fixtures().owner, 'POST', '/memory/manage', { action: 'record', agent_id: walker.id, kind: 'purpose', attribute: 'intent', value: secret });
+    const recorded = await apiExpect(fixtures().owner, 'POST', '/memory/manage', { action: 'record', agent_id: subject.id, kind: 'purpose', attribute: 'intent', value: secret });
     expect(recorded.fact?.id, 'the operator must be able to record a memory fact', { actual: describe(recorded) });
     // A record made by the owning operator is decided at write time; a resident proposal is not.
-    expect(count("SELECT COUNT(*) FROM resident_memory WHERE agent_id=? AND state='active'", walker.id) === 1, 'exactly one active fact must be stored', { actual: describe(rows('SELECT state FROM resident_memory WHERE agent_id=?', walker.id)) });
-    await apiExpect(fixtures().owner, 'POST', '/journey/journal', { agent_id: walker.id, text: secret });
-    expect(count('SELECT COUNT(*) FROM journey_journal WHERE agent_id=?', walker.id) === 1, 'exactly one private journal entry must be stored', { actual: `${count('SELECT COUNT(*) FROM journey_journal WHERE agent_id=?', walker.id)}` });
-    return 'one operator-recorded memory fact and one private journal entry stored for the walker';
+    expect(count("SELECT COUNT(*) FROM resident_memory WHERE agent_id=? AND state='active'", subject.id) === 1, 'exactly one active fact must be stored', { actual: describe(rows('SELECT state FROM resident_memory WHERE agent_id=?', subject.id)) });
+    await apiExpect(fixtures().owner, 'POST', '/journey/journal', { agent_id: subject.id, text: secret });
+    expect(count('SELECT COUNT(*) FROM journey_journal WHERE agent_id=?', subject.id) === 1, 'exactly one private journal entry must be stored', { actual: `${count('SELECT COUNT(*) FROM journey_journal WHERE agent_id=?', subject.id)}` });
+    return 'one operator-recorded memory fact and one private journal entry stored for the subject resident';
   });
 
   await step('the owning operator reads it, and the resident’s own credential reads only its own record', async () => {
-    const owned = await apiRequest(`/memory?agent_id=${walker.id}`, { token: fixtures().owner.token });
+    const owned = await apiRequest(`/memory?agent_id=${subject.id}`, { token: fixtures().owner.token });
     expect(owned.status === 200 && owned.body.facts.some((fact) => fact.value === secret), 'the owning operator must read the approved purpose', { actual: `HTTP ${owned.status}` });
     expect(JSON.stringify(owned.body).includes(secret), 'the operator’s own read must carry the stored value');
     return 'the own-operator read returned the stored fact';
   });
 
   await step('another operator and a sibling character are both refused', async () => {
-    const stranger = await apiRequest(`/memory?agent_id=${walker.id}`, { token: fixtures().stranger.token });
+    const stranger = await apiRequest(`/memory?agent_id=${subject.id}`, { token: fixtures().stranger.token });
     expect(stranger.status === 404, 'another operator must see nothing at all', { actual: `HTTP ${stranger.status} ${describe(stranger.body)}` });
     expect(JSON.stringify(stranger.body).includes(secret) === false, 'no other-operator response may carry the value');
-    const sibling = await apiExpect(fixtures().owner, 'POST', '/runtime/start', { agent_id: steward.id, minutes: 5, max_calls: 20, scopes: ['read', 'contribute'] });
-    const leaked = await apiRequest(`/memory?agent_id=${walker.id}`, { token: sibling.token });
+    const sibling = await apiExpect(fixtures().owner, 'POST', '/runtime/start', { agent_id: siblingResident.id, minutes: 5, max_calls: 20, scopes: ['read', 'contribute'] });
+    const leaked = await apiRequest(`/memory?agent_id=${subject.id}`, { token: sibling.token });
     expect(leaked.status === 404, 'a sibling character must not read another resident’s memory', { actual: `HTTP ${leaked.status} ${describe(leaked.body)}` });
     expect(JSON.stringify(leaked.body).includes(secret) === false, 'a sibling read may not carry the value');
     const self = await apiRequest('/memory', { token: sibling.token });
-    expect(self.status === 200 && self.body.agent_id === steward.id, 'a runtime credential reads exactly its own resident', { actual: describe(self.body?.agent_id) });
-    expect(JSON.stringify(self.body).includes(secret) === false, 'the sibling’s own record must not contain the walker’s fact');
+    expect(self.status === 200 && self.body.agent_id === siblingResident.id, 'a runtime credential reads exactly its own resident', { actual: describe(self.body?.agent_id) });
+    expect(JSON.stringify(self.body).includes(secret) === false, 'the sibling’s own record must not contain the subject resident’s fact');
     // The private journal is operator-only: a sibling credential and an anonymous visitor are refused.
-    const journal = await apiRequest(`/journey?agent_id=${walker.id}`, { token: sibling.token });
+    const journal = await apiRequest(`/journey?agent_id=${subject.id}`, { token: sibling.token });
     expect(journal.status >= 400, 'a sibling credential must not read another resident’s journey', { actual: `HTTP ${journal.status}` });
-    const anonymous = await apiRequest(`/journey?agent_id=${walker.id}`);
+    const anonymous = await apiRequest(`/journey?agent_id=${subject.id}`);
     expect(anonymous.status >= 400, 'the private journal is never public', { actual: `HTTP ${anonymous.status}` });
     return `another operator ${stranger.status}, sibling credential ${leaked.status}, journey ${journal.status}/${anonymous.status}`;
   });
 
-  await step('the walker’s own operator page shows the fact and another operator’s page does not', async () => {
+  await step('the resident’s own operator page shows the fact and another operator’s page does not', async () => {
     await page.goto(`${baseUrl()}/?mode=workspace`, { waitUntil: 'domcontentloaded' });
     await settle(page);
     if (!await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, ACTORS.owner);
     await openTab(page, 'Callings & guilds');
-    await openWorldAs(page, walker.id);
+    await openWorldAs(page, subject.id);
     await openTab(page, 'Callings & guilds');
     const shown = await page.locator('#view').textContent();
     expect(shown.includes(secret), 'the owning operator must see the approved purpose', { actual: 'the value is absent from the owner’s view' });

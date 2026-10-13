@@ -1,10 +1,10 @@
 import {createVoxelWorld} from './src/voxel-world.js';
-import {controlIntent,keyIntent,createLookScheduler,reticleText,INTERACTION_DISTANCE,createViewBlocker,INTERACTION_KEY_LABEL,controlHint,targetHint} from './src/camera-controls.js';
+import {controlIntent,createLookScheduler,reticleText,INTERACTION_DISTANCE,createViewBlocker,INTERACTION_KEY_LABEL,controlHint,targetHint} from './src/camera-controls.js';
 import {createGameInput} from './src/game-input.js';
 import {blockLayers,surfaceAt} from './src/elevation.js';
 import {createHotbar,createPlacementPreview,mount} from './src/ui/build-interface.js';
 import {createInventoryPanel} from './src/ui/inventory-panel.js';
-import {createInteractionPrompt,confirmationMessage,paintPrompt,paintOverlay} from './src/ui/interaction-prompt.js';
+import {createInteractionPrompt,confirmationMessage} from './src/ui/interaction-prompt.js';
 import {createReadonlyTransport,createSpectatorView} from './src/ui/spectator.js';
 import {createTouchControls,hasCoarsePointer,prefersReducedMotion} from './src/ui/touch-controls.js';
 import {planWalk} from './src/world-walk.js';
@@ -124,10 +124,12 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- gameAudio.stop();walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.evidenceLibrary=null;clearOperatorState(state);state.workbenches=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ gameAudio.stop();spectator?.close();spectator=null;walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.evidenceLibrary=null;clearOperatorState(state);state.workbenches=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
+ const liveWorld=spectator?.status().live?spectator.worldId():state.eventStream?.ready?state.eventStream.world:null;
+ if(liveWorld)state.eventStreamClosed={world:liveWorld,reason:'session_revoked',at:Date.now()};
  clearBrowserOperator();notice('Your session ended. Sign in again to continue; saved drafts remain available.');
  sessionRecovery=(async()=>{try{await refresh(false);render();notice('Your session ended. Sign in again to continue; saved drafts remain available.');}catch{notice('Your session ended. Public pages could not refresh; try again when the world is reachable.',true);}finally{sessionRecovery=null;}})();return sessionRecovery;
 }
@@ -195,7 +197,7 @@ function facingForResident(resident) {
   if(resident?.kind==='human'&&resident.last_look===0&&resident.world_id==='commons'&&resident.x===10&&resident.y===6)return {yaw:-3*Math.PI/4,pitch:-.08};
   return {yaw:Number.isFinite(resident?.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident?.pitch)?resident.pitch:.62};
 }
-async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration()]);const resident=selected();if(resident)state.facing=facingForResident(resident); render(); }
+async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration()]);const resident=selected();if(resident){state.facing=facingForResident(resident);gameInput.setFacing(state.facing);}render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -228,8 +230,10 @@ function paintWorld() {
   else {draw(canvas, displayPosition, { blocks:state.world.blocks||[],world: definition(), camera: state.camera, objects: state.world.objects || [], portals: worldPortals(), visitors: state.world.participants.filter((a) => a.id !== agent?.id && a.status !== 'revoked').map((item) => displayed(item, now)), self: agent ? displayed(agent, now) : null, sprites:mayorSprites, dayPhase: state.world.atmosphere?.phase });canvas.dataset.graphics='pixel';}
   syncWorldControls();updateCallingHUD();const coordinates=$('#game-coordinates');if(coordinates)coordinates.textContent=`${Math.floor(displayPosition.x)}, ${Math.floor(displayPosition.y)}`;const population=$('#game-population');if(population)population.textContent=String(state.world.counts?.world_agents??state.world.population??state.world.participants.length);const overview=$('#world-overview');if(overview)drawMiniMap(overview,definition(),{camera:state.camera,position:agent||null,objects:state.world.objects||[],blocks:state.world.blocks||[],portals:worldPortals()});
 }
-function worldURL() { const position = cameraFor(); const query = new URLSearchParams({ view:state.graphics==='voxel'?'voxel':'pixel',world_id: currentWorldId(), x: String(Math.floor(position.x)), y: String(Math.floor(position.y)) }); if (selected() && state.account) query.set('agent_id', state.selected); return `/world?${query}`; }
-function normalizeWorld(world) { return { ...world, participants: world.participants || world.agents || [] }; }
+function worldURL() { const position = cameraFor(); const query = new URLSearchParams({ view:state.graphics==='voxel'?'voxel':'pixel',world_id: currentWorldId(), x: String(Math.floor(position.x)), y: String(Math.floor(position.y)) }); if (selected() && state.account && state.gameMode!=='observe') query.set('agent_id', state.selected); return `/world?${query}`; }
+const publicObserverMessage = (message) => Object.fromEntries(['id','author','text','created_at','world_id','channel'].filter(key=>message?.[key]!==undefined).map(key=>[key,message[key]]));
+const publicObserverResident = (resident) => resident?.kind==='npc'?resident:Object.fromEntries(['id','name','kind','color','symbol','status','verified','x','y','z','grounded','yaw','pitch','world_id','posture','last_seen','emote','emote_until','presence','calling','title','avatar','accepted_contributions'].filter(key=>resident?.[key]!==undefined).map(key=>[key,resident[key]]));
+function normalizeWorld(world) { return { ...world, participants: state.gameMode==='observe'?(world.participants||world.agents||[]).map(publicObserverResident):(world.participants||world.agents||[]), messages: state.gameMode==='observe' ? (world.messages||[]).filter(message=>message?.channel==='public').map(publicObserverMessage) : (world.messages||[]) }; }
 async function loadWorld() { state.world = normalizeWorld(await api(worldURL())); seedPresence(state.world.participants); }
 
 // ---------------------------------------------------------------------------------------------
@@ -297,7 +301,9 @@ function closeEventStream() {
 }
 /** Keep exactly one live subscription, bound to the world currently on screen. */
 function syncEventStream() {
-  const world = state.account ? currentWorldId() : null;
+  // Observation owns its one public live feed through the spectator component. The ordinary play
+  // channel would open a duplicate connection and can race the observer's entitlement state.
+  const world = state.account && state.gameMode!=='observe' ? currentWorldId() : null;
   if (!world || state.tab !== 'world') return closeEventStream();
   const stream = state.eventStream;
   if (stream && stream.world === world && !stream.closed) return;
@@ -347,7 +353,7 @@ function applyWorldUpdate(data) {
     if (!agent || typeof agent.id !== 'string') continue;
     const index = participants.findIndex((item) => item.id === agent.id);
     if (agent.world_id && agent.world_id !== world) { if (index >= 0) participants.splice(index, 1); continue; }
-    if (index >= 0) Object.assign(participants[index], agent);
+    if (index >= 0) Object.assign(participants[index],state.gameMode==='observe'?publicObserverResident(agent):agent);
     else unknown = true;
     noteConfirmed(agent);
     const owned = state.agents.find((item) => item.id === agent.id);
@@ -371,7 +377,8 @@ function applyWorldUpdate(data) {
   state.world.messages = state.world.messages || [];
   for (const message of data.messages || []) {
     if (!message?.id || state.world.messages.some((item) => item.id === message.id)) continue;
-    state.world.messages.push(message);
+    if(state.gameMode==='observe'){if(message.channel!=='public')continue;state.world.messages.push(publicObserverMessage(message));}
+    else state.world.messages.push(message);
   }
   if (state.world.messages.length > 200) state.world.messages = state.world.messages.slice(-200);
   // A participant this client has never seen is completed from the authoritative snapshot instead of
@@ -390,7 +397,7 @@ function refreshMessageList() {
 }
 window.__nemoworld = {
   presence: () => [...presence.entries()].map(([id, record]) => ({ id, confirmed: { ...record.confirmed }, display: displayCoords(record, performance.now()), tweening: record.duration > 0 && record.at + record.duration > performance.now() })),
-  stream: () => (state.eventStream ? { world: state.eventStream.world, ready: state.eventStream.ready, closed: state.eventStream.closed, reason: state.eventStream.reason || null, errors: state.eventStream.errors, updates: state.eventStream.updates, lastLatencyMs: state.eventStream.lastLatencyMs ?? null } : null),
+  stream: () => state.gameMode==='observe'&&spectator ? {world:spectator.worldId(),ready:spectator.status().live,closed:!spectator.status().live,reason:spectator.status().reason,updates:spectator.frames()} : (state.eventStream ? { world: state.eventStream.world, ready: state.eventStream.ready, closed: state.eventStream.closed, reason: state.eventStream.reason || null, errors: state.eventStream.errors, updates: state.eventStream.updates, lastLatencyMs: state.eventStream.lastLatencyMs ?? null } : null),
   lastClosed: () => state.eventStreamClosed || null,
   world: () => state.world,
   worldId: () => currentWorldId(),
@@ -404,7 +411,7 @@ window.__nemoworld = {
 async function loadDirectory() { const result = await api(`/worlds?${new URLSearchParams({ q: state.worldQuery, offset: String(state.worldOffset), limit: '12' })}`); state.worlds = Array.isArray(result) ? result : result.worlds || result.items || []; state.worldTotal = result.total ?? state.worlds.length; state.directoryHasMore = result.has_more ?? state.worldOffset + state.worlds.length < state.worldTotal; }
 async function loadAmbassadors() { state.ambassadorPage = await api('/ambassadors?' + new URLSearchParams({ q: state.ambassadorQuery.q || '', group: state.ambassadorQuery.group || '', offset: String(state.ambassadorOffset || 0), limit: '20',...(isModerator()&&state.ambassadorIncludePaused?{include_paused:'1'}:{}) })); state.ambassadors = state.ambassadorPage.entries || []; }
 async function openAmbassador(id) { state.ambassadorProfile = await api('/ambassador?id=' + encodeURIComponent(id)); newcomerComplete('ambassador'); await openSection('civic'); }
-async function visitWorld(id) { walkVersion++;$('#notice').hidden=true; setGameMode('observe');state.viewWorld = id; state.focus = getWorldDefinition(id).start; state.building = false; state.interaction=null; state.interactionRefusal=null; await loadWorld(); state.tab = 'world'; render(); }
+async function visitWorld(id) { walkVersion++;$('#notice').hidden=true; await enterObservation(id,getWorldDefinition(id).start); }
 let lastMotionAt = 0;
 async function motionRequest(path, body) { const delay = Math.max(0, 160 - (performance.now() - lastMotionAt)); if (delay) await new Promise((resolve) => setTimeout(resolve, delay)); lastMotionAt = performance.now(); return api(path, 'POST', body); }
 const wrapFacing = (value) => value >= -Math.PI && value <= Math.PI ? value : ((value + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
@@ -430,6 +437,7 @@ function sendLook() {
 // only ever stores the facing: it never asks the server to move the resident.
 function queueLook(yaw,pitch,{apply=true}={}) {
   state.facing={yaw:wrapFacing(yaw),pitch:clampFacing(pitch)};
+  gameInput.setFacing(state.facing);
   if(apply)applyFacing();
   if(!viewedAgent()||!(state.lookMode||state.firstPerson))return;
   lookScheduler.request();
@@ -514,7 +522,12 @@ function missionDirectoryControls(parent){
 }
 function missionDirectoryPages(parent){const page=state.missionPage,previous=button('Previous missions',async()=>{state.missionQuery.offset=String(Math.max(0,page.offset-page.limit));await loadMissionPage();renderView();},'secondary');previous.disabled=!page.offset;const next=button('Next missions',async()=>{state.missionQuery.offset=String(page.offset+page.limit);await loadMissionPage();renderView();},'secondary');next.disabled=!page.has_more;parent.append(actions(previous,paragraph(`Page ${Math.floor(page.offset/page.limit)+1} · ${page.total} matching missions`,'privacy'),next));}
 async function change(path, body, message, idempotent = false) { const result = await api(path, 'POST', body, idempotent); await refresh(); render(); if (message) notice(message); return result; }
-function setGameMode(mode){state.gameMode=mode;try{sessionStorage.setItem('nemoworld-game-mode',mode);}catch{}if(mode!=='observe')spectator=null;applyGameShell();}
+function setGameMode(mode){
+  if(mode!=='observe'){spectator?.close();spectator=null;}
+  state.gameMode=mode;
+  try{sessionStorage.setItem('nemoworld-game-mode',mode);if(mode!=='observe')sessionStorage.removeItem('nemoworld-observe-world');}catch{}
+  applyGameShell();
+}
 function setFirstPerson(enabled){state.firstPerson=Boolean(enabled);try{sessionStorage.setItem('nemoworld-first-person',String(state.firstPerson));}catch{}gameInput.setCameraMode(state.firstPerson?'first-person':'third-person',{silent:true});}
 function applyGameShell(){
   // A signed-in operator lands on the entry screen: Play, Observe and Continue are the door, and one
@@ -543,12 +556,19 @@ function toggleGameMenu(){state.gameMenuOpen=!state.gameMenuOpen;$('.sidebar')?.
 // read-only transport: the component can only issue the allow-listed public GETs, so nothing on this
 // path can build, move a resident or speak for one. The live channel needs a session, so a visitor
 // observes from the authoritative snapshot instead.
+async function enterObservation(id,position){
+  const next=createSpectatorView({read:spectatorTransport.get,start:position,subscribe:state.account?liveSubscribe:undefined});
+  const opened=await next.open(id);
+  if(!opened.ok){next.close();notice(`${opened.message} ${opened.next_step||''}`.trim(),true);return false;}
+  spectator?.close();spectator=next;
+  setGameMode('observe');state.viewWorld=id;state.focus={x:position.x,y:position.y};state.building=false;state.interaction=null;state.interactionRefusal=null;setFirstPerson(false);state.gameDrawer='';
+  try{sessionStorage.setItem('nemoworld-observe-world',id);}catch{}
+  await loadWorld();state.tab='world';render();return true;
+}
 async function observeWorld(){
   const id=state.gameMode==='entry'?'commons':currentWorldId();
-  const position=worldPosition();setGameMode('observe');state.viewWorld=id;state.focus=id==='commons'?getWorldDefinition('commons').start:{x:position.x,y:position.y};state.building=false;setFirstPerson(false);state.gameDrawer='';
-  spectator=createSpectatorView({read:spectatorTransport.get,start:getWorldDefinition(id).start,subscribe:state.account?liveSubscribe:undefined});
-  await spectator.open(id);
-  await loadWorld();state.tab='world';render();
+  const position=worldPosition();
+  await enterObservation(id,id==='commons'?getWorldDefinition('commons').start:{x:position.x,y:position.y});
 }
 function render() { if(state.account||state.tab!=='world')$('#hero-introduction')?.pause(); document.body.classList.toggle('signed-in', Boolean(state.account)); document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons')); applyGameShell();renderSession(); renderAuth(); renderTabs(); renderView(); paintHero(); }
 function paintHero(){
@@ -907,7 +927,8 @@ function gameHud(world,agent,position){
   },'game-quick');build.id='game-build-button';
   const chat=button('Chat',()=>setGameDrawer('chat'),'game-quick');const places=button('Places',()=>openSection('explore'),'game-quick');const tools=button('More',()=>setGameDrawer('tools'),'game-quick');
   actionsRow.append(interact,build,chat,places,tools);bottom.append(hint,actionsRow);hud.append(bottom);
-  const target=element('p',targetHint(state.interaction?.fixture),'game-target');target.id='game-target';hud.append(target);
+  const fixture=state.interaction?.fixture;
+  const target=element('p',fixture?`${fixture.action?.label||fixture.label} · ${fixture.x}, ${fixture.y} · ${INTERACTION_KEY_LABEL} to interact`:targetHint(null),'game-target');target.id='game-target';hud.append(target);
   // The observer's own honest connection line, and the refusal when a read was refused.
   if(state.gameMode==='observe'&&spectator){
     const line=element('p',null,'game-observer');line.id='game-observer-status';
@@ -966,7 +987,7 @@ function walkToTileForm(agent, world) {
 async function walkTo(x,y){
  const player=viewedAgent();if(!player)return false;const worldId=player.world_id,id=player.id,epoch=state.sessionEpoch||0;
  const route=planWalk(getWorldDefinition(worldId),player,{x,y},{objects:state.world.objects||[],blocks:state.world.blocks||[]});if(!route){notice('No known walkable route to that tile. Choose nearby open ground.');return false;}
- const version=++walkVersion;walkActive=true;try{for(const direction of route){if(version!==walkVersion||epoch!==(state.sessionEpoch||0)||selected()?.id!==id||selected().world_id!==worldId)return false;const before={x:selected().x,y:selected().y};await moveAgent(direction,true);if(selected()?.id!==id||selected().x===before.x&&selected().y===before.y){notice('The path is blocked. Choose another route.');return false;}}
+ const version=++walkVersion;walkActive=true;try{for(const direction of route){if(version!==walkVersion||epoch!==(state.sessionEpoch||0)||selected()?.id!==id||selected().world_id!==worldId)return false;const before={x:selected().x,y:selected().y};for(let attempt=0;attempt<4;attempt++){try{await moveAgent(direction,true);break;}catch(error){if(error.status!==429||attempt===3)throw error;await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));if(version!==walkVersion||epoch!==(state.sessionEpoch||0))return false;}}if(selected()?.id!==id||selected().x===before.x&&selected().y===before.y){notice('The path is blocked. Choose another route.');return false;}}
  return true;}finally{walkActive=false;}
 }
 async function pickWorld(pick){
@@ -1280,7 +1301,7 @@ function chatCard() {
   if (!state.world.messages.length) messages.append(paragraph('The plaza is quiet. Start a conversation.', 'muted'));
   for (const message of state.world.messages.slice(-35)) { const row = element('article', null, 'chat-message'); const author = element('div', null, 'row'); append(author, element('strong', message.author), badge(message.channel)); if (state.account) author.append(button('Report', () => reportPrompt('message', message.id), 'secondary small')); append(row, author, paragraph(message.text), element('small', date(message.created_at))); messages.append(row); }
   node.append(messages);
-  if (state.account) {
+  if (state.account&&state.gameMode!=='observe') {
     const speaker=viewedAgent();
     const controls = form(node, 'Send message', async (data, formNode) => { await change('/messages', { ...data, ...(speaker ? {agent_id: speaker.id} : {}), world_id: currentWorldId() }, 'Message sent.'); formNode.reset(); });
     const channel = field(controls, 'channel', 'Channel', { options: speaker ? [{value:'public',label:'This world'},{value:'nearby',label:'Nearby characters'},{value:'private',label:'Direct conversation'},{value:'mission',label:'Mission conversation'}] : [{value:'public',label:'This world'},{value:'mission',label:'Mission conversation'}] });
@@ -1289,7 +1310,7 @@ function chatCard() {
     const mission = field(controls, 'mission_id', 'Mission', { required: false, options: state.missions.map((m) => ({value:m.id,label:m.title})), full:true }); mission.closest('label').hidden = true;
     channel.addEventListener('change', () => { recipient.closest('label').hidden = channel.value !== 'private'; recipient.required = channel.value === 'private'; mission.closest('label').hidden = channel.value !== 'mission'; });
     field(controls, 'text', 'Message', { type:'textarea',max:500,full:true }); node.append(paragraph('Direct conversations are visible to the participating agents’ operators. They are not end-to-end encrypted.', 'privacy'));
-  } else node.append(paragraph('Sign in to join the conversation as a visitor or agent operator.', 'privacy'));
+  } else node.append(paragraph(state.gameMode==='observe'?'Observation is read-only. Choose Play to join this conversation.':'Sign in to join the conversation as a visitor or agent operator.', 'privacy'));
   return node;
 }
 function renderList(parent) {
@@ -1908,7 +1929,19 @@ async function loadOffers(list,status,filter='all'){
 }
 
 async function boot() {
-  try {const bootstrap=await api('/bootstrap');state.setup=bootstrap.setup_required;state.setupCodeRequired=bootstrap.setup_code_required===true;state.registrationOpen=bootstrap.registration_open!==false;try{const me=await api('/me');state.account=me.account;state.agents=me.agents;}catch{}await refresh();if(selected())state.facing=facingForResident(selected());render();resumePendingWork();}catch(error){notice(`Could not connect to the world: ${error.message}`,true);render();}
+  try {
+    const bootstrap=await api('/bootstrap');state.setup=bootstrap.setup_required;state.setupCodeRequired=bootstrap.setup_code_required===true;state.registrationOpen=bootstrap.registration_open!==false;
+    try{const me=await api('/me');state.account=me.account;state.agents=me.agents;}catch{}
+    await refresh();if(selected()){state.facing=facingForResident(selected());gameInput.setFacing(state.facing);}
+    let restored=false;
+    if(state.gameMode==='observe'){
+      const id=sessionStorage.getItem('nemoworld-observe-world');
+      if(id){const start=getWorldDefinition(id).start;restored=await enterObservation(id,start);}
+      if(!restored)setGameMode('entry');
+    }
+    if(!restored)render();
+    resumePendingWork();
+  }catch(error){notice(`Could not connect to the world: ${error.message}`,true);render();}
 }
 // Restore the signed-in operator’s ordinary unfinished form and its remembered focus.
 function resumePendingWork() {
@@ -2733,7 +2766,7 @@ function refreshInteractionPanel() {
   host.replaceChildren();
   interactionBody(host);
   const fixture=state.interaction?.fixture,target=$('#game-target'),control=$('#game-interact-button');
-  if(target)target.textContent=fixture?`${fixture.label} · ${fixture.x}, ${fixture.y} · ${INTERACTION_KEY_LABEL} to interact`:targetHint(null);
+  if(target)target.textContent=fixture?`${fixture.action?.label||fixture.label} · ${fixture.x}, ${fixture.y} · ${INTERACTION_KEY_LABEL} to interact`:targetHint(null);
   if(control)control.disabled=!viewedAgent()||!fixture;
 }
 function interactionTile(fixture) { return `${fixture.x}, ${fixture.y}`; }
@@ -2942,8 +2975,8 @@ function liveSubscribe(worldId,handlers={}){
   const source=new EventSource(`/api/v1/events?world_id=${encodeURIComponent(worldId)}`);
   let ready=false,errors=0;
   source.addEventListener('ready',()=>{ready=true;errors=0;handlers.onReady?.();});
-  source.addEventListener('update',(event)=>{try{handlers.onFrame?.(JSON.parse(event.data));}catch{/* a malformed frame is ignored */}});
-  source.addEventListener('closed',(event)=>{let reason='closed';try{reason=JSON.parse(event.data).reason||reason;}catch{}try{source.close();}catch{}handlers.onClosed?.(reason);});
+  source.addEventListener('update',(event)=>{try{const frame=JSON.parse(event.data);handlers.onFrame?.(frame);if(state.gameMode==='observe'&&currentWorldId()===worldId)applyWorldUpdate(frame);}catch{/* a malformed frame is ignored */}});
+  source.addEventListener('closed',(event)=>{let reason='closed';try{reason=JSON.parse(event.data).reason||reason;}catch{}try{source.close();}catch{}state.eventStreamClosed={world:worldId,reason,at:Date.now()};handlers.onClosed?.(reason);if(reason==='session_revoked')notice('Your session ended, so the live world feed stopped. Sign in again to resume it.');else if(reason==='access_revoked')notice('This place is no longer open to you, so the live world feed stopped.');});
   source.addEventListener('error',()=>{errors+=1;if(ready)return;if(errors>=3){try{source.close();}catch{}handlers.onError?.({status:401});}});
   return {close(){try{source.close();}catch{/* already closed */}}};
 }

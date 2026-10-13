@@ -17,6 +17,20 @@ const palette = GARDEN_PALETTE;
 const housePalette = HOUSE_PALETTE;
 const participantLimit = 200;
 const publicFields = 'w.id,w.name,w.kind,w.owner_agent_id,w.visibility,w.width,w.height,a.name AS owner_name';
+const anonymousResidentFields = Object.freeze([
+  'id','name','kind','color','symbol','status','verified','x','y','z','grounded',
+  'yaw','pitch','world_id','posture','last_seen','emote','emote_until','presence',
+  'calling','title','avatar','accepted_contributions',
+]);
+const anonymousResident = (resident) => Object.fromEntries(
+  anonymousResidentFields.filter((field) => resident[field] !== undefined)
+    .map((field) => [field, resident[field]])
+);
+const anonymousMessageFields = Object.freeze(['id','author','text','created_at','world_id','channel']);
+const anonymousMessage = (message) => Object.fromEntries(
+  anonymousMessageFields.filter((field) => message[field] !== undefined)
+    .map((field) => [field, message[field]])
+);
 const date = () => new Date().toISOString();
 const sharedIds = sharedWorldIds;
 const quantity = (value, fallback, maximum) => {
@@ -350,7 +364,16 @@ export const spaceMethods = {
       participant.presence = participant.status !== 'active' ? participant.status : participant.has_session && this.clock() - participant.last_seen < 30000 ? 'connected' : this.clock() - participant.last_seen < 30000 ? 'recent_visit' : 'offline';
       delete participant.has_session;
     }
+    // Anonymous observation is a public resident view. Keep authenticated owner and
+    // runtime views unchanged, while excluding operator identity and private profile
+    // fields from the public endpoint. NPCs carry authored civic copy required by the
+    // public ambassador/guide display and are already non-account records.
     const viewerIds = actor ? actor.kind === 'runtime' ? [actor.agent.id] : this.all('SELECT id FROM agents WHERE operator_id=?', actor.account.id).map((a) => a.id) : [];
+    const visibleParticipants = participants.map((participant) => (
+      participant.kind === 'npc' || viewerIds.includes(participant.id)
+        ? participant
+        : anonymousResident(participant)
+    ));
     const missionAccess = new Map();
     const readable = (message) => {
       if (message.channel === 'mission') {
@@ -362,6 +385,7 @@ export const spaceMethods = {
     const messages = this.all("SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.recipients,m.text,m.created_at,m.world_id,COALESCE(a.name,o.name) AS author FROM messages m LEFT JOIN agents a ON a.id=m.agent_id JOIN accounts o ON o.id=m.account_id WHERE m.status='visible' AND (m.world_id=? OR m.channel IN ('private','mission')) ORDER BY m.created_at DESC LIMIT 200", id)
       .filter(readable)
       .reverse().map(({ recipients, ...message }) => message);
+    const visibleMessages = actor ? messages : messages.map(anonymousMessage);
     const objects = this.all('SELECT id,type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', id).map((object) => ({ ...object, kind: object.type }));
     // Authored scenery inside the returned window, resolved through the shared footprint table, so a
     // client or agent reads the same occupancy the server enforces instead of re-deriving it.
@@ -372,7 +396,7 @@ export const spaceMethods = {
     const blockWindow = input.view === 'voxel' ? { x: Math.max(0, Math.min(world.width - 37, blockCenter.x - 18)), y: Math.max(0, Math.min(world.height - 37, blockCenter.y - 18)), columns: Math.min(37, world.width), rows: Math.min(37, world.height) } : camera;
     const frontierView = this.frontierView(id, blockWindow, actor);
     const ownHome = viewerAgent ? this.get("SELECT id,name,visibility FROM worlds WHERE owner_agent_id=? AND kind='home'", viewerAgent.id) : null;
-    return { world: { ...world, description: definition.description || '', lore: definition.lore || '', ambiance: definition.ambiance || '' }, participants, agents: participants.map(({calling,...legacy})=>legacy), messages, camera, objects, scenery, portals, own_home: ownHome, build_palette: world.kind === 'house' ? housePalette : palette,
+    return { world: { ...world, description: definition.description || '', lore: definition.lore || '', ambiance: definition.ambiance || '' }, participants: visibleParticipants, agents: visibleParticipants.map(({calling,...legacy})=>legacy), messages: visibleMessages, camera, objects, scenery, portals, own_home: ownHome, build_palette: world.kind === 'house' ? housePalette : palette,
       ...frontierView, terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
       bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null,
       counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='agent'").n, registered_humans: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='human'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n+this.get('SELECT COUNT(*) AS n FROM npc_ambassadors WHERE world_id=?',id).n, visible_agents: participants.length, hidden_agents: hiddenAgents },
