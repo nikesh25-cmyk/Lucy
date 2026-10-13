@@ -509,7 +509,10 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         const result = platform.transaction(() => {
           let value;
           if(route==='/workers'){const view=run=>{if(!run)return null;const state=platform.residentRun(run.id);return {job_id:run.id,agent_id:run.agent_id,status:'running',...(state?{phase:state.phase,decision:state.decision,model_calls:state.model_calls,action_count:state.action_count,decisions_remaining:state.decisions_remaining,last_action:state.last_action.action||null}:{})};};value={research:view(researchRuns.get(actor.account.id)),resident:view(residentRuns.get(actor.account.id))};}
-          else if(route==='/callings')value=platform.callings(actor,Object.fromEntries(url.searchParams));
+          // A runtime with the contribute scope receives the mission directory inside its own private
+          // calling read, so one credential charge covers its calling context and its available work.
+          // Only the resident's own read is extended; sessions and other scopes are unchanged.
+          else if(route==='/callings'){value=platform.callings(actor,Object.fromEntries(url.searchParams));if(actor?.kind==='runtime'&&JSON.parse(actor.credential.scopes).includes('contribute'))value.missions=platform.missionList(actor);}
           else if(route==='/callings/guilds')value=platform.callingGuilds(Object.fromEntries(url.searchParams));
           else if(route==='/quests')value=platform.quests(actor,Object.fromEntries(url.searchParams));
           else if(route==='/quests/catalog')value=platform.questCatalog(Object.fromEntries(url.searchParams));

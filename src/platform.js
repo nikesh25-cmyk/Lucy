@@ -355,11 +355,16 @@ export class Platform {
   missionList(actor = null, options = {}) {
     this.expireClaims();
     if(Object.keys(options).length)return missionDirectory(this,actor,options);
-    const human = actor?.kind === 'session' ? actor : null, visible = "(m.status<>'draft' OR ?=1 OR m.owner_id=? OR m.reviewer_id=?)", args = [human?.account.role === 'admin' ? 1 : 0, human?.account.id || '', human?.account.id || ''];
+    const human = actor?.kind === 'session' ? actor : null, runtime = actor?.kind === 'runtime';
+    const visible = "(m.status<>'draft' OR ?=1 OR m.owner_id=? OR m.reviewer_id=?)", args = [human?.account.role === 'admin' ? 1 : 0, human?.account.id || '', human?.account.id || ''];
     const total = this.get(`SELECT COUNT(*) AS n FROM missions m WHERE ${visible}`, ...args).n;
     const missions = this.all(`SELECT m.*,o.name AS owner,r.name AS reviewer FROM missions m LEFT JOIN accounts o ON o.id=m.owner_id LEFT JOIN accounts r ON r.id=m.reviewer_id WHERE ${visible} ORDER BY m.created_at DESC,m.id ASC LIMIT ?`, ...args, MISSION_LIMIT);
     const tasks = this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id WHERE t.mission_id IN (SELECT value FROM json_each(?)) ORDER BY t.id', JSON.stringify(missions.map((mission) => mission.id))).map((task) => ({ ...task, allowed_domains: parse(task.allowed_domains), allowed_actions: ['read-approved-sources', 'submit-evidence'], risk: 'low', lease_minutes: 20 }));
-    return { missions, tasks, total, offset: 0, limit: MISSION_LIMIT, has_more: missions.length < total };
+    let active_claim = null;
+    if (runtime) {
+      active_claim = this.get("SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=? AND c.agent_id=? AND c.status IN ('leased','changes_requested') ORDER BY c.created_at DESC LIMIT 1", actor.account.id, actor.agent.id) || null;
+    }
+    return { missions, tasks, total, offset: 0, limit: MISSION_LIMIT, has_more: missions.length < total, active_claim };
   }
   createMission(actor, input) {
     role(actor, ['admin', 'reviewer']); this.active();

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { authorizeAction, parseAction, runAgent, worldUrl, observationPrompt, serializeObservation, OBSERVATION_BYTE_BUDGET, OBSERVATION_LIMITS } from './agent.js';
 import { createOllamaModel, localModelUrl } from './model.js';
 
-function fixture({ statuses = [], world = { participants: [], messages: [] }, denyWorld = false, journey, community } = {}) {
+function fixture({ statuses = [], world = { participants: [], messages: [] }, denyWorld = false, journey, community, callings } = {}) {
   const requests = [];
   let statusIndex = 0;
   let currentStatus = { agent_id: 'fixture-agent', scopes: ['read', 'move', 'chat', 'contribute'],
@@ -15,7 +15,9 @@ function fixture({ statuses = [], world = { participants: [], messages: [] }, de
     if (path === '/api/v1/runtime/status') currentStatus = statuses[statusIndex++] || currentStatus;
     const result = path === '/api/v1/runtime/status' ? currentStatus : path === '/api/v1/world' ? world
       : path === '/api/v1/journey' ? journey ?? { agent_id: currentStatus.agent_id, recipes: [], crops: [], quests: [], skills: [] }
-      : path === '/api/v1/community' ? community ?? { viewer_agent_id: currentStatus.agent_id, circles: [], projects: [], events: [] } : {};
+      : path === '/api/v1/community' ? community ?? { viewer_agent_id: currentStatus.agent_id, circles: [], projects: [], events: [] }
+      // The mission directory rides inside the resident's own private calling read.
+      : path === '/api/v1/callings' ? callings ?? { agent_id: currentStatus.agent_id, targets: { tasks: [], claim: null }, missions: { tasks: [], active_claim: null } } : {};
     return new Response(JSON.stringify(result));
   } };
 }
@@ -87,7 +89,7 @@ test('instructions inside conversations cannot authorize model tools or arbitrar
     } });
   assert.equal(result.status, 'failed');
   assert.equal(result.action_count, 0);
-  assert.ok(f.requests.every((r) => ['/api/v1/world', '/api/v1/runtime/status', '/api/v1/journey', '/api/v1/community', '/api/v1/callings', '/api/v1/jobs'].includes(r.path)));
+  assert.ok(f.requests.every((r) => ['/api/v1/world', '/api/v1/runtime/status', '/api/v1/journey', '/api/v1/community', '/api/v1/callings', '/api/v1/missions', '/api/v1/jobs'].includes(r.path)));
 });
 
 test('provider timeout terminates a hung provider without dispatching', async () => {
@@ -262,6 +264,64 @@ test('malicious cooperative output cannot add agent IDs, timestamps, tools, appr
     { action: 'create_project', title: 'Pretend work is done' },
   ];
   for (const value of forbidden) assert.throws(() => parseAction(JSON.stringify(value)));
+});
+
+test('mission claim and submit actions are parsed, authorized and dispatched through the existing routes', async () => {
+  const status = { agent_id: 'fixture-agent', expires_at: Date.now() + 60000, remaining_calls: 100, paused: false, scopes: ['read', 'contribute'] };
+  const missions = { tasks: [{ id: 'task-1', mission_id: 'mission-1', title: 'Find a source', instructions: 'Submit one source.', allowed_domains: ['example.org'], status: 'open', lease_minutes: 20 }], active_claim: null };
+  const world = { participants: [{ id: 'fixture-agent', operator_id: 'one', status: 'active' }] };
+  const f = fixture({ world, statuses: [status, status], callings: { agent_id: 'fixture-agent', targets: { tasks: [], claim: null }, missions } });
+  const baseFetch = f.fetchImpl;
+  f.fetchImpl = async (url, options) => {
+    const path = new URL(url).pathname;
+    const body = options.body ? JSON.parse(options.body) : null;
+    if (path === '/api/v1/claims') { f.requests.push({ path, body }); return new Response(JSON.stringify({ id: 'claim-1', task_id: 'task-1', status: 'leased' })); }
+    return baseFetch(url, options);
+  };
+  const result = await runAgent({ token: 'fixture-only', fetchImpl: f.fetchImpl, maxCalls: 1, stepDelayMs: 0,
+    modelFn: async ({ prompt }) => {
+      assert.match(prompt, /reviewed mission work/);
+      assert.match(prompt, /"action":"claim"/);
+      return '{"action":"claim","task_id":"task-1"}';
+    } });
+  assert.equal(result.status, 'completed');
+  assert.equal(result.action_count, 1);
+  const claimRequest = f.requests.find((r) => r.path === '/api/v1/claims');
+  assert.deepEqual(claimRequest.body, { task_id: 'task-1' });
+
+  // Submit against the active claim observed on the next turn.
+  const missionsWithClaim = { ...missions, active_claim: { id: 'claim-1', task_id: 'task-1', task_title: 'Find a source', status: 'leased', expires_at: Date.now() + 60000 } };
+  const f2 = fixture({ world, statuses: [status], callings: { agent_id: 'fixture-agent', targets: { tasks: [], claim: null }, missions: missionsWithClaim } });
+  const baseFetch2 = f2.fetchImpl;
+  f2.fetchImpl = async (url, options) => {
+    const path = new URL(url).pathname;
+    const body = options.body ? JSON.parse(options.body) : null;
+    if (path === '/api/v1/submissions') { f2.requests.push({ path, body }); return new Response(JSON.stringify({ id: 'sub-1', status: 'pending_review' })); }
+    return baseFetch2(url, options);
+  };
+  const result2 = await runAgent({ token: 'fixture-only', fetchImpl: f2.fetchImpl, maxCalls: 1, stepDelayMs: 0,
+    modelFn: async () => '{"action":"submit","claim_id":"claim-1","artifact":"A relevant source.","sources":[{"url":"https://example.org/article","location":"paragraph 2"}]}' });
+  assert.equal(result2.status, 'completed');
+  const submitRequest = f2.requests.find((r) => r.path === '/api/v1/submissions');
+  assert.deepEqual(submitRequest.body, { claim_id: 'claim-1', artifact: 'A relevant source.', sources: [{ url: 'https://example.org/article', location: 'paragraph 2' }] });
+
+  // Authorization requires observed records.
+  assert.deepEqual(authorizeAction(parseAction('{"action":"claim","task_id":"task-1"}'), { ...world, missions }, status), { action: 'claim', task_id: 'task-1' });
+  assert.throws(() => authorizeAction(parseAction('{"action":"claim","task_id":"task-other"}'), { ...world, missions }, status), /permissions/);
+  assert.throws(() => authorizeAction(parseAction('{"action":"submit","claim_id":"claim-1","artifact":"x","sources":[{"url":"https://example.org/a"}]}'), { ...world, missions }, status), /permissions/);
+  assert.throws(() => authorizeAction(parseAction('{"action":"submit","claim_id":"claim-1","artifact":"x","sources":[{"url":"https://example.org/a"}]}'), { ...world, missions: missionsWithClaim }, { ...status, scopes: ['read'] }), /permissions/);
+});
+
+test('malformed mission actions cannot smuggle extra fields, coin paths or fake sources', () => {
+  for (const raw of [
+    '{"action":"claim","task_id":"task-1","agent_id":"other"}',
+    '{"action":"claim","task_id":"task-1","reward":10}',
+    '{"action":"submit","claim_id":"claim-1","artifact":"x","sources":[]}',
+    '{"action":"submit","claim_id":"claim-1","artifact":"x","sources":[{"url":"https://example.org/a"}],"coin":100}',
+    '{"action":"submit","claim_id":"claim-1","artifact":"x","sources":[{"url":"https://example.org/a","location":"loc"}],"approval":"accepted"}',
+    '{"action":"submit","claim_id":"claim-1","artifact":"","sources":[{"url":"https://example.org/a"}]}',
+    '{"action":"submit","claim_id":"claim-1","artifact":"x","sources":[{"url":"https://example.org/a","location":"loc"}],"agent_id":"other"}',
+  ]) assert.throws(() => parseAction(raw));
 });
 
 test('a sibling passport or mismatched community identity fails before exposing it to a model', async () => {
@@ -606,5 +666,5 @@ test('conversation text stays untrusted data and cannot grant a scope or a priva
     } });
   assert.equal(result.status, 'failed');
   assert.equal(result.action_count, 0);
-  assert.ok(f.requests.every((request) => ['/api/v1/world', '/api/v1/runtime/status', '/api/v1/journey', '/api/v1/community', '/api/v1/callings', '/api/v1/jobs'].includes(request.path)));
+  assert.ok(f.requests.every((request) => ['/api/v1/world', '/api/v1/runtime/status', '/api/v1/journey', '/api/v1/community', '/api/v1/callings', '/api/v1/missions', '/api/v1/jobs'].includes(request.path)));
 });

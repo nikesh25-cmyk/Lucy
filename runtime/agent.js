@@ -105,6 +105,25 @@ export function parseAction(value) {
     return { action: 'garden', intent: value.intent, x: value.x, y: value.y, ...(value.intent === 'plant' ? { kind: value.kind } : {}) };
   }
   if (value.action === 'craft' && keys.length === 2 && identifier(value.recipe_id)) return { action: 'craft', recipe_id: value.recipe_id };
+  // Mission work: inspect the directory in the observation, claim one open task, then submit evidence
+  // against the active claim. The server enforces one active claim per operator, the 20-minute lease,
+  // the daily submission limit and source-domain approval; this parser only validates shape.
+  if (value.action === 'claim' && keys.length === 2 && keys.includes('task_id') && identifier(value.task_id)) return { action: 'claim', task_id: value.task_id };
+  if (value.action === 'submit' && keys.length >= 4 && keys.length <= 8 && keys.includes('claim_id') && keys.includes('artifact') && keys.includes('sources')
+    && keys.every((key) => ['action', 'claim_id', 'artifact', 'sources', 'method', 'limitations', 'rights', 'brief'].includes(key))
+    && identifier(value.claim_id) && typeof value.artifact === 'string' && value.artifact.trim().length > 0 && value.artifact.length <= 16000
+    && Array.isArray(value.sources) && value.sources.length >= 1 && value.sources.length <= 10
+    && value.sources.every((source) => source && typeof source === 'object' && typeof source.url === 'string' && source.url.trim().length > 0
+      && (!Object.hasOwn(source, 'location') || (typeof source.location === 'string' && source.location.length <= 300))
+      && (!Object.hasOwn(source, 'date') || (typeof source.date === 'string' && source.date.length <= 100)))) {
+    const sources = value.sources.map((source) => ({ url: source.url.trim(), location: typeof source.location === 'string' ? source.location.trim() : '', ...(source.date ? { date: source.date.trim() } : {}) }));
+    const submit = { action: 'submit', claim_id: value.claim_id, artifact: value.artifact.trim(), sources };
+    if (value.method && typeof value.method === 'string' && value.method.length <= 200) submit.method = value.method.trim();
+    if (value.limitations && typeof value.limitations === 'string' && value.limitations.length <= 2000) submit.limitations = value.limitations.trim();
+    if (value.rights && typeof value.rights === 'string' && value.rights.length <= 2000) submit.rights = value.rights.trim();
+    if (value.brief && typeof value.brief === 'object' && !Array.isArray(value.brief)) submit.brief = value.brief;
+    return submit;
+  }
   // A memory proposal is a strict, typed fact: a listed kind, a listed attribute for that kind, one
   // single-line bounded value and an optional short subject. The runtime never names a source, because
   // the server attaches the verified one; free prose, a newline or an unknown field is refused here.
@@ -315,6 +334,13 @@ export function authorizeAction(action, view, status) {
       if (self?.operator_id && recipient?.operator_id && recipient.status === 'active' && self.operator_id !== recipient.operator_id) return action;
     }
   }
+  // Mission work uses the observed directory and the runtime's own active claim. The server enforces
+  // one active claim per operator, source domains, submission limits and review independence.
+  if (granted.has('contribute') && view.missions) {
+    if (action.action === 'claim' && view.missions.tasks?.some((task) => task.id === action.task_id && task.status === 'open')) return action;
+    if (action.action === 'submit' && view.missions.active_claim?.id === action.claim_id
+      && ['leased', 'changes_requested'].includes(view.missions.active_claim.status)) return action;
+  }
   // A resident may propose a memory fact only where a verified, unrecorded source exists and the
   // operator's proposal queue is not full. The server still re-derives and re-verifies the source.
   if (action.action === 'remember' && granted.has('contribute') && view.memory?.agent_id === agentId) {
@@ -402,6 +428,7 @@ const OBSERVATION_PRUNING = Object.freeze([
   { path: ['blocks'], from: 'last' },
   { path: ['frontier', 'neighbors'], from: 'last' },
   { path: ['frontier', 'parcels'], from: 'last' },
+  { path: ['missions', 'tasks'], from: 'last', keep: 0 },
   { path: ['callings', 'targets', 'places'], from: 'last', keep: 1 },
   { path: ['callings', 'targets', 'tasks'], from: 'last', keep: 1 },
   { path: ['callings', 'targets', 'events'], from: 'last', keep: 1 },
@@ -483,6 +510,12 @@ export function observationPrompt(view, status) {
     projects: view.community.projects?.map(({ id, circle_id, title, summary, goal, evidence_requirements, status, pledged }) => ({ id, circle_id, title, summary, goal, evidence_requirements, status, pledged })),
     events: view.community.events?.map(({ id, circle_id, title, summary, world_id, starts_at, ends_at, status, rsvped, capacity, attendee_count }) => ({ id, circle_id, title, summary, world_id, starts_at, ends_at, status, rsvped, capacity, attendee_count })) };
   const self = view.participants?.find((participant) => participant.id === status.agent_id);
+  // Mission directory: only the contribute scope receives it, and only open tasks plus the runtime's
+  // own active claim are shown. The server decides which tasks are visible and which claim is active.
+  const missions = view.missions && Array.isArray(status.scopes) && status.scopes.includes('contribute') ? {
+    tasks: view.missions.tasks?.filter((task) => task.status === 'open').slice(0, 5).map(({ id, mission_id, title, instructions, allowed_domains, status, lease_minutes }) => ({ id, mission_id, title, instructions, allowed_domains, status, lease_minutes })),
+    active_claim: view.missions.active_claim ? { id: view.missions.active_claim.id, task_id: view.missions.active_claim.task_id, task_title: view.missions.active_claim.task_title, status: view.missions.active_claim.status, expires_at: view.missions.active_claim.expires_at } : null,
+  } : undefined;
   const callings = view.callings?.agent_id === status.agent_id ? {
     agent_id: view.callings.agent_id, calling: view.callings.calling, rank: view.callings.rank,
     today: view.callings.today && { day: view.callings.today.day, earned: view.callings.today.earned,
@@ -507,8 +540,11 @@ export function observationPrompt(view, status) {
   // unrecorded source actually exists — `view.memory.available` is what lets the runtime decline an
   // impossible proposal locally instead of sending a write the server must refuse.
   const remember = Array.isArray(status.scopes) && status.scopes.includes('contribute') && Boolean(memory);
+  // Mission work is available only with the contribute scope and only when the server supplies the
+  // directory. Claiming and submitting do not mint coins; only an independent human review can.
+  const canMission = Array.isArray(status.scopes) && status.scopes.includes('contribute') && Boolean(missions);
   const observations = { agent_id: status.agent_id, z: Number.isInteger(self?.z) ? self.z : 0, granted_scopes: status.scopes,
-    callings, memory, navigation,
+    callings, memory, navigation, missions,
     world: view.world, own_home: view.own_home, portals: view.portals?.slice(0, OBSERVATION_LIMITS.portals), build_palette: build ? view.build_palette?.slice(0, OBSERVATION_LIMITS.palette) : [],
     journey, community,
     frontier:frontierBuild?view.frontier:undefined,blocks:frontierBuild?view.blocks?.slice(0,OBSERVATION_LIMITS.blocks):undefined,
@@ -529,6 +565,7 @@ export function observationPrompt(view, status) {
     + '{"action":"thanks","recipient_agent_id":"visible different-operator resident","reason":"specific observed contribution"} use contribute; '
     + '{"action":"garden","intent":"plant","x":integer,"y":integer,"kind":"herbs|fiber|wood"} or tend/harvest without kind at an observed farm in your own garden (never in a cottage), '
     + 'and {"action":"craft","recipe_id":"observed recipe"} use build. '
+    + (canMission ? 'With the contribute scope you may also do reviewed mission work: {"action":"claim","task_id":"observed open mission task"} leases one task for 20 minutes; only one active claim is allowed. Then {"action":"submit","claim_id":"your active_claim.id","artifact":"plain text deliverable","sources":[{"url":"https://approved.host/path","location":"section","date":"optional"}]} submits evidence. The server enforces the task approved domains, the daily submission limit and independent review. Claiming and submitting do not mint coins. ' : '')
     + 'This world values peaceful coexistence, learning, care and reviewed cooperation. There is no combat or competitive leaderboard. '
     + 'Follow your human-selected Calling when one is present. Prefer its incomplete daily objective and suggested_actions that fit current scopes, then observe the result. Suggestions are pending work, never completion. Calling progress and cosmetic experience are calculated by the server from actual retained actions. You cannot choose a Calling, set rank, award experience or coins, or approve research. If a prerequisite needs a human or independent reviewer, leave it pending. '
     + 'Passport skills, discoveries, quests, crops and inventory are server observations. Merit comes only from eligible reviewed and adopted work. '
@@ -647,13 +684,19 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
             // already makes, so it costs no extra API call and never comes from public conversation.
             // A sibling's memory or a proposal is never rendered into the prompt.
             if (calling.memory && typeof calling.memory === 'object' && calling.memory.agent_id === runtimeStatus.agent_id) view.memory = calling.memory;
+            // The mission directory rides inside the same private calling read, so a runtime with the
+            // contribute scope pays one credential charge for its calling context and its available work.
+            // The server attaches `missions` only to the resident's own contribute-scoped read, so the
+            // directory can never describe another operator's work.
+            if (calling.missions && typeof calling.missions === 'object') view.missions = calling.missions;
           }
         } catch (error) { if (error.status !== 404) throw error; }
       }
       // Check the server immediately before every provider call, even after slow observations.
       if (view.journey && !(await allowed())) { summary.status = 'stopped'; summary.stop_reason = stopReason(); break; }
       if (view.journey?.agent_id !== runtimeStatus.agent_id || view.community?.viewer_agent_id !== runtimeStatus.agent_id
-        || (view.memory && view.memory.agent_id !== runtimeStatus.agent_id)) {
+        || (view.memory && view.memory.agent_id !== runtimeStatus.agent_id)
+        || (view.missions && typeof view.missions !== 'object')) {
         throw new Error('Observation identity changed.');
       }
       summary.model_calls++;
@@ -693,6 +736,14 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
       if (action.action === 'craft') await request('/journey/craft', { recipe_id: action.recipe_id }, key);
       if (action.action === 'remember') await request('/memory/propose', { kind: action.kind, attribute: action.attribute,
         ...(action.subject ? { subject: action.subject } : {}), value: action.value }, key);
+      if (action.action === 'claim') await request('/claims', { task_id: action.task_id }, key);
+      if (action.action === 'submit') await request('/submissions', {
+        claim_id: action.claim_id, artifact: action.artifact, sources: action.sources,
+        ...(action.method ? { method: action.method } : {}),
+        ...(action.limitations ? { limitations: action.limitations } : {}),
+        ...(action.rights ? { rights: action.rights } : {}),
+        ...(action.brief ? { brief: action.brief } : {}),
+      }, key);
       if (!['wait', 'walk_to'].includes(action.action)) { summary.action_count++; summary.last_action = { action: action.action, decision, key, at: new Date(now()).toISOString() }; await confirming(action.action, decision, key); }
       }catch(error){
         // The server answered and refused, or the request failed: never counted as a confirmed action.
