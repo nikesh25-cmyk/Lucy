@@ -78,6 +78,12 @@ files.set('/src/camera-controls.js', ['src/camera-controls.js', 'text/javascript
 files.set('/src/footprints.js', ['src/footprints.js', 'text/javascript; charset=utf-8']);
 files.set('/src/elevation.js', ['src/elevation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/content.js', ['src/content.js', 'text/javascript; charset=utf-8']);
+// The voxel renderer's scene modules. src/voxel-world.js is a browser module and imports these
+// relatively, so the hand-maintained table has to serve them or the whole client module graph 404s.
+// tests/content-http.test.js walks that graph from /app.js and fails on a missing file.
+for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'blocks', 'parcels', 'sky']) {
+  files.set(`/src/scene/${scene}.js`, [`src/scene/${scene}.js`, 'text/javascript; charset=utf-8']);
+}
 files.set('/content/content-manifest.json', ['content/content-manifest.json', 'application/json; charset=utf-8']);
 for (const item of manifest().entries) files.set(`/${item.file}`, [item.file, 'application/json; charset=utf-8']);
 for (const file of manifest().support) files.set(`/${file.path}`, [file.path, file.path.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'application/json; charset=utf-8']);

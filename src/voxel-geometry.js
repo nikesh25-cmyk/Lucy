@@ -96,10 +96,16 @@ export function voxelParcelSelection(parcels, selection) {
 }
 
 // A tile's type as voxelPlan resolves it: an observed tile wins over the retained map.
-const cellTypeAt = (definition, snapshot, camera, x, y) => {
+const resolvedCellType = (definition, snapshot, camera, x, y) => {
   const observed = snapshot?.terrain?.[y - camera.y]?.[x - camera.x];
   return typeof observed === 'string' ? observed : definition?.terrain?.[y]?.[x];
 };
+
+/**
+ * The same resolution for a scene module: the snapshot's own camera origin is the observation
+ * origin, so a water pass or a ground-cover pass reads exactly the tiles voxelPlan drew.
+ */
+export const cellTypeAt = (definition, snapshot, x, y) => resolvedCellType(definition, snapshot, snapshot?.camera || { x: 0, y: 0 }, x, y);
 
 const OCCLUSION_NEIGHBOURS = Object.freeze([[1, 0], [-1, 0], [0, 1], [0, -1]]);
 // A water base sits at -0.82 instead of -0.5 and a bridge carries a deck, so neither is ever culled.
@@ -113,10 +119,10 @@ const BASE_ALWAYS_VISIBLE = new Set(['water', 'bridge']);
  */
 export function cellOccludedBelow(definition, snapshot, plan, x, y) {
   if (!plan?.window || !Number.isInteger(x) || !Number.isInteger(y)) return false;
-  const camera = snapshot?.camera || { x: 0, y: 0 }, type = cellTypeAt(definition, snapshot, camera, x, y);
+  const camera = snapshot?.camera || { x: 0, y: 0 }, type = resolvedCellType(definition, snapshot, camera, x, y);
   if (typeof type !== 'string' || BASE_ALWAYS_VISIBLE.has(type)) return false;
   for (const [dx, dy] of OCCLUSION_NEIGHBOURS) {
-    const nearX = x + dx, nearY = y + dy, near = inVoxelWindow({ x: nearX, y: nearY }, plan.window) ? cellTypeAt(definition, snapshot, camera, nearX, nearY) : undefined;
+    const nearX = x + dx, nearY = y + dy, near = inVoxelWindow({ x: nearX, y: nearY }, plan.window) ? resolvedCellType(definition, snapshot, camera, nearX, nearY) : undefined;
     if (typeof near !== 'string' || near === 'water') return false;
   }
   return true;
@@ -127,7 +133,7 @@ export function voxelPlan(definition, snapshot = {}, position = definition?.star
   const parcels = voxelParcels(definition, snapshot, window), byParcel = new Map(parcels.map(parcel => [parcel.id, parcel]));
   const sourceCamera = snapshot.camera || { x: 0, y: 0 };
   for (let y = window.y; y < window.bottom; y++) for (let x = window.x; x < window.right; x++) {
-    const type = cellTypeAt(definition, snapshot, sourceCamera, x, y);
+    const type = resolvedCellType(definition, snapshot, sourceCamera, x, y);
     if (typeof type === 'string') {
       const address = voxelParcelAddress(definition?.id, { x, y }), parcel = address ? byParcel.get(address.id) : null;
       cells.push({ x, y, type, ...(parcel ? { parcel } : {}) });

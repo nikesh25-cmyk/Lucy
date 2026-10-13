@@ -2,13 +2,15 @@
  * GPU-free voxel scene benchmark. Reports instance totals, discrete rebuild counts, and wall-clock
  * ms for the updates the browser actually performs, then repeats them with the pre-change behaviour
  * restored through the documented escape hatches (`cullHidden: false`, `rebuildPeople: true`).
+ * It also reports where the cubes went (the scene's own layer tally) and what a day-phase change
+ * costs, which is the one poll that touches the sky layer alone.
  *
  * Reference numbers only: this is a script, not a CI assertion, because timings vary by machine.
  * The voxel view repaints every 3 s (the 220 ms loop in app.js is pixel-mode only), so these costs
  * amortise; the win is per-poll churn on the main thread and GPU buffers, not a higher frame rate.
  * Rebuild counts are machine-independent; the ms columns are medians of RUNS updates.
  *
- *   node scripts/voxel-bench.mjs [participants]
+ *   node scripts/voxel-bench.mjs [participants] [runs]
  */
 import { performance } from 'node:perf_hooks';
 import { getWorldDefinition } from '../world.js';
@@ -16,7 +18,9 @@ import { createVoxelScene } from '../src/voxel-world.js';
 
 const world = getWorldDefinition('commons');
 const population = Math.max(1, Number.parseInt(process.argv[2] ?? '20', 10) || 20);
-const RUNS = 20;
+// The update is allocation-bound, so a median over more samples is the honest number: a run of 20
+// can differ from the next by a factor of two when a collection lands inside one sample.
+const RUNS = Math.max(5, Number.parseInt(process.argv[3] ?? '20', 10) || 20);
 
 const roster = () => Array.from({ length: population }, (_, index) => ({
   id: `agent-${index}`, name: `Agent ${index}`, kind: index % 7 === 0 ? 'npc' : 'human',
@@ -79,12 +83,22 @@ function bench({ cullHidden = true, rebuildPeople = false }) {
 
   // A terrain tile change re-runs the whole static build: the cost a one-block edit carried before.
   const tiles = world.terrain.map(row => [...row]);
+  scene.update(world, { participants, blocks, camera: { x: 0, y: 0 }, terrain: tiles }, options);
   const rebuild = measure(RUNS, index => {
     tiles[7][7] = index % 2 ? 'stone' : 'meadow';
     scene.update(world, { participants, blocks, camera: { x: 0, y: 0 }, terrain: tiles }, options);
   });
+
+  // A day-phase change: only the sky layer should follow it, never the diorama or the residents.
+  let skyRebuilds = 0, terrainAcrossPhase = 0, peopleAcrossPhase = 0;
+  const phase = measure(RUNS, index => {
+    const skyChanged = rebuilt('voxel-sky'), terrainChanged = rebuilt('voxel-terrain'), peopleChanged = rebuilt('voxel-characters');
+    scene.update(world, { participants }, { ...options, dayPhase: index % 2 ? 'night' : 'day' });
+    if (skyChanged()) skyRebuilds++; if (terrainChanged()) terrainAcrossPhase++; if (peopleChanged()) peopleAcrossPhase++;
+  });
+  const layers = scene.stats.layers;
   scene.destroy();
-  return { cold, coldMs, instances, idle, poll, peopleRebuilds, edit, staticEdits, blockEdits, rebuild };
+  return { cold, coldMs, instances, idle, poll, peopleRebuilds, edit, staticEdits, blockEdits, rebuild, phase, skyRebuilds, terrainAcrossPhase, peopleAcrossPhase, layers };
 }
 
 bench({}); // warm the JIT and the lazy Three.js paths before the measured passes
@@ -102,9 +116,21 @@ console.log('');
 row('first build (cold)', ms(before.coldMs), ms(after.coldMs));
 row('idle poll (identical payload)', ms(before.idle), ms(after.idle));
 row('participant poll', ms(before.poll), ms(after.poll));
-row('character rebuilds per 20 polls', before.peopleRebuilds, after.peopleRebuilds);
+row(`character rebuilds per ${RUNS} polls`, before.peopleRebuilds, after.peopleRebuilds);
 console.log('');
 row('one-block edit (old = whole build)', ms(before.rebuild), ms(after.edit));
-row('terrain rebuilds per 20 edits', before.staticEdits, after.staticEdits);
-row('block rebuilds per 20 edits', before.blockEdits, after.blockEdits);
+row(`terrain rebuilds per ${RUNS} edits`, before.staticEdits, after.staticEdits);
+row(`block rebuilds per ${RUNS} edits`, before.blockEdits, after.blockEdits);
 row('whole static build (terrain tile)', ms(before.rebuild), ms(after.rebuild));
+console.log('');
+// A day-phase change follows the sky layer only. The two columns differ because the "before" pass
+// additionally forces the character batch and disables the occlusion cull, not because of the phase.
+row('day-phase poll', ms(before.phase), ms(after.phase));
+row(`sky rebuilds per ${RUNS} phase polls`, before.skyRebuilds, after.skyRebuilds);
+row(`terrain rebuilds per ${RUNS} phase polls`, before.terrainAcrossPhase, after.terrainAcrossPhase);
+row(`character rebuilds per ${RUNS} phase polls`, before.peopleAcrossPhase, after.peopleAcrossPhase);
+console.log('');
+console.log('where the cubes went (after column, from the scene\'s own layer tally)');
+for (const [name, count] of Object.entries(after.layers).sort((left, right) => right[1] - left[1])) {
+  console.log(`  ${name.padEnd(16)}${String(count).padStart(6)}  ${((count / after.cold.cubes) * 100).toFixed(1)}%`);
+}

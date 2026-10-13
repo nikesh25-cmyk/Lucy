@@ -1,8 +1,8 @@
 # NemoWorld voxel view
 
-The world now has a real WebGL 2 scene: block terrain, trees, water, stepped roofs, furniture, navigation gateways, clouds, shadows, and block characters. The models are original code. No Minecraft assets, logos, or textures are used.
+The world now has a real WebGL 2 scene: block terrain, deep and shallow water with shore breaks, trees with a canopy and understory, stepped roofs, detailed cottages and civic buildings, furniture, navigation gateways, a day-phase sky with a fitted shadow frustum, distance fog, clouds, and block characters. The models are original code, untextured flat-shaded cubes from one palette. No Minecraft assets, logos, or textures are used.
 
-The terrain uses the same deterministic world definitions as server movement. Saved frontier blocks use their exact server coordinates and layers. A ground path is a thin surface; solid blocks occupy their full layer. Human players and agents are rendered from the world snapshot, each drawn at its own elevation layer. Decorative scenery never represents a fabricated live participant.
+The terrain uses the same deterministic world definitions as server movement. Saved frontier blocks use their exact server coordinates and layers. A ground path is a thin surface at every layer; solid blocks occupy their full layer. What the renderer draws as an obstacle is exactly what the server refuses, in both directions, and that agreement is asserted by tests rather than assumed — see [the visible-obstacle rule](#the-visible-obstacle-rule-and-the-tests-that-hold-it). Human players and agents are rendered from the world snapshot, each drawn at its own elevation layer. Decorative scenery never represents a fabricated live participant.
 
 The shared frontier has a defined land registry: a 16 × 16 grid of areas, each 48 × 48 virtual meters, divided into an 8 × 8 parcel grid. That is 16,384 gross 6 × 6 virtual-meter slots, including public roads and protected terrain. Registry slots, available parcels, assigned stewardship and opened areas have separate meanings. See [Land and stewardship](LAND_WORLD.md) for their permissions and limits.
 
@@ -30,7 +30,111 @@ Eight of the 248 `country:<iso3>` research venues render a reviewed variant shap
 
 The world snapshot publishes the same resolution: `scenery` lists the authored tiles inside the returned window with a `blocks` flag, so an API client, an agent or the release acceptance harness reads the occupancy the server enforces instead of re-deriving it.
 
+### The visible-obstacle rule, and the tests that hold it
+
+The table above decides what the renderer may draw where, and the renderer is measured against it from
+the drawn instance matrices, not from its own intent:
+
+- **A walkable tile carries nothing between the knee and the head.** Geometry may stand beside the
+  standing column (a frame post, a landmark pole), at or below the knee (crop rows, flowers, a floor
+  decal) or above the head (a roof, a canopy, the cloud layer) — never in the column a resident
+  occupies.
+- **A tile the server refuses is drawn as an obstacle.** Every `mass` type, every blocking terrain
+  type and every solid block column fills its own standing column from the ground up. The one
+  declared exception is `water`: it is refused, and it is drawn as a water surface below ground level
+  rather than as a wall.
+- **Untargetable decoration stays a floor decal.** Anything the renderer adds that carries no pick —
+  ground cover, glints, shore breaks, the parcel overlay — stays at or below 0.10 m on walkable
+  ground, or entirely above the resident's head.
+
+`tests/render-obstacles.test.js` asserts all three directions over the real authored worlds, over
+every type in the table, over water and over saved block columns. That is the acceptance evidence for
+"visible obstacles correspond to actual obstacles": a drift in either direction fails a test, not a
+screenshot.
+
+## Scene modules
+
+The renderer is composed of small modules with one responsibility each. `src/voxel-world.js` keeps
+the sealed builders, the palette, the public factory and the reuse policy; everything about *where a
+thing stands in the world* lives under `src/scene/`:
+
+| Module | Responsibility | Interface |
+| --- | --- | --- |
+| `src/scene/batch.js` | Instanced batches, one per colour and material style; the batch primitives, the style vocabulary (including the unfogged `haze`/`star`/`sun` styles), and the deterministic palette helpers `hash`, `variant` and `shade` | `createResources()`, `cubeBatch(resources)` → `{ add, finish, size }`, `disposeBatch(batch)`, `SHADOWLESS_STYLES` |
+| `src/scene/terrain.js` | The ground diorama: base cubes with the whole-node cull, surface slabs, bridges, wall and building tiles, garden cells; portal frames, frontier gate frames, landmark pennants | `groundPass(context)`, `portalFrames`, `gateFrames`, `landmarkPennants`, `layer(batch, layers, name, run)` |
+| `src/scene/water.js` | Water as water: depth classification, the surface with its pick, glides, shore breaks, marginal reeds; the basin a `pond` or `fountain` holds | `waterDepth(typeAt, x, y)`, `shoreSides`, `waterTile(batch, spec)`, `waterBasin(batch, spec)`, `WATER_TINTS` |
+| `src/scene/vegetation.js` | Ground cover and understory, placed by the occupancy rule above | `groundCoverPass({ batch, plan, layers })`, `COVER_TINTS`, `COVER_HEIGHT_LIMIT` |
+| `src/scene/buildings.js` | The two building *tiles* of the authored terrain: a boundary wall and a world building cell | `wallTile(batch, spec)`, `buildingTile(batch, spec)`, `BUILDING_TINTS` |
+| `src/scene/blocks.js` | Saved frontier blocks, batched apart from the diorama | `blocksScene({ resources, definition, plan, colors, cubeBatch, withParcel })` |
+| `src/scene/parcels.js` | The stewardship overlay (edges, hover, selection, protected lanes) | `parcelScene({ resources, plan, selection, hover, cubeBatch, parcelSelection })` |
+| `src/scene/sky.js` | The phase light, the shadow frustum, the depth cue and the far sky layer | `SKY_PHASES`, `SHADOW_LIMITS`, `phaseLighting(name)`, `resolvedPhase(name)`, `fogFor(entry, distance)`, `sunPlacement`, `shadowExtent(plan)`, `shadowResolution(extent)`, `applyPhase(spec)`, `skyScene(spec)` |
+
+The sealed builders (`tree`, `house`, `furniture`) and the character builder stay in
+`src/voxel-world.js` on purpose: `tests/content.test.js` reads that file's source to prove every
+sealed definition is drawn by a named builder that paints the colour and emissive tone the definition
+declares. The scene modules receive them as `builders`, so the composition can move without moving
+the grammar, and every tint a scene module uses is derived from a colour the family already owns
+(`shade`, `variant`) rather than a new token.
+
+## Light, sky and distance
+
+`src/atmosphere.js` publishes the shared fictional sky: four phases (`dawn`, `day`, `dusk`, `night`),
+a 120-minute cycle, a label and an activity line, and it changes presentation only. The renderer keys
+its light table by exactly those names (`src/scene/sky.js`), and `tests/render-atmosphere.test.js`
+asserts the two lists cannot drift apart. The legacy `evening` name a client may still send resolves
+to `dusk`; an unknown name falls back to `day` rather than to a dark frame.
+
+- **The key light turns with the phase.** Each phase owns its sun colour, intensity, height and
+  azimuth, so dawn and dusk light the world from their own bearing and their shadows fall differently
+  — not one fixed direction for every hour.
+- **The shadow frustum is fitted, not fixed.** It is sized from the drawn window, so the widest
+  window the renderer builds (a frontier sector's 37 cells) needs a 19.5 m half-extent where the
+  shipped value was a fixed 24 m. At the same 1024 × 1024 shadow map that is 26.3 shadow texels per
+  virtual metre instead of 21.3 — sharper contact shadows for the same budget. A narrower world gets a
+  tighter frustum; a wider window is clamped, never widened.
+- **The depth cue is derived from the fade, not from a fixed pair of distances.** The fog band is
+  computed from the falloff the phase wants at the window's far corner, so the same depth reads at
+  every orbit distance: the band never starts inside four tiles, so the tile underfoot and the tiles
+  a resident interacts with carry no fog at all, and nothing inside the window is ever more than ~72%
+  faded, so an obstacle keeps its silhouette. A denser phase is a shorter band, not a darker wall.
+- **Night stays legible.** The night phase darkens the sky and turns the key light to moonlight, and
+  it *raises* ambient light and tone-mapping exposure rather than lowering them, so an obstacle in
+  front of a resident is still visible at 03:00 instead of becoming a black silhouette.
+- **The sky layer names the phase from overhead.** A `voxel-sky` batch draws the phase-tinted cloud
+  banks, a disc in the key light's own bearing with a halo, a star field at night and a horizon band
+  at dawn and dusk. Every marker is above the resident's head, none carries a pick, and none casts a
+  shadow. An interior room has no sky over it.
+
+The sky is its own small batch, rebuilt only when the phase or the window changes: a phase change
+never touches the diorama, the character batch or the saved blocks. A day-phase poll costs 0.3 ms on
+the measured machine and rebuilds 59 of 60 samples' sky layers alone (the sixtieth has the same phase
+as the one before it).
+
+## Water, cover and buildings
+
+- **Water reads as water.** A tile whose four neighbours are water is drawn deep, a tile beside land
+  is drawn shallow, each shore side carries a lighter break, and roughly half the tiles carry a
+  surface glide. A shallow tile may grow reeds at its own edge. The bed, the sub-surface slab and the
+  surface keep the tile's pick, so a click still resolves the tile; the glides, breaks and reeds carry
+  none.
+- **A pond is water you walk around.** The sealed `pond` object draws a stone rim above the
+  floor-decal height with the tone its own definition declares inside, a lily pad and two reeds — an
+  obstacle a resident sees, where it used to draw a 14 cm pedestal. The `fountain` gained a readable
+  water level in both its bowl and its upper basin.
+- **Ground cover obeys the tile.** Meadow and garden tiles carry mottling and seedlings as floor
+  decals; a tile the server already refuses (a tree, an outcrop) carries a leaf-litter patch and up to
+  three understory tufts at its edges, inside its own tile. Nothing in the cover pass carries a pick.
+- **Buildings read as buildings.** A boundary wall is a footed plinth, two courses and a capstone; an
+  authored building tile is a stone base, a body, a stepped roof with a door and a lit window on the
+  +y face; a cottage gained a plinth, a door lintel and window sills; and a `civic-building` — which
+  used to be drawn identically to a cottage — now draws its own taller silhouette with a double door,
+  a window pair, a sign board, a wide eave and a lantern finial, at 2.18 m inside its own tile. The
+  specified-but-unproduced entries in the asset manifest (a 2 × 2 civic hall, a canopy arch, a hedge
+  row) are still **not** drawn, because nothing can produce them without a content re-seal and a
+  footprint change.
+
 ## Interaction
+
 
 - Drag the canvas horizontally to orbit around the selected character or visitor position. A mouse can also adjust the viewing elevation; touch keeps vertical page scrolling available.
 - In first person the same drag rotates the view and nothing else: a gesture measured past six pixels is a look, a shorter one is a click, and one gesture is never both. Keyboard controls stay available: WASD and the arrow keys walk, Q and E turn, R and F tilt, and in the frontier the digits 1–7 choose a block.
@@ -70,9 +174,9 @@ Primary references:
 
 ## Bounds and lifecycle
 
-The view builds at most **37 × 37 terrain cells**, **260 scenery objects**, **2,048 authored blocks**, and **220 character models** around the current position. Repeated cube geometry is rendered with instancing, and fully occluded interior base cubes are culled: a land cell whose four in-window neighbours are all land has no exposed side and skips its base cube (`src/voxel-geometry.js` `cellOccludedBelow`), while water, bridges and window-edge cells always keep theirs. Batches are reused across polls: the static terrain batch is rebuilt only when its cells, objects, portals, gates or culling change; the character batch is rebuilt only when a participant's visible fields change (`peopleVisualKey`, over `id`, `x`, `y`, `z`, `posture`, `color`, `kind` — refreshing `last_seen`, reordering the roster, or editing a curated profile field rebuilds nothing); and saved blocks batch separately so placing or moving one block leaves the diorama intact. Graphics resources, pointer listeners, the resize observer, and the WebGL context are released when a view is destroyed.
+The view builds at most **37 × 37 terrain cells**, **260 scenery objects**, **2,048 authored blocks**, and **220 character models** around the current position. Repeated cube geometry is rendered with instancing, and fully occluded interior base cubes are culled: a land cell whose four in-window neighbours are all land has no exposed side and skips its base cube (`src/voxel-geometry.js` `cellOccludedBelow`), while water, bridges and window-edge cells always keep theirs. Batches are reused across polls: the static terrain batch is rebuilt only when its cells, objects, portals, gates or culling change; the character batch is rebuilt only when a participant's visible fields change (`peopleVisualKey`, over `id`, `x`, `y`, `z`, `posture`, `color`, `kind` — refreshing `last_seen`, reordering the roster, or editing a curated profile field rebuilds nothing); saved blocks batch separately so placing or moving one block leaves the diorama intact; and the sky batches separately again, so a day-phase change rebuilds the sky and nothing else. Graphics resources, pointer listeners, the resize observer, and the WebGL context are released when a view is destroyed. `scenes.update()` also reports where its cubes went, by layer (`terrain`, `water`, `buildings`, `furniture`, `navigation`, `cover`, `understory`, `sky`), which is what `scripts/voxel-bench.mjs` prints.
 
-Rendering happens after input, world updates, and resizing. There is no continuous animation loop and the canvas does not capture the page's mouse wheel. Pixel ratio is capped at 1.5, render dimensions at 1,440 × 900 logical pixels, and shadows at 1,024 × 1,024.
+Rendering happens after input, world updates, and resizing. There is no continuous animation loop and the canvas does not capture the page's mouse wheel. Pixel ratio is capped at 1.5 (reported as `RENDER_CAPS`), render dimensions at 1,440 × 900 logical pixels, and shadows at 1,024 × 1,024 (`SHADOW_LIMITS`). **Task 31 raised none of these bounds**: it changed where the shadow frustum and the fog band are placed inside them, which a test asserts (`SHADOW_LIMITS.map_size === 1024`, the fitted extent is clamped to at most 24 m, `RENDER_CAPS` unchanged, `VOXEL_LIMITS` unchanged).
 
 The application requests `view=voxel` for a matching 37 × 37 authoritative block snapshot. The ordinary map and worker snapshots retain their 20 × 14 viewport. More distant base terrain provides a horizon; farther geometry is loaded as the viewport moves. The world opens adjacent areas inside its fixed 16 × 16 perimeter.
 
@@ -105,4 +209,14 @@ The factory returns `null` when graphics are unavailable. A canvas already used 
 
 ## Verification
 
-The renderer tests use the actual retained Three.js library without a GPU to verify terrain and authored-block raycasts, top and side face conversion, participant selection, camera projection, viewport and block limits, invalid and duplicate record filtering, static scene reuse, disposal, and retained dependency hashes. The footprint tests additionally read the real instance matrices to check that each scenery class is drawn as declared. The direct-interaction controls are verified without a browser too: `tests/interaction-controls.test.js` checks the keys and the aim line, and `tests/interaction-http.test.js` drives `GET`/`POST /interact` over the shipped HTTP server and then reads the server's own records. The browser acceptance suite (`npm run browser`, `scripts/browser-suite.mjs`) drives the real interface in the system Chrome build against a temporary database and asserts the database after every UI action; five of its scenarios cover direct interaction — the hint and its one-tile requirement, a planted crop and a bench posture surviving a reload, a doorway and a crafting station, a country ambassador desk, and the paused, revoked, wrong-owner and observer refusals. The first-person route and camera elevation are also verified by HTTP and module tests plus a manual walkthrough (see `docs/handoff/task-02-first-person.md`).
+The renderer tests use the actual retained Three.js library without a GPU to verify terrain and authored-block raycasts, top and side face conversion, participant selection, camera projection, viewport and block limits, invalid and duplicate record filtering, static scene reuse, disposal, and retained dependency hashes. The footprint tests additionally read the real instance matrices to check that each scenery class is drawn as declared.
+
+Task 31 adds three renderer suites, also GPU-free and over the real instance matrices:
+
+- `tests/render-obstacles.test.js` — the two-way obstacle rule above, over the real authored worlds, every scenery type, water and saved block columns; the pond/path reading; and the ground-cover height rule.
+- `tests/render-atmosphere.test.js` — the phase table against `src/atmosphere.js`, the depth cue's near-field and far-corner behaviour, the applied light/fog/shadow values read back from a real `THREE.Scene`, the shadow caps, the sky layer's height and unpickability, and the unchanged renderer bounds.
+- `tests/render-scene.test.js` — the scene-module interface, the batch-reuse policy (an unchanged viewport rebuilds nothing; a phase change rebuilds the sky alone), the occlusion cull, the layer report, and the draw-call budget.
+
+`scripts/voxel-bench.mjs` (GPU-free) reports the composition by layer and what a day-phase poll costs, alongside the shipped culling and reuse comparisons. Measured numbers are in [the task 31 handoff](handoff/task-31-world-rendering.md).
+
+The direct-interaction controls are verified without a browser too: `tests/interaction-controls.test.js` checks the keys and the aim line, and `tests/interaction-http.test.js` drives `GET`/`POST /interact` over the shipped HTTP server and then reads the server's own records. The browser acceptance suite (`npm run browser`, `scripts/browser-suite.mjs`) drives the real interface in the system Chrome build against a temporary database and asserts the database after every UI action; five of its scenarios cover direct interaction — the hint and its one-tile requirement, a planted crop and a bench posture surviving a reload, a doorway and a crafting station, a country ambassador desk, and the paused, revoked, wrong-owner and observer refusals. The first-person route and camera elevation are also verified by HTTP and module tests plus a manual walkthrough (see `docs/handoff/task-02-first-person.md`).

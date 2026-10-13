@@ -1,8 +1,14 @@
 import * as THREE from '../assets/vendor/three-voxel.js';
 import { getWorldDefinition } from '../world.js';
-import { VOXEL_LIMITS, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, inVoxelWindow, voxelParcelAddress, voxelParcelSelection, cellOccludedBelow, createOrbitInput } from './voxel-geometry.js';
-import { blockOccupiesTile } from './footprints.js';
+import { VOXEL_LIMITS, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, voxelParcelAddress, voxelParcelSelection, createOrbitInput } from './voxel-geometry.js';
 import content from './content.js';
+import { createResources, cubeBatch, disposeBatch, hash, variant, validColor, shade } from './scene/batch.js';
+import { gateFrames, groundPass, landmarkPennants, layer, portalFrames } from './scene/terrain.js';
+import { groundCoverPass } from './scene/vegetation.js';
+import { blocksScene } from './scene/blocks.js';
+import { parcelScene } from './scene/parcels.js';
+import { WATER_TINTS, waterBasin } from './scene/water.js';
+import { SHADOW_LIMITS, applyPhase, phaseLighting, resolvedPhase, skyScene } from './scene/sky.js';
 
 // Renderer-only tints: terrain, foliage, trim and the interior palette, none of which owns a typed
 // definition. `gold` stays local because the agent cosmetic of that id is a deeper tone
@@ -21,87 +27,59 @@ const CALLING_STYLES = Object.freeze({
   artisan: { color: '#d39bac', mark: 'diamond' }, host: { color: '#88b7d0', mark: 'arch' },
 });
 const callingStyle = item => typeof item.calling?.id === 'string' && Object.hasOwn(CALLING_STYLES, item.calling.id) ? CALLING_STYLES[item.calling.id] : null;
-const variant = (base, x, y) => new THREE.Color(base).multiplyScalar(0.91 + ((x * 47 + y * 91) % 7) * 0.025).getHex();
-const validColor = value => typeof value === 'string' && /^#[a-f\d]{6}$/i.test(value) ? value : null;
-const hash = value => { let result = 0; for (const char of String(value)) result = Math.imul(result ^ char.charCodeAt(0), 16777619); return result >>> 0; };
-// The four named phases come from src/atmosphere.js. These are renderer-only light and horizon
-// colours; they do not change any saved tile, world rule or content definition.
-const ATMOSPHERE = Object.freeze({
-  dawn: { sky: '#d9c7a7', fog: '#c9c8aa', zenith: '#f8dfb3', ground: '#6e8069', sun: '#ffd79d', skyLight: 1.55, sunLight: 1.9, sunHeight: 16, fogNear: 23, fogFar: 53 },
-  day: { sky: '#a9ccc5', fog: '#b6d1c0', zenith: '#eff7e7', ground: '#697f64', sun: '#fff0c9', skyLight: 1.9, sunLight: 2.35, sunHeight: 25, fogNear: 28, fogFar: 62 },
-  dusk: { sky: '#c59e86', fog: '#c1a68d', zenith: '#f6d3ae', ground: '#667568', sun: '#ffbe78', skyLight: 1.4, sunLight: 1.75, sunHeight: 13, fogNear: 23, fogFar: 52 },
-  night: { sky: '#334d57', fog: '#405b60', zenith: '#9ebbc0', ground: '#344841', sun: '#b7c8bb', skyLight: 0.92, sunLight: 0.85, sunHeight: 20, fogNear: 18, fogFar: 42 },
-});
 
-function createResources() {
-  const geometry = new THREE.BoxGeometry(1, 1, 1), materials = new Map();
-  function material(color, style = 'solid') {
-    const key = `${color}:${style}`;
-    if (!materials.has(key)) materials.set(key, style.startsWith('parcel-')
-      ? new THREE.MeshBasicMaterial({ color, transparent: true, opacity: style === 'parcel-fill' ? .08 : style === 'parcel-hover' ? .65 : .88,
-        depthWrite: false, depthTest: style === 'parcel-boundary' })
-      : new THREE.MeshLambertMaterial({ color, flatShading: true,
-        ...(style === 'glass' ? { transparent: true, opacity: 0.58, depthWrite: false } : {}),
-        ...(style === 'cloud' ? { transparent: true, opacity: 0.74, depthWrite: false } : {}),
-        ...(style === 'glow' ? { emissive: color, emissiveIntensity: 0.28 } : {}) }));
-    return materials.get(key);
-  }
-  return { geometry, material, dispose() { geometry.dispose(); for (const item of materials.values()) item.dispose(); materials.clear(); } };
-}
+// The renderer's two hard caps on the delivered image. Neither is raised here: a scene module can
+// change what a tile looks like, never how large the frame or the shadow map may be.
+export const RENDER_CAPS = Object.freeze({ pixel_ratio: 1.5, render_width: 1440, render_height: 900 });
 
-function cubeBatch(resources) {
-  const batches = new Map(); let cubes = 0;
-  const add = (x, height, y, width, depth, length, color, pick = null, style = 'solid') => {
-    const key = `${color}:${style}`;
-    if (!batches.has(key)) batches.set(key, { material: resources.material(color, style), style, instances: [] });
-    batches.get(key).instances.push({ x, height, y, width, depth, length, pick }); cubes++;
-  };
-  function finish() {
-    const group = new THREE.Group(), pickables = [], dummy = new THREE.Object3D();
-    for (const batch of batches.values()) {
-      const mesh = new THREE.InstancedMesh(resources.geometry, batch.material, batch.instances.length);
-      mesh.userData.picks = [];
-      batch.instances.forEach((item, index) => {
-        dummy.position.set(item.x, item.height, item.y); dummy.scale.set(item.width, item.depth, item.length); dummy.updateMatrix();
-        mesh.setMatrixAt(index, dummy.matrix); mesh.userData.picks[index] = item.pick;
-      });
-      mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere();
-      mesh.castShadow = !['cloud', 'detail'].includes(batch.style); mesh.receiveShadow = !['cloud', 'detail'].includes(batch.style);
-      group.add(mesh); if (mesh.userData.picks.some(Boolean)) pickables.push(mesh);
-    }
-    return { group, pickables, cubes, batches: batches.size };
-  }
-  return { add, finish };
-}
+// ---------------------------------------------------------------------------------------------
+// The sealed scenery builders. They stay in this module on purpose: tests/content.test.js reads
+// this file's source to prove that every sealed furniture and architecture definition is drawn by a
+// named builder, that the builder paints the colour and emissive tone the definition declares, and
+// that no definition's colour is a parallel literal. The scene modules under src/scene/ own the
+// world's composition — ground, water, cover, sky, plots, blocks — and call these builders through
+// the `builders` interface, so the grammar and its palette have exactly one home.
+// ---------------------------------------------------------------------------------------------
 
 // Scenery is drawn exactly as the shared footprint table declares it (src/footprints.js):
 //   mass  — a tile-sized solid; the server refuses the tile, so filling the column is honest
 //   flat  — ground detail at or below knee height, inside its own tile
 //   frame — an open marker: geometry in the tile-edge bands with cross members above the head
 // Every dimension below stays inside its own tile, and every cross member clears the drawn
-// resident's height, so a neighbouring resident is never drawn inside scenery.
+// resident's height, so a neighbouring resident is never drawn inside scenery. A canopy may cross
+// into a neighbouring tile only above 1.52 m, where no standing resident can be.
 function tree(batch, x, y, type, pick) {
-  const n = hash(`${x},${y}`), height = type === 'palm' ? 2.3 : 1.7 + n % 3 * 0.15;
+  const n = hash(`${x},${y}`), height = type === 'palm' ? 2.3 + n % 3 * .08 : 1.7 + n % 3 * 0.15;
   if (type === 'mountain') {
-    batch.add(x + .5, .75, y + .5, .99, 1.5, .99, '#929e9d', pick);
-    batch.add(x + .5, 1.66, y + .5, .99, .28, .99, COLORS.snow, pick); return;
+    batch.add(x + .5, .32, y + .5, 1.06, .64, 1.06, shade('#929e9d', .92), pick);
+    batch.add(x + .5, 1.02, y + .5, .82, .76, .82, '#929e9d', pick);
+    batch.add(x + .5, 1.66, y + .5, .62, .28, .62, COLORS.snow, pick);
+    return;
   }
   if (type === 'cactus') {
     batch.add(x + .5, .95, y + .5, .35, 1.9, .35, '#649873', pick);
     batch.add(x + .78, 1.08, y + .5, .42, .28, .27, '#649873', pick);
-    batch.add(x + .9, 1.35, y + .5, .22, .7, .22, '#649873', pick); return;
+    batch.add(x + .9, 1.35, y + .5, .22, .7, .22, '#649873', pick);
+    batch.add(x + .5, 1.97, y + .5, .2, .18, .2, '#e1b6a2', pick);
+    return;
   }
   batch.add(x + .5, height / 2, y + .5, .28, height, .28, COLORS.trunk, pick);
   if (type === 'palm') {
-    batch.add(x + .5, height + .15, y + .5, 2.2, .24, .55, COLORS.leaf, pick);
-    batch.add(x + .5, height + .15, y + .5, .55, .24, 2.2, COLORS.leaf, pick);
-  } else {
-    // The canopy starts above the drawn resident's head, so a neighbour is never inside the leaves.
-    batch.add(x + .5, height + .78, y + .5, 1.4, 1.15, 1.4, variant('#438367', x, y), pick);
-    batch.add(x + .5, height + 1.47, y + .5, .95, .55, .95, variant('#6a9f73', x, y), pick);
-    batch.add(x + .5, height + 1.82, y + .5, .5, .24, .5, variant('#8eb189', x, y), pick);
-    if (type === 'fruit') for (const dx of [-.45, .35]) batch.add(x + .5 + dx, height + .95, y + .78, .17, .17, .17, '#d7905d', pick);
+    batch.add(x + .5, height + .22, y + .5, 2.2, .22, .5, COLORS.leaf, pick);
+    batch.add(x + .5, height + .22, y + .5, .5, .22, 2.2, COLORS.leaf, pick);
+    batch.add(x + .5, height + .02, y + .5, 1.5, .2, .44, COLORS.leaf, pick);
+    batch.add(x + .5, height + .02, y + .5, .44, .2, 1.5, COLORS.leaf, pick);
+    for (const dx of [-.13, .14]) batch.add(x + .5 + dx, height + .09, y + .5 + .1, .16, .16, .16, '#c8a273', pick);
+    return;
   }
+  // A wide lower canopy, then the three stacked crowns. The lower canopy begins above 1.52 m, so its
+  // overhang into the neighbouring tiles is over a resident's head, never through it.
+  batch.add(x + .5, height + .45, y + .5, 1.6, .7, 1.6, shade('#438367', .92), pick);
+  batch.add(x + .5, height + .78, y + .5, 1.4, 1.15, 1.4, variant('#438367', x, y), pick);
+  batch.add(x + .5, height + 1.47, y + .5, .95, .55, .95, variant('#6a9f73', x, y), pick);
+  batch.add(x + .5, height + 1.82, y + .5, .5, .24, .5, variant('#8eb189', x, y), pick);
+  if (type === 'fruit') for (const dx of [-.45, .35]) batch.add(x + .5 + dx, height + .95, y + .78, .17, .17, .17, '#d7905d', pick);
+  else if (n % 4 === 0) batch.add(x + .5 + (n % 3) * .1 - .1, height + 1.96, y + .5, .2, .2, .2, '#d7905d', pick);
 }
 
 function house(batch, x, y, pick, type = 'cottage') {
@@ -111,9 +89,31 @@ function house(batch, x, y, pick, type = 'cottage') {
     for (let step = 0; step < 3; step++) batch.add(x + .5, 1.82 + step * .2, y + .5, 1.5 - step * .35, .2, 1.5 - step * .35, COLORS.roof, pick);
     return;
   }
+  if (type === 'civic-building') {
+    // A civic anchor rather than a cottage: a stone plinth, a taller body, a double door, a window
+    // pair, a sign board and a wide eave with a lantern finial. One tile, one mass, 2.60 m tall.
+    batch.add(x + .5, .17, y + .5, 1.04, .34, 1.04, shade('#d5c4a1', .84), pick);
+    batch.add(x + .5, .94, y + .5, .99, 1.2, .99, '#d5c4a1', pick);
+    batch.add(x + .5, 1.66, y + .5, 1.06, .32, 1.06, COLORS.roof, pick);
+    batch.add(x + .5, 1.92, y + .5, .84, .16, .84, shade(COLORS.roof, .92), pick);
+    batch.add(x + .5, 2.1, y + .5, .6, .16, .6, COLORS.roof, pick);
+    batch.add(x + .5, 2.28, y + .5, .42, .16, .42, shade(COLORS.roof, .92), pick);
+    batch.add(x + .5, 2.48, y + .5, .3, .24, .3, COLORS.gold, pick, 'glow');
+    batch.add(x + .5, .58, y + .5 + .508, .62, .96, .05, COLORS.dark, pick);
+    batch.add(x + .5, 1.05, y + .5 + .512, .72, .1, .06, shade('#d5c4a1', 1.06), pick);
+    for (const dx of [-.2, .2]) batch.add(x + .5 + dx, .58, y + .5 + .522, .04, .84, .03, COLORS.glass, pick, 'glow');
+    for (const dx of [-.27, .27]) batch.add(x + .5 + dx, 1.33, y + .5 + .512, .28, .42, .04, COLORS.glass, pick, 'glow');
+    batch.add(x + .5, 1.78, y + .5 + .524, .46, .26, .05, COLORS.cream, pick);
+    return;
+  }
+  // The cottage: a plinth, a body, a door with a lintel, two windows with sills, a stepped roof and
+  // a chimney — the same 2.60 m silhouette the entry records, with the ground floor detailed.
+  batch.add(x + .5, .15, y + .5, 1.02, .3, 1.02, shade('#d5c4a1', .88), pick);
   batch.add(x + .5, .8, y + .5, .99, 1.6, .99, '#d5c4a1', pick);
   batch.add(x + .5, .6, y + .5 + .512, .38, 1.2, .035, COLORS.dark, pick);
+  batch.add(x + .5, 1.26, y + .5 + .518, .5, .12, .05, COLORS.cream, pick);
   for (const dx of [-.3, .3]) batch.add(x + .5 + dx, 1.05, y + .5 + .52, .3, .42, .04, COLORS.glass, pick, 'glow');
+  for (const dx of [-.3, .3]) batch.add(x + .5 + dx, .8, y + .5 + .524, .34, .06, .05, COLORS.cream, pick);
   for (let step = 0; step < 3; step++) batch.add(x + .5, 1.7 + step * .22, y + .5, 1.05 - step * .25, .23, 1.05 - step * .25, COLORS.roof, pick);
   batch.add(x + .7, 2.2, y + .3, .22, .8, .25, '#968b79', pick);
 }
@@ -125,7 +125,9 @@ function furniture(batch, item) {
   if (['cottage', 'shelter', 'civic-building'].includes(type)) return house(batch, x, y, pick, type);
   // A garden path object is the same thin surface the frontier block draws: flat, walkable ground.
   if (type === 'path') add(0, .04, 0, .99, .08, .99, COLORS[type] || COLORS.stone);
-  else if (type === 'pond') { add(0, .07, 0, .99, .14, .99, COLORS.stone); add(0, .1, 0, .84, .06, .84, COLORS.water); }
+  // A pond is water you walk around, not a pedestal: a stone rim above knee height with the sealed
+  // pond tone inside it, a lily pad and two reeds. The rim is the mass the server refuses.
+  else if (type === 'pond') waterBasin(batch, { x, y, pick, rim: COLORS.stone, water: '#77b5bd', inner: .72, lip: .22, tint: WATER_TINTS.lily });
   else if (['bench', 'table', 'workbench'].includes(type)) {
     const table = type !== 'bench'; add(0, table ? .6 : .32, 0, .99, .14, table ? .8 : .38, COLORS.wood);
     for (const dx of [-.35, .35]) add(dx, .17, 0, .13, .35, .35, COLORS.trunk);
@@ -138,7 +140,10 @@ function furniture(batch, item) {
   } else if (['lamp', 'lantern'].includes(type)) {
     add(0, .88, 0, .09, 1.75, .09, COLORS.dark); add(0, 1.8, 0, .28, .35, .28, COLORS.gold, 'glow'); add(0, 2, 0, .4, .09, .4, COLORS.dark);
   } else if (type === 'fountain') {
-    add(0, .17, 0, .99, .34, .99, COLORS.stone); add(0, .36, 0, .84, .06, .84, COLORS.water); add(0, .85, 0, .18, 1.2, .18, COLORS.stone); add(0, 1.25, 0, .66, .1, .66, COLORS.stone);
+    // A basin, a stem and an upper bowl, with the water level readable at both heights.
+    waterBasin(batch, { x, y, pick, rim: COLORS.stone, water: COLORS.water, inner: .86, lip: .34 });
+    add(0, .9, 0, .2, .9, .2, COLORS.stone); add(0, 1.04, 0, .05, .62, .05, COLORS.waterglint);
+    add(0, 1.36, 0, .6, .14, .6, COLORS.stone); add(0, 1.425, 0, .48, .03, .48, COLORS.water);
   } else if (type === 'bookshelf') {
     add(0, .8, 0, .9, 1.6, .4, COLORS.trunk);
     for (let level = 0; level < 3; level++) for (let i = 0; i < 4; i++) add(-.3 + i * .2, .25 + level * .48, .22, .12, .3, .12, ['#72908a', '#c38d6d', '#cab573', '#979bb3'][i]);
@@ -160,115 +165,25 @@ const parcelAttacher = (definition, plan) => {
   };
 };
 
+/**
+ * The diorama: the ground pass, the authored and terrain scenery objects, the navigation frames, the
+ * landmark pennants and the ground cover, composed from the scene modules. The pass order is also
+ * the layer order the benchmark reports (`result.layers`).
+ */
 function terrainScene(resources, definition, snapshot, plan, cullHidden = true) {
-  const batch = cubeBatch(resources), scenery = new Map(plan.objects.map(item => [`${item.x},${item.y}`, item.type || item.kind])), withParcel = parcelAttacher(definition, plan);
-  for (const item of plan.cells) {
-    const { x, y, type } = item, pick = { x, y, z: 0, type: 'terrain', terrain: type, ...(item.parcel ? { parcel: item.parcel } : {}) };
-    const base = ['water', 'bridge'].includes(type) ? COLORS.dirt : type === 'building' || type === 'tree' || type === 'fountain' ? definition.groundColor || COLORS.grass : COLORS[type] || definition.groundColor || COLORS.grass;
-    // An interior base cube has no exposed face, so it is skipped; the slab below always stays.
-    if (!cullHidden || !cellOccludedBelow(definition, snapshot, plan, x, y)) batch.add(x + .5, type === 'water' ? -.82 : -.5, y + .5, 1, 1, 1, variant(COLORS.dirt, x, y), pick);
-    batch.add(x + .5, type === 'water' ? -.16 : -.04, y + .5, 1, .08, 1, variant(base, x, y), pick);
-    if (type === 'water') {
-      batch.add(x + .5, -.095, y + .5, .99, .08, .99, variant(COLORS.water, x, y), pick);
-      if ((x * 3 + y * 5) % 4 === 0) batch.add(x + .48, -.048, y + .28, .32, .014, .035, COLORS.waterglint, null, 'detail');
-    }
-    if (type === 'bridge') for (let i = 0; i < 4; i++) batch.add(x + .5, .03, y + .125 + i * .25, 1, .13, .22, COLORS.wood, pick);
-    if (type === 'tree' && !['tree', 'fruit', 'palm', 'cactus', 'mountain'].includes(scenery.get(`${x},${y}`))) tree(batch, x, y, 'tree', pick);
-    if (type === 'wall') batch.add(x + .5, .85, y + .5, 1, 1.7, 1, '#839489', pick);
-    if (type === 'building' && definition.kind === 'interior') furniture(batch, { x, y, type: 'bookshelf' });
-    else if (type === 'building') {
-      batch.add(x + .5, .72, y + .5, .99, 1.45, .99, '#d3c4a6', pick);
-      batch.add(x + .5, 1.56, y + .5, 1.05, .22, 1.05, COLORS.roof, pick);
-      if (definition.terrain?.[y + 1]?.[x] !== 'building') batch.add(x + .5, .83, y + 1.005, .32, .43, .04, COLORS.glass, pick, 'glow');
-    }
-    if (type === 'fountain') furniture(batch, { x, y, type: 'fountain' });
-    if (type === 'garden' && (x + y) % 2 === 0) furniture(batch, { x, y, type: 'flowers' });
-  }
-  for (const item of plan.objects) furniture(batch, item);
-  for (const item of plan.portals) {
-    const pick = { x: item.x, y: item.y, z: 0, type: 'portal', portal: item };
-    // A walk-through frame: posts in the tile-edge bands, cross member above the drawn head, and a
-    // floor decal for the landing pad.
-    for (const dx of [-.5, .5]) batch.add(item.x + .5 + dx, 1.1, item.y + .5, .2, 2.2, .2, '#78998b', pick);
-    batch.add(item.x + .5, 2.17, item.y + .5, 1.3, .22, .22, COLORS.gold, pick, 'glow');
-    batch.add(item.x + .5, .04, item.y + .5, 1.28, .07, .8, '#9dccb6', pick, 'glow');
-  }
-  for (const item of plan.gates) {
-    const pick = { x: item.x, y: item.y, z: 0, type: 'gate', neighbor: item };
-    for (const dx of [-.5, .5]) batch.add(item.x + .5 + dx, 1, item.y + .5, .22, 2, .22, COLORS.trunk, pick);
-    batch.add(item.x + .5, 2.04, item.y + .5, 1.42, .23, .23, COLORS.gold, pick, 'glow');
-    batch.add(item.x + .5, 1.72, item.y + .5, 1.24, .1, .12, '#98ac96', pick);
-    batch.add(item.x + .5, 1.68, item.y + .5, .2, .2, .2, COLORS.gold, pick, 'glow');
-    batch.add(item.x + .5, .05, item.y + .5, 1.24, .08, .12, '#98ac96', pick);
-  }
-  // Landmark pennants are navigation markers; they do not imply a live participant.
-  for (const item of (definition.landmarks || []).filter(place => inVoxelWindow(place, plan.window)).slice(0, 40)) {
-    batch.add(item.x + .92, 1.2, item.y + .08, .045, 2.4, .045, COLORS.dark);
-    batch.add(item.x + 1.2, 2.17, item.y + .08, .55, .38, .04, validColor(item.color) || COLORS.gold);
-  }
-  if (definition.kind !== 'interior') {
-    const centerX = (plan.window.x + plan.window.right) / 2, centerY = (plan.window.y + plan.window.bottom) / 2;
-    for (const [dx, dy, size] of [[-12, -9, 1], [9, -13, 1.3], [-10, 13, .8], [15, 8, 1.1]]) {
-      for (const [cx, cy, length] of [[0, 0, 4.4], [1.2, .8, 3], [-1.1, -.4, 3.2]]) batch.add(centerX + dx + cx, 10 + cy * .1, centerY + dy + cy, length * size, .5 * size, 1.6 * size, '#e1ebe4', null, 'cloud');
-    }
-  }
+  const batch = cubeBatch(resources), layers = {}, withParcel = parcelAttacher(definition, plan);
+  const scenery = new Map(plan.objects.map(item => [`${item.x},${item.y}`, item.type || item.kind]));
+  const colors = COLORS, builders = { tree, furniture };
+  groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers });
+  layer(batch, layers, 'furniture', () => { for (const item of plan.objects) furniture(batch, item); });
+  portalFrames({ batch, plan, colors, layers });
+  gateFrames({ batch, plan, colors, layers });
+  landmarkPennants({ batch, definition, plan, colors, layers, validColor });
+  groundCoverPass({ batch, plan, layers });
   const result = batch.finish();
   // All click targets retain the tile's parcel, including trees and saved furnishings.
   for (const mesh of result.pickables) mesh.userData.picks = mesh.userData.picks.map(pick => pick ? withParcel(pick) : pick);
-  return result;
-}
-
-/** Saved blocks batch apart from the terrain so placing one block never rebuilds the diorama. */
-function blocksScene(resources, definition, plan) {
-  const batch = cubeBatch(resources), withParcel = parcelAttacher(definition, plan);
-  for (const item of plan.blocks) {
-    const material = item.material || item.type || item.kind, path = !blockOccupiesTile(material) && item.z === 0;
-    batch.add(item.x + .5, path ? .045 : item.z + .5, item.y + .5, .99, path ? .09 : .99, .99,
-      COLORS[material] || COLORS.stone, withParcel({ x: item.x, y: item.y, z: item.z, type: 'block', block: item }), material === 'glass' ? 'glass' : 'solid');
-  }
-  const result = batch.finish(); result.group.name = 'voxel-blocks';
-  return result;
-}
-
-function parcelScene(resources, plan, selection, hover) {
-  const batch = cubeBatch(resources), edges = new Map(), selected = voxelParcelSelection(plan.parcels, selection), hovered = voxelParcelSelection(plan.parcels, hover);
-  const { window } = plan;
-  const palette = { reserved: '#799e99', assigned: '#87bfa3', available: '#cbbb83', unopened: '#94a49b' };
-  const priority = { reserved: 2, assigned: 3, available: 1, unopened: 0 };
-  function footprint(parcel, width, color, style) {
-    const x0 = Math.max(window.x, parcel.x), y0 = Math.max(window.y, parcel.y), x1 = Math.min(window.right, parcel.x + 6), y1 = Math.min(window.bottom, parcel.y + 6);
-    const height = style === 'parcel-boundary' ? .025 : .08;
-    if (parcel.x >= window.x) batch.add(parcel.x, height, (y0 + y1) / 2, width, .03, y1 - y0, color, null, style);
-    if (parcel.x + 6 <= window.right) batch.add(parcel.x + 6, height, (y0 + y1) / 2, width, .03, y1 - y0, color, null, style);
-    if (parcel.y >= window.y) batch.add((x0 + x1) / 2, height, parcel.y, x1 - x0, .03, width, color, null, style);
-    if (parcel.y + 6 <= window.bottom) batch.add((x0 + x1) / 2, height, parcel.y + 6, x1 - x0, .03, width, color, null, style);
-  }
-  for (const parcel of plan.parcels) {
-    const state = Object.hasOwn(palette, parcel.state) ? parcel.state : 'unopened', color = palette[state];
-    for (const [axis, fixed, start, end] of [['v', parcel.x, parcel.y, parcel.y + 6], ['v', parcel.x + 6, parcel.y, parcel.y + 6], ['h', parcel.y, parcel.x, parcel.x + 6], ['h', parcel.y + 6, parcel.x, parcel.x + 6]]) {
-      const low = axis === 'v' ? window.y : window.x, high = axis === 'v' ? window.bottom : window.right;
-      const visibleFixed = axis === 'v' ? fixed >= window.x && fixed <= window.right : fixed >= window.y && fixed <= window.bottom;
-      if (!visibleFixed) continue;
-      const clippedStart = Math.max(start, low), clippedEnd = Math.min(end, high), key = `${axis}:${fixed}:${clippedStart}:${clippedEnd}`, old = edges.get(key);
-      if (!old || priority[state] > old.priority) edges.set(key, { axis, fixed, start: clippedStart, end: clippedEnd, color, priority: priority[state] });
-    }
-  }
-  for (const edge of edges.values()) batch.add(edge.axis === 'v' ? edge.fixed : (edge.start + edge.end) / 2, .025,
-    edge.axis === 'v' ? (edge.start + edge.end) / 2 : edge.fixed, edge.axis === 'v' ? .025 : edge.end - edge.start, .025,
-    edge.axis === 'v' ? edge.end - edge.start : .025, edge.color, null, 'parcel-boundary');
-  // The protected crossroads have a separate visible lane edge within reserved plots.
-  if (plan.parcels.length) for (const coordinate of [23, 26]) {
-    if (coordinate >= window.x && coordinate <= window.right) batch.add(coordinate, .05, (window.y + window.bottom) / 2, .07, .035, window.bottom - window.y, '#a6cbc0', null, 'parcel-boundary');
-    if (coordinate >= window.y && coordinate <= window.bottom) batch.add((window.x + window.right) / 2, .05, coordinate, window.right - window.x, .035, .07, '#a6cbc0', null, 'parcel-boundary');
-  }
-  if (hovered && hovered.id !== selected?.id) footprint(hovered, .065, hovered.state === 'reserved' ? '#aad3ce' : '#ddd0a4', 'parcel-hover');
-  if (selected) {
-    const color = selected.state === 'reserved' ? '#b2dbd4' : '#f2d891'; footprint(selected, .11, color, 'parcel-selected');
-    const x0 = Math.max(window.x, selected.x), y0 = Math.max(window.y, selected.y), x1 = Math.min(window.right, selected.x + 6), y1 = Math.min(window.bottom, selected.y + 6);
-    batch.add((x0 + x1) / 2, .01, (y0 + y1) / 2, x1 - x0, .008, y1 - y0, color, null, 'parcel-fill');
-  }
-  const result = batch.finish(); result.group.name = 'parcel-overlay'; result.group.userData = { selectedParcel: selected?.id || null, hoveredParcel: hovered?.id || null, parcels: plan.parcels.length };
-  for (const mesh of result.group.children) { mesh.castShadow = false; mesh.receiveShadow = false; mesh.renderOrder = 8; }
+  result.layers = layers;
   return result;
 }
 
@@ -330,12 +245,13 @@ function peopleScene(resources, participants, self) {
   return batch.finish();
 }
 
-const disposeBatch = batch => { if (!batch) return; for (const mesh of batch.group.children) mesh.dispose(); batch.group.clear(); };
-
 /** A GPU-independent scene builder used by rendering and real Raycaster tests. */
 export function createVoxelScene() {
-  const resources = createResources(), root = new THREE.Group(); let staticBatch, blockBatch, peopleBatch, parcelBatch, key = '', blockKey = '', peopleKey = '', parcelKey = '', lastPlan, destroyed = false;
-  let stats = { cells: 0, blocks: 0, participants: 0, cubes: 0, drawBatches: 0 }, pickables = [];
+  const resources = createResources(), root = new THREE.Group(); let staticBatch, blockBatch, peopleBatch, parcelBatch, skyBatch, key = '', blockKey = '', peopleKey = '', parcelKey = '', skyKey = '', lastPlan, destroyed = false;
+  let stats = { cells: 0, blocks: 0, participants: 0, cubes: 0, drawBatches: 0, layers: {} }, pickables = [];
+  // The one child order for both the tests and the renderer: terrain, characters, blocks, plots, sky.
+  const managed = () => [staticBatch, peopleBatch, blockBatch, parcelBatch, skyBatch].filter(Boolean);
+  const settle = () => { for (const batch of managed()) root.add(batch.group); };
   return { root,
     update(definition, snapshot = {}, options = {}) {
       if (destroyed) throw new Error('The voxel scene has been destroyed.');
@@ -359,16 +275,29 @@ export function createVoxelScene() {
       const nextBlockKey = JSON.stringify([definition.id, definition.kind, plan.blocks, plan.parcels]);
       if (nextBlockKey !== blockKey) {
         if (blockBatch) root.remove(blockBatch.group); disposeBatch(blockBatch);
-        blockBatch = plan.blocks.length ? blocksScene(resources, definition, plan) : null;
+        blockBatch = plan.blocks.length ? blocksScene({ resources, definition, plan, colors: COLORS, cubeBatch, withParcel: parcelAttacher(definition, plan) }) : null;
         if (blockBatch) root.add(blockBatch.group); blockKey = nextBlockKey;
       }
+      // The sky is its own small batch, so a phase change never touches the diorama: only the phase
+      // markers and the cloud tint are rebuilt, and an unchanged phase reuses every existing mesh.
+      const phase = resolvedPhase(options.dayPhase || snapshot.atmosphere?.phase);
+      const nextSkyKey = JSON.stringify([definition.id, definition.kind, phase, plan.window]);
+      if (nextSkyKey !== skyKey) {
+        if (skyBatch) root.remove(skyBatch.group); disposeBatch(skyBatch);
+        skyBatch = definition.kind === 'interior' ? null : skyScene({ resources, cubeBatch, plan, phase });
+        if (skyBatch) root.add(skyBatch.group);
+        skyKey = nextSkyKey;
+      }
+      settle();
       lastPlan = plan;
       this.highlightParcel(options.parcelSelection, options.parcelHover);
       pickables = [...staticBatch.pickables, ...peopleBatch.pickables, ...(blockBatch?.pickables || [])];
       stats = { cells: plan.cells.length, blocks: plan.blocks.length, participants: renderablePeople(drawnPeople, drawnSelf).length,
-        cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0), parcelCubes: parcelBatch?.cubes || 0,
-        drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0),
-        parcels: plan.parcels.length, selectedParcel: parcelBatch?.group.userData.selectedParcel || null, window: plan.window };
+        cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0) + (skyBatch?.cubes || 0),
+        parcelCubes: parcelBatch?.cubes || 0, skyCubes: skyBatch?.cubes || 0,
+        drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0),
+        parcels: plan.parcels.length, selectedParcel: parcelBatch?.group.userData.selectedParcel || null, window: plan.window,
+        layers: { ...staticBatch.layers, sky: skyBatch?.cubes || 0 } };
       root.updateMatrixWorld(true); return stats;
     },
     highlightParcel(selection, hover) {
@@ -377,15 +306,16 @@ export function createVoxelScene() {
       const nextKey = JSON.stringify([lastPlan.window, lastPlan.parcels.map(parcel => [parcel.id, parcel.state]), selected?.id, hovered?.id]);
       if (nextKey === parcelKey) return;
       if (parcelBatch) root.remove(parcelBatch.group); disposeBatch(parcelBatch);
-      parcelBatch = lastPlan.parcels.length ? parcelScene(resources, lastPlan, selected, hovered) : null;
-      if (parcelBatch) root.add(parcelBatch.group); parcelKey = nextKey; root.updateMatrixWorld(true);
+      parcelBatch = lastPlan.parcels.length ? parcelScene({ resources, plan: lastPlan, selection: selected, hover: hovered, cubeBatch, parcelSelection: voxelParcelSelection }) : null;
+      if (parcelBatch) root.add(parcelBatch.group); parcelKey = nextKey; settle(); root.updateMatrixWorld(true);
       stats.selectedParcel = selected?.id || null;
       stats.parcelCubes = parcelBatch?.cubes || 0;
-      stats.cubes = (staticBatch?.cubes || 0) + (blockBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0);
-      stats.drawBatches = (staticBatch?.batches || 0) + (blockBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0);
+      stats.cubes = (staticBatch?.cubes || 0) + (blockBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0) + (skyBatch?.cubes || 0);
+      stats.drawBatches = (staticBatch?.batches || 0) + (blockBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0);
+      stats.layers = { ...(staticBatch?.layers || {}), sky: skyBatch?.cubes || 0 };
     },
     get pickables() { return pickables; }, get stats() { return stats; },
-    destroy() { if (destroyed) return; destroyed = true; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; lastPlan = null; }
+    destroy() { if (destroyed) return; destroyed = true; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(skyBatch); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; skyKey = ''; lastPlan = null; }
   };
 }
 
@@ -398,26 +328,26 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   if (!context) return unavailable();
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, context, antialias: true, alpha: false }); } catch { return unavailable(); }
-  renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.5)); renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
+  renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, RENDER_CAPS.pixel_ratio)); renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = phaseLighting('day').exposure;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(48, 1, .1, 100), contents = createVoxelScene(); scene.add(contents.root);
-  scene.background = new THREE.Color(ATMOSPHERE.day.sky); scene.fog = new THREE.Fog(ATMOSPHERE.day.fog, ATMOSPHERE.day.fogNear, ATMOSPHERE.day.fogFar);
-  const sky = new THREE.HemisphereLight(ATMOSPHERE.day.zenith, ATMOSPHERE.day.ground, ATMOSPHERE.day.skyLight);
-  const sun = new THREE.DirectionalLight(ATMOSPHERE.day.sun, ATMOSPHERE.day.sunLight);
-  sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -24; sun.shadow.camera.right = 24;
-  sun.shadow.camera.top = 24; sun.shadow.camera.bottom = -24; sun.shadow.camera.near = .5; sun.shadow.camera.far = 65;
+  const opening = phaseLighting('day');
+  scene.background = new THREE.Color(opening.sky); scene.fog = new THREE.Fog(opening.fog, 4, 34);
+  const sky = new THREE.HemisphereLight(opening.zenith, opening.ground, opening.skyLight);
+  const sun = new THREE.DirectionalLight(opening.sun, opening.sunLight);
+  sun.castShadow = true; sun.shadow.mapSize.set(SHADOW_LIMITS.map_size, SHADOW_LIMITS.map_size);
   sun.shadow.bias = -.001; sun.shadow.normalBias = .03; scene.add(sky, sun, sun.target);
   const selectionBox = new THREE.BoxGeometry(1.025, 1.025, 1.025), selectionGeometry = new THREE.EdgesGeometry(selectionBox); selectionBox.dispose();
   const selectionMaterial = new THREE.LineBasicMaterial({ color: '#fff0b0', depthTest: false });
   const selection = new THREE.LineSegments(selectionGeometry, selectionMaterial); selection.visible = false; selection.renderOrder = 10; scene.add(selection);
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
   const orbitInput = createOrbitInput({ onLook });
-  let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, hoveredParcel = null, lastHoverAt = -Infinity;
+  let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, lastAtmosphere = null, hoveredParcel = null, lastHoverAt = -Infinity;
   const previousTouchAction = canvas.style.touchAction; canvas.style.touchAction = 'pan-y';
   function resize() {
     const bounds = canvas.getBoundingClientRect(), width = Math.max(1, bounds.width || canvas.width || 800), height = Math.max(1, bounds.height || canvas.height || 560);
-    const scale = Math.min(1, 1440 / width, 900 / height), renderWidth = Math.round(width * scale), renderHeight = Math.round(height * scale);
+    const scale = Math.min(1, RENDER_CAPS.render_width / width, RENDER_CAPS.render_height / height), renderWidth = Math.round(width * scale), renderHeight = Math.round(height * scale);
     const size = renderer.getSize(new THREE.Vector2());
     if (size.x !== renderWidth || size.y !== renderHeight) renderer.setSize(renderWidth, renderHeight, false);
     camera.aspect = width / height; camera.updateProjectionMatrix();
@@ -426,14 +356,10 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     if (destroyed || lost || !lastSnapshot) return;
     resize(); const placement = orbitInput.mode === 'first-person' ? firstPersonCamera(target, orbitInput.orbit) : orbitCamera(target, orbitInput.orbit);
     camera.position.set(placement.eye.x, placement.eye.y, placement.eye.z); camera.lookAt(placement.target.x, placement.target.y, placement.target.z); camera.updateMatrixWorld();
-    const namedPhase = lastOptions?.dayPhase || lastSnapshot.atmosphere?.phase || 'day';
-    const phase = namedPhase === 'evening' ? 'dusk' : namedPhase;
-    const atmosphere = Object.hasOwn(ATMOSPHERE, phase) ? ATMOSPHERE[phase] : ATMOSPHERE.day;
-    scene.background.set(atmosphere.sky); scene.fog.color.set(atmosphere.fog);
-    scene.fog.near = atmosphere.fogNear; scene.fog.far = atmosphere.fogFar;
-    sky.color.set(atmosphere.zenith); sky.groundColor.set(atmosphere.ground); sky.intensity = atmosphere.skyLight;
-    sun.color.set(atmosphere.sun); sun.intensity = atmosphere.sunLight;
-    sun.position.set(target.x - 14, atmosphere.sunHeight, target.y + 9); sun.target.position.set(target.x, 0, target.y); sun.target.updateMatrixWorld();
+    // One phase model, one owner: src/scene/sky.js resolves the named phase (with the legacy
+    // `evening` alias), places the key light and its shadow frustum, and sets the depth cue.
+    lastAtmosphere = applyPhase({ scene, sky, sun, renderer, phase: lastOptions?.dayPhase || lastSnapshot.atmosphere?.phase,
+      position: target, distance: orbitInput.orbit.distance, plan: { window: contents.stats.window } });
     const selected = lastOptions?.selection;
     selection.visible = !!selected && Number.isInteger(selected.x) && Number.isInteger(selected.y);
     if (selection.visible) selection.position.set(selected.x + .5, Math.max(0, selected.z || 0) + .5, selected.y + .5);
@@ -497,6 +423,8 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     },
     get cameraMode() { return orbitInput.mode; },
     get orbit() { return orbitInput.orbit; }, get stats() { return contents.stats; },
+    /** What the last paint actually applied: the phase light, the fog band and the shadow frustum. */
+    get atmosphere() { return lastAtmosphere; },
     destroy() {
       if (destroyed) return; destroyed = true; observer?.disconnect(); drag = null;
       for (const [name, handler] of listeners) canvas.removeEventListener(name, handler);
