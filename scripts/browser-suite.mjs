@@ -17,12 +17,13 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { arch, cpus, loadavg, platform, release, tmpdir, totalmem } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer as createTcpServer } from 'node:net';
 import { request as httpRequest } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
+import { cameraWalkDirection, facingLabel } from '../src/camera-controls.js';
 import { RESTORATION_PLAN } from '../src/community.js';
 import { validateDatabase } from '../src/recovery.js';
 import { planWalk } from '../src/world-walk.js';
@@ -111,6 +112,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'private-draft-isolation', title: 'Private draft isolation between operators', regression: 'queue review correction 2' },
   { id: 'refresh-and-focus-restoration', title: 'Refresh returns to the right form and restores focus', regression: 'queue review correction 3' },
   { id: 'first-person-controls', title: 'First-person movement, drag-look and the aim line', regression: null },
+  { id: 'movement-latency', title: 'Local input to confirmed step: timed in the page, reported and not gated', regression: null },
   { id: 'country-ambassadors', title: 'Country ambassadors: directory, profile, conversation, mismatch', regression: null },
   { id: 'plot-and-blueprints', title: 'Plot assignment and blueprint preview, apply and remove', regression: null },
   { id: 'character-switch-clears-preview', title: 'Selecting another character clears the old blueprint preview', regression: 'queue review correction 1' },
@@ -1087,6 +1089,380 @@ define('first-person-controls', async () => {
     return `moved ${before.x},${before.y} → ${after.x},${after.y}; the accessible aim line names the new tile`;
   });
   return 'first person drove real movement and a real drag-look, with the aim line kept in step';
+});
+
+// ---------------------------------------------------------------------------------------------
+// Scenario — the local input-to-confirmed-step latency instrument
+//
+// The suite already measures cross-client propagation (see `shared-presence-two-clients`): a click
+// reaching the *other* browser's view. This scenario measures the interval the movement work is
+// judged against instead: one local movement input to the interface naming the tile the server
+// stored, for a run of consecutive single-tile steps. It is an instrument, not a performance gate.
+// It asserts only what is deterministic — that every step was confirmed by the interface and by the
+// server — and reports the figures in a note, so two runs can be compared without a slow run
+// failing the suite.
+//
+// Environment, stated plainly: loopback HTTP, headless Chrome, one server process, one SQLite
+// writer, no network, and no other client on the resident being measured. The figure is a lower
+// bound for a supported user on a real device over a real network, and claims nothing about that.
+// ---------------------------------------------------------------------------------------------
+
+/** Consecutive single-tile steps measured inside one page-side loop. */
+const MOVEMENT_LATENCY_SAMPLES = 24;
+/**
+ * A generous sanity bound, not a performance target. A step the interface never confirms means the
+ * instrument lost a step, so it fails here rather than reporting a stall as latency. It is far above
+ * every figure this suite has measured (a p95 of tens of milliseconds on an idle machine), because a
+ * bound that a loaded machine can trip would make the suite flaky rather than informative.
+ */
+const MOVEMENT_LATENCY_CONFIRM_TIMEOUT_MS = 15_000;
+/**
+ * The shipped client holds motion requests 160 ms apart after the press it belongs to, and the
+ * server refuses a second step inside 120 ms. Inputs are therefore spaced from the previous
+ * request's own send time, not from the previous press: on the press's clock alone the client's hold
+ * can push a request late and leave the next one inside the server's refusal window. The margin on
+ * top is for the server's own processing jitter, which a loaded machine turns into a variable delay
+ * between two requests that left the page well apart. Without this spacing the reported figure would
+ * measure the client's own pacing, and the per-step dispatch time is reported so a reader can see
+ * the pacing held.
+ */
+const MOVEMENT_LATENCY_PACE_MS = 400;
+/**
+ * How many inputs one step may take. Only a press the server's own throttle refused is re-issued,
+ * and each such refusal is reported; a step that is never confirmed still fails the scenario.
+ */
+const MOVEMENT_LATENCY_INPUT_ATTEMPTS = 3;
+/**
+ * The measured route is a loop: this many single-tile steps out, the same number back, so the run
+ * ends on the tile it started from and the instrument leaves the shared world as it found it.
+ */
+const MOVEMENT_LATENCY_ROUTE_STEPS = MOVEMENT_LATENCY_SAMPLES / 2;
+/** The cardinal step that undoes another one, for the return leg of the loop. */
+const OPPOSITE_DIRECTION = Object.freeze({ up: 'down', down: 'up', left: 'right', right: 'left' });
+
+/** The machine this run measured on, read at run time so the note names hardware instead of assuming it. */
+function measurementHardware() {
+  const model = cpus()[0]?.model || 'an unknown processor';
+  return `${model}, ${cpus().length} cores, ${Math.round(totalmem() / 1024 ** 3)} GB, ${platform()} ${arch()} kernel ${release()}`;
+}
+
+/** The value `fraction` of the way through an ascending copy of `values`. */
+function percentile(values, fraction) {
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(fraction * sorted.length) - 1))];
+}
+
+/** Landmarks, portals and four long offsets: targets worth planning a Commons route to. */
+function latencyRouteTargets(definition, start) {
+  const targets = [];
+  const add = (x, y) => {
+    if (Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < definition.columns && y < definition.rows) targets.push({ x, y });
+  };
+  for (const landmark of definition.landmarks || []) add(landmark.x, landmark.y);
+  for (const portal of definition.portals || []) add(portal.x, portal.y);
+  for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32], [24, 24], [-24, 24], [24, -24], [-24, -24]]) add(start.x + dx, start.y + dy);
+  return targets;
+}
+
+/** One short readable form of a planned route, e.g. `8×E 4×S`, for the note. */
+function compactRoute(route) {
+  const letters = { up: 'N', right: 'E', down: 'S', left: 'W' };
+  const runs = [];
+  for (const direction of route) {
+    const letter = letters[direction];
+    const last = runs[runs.length - 1];
+    if (last && last.letter === letter) last.count += 1;
+    else runs.push({ letter, count: 1 });
+  }
+  return runs.map((run) => `${run.count}×${run.letter}`).join(' ');
+}
+
+define('movement-latency', async () => {
+  const owner = await actor('owner');
+  const page = owner.page;
+  const walker = fixtures().characters.walker;
+  const CARDINAL_STEPS = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
+  const CONTROL_DIRECTIONS = ['up', 'left', 'down', 'right'];
+  const tileName = (tile) => (tile ? `${tile.x},${tile.y}` : 'no tile named');
+  // The Commons is where this instrument measures: an authored world a resident walks without a
+  // plot of its own, and the one with long walkable routes out of the arrival plaza.
+  await sendToCommons(fixtures().owner, walker.id);
+
+  let plan = null;
+  await step('the resident enters the Commons in first person with a planned walkable route', async () => {
+    await openApp(page, ACTORS.owner);
+    await openTab(page, 'Open world');
+    await page.locator('#view select[name="agent"]').selectOption(walker.id);
+    await settle(page);
+    await page.waitForTimeout(400);
+    // This operator's browser keeps its last camera choice, so first person is pressed only when it
+    // is not already on: the instrument needs the first-person aim line, not a camera toggle.
+    const firstPerson = page.locator('#view button[aria-label="First person camera that follows your resident"]');
+    if (await firstPerson.getAttribute('aria-pressed') !== 'true') await firstPerson.click();
+    await page.waitForFunction(() => (document.querySelector('#world-reticle')?.textContent || '').startsWith('First person'), null, { timeout: PAGE_TIMEOUT_MS });
+    const resident = row('SELECT id,world_id,x,y,yaw,status FROM agents WHERE id=?', walker.id);
+    expect(resident?.status === 'active', 'the measured resident must be an active stored resident', { expected: 'an active resident row', actual: describe(resident) });
+    expect(resident.world_id === 'commons', 'the instrument must measure in the Commons, where the long routes are', { expected: 'commons', actual: describe(resident.world_id) });
+    const aim = (await page.locator('#world-reticle').textContent())?.trim() || '';
+    expect(aim.includes(`at ${resident.x}, ${resident.y}`), 'the aim line must name the resident’s stored tile before the first input', { expected: `at ${resident.x}, ${resident.y}`, actual: describe(aim.slice(0, 140)) });
+    // A first-person control walks the way the client's own facing points, so a planned cardinal
+    // route is translated through the same stored yaw the client read at selection. The client's
+    // own facing label is checked against that yaw first, because the label is what the interface
+    // says and the translation is only sound while the two agree.
+    const yaw = Number.isFinite(resident.yaw) ? resident.yaw : Math.PI / 4;
+    expect(aim.includes(`facing ${facingLabel(yaw)}`), 'the aim line and the stored yaw must name the same facing', { expected: `facing ${facingLabel(yaw)}`, actual: describe(aim.slice(0, 140)) });
+    const controlForCardinal = new Map();
+    for (const control of CONTROL_DIRECTIONS) {
+      const cardinal = cameraWalkDirection(control, yaw);
+      if (!controlForCardinal.has(cardinal)) controlForCardinal.set(cardinal, control);
+    }
+    const definition = getWorldDefinition(resident.world_id);
+    const objects = rows('SELECT type,x,y FROM world_objects WHERE world_id=?', resident.world_id);
+    let outbound = null;
+    for (const target of latencyRouteTargets(definition, resident)) {
+      const candidate = planWalk(definition, { x: resident.x, y: resident.y }, target, { objects });
+      if (!candidate || candidate.length < MOVEMENT_LATENCY_ROUTE_STEPS) continue;
+      // A facing exactly on a diagonal resolves two controls to one cardinal step, leaving one
+      // cardinal unreachable; a route that never needs it is still a valid route.
+      if (!candidate.every((direction) => controlForCardinal.has(direction))) continue;
+      if (!outbound || candidate.length > outbound.length) outbound = candidate;
+    }
+    expect(outbound, `a planned route of at least ${MOVEMENT_LATENCY_ROUTE_STEPS} walkable single-tile steps must exist where the resident stands`, { expected: `${MOVEMENT_LATENCY_ROUTE_STEPS} planned steps from ${resident.x},${resident.y}`, actual: describe({ world: resident.world_id, planned: latencyRouteTargets(definition, resident).length, facing: facingLabel(yaw) }) });
+    // Out and back: the measured run ends on the tile it started from. Walking a resident 24 tiles
+    // away and leaving it there would change what every later scenario shares — the server's
+    // observation window is only 20 × 14 tiles, so a resident parked outside it is invisible to the
+    // other browser — and an instrument must not edit the fixture it measures in.
+    const leg = outbound.slice(0, MOVEMENT_LATENCY_ROUTE_STEPS);
+    const measured = [...leg, ...[...leg].reverse().map((direction) => OPPOSITE_DIRECTION[direction])];
+    let cursor = { x: resident.x, y: resident.y };
+    const stepTiles = measured.map((cardinal) => {
+      const [dx, dy] = CARDINAL_STEPS[cardinal];
+      cursor = { x: cursor.x + dx, y: cursor.y + dy };
+      return { control: controlForCardinal.get(cardinal), cardinal, tile: { ...cursor } };
+    });
+    plan = { worldId: resident.world_id, worldName: definition.name, startTile: { x: resident.x, y: resident.y }, cardinals: measured, stepTiles };
+    return `${definition.name} from ${tileName(plan.startTile)}: ${leg.length} steps out and ${leg.length} back (${compactRoute(measured)}), returning to the starting tile`;
+  });
+
+  let measured = null;
+  // Every movement request the page actually issued, seen from this side of the connection. It is
+  // evidence, not timing: one press must become exactly one `POST …/move`, and a step that was never
+  // confirmed has to say whether the input reached the wire at all.
+  const issuedMoves = [];
+  const recordIssuedMove = (request) => { if (/\/move(\?|$)/.test(request.url())) issuedMoves.push(request.url().replace(/^https?:\/\/[^/]+/, '')); };
+  page.on('request', recordIssuedMove);
+  await step(`the in-page loop times ${MOVEMENT_LATENCY_SAMPLES} consecutive confirmed steps`, async () => {
+    // The whole loop runs inside one page.evaluate, so no Node ↔ browser round trip sits inside a
+    // measured interval. The input is the shipped movement control this suite already drives — or,
+    // when the workspace has rendered that control disabled, the walk key, which reaches the same
+    // intent through the one keydown handler — and the confirmation is the accessible aim line
+    // naming the tile the server stored, not an optimistic paint, which this path does not have.
+    measured = await page.evaluate(async (input) => {
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const now = () => performance.now();
+      const POSITION = /· at (\d+), (\d+)(?:, layer (\d+))?/;
+      const readLine = () => document.querySelector('#world-reticle')?.textContent || '';
+      const readTile = () => {
+        const match = POSITION.exec(readLine());
+        return match ? { x: Number(match[1]), y: Number(match[2]) } : null;
+      };
+      // The newest completed `POST …/move` resource entry says how much of each interval was the
+      // request leaving the page, how much was the server answering, and how much was the interface
+      // after that. Nothing is patched to get it; it is already timed by the browser.
+      try { performance.clearResourceTimings(); performance.setResourceTimingBufferSize(1000); } catch { /* a diagnostic, not the measurement */ }
+      const moveEntry = (since) => {
+        let newest = null;
+        for (const entry of performance.getEntriesByType('resource')) {
+          if (!entry.name.includes('/move') || entry.startTime < since) continue;
+          if (!newest || entry.startTime > newest.startTime) newest = entry;
+        }
+        return newest;
+      };
+      // Every request the page made since a press, so a step that was never confirmed says whether
+      // the input left the page at all and, if it did, which endpoint carried it.
+      const requestsSince = (since) => performance.getEntriesByType('resource')
+        .filter((entry) => entry.startTime >= since)
+        .map((entry) => ({ path: entry.name.replace(/^https?:\/\/[^/]+/, ''), ms: Number((entry.startTime - since).toFixed(1)) }));
+      // The aim line is rewritten by the same paint that applies the server's tile, so the microtask
+      // that follows the mutation is the earliest moment the interface names that tile.
+      const waitForTile = (wanted, timeoutMs, since) => new Promise((resolve) => {
+        let settled = false, timer = null, observer = null;
+        const settle = (result) => {
+          if (settled) return;
+          settled = true;
+          observer?.disconnect();
+          if (timer !== null) clearInterval(timer);
+          resolve(result);
+        };
+        const check = () => {
+          const tile = readTile();
+          if (tile && tile.x === wanted.x && tile.y === wanted.y) { settle({ tile, at: now() }); return; }
+          // The server's own movement throttle answers in milliseconds, so a refused input is settled
+          // at once instead of being waited out as though it were a slow step.
+          if (moveEntry(since)?.responseStatus === 429) { settle({ tile, at: now(), refused: true }); return; }
+          if (now() - since >= timeoutMs) settle({ tile, at: now(), timedOut: true });
+        };
+        observer = new MutationObserver(check);
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+        timer = setInterval(check, 5);
+        check();
+      });
+      // An independent read of the server's own record for this step, taken after the interface was
+      // timed, so the report never has to take the interface's word for the tile.
+      const auditTile = async (tile) => {
+        // No camera hint: the server centres an authenticated read on the resident being read, and a
+        // hint would move the 20 × 14 observation window off the very resident this is asking about.
+        const query = new URLSearchParams({ view: 'voxel', world_id: input.worldId, agent_id: input.agentId });
+        const body = await fetch(`/api/v1/world?${query}`, { credentials: 'same-origin' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+        const found = [...(body?.participants || []), ...(body?.agents || [])].find((item) => item?.id === input.agentId) || null;
+        return found ? { x: found.x, y: found.y } : null;
+      };
+
+      const samples = [];
+      // Presses the server's own movement throttle refused before a step was measured. They are
+      // reported rather than hidden: a refusal means that input never became a step.
+      const refusedPresses = [];
+      // Paced from the previous request's own send time, not from the previous press. The shipped
+      // client holds motion requests 160 ms apart after the press, so pacing from the press can let
+      // the client's own hold compress two sends closer than the server's 120 ms refusal window.
+      let lastSentAt = -Infinity;
+      for (let index = 0; index < input.steps.length; index++) {
+        const planned = input.steps[index];
+        let sample = null;
+        for (let attempt = 0; attempt < input.maxAttempts && !sample; attempt += 1) {
+          const idle = input.paceMs - (now() - lastSentAt);
+          if (idle > 0) await sleep(idle);
+          const button = document.querySelector(`#view button[aria-label="Move ${planned.control}"]`);
+          if (!button) return { error: `no movement control labelled “Move ${planned.control}” was reachable`, samples, refusedPresses };
+          const before = readTile();
+          // The control's own state as the press finds it: a disabled control silently refuses
+          // `click()`, and more than one match would mean the press reached a control the interface
+          // had replaced rather than the live one.
+          const controlAtPress = {
+            disabled: Boolean(button.disabled), connected: Boolean(button.isConnected),
+            matches: document.querySelectorAll(`#view button[aria-label="Move ${planned.control}"]`).length,
+          };
+          // The identity a queued move carries: a press the page accepted and then dropped would show
+          // here as a changed selection or world between the press and the wait.
+          const contextAtPress = { selected: window.__nemoworld?.selected?.() ?? null, worldId: window.__nemoworld?.worldId?.() ?? null };
+          // One input, reported by name. The movement control is the shipped control this suite
+          // already drives, but the workspace briefly renders its own controls disabled while its
+          // three-second viewport poll swaps the agent list, and a disabled control refuses `click()`
+          // without a word. The walk key reaches the same movement intent through the one keydown
+          // handler, so it carries the input instead and the sample says so.
+          const press = () => {
+            let dispatched = false;
+            const recordClick = () => { dispatched = true; };
+            button.addEventListener('click', recordClick, { capture: true });
+            button.click();
+            button.removeEventListener('click', recordClick, { capture: true });
+            if (dispatched) return 'control';
+            const key = { up: 'w', left: 'a', down: 's', right: 'd' }[planned.control];
+            document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+            return `key ${key}`;
+          };
+          const t0 = now();
+          const inputMedium = press();
+          const confirmation = await waitForTile(planned.tile, input.confirmTimeoutMs, t0);
+          const entry = moveEntry(t0);
+          lastSentAt = entry ? entry.requestStart : t0;
+          if ((confirmation.refused || confirmation.timedOut) && entry?.responseStatus === 429 && attempt < input.maxAttempts - 1) {
+            // The server's own throttle refused the step, exactly as the suite treats it elsewhere.
+            // This input never became a step, so it is not a sample: the next attempt is timed afresh.
+            refusedPresses.push({ index, attempt, control: planned.control });
+            continue;
+          }
+          // What the client itself holds and what the server says, both read after the interval was
+          // timed: when a step is not confirmed these are what say whether the step was refused,
+          // landed elsewhere, or simply never left the page.
+          const clientTile = (() => {
+            const held = window.__nemoworld?.world?.()?.participants?.find((item) => item?.id === input.agentId);
+            return held ? { x: held.x, y: held.y, yaw: held.yaw } : null;
+          })();
+          sample = {
+            index, control: planned.control, cardinal: planned.cardinal, wanted: planned.tile, before, attempt,
+            confirmed: confirmation.tile || null, timedOut: Boolean(confirmation.timedOut), ms: confirmation.at - t0,
+            dispatchMs: entry ? entry.requestStart - t0 : null,
+            responseMs: entry ? entry.responseEnd - t0 : null,
+            status: entry?.responseStatus ?? null,
+            inputMedium,
+            controlAtPress,
+            context: { atPress: contextAtPress, atResult: { selected: window.__nemoworld?.selected?.() ?? null, worldId: window.__nemoworld?.worldId?.() ?? null } },
+            client: clientTile, audit: await auditTile(planned.tile), aim: readLine().slice(0, 240),
+            // Only kept for a step that was not confirmed: it is the difference between an input the
+            // page never sent and one it sent to an endpoint other than the movement route.
+            requests: confirmation.timedOut ? requestsSince(t0) : null,
+            controlDisabled: confirmation.timedOut ? Boolean(document.querySelector(`#view button[aria-label="Move ${planned.control}"]`)?.disabled) : null,
+          };
+        }
+        samples.push(sample);
+        // A lost step, or a server that disagrees about the tile, ends the run where it happened:
+        // carrying on would only report a latency for a walk that had stopped being real.
+        const named = sample.confirmed && sample.confirmed.x === planned.tile.x && sample.confirmed.y === planned.tile.y;
+        const audited = !sample.audit || (sample.audit.x === planned.tile.x && sample.audit.y === planned.tile.y);
+        if (sample.timedOut || !named || !audited) break;
+      }
+      return { samples, refusedPresses };
+    }, {
+      steps: plan.stepTiles, paceMs: MOVEMENT_LATENCY_PACE_MS, confirmTimeoutMs: MOVEMENT_LATENCY_CONFIRM_TIMEOUT_MS,
+      maxAttempts: MOVEMENT_LATENCY_INPUT_ATTEMPTS,
+      worldId: plan.worldId, agentId: walker.id,
+    });
+
+    expect(!measured.error, 'the measurement loop must reach every planned movement control', { actual: describe(measured.error) });
+    for (const [index, sample] of measured.samples.entries()) {
+      expect(!sample.timedOut, `step ${index} must be confirmed inside the ${MOVEMENT_LATENCY_CONFIRM_TIMEOUT_MS} ms sanity bound`, { expected: tileName(sample.wanted), actual: tileName(sample.confirmed), detail: describe({ input: sample.inputMedium, control: sample.control, cardinal: sample.cardinal, from: tileName(sample.before), clientHeld: describe(sample.client), serverHeld: describe(sample.audit), aimLine: sample.aim, controlAtPress: describe(sample.controlAtPress), controlAtTimeout: sample.controlDisabled, context: describe(sample.context), requestsSincePress: describe(sample.requests), moveTiming: describe({ dispatchMs: sample.dispatchMs, responseMs: sample.responseMs }), movementRequestsIssued: `${issuedMoves.length} for ${index + 1} presses` }) });
+      expect(sample.confirmed && sample.confirmed.x === sample.wanted.x && sample.confirmed.y === sample.wanted.y, `step ${index} must make the interface name the planned tile`, { expected: tileName(sample.wanted), actual: tileName(sample.confirmed) });
+      expect(sample.audit && sample.audit.x === sample.wanted.x && sample.audit.y === sample.wanted.y, `step ${index} must be confirmed by the server itself, not only by the interface`, { expected: tileName(sample.wanted), actual: describe(sample.audit) });
+      const named = index === 0 ? plan.startTile : measured.samples[index - 1].confirmed;
+      expect(sample.before && sample.before.x === named.x && sample.before.y === named.y, `step ${index} must start from the tile the interface last named`, { expected: tileName(named), actual: tileName(sample.before) });
+      const advanced = Math.abs(sample.wanted.x - sample.before.x) + Math.abs(sample.wanted.y - sample.before.y);
+      expect(advanced === 1, `step ${index} must advance exactly one tile: no step lost, no refusal`, { expected: `one tile from ${tileName(sample.before)}`, actual: tileName(sample.wanted) });
+    }
+    expect(measured.samples.length === MOVEMENT_LATENCY_SAMPLES, `all ${MOVEMENT_LATENCY_SAMPLES} planned steps must be measured`, { expected: MOVEMENT_LATENCY_SAMPLES, actual: measured.samples.length });
+
+    const durations = measured.samples.map((sample) => sample.ms);
+    const statistics = { count: durations.length, min: Math.min(...durations), median: median(durations), p95: percentile(durations, 0.95), max: Math.max(...durations) };
+    const finite = (key) => measured.samples.map((sample) => sample[key]).filter((value) => Number.isFinite(value));
+    const dispatch = finite('dispatchMs');
+    const response = finite('responseMs');
+    // How much of each interval came after the server's own answer: the read of the stored world
+    // that the interface paints from. The live feed can deliver that tile too, so this split is
+    // reported as a median and is allowed to be small or negative for a single step.
+    const afterwards = measured.samples.filter((sample) => Number.isFinite(sample.responseMs)).map((sample) => sample.ms - sample.responseMs);
+    const round = (value) => Number(value.toFixed(2));
+    const hardware = measurementHardware();
+    // Which input carried the samples, and how often the workspace had disabled its own movement
+    // control at the moment of the press. Both are reported because the interval is the same either
+    // way and a reader deserves to know the input was not always the same control.
+    const byControl = measured.samples.filter((sample) => sample.inputMedium === 'control').length;
+    const disabledControls = measured.samples.filter((sample) => sample.controlAtPress?.disabled).length;
+    state.notes.push([
+      `input → confirmed step, timed in the page: ${plan.worldName}, ${MOVEMENT_LATENCY_ROUTE_STEPS} steps out from ${tileName(plan.startTile)} and the same back (${compactRoute(plan.cardinals)})`,
+      `min ${round(statistics.min)} ms · median ${round(statistics.median)} ms · p95 ${round(statistics.p95)} ms · max ${round(statistics.max)} ms · n=${statistics.count}`,
+      `split: input → request left the page median ${dispatch.length ? round(median(dispatch)) : 'n/a'} ms · input → POST /move answered median ${response.length ? round(median(response)) : 'n/a'} ms · that answer → the aim line median ${afterwards.length ? round(median(afterwards)) : 'n/a'} ms · no earlier optimistic paint exists on this path: the first tile the interface can name is the server’s`,
+      `inputs: ${byControl} of ${statistics.count} carried by the movement control and ${statistics.count - byControl} by the walk key, which is the same handler and the same view-relative step; the workspace’s own control was disabled at the press in ${disabledControls} of them · the server’s own movement throttle refused ${measured.refusedPresses.length} press${measured.refusedPresses.length === 1 ? '' : 'es'}, each re-issued and never counted as a step`,
+      `measured on ${hardware}, load average ${loadavg().map((value) => value.toFixed(1)).join('/')} at the end of the run; loopback HTTP, headless Chrome, one server process, one SQLite writer, no network, no other client on this resident — a lower bound on the network it crosses, and not a supported-user or real-device latency claim`,
+    ].join(' · '));
+    return `n=${statistics.count} · min ${round(statistics.min)} ms · median ${round(statistics.median)} ms · p95 ${round(statistics.p95)} ms · max ${round(statistics.max)} ms · ${plan.worldName} ${compactRoute(plan.cardinals)} from ${tileName(plan.startTile)}`;
+  });
+  page.off('request', recordIssuedMove);
+
+  await step('the resident stands on the tile it started from and the server agrees', async () => {
+    const stored = row('SELECT world_id,x,y,status FROM agents WHERE id=?', walker.id);
+    const last = measured.samples[measured.samples.length - 1].confirmed;
+    expect(stored.world_id === plan.worldId && stored.x === last.x && stored.y === last.y, 'the stored resident must stand on the last tile the interface named', { expected: describe({ world_id: plan.worldId, x: last.x, y: last.y }), actual: describe(stored) });
+    expect(stored.x === plan.startTile.x && stored.y === plan.startTile.y, 'the measured loop must leave the resident on its starting tile, so no later scenario shares a moved fixture', { expected: tileName(plan.startTile), actual: `${stored.x},${stored.y}` });
+    expect(stored.status === 'active', 'the measured walk must not have changed the resident’s own state', { expected: 'active', actual: describe(stored.status) });
+    // Exactly one movement request per press: the measured presses plus the ones the server's own
+    // movement throttle refused and the instrument re-issued. Nothing dropped, nothing doubled.
+    const expectedMoves = measured.samples.length + measured.refusedPresses.length;
+    const issued = await waitForCondition(() => issuedMoves.length >= expectedMoves ? issuedMoves.length : null, 'the movement requests for the measured steps to appear on the connection', { timeout: 2000, interval: 20 });
+    expect(issued === expectedMoves, 'every press must have carried exactly one movement request, so no input was dropped and none was doubled', { expected: expectedMoves, actual: describe({ issued, samples: measured.samples.length, reIssuedAfterThrottle: measured.refusedPresses.length, paths: [...new Set(issuedMoves)] }) });
+    return `agents row back at ${stored.x},${stored.y} in ${stored.world_id} after ${measured.samples.length} confirmed steps, each carried by one movement request`;
+  });
+
+  return `the ${MOVEMENT_LATENCY_SAMPLES}-step input → confirmed-step instrument reported min/median/p95/max in the notes; every step was confirmed by the interface and by the server`;
 });
 
 // ---------------------------------------------------------------------------------------------
