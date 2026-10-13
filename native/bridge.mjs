@@ -1,5 +1,5 @@
 import {createServer} from 'node:http';
-import {randomBytes} from 'node:crypto';
+import {randomBytes, createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 
 const WORLD = 'frontier:0:0';
@@ -39,7 +39,7 @@ export function nemoToNative(pos) { return {x: pos.x, y: pos.z, z: pos.y}; }
 export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, modKey = process.env.NEMO_MOD_KEY} = {}) {
   if (typeof modKey !== 'string' || modKey.length < 32) throw new Error('A random NEMO_MOD_KEY of at least 32 characters is required.');
   const localApi = localApiOrigin(api);
-  const pending = new Map(), loginSessions = new Map(), loginAttempts = new Map(), players = new Map();
+  const pending = new Map(), loginSessions = new Map(), loginAttempts = new Map(), players = new Map(), pairingAttempts = new Map();
   const csrfToken = randomBytes(24).toString('hex');
   async function call(path, token, method = 'GET', payload, key) {
     const response = await fetcher(new URL('/api/v1' + path, localApi), {method, headers: {'Authorization': `Bearer ${token}`, ...(payload ? {'Content-Type': 'application/json', 'Origin': localApi} : {}), ...(key ? {'Idempotency-Key': key} : {})}, body: payload ? JSON.stringify(payload) : undefined, signal: AbortSignal.timeout(5000), redirect: 'error'});
@@ -64,13 +64,25 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
     if (!agent) throw Object.assign(new Error('Pair an active human avatar owned by this operator.'), {status: 403});
     return agent;
   }
-  async function current(player) {
+  async function current(player, pairId) {
     const pair = players.get(player);
-    if (!pair || pair.expires <= clock()) throw Object.assign(new Error('Pair this player again.'), {status: 401});
+    if (!pair || pair.expires <= clock() || typeof pairId !== 'string' || pair.pairId !== pairId) throw Object.assign(new Error('Pair this player again.'), {status: 401});
     const agent = await owner(pair.token, pair.agentId); // checks revocation before every action
+    if (players.get(player) !== pair) throw Object.assign(new Error('This pairing was replaced.'), {status: 401});
     if (!isSupportedFrontierWorldId(agent.world_id)) throw Object.assign(new Error('Enter an opened frontier area in NemoWorld first.'), {status: 409});
     return {pair, agent};
   }
+  const ownClaim = (claim, pair) => claim?.agent_id === pair.agentId;
+  const claimView = claim => claim && ({id:claim.id, task_id:claim.task_id, task_title:claim.task_title, status:claim.status, expires_at:claim.expires_at});
+  const submittedBody = input => ({
+    claim_id:input.claim_id, artifact:input.artifact.trim(), method:input.method.trim(),
+    limitations:input.limitations.trim(), rights:input.rights.trim(),
+    sources:input.sources.map(source => ({url:new URL(source.url).href, location:source.location.trim(), date:source.date?.trim() || ''})),
+  });
+  const sameSubmission = (submission, body) => submission.artifact === body.artifact && submission.method === body.method
+    && submission.limitations === body.limitations && submission.rights === body.rights
+    && JSON.stringify(submission.sources) === JSON.stringify(body.sources);
+  const retryKey = (kind, fields) => `${kind}:${createHash('sha256').update(JSON.stringify(fields)).digest('hex')}`;
   async function sectorViews(pair, agent) {
     const windows = [];
     for (const y of [0, 14, 28, 34]) for (const x of [0, 20, 28]) windows.push(call(`/world?world_id=${agent.world_id}&agent_id=${pair.agentId}&x=${x}&y=${y}`, pair.token));
@@ -140,16 +152,20 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
       }
       if (url.pathname === '/native/pair' && request.method === 'POST') {
         if (!/^[a-zA-Z0-9_-]{1,32}$/.test(input.player || '')) throw Object.assign(new Error('Invalid native player.'), {status: 400});
+        const attempt = (pairingAttempts.get(input.player) || 0) + 1;
+        pairingAttempts.set(input.player, attempt);
         const pair = pending.get(input.code); pending.delete(input.code);
         if (!pair || pair.expires <= clock()) throw Object.assign(new Error('Pair code expired.'), {status: 401});
         const agent = await owner(pair.token, pair.agentId);
+        if (pairingAttempts.get(input.player) !== attempt) throw Object.assign(new Error('A newer pairing replaced this request.'), {status: 409});
         if (!isSupportedFrontierWorldId(agent.world_id)) throw Object.assign(new Error('Pair an active human avatar in an opened frontier area.'), {status: 409});
         players.clear(); // one local native player session per bridge instance
-        players.set(input.player, {...pair, expires: Math.min(pair.expires + 18 * 60000, clock() + 20 * 60000)});
-        return send(200, {paired: true, world_id: agent.world_id});
+        const pairId = randomBytes(16).toString('hex');
+        players.set(input.player, {...pair, pairId, expires: Math.min(pair.expires + 18 * 60000, clock() + 20 * 60000)});
+        return send(200, {paired: true, pair_id:pairId, world_id: agent.world_id});
       }
       if (url.pathname === '/native/state' && request.method === 'POST') {
-        const {pair, agent: initialAgent} = await current(input.player);
+        const {pair, agent: initialAgent} = await current(input.player, input.pair_id);
         let result = await sectorViews(pair, initialAgent);
         if (result.agent.world_id !== result.worldId) result = await sectorViews(pair, result.agent);
         if (result.agent.world_id !== result.worldId) throw Object.assign(new Error('Avatar moved while native sector loaded; retry.'), {status: 409});
@@ -164,46 +180,80 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
       if (url.pathname === '/native/missions' && request.method === 'POST') {
         // The native client reads the same mission directory and the paired human's own active claim
         // as the browser. No mission or claim store is copied into Luanti; both read one authority.
-        const {pair} = await current(input.player);
+        const {pair} = await current(input.player, input.pair_id);
         const directory = await call('/missions?limit=12', pair.token);
         return send(200, {
           tasks: (directory.tasks || []).filter(task => task.status === 'open').map(({id, mission_id, title, status, lease_minutes}) => ({id, mission_id, title, status, lease_minutes})),
-          active_claim: directory.active_claim ? {id:directory.active_claim.id, task_id:directory.active_claim.task_id, task_title:directory.active_claim.task_title, status:directory.active_claim.status, expires_at:directory.active_claim.expires_at} : null,
+          active_claim: ownClaim(directory.active_claim, pair) ? claimView(directory.active_claim) : null,
         });
       }
       if (url.pathname === '/native/claim' && request.method === 'POST') {
-        const {pair} = await current(input.player);
+        const {pair} = await current(input.player, input.pair_id);
         if (typeof input.task_id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(input.task_id)) throw Object.assign(new Error('Choose a listed mission task.'), {status: 400});
-        // The key is bound to this player and task, so a bridge or Luanti restart replays the same
-        // lease instead of creating a second claim.
-        const key = `native:${input.player}:claim:${input.task_id}`;
+        const directory = await call('/missions?limit=12', pair.token);
+        if (directory.active_claim) {
+          if (!ownClaim(directory.active_claim, pair)) throw Object.assign(new Error('Another avatar on this account has the active claim.'), {status: 409});
+          if (directory.active_claim.task_id !== input.task_id) throw Object.assign(new Error('Finish or release your current claim before choosing another task.'), {status: 409});
+          return send(200, {claim:claimView(directory.active_claim)});
+        }
+        // A new lease gets a new key. A released or expired lease must never replay an old row.
+        // An uncertain response is resolved by reading the account's active lease on retry.
+        const key = `native-claim:${randomBytes(20).toString('hex')}`;
         const claim = await call('/claims', pair.token, 'POST', {task_id: input.task_id, agent_id: pair.agentId}, key);
-        return send(200, {claim: {id:claim.id, task_id:claim.task_id, status:claim.status, expires_at:claim.expires_at}});
+        return send(200, {claim:claimView(claim)});
       }
       if (url.pathname === '/native/submit' && request.method === 'POST') {
-        const {pair} = await current(input.player);
+        const {pair} = await current(input.player, input.pair_id);
         const textField = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 2000;
         if (typeof input.claim_id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(input.claim_id)
           || typeof input.artifact !== 'string' || !input.artifact.trim() || input.artifact.length > 16000
           || !textField(input.method) || !textField(input.limitations) || !textField(input.rights)
-          || !Array.isArray(input.sources) || !input.sources.length || input.sources.length > 10) {
+          || !Array.isArray(input.sources) || !input.sources.length || input.sources.length > 10
+          || input.sources.some(source => !source || typeof source.url !== 'string' || typeof source.location !== 'string'
+            || !source.location.trim() || (source.date !== undefined && typeof source.date !== 'string'))) {
           throw Object.assign(new Error('Provide a claim, a deliverable, a method, limitations, rights and one to ten sources.'), {status: 400});
         }
-        const key = `native:${input.player}:submit:${input.claim_id}`;
-        const submission = await call('/submissions', pair.token, 'POST', {claim_id: input.claim_id, artifact: input.artifact.trim(), method: input.method.trim(), limitations: input.limitations.trim(), rights: input.rights.trim(), sources: input.sources}, key);
+        let body;
+        try { body = submittedBody(input); } catch { throw Object.assign(new Error('Source URL is invalid.'), {status: 400}); }
+        const [directory, history] = await Promise.all([call('/missions?limit=12', pair.token), call('/history', pair.token)]);
+        const active = directory.active_claim;
+        if (active && active.id === input.claim_id && !ownClaim(active, pair)) throw Object.assign(new Error('This claim belongs to another avatar.'), {status: 404});
+        const historicalClaim = (history.claims || []).find(claim => claim.id === input.claim_id)
+          || (active?.id === input.claim_id ? active : null);
+        if (!historicalClaim || !ownClaim(historicalClaim, pair)) throw Object.assign(new Error('This paired avatar has no such claim.'), {status: 404});
+        const versions = (history.submissions || []).filter(submission => submission.claim_id === input.claim_id);
+        const latest = versions.reduce((found, row) => !found || row.version > found.version ? row : found, null);
+        if (!active || active.id !== input.claim_id) {
+          // The server accepted a prior attempt. Return that exact saved result only for an
+          // identical retransmission; a different artifact needs a requested-changes state.
+          if (historicalClaim.status === 'submitted' && latest && sameSubmission(latest, body)) return send(200, {submission:{id:latest.id, status:latest.status}});
+          throw Object.assign(new Error('Claim is not active for this avatar. Inspect contribution history before retrying.'), {status: 409});
+        }
+        if (!['leased', 'changes_requested'].includes(active.status)) throw Object.assign(new Error('Claim is not ready for submission.'), {status: 409});
+        if (active.status === 'changes_requested' && !latest) throw Object.assign(new Error('Prior version is outside the bounded history. Inspect it before revising.'), {status: 409});
+        // The same content at the same version gets the same durable key across bridge restarts.
+        // A reviewed revision increments version, so a legitimate second submission is not replayed.
+        const version = (latest?.version || 0) + 1;
+        const key = retryKey('native-submit', {agent_id:pair.agentId, claim_id:input.claim_id, version, body});
+        const submission = await call('/submissions', pair.token, 'POST', body, key);
         return send(200, {submission: {id:submission.id, status:submission.status}});
       }
       if (url.pathname === '/native/messages' && request.method === 'POST') {
-        // The paired human's own readable conversation, from the same `/world` records the browser
-        // reads. Private threads the human is not addressed in never appear here.
-        const {pair, agent} = await current(input.player);
+        // Older `/world` responses are account-scoped, so an operator with several avatars could
+        // see a sibling's private thread. Fail closed until the API explicitly attests that it
+        // applied the paired avatar's message scope; mission chatter is not native direct chat.
+        const {pair, agent} = await current(input.player, input.pair_id);
         const view = await call(`/world?world_id=${agent.world_id}&agent_id=${pair.agentId}`, pair.token);
+        const avatarScoped = view.message_scope_agent_id === pair.agentId;
         const participants = (view.participants || []).filter(item => item.id && item.id !== pair.agentId).map(item => ({id:item.id, name:item.name}));
-        const messages = (view.messages || []).slice(-20).map(message => ({id:message.id, channel:message.channel, author:message.author, text:message.text, at:message.created_at, mine:message.agent_id === pair.agentId}));
+        const messages = (view.messages || [])
+          .filter(message => message.channel === 'public' || avatarScoped && ['private','nearby'].includes(message.channel)
+            || message.channel === 'private' && message.agent_id === pair.agentId)
+          .slice(-20).map(message => ({id:message.id, channel:message.channel, author:message.author, text:message.text, at:message.created_at, mine:message.agent_id === pair.agentId}));
         return send(200, {world_id: agent.world_id, participants, messages});
       }
       if (url.pathname === '/native/say' && request.method === 'POST') {
-        const {pair, agent} = await current(input.player);
+        const {pair, agent} = await current(input.player, input.pair_id);
         if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 500) throw Object.assign(new Error('Type a message under 500 characters.'), {status: 400});
         const payload = {agent_id: pair.agentId, text: input.text.trim(), channel: 'public'};
         if (input.to !== undefined) {
@@ -217,7 +267,7 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
         return send(200, {message: {id: result.id, channel: payload.channel}});
       }
       if (url.pathname === '/native/action' && request.method === 'POST') {
-        const {pair, agent} = await current(input.player);
+        const {pair, agent} = await current(input.player, input.pair_id);
         const worldId = agent.world_id;
         let path, payload;
         if (input.action === 'move' && ['up','down','left','right'].includes(input.direction)) {

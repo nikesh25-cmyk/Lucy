@@ -7,6 +7,7 @@ if not mod_key or #mod_key < 32 then error('nemo_bridge_key must match the local
 core.set_mapgen_setting('mg_name', 'singlenode', true)
 local size = 48
 local paired = {}
+local mission_evidence = {}
 local projected = {}
 local busy = {}
 local motion = {}
@@ -29,6 +30,9 @@ local function message(name, text)
   if core.get_player_by_name(name) then core.chat_send_player(name, '[NemoWorld] ' .. text) end
 end
 local function request(path, payload, callback)
+  -- Bind the request to the pairing that originated it. A delayed old callback must not act as
+  -- a newly paired avatar with the same Luanti player name.
+  if path ~= '/native/pair' and payload.player then payload.pair_id = paired[payload.player] end
   http.fetch({url=endpoint .. path, method='POST', data=core.write_json(payload), timeout=5,
     extra_headers={'Content-Type: application/json', 'X-Nemo-Mod-Key: ' .. mod_key}}, function(response)
     local parsed, body = false, nil
@@ -41,6 +45,16 @@ local function request(path, payload, callback)
     elseif response.code < 200 or response.code >= 300 then callback(false, body.error or 'Action refused.', response.code)
     else callback(true, body) end
   end)
+end
+local function paired_request(name, path, payload, callback)
+  local state = motion[name]
+  if not paired[name] or not state then return false end
+  request(path, payload, function(...)
+    -- A response from the previous avatar must never appear in a newly paired player's chat.
+    if not paired[name] or motion[name] ~= state then return end
+    callback(...)
+  end)
+  return true
 end
 local function key(pos) return pos.x .. ':' .. pos.y .. ':' .. pos.z end
 local sync
@@ -205,7 +219,7 @@ end
 local function act(name, action, pos, block_type)
   if not paired[name] then message(name, 'Use /nemo_pair CODE first.'); return end
   if pos and not inside(pos) then message(name, 'Outside the 48 by 48 sector or block layers 0 to 7.'); return end
-  request('/native/action', {player=name, action=action, pos=pos, type=block_type}, function(ok, data)
+  paired_request(name, '/native/action', {player=name, action=action, pos=pos, type=block_type}, function(ok, data)
     if not ok then message(name, data) else sync(name) end
   end)
 end
@@ -262,6 +276,7 @@ end)
 core.register_on_leaveplayer(function(player)
   local name = player:get_player_name()
   paired[name] = nil
+  mission_evidence[name] = nil
   busy[name] = nil
   motion[name] = nil
 end)
@@ -278,13 +293,14 @@ core.register_chatcommand('nemo_pair', {params='CODE', description='Pair this pl
   if previous then previous.pairing_attempt = pairing_attempt end
   request('/native/pair', {player=name, code=code}, function(ok, data)
     if motion[name] ~= previous or not motion[name] or motion[name].pairing_attempt ~= pairing_attempt then return end
-    if ok then
+    if ok and type(data.pair_id) == 'string' and #data.pair_id == 32 then
       local next_generation = ((previous and previous.generation) or 0) + 1
       motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=next_generation}
-      paired[name] = true
+      paired[name] = data.pair_id
+      mission_evidence[name] = nil
       busy[name] = nil
       message(name, 'Paired to the opened frontier.'); sync(name)
-    else message(name, data) end
+    else message(name, ok and 'Bridge pairing response was invalid.' or data) end
   end)
   return true, 'Pairing request sent.'
 end})
@@ -298,7 +314,7 @@ end})
 -- avatar; the bridge resolves the sender from NemoWorld, never from a recipient typed in chat.
 core.register_chatcommand('nemo_missions', {params='', description='List open mission tasks and your active claim', func=function(name)
   if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
-  request('/native/missions', {player=name}, function(ok, data)
+  paired_request(name, '/native/missions', {player=name}, function(ok, data)
     if not ok then core.log('action','NEMO_MISSIONS_ERROR '..tostring(data)); message(name, data); return end
     local ids = {}
     for _, task in ipairs(data.tasks or {}) do ids[#ids+1] = task.id end
@@ -311,28 +327,64 @@ end})
 core.register_chatcommand('nemo_claim', {params='TASK_ID', description='Claim one open mission task', func=function(name, task_id)
   if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
   if not task_id or task_id == '' then return false, 'Give a task id from /nemo_missions.' end
-  request('/native/claim', {player=name, task_id=task_id}, function(ok, data)
+  paired_request(name, '/native/claim', {player=name, task_id=task_id}, function(ok, data)
     if not ok then core.log('action','NEMO_CLAIM_ERROR '..tostring(data)); message(name, data); return end
+    mission_evidence[name] = nil
     core.log('action','NEMO_CLAIM_RESULT id='..data.claim.id..' task='..data.claim.task_id)
     message(name, 'Claimed '..data.claim.id)
   end)
   return true, 'Claiming.'
 end})
+local function evidence(name)
+  if not mission_evidence[name] then mission_evidence[name] = {sources={}} end
+  return mission_evidence[name]
+end
+core.register_chatcommand('nemo_source', {params='URL PAGE_OR_SECTION', description='Record a source you actually checked for your mission', func=function(name, args)
+  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  local url, location = args:match('^(%S+)%s+(.+)$')
+  if not url or not location or #location > 300 then return false, 'Use /nemo_source URL PAGE_OR_SECTION (300 characters max).' end
+  local draft = evidence(name)
+  if #draft.sources >= 10 then return false, 'At most ten sources are allowed. Use /nemo_evidence_reset to start again.' end
+  draft.sources[#draft.sources+1] = {url=url, location=location}
+  return true, 'Source '..#draft.sources..' recorded locally. Verify its exact location before submitting.'
+end})
+for _, field in ipairs({'method','limitations','rights'}) do
+  core.register_chatcommand('nemo_'..field, {params='YOUR_TEXT', description='Record your own '..field..' for the mission submission', func=function(name, value)
+    if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+    if not value or value == '' or #value > 2000 then return false, 'Give your '..field..' in 1–2000 characters.' end
+    evidence(name)[field] = value
+    return true, 'Your '..field..' statement is saved locally for this pairing.'
+  end})
+end
+core.register_chatcommand('nemo_evidence_reset', {params='', description='Discard locally entered mission evidence', func=function(name)
+  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  mission_evidence[name] = nil
+  return true, 'Local evidence cleared. No server record was changed.'
+end})
 core.register_chatcommand('nemo_submit', {params='the deliverable text', description='Submit evidence for your active claim', func=function(name, artifact)
   if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
   if not artifact or artifact == '' then return false, 'Give the deliverable text.' end
+  local draft = evidence(name)
+  if not draft.method or not draft.limitations or not draft.rights or #draft.sources == 0 then
+    return false, 'Before submitting, enter /nemo_source URL PAGE_OR_SECTION, /nemo_method TEXT, /nemo_limitations TEXT and /nemo_rights TEXT with statements you checked.'
+  end
   -- The active claim is read from NemoWorld, never typed here: the native client cannot name a
   -- claim or a recipient that is not already its own.
-  request('/native/missions', {player=name}, function(listed, board)
+  paired_request(name, '/native/missions', {player=name}, function(listed, board)
     if not listed then core.log('action','NEMO_SUBMIT_ERROR '..tostring(board)); message(name, board); return end
     local claim = board.active_claim
+    if not claim and draft.last_claim_id and draft.last_artifact == artifact then
+      -- A reply may have been lost after the server saved the first version. The bridge checks
+      -- that this exact payload belongs to this avatar before returning the stored submission.
+      claim = {id=draft.last_claim_id}
+    end
     if not claim then core.log('action','NEMO_SUBMIT_ERROR no-active-claim'); message(name, 'Claim a task first.'); return end
-    request('/native/submit', {player=name, claim_id=claim.id, artifact=artifact,
-      method='Read the original source and recorded the exact supporting section.',
-      limitations='A native smoke fixture; facts and rights require human verification.',
-      rights='Permission and attribution were checked for this fixture.',
-      sources={{url='https://example.org/a', location='Section 1'}}}, function(ok, data)
+    paired_request(name, '/native/submit', {player=name, claim_id=claim.id, artifact=artifact,
+      method=draft.method, limitations=draft.limitations, rights=draft.rights,
+      sources=draft.sources}, function(ok, data)
       if not ok then core.log('action','NEMO_SUBMIT_ERROR '..tostring(data)); message(name, data); return end
+      draft.last_claim_id = claim.id
+      draft.last_artifact = artifact
       core.log('action','NEMO_SUBMIT_RESULT id='..data.submission.id..' status='..data.submission.status)
       message(name, 'Submitted '..data.submission.id)
     end)
@@ -345,7 +397,7 @@ end})
 -- token never enters the world, a log or a prompt.
 core.register_chatcommand('nemo_chat', {params='', description='Read the recent messages you can see', func=function(name)
   if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
-  request('/native/messages', {player=name}, function(ok, data)
+  paired_request(name, '/native/messages', {player=name}, function(ok, data)
     if not ok then core.log('action','NEMO_CHAT_ERROR '..tostring(data)); message(name, data); return end
     local ids, lines = {}, {}
     for _, item in ipairs(data.messages or {}) do
@@ -359,7 +411,7 @@ core.register_chatcommand('nemo_chat', {params='', description='Read the recent 
 end})
 core.register_chatcommand('nemo_say', {params='text', description='Say a public message in your world', func=function(name, text)
   if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
-  request('/native/say', {player=name, text=text}, function(ok, data)
+  paired_request(name, '/native/say', {player=name, text=text}, function(ok, data)
     if not ok then core.log('action','NEMO_SAY_ERROR '..tostring(data)); message(name, data); return end
     core.log('action','NEMO_SAY_RESULT id='..data.message.id..' channel='..data.message.channel)
     message(name, 'Sent.')
@@ -370,7 +422,7 @@ core.register_chatcommand('nemo_tell', {params='RESIDENT_ID then the message', d
   if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
   local to, text = args:match('^(%S+)%s+(.+)$')
   if not to or not text then return false, 'Use /nemo_tell RESIDENT_ID then the message.' end
-  request('/native/say', {player=name, to=to, text=text}, function(ok, data)
+  paired_request(name, '/native/say', {player=name, to=to, text=text}, function(ok, data)
     if not ok then core.log('action','NEMO_TELL_ERROR '..tostring(data)); message(name, data); return end
     core.log('action','NEMO_TELL_RESULT id='..data.message.id..' channel='..data.message.channel)
     message(name, 'Sent privately.')

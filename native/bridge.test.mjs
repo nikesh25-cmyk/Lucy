@@ -19,6 +19,7 @@ test('operator token can only be forwarded to a literal local API origin', () =>
 function fixture() {
   let revoked = false;
   let agentWorld = 'frontier:0:0';
+  let heldOwner = null;
   const calls = [];
   let loginRequest;
   const fake = async (url, options) => {
@@ -26,22 +27,36 @@ function fixture() {
     calls.push({path, method:options.method, payload:options.body && JSON.parse(options.body)});
     if (revoked) return new Response(JSON.stringify({error:'revoked'}), {status:401});
     if (path === '/auth/login') { loginRequest = options; return Response.json({token, expires_at:Date.now()+60000, account:{id:'operator-1'}}); }
-    if (path === '/me') return Response.json({agents:[{id:'human-1',kind:'human',status:'active',world_id:agentWorld,x:24,y:24,z:0}]});
+    if (path === '/me') {
+      if (heldOwner) { const held = heldOwner; heldOwner = null; held.enter(); await held.wait; }
+      return Response.json({agents:[{id:'human-1',kind:'human',status:'active',world_id:agentWorld,x:24,y:24,z:0}]});
+    }
     if (path === '/world') return Response.json({world:{id:agentWorld},blocks:[{id:'block-1',x:25,y:24,z:0,type:'stone'}],terrain:[],participants:[],camera:{x:0,y:0},frontier:{neighbors:[{direction:'right',x:46,y:24,target_world_id:'frontier:1:0',exists:true}]}});
     if (path === '/frontier/build') return Response.json({world_id:agentWorld, changed:true});
     if (path === '/move') return Response.json({x:25,y:24,z:0,world_id:agentWorld});
     return new Response('{}', {status:404});
   };
   const server = createBridge({fetcher:fake, modKey:key});
-  return {server, calls, revoke:() => {revoked=true}, setWorld: value => {agentWorld=value}, loginRequest:() => loginRequest};
+  return {server, calls, revoke:() => {revoked=true}, setWorld: value => {agentWorld=value}, loginRequest:() => loginRequest,
+    holdNextOwner:() => {
+      let enter, release;
+      const entered = new Promise(resolve => {enter=resolve});
+      const wait = new Promise(resolve => {release=resolve});
+      heldOwner = {enter,wait};
+      return {entered,release};
+    }};
 }
 async function withServer(run) {
   const f = fixture();
   await new Promise(resolve => f.server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${f.server.address().port}`;
+  const pairIds = new Map();
   const post = async (path, body, auth=false, extraHeaders={}) => {
-    const response = await fetch(base + path, {method:'POST', headers:{'Content-Type':'application/json', ...(auth ? {'X-Nemo-Mod-Key':key} : {}), ...extraHeaders},body:JSON.stringify(body)});
-    return {status:response.status, body:await response.json()};
+    const payload = path.startsWith('/native/') && path !== '/native/pair' && body.player ? {...body,pair_id:pairIds.get(body.player)} : body;
+    const response = await fetch(base + path, {method:'POST', headers:{'Content-Type':'application/json', ...(auth ? {'X-Nemo-Mod-Key':key} : {}), ...extraHeaders},body:JSON.stringify(payload)});
+    const result = {status:response.status, body:await response.json()};
+    if (path === '/native/pair' && result.status === 200) pairIds.set(body.player,result.body.pair_id);
+    return result;
   };
   try {await run({...f, post, base})} finally {await new Promise(resolve => f.server.close(resolve))}
 }
@@ -51,12 +66,13 @@ test('sector coordinates and finite block layers', () => {
   assert.deepEqual(nemoToNative({x:47,y:0,z:7}), {x:47,y:7,z:0});
   for (const pos of [{x:48,y:0,z:0},{x:-1,y:0,z:0},{x:0,y:8,z:0},{x:0,y:0,z:48}]) assert.throws(() => nativeToNemo(pos));
 });
-test('one-time pairing, native callback build, web projection, revocation and mod authentication', async () => withServer(async ({post,calls,revoke}) => {
+test('one-time pairing, native callback build, web projection, revocation and mod authentication', async () => withServer(async ({post,calls,revoke,base}) => {
   const issued = await post('/pair/start', {token,agent_id:'human-1'});
   assert.equal(issued.status,200);
   const code = issued.body.code;
   assert.equal((await post('/native/pair',{player:'Builder',code})).status,401);
-  assert.equal((await post('/native/pair',{player:'Builder',code},true)).status,200);
+  const paired = await post('/native/pair',{player:'Builder',code},true);
+  assert.equal(paired.status,200);
   assert.equal((await post('/native/pair',{player:'Other',code},true)).status,401);
   const state = await post('/native/state',{player:'Builder'},true);
   assert.equal(state.status,200);
@@ -67,6 +83,11 @@ test('one-time pairing, native callback build, web projection, revocation and mo
   assert.deepEqual(calls.at(-1), {path:'/frontier/build',method:'POST',payload:{agent_id:'human-1',world_id:'frontier:0:0',x:25,y:24,z:0,type:'wood'}});
   assert.equal((await post('/native/action',{player:'Builder',action:'place',type:'wood',pos:{x:48,y:0,z:24}},true)).status,400);
   assert.equal((await post('/native/action',{player:'Builder',action:'move',direction:'right'},true)).status,200);
+  const replacement = await post('/pair/start',{token,agent_id:'human-1'});
+  assert.equal((await post('/native/pair',{player:'Builder',code:replacement.body.code},true)).status,200);
+  const stale = await fetch(`${base}/native/action`,{method:'POST',headers:{'Content-Type':'application/json','X-Nemo-Mod-Key':key},body:JSON.stringify({player:'Builder',pair_id:paired.body.pair_id,action:'move',direction:'right'})});
+  assert.equal(stale.status,401,'a callback from the previous pairing cannot act as the replacement avatar');
+  assert.equal((await post('/native/state',{player:'Builder'},true)).status,200);
   revoke();
   assert.equal((await post('/native/action',{player:'Builder',action:'move',direction:'right'},true)).status,401);
 }));
@@ -84,6 +105,19 @@ test('native state and builds follow the owned human into an opened adjacent sec
   const build = await post('/native/action',{player:'Walker',action:'place',type:'wood',pos:{x:25,y:0,z:24}},true);
   assert.equal(build.status,200);
   assert.equal(calls.at(-1).payload.world_id,'frontier:1:0');
+}));
+
+test('a slower earlier pair response cannot replace the latest pairing', async () => withServer(async ({post,holdNextOwner}) => {
+  const first = await post('/pair/start',{token,agent_id:'human-1'});
+  const second = await post('/pair/start',{token,agent_id:'human-1'});
+  const held = holdNextOwner();
+  const earlier = post('/native/pair',{player:'Builder',code:first.body.code},true);
+  await held.entered;
+  const latest = await post('/native/pair',{player:'Builder',code:second.body.code},true);
+  assert.equal(latest.status,200);
+  held.release();
+  assert.equal((await earlier).status,409);
+  assert.equal((await post('/native/state',{player:'Builder'},true)).status,200);
 }));
 
 test('local browser sign-in returns only an in-memory handle and requires origin plus CSRF', async () => withServer(async ({post,calls,base,loginRequest}) => {

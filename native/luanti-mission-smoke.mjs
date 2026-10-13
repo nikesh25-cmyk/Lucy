@@ -83,14 +83,21 @@ try {
   assert.equal(webDir.active_claim.id, claimId, 'web and native report the same active claim id');
   assert.match(logsA, new RegExp(`claim=${claimId}`), logsA.slice(-3000));
 
-  // Stage B: restart Luanti, re-pair, submit twice (retry). The active claim is read from NemoWorld.
+  // Stage B: restart Luanti, re-pair, refuse an evidence-free submission, then submit user-entered
+  // fixture evidence twice. The mod must never silently invent a source or rights statement.
   const logsB = await runEngine(probeScript(await pair())([
-    `core.after(6,function() core.registered_chatcommands.nemo_submit.func('Probe','A native-sourced register entry.') end)`,
-    `core.after(9,function() core.registered_chatcommands.nemo_submit.func('Probe','A native-sourced register entry.') end)`,
+    `core.after(5,function() local ok=core.registered_chatcommands.nemo_submit.func('Probe','A native-sourced register entry.'); core.log('action','NEMO_NO_EVIDENCE_REFUSED '..tostring(ok)) end)`,
+    `core.after(6,function() core.registered_chatcommands.nemo_source.func('Probe','https://example.org/a Section 1'); core.registered_chatcommands.nemo_method.func('Probe','Read the original source and recorded the exact supporting section.'); core.registered_chatcommands.nemo_limitations.func('Probe','A disposable workflow fixture; facts and rights require human verification.'); core.registered_chatcommands.nemo_rights.func('Probe','Fixture statement of permission and attribution for this test only.') end)`,
+    `core.after(8,function() core.registered_chatcommands.nemo_submit.func('Probe','A native-sourced register entry.') end)`,
+    `core.after(10,function() core.registered_chatcommands.nemo_submit.func('Probe','A native-sourced register entry.') end)`,
     `core.after(13,function() core.log('action','NEMO_SUBMIT_DONE') end)`,
   ].join('\n ')), [{marker:'NEMO_SUBMIT_DONE'}]);
+  assert.match(logsB, /NEMO_NO_EVIDENCE_REFUSED false/, logsB.slice(-3000));
   assert.match(logsB, /NEMO_SUBMIT_RESULT id=.* status=pending_review/, logsB.slice(-3000));
   assert.equal(platform.get('SELECT COUNT(*) n FROM submissions').n, 1, 'one submission row after a retry');
+  const saved = platform.get('SELECT method,limitations,rights,sources FROM submissions');
+  assert.match(saved.rights,/Fixture statement of permission/);
+  assert.deepEqual(JSON.parse(saved.sources).map(source=>source.url),['https://example.org/a']);
 
   // Stage C: restart again and read the directory: the saved claim persists, no duplicate.
   const logsC = await runEngine(probeScript(await pair())([
@@ -118,9 +125,7 @@ try {
     {marker:'NEMO_REVOKE_DONE'},
   ]);
   assert.match(logsD, /NEMO_MISSIONS_ERROR/, logsD.slice(-3000));
-  // The same refusal, deterministically, on the bridge route the mod calls.
-  const refused = await fetch(bridgeUrl + '/native/missions', {method:'POST', headers:{'Content-Type':'application/json','X-Nemo-Mod-Key':modKey}, body:JSON.stringify({player:'Probe'})});
-  assert.equal(refused.status, 401, 'a revoked operator session cannot drive the native mission route');
+  assert.match(logsD, /revoked|Pair this player again|Unauthorized/i, 'the post-revocation Luanti callback was refused');
   process.stdout.write('PASS: real Luanti 5.17 native mission callbacks -> one claim and one submission row across a retry and a restart; browser and native share the task and active-claim ids; a revoked pairing is refused\n');
 } finally {
   if (engine) { engine.kill('SIGINT'); await new Promise(r => { if (engine.exitCode !== null) r(); else engine.once('exit', r); }); }

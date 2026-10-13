@@ -60,8 +60,11 @@ try {
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline && !logs.includes('NEMO_TALK_DONE')) await settle(100);
   engine.kill('SIGINT'); await new Promise(r => engine.once('exit', r)); engine = null;
-  // The native read carried the same private message id the browser stored.
-  assert.match(logs, new RegExp(`NEMO_CHAT_RESULT ids=[^ ]*${incoming.id}`), logs.slice(-3000));
+  // A bridge connected to an older account-scoped world API must withhold incoming private
+  // messages. The avatar-scoped API explicitly attests its filter before native may show them.
+  const scopeView = await fetch(`${api}/api/v1/world?world_id=frontier:0:0&agent_id=${human.id}`, {headers:{Authorization:`Bearer ${login.token}`}}).then(r=>r.json());
+  if (scopeView.message_scope_agent_id === human.id) assert.match(logs, new RegExp(`NEMO_CHAT_RESULT ids=[^ ]*${incoming.id}`), logs.slice(-3000));
+  else assert.doesNotMatch(logs, new RegExp(`NEMO_CHAT_RESULT ids=[^ ]*${incoming.id}`), 'unscoped account data must not reach the native avatar');
   assert.match(logs, /NEMO_TELL_RESULT id=.* channel=private/, logs.slice(-3000));
   assert.match(logs, /NEMO_SAY_RESULT id=.* channel=public/, logs.slice(-3000));
   // The native private reply and public say are saved with the right recipients.
@@ -79,7 +82,7 @@ try {
   const web = await fetch(`${api}/api/v1/world?world_id=frontier:0:0&agent_id=${human.id}&x=28&y=28`, {headers:{Authorization:`Bearer ${login.token}`}}).then(r => r.json());
   assert.ok(web.messages.some(m => m.id === tellId), 'the browser reads the same native reply id');
   assert.equal(JSON.stringify(web).includes(bobLogin.token), false, 'no credential appears in the conversation payload');
-  process.stdout.write('PASS: real Luanti 5.17 native conversation -> same private message ids as the browser, private reply and public say saved, recipient isolated, no token leaked\n');
+  process.stdout.write('PASS: real Luanti 5.17 native conversation -> avatar-scoped incoming chat when attested, private reply and public say saved, recipient isolated, no token leaked\n');
 } finally {
   if (engine) { engine.kill('SIGINT'); await new Promise(r => { if (engine.exitCode !== null) r(); else engine.once('exit', r); }); }
   if (bridge) await new Promise(r => bridge.close(r));
