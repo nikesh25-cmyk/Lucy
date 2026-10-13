@@ -15,7 +15,7 @@
 //               LUCY_BROWSER_CHANNEL=chrome|msedge        use another installed channel
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
@@ -743,7 +743,7 @@ async function expectStatus(response, statuses, label) {
 }
 
 /** One mission with one open task, owned by the administrator and reviewed by the reviewer. */
-async function makeMission(title, tag) {
+async function makeMission(title, tag, allowedDomains = ['example.org']) {
   const admin = fixtures().admin, reviewer = fixtures().reviewer;
   const mission = await apiExpect(admin, 'POST', '/missions', {
     title, area: 'Climate', summary: 'A bounded fixture mission for the browser acceptance run.',
@@ -752,7 +752,7 @@ async function makeMission(title, tag) {
   });
   const task = await apiExpect(admin, 'POST', '/tasks', {
     mission_id: mission.id, title: `Record one source (${tag})`, instructions: 'Provide the source, its exact location, rights and uncertainty.',
-    rights: 'Public material with attribution.', allowed_domains: ['example.org'],
+    rights: 'Public material with attribution.', allowed_domains: allowedDomains,
   });
   await apiExpect(admin, 'POST', '/missions/status', { mission_id: mission.id, status: 'open' });
   return { mission, task };
@@ -3165,6 +3165,10 @@ async function restorationCraft(page, agentId, recipe, before) {
 
 const WORKBENCH_SOURCE = 'https://example.org/workbench-report';
 const randomHash = () => createHash('sha256').update(String(Math.random() * 1e9)).digest('hex');
+const WORKBENCH_RETAINED = JSON.parse(readFileSync(join(ROOT, 'catalog/agriculture-statistics.json'), 'utf8'))
+  .countries.flatMap((country) => country.series || []).filter((entry) => entry.raw_file && entry.sha256);
+const WORKBENCH_RETAINED_SOURCE = WORKBENCH_RETAINED[0].url;
+const WORKBENCH_NEXT_VERSION = WORKBENCH_RETAINED.find((entry) => entry.sha256 !== WORKBENCH_RETAINED[0].sha256);
 
 /** A bounded structured decision brief for the reviewer-workbench fixtures. */
 function workbenchBrief(tag) {
@@ -3187,7 +3191,7 @@ function workbenchBrief(tag) {
   };
 }
 
-const workbenchSource = (sha) => ({ url: WORKBENCH_SOURCE, location: `Section 2, paragraph 3; SHA256 ${sha}`, date: '2026-10-11' });
+const workbenchSource = (sha, url = WORKBENCH_SOURCE) => ({ url, location: `Section 2, paragraph 3; SHA256 ${sha}`, date: '2026-10-11' });
 
 /** The contributor account and one fictional resident, created over the documented API. */
 async function contributorFixtures(name) {
@@ -3197,9 +3201,9 @@ async function contributorFixtures(name) {
 }
 
 /** Submits one structured decision brief with its source pinned to an exact version. */
-async function submitBrief(ticket, claim, tag, sha, key) {
+async function submitBrief(ticket, claim, tag, sha, key, sourceUrl = WORKBENCH_SOURCE) {
   const submission = await apiExpect(ticket, 'POST', '/submissions', {
-    claim_id: claim.id, brief: workbenchBrief(tag), sources: [workbenchSource(sha)],
+    claim_id: claim.id, brief: workbenchBrief(tag), sources: [workbenchSource(sha, sourceUrl)],
     method: 'Read the cited section and recorded its exact location.',
     limitations: 'A browser fixture; facts and rights still require human verification.',
     rights: 'Public material recorded with attribution.',
@@ -3252,24 +3256,27 @@ define('reviewer-workbench', async () => {
   const contributor = await actor('contributor');
   const { ticket, resident } = await contributorFixtures('Notetaker');
   const WORKBENCH_TITLE = 'Browser reviewer workbench fixture';
-  const { mission, task } = await makeMission(WORKBENCH_TITLE, 'workbench');
-  const firstSha = randomHash();
+  const { mission, task } = await makeMission(WORKBENCH_TITLE, 'workbench', ['api.worldbank.org']);
+  const firstSha = WORKBENCH_RETAINED[0].sha256;
   let first = null, second = null, citedCapture = null, newerCapture = null, claim = null;
   const requested = 'Name the exact paragraph instead of the whole section.';
 
-  await step('a contributor submits a cited decision brief that pins one exact source version', async () => {
+  await step('a contributor submits a cited decision brief that pins one retained-byte source version', async () => {
     claim = await apiExpect(ticket, 'POST', '/claims', { task_id: task.id, agent_id: resident.id }, [201], { headers: { 'Idempotency-Key': 'browser-workbench-claim' } });
-    first = await submitBrief(ticket, claim, 'one', firstSha, 'browser-workbench-submit-1');
+    first = await submitBrief(ticket, claim, 'one', firstSha, 'browser-workbench-submit-1', WORKBENCH_RETAINED_SOURCE);
     expect(first.status === 'pending_review', 'the fixture brief must be pending review', { actual: describe(first.status) });
     const cited = row('SELECT * FROM submission_evidence WHERE submission_id=? AND source_number=1', first.id);
     expect(cited && cited.capture_id, 'the citation must pin an exact stored version', { actual: describe(cited) });
     citedCapture = row('SELECT * FROM evidence_captures WHERE id=?', cited.capture_id);
-    expect(citedCapture.sha256 === firstSha && citedCapture.origin === 'submission', 'the pinned version must be the cited hash', { expected: firstSha, actual: describe(citedCapture) });
+    expect(citedCapture.sha256 === firstSha && citedCapture.origin === 'catalog' && citedCapture.retained === 1, 'the pinned version must be hash-checked retained bytes, not a contributor declaration', { expected: firstSha, actual: describe(citedCapture) });
     return `submission ${first.id} pins ${firstSha.slice(0, 12)}… as one exact version`;
   });
 
   await step('a newer version of that source is captured, and the reviewer compares it in the workbench', async () => {
-    newerCapture = await apiExpect(fixtures().admin, 'POST', '/evidence/capture', { url: WORKBENCH_SOURCE, sha256: randomHash(), retrieved_at: '2026-10-12', locator: 'Browser fixture recapture', evidence_kind: 'web-excerpt', supersedes: citedCapture.id }, [201]);
+    // An alternate retained fixture file exercises version comparison; it is not a real update to
+    // the provider series, and this scenario creates no production evidence or recommendation.
+    newerCapture = await apiExpect(fixtures().admin, 'POST', '/evidence/capture', { url: WORKBENCH_RETAINED_SOURCE, sha256: WORKBENCH_NEXT_VERSION.sha256, retained: true, retained_path: WORKBENCH_NEXT_VERSION.raw_file, retrieved_at: '2026-10-12', locator: 'Alternate retained browser fixture', evidence_kind: 'normalized-statistics', supersedes: citedCapture.id }, [201]);
+    expect(newerCapture.retained === 1, 'the newer version must also have retained bytes', { actual: describe(newerCapture) });
     await openApp(reviewer.page, ACTORS.reviewer);
     const view = await inPage(reviewer.page, `/review/workbench?submission=${encodeURIComponent(first.id)}`, { method: 'GET' });
     expect(view.status === 200 && view.body.submission.state.value === 'pending', 'the workbench must open for the pending version', { expected: 'HTTP 200 with a pending state', actual: `HTTP ${view.status} ${describe(view.body?.submission?.state)}` });
@@ -3318,7 +3325,7 @@ define('reviewer-workbench', async () => {
   });
 
   await step('the corrected version is accepted criterion by criterion and issues exactly one receipt', async () => {
-    second = await submitBrief(ticket, claim, 'two', randomHash(), 'browser-workbench-submit-2');
+    second = await submitBrief(ticket, claim, 'two', newerCapture.sha256, 'browser-workbench-submit-2', WORKBENCH_RETAINED_SOURCE);
     expect(second.version === 2 && second.status === 'pending_review', 'the corrected version must be a new pending version', { actual: describe({ version: second.version, status: second.status }) });
     await reviewer.page.reload({ waitUntil: 'domcontentloaded' });
     await settle(reviewer.page);

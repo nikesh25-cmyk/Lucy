@@ -3,6 +3,7 @@
 // corrects the version, the reviewer accepts it, and the mission owner records an adoption.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fixture, realMission } from './helpers.js';
 import { briefFixture } from './brief-fixture.js';
@@ -11,7 +12,10 @@ import { createDeliveryPacket } from '../src/delivery-packet.js';
 
 const randomHash = () => createHash('sha256').update(String(Math.random() * 1e9)).digest('hex');
 const SOURCE = 'https://example.org/reviewer-workbench-report';
+const catalog = JSON.parse(readFileSync(new URL('../catalog/agriculture-statistics.json', import.meta.url), 'utf8'));
+const retainedFixtures = [...new Map(catalog.countries.flatMap((country) => country.series || []).filter((entry) => entry.raw_file && entry.sha256).map((entry) => [entry.sha256, entry])).values()];
 const source = (sha) => ({ url: SOURCE, location: `Section 2, paragraph 3; SHA256 ${sha}`, date: '2026-10-11' });
+const retainedInput = (entry, changes = {}) => ({ url: SOURCE, sha256: entry.sha256, retained: true, retained_path: entry.raw_file, retrieved_at: '2026-10-11', evidence_kind: 'web-excerpt', locator: 'Synthetic workbench fixture', ...changes });
 const supporting = (changes = {}) => ({
   findings: [{ finding_number: 1, result: 'supported', checked_source_numbers: [1], notes: 'Opened the cited section and read the qualification with it.', ...changes }],
   scope_notes: 'Fictional fixture scope only; the proposed recipient remains unconfirmed.',
@@ -25,7 +29,9 @@ async function workbenchFixture(t) {
   const agent = f.agent('alice');
   const { mission, task } = realMission(f);
   const claim = f.tx('claim', f.actor('alice'), { task_id: task.id, agent_id: agent.id }, 'workbench-claim');
-  const sha = randomHash();
+  // These fixture bytes are attached to a synthetic URL only to exercise version comparison.
+  const sha = retainedFixtures[0].sha256;
+  f.platform.registerCapture({ ...retainedInput(retainedFixtures[0]), origin: 'catalog' });
   const submission = f.tx('submit', f.actor('alice'), { claim_id: claim.id, brief: briefFixture(), sources: [source(sha)], method: 'Read the cited section and recorded its exact location.', limitations: 'A workflow fixture; facts and rights need human verification.', rights: 'Public material recorded with attribution.', mime: 'application/json' }, 'workbench-submit');
   return { ...f, resident: agent, mission, task, claim, submission, sha };
 }
@@ -120,7 +126,7 @@ test('a newer capture and an explicit supersede change only the state a reviewer
   const f = await workbenchFixture(t);
   const cited = f.platform.submissionEvidence(f.submission.id)[0];
   const stored = f.platform.get('SELECT * FROM evidence_captures WHERE id=?', cited.capture.id);
-  const newer = f.tx('evidenceCapture', f.actor('admin'), { url: SOURCE, sha256: randomHash(), retrieved_at: '2026-10-12', declared_date: '2026-10-09', unit: 'percent', locator: 'Recapture 2026-10-12', evidence_kind: 'web-excerpt' });
+  const newer = f.tx('evidenceCapture', f.actor('admin'), retainedInput(retainedFixtures[1], { retrieved_at: '2026-10-12', declared_date: '2026-10-09', unit: 'percent', locator: 'Recapture 2026-10-12' }));
   const stale = workbench(f, f.submission).citations[0];
   assert.equal(stale.state, 'stale');
   assert.equal(stale.cited_version.sha256, f.sha, 'the contribution still points at the version it cited');
@@ -128,7 +134,7 @@ test('a newer capture and an explicit supersede change only the state a reviewer
   assert.equal(stale.comparison.same_version, false);
   assert.ok(stale.comparison.changed_fields.includes('sha256'));
   assert.deepEqual(f.platform.get('SELECT * FROM evidence_captures WHERE id=?', cited.capture.id), stored, 'comparison rewrites no capture');
-  const superseding = f.tx('evidenceCapture', f.actor('admin'), { url: SOURCE, sha256: randomHash(), retrieved_at: '2026-10-13', locator: 'Corrected edition', evidence_kind: 'web-excerpt', supersedes: cited.capture.id });
+  const superseding = f.tx('evidenceCapture', f.actor('admin'), retainedInput(retainedFixtures[2], { retrieved_at: '2026-10-13', locator: 'Corrected edition', supersedes: cited.capture.id }));
   const replaced = workbench(f, f.submission).citations[0];
   assert.equal(replaced.state, 'replaced');
   assert.equal(replaced.cited_version.id, cited.capture.id);

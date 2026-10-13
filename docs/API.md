@@ -512,7 +512,7 @@ What a restoration never does: it mints no NemoCoin, grants no calling, account 
 
 ## Versioned evidence library
 
-See [version-specific human evidence review](EVIDENCE_REVIEW.md) for the reviewer's model and [the task 25 handoff](handoff/task-25-evidence-library.md) for the design. The library retains one **capture** per exact version of a public source: its identity (URL, host, path), SHA-256, size, retrieval timestamp, declared date, unit, provenance and licence, and the exact supporting location a reviewer can open. It performs **no network fetch of its own**: a capture either references bytes already retained under `catalog/` or records the SHA-256 a contributor's reader computed. A research artifact that cites a source is pinned to the **exact version** it named, so a later source change can never rewrite the historical support — it only changes the state a reviewer sees.
+See [version-specific human evidence review](EVIDENCE_REVIEW.md) for the reviewer's model and [the task 25 handoff](handoff/task-25-evidence-library.md) for the historical design. The library stores a source URL, SHA-256, retrieval timestamp, declared date, unit, provenance, licence and supporting location. It performs **no network fetch of its own**. A record with `retained=true` references bytes under `catalog/` that the server checked against the hash; a hash-only record is an unverified declaration. A contribution pins a captured version only when its URL and hash match an existing retained-byte record. A later source change cannot rewrite the pinned version; the reviewer sees a changed state instead.
 
 ```json
 {
@@ -527,7 +527,7 @@ See [version-specific human evidence review](EVIDENCE_REVIEW.md) for the reviewe
 | --- | --- | --- |
 | `GET /evidence?q=&offset=&limit=` | Any signed-in account (`limit` 1–100, default 25) | The bounded library: `{ total, offset, limit, has_more, limits, sources:[…] }`. Refused with **401** without a credential. |
 | `GET /evidence/draft?claim_id=` | The owning operator session only | Resolve a saved draft's cited sources to their exact versions. Reads storage and writes nothing; another operator gets **404**. |
-| `POST /evidence/capture` | `admin` session | Store or reuse one exact version: `{ url, sha256, bytes?, retained?, retained_path?, retrieved_at, declared_date?, unit?, title?, locator?, evidence_kind?, provenance?, license?, excerpt?, supersedes? }`. **201** with the stored capture. A host the library does not already know is refused with **403**; a retained file whose bytes do not hash to the declared SHA-256, a malformed hash or stamp, or a capture past the quota is refused with **409/400** and stores nothing. |
+| `POST /evidence/capture` | `admin` session | Store or reuse a library record: `{ url, sha256, bytes?, retained?, retained_path?, retrieved_at, declared_date?, unit?, title?, locator?, evidence_kind?, provenance?, license?, excerpt?, supersedes? }`. **201** with the stored record. A hash-only record (`retained=false`) is a declared hash, not verified support; only a retained file checked against its SHA-256 can produce a `captured` citation. A host the library does not already know is refused with **403**; a retained file whose bytes do not hash to the declared SHA-256, a malformed hash or stamp, or a record past the quota is refused with **409/400** and stores nothing. |
 | `POST /evidence/withdraw` | `reviewer`/`admin` session | Record that a source is gone or now refuses: `{ url?|source_id, reason }`. Appended to the source's history; the identity and every captured version stay readable. **200**. |
 
 Every cited source in `GET /history` and `GET /gallery` carries an `evidence` array, one entry per source, aligned by `source_number`:
@@ -542,13 +542,15 @@ Every cited source in `GET /history` and `GET /gallery` carries an `evidence` ar
 
 | State | Meaning |
 | --- | --- |
-| `captured` | The citation is pinned to one exact stored version and no newer version is retained. |
-| `missing` | **No capture exists.** A saved link alone is not verified evidence and must not be presented as support. |
-| `stale` | A newer capture of the same source exists than the one cited. The cited version is unchanged. |
-| `replaced` | A newer version explicitly supersedes the cited version (a `supersedes` link). The original is retained and visible. |
+| `captured` | The citation matches retained source bytes whose SHA-256 the server checked; no newer retained-byte version is held. Source identity and claims still require review. |
+| `missing` | No matching retained, checked source bytes exist. A saved link or contributor-declared hash alone is not verified evidence. Historic hash-only links remain readable but display as `missing`. |
+| `stale` | A newer retained-byte version of the same source exists than the one cited. The cited version is unchanged. |
+| `replaced` | A newer retained-byte version explicitly supersedes the cited version (a `supersedes` link). The original is retained and visible. |
 | `withdrawn` | The source is gone or now refuses. The cited version is retained exactly. |
 
 Conflicting declared dates and units are **kept visible**, never normalised away: `conflict` is true and `declared_dates`/`units` list every distinct value, while `versions` carries each capture in full. A citation whose source carries only a URL and no capture (`missing`) is never credited as support.
+
+Each library version view includes `verification`: `retained-bytes-hash-checked` or `declared-hash-only`. The first verifies the stored bytes matched the recorded hash when registered; it does not authenticate publication by the named source or certify the factual claim. Historic hash-only links keep their stored `capture_id` and metadata for audit, but every current evidence view reports `missing`. The immutable schema-22 record cannot be silently upgraded in place to retained bytes for the same hash; that requires an explicit audited migration or a new reviewed citation to a separately retained version.
 
 **Retention and quota.** The library holds at most **2 048** sources and **8 192** captures, at most **8** versions of any one source, and **96 MiB** of bytes retained under `catalog/`. When a new capture would exceed a quota the oldest version **not cited by any submission** is evicted; a version that any submission cites is **never** evicted, so an over-quota capture that has only cited candidates left fails closed with a clear error (never a partial record, never a deleted citation). The schema-22 validation re-checks every stored source, capture, event and citation on a backup, a restore and a startup.
 

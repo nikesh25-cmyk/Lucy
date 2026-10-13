@@ -10,11 +10,12 @@ import { fixture } from './helpers.js';
 
 const catalog = JSON.parse(readFileSync(new URL('../catalog/agriculture-statistics.json', import.meta.url), 'utf8'));
 const series = catalog.countries.find((country) => country.country_code === 'AF').series.find((entry) => entry.indicator === 'NV.AGR.TOTL.ZS');
+const retainedFixtures = [...new Map(catalog.countries.flatMap((country) => country.series || []).filter((entry) => entry.raw_file && entry.sha256).map((entry) => [entry.sha256, entry])).values()];
 const retainedUrl = series.url;
 const retainedSha = series.sha256;
 const resolve = async () => [{ address: '93.184.216.34', family: 4 }];
 const randomHash = () => createHash('sha256').update(String(Math.random() * 1e9)).digest('hex');
-const wdi = (iso3, indicator) => `https://api.worldbank.org/v2/country/${iso3}/indicator/${indicator}?format=json&date=2015:2026&per_page=12&source=2`;
+const retainedInput = (url, entry, changes = {}) => ({ url, sha256: entry.sha256, retained: true, retained_path: entry.raw_file, retrieved_at: '2026-10-12', evidence_kind: 'normalized-statistics', locator: 'Retained test fixture', ...changes });
 
 function demoClaim(f, name = 'alice') {
   const agent = f.agent(name);
@@ -75,7 +76,64 @@ test('a receipt points at the exact version it cited while a bare link stays unv
   assert.deepEqual(f.platform.get('SELECT * FROM evidence_captures WHERE id=?', before.id), before, 'citing a version never rewrites it');
 });
 
-test('a newer capture marks the citation stale and an explicit supersede marks it replaced', async (t) => {
+test('a contributor supplied SHA-256 cannot create captured evidence, including when an admin recorded only that hash', async (t) => {
+  const f = await fixture(t);
+  const url = 'https://example.org/unretained-contributor-claim';
+  const sha = randomHash();
+  const before = f.platform.get('SELECT COUNT(*) AS n FROM evidence_captures').n;
+  const claim = demoClaim(f);
+  const submission = f.tx('submit', f.actor('alice'), {
+    claim_id: claim.id, artifact: 'Unverified source claim.', sources: [{ url, location: `Section 2; SHA256 ${sha}`, date: '2026-10-12' }],
+    method: 'Contributor claim.', limitations: 'Source bytes were not retained.', rights: 'Unconfirmed.',
+  }, 'submit-unretained');
+  const evidence = f.platform.submissionEvidence(submission.id)[0];
+  assert.equal(evidence.state, 'missing');
+  assert.equal(evidence.capture, null);
+  assert.match(evidence.state_note, /contributor-declared hash alone is not verified evidence/);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM evidence_captures').n, before, 'submission creates no hash-only capture');
+  const declared = f.platform.registerCapture({ url, sha256: sha, retrieved_at: '2026-10-12', origin: 'curator' });
+  assert.equal(declared.retained, 0);
+  const draft = f.platform.resolveCitation({ url, location: `Section 2; SHA256 ${sha}` }, 1);
+  assert.equal(draft.state, 'missing');
+  assert.equal(draft.capture.verification, 'declared-hash-only');
+  assert.equal(f.platform.submissionEvidence(submission.id)[0].state, 'missing');
+  const upgradeUrl = 'https://example.org/immutable-hash-claim';
+  const oldDeclaration = f.platform.registerCapture({ url: upgradeUrl, sha256: retainedSha, retrieved_at: '2026-10-12', origin: 'curator' });
+  assert.throws(() => f.platform.registerCapture(retainedInput(upgradeUrl, series)), /cannot be silently upgraded/i);
+  assert.deepEqual(f.platform.get('SELECT * FROM evidence_captures WHERE id=?', oldDeclaration.id), oldDeclaration, 'the old hash-only row is not rewritten');
+  assert.equal(validateDatabase(f.database).schema_version, 22);
+});
+
+test('legacy schema-22 hash-only citation rows stay intact but read as unverified after restart', async (t) => {
+  const f = await fixture(t);
+  const url = 'https://example.org/legacy-hash-only';
+  const sha = randomHash();
+  const claim = demoClaim(f);
+  const submission = f.tx('submit', f.actor('alice'), {
+    claim_id: claim.id, artifact: 'Historic hash-only citation.', sources: [{ url, location: `Section 4; SHA256 ${sha}`, date: '2026-10-12' }],
+    method: 'Contributor report.', limitations: 'No retained bytes.', rights: 'Unknown.',
+  }, 'submit-legacy-hash');
+  const declared = f.platform.registerCapture({ url, sha256: sha, retrieved_at: '2026-10-12', origin: 'submission' });
+  const original = f.platform.get('SELECT * FROM submission_evidence WHERE submission_id=?', submission.id);
+  f.platform.run('DELETE FROM submission_evidence WHERE submission_id=?', submission.id);
+  f.platform.run('INSERT INTO submission_evidence(submission_id,source_number,capture_id,url,locator,cited_date,state,created_at) VALUES(?,?,?,?,?,?,?,?)',
+    submission.id, original.source_number, declared.id, original.url, original.locator, original.cited_date, 'captured', original.created_at);
+  const historic = f.platform.get('SELECT * FROM submission_evidence WHERE submission_id=?', submission.id);
+  assert.equal(validateDatabase(f.database).schema_version, 22, 'legacy storage remains valid');
+  assert.equal(f.platform.submissionEvidence(submission.id)[0].state, 'missing');
+  assert.equal(f.platform.submissionEvidence(submission.id)[0].capture.verification, 'declared-hash-only');
+  const workbench = f.platform.reviewWorkbench(f.actor('reviewer'), { submission: submission.id }).citations[0];
+  assert.equal(workbench.state, 'missing');
+  assert.equal(workbench.cited_version, null);
+  assert.equal(workbench.comparison.same_version, false);
+  f.platform.close();
+  const reopened = new Platform(f.database);
+  t.after(() => reopened.close());
+  assert.deepEqual(reopened.get('SELECT * FROM submission_evidence WHERE submission_id=?', submission.id), historic, 'no historical receipt is rewritten');
+  assert.equal(reopened.submissionEvidence(submission.id)[0].state, 'missing');
+});
+
+test('only newer retained bytes mark a citation stale or replaced', async (t) => {
   const f = await fixture(t);
   const claim = demoClaim(f);
   const submission = f.tx('submit', f.actor('alice'), {
@@ -85,12 +143,14 @@ test('a newer capture marks the citation stale and an explicit supersede marks i
   }, 'submit-stale');
   const original = f.platform.submissionEvidence(submission.id)[0];
   assert.equal(original.state, 'captured');
-  const newer = f.tx('evidenceCapture', f.actor('admin'), { url: retainedUrl, sha256: randomHash(), retrieved_at: '2026-10-12', unit: '% of GDP', declared_date: '2026-10-09', evidence_kind: 'normalized-statistics', locator: 'Recapture 2026-10-12' });
+  f.tx('evidenceCapture', f.actor('admin'), { url: retainedUrl, sha256: randomHash(), retrieved_at: '2026-10-12', locator: 'Hash-only assertion' });
+  assert.equal(f.platform.submissionEvidence(submission.id)[0].state, 'captured', 'a newer hash assertion does not make source bytes stale');
+  const newer = f.tx('evidenceCapture', f.actor('admin'), retainedInput(retainedUrl, retainedFixtures[1], { unit: '% of GDP', declared_date: '2026-10-09' }));
   const stale = f.platform.submissionEvidence(submission.id)[0];
   assert.equal(stale.state, 'stale');
   assert.equal(stale.capture.id, original.capture.id);
-  assert.equal(stale.versions.length, 2);
-  f.tx('evidenceCapture', f.actor('admin'), { url: retainedUrl, sha256: randomHash(), retrieved_at: '2026-10-13', declared_date: '2026-10-10', evidence_kind: 'normalized-statistics', locator: 'Corrected edition', supersedes: original.capture.id });
+  assert.equal(stale.versions.length, 3);
+  f.tx('evidenceCapture', f.actor('admin'), retainedInput(retainedUrl, retainedFixtures[2], { retrieved_at: '2026-10-13', declared_date: '2026-10-10', locator: 'Corrected edition', supersedes: original.capture.id }));
   const replaced = f.platform.submissionEvidence(submission.id)[0];
   assert.equal(replaced.state, 'replaced');
   assert.equal(replaced.capture.id, original.capture.id);
@@ -98,11 +158,11 @@ test('a newer capture marks the citation stale and an explicit supersede marks i
   assert.ok(f.platform.get('SELECT id FROM evidence_captures WHERE id=?', original.capture.id));
 });
 
-test('conflicting declared dates and units remain visible instead of being normalised', async (t) => {
+test('conflicting declared dates and units remain visible with their byte-retention status', async (t) => {
   const f = await fixture(t);
-  const url = wdi('DEU', 'AG.LND.ARBL.ZS');
-  const first = f.tx('evidenceCapture', f.actor('admin'), { url, sha256: randomHash(), retrieved_at: '2026-10-01', declared_date: '2026-01-01', unit: '% of land area', evidence_kind: 'normalized-statistics', locator: 'First capture' });
-  f.tx('evidenceCapture', f.actor('admin'), { url, sha256: randomHash(), retrieved_at: '2026-10-02', declared_date: '2025-06-30', unit: 'percent of total land', evidence_kind: 'normalized-statistics', locator: 'Second capture' });
+  const url = retainedUrl;
+  const first = f.tx('evidenceCapture', f.actor('admin'), retainedInput(url, retainedFixtures[1], { retrieved_at: '2026-10-01', declared_date: '2026-01-01', unit: '% of land area' }));
+  f.tx('evidenceCapture', f.actor('admin'), { url, sha256: randomHash(), retrieved_at: '2026-10-02', declared_date: '2025-06-30', unit: 'percent of total land', evidence_kind: 'normalized-statistics', locator: 'Second declared hash' });
   const claim = demoClaim(f);
   const submission = f.tx('submit', f.actor('alice'), {
     claim_id: claim.id, artifact: 'Two captures disagree.', sources: [{ url, location: `Table 1; SHA256 ${first.sha256}`, date: '2026-10-01' }],
@@ -111,8 +171,9 @@ test('conflicting declared dates and units remain visible instead of being norma
   const entry = f.platform.submissionEvidence(submission.id)[0];
   assert.equal(entry.conflict, true);
   assert.deepEqual([...entry.declared_dates].sort(), ['2025-06-30', '2026-01-01']);
-  assert.deepEqual([...entry.units].sort(), ['% of land area', 'percent of total land']);
-  assert.equal(entry.versions.length, 2);
+  assert.deepEqual([...entry.units].sort(), ['% of GDP', '% of land area', 'percent of total land']);
+  assert.equal(entry.versions.length, 3);
+  assert.equal(entry.versions.find((version) => !version.retained).verification, 'declared-hash-only');
 });
 
 test('a withdrawn source stays distinct and a fresh capture records that it is available again', async (t) => {
@@ -148,17 +209,18 @@ test('a capture fails closed on a forbidden host, a private address, a wrong has
 
 test('the per-source version quota evicts only uncited versions and refuses when every version is cited', async (t) => {
   const f = await fixture(t);
-  const url = wdi('DEU', 'NV.AGR.TOTL.ZS');
+  // The synthetic URL collects distinct retained fixture bytes solely to exercise per-source quota.
+  const url = 'https://api.worldbank.org/v2/test-only/evidence-quota';
   const share = [];
-  for (let index = 0; index < EVIDENCE_LIMITS.max_captures_per_source; index += 1) share.push(f.tx('evidenceCapture', f.actor('admin'), { url, sha256: randomHash(), retrieved_at: `2026-10-${String(index + 1).padStart(2, '0')}`, evidence_kind: 'normalized-statistics', locator: `Version ${index + 1}` }));
+  for (let index = 0; index < EVIDENCE_LIMITS.max_captures_per_source; index += 1) share.push(f.tx('evidenceCapture', f.actor('admin'), retainedInput(url, retainedFixtures[index], { retrieved_at: `2026-10-${String(index + 1).padStart(2, '0')}`, locator: `Version ${index + 1}` })));
   const sourceId = share[0].source_id;
   const count = () => f.platform.get('SELECT COUNT(*) AS n FROM evidence_captures WHERE source_id=?', sourceId).n;
   assert.equal(count(), EVIDENCE_LIMITS.max_captures_per_source);
   // An uncited version is the eviction candidate: a fresh one is accepted and the oldest is gone.
   const oldest = share[0].sha256;
-  f.tx('evidenceCapture', f.actor('admin'), { url, sha256: randomHash(), retrieved_at: '2026-11-01', evidence_kind: 'normalized-statistics', locator: 'Newest' });
+  f.tx('evidenceCapture', f.actor('admin'), retainedInput(url, retainedFixtures[EVIDENCE_LIMITS.max_captures_per_source], { retrieved_at: '2026-11-01', locator: 'Newest' }));
   assert.equal(count(), EVIDENCE_LIMITS.max_captures_per_source);
-  assert.equal(f.platform.get('SELECT id FROM evidence_captures WHERE sha256=?', oldest), undefined, 'the oldest uncited version was evicted');
+  assert.equal(f.platform.get('SELECT id FROM evidence_captures WHERE source_id=? AND sha256=?', sourceId, oldest), undefined, 'the oldest uncited version was evicted');
   // Cite every retained version, so nothing is evictable and a further capture fails closed.
   const versions = f.platform.all('SELECT * FROM evidence_captures WHERE source_id=?', sourceId);
   assert.equal(versions.length, EVIDENCE_LIMITS.max_captures_per_source);
@@ -170,7 +232,7 @@ test('the per-source version quota evicts only uncited versions and refuses when
   }, 'submit-quota');
   const cited = f.platform.get('SELECT COUNT(*) AS n FROM submission_evidence e JOIN evidence_captures c ON c.id=e.capture_id WHERE c.source_id=?', sourceId).n;
   assert.equal(cited, EVIDENCE_LIMITS.max_captures_per_source);
-  assert.throws(() => f.tx('evidenceCapture', f.actor('admin'), { url, sha256: randomHash(), retrieved_at: '2026-12-01', evidence_kind: 'normalized-statistics', locator: 'Over quota' }), { status: 409 });
+  assert.throws(() => f.tx('evidenceCapture', f.actor('admin'), retainedInput(url, retainedFixtures[EVIDENCE_LIMITS.max_captures_per_source + 1], { retrieved_at: '2026-12-01', locator: 'Over quota' })), { status: 409 });
   assert.equal(count(), EVIDENCE_LIMITS.max_captures_per_source, 'a refused capture stores nothing');
 });
 

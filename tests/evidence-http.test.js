@@ -51,6 +51,7 @@ test('a reviewer can record a withdrawal while a member cannot, and a capture ne
   const capture = await accepted.json();
   assert.equal(capture.sha256, 'b'.repeat(64));
   assert.equal(capture.origin, 'curator');
+  assert.equal(capture.retained, 0, 'a curator can record a hash without source bytes, but it remains unverified');
   // A member cannot capture.
   const member = await post(base, f.credentials.alice.token, '/evidence/capture', { url: 'https://api.worldbank.org/v2/country/NPL/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2', sha256: 'c'.repeat(64), retrieved_at: '2026-10-12' });
   assert.equal(member.status, 403);
@@ -63,9 +64,14 @@ test('a contribution served over HTTP carries its exact evidence and its unverif
   const url = f.platform.get('SELECT url FROM evidence_captures WHERE sha256=?', sha).url;
   const agent = f.agent('alice');
   const claim = f.tx('claim', f.actor('alice'), { task_id: 'climate-practice', agent_id: agent.id }, 'http-claim');
+  const before = f.platform.get('SELECT COUNT(*) AS n FROM evidence_captures').n;
   const submitted = await post(base, f.credentials.alice.token, '/submissions', {
     claim_id: claim.id, artifact: 'HTTP evidence register.',
-    sources: [{ url, location: `Row; SHA256 ${sha}`, date: '2026-10-11' }, { url: 'https://example.org/link', location: 'Section 1', date: '2026-01-01' }],
+    sources: [
+      { url, location: `Row; SHA256 ${sha}`, date: '2026-10-11' },
+      { url: 'https://example.org/link', location: 'Section 1', date: '2026-01-01' },
+      { url: 'https://example.org/forged', location: `Section 2; SHA256 ${'f'.repeat(64)}`, date: '2026-10-12' },
+    ],
     method: 'Read.', limitations: 'Context.', rights: 'Review terms.',
   });
   assert.equal(submitted.status, 201);
@@ -73,13 +79,16 @@ test('a contribution served over HTTP carries its exact evidence and its unverif
   const history = await (await fetch(base + '/api/v1/history', { headers: auth(f.credentials.alice.token) })).json();
   const record = history.submissions.find((item) => item.id === submission.id);
   assert.ok(record, 'the submission is in the contributor history');
-  assert.equal(record.evidence.length, 2);
+  assert.equal(record.evidence.length, 3);
   assert.equal(record.evidence[0].state, 'captured');
   assert.equal(record.evidence[0].capture.sha256, sha);
   assert.equal(record.evidence[0].capture.retained, true);
   assert.match(record.evidence[0].capture.license.name, /CC BY/);
   assert.equal(record.evidence[1].state, 'missing');
   assert.match(record.evidence[1].state_note, /not verified evidence/);
+  assert.equal(record.evidence[2].state, 'missing', 'a contributor-supplied hash is not captured evidence');
+  assert.equal(record.evidence[2].capture, null);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM evidence_captures').n, before, 'an HTTP submission creates no hash-only capture');
 });
 
 test('a saved draft exposes its resolved versions over HTTP to its owner only', async (t) => {

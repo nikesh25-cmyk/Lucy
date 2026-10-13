@@ -1,5 +1,7 @@
 # Task 25 — versioned evidence library and source capture
 
+> Historical handoff. The current implementation no longer treats a contributor-declared or curator-declared hash without retained bytes as `captured` evidence. Such records remain readable but are labelled unverified; see [the current evidence review rule](../EVIDENCE_REVIEW.md#versioned-evidence-and-the-exact-supporting-location). The original delivery details below describe the earlier schema-22 behavior.
+
 Branch `task-25-evidence-library` (worktree `work/t25`), based on `verify-batch02-wave-h` at
 **5ba8127** (`Merge branch 'task-24b-generator-gate' into verify-batch02-wave-h`). Schema moves from
 **21 → 22**, additively.

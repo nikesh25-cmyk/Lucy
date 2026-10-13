@@ -37,30 +37,32 @@ const publicAccount = ({ id, name, role: accountRole, status, created_at }) => (
 // Bounded reads: each listing below returns the most recent records up to these limits.
 const MISSION_LIMIT = 200, GALLERY_LIMIT = 200, SAFETY_LIMIT = 200, HISTORY_LIMIT = 200, EXPORT_LIMIT = 500;
 const parsed = (value) => { try { const item = JSON.parse(value || '{}'); return item && typeof item === 'object' && !Array.isArray(item) ? item : {}; } catch { return {}; } };
-// The four states an evidence citation can be in, and the healthy one. They are never conflated: a
-// newer capture of the same source leaves the cited version untouched and only changes this label.
+// The five states an evidence citation can be in. A declared hash without retained, checked bytes
+// remains visible for review but is never presented as captured support.
 const EVIDENCE_STATE_NOTES = Object.freeze({
-  captured: 'This citation is pinned to one exact stored version and no newer version is retained.',
-  missing: 'No capture exists for this citation. A saved link alone is not verified evidence and must not be presented as support.',
+  captured: 'This citation is pinned to retained source bytes whose stored SHA-256 was checked; no newer retained version is held. Source identity and factual claims still need human review.',
+  missing: 'No matching source bytes are retained and checked for this citation. A link or contributor-declared hash alone is not verified evidence and must not be presented as support.',
   stale: 'A newer version of this source is retained than the one cited. The cited version is unchanged; the difference is shown, never rewritten.',
   replaced: 'A newer version explicitly supersedes the cited one. The original version is retained and remains visible.',
   withdrawn: 'The source is withdrawn or unavailable. The cited version is retained exactly as it was captured.',
 });
 const evidenceStamp = (value) => typeof value === 'string' && (value.length === 24 && value === new Date(value).toISOString() || /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value);
-// The public shape of one capture. Bytes retained under catalog/ are referenced, never copied, so a
-// reviewer reads the exact stored file; a hash-only capture is honest that its bytes were not kept.
+// The public shape of one library record. Bytes retained under catalog/ are referenced, never copied.
+// A hash-only record is an assertion, not a capture of source bytes.
 const captureView = (capture) => ({
   id: capture.id, seq: capture.seq, sha256: capture.sha256, bytes: capture.bytes, retained: Boolean(capture.retained),
+  verification: capture.retained ? 'retained-bytes-hash-checked' : 'declared-hash-only',
   retained_path: capture.retained_path, retrieved_at: capture.retrieved_at, declared_date: capture.declared_date,
   unit: capture.unit, title: capture.title, locator: capture.locator, evidence_kind: capture.evidence_kind,
   provenance: capture.provenance, license: { name: capture.license_name, url: capture.license_url, attribution: capture.license_attribution },
   excerpt: capture.excerpt, origin: capture.origin, supersedes: capture.supersedes,
 });
 const evidenceState = (capture, versions, withdrawn) => {
-  if (!capture) return 'missing';
+  if (!capture?.retained) return 'missing';
+  const retainedVersions = versions.filter((version) => version.retained);
   if (withdrawn) return 'withdrawn';
-  if (versions.some((version) => version.seq > capture.seq && version.supersedes === capture.id)) return 'replaced';
-  const newest = versions[versions.length - 1];
+  if (retainedVersions.some((version) => version.seq > capture.seq && version.supersedes === capture.id)) return 'replaced';
+  const newest = retainedVersions[retainedVersions.length - 1];
   return newest && newest.id !== capture.id ? 'stale' : 'captured';
 };
 const evidenceConflicts = (versions) => ({ declared_dates: [...new Set(versions.map((version) => version.declared_date).filter(Boolean))], units: [...new Set(versions.map((version) => version.unit).filter(Boolean))] });
@@ -647,12 +649,13 @@ export class Platform {
     const names = new Map(this.all("SELECT id,name FROM accounts WHERE id IN (?,?,?)", route.owner_id, route.contributor_id, route.reviewer_id).map((account) => [account.id, account.name]));
     const person = (id) => ({ id, name: names.get(id) || 'unknown operator', is_you: id === actor.account.id });
     const reviewerOf = latest?.reviewer_id || route.reviewer_id;
-    // Each citation: the exact version the contribution pinned, the version the library holds now,
-    // and the difference between them. The cited version is never rewritten by a later capture.
+    // Compare only retained-byte versions. Historic hash-only links stay in the citation history,
+    // but cannot become a verified cited or current version in the workbench.
     const citations = this.submissionEvidence(route.id).map((entry) => {
       const versions = entry.versions || [];
-      const current = versions.length ? versions[versions.length - 1] : null;
-      return { ...entry, cited_version: entry.capture, current_version: current, comparison: citationComparison(entry.capture, current, entry.state) };
+      const current = [...versions].reverse().find((version) => version.retained) || null;
+      const cited = entry.capture?.retained ? entry.capture : null;
+      return { ...entry, cited_version: cited, current_version: current, comparison: citationComparison(cited, current, entry.state) };
     });
     const mayReview = ['admin', 'reviewer'].includes(actor.account.role) && route.status === 'pending_review' && route.contributor_id !== actor.account.id && (route.demo || actor.account.role === 'admin' || route.reviewer_id === actor.account.id);
     const reviewRefusal = route.status !== 'pending_review' ? 'This version is not waiting for review.'
@@ -700,7 +703,7 @@ export class Platform {
       boundaries: {
         acceptance: 'Acceptance is a human contribution review of this exact version. It is not independent factual certification, recipient consent, funding, shipment authorization or a real-world outcome.',
         adoption: ADOPTION_BOUNDARY,
-        evidence: 'States are read from the stored citations and the library. A later capture of a source changes the state shown, never the version the contribution cited.',
+        evidence: 'States are read from the stored citations and the library. Hash-only records remain unverified; a later retained capture changes the state shown, never the version the contribution cited.',
       },
     };
   }
@@ -1005,12 +1008,11 @@ export class Platform {
     this.audit(actor.account.id, `job.${input.status}`, id); return { id };
   }
   // ---- Versioned evidence library (schema 22) ---------------------------------------------------
-  // One capture is one immutable exact version of one public source: identity, hash, size, retrieval
-  // time, declared date, unit, licence and the exact location a reviewer can open. A submission (and
-  // a saved draft, resolved on read) points at the exact version it cited, so adding a newer capture
-  // of the same source can never rewrite the historical support — it only changes the state a
-  // reviewer sees. Nothing here fetches: a capture references bytes already retained under catalog/
-  // or records the hash a contributor's reader computed.
+  // One library row records an immutable source identity, hash, dates, unit, licence and locator. A
+  // submission pins a version only when the library already holds matching hash-checked bytes; a
+  // saved draft resolves that same rule without writing. Adding a newer version cannot rewrite a
+  // pinned historical citation. Nothing here fetches: retained captures reference bytes under
+  // catalog/, while a hash-only record is a declaration that cannot establish captured support.
   initEvidence() {
     if (this.get('SELECT COUNT(*) AS n FROM evidence_captures').n) return;
     const series = [];
@@ -1038,9 +1040,9 @@ export class Platform {
       license: series.license || {},
     });
   }
-  // Store (or reuse) one exact evidence version. Every check runs before a row is written, so an
-  // over-quota capture, a forbidden host or a retained file that does not match its hash fails closed
-  // and leaves no partial record behind.
+  // Store (or reuse) one source hash record. A retained file is hash-checked; a hash-only record is
+  // a declaration. Every check runs before a row is written, so an over-quota record, a forbidden
+  // host or a retained file that does not match its hash fails closed.
   registerCapture(fields, { domains = [] } = {}) {
     const url = approvedEvidenceUrl(fields.url, domains);
     const sourceKey = evidenceSourceKey(url.href);
@@ -1064,7 +1066,11 @@ export class Platform {
     if (declaredDate && !evidenceStamp(declaredDate)) fail(400, 'A declared publication date must be an ISO date.');
     const license = fields.license || {};
     let source = this.get('SELECT * FROM evidence_sources WHERE source_key=?', sourceKey);
-    if (source && this.get('SELECT id FROM evidence_captures WHERE source_id=? AND sha256=?', source.id, sha256)) return this.get('SELECT * FROM evidence_captures WHERE source_id=? AND sha256=?', source.id, sha256);
+    const existing = source ? this.get('SELECT * FROM evidence_captures WHERE source_id=? AND sha256=?', source.id, sha256) : null;
+    if (existing) {
+      if (retained && !existing.retained) fail(409, 'This hash is already stored as an immutable hash-only declaration. It cannot be silently upgraded to retained evidence.');
+      return existing;
+    }
     if (!source && this.get('SELECT COUNT(*) AS n FROM evidence_sources').n >= EVIDENCE_LIMITS.max_sources) fail(409, 'The evidence library reached its source quota; a new source cannot be stored.');
     this.evidenceReserve(retained ? bytes : 0, source ? source.id : null);
     const created = now();
@@ -1136,9 +1142,8 @@ export class Platform {
     this.audit(actor.account.id, 'evidence.withdrawn', source.id);
     return { source_id: source.id, status: 'withdrawn', reason };
   }
-  // Attach one cited source to the exact version it names. A citation that declares the SHA-256 its
-  // reader computed pins that version (storing it if it is not yet retained); a bare link keeps its
-  // URL but is recorded as missing/unverified and is never shown as support.
+  // Attach only a pre-existing retained-byte version whose hash matches the citation. Contributor
+  // text cannot create evidence bytes or promote its own SHA-256 assertion to captured support.
   attachEvidence(source, sourceNumber) {
     const location = typeof source.location === 'string' ? source.location : '';
     const cite = { submission_id: null, source_number: sourceNumber, capture_id: null, url: source.url, locator: location, cited_date: source.date || '', state: 'missing' };
@@ -1146,11 +1151,7 @@ export class Platform {
     if (!['http:', 'https:'].includes(url.protocol)) return cite;
     const sha256 = /SHA256\s+([a-f0-9]{64})/i.exec(location)?.[1]?.toLowerCase() || null;
     if (!sha256) return cite;
-    let capture = this.get('SELECT * FROM evidence_captures WHERE source_key=? AND sha256=?', evidenceSourceKey(url.href), sha256);
-    if (!capture) {
-      try { capture = this.registerCapture({ url: url.href, sha256, retrieved_at: source.date || now().slice(0, 10), locator: location.replace(/;?\s*SHA256\s+[a-f0-9]{64}\s*$/i, '').trim(), evidence_kind: 'web-excerpt', origin: 'submission' }); }
-      catch { capture = null; }
-    }
+    const capture = this.get('SELECT * FROM evidence_captures WHERE source_key=? AND sha256=? AND retained=1', evidenceSourceKey(url.href), sha256);
     return { ...cite, capture_id: capture?.id || null, state: capture ? 'captured' : 'missing' };
   }
   // One cited source resolved against the library, without writing anything. Used for a private draft.
