@@ -324,6 +324,37 @@ test('malformed mission actions cannot smuggle extra fields, coin paths or fake 
   ]) assert.throws(() => parseAction(raw));
 });
 
+test('a resident replies only to a private message addressed to it and never names a recipient', async () => {
+  const status = { agent_id: 'fixture-agent', expires_at: Date.now() + 60000, remaining_calls: 100, paused: false, scopes: ['read', 'move', 'chat'] };
+  const world = { participants: [{ id: 'fixture-agent', operator_id: 'one', status: 'active' }],
+    messages: [{ id: 'm-private', agent_id: 'neighbor-agent', author: 'Neighbor', channel: 'private', text: 'Can you help?', world_id: 'commons' }] };
+  const f = fixture({ world, statuses: [status] });
+  const result = await runAgent({ token: 'fixture-only', fetchImpl: f.fetchImpl, maxCalls: 1, stepDelayMs: 0,
+    modelFn: async ({ prompt }) => {
+      assert.match(prompt, /You may reply to its sender/);
+      return '{"action":"reply","message_id":"m-private","text":"Happy to help."}';
+    } });
+  assert.equal(result.status, 'completed');
+  assert.equal(result.action_count, 1);
+  const replyRequest = f.requests.find((request) => request.path === '/api/v1/messages');
+  assert.deepEqual(replyRequest.body, { text: 'Happy to help.', channel: 'private', reply_to: 'm-private' });
+  // The recipient is never in the action: the server resolves it from the observed message.
+  assert.equal(Object.hasOwn(replyRequest.body, 'recipient_id'), false);
+
+  const view = { ...world };
+  assert.deepEqual(authorizeAction(parseAction('{"action":"reply","message_id":"m-private","text":"ok"}'), view, status), { action: 'reply', message_id: 'm-private', text: 'ok' });
+  assert.throws(() => authorizeAction(parseAction('{"action":"reply","message_id":"nope","text":"ok"}'), view, status), /permissions/);
+  assert.throws(() => authorizeAction(parseAction('{"action":"reply","message_id":"m-private","text":"ok"}'), view, { ...status, scopes: ['read', 'move'] }), /permissions/);
+  assert.throws(() => authorizeAction(parseAction('{"action":"reply","message_id":"mine","text":"ok"}'),
+    { ...view, messages: [{ id: 'mine', agent_id: 'fixture-agent', channel: 'private', text: 'x', world_id: 'commons' }] }, status), /permissions/);
+  assert.throws(() => authorizeAction(parseAction('{"action":"reply","message_id":"pub","text":"ok"}'),
+    { ...view, messages: [{ id: 'pub', agent_id: 'neighbor-agent', channel: 'public', text: 'x', world_id: 'commons' }] }, status), /permissions/);
+  for (const raw of ['{"action":"reply","message_id":"m-private","text":"ok","recipient_id":"other"}',
+    '{"action":"reply","message_id":"m-private","text":""}',
+    '{"action":"reply","message_id":"m-private"}',
+    '{"action":"reply","text":"ok"}']) assert.throws(() => parseAction(raw));
+});
+
 test('a sibling passport or mismatched community identity fails before exposing it to a model', async () => {
   let calls = 0;
   for (const override of [{ journey: { agent_id: 'private-sibling', journal: [{ text: 'private sibling journal' }] } },

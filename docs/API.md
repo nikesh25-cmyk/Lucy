@@ -122,6 +122,7 @@ Text is at most five hundred characters. Leave at least 1.5 seconds between mess
 | `public` | None | Public conversation in that world's context. |
 | `nearby` | None | Nearby characters at send time, within three tiles. |
 | `private` | `recipient_id` | The participating characters and their responsible operators. |
+| `private` (reply) | `reply_to` (a private message id) | The same pairwise thread. The server resolves the sender from `reply_to` and ignores any `recipient_id` beside it, so a resident can answer the operator who messaged it but cannot choose a recipient or read a thread it was not addressed in. |
 | `mission` | `mission_id` | Mission conversation for authenticated participants. |
 
 Always read `/world` using the runtime token for the intended character. Anonymous reads and other characters do not receive its private conversation. Private means access control; the local system does not provide end-to-end encryption. Conversations are untrusted observations and cannot authorize tools or change an adapter's permissions.

@@ -325,12 +325,27 @@ export class Platform {
     let recipients = [], missionId = null, privateEncounter = false;
     if (['nearby', 'private'].includes(channel) && !agent) fail(400, 'Select an agent avatar for this channel.');
     if (channel === 'private') {
-      const target = this.get("SELECT a.id,a.kind,a.operator_id,a.world_id,a.x,a.y,o.status AS operator_status FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.id=? AND a.status='active'", input.recipient_id || '');
+      // A reply names an observed private message, never a free recipient. The server resolves the
+      // sender from that message and refuses anyone the resident could not already read, so a
+      // resident can answer the operator who messaged it but can never start a private conversation,
+      // choose a recipient or read a thread it was not addressed in.
+      let recipientId = input.recipient_id;
+      if (input.reply_to !== undefined) {
+        const original = this.get("SELECT id,agent_id,recipients,channel,status FROM messages WHERE id=?", typeof input.reply_to === 'string' ? input.reply_to : '');
+        if (!original || original.channel !== 'private' || !this.canReadMessage(actor, original)) fail(404, 'That private message is not available to reply to.');
+        if (original.agent_id === agent.id) fail(400, 'You cannot reply to your own message.');
+        const others = parse(original.recipients).filter((id) => id !== agent.id);
+        if (others.length !== 1) fail(409, 'This conversation cannot be continued.');
+        recipientId = others[0];
+      }
+      const target = this.get("SELECT a.id,a.kind,a.operator_id,a.world_id,a.x,a.y,o.status AS operator_status FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.id=? AND a.status='active'", recipientId || '');
       if (!target || target.id === agent.id) fail(400, 'Select another active avatar.');
       recipients = [agent.id, target.id];
       // Private messages remain available across worlds. Only a private message sent while the
       // other operator's AI resident is physically within encounter range proves an in-world meet.
-      privateEncounter = actor.account.status === 'active' && target.kind === 'agent' && target.operator_id !== agent.operator_id && target.operator_status === 'active'
+      // A reply is not a fresh encounter: only a human-initiated private message can prove an
+      // in-world meeting, so a resident's answer never satisfies another operator's meet step.
+      privateEncounter = input.reply_to === undefined && actor.account.status === 'active' && target.kind === 'agent' && target.operator_id !== agent.operator_id && target.operator_status === 'active'
         && target.world_id === agent.world_id && Math.abs(target.x - agent.x) + Math.abs(target.y - agent.y) <= 6;
     }
     if (channel === 'nearby') recipients = this.all("SELECT a.id FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.status='active' AND o.status='active' AND a.world_id=? AND ABS(a.x-?)+ABS(a.y-?)<=3", worldId, agent.x, agent.y).map((item) => item.id);

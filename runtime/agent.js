@@ -73,6 +73,11 @@ export function parseAction(value) {
     && Number.isFinite(value.yaw) && Number.isFinite(value.pitch)
     && value.yaw >= -Math.PI && value.yaw <= Math.PI && value.pitch >= -1.4 && value.pitch <= 1.4) return { action: 'look', yaw: value.yaw, pitch: value.pitch };
   if (value.action === 'say' && keys.length === 2 && keys.includes('text') && typeof value.text === 'string' && value.text.trim().length > 0 && value.text.length <= 500) return { action: 'say', text: value.text.trim() };
+  // A private reply names one private message the resident could already read. The recipient is
+  // resolved by the server from that message, so the model never chooses a recipient and can never
+  // open a conversation of its own.
+  if (value.action === 'reply' && keys.length === 3 && keys.includes('message_id') && keys.includes('text')
+    && identifier(value.message_id) && typeof value.text === 'string' && value.text.trim().length > 0 && value.text.length <= 500) return { action: 'reply', message_id: value.message_id, text: value.text.trim() };
   if (value.action === 'travel' && keys.length === 2 && keys.includes('world_id')
     && typeof value.world_id === 'string' && /^[a-zA-Z0-9:_-]{1,100}$/.test(value.world_id)) return { action: 'travel', world_id: value.world_id };
   if (value.action === 'posture' && keys.length === 2 && keys.includes('posture')
@@ -295,6 +300,12 @@ export function authorizeAction(action, view, status) {
   if (action.action === 'say' && granted.has('chat')) return action;
   const agentId = status.agent_id;
   if (typeof agentId !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(agentId)) throw new Error('Invalid runtime identity.');
+  // A private reply is allowed only to a private message the observation already carried from
+  // another resident. The server re-checks the same message before delivering the reply, so this
+  // advisory rule can never approve a recipient the server would refuse.
+  if (action.action === 'reply' && granted.has('chat') && Array.isArray(view.messages)
+    && view.messages.some((message) => message.id === action.message_id && message.channel === 'private' && message.agent_id && message.agent_id !== agentId))
+    return action;
   if (action.action === 'walk_to' && granted.has('move') && planRuntimeWalk(view, status, action)) return action;
   if (action.action === 'posture' && Array.isArray(status.scopes) && granted.has('move')) return action;
   if (action.action === 'emote' && Array.isArray(status.scopes) && granted.has('move')) return action;
@@ -543,6 +554,11 @@ export function observationPrompt(view, status) {
   // Mission work is available only with the contribute scope and only when the server supplies the
   // directory. Claiming and submitting do not mint coins; only an independent human review can.
   const canMission = Array.isArray(status.scopes) && status.scopes.includes('contribute') && Boolean(missions);
+  // A private reply is offered only with the chat scope and only when a private message from another
+  // resident is already in the observation. The recipient is the sender of that message; the model
+  // never names one, and the server re-checks the same message before delivering the reply.
+  const canReply = Array.isArray(status.scopes) && status.scopes.includes('chat')
+    && Array.isArray(view.messages) && view.messages.some((message) => message.channel === 'private' && message.agent_id && message.agent_id !== status.agent_id);
   const observations = { agent_id: status.agent_id, z: Number.isInteger(self?.z) ? self.z : 0, granted_scopes: status.scopes,
     callings, memory, navigation, missions,
     world: view.world, own_home: view.own_home, portals: view.portals?.slice(0, OBSERVATION_LIMITS.portals), build_palette: build ? view.build_palette?.slice(0, OBSERVATION_LIMITS.palette) : [],
@@ -552,6 +568,7 @@ export function observationPrompt(view, status) {
     participants: view.participants?.slice(0, OBSERVATION_LIMITS.participants), messages: view.messages?.slice(-OBSERVATION_LIMITS.messages) };
   return 'You are an AI resident of NemoWorld, a shared world inhabited by humans and agents. Choose ONE action. Return only JSON: '
     + '{"action":"move","direction":"up|down|left|right"}, {"action":"say","text":"short public message"}, {"action":"wait"}, '
+    + (canReply ? '{"action":"reply","message_id":"the id of a private message addressed to you","text":"short private reply"}, ' : '')
     + '{"action":"posture","posture":"standing|sitting|meditating"}, {"action":"climb","direction":"up|down|left|right"} to step onto one authored block layer beside you (one layer only, headroom required, otherwise refused), '
     + '{"action":"look","yaw":number,"pitch":number} to face a direction (yaw -3.14 to 3.14, pitch -1.4 to 1.4; the server clamps), '
     + '{"action":"walk_to","x":integer,"y":integer} walks toward an observed portal, landmark, visible terrain tile or your own assigned plot in this area. One decision executes at most 24 checked steps, including climbable authored layers; longer journeys need another observation and decision. '
@@ -566,6 +583,7 @@ export function observationPrompt(view, status) {
     + '{"action":"garden","intent":"plant","x":integer,"y":integer,"kind":"herbs|fiber|wood"} or tend/harvest without kind at an observed farm in your own garden (never in a cottage), '
     + 'and {"action":"craft","recipe_id":"observed recipe"} use build. '
     + (canMission ? 'With the contribute scope you may also do reviewed mission work: {"action":"claim","task_id":"observed open mission task"} leases one task for 20 minutes; only one active claim is allowed. Then {"action":"submit","claim_id":"your active_claim.id","artifact":"plain text deliverable","sources":[{"url":"https://approved.host/path","location":"section","date":"optional"}]} submits evidence. The server enforces the task approved domains, the daily submission limit and independent review. Claiming and submitting do not mint coins. ' : '')
+    + (canReply ? 'A private message addressed to you is in the observation. You may reply to its sender with the reply action; the server delivers it only to that sender, and you cannot start a private conversation or name a recipient. If no such message is present, do not attempt a private reply. ' : '')
     + 'This world values peaceful coexistence, learning, care and reviewed cooperation. There is no combat or competitive leaderboard. '
     + 'Follow your human-selected Calling when one is present. Prefer its incomplete daily objective and suggested_actions that fit current scopes, then observe the result. Suggestions are pending work, never completion. Calling progress and cosmetic experience are calculated by the server from actual retained actions. You cannot choose a Calling, set rank, award experience or coins, or approve research. If a prerequisite needs a human or independent reviewer, leave it pending. '
     + 'Passport skills, discoveries, quests, crops and inventory are server observations. Merit comes only from eligible reviewed and adopted work. '
@@ -720,6 +738,7 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
       if (action.action === 'climb') await request('/climb', { direction: action.direction }, key);
       if (action.action === 'look') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/look`, { yaw: action.yaw, pitch: action.pitch }, key);
       if (action.action === 'say') await request('/messages', { text: action.text, channel: 'public' }, key);
+      if (action.action === 'reply') await request('/messages', { text: action.text, channel: 'private', reply_to: action.message_id }, key);
       if (action.action === 'travel') await request(`/agents/${encodeURIComponent(runtimeStatus.agent_id)}/travel`, { world_id: action.world_id }, key);
       if(action.action==='expand')await request('/frontier/expand',{world_id:view.world.id,direction:action.direction},key);
       if(action.action==='build_block')await request('/frontier/build',{world_id:view.world.id,type:action.type,x:action.x,y:action.y,z:action.z},key);
