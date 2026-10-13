@@ -6,6 +6,11 @@
   "problem": "The previous generator emitted one interchangeable template per (country × goal × stage): the baseline, intervention-comparison, delivery-route and recommendation instructions differed only by country name, so three of the four rows named no commodity, instrument or route and could not be answered as written.",
   "concern_model": "Every generated country proposal belongs to exactly one concern. The country baseline collects country context and dated statistics. The three applied concerns are the product/destination-specific question, the institution mapping and the intervention comparison. A proposal that would be answered by the same evidence as another is the same proposal and is consolidated instead of emitted twice.",
   "dedupe_rule": "Two candidate proposals are the same proposal when they share the same substantive key: <concern>|<theme-or-goal>|<country_code>. Baselines key on <country_code>|<goal> because a country baseline is answered by that country's own official statistics and is therefore distinct per country. Applied concerns key on <concern>|<theme>|<country_code>, so two goals that resolve to the same theme and concern for one country produce one row plus a recorded consolidation. The generator never emits the retired interchangeable stage ids (<iso2>-<goal>-evidence, -partners, -proposal): an applied concern is emitted only for a theme the catalog has scoped, and only where the theme's registered subject evidence exists for that country. A goal with no scoped theme keeps its baseline only; its applied concerns are recorded as open scope choices on that baseline.",
+  "evidence_gates": {
+    "agriculture-series": "The theme applies only where the country has a retained World Bank agriculture series (catalog/agriculture-statistics.json). Countries without it keep the goal baseline and record the collection gap.",
+    "ldc-status": "The theme applies only where the country is flagged as an LDC in the UN M49 catalog (catalog/countries.json). The flag is a snapshot retrieved 2026-10-11; the proposal itself requires current LDC status and graduation to be verified before any eligibility or preference statement.",
+    "none": "The theme requires no country-specific registered subject evidence and applies to every country."
+  },
   "concerns": [
     {
       "id": "baseline",
@@ -155,7 +160,7 @@
       "goals": [17],
       "subject": "bilateral, regional or multilateral cooperation or trade-preference instrument available to {country}",
       "subjectBasis": "{country}'s current LDC status and graduation timeline plus the official publisher of each instrument, its eligibility conditions, rules of origin and programme period",
-      "evidenceGate": "none",
+      "evidenceGate": "ldc-status",
       "openScopeChoices": [
         "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
         "The eligible product or service and its rules of origin, where a trade preference is claimed.",

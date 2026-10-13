@@ -58,7 +58,14 @@ const fill=(value,ctx)=>{let out=String(value);for(let pass=0;pass<2;pass++)out=
 const statisticalGoal=goal=>goal===2;
 const accessGoal=goal=>goal===7||goal===17;
 const agricultureRetained=country=>STATISTICS.countries.some(item=>item.country_code===country.iso2&&(item.series||[]).length>0);
-const themeApplies=(country,theme)=>theme.evidenceGate==='agriculture-series'?agricultureRetained(country):true;
+// A theme's applied concerns are emitted only where the theme's registered subject evidence exists
+// for that country: a retained agriculture series, or (for LDC cooperation instruments) a
+// catalog-recorded LDC status. A theme gated with `none` needs no country-specific evidence.
+const themeApplies=(country,theme)=>{
+  if(theme.evidenceGate==='agriculture-series')return agricultureRetained(country);
+  if(theme.evidenceGate==='ldc-status')return Boolean(country.ldc);
+  return true;
+};
 const themeForGoal=goal=>RESEARCH_THEMES.find(theme=>theme.goals.includes(goal));
 // The goal-specific guidance is retained from the previous generator so the modeled ILO qualifier,
 // the original-provider attribution and the dataset-update caveat are not lost.
