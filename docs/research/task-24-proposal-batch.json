@@ -1,0 +1,2728 @@
+{
+  "schema": "nemoworld.proposal-batch/1",
+  "generated_on": "2026-10-13",
+  "task": "Task 24 — repair the research proposal generator",
+  "themes": [
+    "agriculture-market-access",
+    "ldc-cooperation",
+    "agriculture_pilot_market_access"
+  ],
+  "selection": "Six Nepal–India tea pilot leads plus the SDG 2 (agriculture market access) and SDG 17 (LDC cooperation) country proposals for a fixed set of LDC seeds: 5 countries × 4 concerns for SDG 2 and 6 countries × 4 concerns for SDG 17.",
+  "status_policy": "Every listed proposal stays proposed. This batch activates nothing, selects no beneficiary and invents no external outcome. A proposal may only leave proposed once an actual owner, beneficiary and independent reviewer exist.",
+  "concern_model": "Every generated country proposal belongs to exactly one concern. The country baseline collects country context and dated statistics. The three applied concerns are the product/destination-specific question, the institution mapping and the intervention comparison. A proposal that would be answered by the same evidence as another is the same proposal and is consolidated instead of emitted twice.",
+  "dedupe_rule": "Two candidate proposals are the same proposal when they share the same substantive key: <concern>|<theme-or-goal>|<country_code>. Baselines key on <country_code>|<goal> because a country baseline is answered by that country's own official statistics and is therefore distinct per country. Applied concerns key on <concern>|<theme>|<country_code>, so two goals that resolve to the same theme and concern for one country produce one row plus a recorded consolidation. The generator never emits the retired interchangeable stage ids (<iso2>-<goal>-evidence, -partners, -proposal): an applied concern is emitted only for a theme the catalog has scoped, and only where the theme's registered subject evidence exists for that country. A goal with no scoped theme keeps its baseline only; its applied concerns are recorded as open scope choices on that baseline.",
+  "distinctness": "Each entry carries its substantive key with distinct_in_corpus=true: no other proposal in the seeded corpus is answered by the same evidence. The retired interchangeable stage templates (evidence, partners, proposal) are absent from the corpus.",
+  "classification_counts": {
+    "ready_for_human_scoping": 7,
+    "useful_proposal": 42,
+    "missing_evidence": 1
+  },
+  "reviewed": 50,
+  "proposals": [
+    {
+      "id": "pilot-tea-1",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "agriculture",
+      "title": "Reconcile the current Indian tea import directive",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://www.fssai.gov.in/business/import",
+        "https://teaboard.gov.in/pdf/Directive_10_02_2026_pdf7812.pdf",
+        "https://www.teaboard.gov.in/pdf/Corrigendum_02_04_2026_pdf8681.pdf",
+        "https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf"
+      ],
+      "concern": "agriculture-pilot",
+      "concern_kind": "pilot-deliverable",
+      "theme": "agriculture_pilot_market_access",
+      "question": "Which operative clauses of Directive 02/2026 apply to Nepal-origin bulk tea sold in India?",
+      "open_scope_choices": [
+        "The producer, commodity lot and destination are project-specific and are not selected here."
+      ],
+      "prerequisites": [
+        "The reviewed Directive 02/2026 edition and its corrigendum remain the operative, checksum-matched record."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "Readable archived June directive with checksum and page references",
+        "Clause comparison with superseded rules",
+        "Open questions about domestic sale versus re-export, samples, fees, failures and port responsibility"
+      ],
+      "acceptance": [
+        "Latest official directive visually read",
+        "No February rule described as current without confirmation",
+        "Effective date and amendment chain recorded",
+        "Unclear or unreadable clauses stay unresolved"
+      ],
+      "primary_source_categories": [
+        "Official regulator directive and corrigendum",
+        "Official national food-safety authority",
+        "Registered national or World Bank trade statistics"
+      ],
+      "rights": "Paraphrase with attribution; inspect each source reuse terms. No full protected text, table or logo is reproduced. No outreach is authorised.",
+      "classification": "ready_for_human_scoping",
+      "substantive_key": "pilot|pilot-tea-1",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "pilot-tea-2",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "agriculture",
+      "title": "Build a comparable Nepal–India tea trade baseline",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://www.teacoffee.gov.np/en/postby/tea-coffee-souvenir",
+        "https://www.fao.org/statistics/en/",
+        "https://marketanalysis.intracen.org/en"
+      ],
+      "concern": "agriculture-pilot",
+      "concern_kind": "pilot-deliverable",
+      "theme": "agriculture_pilot_market_access",
+      "question": "How have export quantity and unit value changed over the latest five available complete years?",
+      "open_scope_choices": [
+        "The producer, commodity lot and destination are project-specific and are not selected here."
+      ],
+      "prerequisites": [
+        "The reviewed Directive 02/2026 edition and its corrigendum remain the operative, checksum-matched record."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "CSV of Nepal exports and India mirror imports for relevant tea categories",
+        "Data dictionary with reporting country, HS edition, currency, kg/tonnes and calendar/fiscal-year basis",
+        "Discrepancy note and reproducible unit-value calculations"
+      ],
+      "acceptance": [
+        "Export direction verified",
+        "No fiscal/calendar year blending",
+        "Missing data explicitly marked",
+        "Unit value labeled a statistical ratio rather than a buyer offer"
+      ],
+      "primary_source_categories": [
+        "Official regulator directive and corrigendum",
+        "Official national food-safety authority",
+        "Registered national or World Bank trade statistics"
+      ],
+      "rights": "Paraphrase with attribution; inspect each source reuse terms. No full protected text, table or logo is reproduced. No outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "pilot|pilot-tea-2",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "pilot-tea-3",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "agriculture",
+      "title": "Verify the product and origin treatment",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://www.tepc.gov.np/pages/treaty-of-trade-india",
+        "https://marketanalysis.intracen.org/en"
+      ],
+      "concern": "agriculture-pilot",
+      "concern_kind": "pilot-deliverable",
+      "theme": "agriculture_pilot_market_access",
+      "question": "What HS subheading and origin evidence apply to the chosen Nepal tea lot?",
+      "open_scope_choices": [
+        "The producer, commodity lot and destination are project-specific and are not selected here."
+      ],
+      "prerequisites": [
+        "The reviewed Directive 02/2026 edition and its corrigendum remain the operative, checksum-matched record."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "Lot specification covering fermented status, packaging size, producer and processing",
+        "Current official customs classification and preference evidence",
+        "Certificate-of-origin issuer, required documents and unresolved questions"
+      ],
+      "acceptance": [
+        "Actual product attributes drive classification",
+        "Preferential tariff claim backed by current notification",
+        "Treaty conditions and customs requirements reconciled",
+        "No duty-free assumption based solely on historical treaty webpage"
+      ],
+      "primary_source_categories": [
+        "Official regulator directive and corrigendum",
+        "Official national food-safety authority",
+        "Registered national or World Bank trade statistics"
+      ],
+      "rights": "Paraphrase with attribution; inspect each source reuse terms. No full protected text, table or logo is reproduced. No outreach is authorised.",
+      "classification": "ready_for_human_scoping",
+      "substantive_key": "pilot|pilot-tea-3",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "pilot-tea-4",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "agriculture",
+      "title": "Map a border and laboratory clearance route",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://www.teacoffee.gov.np/en/postby/tea-coffee-souvenir",
+        "https://www.fssai.gov.in/business/import",
+        "https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf",
+        "https://teaboard.gov.in/pdf/FSSAI_notified_laboratories_as_on_09_07_2026_pdf9057.pdf"
+      ],
+      "concern": "agriculture-pilot",
+      "concern_kind": "pilot-deliverable",
+      "theme": "agriculture_pilot_market_access",
+      "question": "Which authorized crossing and approved testing workflow fit a specified Nepal producer and Indian importer?",
+      "open_scope_choices": [
+        "The producer, commodity lot and destination are project-specific and are not selected here."
+      ],
+      "prerequisites": [
+        "The reviewed Directive 02/2026 edition and its corrigendum remain the operative, checksum-matched record."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "Role map for exporter, importer, broker, Customs, FSSAI and Tea Board",
+        "Document checklist and source references",
+        "Candidate border/warehouse/laboratory route with current authorization evidence"
+      ],
+      "acceptance": [
+        "Crossing verified for food and tea entry",
+        "Laboratory validity and scope checked as of shipment date",
+        "Both Tea Board and FSSAI processes addressed",
+        "No invented queue times or clearance promise"
+      ],
+      "primary_source_categories": [
+        "Official regulator directive and corrigendum",
+        "Official national food-safety authority",
+        "Registered national or World Bank trade statistics"
+      ],
+      "rights": "Paraphrase with attribution; inspect each source reuse terms. No full protected text, table or logo is reproduced. No outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "pilot|pilot-tea-4",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "pilot-tea-5",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "agriculture",
+      "title": "Identify and verify potential Indian tea buyers",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf",
+        "https://marketanalysis.intracen.org/en",
+        "https://teaboard.gov.in/pdf/Notice_pdf6904.pdf"
+      ],
+      "concern": "agriculture-pilot",
+      "concern_kind": "pilot-deliverable",
+      "theme": "agriculture_pilot_market_access",
+      "question": "Which publicly registered tea importers have a relevant business role and usable contact route?",
+      "open_scope_choices": [
+        "The producer, commodity lot and destination are project-specific and are not selected here."
+      ],
+      "prerequisites": [
+        "The reviewed Directive 02/2026 edition and its corrigendum remain the operative, checksum-matched record."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "Up to five candidate companies from official registers or official trade directories",
+        "Legal identity, licence evidence, published contact route, date and product relevance",
+        "Draft questions on grade, packaging, volume and sample evaluation"
+      ],
+      "acceptance": [
+        "Named companies backed by official records",
+        "Candidate status distinct from confirmed purchasing interest",
+        "No scraped personal contacts or guessed email addresses",
+        "Outreach remains a draft until user authorization",
+        "Distinguish buyer registration from importer authority and current product fit",
+        "A pending notice is neither positive directory evidence nor a final finding",
+        "check current status independently"
+      ],
+      "primary_source_categories": [
+        "Official regulator directive and corrigendum",
+        "Official national food-safety authority",
+        "Registered national or World Bank trade statistics"
+      ],
+      "rights": "Paraphrase with attribution; inspect each source reuse terms. No full protected text, table or logo is reproduced. No outreach is authorised.",
+      "classification": "missing_evidence",
+      "substantive_key": "pilot|pilot-tea-5",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "pilot-tea-6",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "agriculture",
+      "title": "Prepare a municipality and national agency decision brief",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://www.teacoffee.gov.np/en/postby/tea-coffee-souvenir",
+        "https://www.tepc.gov.np/tepc_pub/NepalNationalExportStrategyTea.pdf",
+        "https://www.tepc.gov.np/pages/treaty-of-trade-india",
+        "https://www.fssai.gov.in/business/import",
+        "https://www.teaboard.gov.in/pdf/Directive%2002_2026.pdf",
+        "https://teaboard.gov.in/pdf/FSSAI_notified_laboratories_as_on_09_07_2026_pdf9057.pdf"
+      ],
+      "concern": "agriculture-pilot",
+      "concern_kind": "pilot-deliverable",
+      "theme": "agriculture_pilot_market_access",
+      "question": "Which evidence-based support action would reduce a verified export bottleneck for a selected producer group?",
+      "open_scope_choices": [
+        "The producer, commodity lot and destination are project-specific and are not selected here."
+      ],
+      "prerequisites": [
+        "The reviewed Directive 02/2026 edition and its corrigendum remain the operative, checksum-matched record."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "Two-page recipient-specific draft using the five preceding outputs",
+        "Options matrix for shared testing preparation, traceability and exporter guidance",
+        "Shipment cost scenario with quantity, costs, currency, FX date, rejection/holding sensitivities and evidence gaps"
+      ],
+      "acceptance": [
+        "Responsible institution and requested decision explicit",
+        "Market and regulatory claims cite current primary evidence",
+        "Costs separated into quoted, official, estimated and unknown",
+        "No promised export growth, funding, adoption or government response"
+      ],
+      "primary_source_categories": [
+        "Official regulator directive and corrigendum",
+        "Official national food-safety authority",
+        "Registered national or World Bank trade statistics"
+      ],
+      "rights": "Paraphrase with attribution; inspect each source reuse terms. No full protected text, table or logo is reproduced. No outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "pilot|pilot-tea-6",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "BD-2-baseline",
+      "country": "Bangladesh",
+      "country_code": "BD",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "baseline",
+      "title": "Bangladesh: Establish the country baseline · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/BGD/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/BGD/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/BGD/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "agriculture-market-access",
+      "question": "What is a source-dated country baseline for Bangladesh on SDG 2 (Zero Hunger), and which official national bodies publish Bangladesh's evidence on this goal?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Bangladesh's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Bangladesh's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "ready_for_human_scoping",
+      "substantive_key": "baseline|BD|2",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "BD-2-destination",
+      "country": "Bangladesh",
+      "country_code": "BD",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "destination",
+      "title": "Bangladesh: Scope the product, value chain and destination · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/BGD/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/BGD/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/BGD/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "agriculture-market-access",
+      "question": "For Bangladesh, which agricultural commodity and value chain produced in Bangladesh will the research cover, and what destination and route does the selected product or service take, with the choice named from Bangladesh's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Bangladesh's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Bangladesh; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|agriculture-market-access|BD",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "BD-2-institutions",
+      "country": "Bangladesh",
+      "country_code": "BD",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "institutions",
+      "title": "Bangladesh: Map the responsible institutions and public access routes · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/BGD/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/BGD/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/BGD/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "agriculture-market-access",
+      "question": "For Bangladesh, which official institutions hold a current remit over eligibility, inspection and market access for the selected agricultural commodity and value chain produced in Bangladesh, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Bangladesh's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|agriculture-market-access|BD",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "BD-2-interventions",
+      "country": "Bangladesh",
+      "country_code": "BD",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "interventions",
+      "title": "Bangladesh: Compare practical interventions · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/BGD/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/BGD/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/BGD/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "agriculture-market-access",
+      "question": "For Bangladesh, which named interventions for the selected agricultural commodity and value chain produced in Bangladesh have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Bangladesh's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|agriculture-market-access|BD",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ET-2-baseline",
+      "country": "Ethiopia",
+      "country_code": "ET",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "baseline",
+      "title": "Ethiopia: Establish the country baseline · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/ETH/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/ETH/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/ETH/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "agriculture-market-access",
+      "question": "What is a source-dated country baseline for Ethiopia on SDG 2 (Zero Hunger), and which official national bodies publish Ethiopia's evidence on this goal?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Ethiopia's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Ethiopia's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "ready_for_human_scoping",
+      "substantive_key": "baseline|ET|2",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ET-2-destination",
+      "country": "Ethiopia",
+      "country_code": "ET",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "destination",
+      "title": "Ethiopia: Scope the product, value chain and destination · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/ETH/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/ETH/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/ETH/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "agriculture-market-access",
+      "question": "For Ethiopia, which agricultural commodity and value chain produced in Ethiopia will the research cover, and what destination and route does the selected product or service take, with the choice named from Ethiopia's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Ethiopia's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Ethiopia; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|agriculture-market-access|ET",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ET-2-institutions",
+      "country": "Ethiopia",
+      "country_code": "ET",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "institutions",
+      "title": "Ethiopia: Map the responsible institutions and public access routes · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/ETH/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/ETH/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/ETH/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "agriculture-market-access",
+      "question": "For Ethiopia, which official institutions hold a current remit over eligibility, inspection and market access for the selected agricultural commodity and value chain produced in Ethiopia, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Ethiopia's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|agriculture-market-access|ET",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ET-2-interventions",
+      "country": "Ethiopia",
+      "country_code": "ET",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "interventions",
+      "title": "Ethiopia: Compare practical interventions · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/ETH/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/ETH/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/ETH/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "agriculture-market-access",
+      "question": "For Ethiopia, which named interventions for the selected agricultural commodity and value chain produced in Ethiopia have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Ethiopia's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|agriculture-market-access|ET",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MW-2-baseline",
+      "country": "Malawi",
+      "country_code": "MW",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "baseline",
+      "title": "Malawi: Establish the country baseline · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/MWI/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/MWI/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/MWI/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "agriculture-market-access",
+      "question": "What is a source-dated country baseline for Malawi on SDG 2 (Zero Hunger), and which official national bodies publish Malawi's evidence on this goal?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Malawi's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Malawi's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "ready_for_human_scoping",
+      "substantive_key": "baseline|MW|2",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MW-2-destination",
+      "country": "Malawi",
+      "country_code": "MW",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "destination",
+      "title": "Malawi: Scope the product, value chain and destination · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/MWI/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/MWI/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/MWI/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "agriculture-market-access",
+      "question": "For Malawi, which agricultural commodity and value chain produced in Malawi will the research cover, and what destination and route does the selected product or service take, with the choice named from Malawi's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Malawi's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Malawi; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|agriculture-market-access|MW",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MW-2-institutions",
+      "country": "Malawi",
+      "country_code": "MW",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "institutions",
+      "title": "Malawi: Map the responsible institutions and public access routes · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/MWI/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/MWI/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/MWI/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "agriculture-market-access",
+      "question": "For Malawi, which official institutions hold a current remit over eligibility, inspection and market access for the selected agricultural commodity and value chain produced in Malawi, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Malawi's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|agriculture-market-access|MW",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MW-2-interventions",
+      "country": "Malawi",
+      "country_code": "MW",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "interventions",
+      "title": "Malawi: Compare practical interventions · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/MWI/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/MWI/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/MWI/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "agriculture-market-access",
+      "question": "For Malawi, which named interventions for the selected agricultural commodity and value chain produced in Malawi have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Malawi's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|agriculture-market-access|MW",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "UG-2-baseline",
+      "country": "Uganda",
+      "country_code": "UG",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "baseline",
+      "title": "Uganda: Establish the country baseline · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/UGA/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/UGA/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/UGA/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "agriculture-market-access",
+      "question": "What is a source-dated country baseline for Uganda on SDG 2 (Zero Hunger), and which official national bodies publish Uganda's evidence on this goal?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Uganda's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Uganda's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "ready_for_human_scoping",
+      "substantive_key": "baseline|UG|2",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "UG-2-destination",
+      "country": "Uganda",
+      "country_code": "UG",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "destination",
+      "title": "Uganda: Scope the product, value chain and destination · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/UGA/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/UGA/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/UGA/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "agriculture-market-access",
+      "question": "For Uganda, which agricultural commodity and value chain produced in Uganda will the research cover, and what destination and route does the selected product or service take, with the choice named from Uganda's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Uganda's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Uganda; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|agriculture-market-access|UG",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "UG-2-institutions",
+      "country": "Uganda",
+      "country_code": "UG",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "institutions",
+      "title": "Uganda: Map the responsible institutions and public access routes · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/UGA/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/UGA/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/UGA/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "agriculture-market-access",
+      "question": "For Uganda, which official institutions hold a current remit over eligibility, inspection and market access for the selected agricultural commodity and value chain produced in Uganda, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Uganda's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|agriculture-market-access|UG",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "UG-2-interventions",
+      "country": "Uganda",
+      "country_code": "UG",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "interventions",
+      "title": "Uganda: Compare practical interventions · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/UGA/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/UGA/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/UGA/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "agriculture-market-access",
+      "question": "For Uganda, which named interventions for the selected agricultural commodity and value chain produced in Uganda have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Uganda's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|agriculture-market-access|UG",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "KH-2-baseline",
+      "country": "Cambodia",
+      "country_code": "KH",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "baseline",
+      "title": "Cambodia: Establish the country baseline · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/KHM/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/KHM/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/KHM/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "agriculture-market-access",
+      "question": "What is a source-dated country baseline for Cambodia on SDG 2 (Zero Hunger), and which official national bodies publish Cambodia's evidence on this goal?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Cambodia's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Cambodia's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "ready_for_human_scoping",
+      "substantive_key": "baseline|KH|2",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "KH-2-destination",
+      "country": "Cambodia",
+      "country_code": "KH",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "destination",
+      "title": "Cambodia: Scope the product, value chain and destination · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/KHM/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/KHM/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/KHM/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "agriculture-market-access",
+      "question": "For Cambodia, which agricultural commodity and value chain produced in Cambodia will the research cover, and what destination and route does the selected product or service take, with the choice named from Cambodia's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Cambodia's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Cambodia; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|agriculture-market-access|KH",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "KH-2-institutions",
+      "country": "Cambodia",
+      "country_code": "KH",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "institutions",
+      "title": "Cambodia: Map the responsible institutions and public access routes · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/KHM/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/KHM/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/KHM/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "agriculture-market-access",
+      "question": "For Cambodia, which official institutions hold a current remit over eligibility, inspection and market access for the selected agricultural commodity and value chain produced in Cambodia, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Cambodia's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|agriculture-market-access|KH",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "KH-2-interventions",
+      "country": "Cambodia",
+      "country_code": "KH",
+      "goal": 2,
+      "goal_name": "Zero Hunger",
+      "stage": "interventions",
+      "title": "Cambodia: Compare practical interventions · SDG 2",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/KHM/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/KHM/indicator/SL.AGR.EMPL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+        "https://api.worldbank.org/v2/country/KHM/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "agriculture-market-access",
+      "question": "For Cambodia, which named interventions for the selected agricultural commodity and value chain produced in Cambodia have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from Cambodia's official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|agriculture-market-access|KH",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "NP-17-baseline",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "baseline",
+      "title": "Nepal: Establish the country baseline · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/NPL/indicator/IT.NET.USER.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "ldc-cooperation",
+      "question": "What is a source-dated country baseline for Nepal on SDG 17 (Partnerships for the Goals), and which official national bodies publish Nepal's evidence on this goal?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Nepal's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "useful_proposal",
+      "substantive_key": "baseline|NP|17",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "NP-17-destination",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "destination",
+      "title": "Nepal: Scope the product, value chain and destination · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "ldc-cooperation",
+      "question": "For Nepal, which bilateral, regional or multilateral cooperation or trade-preference instrument available to Nepal will the research cover, and what destination and route does the selected product or service take, with the choice named from Nepal's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Nepal; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|ldc-cooperation|NP",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "NP-17-institutions",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "institutions",
+      "title": "Nepal: Map the responsible institutions and public access routes · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "ldc-cooperation",
+      "question": "For Nepal, which official institutions hold a current remit over eligibility, inspection and market access for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Nepal, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|ldc-cooperation|NP",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "NP-17-interventions",
+      "country": "Nepal",
+      "country_code": "NP",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "interventions",
+      "title": "Nepal: Compare practical interventions · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "ldc-cooperation",
+      "question": "For Nepal, which named interventions for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Nepal have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|ldc-cooperation|NP",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ZM-17-baseline",
+      "country": "Zambia",
+      "country_code": "ZM",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "baseline",
+      "title": "Zambia: Establish the country baseline · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/ZMB/indicator/IT.NET.USER.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "ldc-cooperation",
+      "question": "What is a source-dated country baseline for Zambia on SDG 17 (Partnerships for the Goals), and which official national bodies publish Zambia's evidence on this goal?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Zambia's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "useful_proposal",
+      "substantive_key": "baseline|ZM|17",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ZM-17-destination",
+      "country": "Zambia",
+      "country_code": "ZM",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "destination",
+      "title": "Zambia: Scope the product, value chain and destination · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "ldc-cooperation",
+      "question": "For Zambia, which bilateral, regional or multilateral cooperation or trade-preference instrument available to Zambia will the research cover, and what destination and route does the selected product or service take, with the choice named from Zambia's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Zambia; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|ldc-cooperation|ZM",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ZM-17-institutions",
+      "country": "Zambia",
+      "country_code": "ZM",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "institutions",
+      "title": "Zambia: Map the responsible institutions and public access routes · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "ldc-cooperation",
+      "question": "For Zambia, which official institutions hold a current remit over eligibility, inspection and market access for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Zambia, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|ldc-cooperation|ZM",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ZM-17-interventions",
+      "country": "Zambia",
+      "country_code": "ZM",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "interventions",
+      "title": "Zambia: Compare practical interventions · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "ldc-cooperation",
+      "question": "For Zambia, which named interventions for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Zambia have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|ldc-cooperation|ZM",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MM-17-baseline",
+      "country": "Myanmar",
+      "country_code": "MM",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "baseline",
+      "title": "Myanmar: Establish the country baseline · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/MMR/indicator/IT.NET.USER.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "ldc-cooperation",
+      "question": "What is a source-dated country baseline for Myanmar on SDG 17 (Partnerships for the Goals), and which official national bodies publish Myanmar's evidence on this goal?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Myanmar's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "useful_proposal",
+      "substantive_key": "baseline|MM|17",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MM-17-destination",
+      "country": "Myanmar",
+      "country_code": "MM",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "destination",
+      "title": "Myanmar: Scope the product, value chain and destination · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "ldc-cooperation",
+      "question": "For Myanmar, which bilateral, regional or multilateral cooperation or trade-preference instrument available to Myanmar will the research cover, and what destination and route does the selected product or service take, with the choice named from Myanmar's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Myanmar; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|ldc-cooperation|MM",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MM-17-institutions",
+      "country": "Myanmar",
+      "country_code": "MM",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "institutions",
+      "title": "Myanmar: Map the responsible institutions and public access routes · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "ldc-cooperation",
+      "question": "For Myanmar, which official institutions hold a current remit over eligibility, inspection and market access for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Myanmar, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|ldc-cooperation|MM",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MM-17-interventions",
+      "country": "Myanmar",
+      "country_code": "MM",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "interventions",
+      "title": "Myanmar: Compare practical interventions · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "ldc-cooperation",
+      "question": "For Myanmar, which named interventions for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Myanmar have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|ldc-cooperation|MM",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "BD-17-baseline",
+      "country": "Bangladesh",
+      "country_code": "BD",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "baseline",
+      "title": "Bangladesh: Establish the country baseline · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/BGD/indicator/IT.NET.USER.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "ldc-cooperation",
+      "question": "What is a source-dated country baseline for Bangladesh on SDG 17 (Partnerships for the Goals), and which official national bodies publish Bangladesh's evidence on this goal?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Bangladesh's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "useful_proposal",
+      "substantive_key": "baseline|BD|17",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "BD-17-destination",
+      "country": "Bangladesh",
+      "country_code": "BD",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "destination",
+      "title": "Bangladesh: Scope the product, value chain and destination · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "ldc-cooperation",
+      "question": "For Bangladesh, which bilateral, regional or multilateral cooperation or trade-preference instrument available to Bangladesh will the research cover, and what destination and route does the selected product or service take, with the choice named from Bangladesh's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Bangladesh; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|ldc-cooperation|BD",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "BD-17-institutions",
+      "country": "Bangladesh",
+      "country_code": "BD",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "institutions",
+      "title": "Bangladesh: Map the responsible institutions and public access routes · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "ldc-cooperation",
+      "question": "For Bangladesh, which official institutions hold a current remit over eligibility, inspection and market access for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Bangladesh, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|ldc-cooperation|BD",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "BD-17-interventions",
+      "country": "Bangladesh",
+      "country_code": "BD",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "interventions",
+      "title": "Bangladesh: Compare practical interventions · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "ldc-cooperation",
+      "question": "For Bangladesh, which named interventions for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Bangladesh have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|ldc-cooperation|BD",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ET-17-baseline",
+      "country": "Ethiopia",
+      "country_code": "ET",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "baseline",
+      "title": "Ethiopia: Establish the country baseline · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/ETH/indicator/IT.NET.USER.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "ldc-cooperation",
+      "question": "What is a source-dated country baseline for Ethiopia on SDG 17 (Partnerships for the Goals), and which official national bodies publish Ethiopia's evidence on this goal?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Ethiopia's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "useful_proposal",
+      "substantive_key": "baseline|ET|17",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ET-17-destination",
+      "country": "Ethiopia",
+      "country_code": "ET",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "destination",
+      "title": "Ethiopia: Scope the product, value chain and destination · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "ldc-cooperation",
+      "question": "For Ethiopia, which bilateral, regional or multilateral cooperation or trade-preference instrument available to Ethiopia will the research cover, and what destination and route does the selected product or service take, with the choice named from Ethiopia's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Ethiopia; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|ldc-cooperation|ET",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ET-17-institutions",
+      "country": "Ethiopia",
+      "country_code": "ET",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "institutions",
+      "title": "Ethiopia: Map the responsible institutions and public access routes · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "ldc-cooperation",
+      "question": "For Ethiopia, which official institutions hold a current remit over eligibility, inspection and market access for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Ethiopia, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|ldc-cooperation|ET",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "ET-17-interventions",
+      "country": "Ethiopia",
+      "country_code": "ET",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "interventions",
+      "title": "Ethiopia: Compare practical interventions · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "ldc-cooperation",
+      "question": "For Ethiopia, which named interventions for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Ethiopia have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|ldc-cooperation|ET",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MW-17-baseline",
+      "country": "Malawi",
+      "country_code": "MW",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "baseline",
+      "title": "Malawi: Establish the country baseline · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://api.worldbank.org/v2/country/MWI/indicator/IT.NET.USER.ZS?format=json&date=2015:2026&per_page=12&source=2"
+      ],
+      "concern": "baseline",
+      "concern_kind": "country-baseline",
+      "theme": "ldc-cooperation",
+      "question": "What is a source-dated country baseline for Malawi on SDG 17 (Partnerships for the Goals), and which official national bodies publish Malawi's evidence on this goal?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of Malawi's official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "primary_source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted.",
+      "classification": "useful_proposal",
+      "substantive_key": "baseline|MW|17",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MW-17-destination",
+      "country": "Malawi",
+      "country_code": "MW",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "destination",
+      "title": "Malawi: Scope the product, value chain and destination · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "destination",
+      "concern_kind": "product-destination",
+      "theme": "ldc-cooperation",
+      "question": "For Malawi, which bilateral, regional or multilateral cooperation or trade-preference instrument available to Malawi will the research cover, and what destination and route does the selected product or service take, with the choice named from Malawi's official sources rather than assumed?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for Malawi; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "primary_source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied.",
+      "classification": "useful_proposal",
+      "substantive_key": "destination|ldc-cooperation|MW",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MW-17-institutions",
+      "country": "Malawi",
+      "country_code": "MW",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "institutions",
+      "title": "Malawi: Map the responsible institutions and public access routes · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "institutions",
+      "concern_kind": "institution-map",
+      "theme": "ldc-cooperation",
+      "question": "For Malawi, which official institutions hold a current remit over eligibility, inspection and market access for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Malawi, and which public access route can a researcher actually use?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "primary_source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced.",
+      "classification": "useful_proposal",
+      "substantive_key": "institutions|ldc-cooperation|MW",
+      "distinct_in_corpus": true
+    },
+    {
+      "id": "MW-17-interventions",
+      "country": "Malawi",
+      "country_code": "MW",
+      "goal": 17,
+      "goal_name": "Partnerships for the Goals",
+      "stage": "interventions",
+      "title": "Malawi: Compare practical interventions · SDG 17",
+      "current_status": "proposed",
+      "source_urls": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://unstats.un.org/unsd/methodology/m49/overview/",
+        "https://www.un.org/ldc5/doha-programme-of-action",
+        "https://www.un.org/ohrlls/",
+        "https://www.un.org/technologybank/en",
+        "https://unctad.org/about",
+        "https://open.intracen.org/"
+      ],
+      "concern": "interventions",
+      "concern_kind": "intervention-comparison",
+      "theme": "ldc-cooperation",
+      "question": "For Malawi, which named interventions for the selected bilateral, regional or multilateral cooperation or trade-preference instrument available to Malawi have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "open_scope_choices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "primary_source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised.",
+      "classification": "useful_proposal",
+      "substantive_key": "interventions|ldc-cooperation|MW",
+      "distinct_in_corpus": true
+    }
+  ]
+}
