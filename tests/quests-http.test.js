@@ -30,7 +30,7 @@ test('quest routes publish the next actual action, refuse client completions, an
  const req=await serve(t,f);
  const catalog=await req('/quests/catalog?limit=20');
  assert.equal(catalog.status,200);
- assert.equal(catalog.data.chains.length,1);assert.equal(catalog.data.chains[0].slug,'quiet-harvest');
+ assert.equal(catalog.data.chains.length,3);assert.ok(catalog.data.chains.some(chain=>chain.slug==='quiet-harvest'));
  assert.equal(catalog.data.policy.coins_awarded,0);
  assert.equal(JSON.stringify(catalog.data).includes('agent_id'),false,'the public catalogue must carry no resident identity');
  assert.equal((await req('/quests/catalog?limit=21')).status,400);
@@ -42,7 +42,7 @@ test('quest routes publish the next actual action, refuse client completions, an
  assert.equal((await req('/quests/manage',{token:f.credentials.alice.token,input:{chain_id:'harbour-path',action:'publish'}})).status,403);
  assert.equal((await req('/quests/manage',{token:f.credentials.reviewer.token,input:{chain_id:'harbour-path',action:'publish'}})).data.status,'published');
  assert.equal((await req('/quests/manage',{token:f.credentials.reviewer.token,input:{chain_id:'quiet-harvest',action:'archive'}})).status,403);
- assert.equal((await req('/quests/catalog')).data.chains.length,2);
+ assert.equal((await req('/quests/catalog')).data.chains.length,4);
  // Joining needs an owned active resident and the existing idempotency key.
  assert.equal((await req('/quests/join',{token:f.credentials.reviewer.token,input:{agent_id:alice.id,chain_id:'harbour-path'},key:'x'})).status,404);
  assert.equal((await req('/quests/join',{token:f.credentials.alice.token,input:{agent_id:alice.id,chain_id:'harbour-path'}})).status,400);

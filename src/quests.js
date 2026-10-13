@@ -80,6 +80,24 @@ export const SEED_QUESTS=Object.freeze([Object.freeze({
   Object.freeze({slug:'patient-tending',title:'Wait, tend, and gather',instructions:'Return while the crop is still growing and tend it once if you like, then harvest it after the server reports it ready. The growth time is checked on the server.',output_name:'Two gathered resources from a mature crop',source_kind:'crop_harvest',requires_review:false,target:1,prerequisite:'first-sowing'}),
   Object.freeze({slug:'keepsake',title:'Make one keepsake',instructions:'Take the resources you gathered to the workshop and craft a recipe you can afford. The ingredients are checked and debited in one transaction.',output_name:'A crafted keepsake made from your own harvest',source_kind:'craft',requires_review:false,target:1,prerequisite:'patient-tending'}),
  ]),
+}),Object.freeze({
+ slug:'shared-frontier-path',title:'The Shared Frontier Path',route:'world_building',practice:true,beneficiary:'',
+ summary:'A four-step practice of opening and marking a shared path: place a marker, lay a path stone, open the neighbouring area, and leave a light for the next traveller.',
+ narrative:'This chain is a practice of small, shared marks on the frontier. It claims nothing beyond NemoWorld and no benefit for anyone outside it. Begin beside your own stewarded ground: place one marker where the path begins. Then lay a level stone on that ground. Open the next area so the path can continue. Finally leave one small light — a lantern, a candle, a glow — where a later visitor might see it. Each step is a saved act the server records; no step can be claimed by saying it will be done. The whole path may take more than one visit, because the frontier keeps its own time and a resident can only place so much in one day.',
+ steps:Object.freeze([
+  Object.freeze({slug:'mark-the-pass',title:'Mark the pass',instructions:'Stand beside a tile in a stewarded plot you can build on and place one frontier block as a marker.',output_name:'A saved marker block on the frontier',source_kind:'frontier_place',requires_review:false,target:1,prerequisite:null}),
+  Object.freeze({slug:'level-the-way',title:'Level the way',instructions:'On the same plot place one ground path block where a walker could stand.',output_name:'A saved path block on the ground',source_kind:'path_place',requires_review:false,target:1,prerequisite:'mark-the-pass'}),
+  Object.freeze({slug:'widen-the-clearing',title:'Widen the clearing',instructions:'Walk to an unopened frontier passage next to the plot and open the neighbouring area.',output_name:'A saved area-expansion record',source_kind:'frontier_expand',requires_review:false,target:1,prerequisite:'level-the-way'}),
+  Object.freeze({slug:'leave-a-light',title:'Leave a light',instructions:'Place one allowed light object in your own garden or cottage as a practice keepsake for the path.',output_name:'A saved home light object',source_kind:'home_furnish',requires_review:false,target:1,prerequisite:'widen-the-clearing'}),
+ ]),
+}),Object.freeze({
+ slug:'commons-trail',title:'The Commons Trail',route:'evidence_research',practice:false,beneficiary:'A shared public map of verified sources',
+ summary:'Carry one scoped real question from a leased claim through submission to an independent human acceptance.',
+ narrative:'This is a real chain, not a practice one. It exists because some paths through the world need more than a saved block: they need a question, a source, and a different human reviewer who accepts the answer. The first step records the commitment — a leased claim on a real mission task. The second step waits for an independent acceptance of that work. No model, no contributor, and no chain author can mark the second step complete; only the saved review receipt from a different authorized operator can.',
+ steps:Object.freeze([
+  Object.freeze({slug:'claim-a-task',title:'Claim a scoped real task',instructions:'Claim an open real mission task that has an independent reviewer assigned.',output_name:'A leased claim on a real task',source_kind:'research_claim',requires_review:false,target:1,prerequisite:null}),
+  Object.freeze({slug:'submit-and-accept',title:'Wait for independent acceptance',instructions:'Submit sourced work and wait for a different, authorized operator to accept it.',output_name:'An accepted review receipt from another human',source_kind:'research_accepted',requires_review:true,target:1,prerequisite:'claim-a-task'}),
+ ]),
 })]);
 
 const day=platform=>new Date(platform.clock()).toISOString().slice(0,10);
@@ -254,8 +272,9 @@ export const questMethods={
  // The shipped practice chain is inserted once, exactly like the seeded practice missions: it is a
  // built-in authored chain with no author account and no authority over anything.
  initQuests(){
-  if(this.get("SELECT COUNT(*) AS n FROM quest_chains WHERE origin='built_in'").n)return;
-  this.transaction(()=>{for(const chain of SEED_QUESTS)insertChain(this,chain,{origin:'built_in',author:null,status:'published'});});
+  // Install each built-in chain exactly once, so adding a new chain to SEED_QUESTS seeds it into an
+  // existing world that already has other built-in chains. Identity is the slug; nothing else changes.
+  this.transaction(()=>{for(const chain of SEED_QUESTS){if(!this.get('SELECT id FROM quest_chains WHERE slug=?',chain.slug))insertChain(this,chain,{origin:'built_in',author:null,status:'published'});}});
  },
  questAuthor(actor,input){
   if(actor?.kind!=='session'||!['admin','reviewer'].includes(actor.account.role))fail(403,'Authoring a quest chain requires an authorized human reviewer account.');
