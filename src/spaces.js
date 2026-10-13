@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
-import { getWorldDefinition, walkable, sharedWorldIds, COLS, ROWS, frontierGates } from '../world.js';
+import { getWorldDefinition, walkable, sharedWorldIds, publicVenueIds, COLS, ROWS, frontierGates } from '../world.js';
 import { frontierMethods, FRONTIER_LIMITS } from './frontier.js';
 import { RESTORATION_PLACEMENT_STEP, RESTORATION_ROLES } from './community.js';
 import { contributionSource, contributionEligibility, cropAt } from './journey.js';
@@ -301,6 +301,15 @@ export const spaceMethods = {
         const definition = getWorldDefinition(id);
         this.run('INSERT OR IGNORE INTO worlds VALUES(?,?,?,NULL,?,?,?,?)', id, definition.name, definition.kind, 'public', definition.columns, definition.rows, date());
       }
+      // The authored public venues seed one world row each, idempotently. A venue is a place a
+      // resident reaches through its own doorway on the Commons (`world.js` `PUBLIC_VENUE_PLANS`); it
+      // owns no frontier sector, parcel, block or stewardship, so the fixed land registry is
+      // untouched. The rows are unowned and public, which is what makes the venue readable by any
+      // visitor and enterable by any resident standing at its doorway.
+      for (const id of publicVenueIds) {
+        const definition = getWorldDefinition(id);
+        this.run('INSERT OR IGNORE INTO worlds VALUES(?,?,?,NULL,?,?,?,?)', id, definition.name, definition.kind, 'public', definition.columns, definition.rows, date());
+      }
       this.seedFrontier();
       for (const agent of this.all("SELECT id,name FROM agents WHERE status!='deleted' AND NOT EXISTS(SELECT 1 FROM worlds WHERE id='house:'||agents.id)")) this.createHome(agent.id, agent.name);
     });
@@ -328,7 +337,12 @@ export const spaceMethods = {
     const agentId = actor?.agent?.id || '';
     const condition = "w.kind='home' AND a.status!='deleted' AND o.status='active' AND (w.visibility='public' OR a.operator_id=? OR a.id=?) AND (instr(lower(w.name),lower(?))>0 OR instr(lower(a.name),lower(?))>0)";
     const total = this.get(`SELECT COUNT(*) AS n FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition}`, owner, agentId, query, query).n;
-    const shared = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)+(SELECT COUNT(*) FROM npc_ambassadors WHERE world_id=w.id)) AS agent_count FROM worlds w LEFT JOIN agents a ON a.id=w.owner_agent_id WHERE w.owner_agent_id IS NULL AND w.kind NOT IN ('frontier','country') ORDER BY w.id`);
+    // The directory indexes the thirty authored shared worlds plus the gardens that are visible to
+    // this viewer. A frontier area and a country research venue are read through their own routes,
+    // and a public venue (kind 'venue') is read from the Commons map, its doorway interaction and the
+    // world read itself. None of the three families is one of the thirty shared worlds, so none of
+    // them may inflate `shared_count` or push a garden out of its page.
+    const shared = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)+(SELECT COUNT(*) FROM npc_ambassadors WHERE world_id=w.id)) AS agent_count FROM worlds w LEFT JOIN agents a ON a.id=w.owner_agent_id WHERE w.owner_agent_id IS NULL AND w.kind NOT IN ('frontier','country','venue') ORDER BY w.id`);
     const homes = this.all(`SELECT ${publicFields},((SELECT COUNT(*) FROM agents WHERE world_id=w.id AND status!='deleted')+(SELECT COUNT(*) FROM npc_mayors WHERE world_id=w.id)+(SELECT COUNT(*) FROM npc_ambassadors WHERE world_id=w.id)) AS agent_count FROM worlds w JOIN agents a ON a.id=w.owner_agent_id JOIN accounts o ON o.id=a.operator_id WHERE ${condition} ORDER BY w.name,w.id LIMIT ? OFFSET ?`, owner, agentId, query, query, limit, offset);
     return { worlds: [...shared, ...homes], total, offset, limit, has_more: offset + limit < total, shared_count: shared.length };
   },

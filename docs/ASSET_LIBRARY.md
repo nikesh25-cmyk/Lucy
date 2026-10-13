@@ -197,6 +197,33 @@ exactly what is missing:
 | `veg.hedge-row` | The 27 sealed furniture entries contain no hedge: a garden parcel has no low continuous green mass to enclose it. | A `content/furniture/hedge.json` entry, a content re-seal and a builder branch |
 | `ui.asset-library-glyph` | The vendored set has no library, catalogue or collection glyph. | Choosing an icon and reading its own licence first (Lucide ISC, or game-icons.net per contributor) |
 
+## Reuse by the five authored public places
+
+The five public places added by `task-deepseek-content-places` — The Workshop Annexe, The Round
+Amphitheatre, The Record Archive, The Observatory Annexe and The Seed Bank (`world.js`
+`PUBLIC_VENUE_PLANS`) — **reuse the family and add nothing to it**. No file under `assets/` or
+`content/` was added, replaced or re-sealed for them, and every scenery type they place is an existing
+produced entry, in the same amount of boxes and the same single-tile rule:
+
+| Place | Scenery types it places |
+| --- | --- |
+| The Workshop Annexe | `workbench`, `bench`, `table`, `trellis`, `display`, `flowers`, `lantern` |
+| The Round Amphitheatre | `bench`, `lantern`, `sculpture`, `flowers`, `shelter` |
+| The Record Archive | `bookshelf`, `table`, `bench`, `display`, `cushion`, `lantern` |
+| The Observatory Annexe | `telescope`, `display`, `sculpture`, `table`, `bench`, `cushion`, `flowers`, `lantern` |
+| The Seed Bank | `farm`, `display`, `trellis`, `table`, `bench`, `flowers`, `lantern` |
+
+Every one of those is a `content/furniture/*.json` definition: `LicenseRef-NemoWorld-Project-Authored`,
+notice file `content/THIRD_PARTY.md`, `commit: null`, and an **empty** asset list — no third-party art
+is reused and nothing needs attributing. `tests/world-places.test.js` asserts exactly that per type,
+and re-runs `node scripts/seal-content.mjs --check`, which still reports the same **89** definitions.
+
+The family's occupancy contract is what makes the reuse safe: a `mass` type keeps its own tile
+unwalkable in the server predicates and is drawn as an obstacle, a `flat` type stays a knee-height
+floor detail a resident walks among, and a `frame` type is a walk-through marker. No place introduces a
+colour either: each venue's ground tone is a renderer tint on the terrain base cube, exactly as the
+authored shared worlds set theirs.
+
 ## Unresolved rights
 
 The manifest's `unresolved_rights` array carries **15 entries** with a severity, the subject, the
