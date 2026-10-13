@@ -339,6 +339,44 @@ core.register_chatcommand('nemo_submit', {params='the deliverable text', descrip
   end)
   return true, 'Submitting.'
 end})
+
+-- Conversation over the same private message records the browser uses. The paired human's own
+-- credential selects the sender; a native client can only address a resident it can see, and the
+-- token never enters the world, a log or a prompt.
+core.register_chatcommand('nemo_chat', {params='', description='Read the recent messages you can see', func=function(name)
+  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  request('/native/messages', {player=name}, function(ok, data)
+    if not ok then core.log('action','NEMO_CHAT_ERROR '..tostring(data)); message(name, data); return end
+    local ids, lines = {}, {}
+    for _, item in ipairs(data.messages or {}) do
+      ids[#ids+1] = item.id
+      lines[#lines+1] = (item.channel == 'private' and '[private] ' or '') .. (item.author or '?') .. ': ' .. tostring(item.text)
+    end
+    core.log('action','NEMO_CHAT_RESULT ids='..table.concat(ids,','))
+    message(name, #lines > 0 and table.concat(lines, ' | ') or 'No recent messages.')
+  end)
+  return true, 'Reading messages.'
+end})
+core.register_chatcommand('nemo_say', {params='text', description='Say a public message in your world', func=function(name, text)
+  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  request('/native/say', {player=name, text=text}, function(ok, data)
+    if not ok then core.log('action','NEMO_SAY_ERROR '..tostring(data)); message(name, data); return end
+    core.log('action','NEMO_SAY_RESULT id='..data.message.id..' channel='..data.message.channel)
+    message(name, 'Sent.')
+  end)
+  return true, 'Sending.'
+end})
+core.register_chatcommand('nemo_tell', {params='RESIDENT_ID then the message', description='Privately message a resident you can see', func=function(name, args)
+  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  local to, text = args:match('^(%S+)%s+(.+)$')
+  if not to or not text then return false, 'Use /nemo_tell RESIDENT_ID then the message.' end
+  request('/native/say', {player=name, to=to, text=text}, function(ok, data)
+    if not ok then core.log('action','NEMO_TELL_ERROR '..tostring(data)); message(name, data); return end
+    core.log('action','NEMO_TELL_RESULT id='..data.message.id..' channel='..data.message.channel)
+    message(name, 'Sent privately.')
+  end)
+  return true, 'Sending.'
+end})
 core.register_globalstep(function(dt)
   motion_clock = motion_clock + dt
   sync_elapsed = sync_elapsed + dt

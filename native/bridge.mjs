@@ -193,6 +193,29 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
         const submission = await call('/submissions', pair.token, 'POST', {claim_id: input.claim_id, artifact: input.artifact.trim(), method: input.method.trim(), limitations: input.limitations.trim(), rights: input.rights.trim(), sources: input.sources}, key);
         return send(200, {submission: {id:submission.id, status:submission.status}});
       }
+      if (url.pathname === '/native/messages' && request.method === 'POST') {
+        // The paired human's own readable conversation, from the same `/world` records the browser
+        // reads. Private threads the human is not addressed in never appear here.
+        const {pair, agent} = await current(input.player);
+        const view = await call(`/world?world_id=${agent.world_id}&agent_id=${pair.agentId}`, pair.token);
+        const participants = (view.participants || []).filter(item => item.id && item.id !== pair.agentId).map(item => ({id:item.id, name:item.name}));
+        const messages = (view.messages || []).slice(-20).map(message => ({id:message.id, channel:message.channel, author:message.author, text:message.text, at:message.created_at, mine:message.agent_id === pair.agentId}));
+        return send(200, {world_id: agent.world_id, participants, messages});
+      }
+      if (url.pathname === '/native/say' && request.method === 'POST') {
+        const {pair, agent} = await current(input.player);
+        if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 500) throw Object.assign(new Error('Type a message under 500 characters.'), {status: 400});
+        const payload = {agent_id: pair.agentId, text: input.text.trim(), channel: 'public'};
+        if (input.to !== undefined) {
+          if (typeof input.to !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(input.to)) throw Object.assign(new Error('Choose a resident you can see.'), {status: 400});
+          // A native client may only address a resident it can see in its own current world.
+          const view = await call(`/world?world_id=${agent.world_id}&agent_id=${pair.agentId}`, pair.token);
+          if (!(view.participants || []).some(item => item.id === input.to && item.id !== pair.agentId)) throw Object.assign(new Error('That resident is not here.'), {status: 404});
+          payload.channel = 'private'; payload.recipient_id = input.to;
+        }
+        const result = await call('/messages', pair.token, 'POST', payload);
+        return send(200, {message: {id: result.id, channel: payload.channel}});
+      }
       if (url.pathname === '/native/action' && request.method === 'POST') {
         const {pair, agent} = await current(input.player);
         const worldId = agent.world_id;
