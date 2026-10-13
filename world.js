@@ -310,10 +310,199 @@ function makeDistrict(id) {
 // and no finite-perimeter registration is created for a country. Each venue holds one ambassador
 // stand on its own plaza, so two ambassadors never share a position.
 export const COUNTRY_VENUE_PLAZA = Object.freeze({ x: 12, y: 8, width: 16, height: 16 });
+export const COUNTRY_COLUMNS = 40;
+export const COUNTRY_ROWS = 28;
+
+// Eight reviewed venue shapes are assigned to eight catalog entries; every other entry keeps the
+// generic shape. The assignment is a frozen, authored lookup of iso3, so the server and the browser
+// agree by construction and two loads are identical: there is no hash, no clock and no database
+// read, and nothing silently re-shapes an entry that has not been reviewed. The eight variants are
+// **shared shapes**, not 248 unique venues: a variant is a fictional NemoWorld space inspired by a
+// documented ecological or cultural practice, never a representation of territory, a government or
+// a people.
+export const COUNTRY_VENUE_VARIANTS = Object.freeze(['generic', 'terraces', 'satoyama', 'andenes',
+  'chinampas', 'argan', 'kaya', 'fabod', 'reef']);
+export const COUNTRY_VENUE_ASSIGNMENT = Object.freeze({ NPL: 'terraces', JPN: 'satoyama', PER: 'andenes',
+  MEX: 'chinampas', MAR: 'argan', KEN: 'kaya', SWE: 'fabod', FJI: 'reef' });
+export function countryVenueVariant(iso3) { return COUNTRY_VENUE_ASSIGNMENT[iso3] ?? 'generic'; }
+
+const countryPlazaTile = (x, y) => x >= COUNTRY_VENUE_PLAZA.x && x < COUNTRY_VENUE_PLAZA.x + COUNTRY_VENUE_PLAZA.width
+  && y >= COUNTRY_VENUE_PLAZA.y && y < COUNTRY_VENUE_PLAZA.y + COUNTRY_VENUE_PLAZA.height;
+// The public approach every variant keeps: a road from the north edge down to the arrival, an
+// optional cross road, and the 16 × 16 plaza band painted last so a variant feature can never leave
+// a plaza tile unwalkable. `crossRoad: false` / `from: 24` leave one corridor, as the kaya shape wants.
+const countryApproach = (grid, { from = 2, crossRoad = true } = {}) => {
+  road(grid, { x: 20, y: from }, { x: 20, y: COUNTRY_ROWS - 1 });
+  if (crossRoad) road(grid, { x: 2, y: 24 }, { x: 37, y: 24 });
+  paintGrid(grid, COUNTRY_VENUE_PLAZA.x, COUNTRY_VENUE_PLAZA.y, COUNTRY_VENUE_PLAZA.width, COUNTRY_VENUE_PLAZA.height, 'plaza');
+};
+// Sealed scenery classes only, and never on a plaza tile or the arrival/exit approach: the band has
+// to hold one ambassador stand for any catalog position, and the arrival must stay walkable and clear.
+const countryScenery = (objects, type, x, y) => {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COUNTRY_COLUMNS || y < 0 || y >= COUNTRY_ROWS) return;
+  if (countryPlazaTile(x, y) || (x === 20 && y >= 24)) return;
+  objects.push({ type, x, y });
+};
+
+// A — terraces (Nepal-inspired). Stepped retaining edges with farm beds, a managed grove along the
+// west edge and a village water tank. The documented reference informs the stepped layout only.
+function venueTerraces() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  for (const y of [1, 4, 7]) paintGrid(grid, 2, y, 36, 1, 'path');
+  paintGrid(grid, 2, 2, 36, 2, 'farm');
+  paintGrid(grid, 2, 5, 36, 2, 'farm');
+  countryApproach(grid);
+  for (const [x, y] of [[1, 9], [2, 11], [3, 13], [1, 15], [2, 17], [3, 19], [1, 21], [2, 23], [1, 25], [3, 26]]) countryScenery(objects, 'tree', x, y);
+  countryScenery(objects, 'pond', 5, 10);
+  countryScenery(objects, 'shelter', 33, 10);
+  countryScenery(objects, 'bench', 34, 10);
+  return { terrain: grid, objects, groundColor: '#9fb39a', ambiance: 'Stepped terrace beds, a shared grove and a still water tank.',
+    landmarks: [{ x: 4, y: 13, name: 'The Shared Grove', description: 'A maintained shared grove and watering point beside the terrace bands. A fictional NemoWorld place.', symbol: '✦', color: '#c7d6b0' }] };
+}
+
+// B — satoyama (Japan-inspired). A managed mosaic of crop beds and walkable bunds with an irrigation
+// pond and a woodland edge. The reference shapes the mosaic pattern and the palette only.
+function venueSatoyama() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  for (let y = 1; y <= 7; y++) for (let x = 2; x <= 37; x++) grid[y][x] = x % 4 === 0 || y % 2 === 1 ? 'path' : 'farm';
+  paintGrid(grid, 29, 18, 1, 1, 'path');
+  paintGrid(grid, 31, 18, 1, 1, 'path');
+  countryApproach(grid);
+  for (const [x, y] of [[1, 3], [2, 6], [3, 9], [1, 12], [2, 15], [3, 18], [1, 21], [2, 23], [1, 26]]) countryScenery(objects, 'tree', x, y);
+  countryScenery(objects, 'pond', 30, 18);
+  countryScenery(objects, 'shelter', 24, 3);
+  countryScenery(objects, 'bench', 23, 3);
+  countryScenery(objects, 'lantern', 25, 3);
+  return { terrain: grid, objects, groundColor: '#a8bd93', ambiance: 'A working mosaic of crop beds, bunds and irrigation water.',
+    landmarks: [{ x: 12, y: 3, name: 'The Mosaic Fields', description: 'A bund beside the crop beds, where the mosaic fields meet. A fictional NemoWorld place.', symbol: '✿', color: '#d5e0b6' }] };
+}
+
+// C — andenes (Peru-inspired). Two stepped terrace flights, an open path ring around a water basin
+// and a tool-store shelter. Only the terrace geometry is borrowed in spirit.
+function venueAndenes() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 2, 1, 25, 1, 'path');
+  paintGrid(grid, 2, 2, 25, 2, 'farm');
+  paintGrid(grid, 2, 4, 25, 1, 'path');
+  paintGrid(grid, 2, 5, 25, 2, 'farm');
+  for (let y = 2; y <= 21; y++) {
+    grid[y][28] = 'path'; grid[y][29] = 'farm'; grid[y][30] = 'farm'; grid[y][31] = 'path';
+    grid[y][32] = 'farm'; grid[y][33] = 'farm'; grid[y][34] = 'path'; grid[y][35] = 'farm';
+    grid[y][36] = 'farm'; grid[y][37] = 'path';
+  }
+  paintGrid(grid, 28, 0, 10, 2, 'path');
+  for (const [x, y] of [[10, 15], [10, 17], [9, 16], [11, 16], [9, 15], [11, 15], [9, 17], [11, 17]]) paintGrid(grid, x, y, 1, 1, 'path');
+  countryApproach(grid);
+  countryScenery(objects, 'pond', 10, 16);
+  countryScenery(objects, 'shelter', 5, 20);
+  countryScenery(objects, 'bench', 6, 20);
+  return { terrain: grid, objects, groundColor: '#a89c81', ambiance: 'Stone-faced terrace flights and a still rainfall basin.',
+    landmarks: [{ x: 32, y: 0, name: 'The Terrace Flight', description: 'A path platform at the top of the terrace flight. A fictional NemoWorld place.', symbol: '▲', color: '#d8caa4' }] };
+}
+
+// D — chinampas (Mexico-inspired). Raised-field strips cut by water channels, crossed by bridges,
+// with a boardwalk landing and a moored boat. The reference gives the strip-and-channel rhythm only.
+function venueChinampas() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 28, 0, 12, COUNTRY_ROWS, 'farm');
+  paintGrid(grid, 30, 1, 1, 22, 'water');
+  paintGrid(grid, 35, 1, 1, 22, 'water');
+  paintGrid(grid, 28, 13, 12, 1, 'water');
+  paintGrid(grid, 32, 13, 1, 1, 'bridge');
+  paintGrid(grid, 37, 13, 1, 1, 'bridge');
+  paintGrid(grid, 28, 21, 4, 1, 'path');
+  countryApproach(grid);
+  for (const [x, y] of [[29, 4], [31, 3], [34, 6], [37, 4], [38, 8], [29, 17], [33, 17], [37, 18], [31, 10], [34, 10]]) countryScenery(objects, 'tree', x, y);
+  countryScenery(objects, 'boat', 31, 20);
+  return { terrain: grid, objects, groundColor: '#8fb0a4', ambiance: 'Low farmed strips divided by still channels and a plank landing.',
+    landmarks: [{ x: 29, y: 21, name: 'The Channel Landing', description: 'A boardwalk above the channel, not on a farmed strip. A fictional NemoWorld place.', symbol: '≈', color: '#bcd6cb' }] };
+}
+
+// E — argan (Morocco-inspired). A dry, sparse map of drought-tree masses with a cactus margin, one
+// stepped terrace and a cistern, beside a rest shelter. The reference sets the arid palette only.
+function venueArgan() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 2, 1, 36, 1, 'path');
+  paintGrid(grid, 2, 2, 36, 2, 'farm');
+  paintGrid(grid, 2, 4, 36, 1, 'path');
+  countryApproach(grid);
+  for (let y = 3; y <= 27; y += 4) for (let x = 3; x <= 39; x += 6) countryScenery(objects, 'fruit', x, y);
+  for (const x of [3, 6, 9, 30, 33, 36]) countryScenery(objects, 'cactus', x, 27);
+  countryScenery(objects, 'pond', 5, 22);
+  countryScenery(objects, 'shelter', 33, 6);
+  countryScenery(objects, 'bench', 34, 6);
+  countryScenery(objects, 'lantern', 35, 6);
+  return { terrain: grid, objects, groundColor: '#c9bb92', ambiance: 'Sparse drought trees, a stone terrace and a covered cistern.',
+    landmarks: [{ x: 33, y: 5, name: 'The Assembly Shelter', description: 'A rest place beside the terrace and cistern, not a depiction of any committee or community. A fictional NemoWorld place.', symbol: '⌂', color: '#e0d2a8' }] };
+}
+
+// F — kaya (Kenya-inspired). A deliberately plain protected grove around one cleared meeting area,
+// entered by a single south corridor. It depicts only trees, a clearing, a plain path and a shelter;
+// it names no practice, offering, shrine or site.
+function venueKaya() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 10, 6, 20, 20, 'garden');
+  countryApproach(grid, { from: 24, crossRoad: false });
+  for (let x = 9; x <= 30; x++) { countryScenery(objects, 'tree', x, 5); countryScenery(objects, 'tree', x, 26); }
+  for (let y = 5; y <= 26; y++) { countryScenery(objects, 'tree', 9, y); countryScenery(objects, 'tree', 30, y); }
+  for (const [x, y] of [[11, 9], [11, 22], [28, 9], [28, 22]]) countryScenery(objects, 'bench', x, y);
+  countryScenery(objects, 'shelter', 20, 7);
+  return { terrain: grid, objects, groundColor: '#8ba884', ambiance: 'A quiet clearing inside a dense, protected grove.',
+    landmarks: [{ x: 20, y: 6, name: 'The Meeting Clearing', description: 'An open clearing for quiet meeting, kept plain and unnamed. A fictional NemoWorld place.', symbol: '✧', color: '#c4d6b4' }] };
+}
+
+// G — fabod (Sweden-inspired). An open pasture with a wide, unobstructed through-route — the design
+// figure for a maintained shared route — plus a summer hut, a watering pond and edge planting.
+function venueFabod() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  for (let y = 2; y <= 26; y += 4) for (let x = 3; x <= 37; x += 5) for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+    const px = x + dx, py = y + dy;
+    if (!countryPlazaTile(px, py) && grid[py]?.[px] === 'meadow') grid[py][px] = 'farm';
+  }
+  paintGrid(grid, 19, 0, 2, COUNTRY_ROWS, 'path');
+  countryApproach(grid);
+  countryScenery(objects, 'shelter', 30, 8);
+  countryScenery(objects, 'bench', 31, 8);
+  countryScenery(objects, 'pond', 8, 12);
+  for (const [x, y] of [[3, 2], [36, 2], [3, 26], [36, 26]]) countryScenery(objects, 'flowers', x, y);
+  for (const [x, y] of [[4, 2], [35, 2]]) countryScenery(objects, 'trellis', x, y);
+  return { terrain: grid, objects, groundColor: '#b3c69b', ambiance: 'Open pasture crossed by a wide, unobstructed public route.',
+    landmarks: [{ x: 22, y: 4, name: 'The Summer Pasture', description: 'An open pasture tile beside the through-route. A fictional NemoWorld place.', symbol: '✿', color: '#d3e0b8' }] };
+}
+
+// H — reef (Fiji-inspired). A lagoon with a boardwalk, a bridge landing, moored boats and a plain
+// original marker post on land. The reference gives the shore, landing and boat elements only.
+function venueReef() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 29, 0, 11, COUNTRY_ROWS, 'water');
+  paintGrid(grid, 24, 20, 16, 1, 'path');
+  paintGrid(grid, 28, 20, 2, 1, 'bridge');
+  countryApproach(grid);
+  for (const [x, y] of [[33, 21], [37, 21]]) countryScenery(objects, 'boat', x, y);
+  for (const [x, y] of [[28, 4], [28, 8], [28, 12], [28, 16], [28, 23], [28, 26], [25, 5], [26, 5]]) countryScenery(objects, 'palm', x, y);
+  countryScenery(objects, 'pond', 9, 14);
+  countryScenery(objects, 'sculpture', 8, 20);
+  return { terrain: grid, objects, groundColor: '#8fb3ad', ambiance: 'A shore landing above blue-green lagoon water.',
+    landmarks: [{ x: 33, y: 20, name: 'The Landing', description: 'A boardwalk landing above the waterline, marked by a plain original post. A fictional NemoWorld place.', symbol: '≈', color: '#b6d6da' }] };
+}
+
+const COUNTRY_VENUE_BUILDERS = Object.freeze({ terraces: venueTerraces, satoyama: venueSatoyama, andenes: venueAndenes,
+  chinampas: venueChinampas, argan: venueArgan, kaya: venueKaya, fabod: venueFabod, reef: venueReef });
+
 function makeCountry(id, label) {
   const iso3 = id.slice('country:'.length);
+  const variant = countryVenueVariant(iso3);
+  const venueName = label || `Country venue ${iso3}`;
+  const description = `${venueName}: a NemoWorld research venue for one country or area. The ambassador here answers from registered country context only.`;
+  const builder = COUNTRY_VENUE_BUILDERS[variant];
+  if (builder) {
+    const shape = builder();
+    return { id, name: venueName, kind: 'country', variant, columns: COUNTRY_COLUMNS, rows: COUNTRY_ROWS,
+      start: { x: 20, y: 25 }, terrain: shape.terrain, objects: shape.objects, groundColor: shape.groundColor, ambiance: shape.ambiance,
+      description, landmarks: shape.landmarks, portals: [portal(20, 26, 'Return to the Commons', 'commons')] };
+  }
   const seed = [...iso3].reduce((value, character) => (Math.imul(value + character.charCodeAt(0), 31) >>> 0), 7);
-  const columns = 40, rows = 28, grid = makeGrid(columns, rows, 'meadow'), objects = [];
+  const columns = COUNTRY_COLUMNS, rows = COUNTRY_ROWS, grid = makeGrid(columns, rows, 'meadow'), objects = [];
   // Public passages and a plaza: the venue is walkable in one connected piece, with no water.
   road(grid, { x: 20, y: 2 }, { x: 20, y: 27 }); road(grid, { x: 2, y: 24 }, { x: 37, y: 24 });
   paintGrid(grid, COUNTRY_VENUE_PLAZA.x, COUNTRY_VENUE_PLAZA.y, COUNTRY_VENUE_PLAZA.width, COUNTRY_VENUE_PLAZA.height, 'plaza');
@@ -330,10 +519,9 @@ function makeCountry(id, label) {
     if ((x + y + seed) % 7 !== 0) continue;
     objects.push({ type: 'tree', x, y });
   }
-  const venueName = label || `Country venue ${iso3}`;
-  return { id, name: venueName, kind: 'country', columns, rows, start: { x: 20, y: 25 }, terrain: grid, objects,
+  return { id, name: venueName, kind: 'country', variant, columns, rows, start: { x: 20, y: 25 }, terrain: grid, objects,
     groundColor: ['#a4ba8c', '#adbf94', '#9fb183', '#b2c09a'][seed % 4],
-    description: `${venueName}: a NemoWorld research venue for one country or area. The ambassador here answers from registered country context only.`,
+    description,
     ambiance: ['Warm morning light over the plaza.', 'Quiet paths and a listening hall.', 'A calm garden and an open research desk.', 'Long shadows and a still courtyard.'][seed % 4],
     landmarks: [{ x: 20, y: 9, name: `${venueName} research desk`, description: 'Ask the country ambassador here for source-based next steps. Guidance is advisory.', symbol: '✦', color: '#e9d4a1' }],
     portals: [portal(20, 26, 'Return to the Commons', 'commons')] };
