@@ -1,6 +1,7 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { getWorldDefinition, walkable, sharedWorldIds, COLS, ROWS, frontierGates } from '../world.js';
-import { frontierMethods } from './frontier.js';
+import { frontierMethods, FRONTIER_LIMITS } from './frontier.js';
+import { RESTORATION_PLACEMENT_STEP, RESTORATION_ROLES } from './community.js';
 import { contributionSource, contributionEligibility, cropAt } from './journey.js';
 import { blockLayers, canStep, isGrounded, settle, surfaceAt } from './elevation.js';
 import { sceneryBlocks, solidSceneryAt } from './footprints.js';
@@ -625,5 +626,66 @@ export const spaceMethods = {
     };
     ledger.set(ledgerId, { fingerprint, at: this.clock(), value });
     return value;
+  },
+  /**
+   * One planned placement inside the garden a restoration was opened on.
+   *
+   * This is the event's only write into another operator's garden, and it is deliberately the
+   * narrowest one this world can state: the object is the plan's own type, the tile is the plan's own
+   * tile, the actor is a pledged participant whose calling answers the ground step, the resident must
+   * stand beside the tile, the restoration must be inside its open window, and the world's own rules
+   * — the sealed palette, the tile being clear, walkable and away from the arrival and the doorways,
+   * a resident never trapped without a route out, the 200-object garden cap and the 200 ms mutation
+   * interval frontier building already uses — all still apply. A second attempt at a filled tile is
+   * refused, so one planned tile is filled exactly once.
+   */
+  restorationPlace(actor, input = {}) {
+    this.active();
+    const agent = this.ownedAgent(actor, input.agent_id || actor.agent?.id);
+    const event = this.restorationEventRecord(input.event_id);
+    const step = RESTORATION_PLACEMENT_STEP, role = RESTORATION_ROLES[step.role];
+    if (agent.status !== 'active') fail(403, agent.status === 'revoked' ? `${agent.name}’s access is revoked.` : `Resume ${agent.name} before placing anything in the garden.`);
+    if (this.get('SELECT status FROM accounts WHERE id=?', agent.operator_id)?.status !== 'active') fail(403, 'This operator account is not active.');
+    if (!this.restorationParticipant(event.id, agent.id)) fail(403, 'Pledge to help with this restoration before placing anything in the garden.');
+    const calling = this.get('SELECT calling_id FROM resident_callings WHERE agent_id=?', agent.id)?.calling_id || 'explorer';
+    if (!role.callings.includes(calling)) fail(403, `This is the ${role.label} step: it is answered by ${role.callings.join(', ')}. Your resident follows ${calling}.`);
+    const phase = this.restorationPhase(event);
+    if (phase === 'completed') fail(409, 'This restoration is already complete. The finished garden is recorded and nothing more is placed.');
+    if (phase === 'cancelled') fail(409, 'This restoration was cancelled; the objects already placed stand as history.');
+    if (phase !== 'open') fail(409, `This restoration’s window is ${phase}. The objects already placed stand; nothing new is placed outside the window.`);
+    const site = this.restorationSite(event);
+    if (site.visibility !== 'public') fail(403, 'This garden is no longer open to visitors, so its restoration cannot be worked on.');
+    if (agent.world_id !== site.id) fail(409, `${agent.name} is in ${getWorldDefinition(agent.world_id).name}, not in ${site.name}. Walk the resident into the garden, then place again.`);
+    const mine = this.restorationProgress(event).steps.find((item) => item.id === step.id);
+    if (mine.complete) fail(409, 'The gathering ground is already laid; nothing is placed twice.');
+    const wanted = input.x === undefined && input.y === undefined
+      ? mine.next_slot
+      : mine.slots.find((slot) => slot.x === Number(input.x) && slot.y === Number(input.y));
+    if (!wanted) fail(409, 'That is not a tile this step plans. Choose a planned tile that is still waiting.');
+    if (wanted.filled) fail(409, `The ${wanted.type} planned for ${wanted.x}, ${wanted.y} already stands there. Each planned tile is filled once.`);
+    const away = Math.abs(agent.x - wanted.x) + Math.abs(agent.y - wanted.y);
+    if (away > INTERACTION_DISTANCE) fail(409, `${agent.name} is ${tiles(away)} from ${wanted.x}, ${wanted.y}. Step onto or beside the tile — within ${tiles(INTERACTION_DISTANCE)} — and place it again.`);
+    const latest = this.get("SELECT created_at FROM audit WHERE actor=? AND event='restoration.placed' ORDER BY seq DESC LIMIT 1", actor.account.id);
+    if (latest && this.clock() - Date.parse(latest.created_at) < FRONTIER_LIMITS.action_interval_ms) fail(429, 'Allow a moment between garden placements.');
+    const world = this.space(actor, site.id), definition = getWorldDefinition(world), position = { x: wanted.x, y: wanted.y };
+    if (this.get('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=?', world.id, position.x, position.y)) fail(409, `Another object stands at ${position.x}, ${position.y}. Choose a planned tile that is still waiting.`);
+    if (!walkable(position, definition)) fail(400, 'Choose a clear garden tile.');
+    if (Math.abs(position.x - definition.start.x) + Math.abs(position.y - definition.start.y) <= 1 || (definition.portals || []).some((portal) => Math.abs(portal.x - position.x) + Math.abs(portal.y - position.y) <= 1)) fail(409, 'Keep the arrival and the doorway clear.');
+    if (!(world.kind === 'house' ? housePalette : palette).includes(wanted.type)) fail(400, 'This restoration plans an object this place cannot hold.');
+    if (sceneryBlocks(wanted.type)) {
+      if (this.get("SELECT id FROM agents WHERE world_id=? AND x=? AND y=? AND status!='deleted'", world.id, position.x, position.y)) fail(409, 'A resident is standing on that tile. Ask them to step aside first.');
+      const placed = this.all('SELECT type,x,y FROM world_objects WHERE world_id=?', world.id);
+      if (trapsResident(this, world.id, definition, placed, [...placed, { type: wanted.type, x: position.x, y: position.y }])) fail(409, 'That placement would leave a resident with no walkable route to the entrance.');
+    }
+    if (this.get('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', world.id).n >= 200) fail(429, 'This garden holds 200 placed items.');
+    const id = randomUUID(), created = new Date(this.clock()).toISOString();
+    this.run('INSERT INTO world_objects(id,world_id,type,x,y,created_at) VALUES(?,?,?,?,?,?)', id, world.id, wanted.type, position.x, position.y, created);
+    this.audit(actor.account.id, 'restoration.placed', `${event.id}|${agent.id}|${position.x},${position.y}|${wanted.type}`);
+    const finish = this.restorationFinish(actor, this.get('SELECT * FROM community_events WHERE id=?', event.id));
+    return {
+      ...this.restorationEventView(this.get('SELECT * FROM community_events WHERE id=?', event.id), agent.id),
+      placed: { id, step_id: step.id, x: position.x, y: position.y, type: wanted.type, created_at: created },
+      completed: finish.completed, assembled: finish.assembled, writes: 1 + (finish.completed ? 1 : 0),
+    };
   },
 };

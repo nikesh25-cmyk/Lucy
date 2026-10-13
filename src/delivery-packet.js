@@ -1,8 +1,25 @@
 import {normalizeDecisionBrief} from './decision-brief.js';
+import {ADOPTION_BOUNDARY} from './review-assessment.js';
 
 const fail=message=>{throw Object.assign(new Error(message),{status:400});};
 const text=(value,label,max=2000)=>{if(typeof value!=='string'||!value.trim()||value.length>max)fail(`Invalid ${label} in the reviewed contribution.`);return value.trim();};
 const iso=(value,label)=>{if(typeof value!=='string'||!Number.isFinite(Date.parse(value)))fail(`Invalid ${label}.`);return new Date(value).toISOString();};
+// The adoptions of one accepted record, as the mission owner declared them and as the packet shows
+// them: a declaration with its own supporting evidence, never a claim of implementation.
+export const ADOPTION_LIMIT=10;
+export function deliveryPacketAdoptions(record){
+  const adoptions=Array.isArray(record.adoptions)?record.adoptions:[];
+  if(adoptions.length>ADOPTION_LIMIT)fail('The record carries more documented adoptions than a packet can show.');
+  return adoptions.map(adoption=>({
+    id:text(adoption.id,'adoption identifier',100),
+    declared_by:text(adoption.owner,'declaring mission owner',100),
+    declared_at:iso(adoption.created_at,'adoption date'),
+    note:text(adoption.note||adoption.declaration,'documented use',1600),
+    supporting_evidence:typeof adoption.evidence==='string'&&adoption.evidence.trim()?adoption.evidence.trim().slice(0,400):'No supporting evidence reference was supplied with this declaration.',
+    declaration_only:true,
+    boundary:ADOPTION_BOUNDARY,
+  }));
+}
 export function createDeliveryPacket(record,{generatedAt=new Date().toISOString()}={}){
   if(!record||record.status!=='accepted'||record.review_decision!=='accepted')fail('Only currently accepted gallery contributions can become a delivery packet.');
   if(!Number.isInteger(record.version)||record.version<1||!Number.isInteger(record.adoption_count)||record.adoption_count<0)fail('Invalid contribution version or documented-use count.');
@@ -13,14 +30,15 @@ export function createDeliveryPacket(record,{generatedAt=new Date().toISOString(
     return {number:index+1,url:url.href,location:text(source.location,'source location',300),recorded_date:source.date?text(source.date,'source date',100):'Not recorded'};
   });
   const brief=record.brief?normalizeDecisionBrief(record.brief,{sourceCount:sources.length}):null;
+  const adoptions=deliveryPacketAdoptions(record);
   return {schema_version:1,kind:'lucy_reviewed_contribution_packet',generated_at:iso(generatedAt,'generation date'),
-    submission:{id:text(record.id,'submission identifier',100),version:record.version,submitted_at:iso(record.created_at,'submission date'),contributor:text(record.contributor,'contributor name',100),status:'human_accepted',practice:record.demo===1||record.demo===true},
+    submission:{id:text(record.id,'submission identifier',100),version:record.version,submitted_at:iso(record.created_at,'submission date'),contributor:text(record.contributor,'contributor name',100),status:'human_accepted',state:record.state?.value||'accepted',practice:record.demo===1||record.demo===true},
     mission:{title:text(record.mission,'mission title',100),task:text(record.task_title,'task title',100),beneficiary:text(record.beneficiary,'mission beneficiary'),criteria:text(record.rubric,'review criteria')},
     content:brief?{format:'structured_decision_brief',brief}:{format:'plain_text_evidence',text:text(record.artifact,'contribution',16000)},sources,
     method:text(record.method,'method'),limitations:text(record.limitations,'limitations'),rights_statement:text(record.rights,'rights statement'),
     review:{id:text(record.review_id,'review identifier',100),reviewer:text(record.reviewer,'reviewer name',100),reviewed_at:iso(record.reviewed_at,'review date'),decision:'accepted',explanation:text(record.reason,'review explanation',12000)},
-    documented_uses:record.adoption_count,
-    boundary:'A snapshot of an accepted contribution in NemoWorld. Human acceptance is not independent factual certification, recipient endorsement, consent, funding, shipment authorization or external adoption. Documented uses are platform records, not verified recipient decisions. The snapshot may become outdated after later corrections or moderation. Public source access does not establish permission to reuse its contents. No message is sent by downloading this packet.'};
+    documented_uses:record.adoption_count,adoptions,
+    boundary:'A snapshot of an accepted contribution in NemoWorld. Human acceptance is not independent factual certification, recipient endorsement, consent, funding, shipment authorization or external adoption. Documented uses are platform records, not verified recipient decisions: each is a recorded declaration by the mission owner, with the supporting evidence they supplied, and is not proof that the work was implemented, not an institutional endorsement and not evidence of a real-world outcome. The snapshot may become outdated after later corrections or moderation. Public source access does not establish permission to reuse its contents. No message is sent by downloading this packet.'};
 }
 const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const paragraph=value=>`<p>${escape(value)}</p>`;
@@ -43,7 +61,8 @@ export function deliveryPacketHTML(packet){
   body.push(section('Source register',`<ol class="sources">${packet.sources.map(source=>`<li id="source-${source.number}"><h3>Source ${source.number}</h3><a href="${escape(source.url)}" rel="noreferrer">${escape(source.url)}</a>${paragraph('Supporting location: '+source.location)}${paragraph('Contributor-recorded date (publication or retrieval): '+source.recorded_date)}</li>`).join('')}</ol>`));
   body.push(section('Method, limitations and permissions',`<dl>${definition('Method',packet.method)}${definition('Limitations',packet.limitations)}${definition('Contributor rights statement',packet.rights_statement)}</dl>`));
   body.push(section('Human review record',`<dl>${definition('Reviewer',packet.review.reviewer)}${definition('Review date',packet.review.reviewed_at)}${definition('Review criteria',packet.mission.criteria)}</dl>`+paragraph(packet.review.explanation)));
-  body.push(section('Record and boundaries',`<dl>${definition('Mission',packet.mission.title)}${definition('Task',packet.mission.task)}${definition('Mission beneficiary',packet.mission.beneficiary)}${definition('Submission',packet.submission.id+' · Version '+packet.submission.version)}${definition('Contributor',packet.submission.contributor)}${definition('Submitted',packet.submission.submitted_at)}${definition('Review record',packet.review.id)}${definition('Packet generated',packet.generated_at)}${definition('Documented platform uses',packet.documented_uses)}</dl>`+paragraph(packet.boundary)));
+  if(packet.adoptions.length)body.push(section('Recorded adoptions — mission owner declarations',packet.adoptions.map(adoption=>`<article><h3>Declared by ${escape(adoption.declared_by)}</h3>${paragraph(adoption.note)}${paragraph('Supporting evidence: '+adoption.supporting_evidence)}${paragraph('Declared: '+adoption.declared_at)}${paragraph(adoption.boundary,'muted')}</article>`).join('')));
+  body.push(section('Record and boundaries',`<dl>${definition('Mission',packet.mission.title)}${definition('Task',packet.mission.task)}${definition('Mission beneficiary',packet.mission.beneficiary)}${definition('Submission',packet.submission.id+' · Version '+packet.submission.version)}${definition('Current state',packet.submission.state)}${definition('Contributor',packet.submission.contributor)}${definition('Submitted',packet.submission.submitted_at)}${definition('Review record',packet.review.id)}${definition('Packet generated',packet.generated_at)}${definition('Documented platform uses',packet.documented_uses)}</dl>`+paragraph(packet.boundary)));
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${escape(title)} · NemoWorld briefing</title><style>
   :root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f2f1ea;color:#253b34;font:16px/1.6 Georgia,serif}main{max-width:900px;margin:40px auto;padding:56px;background:#fff;border-top:6px solid #315e50}header{padding-bottom:28px;border-bottom:1px solid #cdd7cc}.eyebrow,.tag,h2,dt,caption,footer{font-family:Arial,sans-serif}.eyebrow{font-size:12px;letter-spacing:.13em;font-weight:bold}h1{font-size:38px;line-height:1.2;margin:18px 0}h2{font-size:18px;margin:0 0 20px}h3{font-size:18px;line-height:1.4;margin:0 0 10px}section{margin-top:34px;padding-top:26px;border-top:1px solid #dbe2d9}p,dd{white-space:pre-wrap;overflow-wrap:anywhere}p{margin:10px 0}a{color:#245b4b;overflow-wrap:anywhere}article{margin:24px 0;padding-left:18px;border-left:3px solid #c9d5b0}.muted,caption{color:#56665f;font-size:14px}.tag{display:inline-block;font-size:11px;font-weight:normal;padding:3px 8px;background:#edf2de}dl{margin:0}dl>div{margin:12px 0}dt{font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.04em}dd{margin:3px 0 0}.callout{background:#edf2de;padding:16px;font-weight:bold}table{width:100%;border-collapse:collapse;font-size:14px}caption{text-align:left;padding:10px 0}th,td{text-align:left;vertical-align:top;border-bottom:1px solid #dbe2d9;padding:10px;overflow-wrap:anywhere}th:first-child{width:35%}.sources{padding-left:20px}.sources li{margin:20px 0}footer{font-size:12px;margin-top:36px}.practice{background:#fff2d9;padding:16px}@media(max-width:600px){main{margin:0;padding:24px}h1{font-size:29px}th,td{padding:6px}table{font-size:12px}}@media print{@page{size:A4;margin:18mm}body{background:white;font-size:11pt}main{margin:0;padding:0;border-top:0;max-width:none}h1{font-size:26pt}h2,h3,dt{break-after:avoid}article,dl>div,tr{break-inside:avoid}section{margin-top:20px;padding-top:16px}a{color:inherit}footer{margin-top:24px}}
   </style></head><body><main><header><p class="eyebrow">NEMOWORLD · HUMAN-REVIEWED CONTRIBUTION SNAPSHOT</p><h1>${escape(title)}</h1><p class="muted">Submission version ${packet.submission.version} · Reviewed ${escape(packet.review.reviewed_at)}</p>${packet.submission.practice?'<p class="practice">PRACTICE CONTRIBUTION — this packet is a demonstration, not a real institutional recommendation.</p>':''}<p class="muted">Human acceptance does not establish recipient endorsement or independent factual certification.</p></header>${body.join('')}<footer>NemoWorld briefing packet · Keep the source register, review and limitations with every copy.</footer></main></body></html>`;

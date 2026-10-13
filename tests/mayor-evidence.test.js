@@ -49,7 +49,7 @@ test('country context preserves zero, all-null and uncollected series as differe
 
 test('stored country snapshots survive restart and backup; schema eight guide conversations migrate and stay readable',async t=>{
   const f=await fixture(t),aliceId=f.actor('alice').account.id,reply=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'NP'}),backup=join(f.directory,'country-backup.sqlite');
-  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version, 21);
+  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version, 22);
   f.platform.close();const reopened=new Platform(f.database);t.after(()=>{try{reopened.close();}catch{/* Closed again before testing migration. */}});
   assert.deepEqual(reopened.mayors(reopened.authenticate(f.credentials.alice.token)).conversations[0].country_context,reply.country_context);
   // Recreate the schema eight guide store and record one historic conversation in it. The migration is
@@ -65,7 +65,7 @@ test('stored country snapshots survive restart and backup; schema eight guide co
   const profile=migrated.ambassador(actor,{id:mapped});assert.equal(profile.legacy.guide_id,'mayor-highlands');
   assert.deepEqual(profile.legacy_conversations.map(conversation=>conversation.question),['Historic question']);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_ambassadors').n,248);assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_mayors').n,20);
-  assert.equal(validateDatabase(f.database).schema_version, 21);assert.equal(migrated.verifyAudit(),true);
+  assert.equal(validateDatabase(f.database).schema_version, 22);assert.equal(migrated.verifyAudit(),true);
   migrated.db.exec('ALTER TABLE mayor_conversations DROP COLUMN country_context');assert.throws(()=>validateDatabase(f.database),/mayor evidence schema/);
 });
 

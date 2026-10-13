@@ -15,7 +15,7 @@ import { WORLD_OBJECT_GUARDS } from './placement-policy.js';
 export function openDatabase(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
-  if (db.prepare('PRAGMA user_version').get().user_version > 21) { db.close(); throw new Error('Unsupported database schema version.'); }
+  if (db.prepare('PRAGMA user_version').get().user_version > 22) { db.close(); throw new Error('Unsupported database schema version.'); }
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', consent_at TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS invites(code_hash TEXT PRIMARY KEY, role TEXT NOT NULL, expires_at INTEGER NOT NULL, used_by TEXT);
@@ -113,6 +113,27 @@ export function openDatabase(path) {
     // proposal that tries to decide itself, a decision that is not the owning operator's, and a
     // resident row that claims operator input as its source. recovery.js re-checks all of it.
     db.exec(MEMORY_SCHEMA);
+    // Versioned evidence library (schema 22). One capture is one immutable exact version of one
+    // public source: its identity, hash, size, retrieval time, declared date, unit, licence and the
+    // exact location a reviewer can open. A research artifact points at one capture, so a later
+    // source change cannot rewrite the historical support. Nothing here fetches: a capture either
+    // references bytes already retained under catalog/ or records the hash a contributor's reader
+    // computed. The tables are additive and append-only; the triggers refuse a rewritten source
+    // identity, an edited capture or event, and a citation that is edited after it is written.
+    // recovery.js re-checks every stored row.
+    db.exec(`CREATE TABLE IF NOT EXISTS evidence_sources(id TEXT PRIMARY KEY,source_key TEXT NOT NULL UNIQUE,url TEXT NOT NULL,host TEXT NOT NULL,path TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','withdrawn')),withdrawn_reason TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS evidence_captures(id TEXT PRIMARY KEY,source_id TEXT NOT NULL REFERENCES evidence_sources(id),source_key TEXT NOT NULL,url TEXT NOT NULL,sha256 TEXT NOT NULL,bytes INTEGER NOT NULL DEFAULT 0,retained INTEGER NOT NULL DEFAULT 0 CHECK(retained IN (0,1)),retained_path TEXT NOT NULL DEFAULT '',retrieved_at TEXT NOT NULL,declared_date TEXT NOT NULL DEFAULT '',unit TEXT NOT NULL DEFAULT '',title TEXT NOT NULL DEFAULT '',locator TEXT NOT NULL DEFAULT '',evidence_kind TEXT NOT NULL DEFAULT 'web-excerpt',provenance TEXT NOT NULL DEFAULT '',license_name TEXT NOT NULL DEFAULT '',license_url TEXT NOT NULL DEFAULT '',license_attribution TEXT NOT NULL DEFAULT '',excerpt TEXT NOT NULL DEFAULT '',origin TEXT NOT NULL DEFAULT 'catalog',supersedes TEXT REFERENCES evidence_captures(id),created_at TEXT NOT NULL,UNIQUE(source_id,sha256));
+      CREATE TABLE IF NOT EXISTS evidence_events(id TEXT PRIMARY KEY,source_id TEXT NOT NULL REFERENCES evidence_sources(id),kind TEXT NOT NULL,detail TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS submission_evidence(submission_id TEXT NOT NULL REFERENCES submissions(id),source_number INTEGER NOT NULL,capture_id TEXT REFERENCES evidence_captures(id),url TEXT NOT NULL,locator TEXT NOT NULL DEFAULT '',cited_date TEXT NOT NULL DEFAULT '',state TEXT NOT NULL DEFAULT 'captured',created_at TEXT NOT NULL,PRIMARY KEY(submission_id,source_number));
+      CREATE INDEX IF NOT EXISTS evidence_captures_source ON evidence_captures(source_id,created_at,id);
+      CREATE INDEX IF NOT EXISTS evidence_captures_key ON evidence_captures(source_key,sha256);
+      CREATE INDEX IF NOT EXISTS submission_evidence_capture ON submission_evidence(capture_id);
+      CREATE TRIGGER IF NOT EXISTS evidence_sources_identity_immutable BEFORE UPDATE OF source_key,url,host,path ON evidence_sources WHEN NEW.source_key IS NOT OLD.source_key OR NEW.url IS NOT OLD.url OR NEW.host IS NOT OLD.host OR NEW.path IS NOT OLD.path BEGIN SELECT RAISE(ABORT,'Evidence source identity is immutable'); END;
+      CREATE TRIGGER IF NOT EXISTS evidence_captures_no_update BEFORE UPDATE ON evidence_captures BEGIN SELECT RAISE(ABORT,'Evidence captures are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS evidence_captures_validate_insert BEFORE INSERT ON evidence_captures WHEN NOT (length(NEW.sha256)=64 AND NEW.sha256 NOT GLOB '*[^0-9a-f]*' AND NEW.bytes>=0 AND NEW.retained IN (0,1) AND ((NEW.retained=1 AND NEW.retained_path LIKE 'catalog/%') OR (NEW.retained=0 AND NEW.retained_path='')) AND NEW.origin IN ('catalog','submission','curator') AND NEW.evidence_kind IN ('web-excerpt','normalized-statistics','trade-preview','global-target-framework','reviewed-pdf','plain-text') AND length(NEW.excerpt)<=400 AND (NEW.declared_date='' OR (length(NEW.declared_date)=10 AND date(NEW.declared_date) IS NOT NULL)) AND (length(NEW.retrieved_at)=10 OR length(NEW.retrieved_at)=24)) BEGIN SELECT RAISE(ABORT,'Evidence capture is invalid'); END;
+      CREATE TRIGGER IF NOT EXISTS evidence_events_no_update BEFORE UPDATE ON evidence_events BEGIN SELECT RAISE(ABORT,'Evidence events are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS evidence_events_no_delete BEFORE DELETE ON evidence_events BEGIN SELECT RAISE(ABORT,'Evidence events are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS submission_evidence_no_update BEFORE UPDATE ON submission_evidence BEGIN SELECT RAISE(ABORT,'Evidence citations are immutable'); END;`);
     db.exec(`CREATE INDEX IF NOT EXISTS agents_spatial ON agents(world_id,x,y);
       CREATE INDEX IF NOT EXISTS agents_operator ON agents(operator_id);
       CREATE INDEX IF NOT EXISTS tokens_agent ON tokens(agent_id,kind,revoked,expires_at);
@@ -125,7 +146,7 @@ export function openDatabase(path) {
       CREATE INDEX IF NOT EXISTS research_mission_country_goal ON research_leads(mission_id,country_code,goal);
       CREATE INDEX IF NOT EXISTS claims_agent ON claims(agent_id);
       CREATE INDEX IF NOT EXISTS submissions_claim ON submissions(claim_id,status);
-      PRAGMA user_version=21; COMMIT;`);
+      PRAGMA user_version=22; COMMIT;`);
   } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
   if (path !== ':memory:') chmodSync(path, 0o600);
   return db;

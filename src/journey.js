@@ -221,11 +221,21 @@ export function cropAt(platform, agentId, x, y) {
   const crop = platform.get('SELECT x,y,kind,planted_at,tended_at,harvested_at FROM journey_crops WHERE agent_id=? AND x=? AND y=?', agentId, x, y);
   return crop ? cropView(crop, platform.clock()) : null;
 }
+// Two *different* kinds of saved practice are the diversity floor every calling pathway's second tier
+// requires, so they also open a second route to the one decoration the sealed content layer still
+// gates (three shared discoveries). Only practice kinds are counted: a held independent acceptance is
+// not practice, and no receipt is written or read here, so the route appears and disappears with the
+// saved facts themselves.
+function practiceKindCount(platform, agentId) {
+  if (!platform.get("SELECT name FROM sqlite_master WHERE type='table' AND name='calling_receipts'")) return 0;
+  return platform.get("SELECT COUNT(DISTINCT source_kind) AS n FROM calling_receipts WHERE agent_id=? AND source_kind!='research_accepted'", agentId).n;
+}
 function cosmeticOptions(platform, agentId, state) {
   const visited = platform.get('SELECT COUNT(*) AS n FROM journey_visits v JOIN worlds w ON w.id=v.world_id WHERE v.agent_id=? AND w.owner_agent_id IS NULL', agentId).n;
+  const banner = visited >= 3 || practiceKindCount(platform, agentId) >= 2;
   return {
     titles: titles.filter((title) => title === 'Resident' || title === 'Explorer' && visited >= 3 || title === 'Gardener' && state.harvests > 0 || title === 'Maker' && state.crafts > 0),
-    avatars: [...avatars, ...(visited >= 3 ? ['explorer_banner'] : []), ...inventory(platform, agentId).filter((item) => recipes.some((recipe) => recipe.output === item.kind)).map((item) => item.kind)],
+    avatars: [...avatars, ...(banner ? ['explorer_banner'] : []), ...inventory(platform, agentId).filter((item) => recipes.some((recipe) => recipe.output === item.kind)).map((item) => item.kind)],
   };
 }
 // Eligibility for an independently accepted real contribution. The joins and

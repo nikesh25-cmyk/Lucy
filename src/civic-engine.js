@@ -58,7 +58,14 @@ const fill=(value,ctx)=>{let out=String(value);for(let pass=0;pass<2;pass++)out=
 const statisticalGoal=goal=>goal===2;
 const accessGoal=goal=>goal===7||goal===17;
 const agricultureRetained=country=>STATISTICS.countries.some(item=>item.country_code===country.iso2&&(item.series||[]).length>0);
-const themeApplies=(country,theme)=>theme.evidenceGate==='agriculture-series'?agricultureRetained(country):true;
+// A theme's applied concerns are emitted only where the theme's registered subject evidence exists
+// for that country: a retained agriculture series, or (for LDC cooperation instruments) a
+// catalog-recorded LDC status. A theme gated with `none` needs no country-specific evidence.
+const themeApplies=(country,theme)=>{
+  if(theme.evidenceGate==='agriculture-series')return agricultureRetained(country);
+  if(theme.evidenceGate==='ldc-status')return Boolean(country.ldc);
+  return true;
+};
 const themeForGoal=goal=>RESEARCH_THEMES.find(theme=>theme.goals.includes(goal));
 // The goal-specific guidance is retained from the previous generator so the modeled ILO qualifier,
 // the original-provider attribution and the dataset-update caveat are not lost.
@@ -137,6 +144,13 @@ export const civicMethods={
       REGIONS.forEach((region,index)=>this.run('INSERT OR IGNORE INTO npc_mayors(id,region_id,world_id,name,sprite,x,y) VALUES(?,?,?,?,?,?,?)',region.mayor.id,region.id,`district:${region.id}`,region.mayor.name,roster[index],24,18));
       this.seedAmbassadors();
       for(const country of COUNTRIES.entries.filter(country=>country.ldc))this.seedCountryResearch(country);
+      // Older installations may already contain applied leads generated before the
+      // country evidence gates existed. Retire only untouched proposals; retain
+      // activated work and every stored row for its audit history.
+      for(const row of this.all("SELECT DISTINCT country_code FROM research_leads WHERE status='proposed' AND task_id IS NULL AND stage IN ('destination','institutions','interventions')")){
+        const country=COUNTRIES.entries.find(item=>item.iso2===row.country_code);
+        if(country)this.retireUnsupportedApplied(country);
+      }
       for(const [index,task] of (PILOT.tasks||[]).entries()){
         const sourceUrls=PILOT.sources.filter(source=>(task.sourceIds||PILOT.sources.map(item=>item.id)).includes(source.id)).map(source=>source.url);
         this.run('INSERT OR IGNORE INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',`pilot-tea-${index+1}`,'NP',2,'agriculture',String(task.title||task.name||`Tea research ${index+1}`).slice(0,100),['Agricultural pilot: Nepal tea exports to India.',task.question, 'Deliverables: '+(task.outputs||[]).join('; '), 'Acceptance: '+(task.rubric||[]).join('; ')].filter(Boolean).join('\n'),rubric,JSON.stringify(sourceUrls),new Date().toISOString());
@@ -181,7 +195,20 @@ export const civicMethods={
     for(const lead of plan.leads)this.recordLead(lead);
     for(const item of plan.consolidations)this.recordConsolidation(item);
     this.retireInterchangeable(country);
+    this.retireUnsupportedApplied(country,themes);
     return plan;
+  },
+  retireUnsupportedApplied(country,themes=RESEARCH_THEMES){
+    for(const theme of themes){
+      if(themeApplies(country,theme))continue;
+      for(const goal of theme.goals)for(const stage of APPLIED_CONCERNS){
+        const id=`${country.iso2}-${goal}-${stage}`;
+        const row=this.get("SELECT id FROM research_leads WHERE id=? AND country_code=? AND goal=? AND stage=? AND status='proposed' AND task_id IS NULL",id,country.iso2,goal,stage);
+        if(!row)continue;
+        this.recordConsolidation({dedupe_key:`unsupported|${id}`,country_code:country.iso2,canonical_id:'',consolidated_id:id,
+          reason:`The ${theme.title} applied concern is retired because its country evidence gate is not met. The stored proposal is preserved; collect the missing evidence and author a scoped concern before activation.`});
+      }
+    }
   },
   // An installation seeded by an older generator still holds the retired interchangeable stage rows
   // (evidence, partners, proposal). Nothing is deleted or rewritten: each such still-proposed row is

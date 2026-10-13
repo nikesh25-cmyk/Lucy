@@ -145,7 +145,10 @@ test('merit reflects current independently accepted real evidence and unique doc
   const ownClaim = f.tx('claim', f.actor('alice'), { task_id: ownWork.task.id, agent_id: agent.id }, 'own-use-claim');
   const ownSubmission = f.tx('submit', f.actor('alice'), evidence(ownClaim), 'own-use-submit');
   f.tx('review', f.actor('reviewer'), { submission_id: ownSubmission.id, decision: 'accepted', reason: 'Independent review of useful evidence.' });
-  f.tx('adoption', f.actor('alice'), { submission_id: ownSubmission.id, note: 'Used by the contributing operator.' });
+  // Task 26 refuses self-adoption outright: the adopter must be a different person from the
+  // contributor, so this declaration is now refused and writes no record at all.
+  denied(() => f.tx('adoption', f.actor('alice'), { submission_id: ownSubmission.id, note: 'Used by the contributing operator.' }), 403);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM adoptions WHERE submission_id=?', ownSubmission.id).n, 0);
   assert.deepEqual(readMerit(), { accepted: 1, adopted: 0, total: 1 });
 });
 

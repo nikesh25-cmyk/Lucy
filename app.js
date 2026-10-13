@@ -13,6 +13,7 @@ import { clearOperatorState } from './src/browser-session.js';
 import { normalizeDecisionBrief, serializeDecisionBrief, decisionBriefText } from './src/decision-brief.js';
 import { draw, landmarkAt, start, landmarks, getWorldDefinition, walkable, drawMiniMap } from './world.js';
 import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
+import { createGameAudio } from './src/game-audio.js';
 
 const $ = (selector) => document.querySelector(selector);
 const gamePresentation = new URLSearchParams(location.search).get('mode') !== 'workspace';
@@ -23,8 +24,11 @@ let savedFirstPerson = false;
 try { savedFirstPerson = sessionStorage.getItem('nemoworld-first-person') === 'true'; } catch { /* The camera still works without storage. */ }
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{gamePresentation,gameMode:savedGameMode,gameDrawer:'',gameMenuOpen:false});
+// Audio is opt-in: creating the controller is side-effect free and the first
+// sound-producing call only happens from a control click in the game menu.
+const gameAudio = createGameAudio();
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,interaction:null,interactionRefusal:null,interactionError:null});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',interaction:null,interactionRefusal:null,interactionError:null,evidenceLibrary:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -70,7 +74,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;clearOperatorState(state);localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ gameAudio.stop();walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.evidenceLibrary=null;clearOperatorState(state);state.workbenches=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -136,7 +140,7 @@ function restoreRememberedFocus() {
 }
 function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
 function heading(title, description) { const node = element('div', null, 'section-title'); const text = element('div'); append(text, element('h2', title), paragraph(description)); node.append(text); return node; }
-async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
+async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -158,6 +162,7 @@ function cameraFor(position = worldPosition()) {
 }
 function paintWorld() {
   const canvas = $('#world'); if (!canvas) return; const owned = viewedAgent(); const agent=owned?{...owned,...state.world.participants.find(item=>item.id===owned.id)}:null;
+  const audioPhase=state.world.atmosphere?.phase;if(audioPhase&&gameAudio.getState().phase!==audioPhase)gameAudio.setPhase(audioPhase);
   // Presentation applies the interpolation; the confirmed values in `state.world` are never rewritten.
   const now = performance.now(), base = worldPosition(), displayPosition = base?.id ? displayed(base, now) : base;
   state.camera = cameraFor(displayPosition);
@@ -419,7 +424,7 @@ async function refresh(all = true) {
   await loadDirectory();
   if(!state.assembly){const [countries,assembly]=await Promise.all([api('/countries?limit=248'),api('/assembly')]);state.countries=countries.entries;state.assembly=assembly;}
   await loadResearch();state.mayors=(await api('/mayors')).mayors;await loadAmbassadors();
-  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds(),loadQuests(),loadGuildProjects()]);
+  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds(),loadQuests(),loadGuildProjects(),loadRestoration()]);
   if (state.account && all) {
     state.history = await api('/history');mergeMissionContext(); state.workers=await api('/workers'); state.safety = await api('/safety');
     if (state.account.role === 'admin') state.operations = await api('/operations');
@@ -449,6 +454,7 @@ function setFirstPerson(enabled){state.firstPerson=Boolean(enabled);try{sessionS
 function applyGameShell(){
   if(state.account&&state.gameMode==='entry')setGameMode('play');
   const world=state.gamePresentation&&state.tab==='world';
+  if(!world)gameAudio.stop();
   document.body.classList.toggle('game-world',world);
   document.body.classList.toggle('game-entry',world&&state.gameMode==='entry');
   document.body.classList.toggle('game-menu-open',world&&state.gameMenuOpen);
@@ -501,14 +507,15 @@ function renderAuth() {
   login.hidden=state.authMode!=='login';signup.hidden=state.authMode!=='register';append(grid,login,signup);node.append(grid);
 }
 function renderTabs() {
-  const groups=[{title:'THE WORLD',items:[['start','Start here','◇'],['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦'],['guilds','Guild projects','⚒'],['quests','Quest chains','◇']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
+  const groups=[{title:'THE WORLD',items:[['start','Start here','◇'],['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦'],['guilds','Guild projects','⚒'],['restoration','World restoration','✿'],['quests','Quest chains','◇']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
   if(state.account)groups.push({title:'YOUR RESIDENTS',items:[['coins','Coin wallet','✧'],['passport','Resident passport','♟'],['workshop','Garden & workshop','✿'],['characters','My characters','♟'],['history','My contributions','▤']]});
   const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'GOVERNANCE',items:care});groups.push({title:'',items:[['help','Guide','?']]});
-  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list',start:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
+  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list',restoration:'users-round',start:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
   if(state.gamePresentation){const section=element('div',null,'nav-group game-workspace-link');section.append(paragraph('MORE CONTROLS','nav-heading'),button('Open workspace',()=>{location.href='/?mode=workspace';},'secondary small'));nav.append(section);}
+  if(state.gamePresentation&&state.tab==='world'){const sound=element('div',null,'nav-group game-audio-menu');sound.append(paragraph('SOUND','nav-heading'),gameAudio.createControls(document));nav.append(sound);}
 }
 function renderView() { if(voxelView){state.voxelOrbit=voxelView.orbit;voxelView.destroy();voxelView=null;}document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons'));applyGameShell();
-  const node = $('#view'); node.replaceChildren(); const views = { start: renderStartJourney, world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,quests:renderQuests };
+  const node = $('#view'); node.replaceChildren(); const views = { start: renderStartJourney, world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,restoration:renderRestoration,quests:renderQuests };
   (views[state.tab] || renderWorld)(node);node.setAttribute('aria-busy','false');
 }
 function renderCivic(parent) {
@@ -753,7 +760,7 @@ function gameHud(world,agent,position){
   append(place,paragraph(state.world.paused?'WORLD PAUSED':!agent||state.gameMode==='observe'?'LOOKING AROUND':'LIVE WORLD','game-kicker'),element('strong',world.name),pos,element('span',`${world.width||world.columns} × ${world.height||world.rows} tiles`,'game-extent'));
   const count=element('span',String(state.world.counts?.world_agents??state.world.population??state.world.participants.length));count.id='game-population';
   top.append(place,append(element('div',null,'game-live-count'),count,element('span',' residents here')));hud.append(top);
-  const bottom=element('div',null,'game-hud-bottom'),hint=element('p',agent?'WASD to walk · Drag to look · E to interact':'Drag to look · Click the map to explore','game-control-hint');
+  const bottom=element('div',null,'game-hud-bottom'),hint=element('p',agent?'WASD to walk · Drag to look · Enter to interact':'Drag to look · Click the map to explore','game-control-hint');
   const actionsRow=element('div',null,'game-quickbar');actionsRow.setAttribute('role','group');actionsRow.setAttribute('aria-label','World actions');
   const canPlayHuman=agent?.kind!=='human'||state.gameMode==='observe';
   const mode=button(canPlayHuman?'Play as human':'Observe',()=>canPlayHuman?playAsHuman():observeWorld(),'game-quick game-mode');mode.id='game-mode-button';
@@ -766,7 +773,7 @@ function gameHud(world,agent,position){
   },'game-quick');
   const chat=button('Chat',()=>setGameDrawer('chat'),'game-quick');const places=button('Places',()=>openSection('explore'),'game-quick');const tools=button('More',()=>setGameDrawer('tools'),'game-quick');
   actionsRow.append(mode,interact,build,chat,places,tools);bottom.append(hint,actionsRow);hud.append(bottom);
-  const target=element('p',state.interaction?.fixture?`${state.interaction.fixture.label} · E to interact`:'Aim at a place or object to interact','game-target');target.id='game-target';hud.append(target);
+  const target=element('p',state.interaction?.fixture?`${state.interaction.fixture.action?.label||state.interaction.fixture.label} · Enter to interact`:'Aim at a place or object to interact','game-target');target.id='game-target';hud.append(target);
   return hud;
 }
 function buildCard(world) {
@@ -1182,17 +1189,50 @@ function renderMissions(parent) {
   }
   if(!state.missionPage.missions.length)grid.append(empty('No visible missions match these filters.'));parent.append(grid);missionDirectoryPages(parent);
 }
-function sources(parent, records) {
-  const list=element('ul',null,'sources');for(const source of records||[]) {const item=element('li'); const link=element('a',source.url);try{const url=new URL(source.url);if(['http:','https:'].includes(url.protocol)){link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';}}catch{}append(item,link,element('span',` · ${source.location} · ${source.date||'Date not supplied'}`));list.append(item);}parent.append(list);
+function sources(parent, records, evidence) {
+  const list=element('ul',null,'sources');(records||[]).forEach((source,index)=> {const item=element('li'); const link=element('a',source.url);try{const url=new URL(source.url);if(['http:','https:'].includes(url.protocol)){link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';}}catch{}append(item,link,element('span',` · ${source.location} · ${source.date||'Date not supplied'}`));const entry=(evidence||[])[index];if(entry)item.append(evidenceView(entry));list.append(item);});parent.append(list);
+}
+function evidenceBadge(state){return badge({captured:'captured version',missing:'unverified link',stale:'stale version',replaced:'replaced version',withdrawn:'withdrawn source'}[state]||state,state==='captured');}
+function evidenceView(entry){
+  const node=element('div',null,'evidence-state');node.append(evidenceBadge(entry.state),paragraph(entry.state_note,'privacy'));
+  const capture=entry.capture;
+  if(capture)node.append(paragraph(`Exact version ${capture.sha256} · ${capture.retained?`retained ${capture.bytes} bytes at ${capture.retained_path}`:'hash recorded; bytes not retained in the library'} · retrieved ${capture.retrieved_at}${capture.declared_date?` · source-declared date ${capture.declared_date}`:''}${capture.unit?` · unit ${capture.unit}`:''}`,'source-hash'),paragraph(`Supporting location: ${capture.locator||'not recorded'}`,'privacy'));
+  if(capture&&capture.provenance)node.append(paragraph(`Provenance: ${capture.provenance}`,'privacy'));
+  if(capture&&capture.license&&(capture.license.name||capture.license.attribution))node.append(paragraph(`Rights: ${[capture.license.name,capture.license.attribution].filter(Boolean).join(' — ')}${capture.license.url?` · ${capture.license.url}`:''}`,'privacy'),paragraph('The library retains each source’s stated licence and attribution; reuse still requires review.','privacy'));
+  if(entry.conflict)node.append(paragraph(`Conflicting evidence kept visible — declared dates: ${(entry.declared_dates||[]).join(', ')||'none'}; units: ${(entry.units||[]).join(', ')||'none'}. Both values are shown rather than normalised away.`,'privacy'));
+  if((entry.versions||[]).length>1)disclosure(node,`All ${entry.versions.length} retained versions of this source`,body=>{for(const version of entry.versions)body.append(paragraph(`${version.retained?'retained':'hash-only'} · ${version.sha256} · retrieved ${version.retrieved_at}${version.declared_date?` · date ${version.declared_date}`:''}${version.unit?` · unit ${version.unit}`:''} · ${version.locator||'location not recorded'}${version.supersedes?` · supersedes ${version.supersedes}`:''}`,'source-hash'));});
+  return node;
+}
+// The one state a reviewer and a contributor both read: pending, accepted, held (quarantined) or
+// adopted. It is always shown in words, never as a bare code, and a held version says plainly that
+// the acceptance and any issued receipt are retained while availability is held.
+function stateBadge(value){const node=badge(value?.label||value?.value||'unknown');node.dataset.state=value?.value||'';if(value?.note)node.title=value.note;return node;}
+function stateLine(value){return value?.note?paragraph(`${value.label||value.value}: ${value.note}`,'privacy'):null;}
+// Exactly what the reviewer asked for, read back from the version-specific review record, so the
+// contributor can act on the list without re-reading the whole explanation.
+function requestedChangesView(submission){
+  const items=submission.requested_changes||[];if(!items.length)return null;
+  const node=element('section',null,'review-assessment requested-changes');node.append(element('h4','Changes requested for this version'));
+  const list=element('ol');for(const item of items)list.append(element('li',item));node.append(list);
+  node.append(paragraph('This list belongs to this submission version only. Submit a corrected version against the same task; the reviewer’s whole explanation is kept below.','privacy'));
+  return node;
+}
+function adoptionView(adoption){
+  const node=element('section',null,'review-assessment adoption');node.append(element('h4',`Documented adoption by ${adoption.owner}`),paragraph(adoption.note||adoption.declaration,'artifact'));
+  if(adoption.evidence)node.append(paragraph(`Supporting evidence: ${adoption.evidence}`,'privacy'));
+  node.append(paragraph(`Declared ${date(adoption.created_at)}. ${adoption.declaration_only?'Recorded declaration only:':'Declaration:'} adoption is not proof the work was implemented, not an institutional endorsement and not evidence of a real-world outcome, and it approves no budget, appointment or shipment.`,'privacy'));
+  return node;
 }
 function submissionRecord(submission, reviewMode=false) {
-  const node=element('article',null,'record'); const top=element('div',null,'card-header'); append(top,element('h3',titleOfTask(submission.task_id)),badge(submission.status)); append(node,top,paragraph(`Version ${submission.version} · ${submission.agent_name||submission.contributor||'Your contribution'} · ${date(submission.created_at)}`,'privacy'),submission.brief?decisionBriefView(submission.brief,submission.status==='accepted'):evidenceArtifactView(submission.artifact,submission.sources));
-  sources(node,submission.sources);disclosure(node,'Method, limits, and permissions',(body)=>append(body,paragraph(`Method: ${submission.method}`),paragraph(`Limits: ${submission.limitations}`),paragraph(`Rights: ${submission.rights}`)));
+  const node=element('article',null,'record'); const top=element('div',null,'card-header'); append(top,element('h3',titleOfTask(submission.task_id)),submission.state?stateBadge(submission.state):badge(submission.status)); append(node,top,paragraph(`Version ${submission.version} · ${submission.agent_name||submission.contributor||'Your contribution'} · ${date(submission.created_at)}`,'privacy'),submission.brief?decisionBriefView(submission.brief,submission.status==='accepted'):evidenceArtifactView(submission.artifact,submission.sources));
+  sources(node,submission.sources,submission.evidence);disclosure(node,'Method, limits, and permissions',(body)=>append(body,paragraph(`Method: ${submission.method}`),paragraph(`Limits: ${submission.limitations}`),paragraph(`Rights: ${submission.rights}`)));
+  append(node,stateLine(submission.state),requestedChangesView(submission));
+  for(const adoption of submission.adoptions||[])node.append(adoptionView(adoption));
   for(const review of state.history.reviews.filter((r)=>r.submission_id===submission.id)) append(node,reviewReasonView(`${review.decision.replaceAll('_',' ')} by ${review.reviewer}`,review.reason));
   if(state.account)node.append(button('Report contribution',()=>reportPrompt('submission',submission.id),'secondary small'));
   if(reviewMode&&submission.status==='pending_review') {
     if(submission.account_id===state.account.id)node.append(paragraph('Your contribution requires a different human reviewer.','privacy'));
-    else reviewForm(node,submission);
+    else workbenchAndReviewForm(node,submission);
   }
   return node;
 }
@@ -1210,9 +1250,17 @@ function reviewForm(node,submission){
  const inputs=form(node,'Record review',async data=>{
   const payload={submission_id:submission.id,decision:data.decision,reason:data.reason};
   if(submission.brief)payload.assessment={findings:submission.brief.findings.map((finding,index)=>({finding_number:index+1,result:data[`assessment_${index}_result`],checked_source_numbers:data[`assessment_${index}_sources`].trim()?data[`assessment_${index}_sources`].split(',').map(value=>Number(value.trim())):[],notes:data[`assessment_${index}_notes`]})),scope_notes:data.assessment_scope,rights_notes:data.assessment_rights,cost_notes:data.assessment_costs};
+  const changes=Object.keys(data).filter((key)=>/^change_\d+$/.test(key)).map((key)=>data[key]).filter((value)=>value.trim());
+  if(data.decision==='changes_requested')payload.requested_changes=changes;
+  else if(changes.length)throw Error('Requested changes belong to a changes-requested decision.');
   await change('/reviews',payload,'Review recorded with this submission version. The contributor can see your assessment.');
  });
  field(inputs,'decision','Decision',{options:[{value:'changes_requested',label:'Request corrections'},{value:'accepted',label:'Accept contribution'},{value:'rejected',label:'Reject submission'}]});field(inputs,'reason','Explanation against the criteria',{type:'textarea',full:true,max:2000});
+ // One specific, actionable instruction per item. The list is stored with this exact version, so the
+ // contributor reads precisely what was asked for rather than an implied correction.
+ const requested=element('fieldset',null,'full');requested.append(element('legend','Changes the contributor must make'),paragraph('One specific instruction per item, used when the decision is “Request corrections”. The list is kept with this version and shown to the contributor.','privacy'));inputs.append(requested);
+ let changeCount=0;const addChange=()=>{if(changeCount>=10)return;field(requested,`change_${changeCount++}`,'Requested change',{type:'textarea',max:800,full:true,required:false});};
+ addChange();requested.append(actions(button('Add another change',addChange,'secondary small'),button('Remove last change',()=>{if(changeCount<=1)return;const rows=requested.querySelectorAll('label');rows[rows.length-1].remove();changeCount--;},'secondary small')));
  if(!submission.brief)return;
  const guide=element('section',null,'full');guide.append(element('h4','Finding-by-finding evidence assessment'),paragraph('Open the cited source and its supporting location. Record what you checked and why it supports or fails to support the finding. Accept only when all findings are supported within their stated scope. Unknown costs can remain explicit.','privacy'));inputs.append(guide);
  submission.brief.findings.forEach((finding,index)=>{
@@ -1224,6 +1272,76 @@ function reviewForm(node,submission){
  field(inputs,'assessment_scope','Applicability to the proposed recipient and beneficiaries',{type:'textarea',max:800,full:true,hint:'Record geographic, temporal and practical limits; proposed roles remain unconfirmed.'});
  field(inputs,'assessment_rights','Attribution and permissions assessment',{type:'textarea',max:800,full:true});
  if(submission.brief.cost_scenario)field(inputs,'assessment_costs','Cost assumptions assessment',{type:'textarea',max:800,full:true,hint:'Distinguish estimates, source-backed amounts and unknown costs. Acceptance does not approve a budget.'});
+}
+// The reviewer workbench panel. It reads one composite view from the server on demand and writes
+// nothing, so opening it can never change a state. It is the one place the reviewer sees the four
+// roles, the source-version comparison and the state model together before recording a decision.
+function citationComparisonView(citation){
+  const node=element('div',null,'evidence-state comparison');node.append(element('strong',`Source ${citation.source_number} · `),evidenceBadge(citation.state),paragraph(citation.state_note,'privacy'),paragraph(citation.comparison.summary,'privacy'));
+  const table=element('table',null,'evidence-table');table.append(element('caption','The cited version is never rewritten by a later capture.'));
+  const head=element('thead'),row=element('tr');for(const title of ['','Version cited by this contribution','Version the library holds now']){const cell=element('th',title);cell.scope='col';row.append(cell);}head.append(row);table.append(head);
+  const cited=citation.cited_version,current=citation.current_version,body=element('tbody');
+  const line=(label,left,right)=>{const item=element('tr');item.append(element('th',label),element('td',left),element('td',right));body.append(item);};
+  line('Content hash',cited?cited.sha256:'No version pinned',current?current.sha256:'No capture retained');
+  line('Retained bytes',cited?(cited.retained?`${cited.bytes} bytes at ${cited.retained_path}`:'hash only; bytes not retained'):'—',current?(current.retained?`${current.bytes} bytes at ${current.retained_path}`:'hash only; bytes not retained'):'—');
+  line('Retrieved',cited?.retrieved_at||'—',current?.retrieved_at||'—');
+  line('Source-declared date',cited?.declared_date||'not established',current?.declared_date||'not established');
+  line('Unit',cited?.unit||'not recorded',current?.unit||'not recorded');
+  line('Supporting location',cited?.locator||'not recorded',current?.locator||'not recorded');
+  table.append(body);node.append(table);
+  if(citation.comparison.differences.length){const list=element('ul');for(const difference of citation.comparison.differences)list.append(element('li',`${difference.label}: cited “${difference.cited||'not recorded'}”, current “${difference.current||'not recorded'}”`));node.append(paragraph('Fields that differ between the two versions, kept side by side rather than normalised:','privacy'),list);}
+  return node;
+}
+function workbenchView(view){
+  const node=element('section',null,'workbench');
+  node.append(element('h4','Reviewer workbench'),stateBadge(view.submission.state),stateLine(view.submission.state));
+  const roles=element('dl',null,'workbench-roles');
+  for(const [label,role] of [['Proposer',view.roles.proposer],['Contributor',view.roles.contributor],['Reviewer',view.roles.reviewer],['Adopter',view.roles.adopter]])roles.append(element('dt',label),element('dd',`${role.name||'unknown'}${role.is_you?' (you)':''} — ${role.role}`));
+  const distinct=view.roles.distinct;
+  roles.append(element('dt','Roles kept apart'),element('dd',`contributor is not the reviewer: ${distinct.contributor_from_reviewer?'yes':'no'}; adopter is not the contributor: ${distinct.adopter_from_contributor?'yes':'no'}; adopter is not the reviewer: ${distinct.adopter_from_reviewer?'yes':'no'}`));
+  roles.append(element('dt','You can review this version'),element('dd',view.roles.may_review?'Yes. Record a criterion-by-criterion decision below.':view.roles.review_refusal||'No.'));
+  roles.append(element('dt','You can record adoption'),element('dd',view.roles.may_adopt?'Yes. The adoption form is with the accepted contribution in the gallery.':view.roles.adoption_refusal||'No.'));
+  node.append(roles,paragraph(view.availability.note,'privacy'));
+  if(view.coin.issued)node.append(paragraph(`Coin receipt: ${view.coin.amount} coins${view.coin.credited_agent?` for ${view.coin.credited_agent}`:''} · ${view.coin.availability} · ${date(view.coin.created_at)}. Reviewing the same version again cannot issue a second receipt.`,'privacy'));
+  if(view.criteria.structured){const findings=element('div');findings.append(element('h4','Decision criteria and findings'));for(const finding of view.criteria.findings)findings.append(paragraph(`${finding.finding_number}. ${finding.text} ${finding.source_numbers.map(number=>`[Source ${number}]`).join(' ')}`),paragraph(`Qualification: ${finding.qualification}`,'privacy'));node.append(findings);}
+  else node.append(element('h4','Decision criteria'),paragraph(view.criteria.rubric,'privacy'));
+  if(view.citations.length){const citations=element('div');citations.append(element('h4','Source-version comparison'),paragraph('Each cited source is compared against the version the evidence library holds now. A missing, stale, replaced or withdrawn citation is a reason a reviewer may refuse acceptance; nothing on this path edits the contribution or invents a version.','privacy'));for(const citation of view.citations)citations.append(citationComparisonView(citation));node.append(citations);}
+  if(view.requested_changes.items.length){const list=element('ol');for(const item of view.requested_changes.items)list.append(element('li',item));node.append(element('h4','Changes previously requested for this version'),list);}
+  for(const adoption of view.adoptions)node.append(adoptionView(adoption));
+  node.append(paragraph([view.boundaries.acceptance,view.boundaries.adoption].join(' '),'privacy'));
+  return node;
+}
+function workbenchAndReviewForm(node,submission){
+  const panel=element('div');
+  // The workbench is an aid, so it loads on demand; the decision form below is always offered, which
+  // keeps a plain review exactly as reachable as it was before this task.
+  const reload=async()=>{const fresh=await api(`/review/workbench?submission=${encodeURIComponent(submission.id)}`);state.workbenches??={};state.workbenches[submission.id]=fresh;if(panel.isConnected)renderPanel();};
+  const renderPanel=()=>{
+    const view=(state.workbenches||{})[submission.id];panel.replaceChildren();
+    if(!view){panel.append(paragraph('Open the workbench to compare the cited source versions, read how the four roles are kept apart, and confirm what you are allowed to do before recording a decision. It writes nothing.','privacy'),button('Open the reviewer workbench',reload,'secondary small'));return;}
+    panel.append(workbenchView(view),paragraph('Your decision is recorded against this exact version only, and the contributor sees every assessment note and each requested change.','privacy'),button('Refresh reviewer workbench',reload,'secondary small'));
+  };
+  const details=disclosure(node,'Reviewer workbench — criteria, source versions and roles',(body)=>{body.append(panel);renderPanel();});
+  // A loaded workbench stays open across an unrelated render. Reopening it fetches current source
+  // versions again; the initial programmatic open is skipped to avoid a second identical request.
+  let initialOpen=Boolean((state.workbenches||{})[submission.id]);
+  if(initialOpen)details.open=true;
+  details.addEventListener('toggle',()=>{
+    if(initialOpen){initialOpen=false;return;}
+    if(!details.open||!(state.workbenches||{})[submission.id])return;
+    guarded(async()=>{
+      try{
+        const fresh=await api(`/review/workbench?submission=${encodeURIComponent(submission.id)}`);
+        if(!details.isConnected||!details.open)return;
+        state.workbenches[submission.id]=fresh;renderPanel();
+      }catch(error){
+        if(details.isConnected&&details.open)panel.replaceChildren(paragraph('The current source versions could not be loaded. Retry before deciding.','error'),button('Retry reviewer workbench',reload,'secondary small'));
+        throw error;
+      }
+    });
+  });
+  reviewForm(node,submission);
+  return panel;
 }
 function draftFor(claim){return (state.history.drafts||[]).find(d=>d.claim_id===claim.id);}
 function attachDraftSaving(inputs,claim,format,counts=null){
@@ -1342,17 +1460,34 @@ function renderHistory(parent) {
 }
 function renderReview(parent) {
   parent.append(heading('Human review','Check original evidence, permissions, context, and mission criteria before accepting work. You cannot review your own contributions.'));
+  const library=card('Versioned evidence library','REVIEWER INSPECTION');
+  library.append(paragraph('Every capture is one exact version of a public source, with its identity, hash, retained bytes, retrieval date, declared date, unit, provenance and licence. A citation pins the version it named; a later capture of the same source never rewrites the cited version, it only changes the state shown. A saved link with no capture is unverified evidence and is never presented as support.','privacy'));
+  library.append(button('Load evidence library',async()=>{state.evidenceLibrary=await api('/evidence?limit=50');renderView();},'secondary small'));
+  if(state.evidenceLibrary){
+    library.append(paragraph(`${state.evidenceLibrary.limits.captures} captures across ${state.evidenceLibrary.total} sources · ${state.evidenceLibrary.limits.retained_bytes} of ${state.evidenceLibrary.limits.max_retained_bytes} retained bytes · up to ${state.evidenceLibrary.limits.max_captures_per_source} versions per source. Cited versions are never evicted.`,'privacy'));
+    for(const source of state.evidenceLibrary.sources.slice(0,50)){const item=element('article',null,'record');item.append(element('h3',`${source.host}${source.path}`),badge(source.status));item.append(paragraph(`${source.versions.length} version${source.versions.length===1?'':'s'} · cited by ${source.cited_versions}${source.conflict?' · conflicting dates or units':''}`,'privacy'));if(source.status==='withdrawn')item.append(paragraph(`Withdrawn: ${source.withdrawn_reason}`,'privacy'));const latest=source.versions[source.versions.length-1];if(latest)item.append(paragraph(`Supporting location: ${latest.locator||'not recorded'}`,'privacy'));library.append(item);}
+    if(state.evidenceLibrary.has_more)library.append(paragraph('More sources exist than are shown here. This view is bounded to fifty at a time.','privacy'));
+  }
+  parent.append(library);
   const pending=state.history.submissions.filter((s)=>s.status==='pending_review');
   if(!pending.length)parent.append(empty('No submissions are waiting for your review.'));
   for(const submission of pending){const task=state.tasks.find((t)=>t.id===submission.task_id);const mission=state.missions.find((m)=>m.id===task?.mission_id);const node=card(mission?.title||'Mission review');append(node,paragraph(mission?.rubric||'Check all evidence and limitations.'),paragraph(task?.instructions||'','muted'),submissionRecord(submission,true));parent.append(node);}
 }
 function renderGallery(parent) {
-  parent.append(heading('A record of useful work','Human accepted contributions, with sources and limitations preserved. Acceptance and documented adoption are separate steps.'));
+  parent.append(heading('A record of useful work','Human accepted contributions, with sources and limitations preserved. Only currently accepted versions appear here: a pending, held or rejected version never does. Acceptance, documented adoption and the cited evidence stay separate steps.'));
   if(!state.gallery.length){parent.append(empty('The gallery is waiting for its first reviewed contribution. Practice missions are marked clearly.'));return;}
-  const grid=element('div',null,'grid');for(const record of state.gallery){const node=card(record.mission,record.demo?'PRACTICE CONTRIBUTION':'REVIEWED CONTRIBUTION');append(node,badge(record.demo?'demo':'accepted'),paragraph(`By ${record.contributor} · Version ${record.version}`,'privacy'),record.brief?decisionBriefView(record.brief,true):evidenceArtifactView(record.artifact,record.sources));sources(node,record.sources);append(node,reviewReasonView(`Reviewed by ${record.reviewer}`,record.reason),paragraph(`Limits: ${record.limitations}`,'muted'),paragraph(`${record.adoption_count} documented uses`,'privacy'));
+  const grid=element('div',null,'grid');for(const record of state.gallery){const node=card(record.mission,record.demo?'PRACTICE CONTRIBUTION':'REVIEWED CONTRIBUTION');append(node,record.state?stateBadge(record.state):badge(record.demo?'demo':'accepted'),paragraph(`By ${record.contributor} · Version ${record.version}`,'privacy'),record.brief?decisionBriefView(record.brief,true):evidenceArtifactView(record.artifact,record.sources));sources(node,record.sources,record.evidence);append(node,stateLine(record.state),reviewReasonView(`Reviewed by ${record.reviewer}`,record.reason),paragraph(`Limits: ${record.limitations}`,'muted'),paragraph(`${record.adoption_count} documented use${record.adoption_count===1?'':'s'}`,'privacy'));
+    for(const adoption of record.adoptions||[])node.append(adoptionView(adoption));
     const packetLinks=['html','json'].map(format=>{const link=element('a',format==='html'?'Download readable briefing':'Download briefing JSON','secondary small evidence-download');link.href=`/api/v1/briefing?submission=${encodeURIComponent(record.id)}&format=${format}`;link.download='';return link;});node.append(actions(...packetLinks),paragraph('The readable file opens in a browser and can be printed. Sources, review and remaining gaps stay with the recommendation.','privacy'));
     if(state.account)node.append(button('Report contribution',()=>reportPrompt('submission',record.id),'secondary small'));
-    const sourceTask=state.tasks.find(task=>task.id===record.task_id),mission=state.missions.find(item=>item.id===sourceTask?.mission_id);if(mission&&isReviewer()&&(state.account.role==='admin'||mission.owner_id===state.account.id)&&['open','demo'].includes(mission.status))followUpForm(node,record,sourceTask,mission);if(mission?.owner_id===state.account?.id)disclosure(node,'Record real use of this contribution',(body)=>{const inputs=form(body,'Record adoption',async(data)=>change('/adoptions',{submission_id:record.id,note:data.note},'Use recorded.'));field(inputs,'note','Where and how the work was used',{type:'textarea',max:2000,full:true});});
+    const sourceTask=state.tasks.find(task=>task.id===record.task_id),mission=state.missions.find(item=>item.id===sourceTask?.mission_id);if(mission&&isReviewer()&&(state.account.role==='admin'||mission.owner_id===state.account.id)&&['open','demo'].includes(mission.status))followUpForm(node,record,sourceTask,mission);
+    if(mission?.owner_id===state.account?.id){
+      // Adoption is the mission owner's own recorded declaration, and it is refused when it would put
+      // one person in two roles. The interface says which rule applies before the form is offered.
+      const contributedByYou=(state.agents||[]).some(agent=>agent.id===record.agent_id),reviewedByYou=mission.reviewer_id===state.account.id;
+      if(contributedByYou||reviewedByYou)node.append(paragraph(contributedByYou?'You contributed this work, so you cannot also adopt it: the adopter must be a different person from the contributor. Ask another mission owner to record any real use.':'You reviewed this work, so you cannot also adopt it: the adopter must be a different person from the reviewer. Ask the mission owner to record any real use.','privacy'));
+      else disclosure(node,'Record a documented adoption',(body)=>{body.append(paragraph('Adoption is your recorded declaration that you used this accepted version, with the evidence you can name. It is not proof of implementation, not an institutional endorsement and not evidence of a real-world outcome.','privacy'));const inputs=form(body,'Record adoption',async(data)=>change('/adoptions',{submission_id:record.id,note:data.note,evidence:data.evidence},'Adoption declared and recorded with its supporting evidence.'));field(inputs,'note','Where and how the work was used',{type:'textarea',max:1200,full:true});field(inputs,'evidence','Supporting evidence for this use',{type:'textarea',max:400,required:false,full:true,hint:'Name the decision, venue or register where it was used. NemoWorld records your declaration; it does not verify it.'});});
+    }
     grid.append(node);}parent.append(grid);
 }
 function followUpForm(node,record,sourceTask,mission){
@@ -1486,7 +1621,7 @@ async function loadCommunity() {
   state.community=await api(`/community?${query}`);
 }
 async function loadJourney(){state.journey=state.account&&selected()?await api(`/journey?agent_id=${encodeURIComponent(state.selected)}`):null;}
-async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;state.gameDrawer='';state.gameMenuOpen=false;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds(),loadMemory()]);if(tab==='quests')await loadQuests();if(tab==='guilds')await loadGuildProjects();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});if(!document.body.classList.contains('game-world'))title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
+async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='review'){state.workbenches=null;state.evidenceLibrary=null;}if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;state.gameDrawer='';state.gameMenuOpen=false;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds(),loadMemory()]);if(tab==='quests')await loadQuests();if(tab==='restoration')await loadRestoration();if(tab==='guilds')await loadGuildProjects();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});if(!document.body.classList.contains('game-world'))title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
 async function navigateSection(tab){const same=state.tab===tab;await openSection(tab);$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');if(same&&matchMedia('(max-width:1050px)').matches)$('#toggle-navigation').focus();}
 $('#toggle-navigation').addEventListener('click',()=>{const open=$('#toggle-navigation').getAttribute('aria-expanded')!=='true';$('#toggle-navigation').setAttribute('aria-expanded',String(open));$('.sidebar').classList.toggle('navigation-open',open);});
 $('#game-menu-button').addEventListener('click',toggleGameMenu);
@@ -1943,6 +2078,7 @@ function callingCard(){
  const view=state.callings,node=card(view?view.calling.name:'Your calling','A PURPOSE IN THIS WORLD');node.classList.add('calling-card');
  if(!view){node.append(paragraph('Choose a peaceful vocation. Let it guide how your character helps the world.'),button('Choose a calling',()=>openSection('callings'),'small'));return node;}
  node.append(badge(`${view.rank.title} · level ${view.rank.level}`),paragraph(view.calling.purpose),paragraph(`${view.calling.guild_name} · ${view.experience.available} cosmetic experience`,'privacy'));
+ if(view.pathway)node.append(paragraph(`Pathway ${view.pathway.completed} / ${view.pathway.total}${view.pathway.next?` · next: ${view.pathway.next.title}`:' · every tier credited'}`,'privacy'));
  for(const objective of view.today.objectives){const item=element('div',null,`calling-objective ${objective.complete?'complete':''}`);item.append(element('span',objective.complete?'✓':'◇','objective-mark'),paragraph(objective.title));node.append(item);}
  if(view.current_objective)node.append(button('Follow my calling',()=>callingAction(view.current_objective.action_hint),'small'));
  if(state.quests?.next_action)node.append(questNextCard(state.quests.next_action,{compact:true}));
@@ -1963,6 +2099,52 @@ function callingWorkerForm(parent){
   body.append(actions(button('View runs',()=>openSection('history'),'secondary small'),button('Stop my local AI',async()=>{const result=await api('/residents/cancel','POST',{});notice(result.stopping?'Stop requested. Check the run receipt after cleanup.':'No local resident is running.');},'secondary small')),paragraph('A calling never grants permissions. Decisions have time and API budgets; revoking access stops the runtime. Research work still uses scoped missions and separate human review.','privacy'));
  });
 }
+// The pathway is one calling's practice ladder, computed on the server from saved receipts and
+// recorded adoptions. Two things matter in this reader: the three states stay visibly apart (practice,
+// verified contribution, external adoption are not degrees of one thing), and the next challenge names
+// the concrete saved fact that is still missing. Nothing here can credit a tier, and nothing here
+// claims that a tier is a qualification.
+const PATHWAY_STATE_KEYS=Object.freeze({'practice':'practice','verified-contribution':'verified','external-adoption':'adopted'});
+function pathwayTierCard(tier){
+ const node=element('article',null,'calling-quest');node.dataset.pathwayTier=tier.slug;
+ node.append(badge(tier.state),element('h3',`Tier ${tier.ordinal} · ${tier.title}`),paragraph(tier.summary));
+ for(const item of tier.requires){
+  const row=element('div',null,'quest-row');append(row,paragraph(`${item.have} of ${item.min} · ${item.label}`),badge(item.evidence));
+  if(item.have<item.min)row.append(button('Open this step',()=>callingAction(item.action.kind),'secondary small'));
+  node.append(row);
+ }
+ for(const fact of tier.evidence)node.append(paragraph(`Saved fact: ${fact.kind} · ${fact.source_id} · ${fact.earned_day}`,'plot-address'));
+ if(tier.requires.some(item=>item.kind==='research_accepted'))node.append(paragraph('This tier is credited only by an independent human acceptance of real scoped work. Neither the contributor nor a model can accept it.','privacy'));
+ for(const recipe of tier.recipes)node.append(paragraph(`Suggested recipe: ${recipe.name} — ${Object.entries(recipe.ingredients).map(([kind,count])=>`${count} ${kind}`).join(', ')}. Every recipe stays available; the pathway only suggests which one suits this calling.`,'privacy'));
+ return node;
+}
+function pathwayCard(pathway){
+ if(!pathway)return null;
+ const node=card(`${pathway.name} · pathway`,'PRACTICE · VERIFIED CONTRIBUTION · EXTERNAL ADOPTION');node.classList.add('pathway-card');
+ node.append(paragraph(pathway.summary));
+ node.append(metrics([['Pathway tiers',`${pathway.completed} / ${pathway.total}`,'Credited only from saved server facts'],['Different practice kinds',pathway.diversity.distinct_kinds,`${pathway.diversity.kinds_per_tier} unlock the banner decoration`],['Verified contributions',pathway.contribution.verified.count,'Independent human acceptance'],['External adoption',pathway.contribution.adopted.count,'Recorded by the mission owner']]));
+ node.append(paragraph(pathway.policy.diversity,'privacy'));
+ const states=element('div',null,'pathway-states');states.dataset.pathwayStates='three';
+ for(const state of pathway.states){
+  const key=PATHWAY_STATE_KEYS[state.id],record=pathway.contribution[key],row=element('article',null,'record');
+  row.dataset.pathwayState=state.id;row.append(badge(state.badge),element('h3',state.label),paragraph(state.detail,'privacy'),paragraph(`Your record: ${record.count}${key==='practice'?` · ${pathway.diversity.distinct_kinds} different kind${pathway.diversity.distinct_kinds===1?'':'s'} of saved practice`:''}`));
+  states.append(row);
+ }
+ node.append(paragraph('These three states are not the same thing and no tier turns one into another. Only the third leaves NemoWorld, and it is still a record written here.','privacy'),states);
+ if(pathway.next){
+  const next=element('section',null,'card quest-next');next.dataset.pathwayNext=pathway.next.tier_slug;
+  next.setAttribute('aria-label',`Next pathway challenge: tier ${pathway.next.ordinal}, ${pathway.next.title}`);
+  next.append(paragraph('NEXT CHALLENGE','eyebrow'),element('h3',`Tier ${pathway.next.ordinal} · ${pathway.next.title}`),paragraph(pathway.next.summary));
+  for(const item of pathway.next.missing)next.append(paragraph(`Still needed: ${item.needs} more · ${item.label} (${item.have} of ${item.min})`),button('Open this step',()=>callingAction(item.action.kind),'secondary small'));
+  if(pathway.next.requires_human_review)next.append(paragraph('A different, authorized human reviewer must accept this work before the tier counts. You cannot accept your own contribution.','privacy'));
+  node.append(next);
+ } else node.append(paragraph('Every tier of this pathway is credited from saved facts. Nothing further is owed here, and a pathway is not a qualification or a professional credential.','privacy'));
+ const grid=element('div',null,'grid two');for(const tier of pathway.tiers)grid.append(pathwayTierCard(tier));node.append(grid);
+ const unlocks=pathway.unlocks||[];
+ if(unlocks.length)disclosure(node,'Cosmetic decorations and suggested recipes',body=>{for(const unlock of unlocks)body.append(paragraph(`${unlock.earned?'Earned':'Ahead'} · ${unlock.kind==='cosmetic'?'decoration':'suggested recipe'} · ${unlock.label}: ${unlock.detail}`,'privacy'));});
+ node.append(paragraph(pathway.disclosure,'privacy'));
+ return node;
+}
 function renderCallings(parent){
  parent.append(heading('Every resident has a calling','Build a peaceful world through exploration, care, craft and useful knowledge. Humans choose; AI residents work within their permissions.'));
  const view=state.callings;
@@ -1973,7 +2155,9 @@ function renderCallings(parent){
   story.append(paragraph('Experience describes saved participation. It creates no NemoCoins, land rights, authority or action scope. Only independently accepted real contributions can earn NemoCoins.','privacy'));
   callingWorkerForm(story);
   memoryPanel(story);
-  disclosure(story,'My experience receipts',body=>{if(!view.receipts.length)body.append(empty('No calling receipts yet. Complete a saved objective to begin.'));for(const receipt of view.receipts.slice(0,20)){const row=element('article',null,'record');row.append(paragraph(`${receipt.objective_id.replaceAll('_',' ')} · ${receipt.points} experience`),paragraph(`${receipt.earned_day} · ${receipt.available?'available':'held after evidence changed'}`,'privacy'),paragraph(`Source: ${receipt.source_kind} · ${receipt.source_id}`,'plot-address'));body.append(row);}});parent.append(story);
+  disclosure(story,'My experience receipts',body=>{if(!view.receipts.length)body.append(empty('No calling receipts yet. Complete a saved objective to begin.'));for(const receipt of view.receipts.slice(0,20)){const row=element('article',null,'record');row.append(paragraph(`${receipt.objective_id.replaceAll('_',' ')} · ${receipt.points} experience`),paragraph(`${receipt.earned_day} · ${receipt.available?'available':'held after evidence changed'}`,'privacy'),paragraph(`Source: ${receipt.source_kind} · ${receipt.source_id}`,'plot-address'));body.append(row);}});
+  parent.append(story);
+  const pathwayNode=pathwayCard(view.pathway);if(pathwayNode)parent.append(pathwayNode);
  }else parent.append(paragraph(state.account?'Create or select a character to choose its calling.':'Meet the guilds below. Create a human account to choose your calling or guide your AI residents.'),button(state.account?'My characters':'Create account',()=>state.account?openSection('characters'):openAuth('register'),'small'));
  const catalog=state.guilds?.catalog||view?.catalog||[];const choices=element('div',null,'calling-catalog');
  for(const calling of catalog){const node=card(calling.name,calling.guild_name);node.classList.add('calling-choice');node.dataset.calling=calling.id;node.append(paragraph(calling.purpose),paragraph(calling.charter,'privacy'));if(view){const choice=button(view.calling.id===calling.id?'Current calling':`Become ${/^[AEIOU]/.test(calling.name)?'an':'a'} ${calling.name}`,async()=>{state.callings=await api('/callings/select','POST',{agent_id:state.selected,calling_id:calling.id});await loadGuilds();await loadWorld();renderView();notice(`Your calling is ${calling.name}. ${calling.guild_name} welcomes you.`);},'secondary small');choice.disabled=view.calling.id===calling.id||!view.can_change||state.world.paused;node.append(choice);}choices.append(node);}parent.append(choices,paragraph('Your operator can change a calling once per UTC day. Guilds are affiliations that follow this choice. Guild membership carries no moderation or ownership powers.','privacy'));
@@ -2158,6 +2342,181 @@ function guildProjectForm(parent){
  const catalog=state.guildProjects?.guilds||[];
  disclosure(parent,'Start a guild project',body=>{body.append(paragraph('A guild project is a scoped plan for bounded cooperation. It belongs to a guild, not to a calling: any resident may start or join any guild’s project, and it grants no authority.','privacy'));const inputs=form(body,'Create guild project',values=>{let plan;try{plan=JSON.parse(values.plan);}catch{throw new Error('The plan must be a JSON array of workstreams.');}return change('/guilds/projects',{agent_id:state.selected,guild_id:values.guild_id,title:values.title,summary:values.summary,visibility:values.visibility,plan},'Guild project created. You are its organiser.').then(async()=>{await loadGuildProjects();renderView();});},'guild-project-create');field(inputs,'title','Project title',{max:100,full:true});field(inputs,'guild_id','Guild',{options:catalog.map(guild=>({value:guild.guild_id,label:`${guild.guild_name} · ${guild.name}`})),full:true});field(inputs,'visibility','Visibility',{options:[{value:'public',label:'Public · listed for everyone'},{value:'private',label:'Private · only your operator'}],full:true});field(inputs,'summary','Purpose',{type:'textarea',max:1200,full:true});field(inputs,'plan','Scoped plan (JSON array, 1–6 workstreams)',{type:'textarea',full:true,hint:'[{"id":"paths","title":"Trace an accessible path","output_name":"A traced route","scope":"Walk and record one route"}]'});});
 }
+// ---------------------------------------------------------------------------------------------
+// One cooperative world restoration event.
+//
+// The panel is a reader of the server's derived progress, never a second authority: every step it
+// shows is a saved server row (an object on its measured tile, a sowing, a craft, a circle
+// membership), and every control it offers calls the server's own route. A pledge is rendered as a
+// promise and is never counted as work, and the panel never claims a step is complete that the
+// server has not already measured.
+async function loadRestoration(){
+ const query=new URLSearchParams();
+ if(state.restorationEventId)query.set('event_id',state.restorationEventId);
+ if(state.account&&selected())query.set('agent_id',state.selected);
+ try{state.restoration=await api(`/restoration?${query}`);}
+ catch(error){
+  if(error.status!==404||!state.restorationEventId)throw error;
+  // The board lists only its newest occurrences. A formerly selected event may leave that window;
+  // continue with the current board instead of making every world refresh fail.
+  state.restorationEventId='';query.delete('event_id');state.restoration=await api(`/restoration?${query}`);
+ }
+ state.restorationEventId=state.restoration?.event?.id||'';
+}
+async function restorationWrite(path,data,message){
+ const result=await change(path,{...data,agent_id:state.selected},message);
+ await loadRestoration();state.tab='restoration';renderView();return result;
+}
+function restorationWindowLine(item){
+ const until=date(item.ends_at);
+ return `${item.phase==='open'?`Open now · closes ${until}`:`Window ${item.phase} · ${date(item.starts_at)} → ${until}`}${Number.isFinite(item.minutes_remaining)?` · ${item.minutes_remaining} minutes left`:''}`;
+}
+function restorationPromiseNote(item){
+ const promise=item.policy?.promise||'Pledging to help is a promise, not work.';
+ return paragraph(`A pledge here is a promise: ${promise}`, 'privacy');
+}
+/** Every participant, their calling and only the steps their saved work actually answers. */
+function restorationParticipantList(item){
+ const list=element('ul',null,'restoration-participants');
+ const byId=new Map((item.progress?.steps||[]).map(step=>[step.id,step]));
+ for(const participant of item.participants||[]){
+  const row=element('li');
+  const counted=(participant.contributions||[]).map(contribution=>{
+   const step=byId.get(contribution.step_id);
+   return `${step?step.title:contribution.step_id} (${contribution.counted}${step?` of ${step.target}`:''})`;
+  });
+  append(row,element('strong',participant.name),badge(participant.state||'active',participant.state!=='active'),
+   paragraph(`${participant.calling_id||'explorer'} · pledged ${date(participant.joined_at)} · ${participant.promise?.label||'a promise to help'}`, 'privacy'),
+   paragraph(counted.length?`Saved work counted: ${counted.join(', ')}`:'No saved work counted yet — a pledge on its own advances nothing.','privacy'));
+  list.append(row);
+ }
+ const node=element('div',null,'restoration-people');
+ node.append(element('h3','Participants'),list.children.length?list:empty('No resident has pledged yet.'));
+ return node;
+}
+/** The measured tiles of the finished garden: what stands, and in which step's name. */
+function restorationArtifactList(item){
+ const node=element('div',null,'restoration-artifact');
+ const list=element('ul');
+ for(const planned of item.artifact?.planned||[]){
+  const row=element('li');
+  append(row,element('span',`${planned.type} at ${planned.x}, ${planned.y}`),badge(planned.state==='missing'?'not yet standing':planned.state,planned.state==='missing'),
+   paragraph(`${planned.step_id} step · ${planned.state==='placed'?'placed by a participant':planned.state==='assembled'?'written when the last step finished':'still missing'}`,'privacy'));
+  list.append(row);
+ }
+ node.append(element('h3',`The restored garden · ${item.artifact?.standing||0} of ${(item.artifact?.planned||[]).length} objects standing`),list,
+  paragraph(`Saved in ${item.site?.name} (${item.artifact?.world_id}). Every object here is a real world_objects row; the garden keeps them after the window closes, after sign-out and after a restart.`,'privacy'));
+ return node;
+}
+/** The four steps, each with the saved fact that answers it and the next usable action. */
+function restorationStepList(item,walkForm){
+ const list=element('ol',null,'restoration-steps');
+ const viewer=item.viewer;
+ for(const step of item.progress?.steps||[]){
+  const row=element('li',null,step.complete?'restoration-step complete':'restoration-step');
+  append(row,element('h3',`Step ${step.ordinal} · ${step.title}`),badge(step.complete?'complete':`${step.progress} of ${step.target}`,!step.complete),
+   paragraph(`${step.role.label} (${step.role.callings.join(', ')}): ${step.role.work}`,'muted'),
+   paragraph(`Answered by ${step.fact.label}. ${step.instructions}`,'privacy'),
+   paragraph(`Planned output: ${step.output_name}`,'privacy'));
+  const eligible=Boolean(viewer&&(viewer.steps||[]).find(entry=>entry.step_id===step.id)?.eligible);
+  const joined=Boolean(viewer?.joined);
+  const recording=joined&&eligible&&!['completed','cancelled'].includes(item.phase);
+  if(step.slots.length){
+   const slots=element('ul',null,'restoration-slots');
+   for(const slot of step.slots){
+    const slotRow=element('li');
+    append(slotRow,element('span',`${slot.type} at ${slot.x}, ${slot.y}`),badge(slot.filled?'standing':'still waiting',slot.filled?'':'warning'));
+    if(!slot.filled&&recording){
+     const place=button(`Place the ${slot.type} at ${slot.x}, ${slot.y}`,()=>restorationWrite('/restoration/place',{event_id:item.id,x:slot.x,y:slot.y},`The ${slot.type} is standing at ${slot.x}, ${slot.y}.`),'small');
+     append(slotRow,place);
+    }
+    slots.append(slotRow);
+   }
+   row.append(slots,walkForm);
+  } else if(recording){
+   row.append(button(`Record my saved ${step.fact.kind==='craft'?'craft':step.fact.kind==='crop_plant'?'sowing':'circle membership'} for this step`,()=>restorationWrite('/restoration/contribute',{event_id:item.id,step_id:step.id},'Recorded from the saved work in this world.'),'small'));
+  }
+  if(viewer&&!eligible)row.append(paragraph(`Your resident follows ${viewer.calling_id}; another resident of the callings above answers this step.`,'privacy'));
+  list.append(row);
+ }
+ return list;
+}
+/** Open a restoration on the operator's own garden, pledge, leave, or take the resident there. */
+function restorationControls(item,parent){
+ const viewer=item.viewer;
+ const node=element('div',null,'restoration-controls');
+ node.append(restorationPromiseNote(item));
+ if(!state.account){node.append(paragraph('Sign in to pledge to this restoration. The plan stays readable to visitors.','privacy'));parent.append(node);return;}
+ if(!selected()){node.append(paragraph('Choose a character to take part.','privacy'),button('My characters',()=>openSection('characters'),'secondary small'));parent.append(node);return;}
+ if(!viewer?.joined){
+  node.append(button('Pledge to help with this restoration',()=>restorationWrite('/restoration/join',{event_id:item.id},'Pledged. This promise advances no step on its own.'),'small'));
+  if(!viewer?.in_garden)node.append(button(`Take ${selected().name} into ${item.site?.name}`,async()=>{await travelAgent(item.site.world_id);await loadRestoration();state.tab='restoration';renderView();},'secondary small'));
+  node.append(paragraph('The garden must be open to visitors, the restoration inside its window, and the resident must actually have walked into the garden before the pledge is recorded.','privacy'));
+  parent.append(node);return;
+ }
+ append(node,paragraph(`Pledged as ${selected().name} · ${viewer.promise?.label||'a promise to help'} · ${viewer.calling_name||viewer.calling_id}`,'privacy'));
+ if(viewer.next_action)node.append(paragraph(`Next usable step for this resident: ${viewer.next_action.title} — ${viewer.next_action.action.label}`,'privacy'));
+ if(!viewer.in_garden)node.append(button(`Take ${selected().name} into ${item.site?.name}`,async()=>{await travelAgent(item.site.world_id);await loadRestoration();state.tab='restoration';renderView();},'small'));
+ node.append(button('Leave this restoration',()=>restorationWrite('/restoration/leave',{event_id:item.id},'The promise was withdrawn; everything already saved stays as it is.'),'secondary small'));
+ parent.append(node);
+}
+function restorationOpenForm(parent){
+ if(!communityCanWrite())return;
+ const item=state.restoration?.event;
+ const mine=item&&item.site?.owner_agent_id===state.selected;
+ const box=disclosure(parent,mine?`Reopen a restoration of ${selected().name}’s garden`:`Open a restoration of ${selected().name}’s garden`,body=>{
+  body.append(paragraph('A restoration is opened by the garden’s own operator, on a garden already open to visitors. The window is bounded, the participants are listed, and every step is measured from saved work in this world.','privacy'));
+  const inputs=form(body,'Open the restoration',async values=>{const opened=await api('/restoration/open','POST',{agent_id:state.selected,hours:Number(values.hours)});state.restorationEventId=opened.id;await refresh();state.tab='restoration';render();notice('The restoration is open for a bounded window.');},'restoration-open');
+  field(inputs,'hours','Window in hours (1–24)',{type:'number',min:1,max:24,value:'24',full:true});
+ });
+ if(mine)box.open=true;
+}
+function restorationEventPanel(item){
+ const panel=card(item.title,'WORLD RESTORATION');
+ append(panel,badge(item.status),paragraph(restorationWindowLine(item)),
+  paragraph(`${item.site?.name} · garden of ${item.site?.owner_name||'a resident'} · ${item.site?.open_to_visitors?'open to visitors':'not open to visitors'}`,'privacy'),
+  paragraph(`Convened by ${item.convenor?.name||'a resident'} · ${item.participants_count} of ${item.capacity} places pledged`,'privacy'),
+  paragraph(item.narrative,'muted'));
+ if(state.account&&selected()&&item.site?.world_id!==`home:${state.selected}`)panel.append(button('Look around the garden',()=>visitWorld(item.site.world_id),'secondary small'));
+ panel.append(restorationControls(item,panel));
+ const site=item.site?.world_id?getWorldDefinition(item.site.world_id):null;
+ const walkForm=selected()&&item.viewer?.in_garden&&site?walkToTileForm(selected(),{width:site.columns,height:site.rows}):null;
+ panel.append(element('h3','The plan'),restorationStepList(item,walkForm));
+ panel.append(restorationArtifactList(item),restorationParticipantList(item));
+ panel.append(paragraph(`This event issues ${item.policy?.coins_awarded} NemoCoins and grants no calling, account role, land, or moderator and reviewer authority. Only the plan’s own object on the plan’s own tile is ever written into the garden, and only while it is open.`,'privacy'));
+ return panel;
+}
+function renderRestoration(parent){
+ parent.append(heading('World restoration','One cooperative, bounded, peaceful event: a public garden restored together. Every step is a saved act in this world.'));
+ const data=state.restoration;
+ if(!data){parent.append(empty('The restoration board could not be loaded. Reopen this section to try again.'));return;}
+ const story=card(data.plan.title,'THE PLAN');
+ append(story,paragraph(data.plan.summary),paragraph(data.plan.narrative,'muted'),
+  paragraph(`Steps: ${data.plan.steps.map(step=>`${step.ordinal}. ${step.title} (${step.role.label})`).join(' · ')}`,'privacy'),
+  paragraph(`A pledge is a promise and is never counted as work. Coins issued: ${data.policy.coins_awarded}. Land grants: none. Account roles: none.`,'privacy'));
+ parent.append(story);
+ residentContext(parent);
+ if((data.events||[]).length>1){
+  const board=element('div',null,'community-search');
+  const label=element('label','Restoration','full');
+  const select=element('select');
+  for(const item of data.events||[]){const option=element('option',`${item.title} · ${item.phase} · ${item.steps_completed}/${item.steps_total} steps`);option.value=item.id;select.append(option);}
+  select.value=data.event?.id||'';select.setAttribute('aria-label','Restoration');
+  select.addEventListener('change',()=>guarded(async()=>{state.restorationEventId=select.value;await loadRestoration();renderView();}));
+  append(label,select);board.append(label);parent.append(board);
+ }
+ if(data.event)parent.append(restorationEventPanel(data.event));else parent.append(empty('No restoration is open in this world yet. A garden’s operator opens one, and its neighbours restore it together.'));
+ restorationOpenForm(parent);
+ const list=element('div',null,'grid two');
+ for(const item of data.events||[]){
+  const node=card(item.title,item.phase==='open'?'OPEN NOW':'RECORDED');
+  append(node,badge(item.phase),paragraph(`${item.world_id} · ${item.participants_count} pledged · ${item.steps_completed} of ${item.steps_total} steps measured`, 'privacy'),
+   paragraph(restorationWindowLine(item),'privacy'),
+   button('Read this restoration',()=>guarded(async()=>{state.restorationEventId=item.id;await loadRestoration();renderView();}),'secondary small'));
+  list.append(node);
+ }
+ if(list.children.length){parent.append(element('h2','Restorations recorded in this world'),list);}
+}
 function renderGuildProjects(parent){
  parent.append(heading('Guild projects','The practical side of a guild: a shared board of scoped work, explicit participation and independent verification.'));
  const data=state.guildProjects;
@@ -2213,7 +2572,7 @@ function refreshInteractionPanel() {
   host.replaceChildren();
   interactionBody(host);
   const fixture=state.interaction?.fixture,target=$('#game-target'),control=$('#game-interact-button');
-  if(target)target.textContent=fixture?`${fixture.label} · ${fixture.x}, ${fixture.y} · E to interact`:'Aim at a place or object to interact';
+  if(target)target.textContent=fixture?`${fixture.action?.label||fixture.label} · Enter to interact`:'Aim at a place or object to interact';
   if(control)control.disabled=!viewedAgent()||!fixture;
 }
 function interactionTile(fixture) { return `${fixture.x}, ${fixture.y}`; }

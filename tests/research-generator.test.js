@@ -40,9 +40,60 @@ test('the seeded corpus has no two proposals with the same substantive question 
   assert.equal(f.platform.research(null).catalog_total, 43 * 23 + 20 + 6);
 });
 
+test('the LDC cooperation theme applies only to catalog LDC countries and records the gap elsewhere', async (t) => {
+  const f = await fixture(t);
+  const theme = RESEARCH_THEMES.find((item) => item.id === 'ldc-cooperation');
+  // The gate is the country's registered LDC status, not an unconditional `none`.
+  assert.equal(theme.evidenceGate, 'ldc-status');
+  const nonLdc = COUNTRIES.entries.find((item) => item.iso2 === 'FR');
+  assert.equal(nonLdc.ldc, false);
+  const plan = planCountryResearch(nonLdc);
+  assert.deepEqual(plan.leads.map((lead) => lead.id).filter((id) => id.startsWith('FR-17-')), ['FR-17-baseline']);
+  assert.equal(plan.leads.some((lead) => lead.stage !== 'baseline'), false);
+  assert.equal(plan.leads.length, 17);
+  // The goal-17 baseline stays, and it records the missing subject evidence as an open scope choice.
+  const baseline = plan.leads.find((lead) => lead.id === 'FR-17-baseline');
+  assert.match(baseline.instructions, /has no retained subject evidence for France/);
+  assert.doesNotMatch(baseline.instructions, /France's current LDC status/);
+  // The gate tracks the catalog flag for every entry: every LDC keeps the concern, no non-LDC gets it.
+  let ldcRows = 0;
+  for (const item of COUNTRIES.entries) {
+    const rows = planCountryResearch(item).leads.filter((lead) => lead.goal === 17 && lead.stage === 'destination');
+    assert.equal(rows.length, item.ldc ? 1 : 0, `${item.iso2} goal-17 applied concerns`);
+    if (item.ldc) ldcRows += rows.length;
+  }
+  assert.equal(ldcRows, 44);
+  // Generating for a non-LDC country in the shipped world adds baselines only.
+  assert.equal(f.tx('researchGenerate', f.actor('admin'), { country_code: 'FR' }).added, 17);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM research_leads WHERE country_code=?', 'FR').n, 17);
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM research_leads WHERE country_code=? AND goal=17 AND stage!=\'baseline\'', 'FR').n, 0);
+});
+
+test('older unsupported applied leads are retired on boot without rewriting or hiding activated work', async (t) => {
+  const f = await fixture(t);
+  const created = '2026-01-01T00:00:00.000Z';
+  const insert = (id, stage, status = 'proposed') => f.platform.run(
+    'INSERT INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+    id, 'FR', 17, stage, `Older ${stage}`, 'An older LDC cooperation proposal.', 'Historical rubric.', '[]', status, created);
+  insert('FR-17-destination', 'destination');
+  insert('FR-17-institutions', 'institutions');
+  insert('FR-17-interventions', 'interventions', 'activated');
+  const original = f.platform.get('SELECT * FROM research_leads WHERE id=?', 'FR-17-destination');
+  f.platform.initCivic();
+  assert.deepEqual(f.platform.get('SELECT * FROM research_leads WHERE id=?', original.id), original);
+  const retired = f.platform.research(null, { country: 'FR', q: 'Older', status: 'retired' });
+  assert.deepEqual(retired.leads.map(item => item.id).sort(), ['FR-17-destination', 'FR-17-institutions']);
+  assert.equal(f.platform.research(null, { country: 'FR', q: 'Older', status: 'activated' }).total, 1);
+  assert.throws(() => f.tx('researchActivate', f.actor('admin'), { lead_id: original.id, beneficiary: 'Fictional fixture' }),
+    error => error.status === 409 && /retired without a scoped replacement/.test(error.message));
+  f.platform.initCivic();
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM research_lead_consolidations WHERE consolidated_id=?', original.id).n, 1);
+});
+
 test('an applied concern shared by two goals is consolidated once and the consolidation is recorded', async (t) => {
   const f = await fixture(t);
   const target = COUNTRIES.entries.find((item) => !item.ldc);
+  // `evidenceGate: 'none'` is deliberately ungated, so an unregistered theme still reaches every country.
   const theme = { id: 'overlap-check', title: 'Overlap check', goals: [2, 3], subject: 'subject for {country}', subjectBasis: 'basis for {country}', evidenceGate: 'none', openScopeChoices: ['choose one'], limit: 'limit' };
   const plan = planCountryResearch(target, [theme]);
   assert.equal(plan.leads.length, 17 + 3);

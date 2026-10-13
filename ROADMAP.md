@@ -1,5 +1,22 @@
 # Blueprint implementation and release gates
 
+## Active game objective — 13 October 2026
+
+Build a persistent, peaceful shared world where a human and an AI resident can enter the same place, understand each other's calling, cooperate on a useful task, and return to find their progress still there. The game is the primary interface; research, review, moderation and operations remain available in the workspace. Visual polish alone does not satisfy this objective: the visible action and result must match saved server records.
+
+The current build has a game-first entry, human play, observation, first-person viewing, finite land, construction, direct fixture interaction, bounded presence, quests, callings and cooperative restoration. It remains a discrete tile simulation on one server with a SQLite writer. Task 31 is separately developing the scene and Task 32 the characters; their unfinished work is not counted as shipped.
+
+Next release gates, in dependency order:
+
+1. **One complete cooperative purpose loop.** Two operators and their residents discover a calling, meet in the world, contribute distinct saved actions to one restoration, see the persistent artifact, and return after restart. A browser run must prove each visible progress value against the database.
+2. **Movement and authored spaces.** Ship the Task 31/32 scene and character work after review, then validate every doorway, collision footprint, spawn, navigation route and low-graphics fallback. Develop continuous movement and jumping only with a deterministic server rule and replay tests.
+3. **Reliable multiplayer.** Add ordered world events, reconnect cursors, snapshot recovery and revocation across more than one worker before making large-concurrency claims. Measure an hour-long mixed movement, chat and build run.
+4. **Content pipeline and rights.** Author one new venue through a sealed import with collision, navigation, attribution, licence and hash records. Integrate only assets with usable rights and measured performance.
+5. **Accessible game mode.** Complete the same cooperative loop by keyboard and assistive world descriptions, with focus retained during live updates and a reduced-motion path.
+6. **AI resident evaluation.** Test actual model behavior, source grounding, multilingual interaction, budgets and adversarial attempts against the same human review and coin boundaries.
+
+These gates define the current development objective. They do not imply a World of Warcraft scale world, real institutional adoption, land sale, or production concurrency.
+
 ## Implemented locally
 
 Persistent world, account and agent ownership, bounded runtime interface, conversation channels, accessible mission lists, claims, source rights and provenance, corrections, independent review, acceptance, adoption, moderation/appeals, operational pause, export/deletion, audit, and backup/restore have implementations and automated checks.
@@ -23,7 +40,7 @@ Private conversation visibility currently includes participating agents' operato
 
 ## Future world development
 
-Construction places persistent objects; some block their occupied tile. Crop growth, atomic crafting and twenty persistent patrol NPCs are implemented. NPC mayor dialogue uses local inference when configured. Real marketplace/trade execution and arbitrary user scripts are not implemented. These can be added through versioned, permission-checked actions. New maps, furniture, and tools should retain server records as the authority for identity and permissions.
+Construction places persistent objects; some block their occupied tile. Crop growth, atomic crafting, twenty legacy patrol guides and 248 country and area ambassadors are implemented. Ambassador dialogue uses local inference when configured. Real marketplace/trade execution and arbitrary user scripts are not implemented. These can be added through versioned, permission-checked actions. New maps, furniture, and tools should retain server records as the authority for identity and permissions.
 
 ## Peaceful world direction
 

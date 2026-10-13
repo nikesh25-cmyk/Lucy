@@ -1,7 +1,8 @@
 import {randomUUID,createHash} from 'node:crypto';
 import {contributionSource,contributionEligibility} from './journey.js';
 import {getWorldDefinition,walkable} from '../world.js';
-import {receiptProof,questObjectiveRules,reconcileQuests,questStepFor} from './quests.js';
+import {receiptProof,questObjectiveRules,reconcileQuests,questStepFor,QUEST_ACTIONS} from './quests.js';
+import content from './content.js';
 
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const objective=(kind,title,instructions,action)=>Object.freeze({id:kind,source_kind:kind,title,instructions,action_hint:action,target:1,experience:5});
@@ -42,6 +43,292 @@ const sources=[
  source('research_accepted','c.agent_id','r.id','r.created_at',contributionSource,contributionEligibility('c.agent_id')),
 ].join(' UNION ALL ');
 const proof=receiptProof;
+
+// ---- Competence pathways -------------------------------------------------------------------------
+//
+// A pathway is the practice ladder for one calling. It is **derived**: every tier is evaluated from the
+// receipts the resident already holds and from adoptions the mission owner already recorded, so this
+// layer adds no table, no column, no writer and no rollback path of its own. Restarting the server,
+// re-reading the board or replaying a request therefore cannot change progress — and withholding the
+// evidence behind a tier (a quarantined submission, a lost reviewer) makes the tier stop counting
+// through the same `available` rule the calling experience and the coin wallet already use.
+//
+// The ladder is deliberately diverse. Every tier after the first names at least two *different* kinds
+// of saved fact — or rests entirely on an independent acceptance or a recorded adoption, which one
+// activity cannot produce — and every tier names at least one kind no earlier tier required, so a
+// resident who repeats one activity cannot walk the pathway: a single repeated source completes at
+// most the first tier. Within one read a receipt is allocated to one tier only, exactly like the
+// existing "one saved fact, one credit" rule for calling objectives and quest steps.
+//
+// Nothing here grants anything. A tier names saved practice, an independently accepted contribution
+// and a documented adoption; it writes no account role, land right, review authority, action scope or
+// NemoCoin, and the disclosure says so in the interface, in the API and in docs/PATHWAYS.md.
+export const PATHWAY_KINDS=Object.freeze({practice:'practice',verified:'research_accepted',adopted:'adopted'});
+const PATHWAY_TIERS_MIN=3;
+const PATHWAY_EVIDENCE_LIMIT=400;
+export const PATHWAY_DIVERSITY=Object.freeze({
+ kinds_per_tier:2,
+ new_kind_each_tier:true,
+ single_kind_completes_at_most:1,
+ evidence_limit:PATHWAY_EVIDENCE_LIMIT,
+ rule:'Every tier after the first names at least two different kinds of saved fact — or rests entirely on an independent acceptance or a recorded adoption, which one activity cannot produce — and every tier names at least one kind no earlier tier required, so one repeated activity completes at most the first tier.',
+});
+// The fact classes a resident cannot produce alone: another operator's review decision, and another
+// operator's recorded adoption. A tier that names only these still cannot be walked by repetition.
+const independentKinds=Object.freeze([PATHWAY_KINDS.verified,PATHWAY_KINDS.adopted]);
+// A short, honest name for each saved fact a tier may count. The wording distinguishes what happened
+// inside NemoWorld from anything outside it.
+const SOURCE_LABELS=Object.freeze({
+ frontier_place:'a saved frontier block',
+ frontier_expand:'a recorded area expansion',
+ path_place:'a saved ground path inside a stewarded plot',
+ home_furnish:'a saved object in your own garden or cottage',
+ shared_visit:'a recorded visit to a shared place',
+ crop_plant:'a planted garden crop',
+ crop_harvest:'a crop the server confirmed as mature and you gathered',
+ craft:'a keepsake crafted after its ingredients were debited',
+ thanks:'recorded thanks to a resident of a different operator',
+ circle_join:'membership of an active circle another operator keeps',
+ project_pledge:'a recorded pledge to another operator’s project',
+ event_rsvp:'a recorded pledge to attend another operator’s gathering',
+ research_claim:'a leased claim on a real mission task with a named reviewer',
+ research_accepted:'an independent human acceptance of real scoped work',
+ adopted:'documented use of accepted work, recorded by the mission owner',
+});
+// The concrete next action for each kind, in the vocabulary the interface already understands. A kind
+// is looked up here first, then in the authored quest actions, then in the calling objectives.
+const PATHWAY_ACTIONS=Object.freeze({
+ adopted:{kind:'await_review',section:'gallery',label:'Keep working on real tasks; the mission owner records documented use of accepted work',saved_fact:'an adoption the mission owner recorded for accepted work'},
+ thanks:{kind:'thanks',section:'community',label:'Thank a resident of a different operator for one specific contribution',saved_fact:'a recorded thank-you between two operators'},
+ circle_join:{kind:'circle',section:'community',label:'Join an active circle another operator keeps',saved_fact:'membership of another operator’s circle'},
+ project_pledge:{kind:'pledge',section:'community',label:'Pledge a clear contribution to another operator’s project',saved_fact:'a recorded pledge to another operator’s project'},
+ event_rsvp:{kind:'rsvp',section:'community',label:'Pledge to join a neighbour’s gathering before it starts',saved_fact:'a recorded RSVP recorded before the gathering starts'},
+});
+const OBJECTIVE_GUIDE=new Map();
+for(const definition of CALLINGS)for(const o of definition.objectives)if(!OBJECTIVE_GUIDE.has(o.source_kind))OBJECTIVE_GUIDE.set(o.source_kind,o);
+// The saved-fact vocabulary a pathway may name: the same source registry the calling objectives and
+// quest steps already use, plus the separately recorded adoption. Nothing else can appear in a tier.
+export const PATHWAY_SOURCE_KINDS=Object.freeze([...new Set(CALLINGS.flatMap(c=>c.objectives.map(o=>o.source_kind)))]);
+const pathwayRequirement=(kind,min=1)=>Object.freeze({kind,min});
+const pathwayTier=(slug,title,summary,requires,recipes=[])=>Object.freeze({slug,title,summary,requires:Object.freeze(requires),recipes:Object.freeze(recipes)});
+const pathway=(calling_id,name,summary,tiers)=>Object.freeze({calling_id,name,summary,tiers:Object.freeze(tiers)});
+// The closing tier is shared by every calling and rests entirely on facts a resident cannot produce
+// alone: a mission owner's recorded adoption of work an independent human already accepted. An
+// adoption cannot exist for work that was never accepted, so the tier is review-backed by itself.
+const workPutToUse=()=>pathwayTier('work-put-to-use','Work put to use','The mission owner records documented use of an accepted contribution. No adoption can exist for work an independent human never accepted.',[pathwayRequirement(PATHWAY_KINDS.adopted)]);
+// A tier only names saved facts the resident can actually earn. Tiers 1–2 are the calling's own two
+// daily objective sources, tier 3 keeps the second practice running while one piece of real scoped
+// work goes to an independent reviewer, and the closing tier is the shared summit. Every tier after
+// the first therefore adds a kind no earlier tier named, and no tier but the first can be walked by
+// repeating a single activity.
+const callingPathway=(calling_id,name,summary,{first,second,third,recipes})=>{
+ const calling=CALLINGS.find(item=>item.id===calling_id),kinds=calling.objectives.map(o=>o.source_kind);
+ if(kinds.length<2)throw new Error(`vocations: ${calling_id} needs two objective sources for a pathway`);
+ return pathway(calling_id,name,summary,[
+  pathwayTier(first.slug,first.title,first.summary,[pathwayRequirement(kinds[0])],first.recipes||[]),
+  pathwayTier(second.slug,second.title,second.summary,[pathwayRequirement(kinds[0]),pathwayRequirement(kinds[1])],recipes[0]?[recipes[0]]:[]),
+  pathwayTier(third.slug,third.title,third.summary,[pathwayRequirement(kinds[1]),pathwayRequirement(PATHWAY_KINDS.verified)],recipes[1]?[recipes[1]]:[]),
+  workPutToUse(),
+ ]);
+};
+export const PATHWAYS=Object.freeze([
+ callingPathway('explorer','The Long Way Round','See shared places with your own character, keep company with another operator’s circle, then carry real work to an independent reviewer.',{
+  first:{slug:'first-footsteps',title:'First footsteps',summary:'Walk into a shared place you have not seen before, so the visit is recorded as your own.'},
+  second:{slug:'kept-company',title:'Kept company',summary:'Travel again and join an active circle that another operator keeps.'},
+  third:{slug:'still-travelling',title:'Still travelling',summary:'Join another active circle and put one piece of real scoped work through an independent reviewer.'},
+  recipes:['reed_whistle','flower_crown'],
+ }),
+ callingPathway('builder','Ground Held Open','Save permitted construction in the plot your operator stewards and in your own home, then put real work through independent review.',{
+  first:{slug:'first-placement',title:'A first saved placement',summary:'Place a permitted block inside your operator’s frontier plot.'},
+  second:{slug:'ground-and-home',title:'Ground and home',summary:'Place a saved block again and furnish your own garden or cottage.'},
+  third:{slug:'still-building',title:'Still building',summary:'Furnish your own home again and put one piece of real scoped work through an independent reviewer.'},
+  recipes:['woven_banner','garden_lantern'],
+ }),
+ callingPathway('cultivator','The Patient Season','Sow, wait and gather what the garden actually gave you, then put real work through review.',{
+  first:{slug:'first-sowing',title:'A first sowing',summary:'Plant a crop on a farm patch inside your own garden.',recipes:['garden_lantern']},
+  second:{slug:'sown-and-gathered',title:'Sown and gathered',summary:'Sow again and gather a crop the server reports as mature.'},
+  third:{slug:'still-tending',title:'Still tending',summary:'Gather another mature crop and put one piece of real scoped work through an independent reviewer.'},
+  recipes:['flower_crown','herbal_wreath'],
+ }),
+ // The evidence calling's own first practice source is a scoped claim and its second is the
+ // independent acceptance itself, so its ladder is one tier shorter: a claim, the acceptance, and the
+ // shared summit. Each tier rests on a different kind of saved fact.
+ pathway('researcher','The Evidence Ladder','Claim scoped real work, withstand independent review, and see accepted work taken up.',[
+  pathwayTier('scoped-claim','A scoped claim','Claim an open real mission task that has a beneficiary and an independent reviewer.',[pathwayRequirement('research_claim')]),
+  pathwayTier('answered-review','Answered review','Carry one contribution through to an independent human acceptance. You cannot accept your own work.',[pathwayRequirement(PATHWAY_KINDS.verified)]),
+  workPutToUse(),
+ ]),
+ callingPathway('steward','The Open Way','Keep a finite world connected: open ground, save passages, then put real work through review.',{
+  first:{slug:'opened-way',title:'An opened way',summary:'Walk to an unopened frontier passage and open the neighbouring area.'},
+  second:{slug:'connected-ground',title:'Connected ground',summary:'Open another passage and save a ground path in the plot your operator stewards.'},
+  third:{slug:'still-kept-open',title:'Still kept open',summary:'Save another ground path and put one piece of real scoped work through an independent reviewer.'},
+  recipes:['reed_whistle','woven_banner'],
+ }),
+ callingPathway('mediator','Kindness Made Specific','Notice other operators’ work, say so plainly, and join it with a concrete commitment before putting real work through review.',{
+  first:{slug:'specific-thanks',title:'A specific thank you',summary:'Thank a resident of a different operator for one specific contribution.'},
+  second:{slug:'standing-beside',title:'Standing beside',summary:'Thank another resident and pledge a clear contribution to another operator’s project.'},
+  third:{slug:'still-alongside',title:'Still alongside',summary:'Pledge another clear contribution and put one piece of real scoped work through an independent reviewer.'},
+  recipes:['flower_crown','festival_banner'],
+ }),
+ callingPathway('artisan','Hand and Hearth','Make keepsakes from resources you actually gathered and shape a home, then put real work through review.',{
+  first:{slug:'first-keepsake',title:'A first keepsake',summary:'Craft a supported recipe from resources you actually gathered.',recipes:['flower_crown']},
+  second:{slug:'hand-and-hearth',title:'Hand and hearth',summary:'Craft again and place a saved object in your own garden or cottage.'},
+  third:{slug:'still-making',title:'Still making',summary:'Furnish your own home again and put one piece of real scoped work through an independent reviewer.'},
+  recipes:['woven_banner','herbal_wreath'],
+ }),
+ callingPathway('host','The Open Door','Accept other operators’ invitations, keep their company, then put real work through review.',{
+  first:{slug:'pledged-place',title:'A pledged place',summary:'Pledge to join a neighbour’s gathering before it starts.'},
+  second:{slug:'joined-circle',title:'A joined circle',summary:'Pledge again and join an active circle another operator keeps.'},
+  third:{slug:'still-welcoming',title:'Still welcoming',summary:'Join another active circle and put one piece of real scoped work through an independent reviewer.'},
+  recipes:['woven_banner','festival_banner'],
+ }),
+]);
+// The sealed cosmetic this layer can add an eligibility route to. It is the one decoration the content
+// layer still gates (three shared discoveries); two different kinds of saved practice are the same
+// diversity floor every pathway's second tier requires, so the route is derived, not invented.
+export const PATHWAY_UNLOCK_BANNER='explorer_banner';
+export const PATHWAY_POLICY=Object.freeze({
+ version:1,
+ stored:'derived from saved receipts and recorded adoptions — no table, no column and no writer of its own',
+ diversity:PATHWAY_DIVERSITY.rule,
+ evidence:'A tier counts only saved server facts the world can still verify: a calling or quest receipt whose source is still available, an independently accepted contribution that is still eligible, or an adoption the mission owner recorded for accepted work.',
+ withheld:'If the evidence behind a tier is quarantined or otherwise withdrawn, the tier stops counting until that evidence is available again. No record is rewritten and nothing is deleted.',
+ requires_review:'A tier that rests on an independent acceptance or on a recorded adoption is marked requires_review: a different, authorized human must accept the work, and the contributor cannot accept their own.',
+ grants:Object.freeze({account_role:false,land_permission:false,review_authority:false,action_scope:false,coins:0}),
+ disclosure:'A pathway records saved activity and independently reviewed work inside NemoWorld. It is not a qualification, a professional credential or a certification, it is not a measure of intelligence or capability, and it grants no account role, land permission or review authority of any kind. It mints no NemoCoin.',
+ description:'A pathway is one calling’s bounded practice ladder. Tiers advance only from saved server facts, a repeated activity cannot walk the ladder, and withheld evidence holds a tier back until it is available again.',
+});
+// The three states the interface must keep apart. They are not degrees of the same thing: two of them
+// happen inside NemoWorld and the third is a declaration recorded here about work leaving it.
+export const PATHWAY_STATES=Object.freeze([
+ Object.freeze({id:'practice',label:'Practice',badge:'practice',detail:'A saved activity inside NemoWorld. It records that the activity happened and nothing at all about the world outside.'}),
+ Object.freeze({id:'verified-contribution',label:'Verified contribution',badge:'verified contribution',detail:'A real scoped task whose work a different, authorized human reviewer accepted inside NemoWorld. It is a judgement about that work, not a qualification, an endorsement or proof of impact.'}),
+ Object.freeze({id:'external-adoption',label:'External adoption',badge:'external adoption',detail:'A declaration the mission owner recorded that accepted work was taken up. It is a platform record, not verified implementation, consent or endorsement.'}),
+]);
+const pathwayState=(kind)=>kind===PATHWAY_KINDS.adopted?PATHWAY_STATES[2].id:kind===PATHWAY_KINDS.verified?PATHWAY_STATES[1].id:PATHWAY_STATES[0].id;
+function pathwayGuide(kind){
+ const action=PATHWAY_ACTIONS[kind]||QUEST_ACTIONS[kind],objective=OBJECTIVE_GUIDE.get(kind);
+ return{kind,label:SOURCE_LABELS[kind]||kind,state:pathwayState(kind),
+  action:{kind:action?.kind||objective?.action_hint||'explore',section:action?.section||'world',label:action?.label||objective?.instructions||SOURCE_LABELS[kind]||kind,saved_fact:action?.saved_fact||SOURCE_LABELS[kind]||kind}};
+}
+// The authored shape is checked once, at load, so a pathway that could be walked by one repeated
+// source, that names an unknown fact, that grants something, or that skips a calling cannot ship.
+export function pathwayDefects(){
+ const defects=[],callingIds=new Set(CALLINGS.map(calling=>calling.id)),knownKinds=new Set([...PATHWAY_SOURCE_KINDS,PATHWAY_KINDS.adopted]),recipes=new Map(content.recipes().map(recipe=>[recipe.id,recipe])),seen=new Set();
+ for(const definition of PATHWAYS){
+  const where=`pathway ${definition.calling_id}`;
+  if(!callingIds.has(definition.calling_id))defects.push(`${where} names no listed calling`);
+  if(seen.has(definition.calling_id))defects.push(`${where} is defined twice`);
+  seen.add(definition.calling_id);
+  if(definition.tiers.length<PATHWAY_TIERS_MIN)defects.push(`${where} needs at least ${PATHWAY_TIERS_MIN} tiers`);
+  const used=new Set(),slugs=new Set();
+  definition.tiers.forEach((tier,index)=>{
+   const at=`${where} tier ${index+1}`;
+   if(typeof tier.slug!=='string'||!/^[a-z0-9-]{2,40}$/.test(tier.slug))defects.push(`${at} needs a lowercase slug`);
+   if(slugs.has(tier.slug))defects.push(`${at} repeats the slug ${tier.slug}`);
+   slugs.add(tier.slug);
+   if(!tier.title?.trim()||!tier.summary?.trim())defects.push(`${at} needs a title and a summary`);
+   const names=tier.requires.map(item=>item.kind);
+   if(index===0){
+    if(tier.requires.length!==1||tier.requires[0].min!==1)defects.push(`${at} must open with exactly one saved fact`);
+   } else if(!tier.requires.every(item=>independentKinds.includes(item.kind))&&new Set(names).size<PATHWAY_DIVERSITY.kinds_per_tier)defects.push(`${at} must name at least ${PATHWAY_DIVERSITY.kinds_per_tier} different kinds of saved fact`);
+   if(new Set(names).size!==names.length)defects.push(`${at} names the same kind twice`);
+   if(PATHWAY_DIVERSITY.new_kind_each_tier&&!names.some(kind=>!used.has(kind)))defects.push(`${at} adds no kind an earlier tier did not already require`);
+   for(const item of tier.requires){
+    if(Object.keys(item).sort().join(',')!=='kind,min')defects.push(`${at} may name only a saved fact kind and a count`);
+    if(!knownKinds.has(item.kind))defects.push(`${at} names the unknown source kind ${item.kind}`);
+    if(!Number.isInteger(item.min)||item.min<1)defects.push(`${at} needs a whole count of at least one`);
+    if(item.kind===PATHWAY_KINDS.adopted&&index!==definition.tiers.length-1)defects.push(`${at} may record an adoption only in the closing tier`);
+   }
+   for(const kind of names)used.add(kind);
+   for(const id of tier.recipes)if(!recipes.has(id))defects.push(`${at} suggests the unknown recipe ${id}`);
+  });
+  const calling=CALLINGS.find(item=>item.id===definition.calling_id),opening=definition.tiers[0]?.requires[0]?.kind;
+  if(calling&&!calling.objectives.some(o=>o.source_kind===opening))defects.push(`${where} must open with one of the calling’s own objective sources`);
+ }
+ for(const id of callingIds)if(!seen.has(id))defects.push(`calling ${id} has no pathway`);
+ return defects;
+}
+export const PATHWAY_DEFECTS=Object.freeze(pathwayDefects());
+if(PATHWAY_DEFECTS.length)throw new Error(`vocations: ${PATHWAY_DEFECTS[0]}`);
+const recipeView=id=>{const recipe=content.recipes().find(item=>item.id===id);return{id,name:recipe.name,ingredients:{...recipe.ingredients},action:{kind:'craft',section:'workshop',label:`Craft the ${recipe.name.toLowerCase()} from resources you gathered`,saved_fact:'a crafted keepsake recorded after the ingredients were debited'}};};
+// Every receipt the world can still verify, oldest first, so the ladder is read in the order the
+// practice happened. A held receipt is not evidence and never counts.
+function pathwayReceipts(platform,agentId){
+ return platform.all(`SELECT r.id,r.source_kind,r.source_id,r.objective_id,r.earned_day,r.created_at FROM calling_receipts r WHERE r.agent_id=? AND ${availableSql('r')} ORDER BY r.created_at,r.id LIMIT ?`,agentId,PATHWAY_EVIDENCE_LIMIT);
+}
+// The independently accepted contributions of this resident, from the same predicate the journey
+// merit summary and the coin ledger already use. This is the one evidence class that is not read from
+// a calling receipt: an independent acceptance is a fact about real scoped work, so it counts for
+// every calling's pathway rather than only for the one whose daily objectives happen to name it, and
+// it is held by exactly the same rules (quarantine, revoked reviewer, outdated version) as the coin
+// wallet. `research_accepted` receipts are therefore never counted twice.
+function pathwayContributions(platform,agentId){
+ return platform.all(`SELECT DISTINCT s.id AS source_id,s.created_at AS created_at,c.task_id AS task_id,m.title AS mission
+  FROM ${contributionSource} WHERE ${contributionEligibility('?')} ORDER BY s.created_at,s.id LIMIT ?`,agentId,PATHWAY_EVIDENCE_LIMIT)
+  .map(row=>({...row,evidence:PATHWAY_KINDS.verified,earned_day:String(row.created_at).slice(0,10)}));
+}
+// Documented use of accepted work, from the same predicate the journey merit summary already uses, so a
+// pathway and a passport can never disagree about how many accepted contributions were put to use.
+function pathwayAdoptions(platform,agentId){
+ if(!platform.get("SELECT name FROM sqlite_master WHERE type='table' AND name='adoptions'"))return [];
+ return platform.all(`SELECT d.submission_id AS source_id,MIN(d.id) AS adoption_id,MIN(d.created_at) AS created_at,COUNT(*) AS adoptions
+  FROM ${contributionSource} JOIN adoptions d ON d.submission_id=s.id JOIN accounts adopter ON adopter.id=d.owner_id
+  WHERE ${contributionEligibility('?')} AND d.owner_id=m.owner_id AND d.owner_id!=c.account_id AND adopter.status='active' AND length(trim(d.note))>0
+  GROUP BY d.submission_id ORDER BY MIN(d.created_at)`,agentId)
+  .map(row=>({...row,evidence:PATHWAY_KINDS.adopted,earned_day:String(row.created_at).slice(0,10)}));
+}
+/**
+ * One calling's pathway, for one resident, derived from the receipts and adoptions the world already
+ * holds. Evidence is allocated to tiers in order and each saved fact is counted once, so the same fact
+ * can never carry two tiers; a tier whose evidence is withheld simply stops counting.
+ */
+export function pathwayProgress(platform,agentId,callingId){
+ const definition=PATHWAYS.find(item=>item.calling_id===callingId)||PATHWAYS.find(item=>item.calling_id===CALLING_POLICY.default_calling);
+ const receipts=pathwayReceipts(platform,agentId).filter(row=>row.source_kind!==PATHWAY_KINDS.verified);
+ const contributions=pathwayContributions(platform,agentId),adoptions=pathwayAdoptions(platform,agentId);
+ const pool=new Map();
+ for(const row of receipts){if(!pool.has(row.source_kind))pool.set(row.source_kind,[]);pool.get(row.source_kind).push(row);}
+ pool.set(PATHWAY_KINDS.verified,[...contributions]);
+ pool.set(PATHWAY_KINDS.adopted,[...adoptions]);
+ let locked=false;
+ const tiers=definition.tiers.map((tier,index)=>{
+  const shape={slug:tier.slug,ordinal:index+1,title:tier.title,summary:tier.summary,requires:tier.requires.map(item=>{const guide=pathwayGuide(item.kind);return{evidence:guide.state,kind:item.kind,label:guide.label,min:item.min,action:guide.action};}),recipes:tier.recipes.map(recipeView)};
+  if(locked)return{...shape,state:'locked',complete:false,requires:shape.requires.map(item=>({...item,have:0})),evidence:[]};
+  const evidence=[];let complete=true;
+  const requires=shape.requires.map((item,position)=>{
+   const rows=pool.get(tier.requires[position].kind)||[],have=Math.min(item.min,rows.length);
+   if(have<item.min)complete=false;
+   for(const row of rows.splice(0,have))evidence.push({evidence:item.evidence,kind:item.kind,label:item.label,source_id:row.source_id,objective_id:row.objective_id||null,adoption_id:row.adoption_id||null,task_id:row.task_id||null,mission:row.mission||null,earned_day:row.earned_day,available:true});
+   return{...item,have};
+  });
+  if(!complete)locked=true;
+  return{...shape,state:complete?'complete':'available',complete,requires,evidence};
+ });
+ const completed=tiers.filter(tier=>tier.complete).length,current=tiers.find(tier=>tier.state==='available')||null;
+ const practiceKinds=[...new Set(receipts.map(row=>row.source_kind))];
+ return{
+  calling_id:definition.calling_id,name:definition.name,summary:definition.summary,
+  policy:PATHWAY_POLICY,states:PATHWAY_STATES,diversity:{...PATHWAY_DIVERSITY,distinct_kinds:practiceKinds.length},
+  contribution:{
+   practice:{state:PATHWAY_STATES[0].id,label:PATHWAY_STATES[0].label,count:receipts.length,kinds:practiceKinds},
+   verified:{state:PATHWAY_STATES[1].id,label:PATHWAY_STATES[1].label,count:contributions.length},
+   adopted:{state:PATHWAY_STATES[2].id,label:PATHWAY_STATES[2].label,count:adoptions.length},
+  },
+  tiers,completed,total:tiers.length,complete:completed===tiers.length,
+  current_tier:current?{slug:current.slug,ordinal:current.ordinal,title:current.title,summary:current.summary}:null,
+  next:current?{
+   tier_slug:current.slug,ordinal:current.ordinal,title:current.title,summary:current.summary,
+   missing:current.requires.filter(item=>item.have<item.min).map(item=>({evidence:item.evidence,kind:item.kind,label:item.label,have:item.have,min:item.min,needs:item.min-item.have,action:item.action,requires_human_review:independentKinds.includes(item.kind)})),
+   supported:current.evidence,requires_human_review:current.requires.some(item=>independentKinds.includes(item.kind)),
+  }:null,
+  unlocks:[
+   {kind:'cosmetic',id:PATHWAY_UNLOCK_BANNER,label:'Explorer banner decoration',tier:2,earned:practiceKinds.length>=PATHWAY_DIVERSITY.kinds_per_tier,detail:'Two different kinds of saved practice unlock the sealed banner decoration. It stays a decoration only.'},
+   ...tiers.flatMap(tier=>tier.recipes.map(recipe=>({kind:'recipe',id:recipe.id,label:recipe.name,tier:tier.ordinal,earned:tier.complete,detail:`Suggested practice route for tier ${tier.ordinal} · ${tier.title}. Every recipe stays available in the workshop; the pathway only suggests which one suits this calling.`}))),
+  ],
+  disclosure:PATHWAY_POLICY.disclosure,
+ };
+}
 
 // ---- Bounded private resident memory (schema 21) -----------------------------------------------
 //
@@ -360,7 +647,7 @@ export const vocationMethods={
  callings(actor,input={}){
   const agent=owned(this,actor,input),selection=initialize(this,agent);reconcile(this,agent,selection);const definition=CALLINGS.find(c=>c.id===selection.calling_id),records=receipts(this,agent.id),totals=summary(this,agent.id),{earned,points,used}=totals,today=day(this);
   const objectives=definition.objectives.map(o=>{const receipt=totals.today.find(r=>r.objective_id===`${definition.id}.${o.id}`);return{...o,id:`${definition.id}.${o.id}`,progress:receipt?.available?1:0,complete:Boolean(receipt?.available),withheld:Boolean(receipt&&!receipt.available)};});
-  return{agent_id:agent.id,calling:{id:definition.id,name:definition.name,guild_name:definition.guild_name,purpose:definition.purpose},rank:rank(points),experience:{earned,available:points,held:earned-points,cosmetic:true},today:{day:today,earned:used,remaining:Math.max(0,10-used),limit:10,objectives},current_objective:objectives.find(o=>!o.complete)||null,targets:targets(this,agent),receipts:records.slice(0,100),has_more:totals.count>100,catalog:CALLINGS,policy:CALLING_POLICY,memory:promptMemory(this,agent),selected_at:selection.selected_at,can_change:actor.kind==='session'&&agent.status==='active'&&this.get("SELECT value FROM settings WHERE key='paused'").value!=='true'&&selection.last_changed_day!==today,server_time:this.clock()};
+  return{agent_id:agent.id,calling:{id:definition.id,name:definition.name,guild_name:definition.guild_name,purpose:definition.purpose},rank:rank(points),experience:{earned,available:points,held:earned-points,cosmetic:true},today:{day:today,earned:used,remaining:Math.max(0,10-used),limit:10,objectives},current_objective:objectives.find(o=>!o.complete)||null,pathway:pathwayProgress(this,agent.id,definition.id),targets:targets(this,agent),receipts:records.slice(0,100),has_more:totals.count>100,catalog:CALLINGS,policy:CALLING_POLICY,memory:promptMemory(this,agent),selected_at:selection.selected_at,can_change:actor.kind==='session'&&agent.status==='active'&&this.get("SELECT value FROM settings WHERE key='paused'").value!=='true'&&selection.last_changed_day!==today,server_time:this.clock()};
  },
  callingSelect(actor,input){
   if(actor?.kind!=='session')fail(403,'Only the signed-in human operator can choose a calling.');

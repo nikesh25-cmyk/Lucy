@@ -14,6 +14,78 @@ import { GARDEN_PALETTE,HOUSE_PALETTE } from './placement-policy.js';
 import { GRANT_SCOPE_LIMITS, grantScopeNarrow, grantScopeValue } from './frontier.js';
 
 const countryCatalog=JSON.parse(readFileSync(new URL('../catalog/countries.json',import.meta.url),'utf8')).entries;
+
+// The bounded evidence library's own numbers (schema 22). They are the quota a capture write is held
+// to and the bound the recovery pass re-checks. Stated in docs/handoff/task-25-evidence-library.md.
+export const EVIDENCE_KINDS = Object.freeze(['web-excerpt','normalized-statistics','trade-preview','global-target-framework','reviewed-pdf','plain-text']);
+export const EVIDENCE_LIMITS = Object.freeze({
+  schema_version: 22,
+  // Retained records: at most this many sources and captures overall, and this many versions of any
+  // one source. A capture counts whether it references retained bytes or only a contributor hash.
+  max_sources: 2048,
+  max_captures: 8192,
+  max_captures_per_source: 8,
+  // Retained bytes: the summed size of capture records that reference bytes under catalog/. The 228
+  // retained catalog responses are about 0.9 MiB, far inside this ceiling.
+  max_retained_bytes: 96 * 1024 * 1024,
+  max_excerpt_characters: 400,
+  // Per-artifact evidence limit: one submission may cite the same 1–10 sources it has always allowed.
+  per_artifact_evidence: 10,
+  // Retention/eviction rule. Cited evidence is never deleted; the library refuses instead.
+  eviction_rule: 'A new capture may evict the oldest retained version of a source that no submission cites. A version a submission cites is never evicted, so a capture that would exceed a quota while every candidate is cited fails closed instead of deleting cited evidence.',
+  capture_rule: 'A capture records bytes retained under catalog/ or the SHA-256 a contributor reader computed. The library performs no network fetch of its own.',
+});
+
+// Recompute the identity an evidence source is addressed by: host, path and the query parameters in
+// sorted order. Two captures of the same series or the same bounded API query share one identity.
+export function evidenceSourceKey(value){const url=new URL(value),params=[...url.searchParams].map(([name,item])=>`${name}=${item}`).sort().join('&');return `${url.hostname}${url.pathname}${params?`?${params}`:''}`;}
+const evidenceStamp=(value)=>typeof value==='string'&&(isoTime(value)||/^\d{4}-\d{2}-\d{2}$/.test(value)&&new Date(`${value}T00:00:00.000Z`).toISOString().slice(0,10)===value);
+const evidenceDate=(value)=>value===''||(/^\d{4}-\d{2}-\d{2}$/.test(value)&&new Date(`${value}T00:00:00.000Z`).toISOString().slice(0,10)===value);
+// Every stored evidence row must still satisfy the rules that created it. A rewritten capture, a
+// source re-pointed at a different identity, a citation that no longer names its own capture, or a
+// capture past its quotas all fail here, so a backup, a restore or a startup refuses them.
+export function verifyEvidenceRecords(db){
+  const sources=db.prepare('SELECT * FROM evidence_sources').all();
+  if(sources.length>EVIDENCE_LIMITS.max_sources)return false;
+  const sourceById=new Map();
+  for(const source of sources){
+    let url;try{url=new URL(source.url);}catch{return false;}
+    if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.port)return false;
+    if(source.source_key!==evidenceSourceKey(source.url)||source.host!==url.hostname||source.path!==url.pathname)return false;
+    if(!['active','withdrawn'].includes(source.status))return false;
+    if(source.status==='withdrawn'?!source.withdrawn_reason.trim():source.withdrawn_reason!=='')return false;
+    if(!isoTime(source.created_at))return false;
+    sourceById.set(source.id,source);
+  }
+  const captures=db.prepare('SELECT c.*,c.rowid AS seq FROM evidence_captures c').all();
+  if(captures.length>EVIDENCE_LIMITS.max_captures)return false;
+  const sequence=new Map(),captureById=new Map(),perSource=new Map();
+  for(const capture of captures){
+    const source=sourceById.get(capture.source_id);
+    if(!source||capture.source_key!==source.source_key)return false;
+    if(!/^[a-f0-9]{64}$/.test(capture.sha256)||!Number.isInteger(capture.bytes)||capture.bytes<0)return false;
+    if(![0,1].includes(capture.retained))return false;
+    if(capture.retained===1){if(capture.bytes<=0||!/^catalog\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(capture.retained_path))return false;}
+    else if(capture.retained_path!=='')return false;
+    if(!['catalog','submission','curator'].includes(capture.origin)||!EVIDENCE_KINDS.includes(capture.evidence_kind))return false;
+    if(!evidenceStamp(capture.retrieved_at)||!evidenceDate(capture.declared_date)||!isoTime(capture.created_at))return false;
+    if(typeof capture.excerpt!=='string'||capture.excerpt.length>EVIDENCE_LIMITS.max_excerpt_characters)return false;
+    if(capture.supersedes!==null){const prior=sequence.get(capture.supersedes);if(prior===undefined||sequence.get(capture.supersedes)>=capture.seq||captureById.get(capture.supersedes)?.source_id!==capture.source_id)return false;}
+    sequence.set(capture.id,capture.seq);captureById.set(capture.id,capture);
+    perSource.set(capture.source_id,(perSource.get(capture.source_id)||0)+1);
+  }
+  if([...perSource.values()].some((count)=>count>EVIDENCE_LIMITS.max_captures_per_source))return false;
+  for(const event of db.prepare('SELECT * FROM evidence_events').all())if(!sourceById.has(event.source_id)||!['withdrawn','restored'].includes(event.kind)||typeof event.detail!=='string'||event.detail.length>300||!isoTime(event.created_at))return false;
+  for(const cite of db.prepare('SELECT * FROM submission_evidence').all()){
+    if(!Number.isInteger(cite.source_number)||cite.source_number<1||cite.source_number>EVIDENCE_LIMITS.per_artifact_evidence)return false;
+    if(!['captured','missing'].includes(cite.state)||!isoTime(cite.created_at))return false;
+    let url;try{url=new URL(cite.url);}catch{return false;}
+    if(!['http:','https:'].includes(url.protocol)||url.username||url.password)return false;
+    if(cite.capture_id===null){if(cite.state!=='missing')return false;}
+    else{const capture=captureById.get(cite.capture_id);if(!capture||capture.source_key!==evidenceSourceKey(cite.url)||cite.state!=='captured')return false;}
+  }
+  return true;
+}
 const requiredTables = ['accounts', 'invites', 'agents', 'tokens', 'missions', 'tasks', 'claims', 'submissions', 'reviews', 'adoptions', 'messages', 'reports', 'appeals', 'jobs', 'settings', 'audit'];
 const digest = (value) => createHash('sha256').update(value).digest('hex');
 /** The one stored timestamp format: a 24-character UTC ISO string, exactly as `Date` writes it. */
@@ -59,7 +131,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -219,6 +291,15 @@ export function validateDatabase(path) {
       // memory row therefore cannot pass a backup, a restore or a startup.
       if (!verifyMemoryRecords(db)) throw new Error('Database resident memory validation failed.');
     }
+    if (version >= 22) {
+      const columns={evidence_sources:['id','source_key','url','host','path','status','withdrawn_reason','created_at'],evidence_captures:['id','source_id','source_key','url','sha256','bytes','retained','retained_path','retrieved_at','declared_date','unit','title','locator','evidence_kind','provenance','license_name','license_url','license_attribution','excerpt','origin','supersedes','created_at'],evidence_events:['id','source_id','kind','detail','created_at'],submission_evidence:['submission_id','source_number','capture_id','url','locator','cited_date','state','created_at']};
+      for(const [table,fields] of Object.entries(columns))if(!tables.has(table)||fields.some((column)=>!db.prepare(`PRAGMA table_info(${table})`).all().some((field)=>field.name===column)))throw new Error('Database evidence library schema is incomplete.');
+      if(['evidence_sources_identity_immutable','evidence_captures_no_update','evidence_captures_validate_insert','evidence_events_no_update','evidence_events_no_delete','submission_evidence_no_update'].some((name)=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name)))throw new Error('Database evidence library protections are incomplete.');
+      // Every stored capture, source and citation must still satisfy the rules that created it. A
+      // rewritten version, a re-pointed identity, a citation that no longer names its own capture or
+      // a capture past its quota therefore cannot pass a backup, a restore or a startup.
+      if (!verifyEvidenceRecords(db)) throw new Error('Database evidence library validation failed.');
+    }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';
     for (const entry of db.prepare('SELECT * FROM audit ORDER BY seq').all()) {
@@ -336,8 +417,8 @@ export function restoreDatabase(source, destination, { lockPath = resolve(dirnam
 // The recovery point and the interruption limits an operator must know. These are the same values
 // the runbook (docs/OPERATIONS.md) states and the failure drills (scripts/ops-rehearsal.mjs) prove.
 export const RECOVERY_LIMITS = Object.freeze({
-  schema_version: 21,
-  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+  schema_version: 22,
+  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
   // A private resident memory record lives entirely in the database, so a process restart keeps it.
   // It holds no credential and it is read within the runtime's existing observation byte budget.
   resident_memory: Object.freeze({ bounded_facts_per_resident: 24, bounded_value_characters: 160, prompt_facts: 10, prompt_bytes: 4096, approval: 'operator-approval', source: 'a verified calling receipt, a finished run that recorded a refusal, an independent review decision, or the operator’s own explicit input' }),
