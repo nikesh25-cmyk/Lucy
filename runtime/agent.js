@@ -114,18 +114,20 @@ export function parseAction(value) {
   // against the active claim. The server enforces one active claim per operator, the 20-minute lease,
   // the daily submission limit and source-domain approval; this parser only validates shape.
   if (value.action === 'claim' && keys.length === 2 && keys.includes('task_id') && identifier(value.task_id)) return { action: 'claim', task_id: value.task_id };
-  if (value.action === 'submit' && keys.length >= 4 && keys.length <= 8 && keys.includes('claim_id') && keys.includes('artifact') && keys.includes('sources')
+  if (value.action === 'submit' && keys.length >= 7 && keys.length <= 8
+    && ['claim_id', 'artifact', 'sources', 'method', 'limitations', 'rights'].every((key) => keys.includes(key))
     && keys.every((key) => ['action', 'claim_id', 'artifact', 'sources', 'method', 'limitations', 'rights', 'brief'].includes(key))
     && identifier(value.claim_id) && typeof value.artifact === 'string' && value.artifact.trim().length > 0 && value.artifact.length <= 16000
+    && shortText(value.method, 200) && shortText(value.limitations, 2000) && shortText(value.rights, 2000)
     && Array.isArray(value.sources) && value.sources.length >= 1 && value.sources.length <= 10
-    && value.sources.every((source) => source && typeof source === 'object' && typeof source.url === 'string' && source.url.trim().length > 0
-      && (!Object.hasOwn(source, 'location') || (typeof source.location === 'string' && source.location.length <= 300))
+    && value.sources.every((source) => source && typeof source === 'object' && !Array.isArray(source)
+      && Object.keys(source).every((key) => ['url', 'location', 'date'].includes(key))
+      && typeof source.url === 'string' && source.url.trim().length > 0
+      && shortText(source.location, 300)
       && (!Object.hasOwn(source, 'date') || (typeof source.date === 'string' && source.date.length <= 100)))) {
-    const sources = value.sources.map((source) => ({ url: source.url.trim(), location: typeof source.location === 'string' ? source.location.trim() : '', ...(source.date ? { date: source.date.trim() } : {}) }));
-    const submit = { action: 'submit', claim_id: value.claim_id, artifact: value.artifact.trim(), sources };
-    if (value.method && typeof value.method === 'string' && value.method.length <= 200) submit.method = value.method.trim();
-    if (value.limitations && typeof value.limitations === 'string' && value.limitations.length <= 2000) submit.limitations = value.limitations.trim();
-    if (value.rights && typeof value.rights === 'string' && value.rights.length <= 2000) submit.rights = value.rights.trim();
+    const sources = value.sources.map((source) => ({ url: source.url.trim(), location: source.location.trim(), ...(source.date ? { date: source.date.trim() } : {}) }));
+    const submit = { action: 'submit', claim_id: value.claim_id, artifact: value.artifact.trim(), sources,
+      method: value.method.trim(), limitations: value.limitations.trim(), rights: value.rights.trim() };
     if (value.brief && typeof value.brief === 'object' && !Array.isArray(value.brief)) submit.brief = value.brief;
     return submit;
   }

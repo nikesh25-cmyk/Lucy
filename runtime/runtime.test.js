@@ -330,17 +330,21 @@ test('mission claim and submit actions are parsed, authorized and dispatched thr
     if (path === '/api/v1/submissions') { f2.requests.push({ path, body }); return new Response(JSON.stringify({ id: 'sub-1', status: 'pending_review' })); }
     return baseFetch2(url, options);
   };
+  const submitted = { action: 'submit', claim_id: 'claim-1', artifact: 'A relevant source.',
+    sources: [{ url: 'https://example.org/article', location: 'paragraph 2' }],
+    method: 'Read the supplied source.', limitations: 'Applicability needs human review.', rights: 'Short paraphrase with attribution; reuse needs review.' };
   const result2 = await runAgent({ token: 'fixture-only', fetchImpl: f2.fetchImpl, maxCalls: 1, stepDelayMs: 0,
-    modelFn: async () => '{"action":"submit","claim_id":"claim-1","artifact":"A relevant source.","sources":[{"url":"https://example.org/article","location":"paragraph 2"}]}' });
+    modelFn: async () => JSON.stringify(submitted) });
   assert.equal(result2.status, 'completed');
   const submitRequest = f2.requests.find((r) => r.path === '/api/v1/submissions');
-  assert.deepEqual(submitRequest.body, { claim_id: 'claim-1', artifact: 'A relevant source.', sources: [{ url: 'https://example.org/article', location: 'paragraph 2' }] });
+  assert.deepEqual(submitRequest.body, { claim_id: submitted.claim_id, artifact: submitted.artifact,
+    sources: submitted.sources, method: submitted.method, limitations: submitted.limitations, rights: submitted.rights });
 
   // Authorization requires observed records.
   assert.deepEqual(authorizeAction(parseAction('{"action":"claim","task_id":"task-1"}'), { ...world, missions }, status), { action: 'claim', task_id: 'task-1' });
   assert.throws(() => authorizeAction(parseAction('{"action":"claim","task_id":"task-other"}'), { ...world, missions }, status), /permissions/);
-  assert.throws(() => authorizeAction(parseAction('{"action":"submit","claim_id":"claim-1","artifact":"x","sources":[{"url":"https://example.org/a"}]}'), { ...world, missions }, status), /permissions/);
-  assert.throws(() => authorizeAction(parseAction('{"action":"submit","claim_id":"claim-1","artifact":"x","sources":[{"url":"https://example.org/a"}]}'), { ...world, missions: missionsWithClaim }, { ...status, scopes: ['read'] }), /permissions/);
+  assert.throws(() => authorizeAction(parseAction(submitted), { ...world, missions }, status), /permissions/);
+  assert.throws(() => authorizeAction(parseAction(submitted), { ...world, missions: missionsWithClaim }, { ...status, scopes: ['read'] }), /permissions/);
 });
 
 test('malformed mission actions cannot smuggle extra fields, coin paths or fake sources', () => {
@@ -353,6 +357,16 @@ test('malformed mission actions cannot smuggle extra fields, coin paths or fake 
     '{"action":"submit","claim_id":"claim-1","artifact":"","sources":[{"url":"https://example.org/a"}]}',
     '{"action":"submit","claim_id":"claim-1","artifact":"x","sources":[{"url":"https://example.org/a","location":"loc"}],"agent_id":"other"}',
   ]) assert.throws(() => parseAction(raw));
+  const valid = { action: 'submit', claim_id: 'claim-1', artifact: 'A sourced draft.',
+    sources: [{ url: 'https://example.org/a', location: 'Section 2' }],
+    method: 'Read a supplied source.', limitations: 'Unverified locally.', rights: 'Attribution only; no broad licence asserted.' };
+  for (const field of ['method', 'limitations', 'rights']) {
+    const missing = { ...valid }; delete missing[field];
+    assert.throws(() => parseAction(missing), `missing ${field} must fail before an HTTP request`);
+    assert.throws(() => parseAction({ ...valid, [field]: '   ' }), `blank ${field} must fail before an HTTP request`);
+  }
+  assert.throws(() => parseAction({ ...valid, sources: [{ url: 'https://example.org/a' }] }), 'exact source location is required');
+  assert.throws(() => parseAction({ ...valid, sources: [{ ...valid.sources[0], approval: 'accepted' }] }), 'source extras cannot be smuggled');
 });
 
 test('a resident replies only to a private message addressed to it and never names a recipient', async () => {
