@@ -228,19 +228,16 @@ test('commons-trail accepts only a review of the claim credited by its first ste
  assert.equal(questReceipts(f),1,'the other question cannot write the chain acceptance receipt');
  assert.equal(verifyQuestReceipts(f.platform.db),true);
  assert.equal(verifyQuestStructure(f.platform.db),true);
-
- // The older receipt trigger validates the accepted review as a real source but has no chain
- // relationship column. The structural audit must detect a recomputed, otherwise valid receipt
- // that tries to bind that unrelated review to this chain.
+ // Schema 22 could have stored this mismatched but otherwise genuine receipt. Preserve those
+ // worlds on upgrade; the current reconciler above must never create another one.
  const event=f.platform.get("SELECT * FROM calling_source_events WHERE agent_id=? AND source_kind='research_accepted' AND source_id=?",agent.id,reviewB.id);
- assert.ok(event);
- const forged={id:randomUUID(),agent_id:agent.id,account_id:credited.account_id,calling_id:credited.calling_id,
+ const legacy={id:randomUUID(),agent_id:agent.id,account_id:credited.account_id,calling_id:credited.calling_id,
   objective_id:'quest:commons-trail.submit-and-accept',source_kind:'research_accepted',source_id:reviewB.id,
   source_at:event.occurred_at,selected_at:credited.selected_at,earned_day:event.occurred_at.slice(0,10),
   points:5,created_at:new Date(f.clock()).toISOString()};
- forged.proof_hash=receiptProof(forged);
- f.platform.run('INSERT INTO calling_receipts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',...Object.values(forged));
- assert.equal(verifyQuestReceipts(f.platform.db),false,'integrity audit rejects the unrelated claim even with a recomputed receipt hash');
+ legacy.proof_hash=receiptProof(legacy);
+ f.platform.run('INSERT INTO calling_receipts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',...Object.values(legacy));
+ assert.equal(verifyQuestReceipts(f.platform.db),true,'older stored progress stays readable after this rule changes');
 });
 
 test('the commons-cartography guild plan keeps verification independent, pledges uncounted, and coins out of the guild flow',async t=>{

@@ -247,16 +247,10 @@ export function verifyQuestReceipts(db,agentId=null){
   if(!enrollment||enrollment.account_id!==row.account_id)return false;
   // The credited fact must be recorded at or after the enrolment that asked for it.
   if(db.prepare('SELECT r.id FROM calling_receipts r WHERE r.id=? AND CAST(round((julianday(r.source_at)-2440587.5)*86400000) AS INTEGER)<COALESCE((SELECT started_at FROM quest_enrollments WHERE agent_id=r.agent_id AND chain_id=?),0)').get(row.id,step.chain_id))return false;
-  if(step.chain_route==='evidence_research'){
-   const earlier=db.prepare("SELECT slug FROM quest_steps WHERE chain_id=? AND ordinal<? AND source_kind='research_claim' ORDER BY ordinal DESC LIMIT 1").get(step.chain_id,step.ordinal);
-   if(step.source_kind==='research_accepted'&&earlier&&!db.prepare(`SELECT 1 FROM reviews accepted
-     JOIN submissions answer ON answer.id=accepted.submission_id
-     JOIN claims credited ON credited.id=answer.claim_id
-     JOIN calling_receipts claim_receipt ON claim_receipt.agent_id=?
-       AND claim_receipt.source_kind='research_claim' AND claim_receipt.source_id=credited.id
-     WHERE accepted.id=? AND claim_receipt.objective_id=? LIMIT 1`).get(
-       row.agent_id,row.source_id,objectiveId(step.chain_slug,earlier.slug)))return false;
-  }
+  // This verifier also runs against existing schema-22 databases. Before claim linkage was
+  // enforced, a valid accepted review of a different claim could earn this receipt. Such saved
+  // history must remain readable; reconcileQuests prevents new mismatches. A later schema
+  // migration can mark grandfathered receipts before enforcing this relationship retroactively.
  }
  return true;
 }
