@@ -16,7 +16,8 @@ import { guildMethods } from './guilds.js';
 import { journeyMethods } from './journey.js';
 import { civicMethods } from './civic-engine.js';
 import { REGIONS } from './civic.js';
-import { classifyResidentRun, INTERRUPTION_SUMMARY, RESIDENT_RUN_PHASES, RESIDENT_RUN_STATUSES } from './recovery.js';
+import { dirname, resolve } from 'node:path';
+import { classifyResidentRun, storageUsage, integritySnapshot, backupInventory, redactDiagnostics, RECOVERY_LIMITS, INTERRUPTION_SUMMARY, RESIDENT_RUN_PHASES, RESIDENT_RUN_STATUSES } from './recovery.js';
 
 const scrypt = promisify(scryptCallback);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -39,14 +40,27 @@ const runView = (row) => { const { credential_hash, ...rest } = row; return { ..
 const residentInterruptionDetail = (run, interruption) => `Local resident interrupted: ${INTERRUPTION_SUMMARY[interruption]}. ${run.model_calls} model decisions, ${run.action_count} confirmed actions, ${run.failed_actions} refused actions. No action is repeated automatically and the run credential was revoked; resume it explicitly from your contributions.`.slice(0, 500);
 
 export class Platform {
-  constructor(path, clock = Date.now) { this.db = openDatabase(path); this.path = path; this.clock = clock; this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); this.initQuests(); this.initGuilds(); }
+  constructor(path, clock = Date.now) {
+    this.db = openDatabase(path);
+    this.path = path;
+    this.clock = clock;
+    // The file-level integrity scan is the one expensive diagnostic read, so its result is reused
+    // for a short window. `checked_at` reports when it actually ran, never when it was served.
+    this.integrityCache = { at: Number.NEGATIVE_INFINITY, value: null };
+    this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); this.initQuests(); this.initGuilds();
+  }
   get(sql, ...args) { return this.db.prepare(sql).get(...args); }
   all(sql, ...args) { return this.db.prepare(sql).all(...args); }
   run(sql, ...args) { return this.db.prepare(sql).run(...args); }
   transaction(action) {
     this.db.exec('BEGIN IMMEDIATE');
     try { const result = action(); this.db.exec('COMMIT'); return result; }
-    catch (error) { this.db.exec('ROLLBACK'); throw error; }
+    catch (error) {
+      // A storage failure (a full disk) can make SQLite roll the transaction back itself. Reporting
+      // the original failure is what lets an operator act; a masking "no transaction" error is not.
+      try { this.db.exec('ROLLBACK'); } catch { /* SQLite already ended the transaction. */ }
+      throw error;
+    }
   }
   audit(actor, event, recordId = '') {
     const previous = this.get('SELECT hash FROM audit ORDER BY seq DESC LIMIT 1')?.hash || '';
@@ -549,9 +563,80 @@ export class Platform {
     this.run('UPDATE appeals SET status=?,decision=?,reviewer_id=? WHERE id=?', input.decision, reason, actor.account.id, appeal.id);
     this.audit(actor.account.id, `appeal.${input.decision}`, appeal.id); return { status: input.decision };
   }
-  operations(actor) {
+  operations(actor, live = {}) {
     role(actor, ['admin']);
-    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts'), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100'), audit_valid: this.verifyAudit(), coin_ledger_valid:verifyCoinLedger(this.db), coin_receipts:this.get('SELECT COUNT(*) AS n FROM coin_rewards').n, audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100'), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100") };
+    // The live half of the payload is built by the caller and may be a function: the process-level
+    // counters are then assembled only after the administrator check above has passed.
+    const runtime = typeof live === 'function' ? live() : live;
+    const audit_valid = this.verifyAudit(), coin_ledger_valid = verifyCoinLedger(this.db);
+    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts'), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100'), audit_valid, coin_ledger_valid, coin_receipts:this.get('SELECT COUNT(*) AS n FROM coin_rewards').n, audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100'), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100"),
+      diagnostics: this.diagnostics({ ...runtime, integrity: { audit_chain_valid: audit_valid, coin_ledger_valid } }) };
+  }
+  // The administrator dashboard. Every number here is read from this process or from the database;
+  // none is estimated. The payload is built from named counters, then passed through the redaction
+  // allowlist, so no stored row, credential, contact address or private artifact can reach it.
+  integrity() {
+    const cached = this.integrityCache, now = this.clock();
+    if (cached.value && now - cached.at < 10_000) return cached.value;
+    let value;
+    try { value = integritySnapshot(this.path); }
+    catch { value = { quick_check: 'unavailable', checked_at: new Date(now).toISOString(), check_duration_ms: 0, schema_version: null, page_count: null, journal_mode: null, note: 'The database file could not be opened read-only for the file-level check.' }; }
+    this.integrityCache = { at: now, value };
+    return value;
+  }
+  diagnostics(live = {}) {
+    const count = (sql, ...args) => this.get(sql, ...args).n;
+    const since = new Date(this.clock() - 86_400_000).toISOString();
+    const backupDirectory = live.backup_directory || resolve(dirname(this.path), 'backups');
+    const backups = live.backups || backupInventory(backupDirectory);
+    let storage = null;
+    try { storage = storageUsage(this.path); } catch { storage = null; }
+    const interruption_rows = this.all("SELECT interrupted, COUNT(*) AS n FROM resident_runs WHERE status='interrupted' AND interrupted!='' GROUP BY interrupted");
+    const by_interruption = Object.fromEntries(interruption_rows.map((row) => [row.interrupted, row.n]));
+    return redactDiagnostics({
+      generated_at: new Date(this.clock()).toISOString(),
+      process: live.process || null,
+      schema: { version: this.get('PRAGMA user_version').user_version, accepted_versions: [...RECOVERY_LIMITS.accepted_schema_versions] },
+      integrity: { ...this.integrity(), ...(live.integrity || {}) },
+      storage,
+      backups,
+      model: live.model || { configured: false, backend: null, state: 'unconfigured', state_note: 'No local model name is configured; resident runs and country conversations use their rules fallback.', queue: { active: 0, waiting: 0, max_waiting: 0, saturation: 0, full: false }, inference: { in_flight: 0, oldest_started_at: null, elapsed_ms: null }, since_process_start: null },
+      workers: live.workers || { research: { active: 0, limit: 0, available: 0 }, resident: { active: 0, limit: 1, available: 1 }, interrupted: 0, capacity_refusals_since_start: 0 },
+      records: {
+        accounts: count('SELECT COUNT(*) AS n FROM accounts'), agents: count('SELECT COUNT(*) AS n FROM agents'), worlds: count('SELECT COUNT(*) AS n FROM worlds'),
+        world_objects: count('SELECT COUNT(*) AS n FROM world_objects'), land_stewardships: count('SELECT COUNT(*) AS n FROM land_stewardships'),
+        coin_rewards: count('SELECT COUNT(*) AS n FROM coin_rewards'), quest_enrollments: count('SELECT COUNT(*) AS n FROM quest_enrollments'),
+        guild_projects: count('SELECT COUNT(*) AS n FROM guild_projects'), guild_contributions: count('SELECT COUNT(*) AS n FROM guild_contributions'),
+        ambassador_conversations: count('SELECT COUNT(*) AS n FROM ambassador_conversations'),
+        audit_entries: this.get('SELECT COALESCE(MAX(seq),0) AS n FROM audit').n,
+      },
+      runs: {
+        running: count("SELECT COUNT(*) AS n FROM resident_runs WHERE status='running'"), interrupted: count("SELECT COUNT(*) AS n FROM resident_runs WHERE status='interrupted'"),
+        completed: count("SELECT COUNT(*) AS n FROM resident_runs WHERE status='completed'"), stopped: count("SELECT COUNT(*) AS n FROM resident_runs WHERE status='stopped'"),
+        failed: count("SELECT COUNT(*) AS n FROM resident_runs WHERE status='failed'"),
+        interrupted_24h: count("SELECT COUNT(*) AS n FROM resident_runs WHERE status='interrupted' AND updated_at>=?", since),
+        failed_24h: count("SELECT COUNT(*) AS n FROM resident_runs WHERE status='failed' AND updated_at>=?", since),
+        by_interruption,
+      },
+      jobs: {
+        running: count("SELECT COUNT(*) AS n FROM jobs WHERE status='running'"), interrupted: count("SELECT COUNT(*) AS n FROM jobs WHERE status='interrupted'"),
+        completed_24h: count("SELECT COUNT(*) AS n FROM jobs WHERE status='completed' AND created_at>=?", since),
+        stopped_24h: count("SELECT COUNT(*) AS n FROM jobs WHERE status='stopped' AND created_at>=?", since),
+        failed_24h: count("SELECT COUNT(*) AS n FROM jobs WHERE status='failed' AND created_at>=?", since),
+      },
+      failures: {
+        count_24h: count("SELECT COUNT(*) AS n FROM audit WHERE created_at>=? AND (event LIKE '%.failed' OR event LIKE '%.stopped' OR event LIKE '%.interrupted')", since),
+        last_at: this.get("SELECT created_at FROM audit WHERE event LIKE '%.failed' OR event LIKE '%.stopped' OR event LIKE '%.interrupted' ORDER BY seq DESC LIMIT 1")?.created_at || null,
+        recent: this.all("SELECT event, created_at FROM audit WHERE event LIKE '%.failed' OR event LIKE '%.stopped' OR event LIKE '%.interrupted' ORDER BY seq DESC LIMIT 20"),
+      },
+      recovery: {
+        schema_version: RECOVERY_LIMITS.schema_version,
+        last_backup_at: backups.latest?.created_at || null,
+        backup_point: RECOVERY_LIMITS.backup_point,
+        replay_policy: RECOVERY_LIMITS.replay_policy,
+        interruption_classes: [...RECOVERY_LIMITS.interruption_classes],
+      },
+    });
   }
   pause(actor, value) {
     role(actor, ['admin']);
