@@ -1,10 +1,10 @@
-# NemoWorld development handoff — 12 October 2026
+# NemoWorld development handoff — 13 October 2026
 
 ## Current source and evidence
 
 The authoritative development source is this Git checkout (`work/Lucy-repo`). `outputs/Lucy` is the installed local copy, with its own private database and local AI runtime. Implement in the checkout; install reviewed source only after gates and backup. Do not edit an installed copy and assume GitHub has changed.
 
-Current database schema: **18**. Current source gates: **444 tests, 444 pass, zero fail/skip**; syntax gate passes; isolated HTTP acceptance harness **15/15**. Content seal: **86 definitions**, 3 support files and 42 referenced notices/assets. The complete suite includes calling API, country-ambassador migration/API, quest-chain progression and HTTP routes, guild-project cooperation and HTTP routes, real HTTP runtime tests, process-level crash-recovery tests and bounded-read performance assertions. Gate logs remain outside this repository in `work/verification/`.
+Current database schema: **18**. Current source gates: **448 tests, 448 pass, zero fail/skip**; syntax gate passes; isolated HTTP acceptance harness **15/15**. Content seal: **86 definitions**, 3 support files and 42 referenced notices/assets. The complete suite includes calling API, country-ambassador migration/API, quest-chain progression and HTTP routes, guild-project cooperation and HTTP routes, real HTTP runtime tests, process-level crash-recovery tests and bounded-read performance assertions. Gate logs remain outside this repository in `work/verification/`.
 
 A disposable browser preview independently verified fictional account creation, human walking, true first-person drag/stored look, calling selection, crop-patch placement, planting, 5 cosmetic experience, and persistence after reload. Its database had exactly one calling receipt and zero coin rewards. Browser proof is `docs/images/callings.png`; it shows a fictional test player, not an installed account.
 
@@ -28,7 +28,7 @@ The 10,001-agent storage fixture retains a 200-avatar viewport and a 229,917-byt
 ## User's latest direction
 
 1. **Replace regional mayor framing with a country ambassador for every country.** Delivered as task 01 on branch `task-01-country-ambassadors` (see above and `docs/handoff/task-01-country-ambassadors.md`). The catalog's 248 countries AND areas keep that distinction in every label. The 20 historic guide identities and their conversation records are retained as compatibility aliases rather than replaced in place, and the independent disposable browser review is recorded in `docs/reviews/task-01-country-ambassadors.md`.
-2. **Conserve Codex credits using DeepSeek.** The ready-to-copy packet is `docs/deepseek/START_HERE.md` plus `docs/deepseek/TASKS.md`: 14 bounded tasks; Task 01 is reviewed and Task 02 is implemented on branch `task-02-first-person` and awaits review. Run one code task at a time; return small diffs and actual gate evidence.
+2. **Conserve Codex credits using DeepSeek.** Batch 01 is combined and reviewed on `review/nemoworld-queue`; the new packet is `docs/deepseek/TASKS_BATCH_02.md` (Tasks 15–28). Start with Task 15, executable browser acceptance. One code task per branch; return small diffs and actual gate evidence.
 3. The larger narrative is a purposeful peaceful world for humans and AI, with callings guiding useful work. The Sword Art Online comparison is inspiration for immersion; this code does not implement full-dive VR or that proprietary game's world/assets.
 
 ## Boundaries that remain
@@ -45,4 +45,8 @@ The schema 13 report is retained as historical evidence at `docs/handoff/2026-10
 
 ## Reviewed country-ambassador integration
 
-Task 01 has been reviewed and corrected. All 248 catalog countries/areas have ambassadors and public research venues. The final suite passes 353 tests and 10 HTTP acceptance steps. The browser flow and privacy boundaries were checked against disposable accounts. See [the review](docs/reviews/task-01-country-ambassadors.md). **Task 02 — first-person physical world coherence** is implemented on branch `task-02-first-person` (370 tests pass, e2e 10/10, seal verified) and awaits review: see `docs/handoff/task-02-first-person.md`.
+Task 01 has been reviewed and corrected. All 248 catalog countries/areas have ambassadors and public research venues. The final suite passes 353 tests and 10 HTTP acceptance steps. The browser flow and privacy boundaries were checked against disposable accounts. See [the review](docs/reviews/task-01-country-ambassadors.md). **Task 02 — first-person physical world coherence** was delivered on `task-02-first-person` and is included in the combined queue review: see `docs/handoff/task-02-first-person.md`.
+
+## Combined queue review — 13 October 2026
+
+Tasks 02–14 and the four independent research branches are integrated on `review/nemoworld-queue`. The release review corrected credential/consent persistence, private draft ownership, collapsed-form focus restoration, private cache clearing and resumed-run budgets. Independent gates: 448/448 tests, 15/15 HTTP steps, syntax and content seal. Disposable browser checks verified blueprint preview/apply/remove, first-person movement, owner draft refresh/focus and account isolation, public guild joining and private visibility, and quest enrollment/next-action guidance. The complete browser suite remains Task 15; mature crop harvest and every quest/guild transition were not browser-tested in this review. See [the queue review](docs/reviews/queue-tasks-02-14.md).

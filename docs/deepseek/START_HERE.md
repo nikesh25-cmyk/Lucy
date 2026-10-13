@@ -31,6 +31,6 @@ The e2e harness starts and removes its own temporary database. Browser testing u
 
 ## Work order
 
-**Task 01 — country ambassadors is reviewed.** Start with **Task 02 — first-person physical world coherence**, using the reviewed schema 15 source and its 353-test baseline. Read `docs/reviews/task-01-country-ambassadors.md`; the original Task 01 commit alone omits review fixes. Research and asset tasks can run in parallel with code tasks because their outputs are separate files. One code task should edit a shared backend/UI file at a time.
+**Batch 01 (Tasks 01–14) is combined and reviewed on `review/nemoworld-queue`, schema 18, with 448 passing tests and 15 HTTP acceptance steps.** Read `docs/reviews/queue-tasks-02-14.md`. Begin **Batch 02, Task 15 — executable browser acceptance suite** from that reviewed source. One code task should edit shared backend/UI files at a time. Research Task 24 and Task 20 design briefs can be prepared separately.
 
-Detailed copy-and-paste tasks: [TASKS.md](TASKS.md).
+Detailed new tasks: [TASKS_BATCH_02.md](TASKS_BATCH_02.md). Historical Batch 01 briefs: [TASKS.md](TASKS.md).

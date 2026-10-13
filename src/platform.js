@@ -682,13 +682,14 @@ export class Platform {
     const decisions = run.decision_budget - run.model_calls;
     if (decisions < 1) fail(409, 'This run used its whole model-decision budget; start a new run instead.');
     // Remaining API budget comes from the interrupted run's own credential row, never from a copy.
-    const credential = run.credential_hash ? this.get('SELECT max_calls,used_calls,revoked FROM tokens WHERE hash=?', run.credential_hash) : null;
+    const credential = run.credential_hash ? this.get('SELECT max_calls,used_calls,revoked,expires_at FROM tokens WHERE hash=?', run.credential_hash) : null;
     if (credential && !credential.revoked) fail(409, 'The interrupted run still holds a usable credential. Stop that process before resuming it.');
     const apiCalls = credential ? Math.max(0, credential.max_calls - credential.used_calls) : 0;
     if (apiCalls < 1) fail(409, 'This run used its whole API budget; start a new run instead.');
     if (!this.get('SELECT id FROM agents WHERE id=?', run.agent_id)) fail(409, 'The character for this run is unavailable.');
-    const elapsed = Math.max(0, this.clock() - Date.parse(run.started_at));
-    return { run_id: run.id, agent_id: run.agent_id, permission: run.permission, decisions, minutes: Math.max(1, Math.min(20, run.minutes - Math.floor(elapsed / 60000))), api_calls_remaining: apiCalls, interruption: run.interrupted };
+    const remainingMs=credential.expires_at-this.clock();
+    if(remainingMs<=0)fail(409,'This run used its time budget; start a new bounded run instead.');
+    return {run_id:run.id,agent_id:run.agent_id,permission:run.permission,decisions,minutes:Math.min(20,Math.ceil(remainingMs/60000)),duration_ms:remainingMs,api_calls_remaining:apiCalls,interruption:run.interrupted};
   }
   job(actor, input) {
     if (actor.kind !== 'runtime' || actor.agent?.kind !== 'agent') fail(403, 'An agent runtime credential is required.');

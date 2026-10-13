@@ -180,16 +180,13 @@ test('focus, drafts and guided progress are persisted in this browser and restor
   assert.match(app, /const FOCUS_KEY = 'nemoworld-focus'/);
   // Wiring: the two account forms and any form that opts in keep a local draft, and a successful
   // submit clears it; the client also remembers which control had the cursor.
-  assert.match(app, /const inputs = form\(login, 'Sign in',[\s\S]*?'auth-login'\);/, 'the sign-in form keeps a local draft');
-  assert.match(app, /const register = form\(signup,[\s\S]*?'auth-register'\);/, 'the account-creation form keeps a local draft');
   assert.match(app, /if \(section\) \{ node\.dataset\.draftSection = section; attachLocalDraft\(node, section\); \}/, 'opt-in forms attach the draft');
   assert.match(app, /node\.addEventListener\('focusin', \(event\) => \{ if \(event\.target\?\.name\) rememberFocus\(section, event\.target\.name\); \}\);/, 'focus memory follows the cursor');
   assert.match(app, /if \(section\) \{ clearDraftValues\(section\); forgetFocus\(\); \}/, 'a successful submit clears its own draft');
   assert.match(app, /await refresh\(\);render\(\);resumePendingWork\(\);/, 'boot restores the remembered work');
-  assert.match(app, /if \(!state\.account && \['auth-login', 'auth-register'\]\.includes\(remembered\.section\)\) openAuth\(/, 'a half-finished account form is reopened');
   assert.match(app, /if \(!remembered\.section \|\| !Object\.keys\(draftValues\(remembered\.section\)\)\.length\) return false;/, 'nothing is reopened without a draft');
   // Guided progress is remembered, and the review acknowledgement is explicit.
-  assert.match(app, /function newcomerComplete\(id, acknowledged = null\)/, 'guided progress is written to this browser only');
+  assert.match(app, /function newcomerComplete\(id,\s*acknowledged\s*=\s*null\)/, 'guided progress is written to this browser only');
   assert.match(app, /newcomerComplete\('ambassador'\)/, 'meeting an ambassador is remembered');
   assert.match(app, /markNewcomerStep\('review', next\)/, 'the review acknowledgement is remembered');
 });
@@ -200,7 +197,8 @@ function persistence() {
   const start = app.indexOf('// newcomer-persistence:start'), end = app.indexOf('// newcomer-persistence:end');
   assert.ok(start > 0 && end > start, 'the persistence block must be delimited');
   const block = app.slice(start, end);
-  const factory = new Function('localStorage', `return (() => { ${block}\n return { draftValues, saveDraftValues, clearDraftValues, rememberFocus, rememberedFocus, forgetFocus, newcomerProgress, saveNewcomerProgress, newcomerComplete }; })()`);
+  const evaluate = new Function('localStorage','state', `return (() => { ${block}\n return { draftValues, saveDraftValues, clearDraftValues, rememberFocus, rememberedFocus, forgetFocus, newcomerProgress, saveNewcomerProgress, newcomerComplete }; })()`);
+  const factory=(localStorage,state={account:{id:'owner-a'}})=>evaluate(localStorage,state);
   const store = () => { const data = new Map(); return { data, getItem: (key) => (data.has(key) ? data.get(key) : null), setItem: (key, value) => data.set(key, String(value)), removeItem: (key) => data.delete(key) }; };
   return { factory, store };
 }
@@ -208,31 +206,31 @@ function persistence() {
 test('a stub store proves the draft round-trip, the field isolation and the corrupt-value fallback', () => {
   const { factory, store } = persistence();
   const local = store(), api = factory(local);
-  assert.deepEqual(api.draftValues('auth-register'), {}, 'a missing draft is empty, not an error');
-  assert.deepEqual(api.saveDraftValues('auth-register', { name: 'A newcomer', email: 'a@example.org', invite: '' }), { name: 'A newcomer', email: 'a@example.org' });
-  assert.deepEqual(api.draftValues('auth-register'), { name: 'A newcomer', email: 'a@example.org' }, 'a refresh restores exactly what was typed');
-  assert.deepEqual(api.draftValues('auth-login'), {}, 'one form never restores another form’s values');
+  assert.deepEqual(api.draftValues('character-create'), {}, 'a missing draft is empty, not an error');
+  assert.deepEqual(api.saveDraftValues('character-create', { name: 'A newcomer', email: 'a@example.org', invite: '' }), { name: 'A newcomer', email: 'a@example.org' });
+  assert.deepEqual(api.draftValues('character-create'), { name: 'A newcomer', email: 'a@example.org' }, 'a refresh restores exactly what was typed');
+  assert.deepEqual(api.draftValues('quest-create'), {}, 'one form never restores another form’s values');
   // Clearing every value removes the record instead of leaving an empty shell behind.
-  api.saveDraftValues('auth-register', { name: '' });
-  assert.deepEqual(api.draftValues('auth-register'), {});
-  assert.equal(local.data.has('nemoworld-draft:auth-register'), false, 'an emptied form leaves no draft');
+  api.saveDraftValues('character-create', { name: '' });
+  assert.deepEqual(api.draftValues('character-create'), {});
+  assert.equal(local.data.has('nemoworld-draft:operator:owner-a:character-create'), false, 'an emptied form leaves no draft');
   // A hand-edited store must never break the client.
-  local.setItem('nemoworld-draft:auth-register', '{not json');
-  assert.deepEqual(api.draftValues('auth-register'), {}, 'corrupt JSON falls back to empty');
-  local.setItem('nemoworld-draft:auth-register', '["a list, not a draft"]');
-  assert.deepEqual(api.draftValues('auth-register'), {}, 'a non-object value falls back to empty');
-  local.setItem('nemoworld-draft:auth-register', '{"name":7,"email":"a@example.org"}');
-  assert.deepEqual(api.draftValues('auth-register'), { email: 'a@example.org' }, 'only string values are restored');
-  api.clearDraftValues('auth-register');
-  assert.deepEqual(api.draftValues('auth-register'), {});
+  local.setItem('nemoworld-draft:operator:owner-a:character-create', '{not json');
+  assert.deepEqual(api.draftValues('character-create'), {}, 'corrupt JSON falls back to empty');
+  local.setItem('nemoworld-draft:operator:owner-a:character-create', '["a list, not a draft"]');
+  assert.deepEqual(api.draftValues('character-create'), {}, 'a non-object value falls back to empty');
+  local.setItem('nemoworld-draft:operator:owner-a:character-create', '{"name":7,"email":"a@example.org"}');
+  assert.deepEqual(api.draftValues('character-create'), { email: 'a@example.org' }, 'only string values are restored');
+  api.clearDraftValues('character-create');
+  assert.deepEqual(api.draftValues('character-create'), {});
 });
 
 test('a stub store proves the focus memory and the guided progress, including in a private window', () => {
   const { factory, store } = persistence();
   const local = store(), api = factory(local);
   assert.deepEqual(api.rememberedFocus(), { section: '', field: '' }, 'no remembered control by default');
-  api.rememberFocus('auth-register', 'email');
-  assert.equal(api.rememberedFocus().section, 'auth-register');
+  api.rememberFocus('character-create', 'email');
+  assert.equal(api.rememberedFocus().section, 'character-create');
   assert.equal(api.rememberedFocus().field, 'email', 'the cursor returns to the field it left');
   api.forgetFocus();
   assert.deepEqual(api.rememberedFocus(), { section: '', field: '' }, 'a completed form forgets its own cursor');
@@ -247,14 +245,14 @@ test('a stub store proves the focus memory and the guided progress, including in
   assert.equal(api.newcomerProgress().acknowledged, false, 'and can be taken back');
   api.newcomerComplete('review', false);
   assert.deepEqual(api.newcomerProgress().completed, ['ambassador', 'review'], 'repeating a step adds no duplicate');
-  local.setItem('nemoworld-newcomer', 'null');
+  local.setItem('nemoworld-newcomer:operator:owner-a', 'null');
   assert.deepEqual(api.newcomerProgress(), { completed: [], acknowledged: false }, 'a null record is tolerated');
 
   // A private window (or a full quota) must degrade to "no draft", never to a thrown error.
   const throwing = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('quota'); }, removeItem: () => { throw new Error('blocked'); } };
   const blocked = factory(throwing);
-  assert.equal(blocked.saveDraftValues('auth-register', { name: 'x' }).name, 'x', 'the caller still gets its own values back');
-  assert.deepEqual(blocked.draftValues('auth-register'), {}, 'and nothing is restored when storage is unavailable');
+  assert.equal(blocked.saveDraftValues('character-create', { name: 'x' }).name, 'x', 'the caller still gets its own values back');
+  assert.deepEqual(blocked.draftValues('character-create'), {}, 'and nothing is restored when storage is unavailable');
   assert.deepEqual(blocked.newcomerProgress(), { completed: [], acknowledged: false });
 });
 
@@ -345,4 +343,14 @@ test('the shipped copy promised by the flow is also the behaviour the routes imp
   assert.match(app, /A quest chain cannot mint them/, 'the interface repeats that rule to the reader');
   assert.match(app, /Guild projects/, 'the guild section keeps its own coinless statement');
   assert.match(app, /Practice tasks, duplicate work, social activity and gardening do not earn coins\./, 'the guide keeps the coin exclusion list');
+});
+
+test('local drafts, focus and onboarding stay with their operator; credentials are never stored',()=>{
+ const{factory,store}=persistence(),local=store(),state={account:{id:'alice'}},api=factory(local,state);
+ api.saveDraftValues('quest-create',{title:'Private Alice plan',password:'never-save',setup_code:'never-save',token:'never-save',consent:'on'});api.rememberFocus('quest-create','title');api.newcomerComplete('review',true);
+ assert.deepEqual(api.draftValues('quest-create'),{title:'Private Alice plan'});assert.equal([...local.data.values()].join('').includes('never-save'),false);
+ assert.deepEqual(api.saveDraftValues('auth-login',{password:'never-save'}),{});
+ state.account=null;assert.deepEqual(api.draftValues('quest-create'),{});assert.equal(api.newcomerProgress().acknowledged,false);
+ state.account={id:'bob'};assert.deepEqual(api.draftValues('quest-create'),{});assert.equal(api.rememberedFocus().section,'');assert.equal(api.newcomerProgress().acknowledged,false);
+ state.account={id:'alice'};assert.equal(api.draftValues('quest-create').title,'Private Alice plan');
 });

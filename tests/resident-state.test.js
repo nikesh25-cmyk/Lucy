@@ -304,3 +304,22 @@ test('a pre-change database migrates forward to the run-state schema without los
   assert.equal(validateDatabase(f.database).schema_version, 18);
   assert.equal(migrated.verifyAudit(), true);
 });
+
+test('an explicit resume preserves remaining API calls and the original expiry',async t=>{
+ const f=await fixture(t),alice=f.agent('alice'),account=f.actor('alice').account.id;
+ const token=f.tx('runtime',f.actor('alice'),alice.id,{minutes:5,max_calls:40,scopes:['read']});
+ f.platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)','low-budget',alice.id,'running','Local resident: fixture.',new Date().toISOString());
+ f.platform.startResidentRun({id:'low-budget',account_id:account,agent_id:alice.id,permission:'observe',decisions:4,minutes:5,credential_hash:sha(token.token)});
+ f.platform.recordResidentRun('low-budget',{phase:'confirmed',decision:1,model_calls:1,action_count:1});
+ f.platform.run('UPDATE tokens SET used_calls=38 WHERE hash=?',sha(token.token));f.advance(125000);f.tx('recoverWorkerJobs');
+ let observed;const{call}=await service(t,f.platform,f.credentials.alice.token,{mayorModel:async()=>'{"action":"wait"}',residentRunner:async options=>{observed=options;return{status:'completed',model_calls:0,action_count:0};}});
+ const result=await call('/residents/resume',{});assert.equal(result.status,202);await settled(f,result.data.job_id);
+ const run=f.platform.get('SELECT * FROM resident_runs WHERE id=?',result.data.job_id),credential=f.platform.get('SELECT * FROM tokens WHERE hash=?',run.credential_hash);
+ assert.equal(credential.max_calls,2);assert.equal(credential.expires_at,token.expires_at);assert.equal(observed.durationMs,175000);assert.equal(run.decision_budget,3);
+});
+test('an expired interrupted run requires a new bounded run instead of replenishing time',async t=>{
+ const f=await fixture(t),alice=f.agent('alice'),account=f.actor('alice').account.id,token=f.tx('runtime',f.actor('alice'),alice.id,{minutes:1,max_calls:20,scopes:['read']});
+ f.platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)','expired-budget',alice.id,'running','Local resident: fixture.',new Date().toISOString());
+ f.platform.startResidentRun({id:'expired-budget',account_id:account,agent_id:alice.id,permission:'observe',decisions:2,minutes:1,credential_hash:sha(token.token)});
+ f.tx('recoverWorkerJobs');f.advance(61000);assert.throws(()=>f.platform.residentResumePlan(account),/time budget/);
+});

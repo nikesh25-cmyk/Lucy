@@ -300,16 +300,19 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         if(!civicModel)fail(409,'Configure a local model before running a resident.');
         // A resume is an explicit human action: it re-reads the interrupted run's own remaining
         // budgets and always issues a fresh credential. No stored action is ever replayed.
-        const request=route==='/residents/resume'?(()=>{const plan=platform.residentResumePlan(actor.account.id);return {agent_id:plan.agent_id,minutes:plan.minutes,model_calls:plan.decisions,permission:plan.permission,resumed_from:plan.run_id};})():input;
+        const resumePlan=route==='/residents/resume'?platform.residentResumePlan(actor.account.id):null;
+        const request=resumePlan?{agent_id:resumePlan.agent_id,minutes:resumePlan.minutes,model_calls:resumePlan.decisions,permission:resumePlan.permission,resumed_from:resumePlan.run_id}:input;
         const agent=platform.ownedAgent(actor,request.agent_id);
         if(agent.kind==='human')fail(403,'Choose an agent character for local AI work.');
         if(agent.status!=='active')fail(409,'Resume this character before running local AI work for it.');
         const minutes=Number(request.minutes??2),calls=Number(request.model_calls??5),permission=request.permission||'explore';
         if(!Number.isInteger(minutes)||minutes<1||minutes>20||!Number.isInteger(calls)||calls<1||calls>20||!['observe','explore','creative'].includes(permission))fail(400,'Choose 1–20 minutes, 1–20 model decisions and a listed permission mode.');
         const scopes=permission==='observe'?['read']:permission==='explore'?['read','move','chat']:['read','move','chat','contribute','build'];
-        const id=randomUUID(),controller=new AbortController(),resumedFrom=request.resumed_from||null;
+        const id=randomUUID(),controller=new AbortController(),resumedFrom=resumePlan?.run_id||null;
+        const durationMs=resumePlan?Math.min(minutes*60000,resumePlan.duration_ms):minutes*60000,apiCalls=resumePlan?Math.min(calls*8+4,resumePlan.api_calls_remaining):calls*8+4;
         const credential=platform.transaction(()=>{
-          const session=platform.runtime(actor,agent.id,{minutes,max_calls:calls*8+4,scopes});
+          const session=platform.runtime(actor,agent.id,{minutes,max_calls:apiCalls,scopes});
+          if(resumePlan){session.expires_at=platform.clock()+durationMs;platform.run('UPDATE tokens SET expires_at=? WHERE hash=?',session.expires_at,createHash('sha256').update(session.token).digest('hex'));}
           platform.run('INSERT INTO jobs VALUES(?,?,?,?,?)',id,agent.id,'running',`Local resident: up to ${calls} model decisions, ${minutes} ${minutes===1?'minute':'minutes'}; ${permission} permissions${resumedFrom?'; resumed from an interrupted run.':'.'}`,new Date().toISOString());
           platform.startResidentRun({id,account_id:actor.account.id,agent_id:agent.id,permission,decisions:calls,minutes,credential_hash:createHash('sha256').update(session.token).digest('hex'),resumed_from:resumedFrom});
           platform.audit(actor.account.id,resumedFrom?'resident.worker.resumed':'resident.worker.started',id);return session;
@@ -318,7 +321,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         const modelFn=input=>civicModel({...input,beforeDispatch:()=>{platform.authenticate(credential.token,'read');platform.active();controller.signal.throwIfAborted();}});
         // The runtime reports every transition; the durable record is written before an action can be
         // repeated, so a process death leaves a classifiable record instead of guesswork.
-        const promise=Promise.resolve().then(()=>residentRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,modelFn,durationMs:minutes*60000,maxCalls:calls,runId:id,permission,onState:changes=>platform.recordResidentRun(id,changes),signal:controller.signal,reportJob:false})).then(result=>{
+        const promise=Promise.resolve().then(()=>residentRunner({token:credential.token,url:hosting.publicOrigin||`http://127.0.0.1:${server.address().port}`,modelFn,durationMs,maxCalls:calls,runId:id,permission,onState:changes=>platform.recordResidentRun(id,changes),signal:controller.signal,reportJob:false})).then(result=>{
           if(!['completed','failed','stopped'].includes(result.status)||!Number.isInteger(result.model_calls)||!Number.isInteger(result.action_count)||result.model_calls<0||result.model_calls>calls||result.action_count<0||result.action_count>result.model_calls)throw new Error('Invalid resident receipt');
           if([result.failed_calls,result.failed_actions].some(value=>value!==undefined&&(!Number.isInteger(value)||value<0||value>result.model_calls)))throw new Error('Invalid resident receipt');
           const status=controller.signal.aborted?'stopped':result.status;
