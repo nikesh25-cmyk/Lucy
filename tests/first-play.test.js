@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { createApp } from '../server.js';
 import { Platform } from '../src/platform.js';
 import { fixture } from './helpers.js';
-import { RESTORATION_PLACEMENT_STEP } from '../src/community.js';
+import { RESTORATION_PLACEMENT_STEP, RESTORATION_LIST } from '../src/community.js';
 import { COUNTRIES, ambassadorIdentity } from '../src/civic-engine.js';
 import { FIRST_PLAY_ENCOUNTER_CANNOT } from '../src/firstplay.js';
 
@@ -623,4 +623,86 @@ test('the guide restores the saved place, character, purpose and camera', async 
   assert.equal(resume.refusal, null);
   assert.deepEqual(resume.restore.map((source) => source.id), ['place', 'character', 'purpose', 'camera']);
   assert.ok(resume.restore.every((source) => typeof source.source === 'string' && source.source.length > 0));
+});
+
+test('account-specific restoration read stays visible past the global newest-eight list', async (t) => {
+  const f = await fixture(t);
+  const alice = f.agent('alice'), bob = f.agent('bob');
+  f.tx('callingSelect', f.actor('alice'), { agent_id: alice.id, calling_id: 'builder' });
+  f.tx('callingSelect', f.actor('bob'), { agent_id: bob.id, calling_id: 'builder' });
+  const garden = `home:${alice.id}`;
+  const oldEvent = openedGarden(f, 'alice', alice);
+  visit(f, 'alice', alice, garden);
+  pledge(f, 'alice', alice, oldEvent);
+  visit(f, 'bob', bob, garden);
+  pledge(f, 'bob', bob, oldEvent);
+  const [first, second] = RESTORATION_PLACEMENT_STEP.slots;
+  place(f, 'alice', alice, oldEvent, first);
+  place(f, 'bob', bob, oldEvent, second);
+  assert.equal(step(guide(f, 'alice', alice), 'restore').done, true);
+  assert.equal(step(guide(f, 'bob', bob), 'restore').done, true);
+
+  // Flood the global list with newer restoration events opened by other operators.
+  let opened = 0;
+  for (const owner of ['reviewer', 'moderator']) {
+    for (let i = 0; i < 5 && opened < RESTORATION_LIST + 1; i += 1) {
+      const agent = f.tx('createAgent', f.actor(owner), { name: `${owner} flood ${i}`, capabilities: '', limitations: '', color: '#397f79', symbol: '✦' });
+      f.tx('homeSettings', f.actor(owner), agent.id, { visibility: 'public' });
+      f.advance();
+      f.tx('restorationOpen', f.actor(owner), { agent_id: agent.id, hours: 6 });
+      opened += 1;
+    }
+  }
+  assert.ok(opened >= RESTORATION_LIST + 1, `opened at least ${RESTORATION_LIST + 1} newer events`);
+
+  // The global restoration() list no longer includes the old event.
+  const global = f.platform.restoration(f.actor('alice'), { agent_id: alice.id });
+  assert.ok(!global.events.some((event) => event.id === oldEvent.id), 'old event is pushed out of the global newest-eight list');
+
+  // Both accounts still see their counted work and the restore step stays done.
+  const aliceView = guide(f, 'alice', alice);
+  assert.equal(aliceView.restoration.event_id, oldEvent.id);
+  assert.equal(step(aliceView, 'restore').done, true);
+  const bobView = guide(f, 'bob', bob);
+  assert.equal(bobView.restoration.event_id, oldEvent.id);
+  assert.equal(step(bobView, 'restore').done, true);
+
+  // The placed objects in the old garden are untouched and completion still derives from saved rows.
+  assert.equal(count(f, 'SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden), 2);
+  assert.equal(count(f, 'SELECT COUNT(*) AS n FROM coin_rewards'), 0);
+});
+
+test('account-specific restoration read persists across server restart', async (t) => {
+  const f = await fixture(t);
+  const alice = f.agent('alice'), bob = f.agent('bob');
+  f.tx('callingSelect', f.actor('alice'), { agent_id: alice.id, calling_id: 'builder' });
+  f.tx('callingSelect', f.actor('bob'), { agent_id: bob.id, calling_id: 'builder' });
+  const garden = `home:${alice.id}`;
+  const oldEvent = openedGarden(f, 'alice', alice);
+  visit(f, 'alice', alice, garden);
+  pledge(f, 'alice', alice, oldEvent);
+  visit(f, 'bob', bob, garden);
+  pledge(f, 'bob', bob, oldEvent);
+  place(f, 'alice', alice, oldEvent, RESTORATION_PLACEMENT_STEP.slots[0]);
+  place(f, 'bob', bob, oldEvent, RESTORATION_PLACEMENT_STEP.slots[1]);
+  assert.equal(step(guide(f, 'alice', alice), 'restore').done, true);
+
+  let opened = 0;
+  for (const owner of ['reviewer', 'moderator']) {
+    for (let i = 0; i < 5 && opened < RESTORATION_LIST + 1; i += 1) {
+      const agent = f.tx('createAgent', f.actor(owner), { name: `${owner} flood ${i}`, capabilities: '', limitations: '', color: '#397f79', symbol: '✦' });
+      f.tx('homeSettings', f.actor(owner), agent.id, { visibility: 'public' });
+      f.advance();
+      f.tx('restorationOpen', f.actor(owner), { agent_id: agent.id, hours: 6 });
+      opened += 1;
+    }
+  }
+
+  f.platform.close();
+  const reopened = new Platform(f.database, f.clock);
+  t.after(() => reopened.close());
+  const returning = reopened.firstPlay(reopened.authenticate(f.credentials.alice.token), { agent_id: alice.id });
+  assert.equal(returning.restoration.event_id, oldEvent.id);
+  assert.equal(step(returning, 'restore').done, true);
+  assert.equal(reopened.get('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden).n, 2);
 });
