@@ -235,6 +235,85 @@ p95 fell from 399.72 ms to 207.70 ms.
   users. Nothing here tested sustained load, memory growth, disk exhaustion, TLS, a proxy, multiple
   processes, multiple writers, write-heavy traffic or real network latency. See "not measured".
 
+## Renderer level of detail (render-scale task, 14 October 2026)
+
+Measured on the same machine, in a later worktree (`../w-render`, branch
+`task-deepseek-render-scale`, base `f773c46`). **No database is read or written by this measurement**:
+the scene builder is GPU-free, takes a world definition and a snapshot, and is the same code the
+browser runs, so the fixture is bounded by construction.
+
+| Question | Instrument | Command |
+| --- | --- | --- |
+| Renderer instances, draw calls and build time with and without the detail rule | `scripts/voxel-bench.mjs` (level-of-detail section) | `node scripts/voxel-bench.mjs 20 30` |
+| The stated instance and draw-call budget as assertions | `tests/render-lod.test.js` | `node --test tests/render-lod.test.js` |
+
+**Fixtures, named:** the shared `commons` (a 29 × 25 window, 725 cells) and the largest viewport the
+server can request, the `frontier:0:0` sector (a 37 × 37 window, 1,369 cells = `VOXEL_LIMITS.cells`),
+each with **20 drawn residents**; `RUNS = 30` for the rebuild and poll columns.
+
+The rule: the renderer reads only the tiles within 12 tiles of the followed resident at full detail
+(`LOD_LIMITS` in `src/voxel-geometry.js`). Beyond that radius a tile keeps every instance that decides
+*what it is* — its surface slab, its base cube, its terrain type detail, its obstacle, its pick, its
+building, its saved blocks — and loses the *unpicked* decoration that only decides how its ground
+reads: ground cover mottling and seedlings, understory litter and tufts, water glints, shore breaks
+and reeds. `lod: false` on a scene update is the escape hatch that restores the pre-LOD build exactly,
+which is the "pre-LOD" column and how the tests produce their "before".
+
+### Instances and draw calls (exact, machine-independent)
+
+| Fixture | Instances | Draw batches | Cells read closely | Decorative instances |
+| --- | --- | --- | --- | --- |
+| `commons`, 29 × 25, 725 cells | 2,332 → **2,094** (−10.2%) | 99 → 99 | 725 → 437 | 489 → **251** (−49%) |
+| `frontier:0:0`, 37 × 37, 1,369 cells | 3,273 → **2,729** (−16.6%) | 91 → 91 | 1,369 → 625 | 746 → **300** (−60%) |
+
+Without residents the same two builds are 2,080 → 1,818 on the Commons and 3,021 → 2,325 on the
+frontier fixture; the worst frontier sector in the tree (`frontier:-3:5`) is 3,228 → 2,367. A sweep of
+all 54 authored worlds at two camera positions each — the fixture `tests/render-scene.test.js` already
+uses — is 150,189 → 129,614 cubes (−13.7%).
+
+**The draw-call count does not move, and that is the point of the shape.** A batch is one
+`InstancedMesh` per colour and material style, not per tile, so the batch count is already bounded by
+the palette rather than by the window (88–99 across those worlds, against the 130
+`tests/render-scene.test.js` bounds). What scaled with the window was the per-tile decoration, and the
+detail radius is what bounds it: at most `(2 × 12 + 1)² = 625` cells are ever read at full detail
+whatever the window, so the decoration term is a constant while the per-cell floor is not.
+
+### Build time (medians with the least perturbed sample, ms — these columns resolve nothing)
+
+Three runs of `node scripts/voxel-bench.mjs 20 30`, on a machine carrying concurrent browser suites
+(load average 18–42 on ten cores). The fixture `frontier:0:0` is the one that matters; the Commons is
+too small for these columns to say anything at all.
+
+| `frontier:0:0`, least perturbed sample | pre-LOD | detail rule |
+| --- | --- | --- |
+| First build (3 fresh scenes) | 26.5 / 29.0 / 12.3 ms | 11.3 / 14.1 / 10.1 ms |
+| Static rebuild forced by a terrain tile, 30 samples | 6.4 / 6.8 / 7.2 ms | 5.7 / 7.1 / 7.5 ms |
+| Poll on an unchanged payload, 30 samples | 0.9 / 1.0 / 0.9 ms | 0.9 / 0.9 / 1.2 ms |
+
+| `frontier:0:0`, median | pre-LOD | detail rule |
+| --- | --- | --- |
+| First build | 41.5 / 46.7 / 30.4 ms | 24.8 / 25.1 / 54.2 ms |
+| Static rebuild | 9.0 / 14.7 / 13.7 ms | 4.9 / 18.4 / 14.0 ms |
+| Poll | 0.4 / 0.4 / 0.5 ms | 0.3 / 0.4 / 0.5 ms |
+
+**The honest conclusion is that these columns do not establish a build-time win.** The pre-LOD first
+build ranged 12.3–29.0 ms across three runs and the detail-rule build 10.1–14.1 ms, so the rule's
+build was never the slower one, but the spread of either side is larger than the gap between them and
+two of the three runs are inside one another's noise. The forced whole-window rebuild and the poll show
+no difference at all once the scene is warm, which is expected: both sides do the same
+plan-resolve and key work, and the warm rebuild's ~6 ms floor is dominated by that rather than by the
+544 instances the rule removes.
+
+What the instrument *can* state exactly is the geometry: a full static rebuild of the frontier fixture
+allocates 544 fewer instances and writes 544 fewer instance matrices. On a machine that is not
+running six other Node processes, the first-build row is where that would show; this document records
+the numbers it has rather than the numbers it wants. The instance, draw-call and rebuild counts are
+exact and machine-independent; the milliseconds are not.
+
+Not claimed: any frame rate, GPU time, memory or thermal figure. There is no GPU in this loop and no
+browser frame timing was captured. No production or per-user capacity claim is made or implied by any
+number here.
+
 ## Renderer geometry reuse
 
 The renderer is covered by `scripts/voxel-bench.mjs` (200 participants, medians of 20 updates) and by
@@ -338,7 +417,9 @@ npm run perf                              # source-level before/after table (tem
 npm run load                              # concurrent clients, 1 and 8, 200 requests each
 node scripts/load-harness.mjs --clients 1,8,32 --requests 200 --json /tmp/load.json
 node scripts/voxel-bench.mjs 200          # renderer batch rebuild counts
+node scripts/voxel-bench.mjs 20 30        # renderer level-of-detail pair on the Commons and a frontier sector
 node --test tests/performance-bounds.test.js
+node --test tests/render-lod.test.js
 ```
 
 The "before" column was produced by exporting the base revision to a temporary directory

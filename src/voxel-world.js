@@ -1,6 +1,6 @@
 import * as THREE from '../assets/vendor/three-voxel.js';
 import { getWorldDefinition } from '../world.js';
-import { VOXEL_LIMITS, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, voxelParcelAddress, voxelParcelSelection, createOrbitInput } from './voxel-geometry.js';
+import { VOXEL_LIMITS, LOD_LIMITS, inDetail, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, voxelParcelAddress, voxelParcelSelection, createOrbitInput, reducedMotionPreference } from './voxel-geometry.js';
 import content from './content.js';
 import { createResources, cubeBatch, disposeBatch, hash, variant, validColor, shade } from './scene/batch.js';
 import { gateFrames, groundPass, landmarkPennants, layer, portalFrames } from './scene/terrain.js';
@@ -231,7 +231,16 @@ function peopleScene(resources, participants, self, options = {}) {
   return charactersScene(cubeBatch(resources), participants, self, options);
 }
 
-/** A GPU-independent scene builder used by rendering and real Raycaster tests. */
+/**
+ * A GPU-independent scene builder used by rendering and real Raycaster tests.
+ *
+ * `update(definition, snapshot, options)` honours, besides the position and the roster:
+ *   `lod: false`      — build the pre-LOD view (see `LOD_LIMITS`); the escape hatch the benchmark uses.
+ *   `reducedMotion`   — draw every resident on its confirmed tile and report nothing to animate.
+ *   `cullHidden`      — the whole-node base-cube cull, off for the measured "before" comparison.
+ *   `rebuildPeople`   — force the character batch, which otherwise rebuilds only on a visible change.
+ *   `time`, `cameraMode`, `dayPhase`, `parcelSelection`, `parcelHover`, `definition`, `self`.
+ */
 export function createVoxelScene() {
   const resources = createResources(), root = new THREE.Group(), motionTracker = createMotionTracker(); let staticBatch, blockBatch, peopleBatch, parcelBatch, skyBatch, groundMesh, key = '', blockKey = '', peopleKey = '', parcelKey = '', skyKey = '', groundKey = '', lastPlan, destroyed = false, animating = false;
   let stats = { cells: 0, blocks: 0, participants: 0, cubes: 0, drawBatches: 0, layers: {} }, pickables = [];
@@ -241,9 +250,13 @@ export function createVoxelScene() {
   return { root,
     update(definition, snapshot = {}, options = {}) {
       if (destroyed) throw new Error('The voxel scene has been destroyed.');
-      const position = options.position || options.self || definition.start, plan = voxelPlan(definition, snapshot, position);
+      const position = options.position || options.self || definition.start;
+      // `options.lod === false` is the documented escape hatch: it rebuilds the pre-LOD view (every
+      // tile at full detail), which is how the benchmark and the tests produce their "before" column.
+      const detailRadius = options.lod === false ? Infinity : LOD_LIMITS.detail_radius;
+      const plan = voxelPlan(definition, snapshot, position, detailRadius);
       const cullHidden = options.cullHidden !== false;
-      const nextKey = JSON.stringify([definition.id, definition.kind, definition.groundColor, plan.cells, plan.objects, plan.portals, plan.gates, cullHidden]);
+      const nextKey = JSON.stringify([definition.id, definition.kind, definition.groundColor, plan.cells, plan.objects, plan.portals, plan.gates, cullHidden, detailRadius]);
       if (nextKey !== key) {
         if (staticBatch) root.remove(staticBatch.group); disposeBatch(staticBatch);
         staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden); staticBatch.group.name = 'voxel-terrain'; root.add(staticBatch.group); key = nextKey;
@@ -252,7 +265,15 @@ export function createVoxelScene() {
       const drawnPeople = firstPerson ? plan.participants.filter(item => item.id !== options.self?.id) : plan.participants;
       // The projected key ignores volatile roster fields; `rebuildPeople` restores the raw payload key.
       const now = Number.isFinite(options.time) ? options.time : Date.now();
-      for (const person of renderableCharacters(drawnPeople, drawnSelf)) motionTracker.confirm(person);
+      // `prefers-reduced-motion` is honoured here rather than by a repaint loop: every confirmed step
+      // is reconciled at once, so a resident is drawn on the tile the server stored and never glides
+      // between two of them. The scene then reports that it is not animating, which is what stops the
+      // renderer's own settle timer and the host's frame loop.
+      const reducedMotion = options.reducedMotion === true;
+      for (const person of renderableCharacters(drawnPeople, drawnSelf)) {
+        motionTracker.confirm(person);
+        if (reducedMotion) motionTracker.reconcile(person.id);
+      }
       const nextPeopleKey = options.rebuildPeople === true ? JSON.stringify([drawnPeople, drawnSelf, now]) : peopleVisualKey(drawnPeople, drawnSelf, { tracker: motionTracker, time: now });
       if (nextPeopleKey !== peopleKey || !peopleBatch) {
         if (peopleBatch) root.remove(peopleBatch.group); disposeBatch(peopleBatch);
@@ -290,13 +311,17 @@ export function createVoxelScene() {
       lastPlan = plan;
       this.highlightParcel(options.parcelSelection, options.parcelHover);
       pickables = [...staticBatch.pickables, ...peopleBatch.pickables, ...(blockBatch?.pickables || [])];
-      animating = motionTracker.isSettling(now) || renderableCharacters(drawnPeople, drawnSelf).some((person) => confirmedExpression(person, now));
+      animating = !reducedMotion && (motionTracker.isSettling(now) || renderableCharacters(drawnPeople, drawnSelf).some((person) => confirmedExpression(person, now)));
+      const fine = plan.cells.reduce((count, cell) => count + (inDetail(cell.x, cell.y, plan.anchor, plan.detailRadius) ? 1 : 0), 0);
       stats = { cells: plan.cells.length, blocks: plan.blocks.length, participants: renderablePeople(drawnPeople, drawnSelf).length,
         cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0) + (skyBatch?.cubes || 0),
         parcelCubes: parcelBatch?.cubes || 0, skyCubes: skyBatch?.cubes || 0,
         drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0),
         distantGround: groundMesh ? 1 : 0,
         parcels: plan.parcels.length, selectedParcel: parcelBatch?.group.userData.selectedParcel || null, window: plan.window,
+        // The detail report: the radius in force, and the cells inside and beyond it. `Infinity` means
+        // the escape hatch is on and every cell is read at full detail.
+        detail: { radius: plan.detailRadius, fine, coarse: plan.cells.length - fine },
         layers: { ...staticBatch.layers, sky: skyBatch?.cubes || 0 } };
       root.updateMatrixWorld(true); return stats;
     },
@@ -330,9 +355,13 @@ export function createVoxelScene() {
 }
 
 /** Event-driven third-person view. No network, pointer lock, animation loop, or movement authority. */
-export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailable } = {}) {
+export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailable, reducedMotion } = {}) {
   const unavailable = () => { onUnavailable?.('3D graphics are unavailable in this browser. The map view remains available.'); return null; };
   if (!canvas?.getContext || !canvas.addEventListener) return unavailable();
+  // The visitor's own motion preference, resolved once: an injected value wins, otherwise the browser
+  // is asked. Under `reduce`, every update draws each resident on its confirmed tile and the renderer
+  // never schedules its settle timer, so the world is presented as still frames rather than as motion.
+  const motion = reducedMotionPreference(reducedMotion);
   let context;
   try { context = canvas.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'low-power' }); } catch { return unavailable(); }
   if (!context) return unavailable();
@@ -406,12 +435,14 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     }
   }
   function scheduleAnimation() {
-    if (animationTimer !== null || destroyed || lost || !contents.animating || !lastSnapshot) return;
+    // No settle timer under `prefers-reduced-motion`: the scene has already drawn every resident on
+    // its confirmed tile and reports itself still, so no repaint is scheduled at all.
+    if (motion || animationTimer !== null || destroyed || lost || !contents.animating || !lastSnapshot) return;
     animationTimer = setTimeout(() => {
       animationTimer = null;
       if (destroyed || !lastSnapshot) return;
       const definition = lastOptions?.definition || getWorldDefinition(lastSnapshot.world || 'commons');
-      contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel });
+      contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion });
       paint(); scheduleAnimation();
     }, 100);
   }
@@ -457,7 +488,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       orbitInput.setMode(options.cameraMode ?? orbitInput.mode);
       if (options.facing) orbitInput.set(options.facing);
       target = options.position || options.self || definition.start; lastSnapshot = snapshot; lastOptions = options;
-      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, time: Date.now(), parcelHover: hoveredParcel }); paint(); scheduleAnimation(); return contents.stats;
+      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); paint(); scheduleAnimation(); return contents.stats;
     },
     rotate(deltaYaw = 0, deltaPitch = 0) { if (destroyed) return; orbitInput.rotate(deltaYaw, deltaPitch); paint(); },
     zoom(delta = 0) { if (destroyed) return; orbitInput.zoom(delta); paint(); },
@@ -467,7 +498,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       if (lastSnapshot) {
         lastOptions = { ...lastOptions, cameraMode: orbitInput.mode };
         const definition = lastOptions.definition || getWorldDefinition(lastSnapshot.world || 'commons');
-        contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel }); scheduleAnimation();
+        contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); scheduleAnimation();
       }
       paint();
     },

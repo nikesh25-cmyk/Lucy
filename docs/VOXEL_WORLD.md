@@ -76,6 +76,57 @@ declares. The scene modules receive them as `builders`, so the composition can m
 the grammar, and every tint a scene module uses is derived from a colour the family already owns
 (`shade`, `variant`) rather than a new token.
 
+## Level of detail
+
+The drawn window is one square of terrain around the resident the camera follows, and the renderer
+reads only the tiles close to that resident at full detail. `LOD_LIMITS.detail_radius` (12 tiles,
+`src/voxel-geometry.js`) is the radius; `voxelPlan` resolves the tile the resident stands on as
+`plan.anchor` and carries the radius as `plan.detailRadius`, and `detailTier(x, y, anchor, radius)`
+answers `fine` or `coarse` from the *Chebyshev* distance between them.
+
+What stops at the radius, and what never stops:
+
+| | inside the radius | beyond it |
+| --- | --- | --- |
+| A cell's surface slab, its underground base cube, its terrain type detail, its pick | drawn | drawn, unchanged |
+| Water: the bed, the sub-surface slab, the surface and its pick | drawn | drawn, unchanged |
+| Authored and saved scenery, frontier blocks, portals, gates, landmark pennants | drawn | drawn, unchanged |
+| Ground cover, understory litter and tufts, water glints, shore breaks, reeds | drawn | not drawn |
+| The plot overlay, the sky layer, the distant backdrop | drawn | drawn, unchanged |
+
+The rule is deliberately narrow, and the reason is the one the visible-obstacle rule already states:
+everything that stops is *unpicked decoration*, at or below the knee, drawn by a pass that can only
+change how a tile's ground reads. Every dropped instance is proven to be unpicked, on a coarse tile
+and below `KNEE_HEIGHT` by `tests/render-lod.test.js`, and the two-way obstacle rule is re-asserted
+over the coarse ring itself, so a tile the server refuses is still drawn as an obstacle and a walkable
+tile still carries nothing between the knee and the head. `src/footprints.js` is untouched by the
+rule: it changes what is drawn, never what is occupied, and a rendered tile is still exactly the tile
+the server allows or refuses.
+
+Two properties make it a scale rule rather than a trim. First, **the near field is byte-identical**:
+every instance inside the radius is the same instance matrix and the same pick with the rule on and
+with it off, which `tests/render-lod.test.js` asserts over four authored worlds. Second, **the
+decorative cost is bounded by the radius, not by the window**: at most
+`(2 * detail_radius + 1)² = 625` cells are ever read at full detail, so the decoration term does not
+grow when the window grows, while the per-cell floor (a surface slab and, where it is exposed, a base
+cube per cell) inevitably does. Measured by `scripts/voxel-bench.mjs` on the largest viewport the
+server can request — a frontier sector's 37 × 37 window, 1,369 cells, with the twenty drawn residents
+the benchmark places — that is **3,273 → 2,729 instances** and **746 → 300 decorative instances**
+(60% less decoration, and 288 of the 725 Commons cells stop being read closely against 744 of the
+1,369). The worst frontier sector in the tree draws **3,228 → 2,367 instances** with no residents at
+all. The batch (draw-call) count does not move, because a batch is one mesh per colour and material
+style rather than per tile.
+
+`lod: false` on a scene update is the documented escape hatch: it restores the pre-LOD build exactly
+(`plan.detailRadius` is `Infinity`, every cell is `fine`), which is how `scripts/voxel-bench.mjs` and
+the tests produce their "before" column. It is an option, not a mode — the shipped renderer never
+sets it, and a batch is rebuilt when it flips because the radius is part of the static batch key.
+
+`DIORAMA_BUDGET` (`src/voxel-geometry.js`) states the ceiling this exists to respect, one named term
+per owner: static world geometry, residents at the participant bound, saved blocks at the block
+bound, and draw calls — the same 130 `tests/render-scene.test.js` bounds from the other side. The
+assertions live in `tests/render-lod.test.js`.
+
 ## Light, sky and distance
 
 `src/atmosphere.js` publishes the shared fictional sky: four phases (`dawn`, `day`, `dusk`, `night`),
@@ -132,6 +183,10 @@ as the one before it).
   specified-but-unproduced entries in the asset manifest (a 2 × 2 civic hall, a canopy arch, a hedge
   row) are still **not** drawn, because nothing can produce them without a content re-seal and a
   footprint change.
+- **Past the detail radius the ground stops being read closely.** The cover, the understory, the
+  water glints, shore breaks and reeds stop at `LOD_LIMITS.detail_radius`; see
+  [level of detail](#level-of-detail). The surface, the obstacles, the buildings and every pick
+  continue to the window edge unchanged.
 
 ## Interaction
 
@@ -144,6 +199,7 @@ as the one before it).
 - In the frontier hotbar, `Climb to previewed block` steps one authored layer onto the currently previewed neighbouring tile, and `Step-up mode` makes the movement controls climb instead of walk.
 - Camera buttons can rotate, zoom, and reset the view without a mouse. `Turn mode` (Q, E, R, F or pointer drag), `Step-up mode`, and `First person` are labelled toggles; each reports its state through `aria-pressed`.
 - Walking remains a server action. This renderer does not grant movement, building, expansion, reward, or moderation authority.
+- `prefers-reduced-motion` is honoured without a mode switch. The preference is resolved once when the view is created (an injected value wins, otherwise the browser's own media query is read) and every update then draws each resident on the tile the server confirmed, reconciling the interpolation the tracker would otherwise glide through. The scene reports that it is not animating, so the renderer schedules no settle timer and the application's own frame loop stops: the world is presented as still frames that follow the server rather than as motion. The near-ground detail rule adds no animation of its own — it is a function of the followed tile and nothing else, so two builds of the same viewport at different wall-clock times are identical.
 - An assignment or purpose shown in the interface is read from the server’s land records. Selection highlights and camera movement cannot create stewardship or authorize construction.
 - Unopened frontier gates appear as closed frames. Selecting one can lead to the application's explicit expansion action; rendering never creates a sector.
 - Browsers without WebGL 2 use the existing map view, which lists places, entrances, scenery and characters as text. Context loss produces a readable message. The same aim line is repeated in that text view, so the selection hint is never only graphical.
@@ -174,9 +230,9 @@ Primary references:
 
 ## Bounds and lifecycle
 
-The view builds at most **37 × 37 detailed terrain cells**, **260 scenery objects**, **2,048 authored blocks**, and **220 character models** around the current position. Repeated cube geometry is rendered with instancing. A land base cube is culled when all four neighbours in the retained authored terrain enclose it, including neighbours just beyond the detailed window; water, bridges and actual world edges retain their exposed bases. Batches are reused across polls: terrain changes with its cells, objects, portals, gates or culling; characters change with drawn pose, appearance or confirmed position, while a presence timestamp or roster reorder does not rebuild them; saved blocks and the sky have separate keys. Graphics resources, pointer listeners, the resize observer, the animation timer and the WebGL context are released when a view is destroyed. `scenes.update()` reports voxel cubes by layer (`terrain`, `water`, `buildings`, `furniture`, `navigation`, `cover`, `understory`, `sky`), which `scripts/voxel-bench.mjs` prints.
+The view builds at most **37 × 37 detailed terrain cells**, **260 scenery objects**, **2,048 authored blocks**, and **220 character models** around the current position. Repeated cube geometry is rendered with instancing. A land base cube is culled when all four neighbours in the retained authored terrain enclose it, including neighbours just beyond the detailed window; water, bridges and actual world edges retain their exposed bases. Batches are reused across polls: terrain changes with its cells, objects, portals, gates, culling or the detail radius; characters change with drawn pose, appearance or confirmed position, while a presence timestamp or roster reorder does not rebuild them; saved blocks and the sky have separate keys. Graphics resources, pointer listeners, the resize observer, the animation timer and the WebGL context are released when a view is destroyed. `scenes.update()` reports voxel cubes by layer (`terrain`, `water`, `buildings`, `furniture`, `navigation`, `cover`, `understory`, `sky`) and the viewport's detail split (`{ radius, fine, coarse }`), which `scripts/voxel-bench.mjs` prints.
 
-Rendering happens after input, world updates, and resizing. A 100 ms repaint timer runs only while a confirmed step interpolates or a stored expression remains active; idle scenes remain event driven. The canvas does not capture the page's mouse wheel. Pixel ratio is capped at 1.5 (reported as `RENDER_CAPS`), render dimensions at 1,440 × 900 logical pixels, and shadows at 1,024 × 1,024 (`SHADOW_LIMITS`). **Task 31 raised none of these bounds**: it changed where the shadow frustum and the fog band are placed inside them, which a test asserts (`SHADOW_LIMITS.map_size === 1024`, the fitted extent is clamped to at most 24 m, `RENDER_CAPS` unchanged, `VOXEL_LIMITS` unchanged).
+Rendering happens after input, world updates, and resizing. A 100 ms repaint timer runs only while a confirmed step interpolates or a stored expression remains active; idle scenes remain event driven, and a visitor who set `prefers-reduced-motion` never schedules it at all. The canvas does not capture the page's mouse wheel. Pixel ratio is capped at 1.5 (reported as `RENDER_CAPS`), render dimensions at 1,440 × 900 logical pixels, and shadows at 1,024 × 1,024 (`SHADOW_LIMITS`). **Neither task 31 nor the detail rule raised any of these bounds**: `VOXEL_LIMITS` is unchanged (`radius 18`, `cells 1369`, `objects 260`, `blocks 2048`, `participants 220`, `height 8`), and `LOD_LIMITS` and `DIORAMA_BUDGET` are new *ceilings and stated budgets* the renderer now holds itself to, not bounds on what a world may contain. `tests/render-atmosphere.test.js` asserts the shipped values; `tests/render-lod.test.js` asserts the budget.
 
 The application requests `view=voxel` for a matching 37 × 37 authoritative block snapshot. The ordinary map and worker snapshots retain their 20 × 14 viewport. More distant base terrain provides a horizon; farther geometry is loaded as the viewport moves. The world opens adjacent areas inside its fixed 16 × 16 perimeter.
 
@@ -213,12 +269,13 @@ The factory returns `null` when graphics are unavailable. A canvas already used 
 
 The renderer tests use the actual retained Three.js library without a GPU to verify terrain and authored-block raycasts, top and side face conversion, participant selection, camera projection, viewport and block limits, invalid and duplicate record filtering, static scene reuse, disposal, and retained dependency hashes. The footprint tests additionally read the real instance matrices to check that each scenery class is drawn as declared.
 
-Task 31 adds three renderer suites, also GPU-free and over the real instance matrices:
+Four renderer suites, also GPU-free and over the real instance matrices:
 
 - `tests/render-obstacles.test.js` — the two-way obstacle rule above, over the real authored worlds, every scenery type, water and saved block columns; the pond/path reading; and the ground-cover height rule.
 - `tests/render-atmosphere.test.js` — the phase table against `src/atmosphere.js`, the depth cue's near-field and far-corner behaviour, the applied light/fog/shadow values read back from a real `THREE.Scene`, the shadow caps, the sky layer's height and unpickability, and the unchanged renderer bounds.
 - `tests/render-scene.test.js` — the scene-module interface, the batch-reuse policy (an unchanged viewport rebuilds nothing; a phase change rebuilds the sky alone), the occlusion cull, the layer report, and the draw-call budget.
+- `tests/render-lod.test.js` — the detail rule: the tier as a pure function of the anchor; the near field byte-identical with the rule on and off; every dropped instance unpicked, on a coarse tile and below the knee; the two-way obstacle rule re-asserted over the coarse ring; the decorative cost bounded by the radius (`fine <= 625`) rather than the window; the stated instance and draw-call budget on the largest viewport, and again with the participant and block bounds filled; and the reduced-motion contract (a confirmed tile is drawn, nothing is animated, no rebuild on a repeated payload).
 
-`scripts/voxel-bench.mjs` (GPU-free) reports the composition by layer and what a day-phase poll costs, alongside the shipped culling and reuse comparisons. Measured numbers are in [the task 31 handoff](handoff/task-31-world-rendering.md).
+`scripts/voxel-bench.mjs` (GPU-free) reports the composition by layer and what a day-phase poll costs, alongside the shipped culling and reuse comparisons, and a level-of-detail section that builds the Commons and the largest viewport twice — with the detail rule and with `lod: false` — reporting instances, draw calls, the detail split and build time. Measured numbers are in [the task 31 handoff](handoff/task-31-world-rendering.md) and [the render-scale handoff](handoff/task-deepseek-render-scale.md).
 
 The direct-interaction controls are verified without a browser too: `tests/interaction-controls.test.js` checks the keys and the aim line, and `tests/interaction-http.test.js` drives `GET`/`POST /interact` over the shipped HTTP server and then reads the server's own records. The browser acceptance suite (`npm run browser`, `scripts/browser-suite.mjs`) drives the real interface in the system Chrome build against a temporary database and asserts the database after every UI action; five of its scenarios cover direct interaction — the hint and its one-tile requirement, a planted crop and a bench posture surviving a reload, a doorway and a crafting station, a country ambassador desk, and the paused, revoked, wrong-owner and observer refusals. The first-person route and camera elevation are also verified by HTTP and module tests plus a manual walkthrough (see `docs/handoff/task-02-first-person.md`).

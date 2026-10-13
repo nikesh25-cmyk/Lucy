@@ -8,6 +8,7 @@
 // Nothing drawn here carries a pick: the ground surface keeps its own terrain pick, so clicking a
 // tile still resolves the tile, and no decoration can be mistaken for a clickable object.
 import { GROUND_DETAIL, TERRAIN_BLOCKING, solidTileKeys } from '../footprints.js';
+import { inDetail } from '../voxel-geometry.js';
 import { hash, shade } from './batch.js';
 
 /** The cover tones, all derived from the family's own leaf, meadow and earth tokens. */
@@ -26,7 +27,10 @@ const tileKey = (item) => `${item.x},${item.y}`;
 
 /**
  * Draws the ground cover for one window. `plan` is the resolved voxel plan, so the pass sees exactly
- * the tiles and objects the server resolves for this viewport.
+ * the tiles and objects the server resolves for this viewport, and `plan.anchor`/`plan.detailRadius`
+ * decide the one thing this pass must respect: it is the *reading* of the ground, so it is drawn only
+ * inside the detail radius. Beyond it the surface, the obstacles and every pick are unchanged — the
+ * cover here is unpicked by construction, so dropping it cannot change what a tile means.
  */
 export function groundCoverPass({ batch, plan, layers }) {
   const solids = solidTileKeys(plan.objects), occupied = new Set(), planted = new Set();
@@ -37,6 +41,7 @@ export function groundCoverPass({ batch, plan, layers }) {
   for (const cell of plan.cells) {
     const { x, y, type } = cell, key = tileKey(cell);
     if (type === 'water' || type === 'bridge') continue;
+    if (!inDetail(x, y, plan.anchor, plan.detailRadius)) continue;
     if (!TERRAIN_BLOCKING.includes(type) && !solids.has(key)) {
       // A walkable tile: mottling and a seedling, at or below the floor-decal height.
       if (!OPEN_TERRAIN.has(type) || occupied.has(key)) continue;
