@@ -7,6 +7,7 @@ import {createInventoryPanel} from './src/ui/inventory-panel.js';
 import {createInteractionPrompt,confirmationMessage} from './src/ui/interaction-prompt.js';
 import {createReadonlyTransport,createSpectatorView} from './src/ui/spectator.js';
 import {createTouchControls,hasCoarsePointer,prefersReducedMotion} from './src/ui/touch-controls.js';
+import {createFirstPlayGuide,renderNode} from './src/ui/first-play-guide.js';
 import {planWalk} from './src/world-walk.js';
 import {solidSceneryAt} from './src/footprints.js';
 import {globeScene,countryGlobeCenter,rotateGlobe} from './src/country-globe.js';
@@ -28,14 +29,16 @@ let savedGameMode = 'entry';
 try { savedGameMode = sessionStorage.getItem('nemoworld-game-mode') || 'entry'; } catch { /* A private browser can still enter the world. */ }
 if (!['entry','play','observe'].includes(savedGameMode)) savedGameMode = 'entry';
 let savedFirstPerson = false;
-try { savedFirstPerson = sessionStorage.getItem('nemoworld-first-person') === 'true'; } catch { /* The camera still works without storage. */ }
+// The camera choice has to outlive a tab: the tab's own sessionStorage is read first so a mid-session
+// switch wins, and localStorage is the fallback that survives a browser restart.
+try { savedFirstPerson = (sessionStorage.getItem('nemoworld-first-person') ?? localStorage.getItem('nemoworld-first-person')) === 'true'; } catch { /* The camera still works without storage. */ }
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{gamePresentation,gameMode:savedGameMode,gameDrawer:'',gameMenuOpen:false});
 // Audio is opt-in: creating the controller is side-effect free and the first
 // sound-producing call only happens from a control click in the game menu.
 const gameAudio = createGameAudio();
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',interaction:null,interactionRefusal:null,interactionError:null,evidenceLibrary:null});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',firstPlay:null,firstPlayRefusal:null,interaction:null,interactionRefusal:null,interactionError:null,evidenceLibrary:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -59,6 +62,19 @@ const interactionPrompt = createInteractionPrompt({
     interactWrite: (payload, key) => api('/interact', 'POST', payload, false, key),
     sendMessage: (payload) => api('/messages', 'POST', { ...payload, world_id: currentWorldId() }),
   },
+});
+// The in-world guide. It reads the server's own `first-play` payload and sends each of its actions
+// through the same `api()` call every other control uses, so it can never author a world fact. Its
+// dismissal is a display preference kept inside the module; nothing here persists progress.
+const firstPlayGuide = createFirstPlayGuide({
+  transport: (route, method, body, idempotent) => api(route, method, body, idempotent),
+  document,
+  reducedMotion: prefersReducedMotion(window.matchMedia),
+  onAction: () => guarded(async () => { await loadFirstPlay(); renderView(); }),
+  // Dismiss and Resume are display-only, so they repaint the guide itself rather than rebuilding the
+  // whole world; the module keeps the flag and `update()` leaves it alone, so the repaint stays dismissed.
+  onDismiss: () => mountFirstPlayGuide(),
+  onResume: () => mountFirstPlayGuide(),
 });
 const spectatorTransport = createReadonlyTransport({ fetch: (path, options) => fetch(path, options) });
 gameInput = createGameInput({
@@ -124,7 +140,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- gameAudio.stop();spectator?.close();spectator=null;walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.evidenceLibrary=null;clearOperatorState(state);state.workbenches=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ gameAudio.stop();spectator?.close();spectator=null;firstPlayGuide.destroy();walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.evidenceLibrary=null;clearOperatorState(state);state.workbenches=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}try{localStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -197,7 +213,7 @@ function facingForResident(resident) {
   if(resident?.kind==='human'&&resident.last_look===0&&resident.world_id==='commons'&&resident.x===10&&resident.y===6)return {yaw:-3*Math.PI/4,pitch:-.08};
   return {yaw:Number.isFinite(resident?.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident?.pitch)?resident.pitch:.62};
 }
-async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration()]);const resident=selected();if(resident){state.facing=facingForResident(resident);gameInput.setFacing(state.facing);}render(); }
+async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration(),loadFirstPlay()]);const resident=selected();if(resident){state.facing=facingForResident(resident);gameInput.setFacing(state.facing);}render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -497,7 +513,7 @@ async function refresh(all = true) {
   await loadDirectory();
   if(!state.assembly){const [countries,assembly]=await Promise.all([api('/countries?limit=248'),api('/assembly')]);state.countries=countries.entries;state.assembly=assembly;}
   await loadResearch();state.mayors=(await api('/mayors')).mayors;await loadAmbassadors();
-  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds(),loadQuests(),loadGuildProjects(),loadRestoration()]);
+  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds(),loadQuests(),loadGuildProjects(),loadRestoration(),loadFirstPlay()]);
   if (state.account && all) {
     state.history = await api('/history');mergeMissionContext(); state.workers=await api('/workers'); state.safety = await api('/safety');
     if (state.account.role === 'admin') state.operations = await api('/operations');
@@ -528,7 +544,7 @@ function setGameMode(mode){
   try{sessionStorage.setItem('nemoworld-game-mode',mode);if(mode!=='observe')sessionStorage.removeItem('nemoworld-observe-world');}catch{}
   applyGameShell();
 }
-function setFirstPerson(enabled){state.firstPerson=Boolean(enabled);try{sessionStorage.setItem('nemoworld-first-person',String(state.firstPerson));}catch{}gameInput.setCameraMode(state.firstPerson?'first-person':'third-person',{silent:true});}
+function setFirstPerson(enabled){state.firstPerson=Boolean(enabled);try{sessionStorage.setItem('nemoworld-first-person',String(state.firstPerson));}catch{}try{localStorage.setItem('nemoworld-first-person',String(state.firstPerson));}catch{}gameInput.setCameraMode(state.firstPerson?'first-person':'third-person',{silent:true});}
 function applyGameShell(){
   // A signed-in operator lands on the entry screen: Play, Observe and Continue are the door, and one
   // of them (or the world menu) is always how the world opens. `state.gameMode` is remembered in this
@@ -861,7 +877,8 @@ function renderWorld(parent) {
   // the aim line and is `pointer-events:none` in the stylesheet, so it never covers the world.
   const promptHost=element('div',null,'game-prompt-host');promptHost.id='game-prompt-host';
   const overlayHost=element('div',null,'game-overlay-host');overlayHost.id='game-overlay-host';
-  if(state.gamePresentation)map.append(promptHost,overlayHost);
+  const guideHost=element('div',null,'game-guide-host');guideHost.id='game-guide-host';
+  if(state.gamePresentation)map.append(promptHost,overlayHost,guideHost);
   if(state.graphics==='voxel'){const reticle=element('p','world-reticle');reticle.id='world-reticle';reticle.tabIndex=0;reticle.setAttribute('role','status');reticle.setAttribute('aria-live','polite');reticle.setAttribute('aria-label','Aim line: where the camera looks, what the last pick targets, and which keys walk or turn');reticle.textContent=reticleText({firstPerson:Boolean(agent&&state.firstPerson),facing:state.facing,position,fixture:state.interaction?.fixture||null});map.append(reticle);}
   const lower = element('div', null, 'world-bottom'); const journey = element('div'); const place = worldLandmarks().find((p) => p.x === position.x && p.y === position.y);
   append(journey, paragraph(agent ? `${agent.name} · ${place?.name || world.name}` : `Visiting ${world.name}`, 'eyebrow'), paragraph(place?.description || world.description || (world.kind === 'home' ? 'A personal garden, built and cared for by its agent.' : 'Explore the paths, gathering spaces, and entrances.')), element('small', `${agent ? 'Character' : 'View'} position ${position.x}, ${position.y} · ${agent ? 'Arrow keys / WASD to roam' : 'Arrow keys / WASD to look around'}`));
@@ -2557,6 +2574,30 @@ async function loadRestoration(){
  }
  state.restorationEventId=state.restoration?.event?.id||'';
 }
+// The one derived read behind the in-world guide. Every step state comes from a saved server row, so
+// the shell keeps no progress of its own and a browser cannot claim a step is done. In observation
+// mode the read is made without a resident, which is what makes an observer's guide read-only; a read
+// the server refuses falls back to the Commons so a returning player still sees where they are.
+async function loadFirstPlay(){
+ if(!state.gamePresentation||!state.account){state.firstPlay=null;state.firstPlayRefusal=null;return;}
+ const params=new URLSearchParams({world_id:currentWorldId()});
+ if(state.selected&&state.gameMode!=='observe')params.set('agent_id',state.selected);
+ try{state.firstPlay=await api(`/first-play?${params}`);state.firstPlayRefusal=null;}
+ catch(error){
+  state.firstPlay=null;
+  state.firstPlayRefusal={message:error.message||'The guide could not be read.',next_step:error.body?.next_step||'Return to the Commons; the guide resumes from the world’s own saved rows.'};
+  // A garden the viewer may not read is refused by the server, so the read is retried on the public
+  // Commons: the returning player still sees where they are instead of an empty guide.
+  if(error.status===403&&params.get('world_id')!=='commons'){try{const commons=new URLSearchParams(params);commons.set('world_id','commons');state.firstPlay=await api(`/first-play?${commons}`);state.firstPlayRefusal=null;}catch{/* The refusal below is the recovery path. */}}
+  // An empty guide explains itself, but never over a refusal something else already raised: another
+  // module's notice names the reader's own problem more precisely than the guide's generic fallback,
+  // so this one only speaks into a notice area that is quiet.
+  if(state.firstPlayRefusal){
+    const shown=$('#notice');
+    if(!shown||shown.hidden||!String(shown.textContent||'').trim())notice(`${state.firstPlayRefusal.message} ${state.firstPlayRefusal.next_step}`.trim(),true);
+  }
+ }
+}
 async function restorationWrite(path,data,message){
  const result=await change(path,{...data,agent_id:state.selected},message);
  await loadRestoration();state.tab='restoration';renderView();return result;
@@ -3080,6 +3121,21 @@ function syncGameHud(){
   const status=$('#game-observer-status');
   if(status&&spectator&&state.gameMode==='observe'){const refusal=spectator.lastRefusal();if(refusal){status.setAttribute('role','alert');status.textContent=`${refusal.message} ${refusal.next_step||''}`.trim();}else{status.setAttribute('role','status');status.textContent=spectator.status().detail;}}
   touchControls?.refresh();
+  mountFirstPlayGuide();
+}
+
+/** Mount the guide from the last `first-play` read. A workspace shell or a missing host clears it. */
+function mountFirstPlayGuide(){
+  const host=$('#game-guide-host');if(!host)return;
+  if(!state.gamePresentation){firstPlayGuide.destroy();return;}
+  firstPlayGuide.update(state.firstPlay||null);
+  // Render the whole guide root, not the loose cards: the root is what carries `.game-guide` (the
+  // floating panel, the entry-screen hide and the reduced-motion class), so `paint()`'s cards-alone
+  // mount would leave every one of those styles matching nothing.
+  const tree=firstPlayGuide.view();
+  host.replaceChildren();
+  const node=renderNode(tree,document);
+  if(node)host.append(node);
 }
 
 // The touch layer (task 37) needs a coarse pointer or a narrow screen. It binds no key event, so the

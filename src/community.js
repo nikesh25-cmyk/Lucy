@@ -588,7 +588,11 @@ export const communityMethods = {
       const view = progress.steps.map((step) => ({
         ...step,
         i_am_eligible: step.role.callings.includes(callingId),
-        my_counted: this.restorationAgentCount(facts, step, viewerAgent),
+        // `progress.steps[].fact` is the materialised fact record; the census is keyed by the plan's
+        // own string kind, so the viewer's per-step count has to be read from the plan step itself.
+        // Without this the count silently fell through to the placements map for every step, and a
+        // sown bed or a kept circle was reported against the viewer as if they had carried a bench.
+        my_counted: this.restorationAgentCount(facts, RESTORATION_PLAN.steps.find((item) => item.id === step.id) || step, viewerAgent),
       }));
       const next = view.find((step) => !step.complete && step.i_am_eligible) || null;
       return {

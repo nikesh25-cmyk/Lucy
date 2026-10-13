@@ -11,6 +11,7 @@ import { start } from '../world.js';
 import { spaceMethods } from './spaces.js';
 import { communityMethods } from './community.js';
 import { vocationMethods } from './vocations.js';
+import { firstPlayMethods } from './firstplay.js';
 import { questMethods } from './quests.js';
 import { guildMethods } from './guilds.js';
 import { journeyMethods } from './journey.js';
@@ -1220,7 +1221,7 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, questMethods, guildMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, questMethods, guildMethods, firstPlayMethods);
 
 Object.assign(Platform.prototype,draftMethods);
 

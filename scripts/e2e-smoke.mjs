@@ -167,6 +167,25 @@ async function stopServer() {
   return { lockReleased: !existsSync(lock), workspaceRemoved: !existsSync(state.workspace), kept: keep };
 }
 
+/**
+ * Stops the running server and starts it again against the *same* temporary database. This is the
+ * restart-persistence probe: unlike `stopServer`, it never removes the workspace, so the restored
+ * garden, the pledges and the guide reads can be compared before and after a real process restart.
+ */
+async function restartServer() {
+  const child = state.child;
+  if (child && child.exitCode === null) {
+    const exited = new Promise((resolve) => child.once('exit', () => resolve(true)));
+    child.kill('SIGTERM');
+    const graceful = await Promise.race([exited, sleep(10_000).then(() => false)]);
+    if (!graceful) { child.kill('SIGKILL'); await Promise.race([exited, sleep(5000)]); }
+  }
+  state.child = null;
+  serverOutput = [];
+  await sleep(500);
+  return startServer();
+}
+
 function walkableTile(grid, x, y) {
   const type = grid[y]?.[x];
   return typeof type === 'string' && !UNWALKABLE.has(type);
@@ -373,6 +392,18 @@ function gardenFarmSite(descriptor, agentId) {
   }
   sites.sort((a, b) => a.distance - b.distance || a.y - b.y || a.x - b.x);
   return sites[0] || null;
+}
+
+/**
+ * Walks a resident already standing in a garden to a target tile, using only the shipped movement
+ * route. The garden is read in full first, so the path planner runs on the server's own terrain and
+ * the walk proves the same walkable/blocked rules the browser drives.
+ */
+async function walkActorIntoGarden(token, agentId, garden, target) {
+  const terrain = await readTerrain(garden, null);
+  const participant = (terrain.descriptor.participants || []).find((entry) => entry.id === agentId);
+  expectThat(participant, 'the resident must appear in the garden the world read publishes', { expected: `participant ${agentId}`, actual: describe((terrain.descriptor.participants || []).map((entry) => entry.id)) });
+  return walkTo(token, { x: participant.x, y: participant.y }, target, terrain.grid, terrain.solid, { agent_id: agentId });
 }
 
 async function main() {
@@ -875,6 +906,95 @@ async function main() {
       return `200 travel to ${home}; saved crop patch at ${site.x},${site.y}; 200 plant; first practice step complete from one saved crop_plant fact; one receipt (quest:quiet-harvest.first-sowing, 5 of 10 cosmetic experience today, available); 0 coins from the practice path (balance 0, no receipt, ledger valid); 400 refused client completion; 403 refused self-review (authorized human account required); the earlier independent acceptance still holds its single 10-coin receipt`;
     });
 
+    await step('16. one shared restoration step with two actors', async () => {
+      // Two operators, each with a resident, on a garden no earlier step touched. The plan is read
+      // from the API, so no tile and no object type is hard-coded here.
+      const restorer = expectStatus(await post('/agents', { kind: 'agent', name: 'Groundskeeper A', color: '#397f79', symbol: '✦', capabilities: 'Carries and places the plan’s own objects', limitations: 'No external tools and no real-world claims' }, { token: world.adminToken }), 201, 'POST /agents (Groundskeeper A)');
+      const helper = expectStatus(await post('/agents', { kind: 'agent', name: 'Groundskeeper B', color: '#aa7845', symbol: '✿', capabilities: 'Carries and places the plan’s own objects', limitations: 'No external tools and no real-world claims' }, { token: world.newcomerToken }), 201, 'POST /agents (Groundskeeper B)');
+      expectStatus(await post('/callings/select', { agent_id: restorer.id, calling_id: 'builder' }, { token: world.adminToken }), 200, 'POST /callings/select for actor A');
+      expectStatus(await post('/callings/select', { agent_id: helper.id, calling_id: 'builder' }, { token: world.newcomerToken }), 200, 'POST /callings/select for actor B');
+
+      const garden = `home:${restorer.id}`;
+      const eventId = `restoration:${garden}`;
+      expectStatus(await apiRequest(`/agents/${restorer.id}/home`, { method: 'PATCH', token: world.adminToken, body: { visibility: 'public' } }), 200, 'PATCH the garden open to visitors');
+
+      const opened = expectStatus(await post('/restoration/open', { agent_id: restorer.id, hours: 3 }, { token: world.adminToken }), 200, `POST /restoration/open for ${garden}`);
+      expectThat(opened.id === eventId && opened.phase === 'open' && opened.site?.open_to_visitors === true, 'the restoration must open on the operator’s own public garden', { expected: `${eventId} open on a public garden`, actual: describe({ id: opened.id, phase: opened.phase, site: opened.site }) });
+      const ground = opened.progress.steps.find((item) => item.id === 'ground');
+      const [firstSlot, secondSlot] = ground.slots;
+      expectThat(firstSlot && secondSlot && !firstSlot.filled && !secondSlot.filled, 'the plan must publish its waiting ground tiles', { expected: 'at least two waiting planned slots', actual: describe(ground.slots) });
+
+      // Actor A walks into its own garden — the recorded visit a pledge requires — then pledges and
+      // places the first planned object from beside its tile.
+      await sleep(MOVE_INTERVAL_MS);
+      expectStatus(await post(`/agents/${restorer.id}/travel`, { world_id: garden }, { token: world.adminToken }), 200, 'POST travel into the garden for actor A');
+      expectStatus(await post('/restoration/join', { agent_id: restorer.id, event_id: eventId }, { token: world.adminToken }), 200, 'POST /restoration/join for actor A');
+      await walkActorIntoGarden(world.adminToken, restorer.id, garden, { x: firstSlot.x, y: firstSlot.y - 1 });
+      const placedA = expectStatus(await post('/restoration/place', { agent_id: restorer.id, event_id: eventId, x: firstSlot.x, y: firstSlot.y }, { token: world.adminToken }), 200, `POST /restoration/place ${firstSlot.type} for actor A`);
+      expectThat(placedA.placed?.type === firstSlot.type && placedA.placed?.x === firstSlot.x && placedA.placed?.y === firstSlot.y, 'actor A’s saved object must be the plan’s object on its own tile', { expected: `${firstSlot.type} at ${firstSlot.x},${firstSlot.y}`, actual: describe(placedA.placed) });
+
+      // Actor B travels in, pledges and places the second planned object.
+      await sleep(MOVE_INTERVAL_MS);
+      expectStatus(await post(`/agents/${helper.id}/travel`, { world_id: garden }, { token: world.newcomerToken }), 200, 'POST travel into the garden for actor B');
+      expectStatus(await post('/restoration/join', { agent_id: helper.id, event_id: eventId }, { token: world.newcomerToken }), 200, 'POST /restoration/join for actor B');
+      await walkActorIntoGarden(world.newcomerToken, helper.id, garden, { x: secondSlot.x, y: secondSlot.y - 1 });
+      const placedB = expectStatus(await post('/restoration/place', { agent_id: helper.id, event_id: eventId, x: secondSlot.x, y: secondSlot.y }, { token: world.newcomerToken }), 200, `POST /restoration/place ${secondSlot.type} for actor B`);
+      expectThat(placedB.placed?.type === secondSlot.type && placedB.placed?.x === secondSlot.x, 'actor B’s saved object must be the plan’s second object on its own tile', { expected: `${secondSlot.type} at ${secondSlot.x},${secondSlot.y}`, actual: describe(placedB.placed) });
+
+      // The saved rows, read back over HTTP: one occurrence, two pledges, both objects, and the
+      // guide’s own attribution of each counted step to the operator who saved it.
+      const read = expectStatus(await get(`/restoration?event_id=${encodeURIComponent(eventId)}`), 200, 'GET /restoration for the shared occurrence');
+      expectThat(read.event.participants.length === 2, 'exactly two residents must have pledged', { expected: 'two participants', actual: describe(read.event.participants.map((participant) => participant.name)) });
+      expectThat(read.events.filter((item) => item.id === eventId && item.status === 'scheduled').length === 1, 'the occurrence must be one scheduled row', { expected: 'one scheduled occurrence', actual: describe(read.events.filter((item) => item.id === eventId)) });
+      const measured = read.event.progress.steps.find((item) => item.id === 'ground');
+      expectThat(measured.progress === 2 && measured.target === 3, 'two placed objects must measure two of the three planned tiles', { expected: 'ground 2 of 3', actual: describe(measured) });
+      const objects = expectStatus(await get(`/world?world_id=${encodeURIComponent(garden)}`), 200, 'GET /world for the worked garden').objects;
+      expectThat(objects.some((object) => object.x === firstSlot.x && object.y === firstSlot.y && object.type === firstSlot.type), 'actor A’s object must stand in the garden', { expected: `${firstSlot.type}@${firstSlot.x},${firstSlot.y}`, actual: describe(objects) });
+      expectThat(objects.some((object) => object.x === secondSlot.x && object.y === secondSlot.y && object.type === secondSlot.type), 'actor B’s object must stand in the garden', { expected: `${secondSlot.type}@${secondSlot.x},${secondSlot.y}`, actual: describe(objects) });
+
+      const guide = expectStatus(await get(`/first-play?agent_id=${restorer.id}&world_id=${encodeURIComponent(garden)}`, { token: world.adminToken }), 200, 'GET /first-play for actor A');
+      const mine = guide.restoration?.actors?.find((actor) => actor.agent_id === restorer.id);
+      const other = guide.restoration?.actors?.find((actor) => actor.agent_id === helper.id);
+      expectThat(mine && mine.operator_distinct === false && mine.contributions.some((entry) => entry.step_id === 'ground' && entry.counted >= 1), 'the guide must attribute actor A’s counted ground step to A itself', { expected: 'A counted on ground with operator_distinct=false', actual: describe(mine) });
+      expectThat(other && other.operator_distinct === true && other.contributions.some((entry) => entry.step_id === 'ground' && entry.counted >= 1), 'the guide must attribute actor B’s counted ground step to the other operator', { expected: 'B counted on ground with operator_distinct=true', actual: describe(other) });
+      expectThat(guide.restoration.remaining.some((item) => item.step_id === 'beds') && guide.restoration.remaining.some((item) => item.step_id === 'keep'), 'the guide must report the surviving steps', { expected: 'beds and keep still remaining', actual: describe(guide.restoration.remaining.map((item) => item.step_id)) });
+
+      world.restoration = { restorerId: restorer.id, helperId: helper.id, garden, eventId, firstSlot, secondSlot, ground: `${measured.progress} of ${measured.target}`, remaining: guide.restoration.remaining.map((item) => item.step_id) };
+      return `occurrence ${eventId} scheduled; ${read.event.participants.map((participant) => participant.name).join(' and ')} pledged from two operators; ground ${measured.progress}/${measured.target} placed; guide: A counted ${mine.contributions.find((entry) => entry.step_id === 'ground').counted}, B counted ${other.contributions.find((entry) => entry.step_id === 'ground').counted} (operator_distinct), ${guide.restoration.remaining.length} steps remaining`;
+    });
+
+    await step('17. restart persistence', async () => {
+      const { restorerId, helperId, garden, eventId, firstSlot, secondSlot } = world.restoration;
+      const snapshot = async () => {
+        const read = expectStatus(await get(`/restoration?event_id=${encodeURIComponent(eventId)}`), 200, 'GET /restoration for the snapshot');
+        const objects = expectStatus(await get(`/world?world_id=${encodeURIComponent(garden)}`), 200, 'GET /world for the snapshot').objects;
+        const guide = expectStatus(await get(`/first-play?agent_id=${restorerId}&world_id=${encodeURIComponent(garden)}`, { token: world.adminToken }), 200, 'GET /first-play for the snapshot');
+        const places = {};
+        for (const [name, id, token] of [['A', restorerId, world.adminToken], ['B', helperId, world.newcomerToken]]) {
+          const view = expectStatus(await get(`/world?world_id=${encodeURIComponent(garden)}&agent_id=${id}`, { token }), 200, `GET /world for actor ${name}`);
+          const me = (view.participants || []).find((entry) => entry.id === id);
+          places[name] = me ? { world_id: me.world_id, x: me.x, y: me.y, z: me.z } : null;
+        }
+        return {
+          participants: read.event.participants.map((participant) => participant.name).sort(),
+          progress: read.event.progress.steps.map((step) => [step.id, step.progress, step.target]),
+          objects: objects.map((object) => `${object.type}@${object.x},${object.y}`).sort(),
+          actors: guide.restoration.actors.map((actor) => [actor.name, actor.operator_distinct, actor.contributions.map((entry) => [entry.step_id, entry.counted])]).sort(),
+          remaining: guide.restoration.remaining.map((step) => step.step_id).sort(),
+          places,
+        };
+      };
+      const before = await snapshot();
+      await restartServer();
+      const after = await snapshot();
+      expectThat(describe(before) === describe(after), 'the restored garden, both pledges, the guide attribution and both saved places must be identical after a real restart', { expected: describe(before), actual: describe(after) });
+      expectThat(after.objects.includes(`${firstSlot.type}@${firstSlot.x},${firstSlot.y}`) && after.objects.includes(`${secondSlot.type}@${secondSlot.x},${secondSlot.y}`), 'both placed objects must still stand after the restart', { expected: 'both placed objects', actual: describe(after.objects) });
+      expectThat(after.participants.length === 2, 'both pledges must survive the restart', { expected: 'two pledges', actual: describe(after.participants) });
+      expectThat(after.remaining.includes('beds') && after.remaining.includes('keep'), 'the guide’s surviving steps must survive the restart', { expected: 'the same remaining steps', actual: describe(after.remaining) });
+      world.firstPlay = { ground: world.restoration.ground, remaining: after.remaining };
+      return `after the restart: the same ${after.objects.length} objects, ${after.participants.length} pledges and ${after.remaining.length} remaining guide steps, byte-for-byte`;
+    });
+
     const shutdown = await stopServer();
     expectThat(shutdown.lockReleased, 'a graceful shutdown must release the process lock', { expected: `no ${join(state.workspace, 'server.lock')}`, actual: 'the lock file remained after shutdown' });
     expectThat(shutdown.workspaceRemoved, 'the temporary workspace must be removed', { expected: 'workspace removed', actual: state.workspace });
@@ -900,6 +1020,7 @@ async function main() {
   console.log(`SUMMARY  ${state.results.length} steps passed, 0 failed`);
   console.log('  coins            one fixed 10-coin receipt for an independently accepted contribution; ledger integrity verified');
   console.log('  newcomer         a member account with one AI resident, one chosen calling, one country ambassador read, one saved practice activity with one cosmetic receipt (5 of 10 today) and zero coins');
+  console.log(`  first-ten-minutes one shared garden restored by two operators (${world.firstPlay?.ground ?? 'n/a'} ground tiles placed, the guide attributing each counted step to its own operator with ${world.firstPlay?.remaining?.length ?? 0} steps remaining); every saved row, both pledges and both saved places survived a real server restart`);
   if (state.notes.length) {
     console.log('  notes');
     for (const note of state.notes) console.log(`    - ${note}`);
