@@ -150,3 +150,17 @@ body.game-world .game-guide-note,body.game-world .game-guide-recover-note{margin
 body.game-world.game-entry .game-guide{display:none}
 @media(max-width:650px){body.game-world .game-guide{left:10px;right:10px;top:232px;bottom:320px;width:auto;gap:7px}body.game-world .game-guide-card{padding:10px 12px}body.game-world .game-guide-button{width:100%}body.game-world .game-guide-buttons,body.game-world .game-guide-controls{display:grid;grid-template-columns:1fr}body.game-world .game-guide-table{font-size:.62rem}}
 body.game-world .game-guide.game-guide-reduced,body.game-world .game-guide.game-guide-reduced *{transition:none;animation:none}
+
+/* Floating conversation panel for the game shell. Small, anchored, and dismissible so the world stays visible. */
+body.game-world #game-conversation-host{position:fixed;z-index:13;top:156px;right:20px;display:none;flex-direction:column;width:min(360px,calc(100vw - 40px));max-height:min(420px,calc(100dvh - 220px));pointer-events:auto}
+body.game-world.game-chat-open #game-conversation-host{display:flex}
+body.game-world .game-conversation-header{display:flex;gap:10px;align-items:center;justify-content:space-between;flex:none;padding:9px 14px;background:var(--game-glass);border:1px solid var(--game-edge);border-bottom:0;border-radius:15px 15px 0 0;color:var(--game-ink);backdrop-filter:blur(13px)}
+body.game-world .game-conversation-header span{font-weight:600;font-size:.85rem}
+body.game-world .game-conversation-close{min-height:32px;padding:5px 10px;border:0;border-radius:8px;background:#d8d8ad;color:#143a2e;font-size:.62rem}
+body.game-world #game-conversation-host #world-chat-card{display:flex;flex-direction:column;flex:1 1 auto;margin:0;overflow:hidden;border-radius:0 0 15px 15px;border-top:0;background:var(--game-glass);backdrop-filter:blur(13px)}
+body.game-world #game-conversation-host #world-chat-card .card h2{display:none}
+body.game-world #game-conversation-host #world-chat-card .message-list{overflow-y:auto;max-height:min(180px,28dvh);padding-right:4px}
+body.game-world #game-conversation-host #world-chat-card form{display:flex;flex-direction:column;gap:8px}
+body.game-world #game-conversation-host #world-chat-card textarea{min-height:52px;max-height:110px;resize:vertical}
+@media(max-width:650px){body.game-world #game-conversation-host{top:110px;right:10px;width:min(320px,calc(100vw - 20px));max-height:min(340px,calc(100dvh - 250px))}body.game-world #game-conversation-host #world-chat-card .message-list{max-height:min(140px,24dvh)}}
+@media(prefers-reduced-motion:reduce){body.game-world #game-conversation-host{transition:none}}
