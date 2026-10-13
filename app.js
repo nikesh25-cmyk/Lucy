@@ -35,7 +35,9 @@ let savedFirstPerson = false;
 // switch wins, and localStorage is the fallback that survives a browser restart.
 try { savedFirstPerson = (sessionStorage.getItem('nemoworld-first-person') ?? localStorage.getItem('nemoworld-first-person')) === 'true'; } catch { /* The camera still works without storage. */ }
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
-let savedChatDraft='';try{savedChatDraft=localStorage.getItem('nemoworld-chat-draft')||'';}catch{}
+// A private composer draft is scoped per operator, so it is loaded when the composer mounts rather
+// than at boot (the account is unknown here). The legacy unscoped key is purged by clearChatDraft().
+let savedChatDraft='';
 Object.assign(state,{gamePresentation,gameMode:savedGameMode,gameDrawer:'',gameMenuOpen:false,chatChannel:'public',chatRecipientId:'',chatRecipientName:'',chatDraft:savedChatDraft});
 // Audio is opt-in: creating the controller is side-effect free and the first
 // sound-producing call only happens from a control click in the game menu.
@@ -141,8 +143,14 @@ const FOCUS_KEY = 'nemoworld-focus';
 function storageGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
 function storageSet(key, value) { try { localStorage.setItem(key, value); return true; } catch { return false; } }
 function storageRemove(key) { try { localStorage.removeItem(key); } catch { /* Best effort in a private window. */ } }
-function clearChatDraft(){state.chatDraft='';storageRemove('nemoworld-chat-draft');}
-function setChatDraft(value){state.chatDraft=value||'';if(state.chatDraft)storageSet('nemoworld-chat-draft',state.chatDraft);else storageRemove('nemoworld-chat-draft');}
+const CHAT_DRAFT_KEY='nemoworld-chat-draft';
+// A private composer draft is the operator's own. Scope it the way focus and onboarding already are,
+// so a shared browser never shows one operator's unsent private message to another. The legacy
+// unscoped key is removed as well, so a draft left by an older build cannot leak either.
+function chatDraftStorageKey(){return ownerStorageKey(CHAT_DRAFT_KEY);}
+function clearChatDraft(){state.chatDraft='';storageRemove(chatDraftStorageKey());storageRemove(CHAT_DRAFT_KEY);}
+function setChatDraft(value){state.chatDraft=value||'';if(state.chatDraft)storageSet(chatDraftStorageKey(),state.chatDraft);else storageRemove(chatDraftStorageKey());}
+function scopedChatDraft(){return storageGet(chatDraftStorageKey())||'';}
 let chatFocusBeforeRender=null;
 function captureChatFocus(){const el=document.activeElement;if(!el||!el.closest('#world-chat-card form')){chatFocusBeforeRender=null;return;}chatFocusBeforeRender={name:el.name||'',start:el.selectionStart||null,end:el.selectionEnd||null};}
 function restoreChatFocus(){const focus=chatFocusBeforeRender;chatFocusBeforeRender=null;const form=$('#world-chat-card form');if(!focus||!form)return;const el=form.elements.namedItem(focus.name);if(!el||!el.focus)return;el.focus({preventScroll:true});if(typeof el.selectionStart==='number'&&focus.start!==null){el.selectionStart=focus.start;el.selectionEnd=focus.end||focus.start;}}
@@ -1400,7 +1408,7 @@ function chatCard({floating=false}={}) {
   node.append(messages);
   if (state.account&&state.gameMode!=='observe') {
     const speaker=viewedAgent();
-    const controls = form(node, 'Send message', async (data, formNode) => { const textEl=formNode.elements.namedItem('text');if(textEl)textEl.value='';clearChatDraft();await change('/messages', { ...data, ...(speaker ? {agent_id: speaker.id} : {}), world_id: currentWorldId() }, 'Message sent.'); formNode.reset(); });
+    const controls = form(node, 'Send message', async (data, formNode) => { const pending=state.chatDraft||'';clearChatDraft();try{await change('/messages', { ...data, ...(speaker ? {agent_id: speaker.id} : {}), world_id: currentWorldId() }, 'Message sent.');}catch(error){if(pending)setChatDraft(pending);throw error;}const textEl=formNode.elements.namedItem('text');if(textEl)textEl.value='';formNode.reset(); });
     const channel = field(controls, 'channel', 'Channel', { options: speaker ? [{value:'public',label:'This world'},{value:'nearby',label:'Nearby characters'},{value:'private',label:'Direct conversation'},{value:'mission',label:'Mission conversation'}] : [{value:'public',label:'This world'},{value:'mission',label:'Mission conversation'}], value:speaker?state.chatChannel:'public' });
     const recipients = state.world.participants.filter((a) => a.id !== state.selected && a.status === 'active');
     const recipientOptions=[{ value: '', label: 'Choose a character' }, ...recipients.map((a) => ({value:a.id,label:a.name}))];
@@ -1409,7 +1417,7 @@ function chatCard({floating=false}={}) {
     const mission = field(controls, 'mission_id', 'Mission', { required: false, options: state.missions.map((m) => ({value:m.id,label:m.title})), full:true }); mission.closest('label').hidden = channel.value !== 'mission';
     channel.addEventListener('change', () => { state.chatChannel=channel.value;if(channel.value!=='private'){state.chatRecipientId='';state.chatRecipientName='';recipient.value='';}recipient.closest('label').hidden = channel.value !== 'private'; recipient.required = channel.value === 'private'; mission.closest('label').hidden = channel.value !== 'mission'; });
     recipient.addEventListener('change',()=>{state.chatRecipientId=recipient.value;state.chatRecipientName=recipient.selectedOptions[0]?.textContent||'';});
-    const textField=field(controls, 'text', 'Message', { type:'textarea',max:500,full:true });textField.value=state.chatDraft||'';textField.addEventListener('input',()=>setChatDraft(textField.value)); node.append(paragraph('Direct conversations are visible to the participating agents’ operators. They are not end-to-end encrypted.', 'privacy'));
+    const textField=field(controls, 'text', 'Message', { type:'textarea',max:500,full:true });if(!state.chatDraft)state.chatDraft=scopedChatDraft();textField.value=state.chatDraft||'';textField.addEventListener('input',()=>setChatDraft(textField.value)); node.append(paragraph('Direct conversations are visible to the participating agents’ operators. They are not end-to-end encrypted.', 'privacy'));
   } else node.append(paragraph(state.gameMode==='observe'?'Observation is read-only. Choose Play to join this conversation.':'Sign in to join the conversation as a visitor or agent operator.', 'privacy'));
   return node;
 }
