@@ -89,6 +89,60 @@ test('public, nearby, and private conversation views redact contacts and isolate
   denied(() => f.tx('report', f.actor('reviewer'), { target_type: 'message', target_id: secret.id, reason: 'Guessing a hidden message identifier' }), 404);
 });
 
+test('world messages filter access before the limit and selected avatars cannot read sibling direct chat', async (t) => {
+  const f = await fixture(t);
+  const alice = f.agent('alice'), sibling = f.agent('alice', 'Sibling'), bob = f.agent('bob'), reviewer = f.agent('reviewer');
+  const publicMessage = f.tx('message', f.actor('alice'), { agent_id: alice.id, channel: 'public', text: 'Commons greeting.' });
+  f.advance();
+  const privateMessage = f.tx('message', f.actor('alice'), { agent_id: alice.id, recipient_id: bob.id, channel: 'private', text: 'A note for Bob.' });
+  f.advance();
+  const nearbyMessage = f.tx('message', f.actor('alice'), { agent_id: alice.id, channel: 'nearby', text: 'A nearby note.' });
+  const { mission, task } = realMission(f);
+  f.tx('claim', f.actor('alice'), { task_id: task.id, agent_id: alice.id }, 'message-pressure-claim');
+  f.advance();
+  const missionMessage = f.tx('message', f.actor('alice'), { agent_id: alice.id, channel: 'mission', mission_id: mission.id, text: 'A mission note.' });
+
+  // These newer rows used to consume the global 200-row page before the recipient filter ran.
+  // Neither Bob nor Alice's selected character may read the sibling's direct traffic.
+  const future = f.clock() + 1000;
+  for (let index = 0; index < 250; index++) {
+    f.platform.run('INSERT INTO messages(id,agent_id,account_id,channel,recipients,text,status,created_at,world_id) VALUES(?,?,?,?,?,?,?,?,?)',
+      `sibling-private-pressure-${index}`, reviewer.id, f.actor('reviewer').account.id, 'private', JSON.stringify([reviewer.id, sibling.id]),
+      'Private to the sibling.', 'visible', new Date(future + index).toISOString(), 'commons');
+    f.platform.run('INSERT INTO messages(id,agent_id,account_id,channel,recipients,text,status,created_at,world_id) VALUES(?,?,?,?,?,?,?,?,?)',
+      `other-world-pressure-${index}`, reviewer.id, f.actor('reviewer').account.id, 'public', '[]',
+      'A different world.', 'visible', new Date(future + index).toISOString(), `home:${alice.id}`);
+  }
+  const ids = (view) => view.messages.map((message) => message.id);
+  const bobWorld = f.platform.world(f.actor('bob'), { world_id: 'commons', agent_id: bob.id });
+  assert.equal(bobWorld.message_scope_agent_id, bob.id);
+  assert.ok(ids(bobWorld).includes(privateMessage.id), 'addressed private chat survives 500 newer irrelevant rows');
+  assert.ok(ids(bobWorld).includes(nearbyMessage.id), 'addressed nearby chat survives the same pressure');
+  assert.ok(!ids(bobWorld).includes(missionMessage.id), 'a nonparticipant cannot read mission chatter');
+  assert.ok(!ids(bobWorld).includes('sibling-private-pressure-249'));
+  const runtime = f.platform.authenticate(f.tx('runtime', f.actor('bob'), bob.id, { scopes: ['read'] }).token);
+  assert.ok(ids(f.platform.world(runtime, { world_id: 'commons' })).includes(privateMessage.id), 'the addressed runtime has the same direct view');
+
+  const aliceWorld = f.platform.world(f.actor('alice'), { world_id: 'commons', agent_id: alice.id });
+  assert.equal(aliceWorld.message_scope_agent_id, alice.id);
+  assert.ok(ids(aliceWorld).includes(missionMessage.id), 'authorized mission chat survives newer unrelated rows');
+  assert.ok(ids(aliceWorld).includes(privateMessage.id), 'the sender can still read her own direct message');
+  assert.ok(!ids(aliceWorld).includes('sibling-private-pressure-249'), 'a selected avatar cannot read sibling chat');
+  const siblingWorld = f.platform.world(f.actor('alice'), { world_id: 'commons', agent_id: sibling.id });
+  assert.ok(ids(siblingWorld).includes('sibling-private-pressure-249'));
+  assert.ok(!ids(siblingWorld).includes(privateMessage.id));
+  const wholeAccount = f.platform.world(f.actor('alice'), { world_id: 'commons' });
+  assert.equal(wholeAccount.message_scope_agent_id, null);
+  assert.equal(wholeAccount.messages.length, 200, 'the authorized account view remains bounded');
+  assert.ok(ids(wholeAccount).includes('sibling-private-pressure-249'));
+
+  const anonymous = f.platform.world(null, { world_id: 'commons' });
+  assert.deepEqual(ids(anonymous), [publicMessage.id], 'an observer sees only this world\'s public chat');
+  assert.equal(anonymous.message_scope_agent_id, null);
+  assert.equal(anonymous.messages[0].recipients, undefined);
+  assert.ok(!ids(f.platform.world(f.actor('moderator'), { world_id: 'commons' })).includes(privateMessage.id));
+});
+
 test('claims have one winner, an operator quota across agents, retries, release, and expiry', async (t) => {
   const f = await fixture(t);
   const alice = f.agent('alice');

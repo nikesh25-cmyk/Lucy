@@ -374,16 +374,32 @@ export const spaceMethods = {
         ? participant
         : anonymousResident(participant)
     ));
-    const missionAccess = new Map();
-    const readable = (message) => {
-      if (message.channel === 'mission') {
-        if (!missionAccess.has(message.mission_id)) missionAccess.set(message.mission_id, this.canReadMission(actor, message.mission_id));
-        return missionAccess.get(message.mission_id);
+    // Apply access control before the page limit. A busy world or another account's private
+    // traffic must never push an addressed message out of its recipient's 200-message view.
+    // Selecting a character scopes direct chat to that character; an unselected account view
+    // still sees the account's characters, while a runtime always sees only its own character.
+    const messageScopeAgentId = viewerAgent?.id || null;
+    const visibleMessageClauses = ["(m.channel='public' AND m.world_id=?)"];
+    const visibleMessageArgs = [id];
+    if (actor) {
+      const directAudience = messageScopeAgentId
+        ? 'EXISTS (SELECT 1 FROM json_each(m.recipients) recipient WHERE recipient.value=?)'
+        : 'EXISTS (SELECT 1 FROM json_each(m.recipients) recipient JOIN agents viewer ON viewer.id=recipient.value WHERE viewer.operator_id=?)';
+      visibleMessageClauses.push(`(m.channel IN ('private','nearby') AND (m.channel='private' OR m.world_id=?) AND ${directAudience})`);
+      visibleMessageArgs.push(id, messageScopeAgentId || actor.account.id);
+      if (actor.kind === 'runtime') {
+        visibleMessageClauses.push("(m.channel='mission' AND EXISTS (SELECT 1 FROM missions mission JOIN tasks task ON task.mission_id=mission.id JOIN claims claim ON claim.task_id=task.id WHERE mission.id=m.mission_id AND claim.agent_id=?))");
+        visibleMessageArgs.push(actor.agent.id);
+      } else if (actor.account.role === 'admin') {
+        visibleMessageClauses.push("(m.channel='mission' AND EXISTS (SELECT 1 FROM missions mission WHERE mission.id=m.mission_id))");
+      } else {
+        visibleMessageClauses.push("(m.channel='mission' AND EXISTS (SELECT 1 FROM missions mission WHERE mission.id=m.mission_id AND (mission.owner_id=? OR mission.reviewer_id=? OR (mission.demo=1 AND ?=1) OR EXISTS (SELECT 1 FROM claims claim JOIN tasks task ON task.id=claim.task_id WHERE task.mission_id=mission.id AND claim.account_id=?))))");
+        visibleMessageArgs.push(actor.account.id, actor.account.id, actor.account.role === 'reviewer' ? 1 : 0, actor.account.id);
       }
-      return message.channel === 'public' && message.world_id === id || JSON.parse(message.recipients).some((recipient) => viewerIds.includes(recipient));
-    };
-    const messages = this.all("SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.recipients,m.text,m.created_at,m.world_id,COALESCE(a.name,o.name) AS author FROM messages m LEFT JOIN agents a ON a.id=m.agent_id JOIN accounts o ON o.id=m.account_id WHERE m.status='visible' AND (m.world_id=? OR m.channel IN ('private','mission')) ORDER BY m.created_at DESC LIMIT 200", id)
-      .filter(readable)
+    }
+    const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.recipients,m.text,m.created_at,m.world_id,COALESCE(a.name,o.name) AS author
+      FROM messages m LEFT JOIN agents a ON a.id=m.agent_id JOIN accounts o ON o.id=m.account_id
+      WHERE m.status='visible' AND (${visibleMessageClauses.join(' OR ')}) ORDER BY m.created_at DESC,m.id DESC LIMIT 200`, ...visibleMessageArgs)
       .reverse().map(({ recipients, ...message }) => message);
     const visibleMessages = actor ? messages : messages.map(anonymousMessage);
     const objects = this.all('SELECT id,type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', id).map((object) => ({ ...object, kind: object.type }));
@@ -398,7 +414,7 @@ export const spaceMethods = {
     const ownHome = viewerAgent ? this.get("SELECT id,name,visibility FROM worlds WHERE owner_agent_id=? AND kind='home'", viewerAgent.id) : null;
     return { world: { ...world, description: definition.description || '', lore: definition.lore || '', ambiance: definition.ambiance || '' }, participants: visibleParticipants, agents: visibleParticipants.map(({calling,...legacy})=>legacy), messages: visibleMessages, camera, objects, scenery, portals, own_home: ownHome, build_palette: world.kind === 'house' ? housePalette : palette,
       ...frontierView, terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
-      bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null,
+      bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null, message_scope_agent_id: messageScopeAgentId,
       counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='agent'").n, registered_humans: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='human'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n+this.get('SELECT COUNT(*) AS n FROM npc_ambassadors WHERE world_id=?',id).n, visible_agents: participants.length, hidden_agents: hiddenAgents },
       paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true' };
   },
