@@ -329,7 +329,11 @@ core.register_chatcommand('nemo_claim', {params='TASK_ID', description='Claim on
   if not task_id or task_id == '' then return false, 'Give a task id from /nemo_missions.' end
   paired_request(name, '/native/claim', {player=name, task_id=task_id}, function(ok, data)
     if not ok then core.log('action','NEMO_CLAIM_ERROR '..tostring(data)); message(name, data); return end
-    mission_evidence[name] = nil
+    -- Repeating the same active claim is an idempotent read. Keep notes the player has already
+    -- entered; a genuinely new claim still starts with a clean evidence draft.
+    if not mission_evidence[name] or mission_evidence[name].claim_id ~= data.claim.id then
+      mission_evidence[name] = {claim_id=data.claim.id, sources={}}
+    end
     core.log('action','NEMO_CLAIM_RESULT id='..data.claim.id..' task='..data.claim.task_id)
     message(name, 'Claimed '..data.claim.id)
   end)
