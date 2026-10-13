@@ -35,10 +35,10 @@ test('every operational failure drill passed on a disposable installation', () =
   assert.ok(existsSync(report.report_path));
 });
 
-test('the restored world keeps its world, land, coin, quest and guild records at schema 20', () => {
+test('the restored world keeps its world, land, coin, quest and guild records at schema 21', () => {
   const directory = join(workspace, 'recovery-point');
   const database = join(directory, 'world.sqlite');
-  assert.equal(validateDatabase(database).schema_version, 20);
+  assert.equal(validateDatabase(database).schema_version, 21);
   const db = new DatabaseSync(database, { readOnly: true });
   try {
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM world_objects').get().n, 1);
@@ -52,10 +52,10 @@ test('the restored world keeps its world, land, coin, quest and guild records at
   } finally { db.close(); }
 });
 
-test('the migration rehearsal lands a schema 17 world on 20 without losing records', () => {
+test('the migration rehearsal lands a schema 17 world on 21 without losing records', () => {
   const drillEntry = drill('migration-rehearsal');
   const restored = join(workspace, 'migration-rehearsal', 'migrated', 'world.sqlite');
-  assert.equal(validateDatabase(restored).schema_version, 20);
+  assert.equal(validateDatabase(restored).schema_version, 21);
   const db = new DatabaseSync(restored, { readOnly: true });
   try {
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM coin_rewards').get().n, 1);
@@ -71,7 +71,7 @@ test('every invalid backup was refused and the live world survived intact', () =
   assert.ok(existsSync(join(directory, 'garbage.sqlite')));
   assert.ok(existsSync(join(directory, 'damaged.sqlite')));
   assert.ok(existsSync(join(directory, 'foreign.sqlite')));
-  assert.equal(validateDatabase(join(directory, 'world.sqlite')).schema_version, 20);
+  assert.equal(validateDatabase(join(directory, 'world.sqlite')).schema_version, 21);
   const entry = drill('corrupt-backup');
   assert.ok(entry.checks.filter((check) => /refused/.test(check.name)).length >= 8);
   for (const check of entry.checks) assert.ok(check.ok, check.name);
@@ -91,7 +91,7 @@ test('no token, password, contact address or private artifact appears in the pro
   }
   // The subject of the grep is a real administrator diagnostics payload, not a stub.
   const payload = JSON.parse(diagnostics);
-  assert.equal(payload.diagnostics.schema.version, 20);
+  assert.equal(payload.diagnostics.schema.version, 21);
   assert.ok(payload.diagnostics.model.state);
   assert.ok(Number.isInteger(payload.diagnostics.storage.database_bytes));
   assert.ok('interrupted' in payload.diagnostics.runs);

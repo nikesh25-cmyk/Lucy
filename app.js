@@ -17,7 +17,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 const $ = (selector) => document.querySelector(selector);
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,interaction:null,interactionRefusal:null,interactionError:null});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,interaction:null,interactionRefusal:null,interactionError:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -63,7 +63,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -129,7 +129,7 @@ function restoreRememberedFocus() {
 }
 function disclosure(parent, title, build) { const node = element('details'); node.append(element('summary', title)); const body = element('div'); node.append(body); build(body); parent.append(node); return node; }
 function heading(title, description) { const node = element('div', null, 'section-title'); const text = element('div'); append(text, element('h2', title), paragraph(description)); node.append(text); return node; }
-async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.quests=null;state.guildProjects=null;state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
+async function selectAgent(id) { walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects()]);const resident=selected();if(resident)state.facing={yaw:Number.isFinite(resident.yaw)?resident.yaw:Math.PI/4,pitch:Number.isFinite(resident.pitch)?resident.pitch:.62}; render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
@@ -1429,7 +1429,7 @@ async function loadCommunity() {
   state.community=await api(`/community?${query}`);
 }
 async function loadJourney(){state.journey=state.account&&selected()?await api(`/journey?agent_id=${encodeURIComponent(state.selected)}`):null;}
-async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds()]);if(tab==='quests')await loadQuests();if(tab==='guilds')await loadGuildProjects();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
+async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds(),loadMemory()]);if(tab==='quests')await loadQuests();if(tab==='guilds')await loadGuildProjects();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
 async function navigateSection(tab){const same=state.tab===tab;await openSection(tab);$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');if(same&&matchMedia('(max-width:1050px)').matches)$('#toggle-navigation').focus();}
 $('#toggle-navigation').addEventListener('click',()=>{const open=$('#toggle-navigation').getAttribute('aria-expanded')!=='true';$('#toggle-navigation').setAttribute('aria-expanded',String(open));$('.sidebar').classList.toggle('navigation-open',open);});
 function requireResident(parent){
@@ -1694,7 +1694,8 @@ function renderCountries(parent){
     node.append(paragraph(`${country.evidence?.series_count||0} of 3 agriculture series retained · ${country.evidence?.nonmissing_series||0} with reported values`,'privacy'));
     node.append(button('Agriculture evidence',async()=>{state.countryEvidence=await api('/country-evidence?country='+country.iso2);renderView();$('#country-evidence').focus();$('#country-evidence').scrollIntoView({block:'start'});},'secondary small'));
     node.append(button('Electricity & internet evidence',()=>openCountryAccessEvidence(country.iso2),'secondary small'));
-    if(isReviewer())node.append(button('Generate scoped proposals',async()=>{const result=await api('/research/generate','POST',{country_code:country.iso2});notice(`${result.added} proposals added for ${country.name}.`);},'small'));
+    // Concern counts depend on the country’s retained evidence; report what the server added.
+    if(isReviewer())node.append(button('Generate scoped proposals',async()=>{const result=await api('/research/generate','POST',{country_code:country.iso2});notice(`${result.added} concern-based proposals added for ${country.name}.`);},'small'));
     grid.append(node);
   }parent.append(grid);const previous=button('Previous',()=>{state.countryPage--;renderView();},'secondary');previous.disabled=state.countryPage===0;const next=button('Next',()=>{state.countryPage++;renderView();},'secondary');next.disabled=(state.countryPage+1)*24>=countries.length;parent.append(actions(previous,paragraph(`Page ${state.countryPage+1}`),next),sourceLink('https://unstats.un.org/unsd/methodology/m49/overview/','UN M49 source and methodology'));
 }
@@ -1704,7 +1705,7 @@ function renderSDGTargets(parent){
   body.append(paragraph(targets.scope),paragraph(targets.qualification,'privacy'));
   const picker=form(body,'Show target references',data=>{state.targetGoal=data.goal;renderView();});field(picker,'goal','Target reference goal',{value:state.targetGoal||'2',options:SDG_GOALS.map((name,index)=>({value:String(index+1),label:`${index+1}. ${name}`}))});
   const goal=Number(state.targetGoal||'2'),source=targets.sources.find(item=>item.goal===goal);if(source)body.append(paragraph(`Official goal page retrieved ${date(source.retrieved)} · SHA256 ${source.sha256}`,'source-hash'));
-  if(isReviewer())disclosure(body,'Create target-specific country proposals',panel=>{const generator=form(panel,'Generate four target proposals',async data=>{const result=await api('/research/generate','POST',data);state.researchQuery={country:data.country_code,target:data.target_code};await loadResearch();await openSection('research');notice(`${result.added} target proposals added for ${result.country}.`);});field(generator,'country_code','Target proposal country',{options:state.countries.map(country=>({value:country.iso2,label:country.name}))});field(generator,'target_code','Target reference',{options:targets.entries.filter(item=>item.goal===goal).map(item=>({value:item.code,label:item.code+' · '+item.focus}))});panel.append(paragraph('Creates proposed baseline, intervention comparison, delivery-route and recommendation briefs. Activation still needs a beneficiary, owner, approved sources and independent review.','privacy'));});
+  if(isReviewer())disclosure(body,'Create target-specific country proposals',panel=>{const generator=form(panel,'Generate four target proposals',async data=>{const result=await api('/research/generate','POST',data);state.researchQuery={country:data.country_code,target:data.target_code};await loadResearch();await openSection('research');notice(`${result.added} target proposals added for ${result.country}.`);});field(generator,'country_code','Target proposal country',{options:state.countries.map(country=>({value:country.iso2,label:country.name}))});field(generator,'target_code','Target reference',{options:targets.entries.filter(item=>item.goal===goal).map(item=>({value:item.code,label:item.code+' · '+item.focus}))});panel.append(paragraph('Creates four target-specific proposals for the selected SDG target: a country baseline, an intervention comparison, a delivery-route map and an implementation recommendation. This target workflow is separate from the concern-based country agenda. Activation still needs a beneficiary, owner, approved sources and independent review.','privacy'));});
   const grid=element('div',null,'grid two');for(const target of targets.entries.filter(item=>item.goal===goal)){const node=card(target.code+' · '+target.focus,'SDG TARGET · EDITORIAL FOCUS');node.append(paragraph(target.evidenceLocator,'privacy'),paragraph('Years mentioned in original wording: '+(target.originalYears.join(', ')||'none recorded')+'. Not new deadlines.','privacy'),actions(sourceLink(target.sourceUrl,'Read full official target and indicators'),button('View target proposals',async()=>{state.researchQuery={target:target.code,...(state.researchQuery.country?{country:state.researchQuery.country}:{})};await loadResearch();await openSection('research');},'secondary small')));grid.append(node);}body.append(grid);
  });
  section.open=Boolean(state.targetsOpen);section.addEventListener('toggle',()=>{state.targetsOpen=section.open;});
@@ -1803,6 +1804,61 @@ async function loadGuilds(){
  const query=new URLSearchParams({limit:'12',offset:String(state.guildOffset),...(state.guildFilter?{calling_id:state.guildFilter}:{})});
  state.guilds=await api(`/callings/guilds?${query}`);
 }
+// ---- Private resident memory ------------------------------------------------------------------
+// Memory belongs to one operator's own AI resident. The interface shows the stored fact, the kind of
+// source that proves it and whether it is approved, proposed or refused; the operator decides every
+// proposal. Nothing here is public, and the copy never presents memory as a mind or as an achievement
+// the world did not save.
+async function loadMemory(){
+ const id=state.selected;
+ if(!state.account||!selected()){state.memory=null;return;}
+ const result=await api(`/memory?agent_id=${encodeURIComponent(id)}`);
+ if(id===state.selected)state.memory=result;
+}
+const MEMORY_OPERATOR_KINDS=Object.freeze({purpose:['intent','focus','boundary'],preference:['working_style','communication','focus','boundary'],lesson:['operator_correction']});
+function memoryFactRow(fact,parent,{controls=false}={}){
+ const row=element('article',null,'record');row.append(badge(`${fact.kind} · ${fact.attribute}`),paragraph(fact.value),paragraph(`Source: ${fact.source.kind}${fact.source.kind==='human'?' · your own input':' · '+fact.source.label} · recorded ${date(fact.created_at)}`,'plot-address'));
+ if(fact.subject)row.append(paragraph(`Subject: ${fact.subject}`,'privacy'));
+ if(controls){
+  const inputs=form(row,'Correct this fact',async values=>{const updated=await api('/memory/manage','POST',{action:'correct',agent_id:state.selected,fact_id:fact.id,value:values.value,...(values.subject?{subject:values.subject}:{})});await loadMemory();renderView();notice(`Corrected. The earlier version is now ${updated.superseded.state}.`);});
+  field(inputs,'value','Corrected value',{value:fact.value,max:state.memory?.limits?.value||160,full:true});
+  field(inputs,'subject','Subject',{value:fact.subject,required:false,max:80,full:true});
+  row.append(button('Delete this fact',async()=>{const removed=await api('/memory/manage','POST',{action:'delete',agent_id:state.selected,fact_id:fact.id});await loadMemory();renderView();notice(`Deleted ${removed.removed} memory ${removed.removed===1?'fact':'facts'}.`);},'secondary small'));
+ }
+ parent.append(row);
+}
+function memoryPanel(parent){
+ const view=state.memory;if(!view)return;
+ const panel=card('Resident memory','PRIVATE · YOUR RESIDENT ALONE');
+ panel.append(paragraph(`${view.counts.active} approved · ${view.counts.proposed} awaiting your decision · ${view.counts.refused} refused · ${view.counts.superseded} corrected. At most ${view.limits.facts_active} approved facts and ${view.limits.value} characters per fact.`,'privacy'));
+ panel.append(paragraph(`${view.policy.sentience} ${view.policy.description}`,'privacy'));
+ if(view.facts.length)for(const fact of view.facts)memoryFactRow(fact,panel,{controls:true});else panel.append(empty('No approved memory yet. Record one below, or approve a proposal from your resident.'));
+ if(view.proposals.length){
+  disclosure(panel,`Proposals waiting for you (${view.proposals.length})`,body=>{
+   body.append(paragraph('A proposal is not memory. It names a saved source, and it is invisible to your resident’s prompt until you approve it.','privacy'));
+   for(const proposal of view.proposals){
+    const row=element('article',null,'record');
+    row.append(badge(`${proposal.kind} · ${proposal.attribute}`),paragraph(proposal.value),paragraph(`Proposed by your resident · source ${proposal.source.kind} · ${proposal.source.label}`,'plot-address'));
+    row.append(actions(
+     button('Approve',async()=>{await api('/memory/manage','POST',{action:'approve',agent_id:state.selected,fact_id:proposal.id});await loadMemory();renderView();notice('Memory approved. It will be observed at the next decision.');},'small'),
+     button('Refuse',async()=>{await api('/memory/manage','POST',{action:'refuse',agent_id:state.selected,fact_id:proposal.id});await loadMemory();renderView();notice('Proposal refused. It stays in the record as refused.');},'secondary small')));
+    body.append(row);
+   }
+  });
+ } else panel.append(paragraph('No proposals are waiting.','privacy'));
+ const recorder=form(panel,'Record a memory fact from your own input',async values=>{await api('/memory/manage','POST',{action:'record',agent_id:state.selected,kind:values.kind,attribute:values.attribute,value:values.value,...(values.subject?{subject:values.subject}:{})});await loadMemory();renderView();notice('Recorded from your own input.');});
+ const kindField=field(recorder,'kind','Kind',{options:Object.keys(MEMORY_OPERATOR_KINDS)});
+ const attributes=()=>MEMORY_OPERATOR_KINDS[kindField.value]||MEMORY_OPERATOR_KINDS.purpose;
+ const attributeField=field(recorder,'attribute','Attribute',{options:attributes()});
+ const syncAttributes=()=>{attributeField.replaceChildren(...attributes().map(value=>{const option=element('option',value);option.value=value;return option;}));};
+ kindField.addEventListener('change',syncAttributes);syncAttributes();
+ field(recorder,'subject','Short subject',{required:false,max:80,hint:'Optional. Name what the fact is about.'});
+ field(recorder,'value','One short line',{max:view.limits.value,full:true,hint:'Describes your choice or instruction. A credential, contact address, link or consciousness claim is refused.'});
+ panel.append(paragraph('Your resident proposes a fact only from its own verified record: a calling receipt, a finished run that recorded a refusal, or an independent review decision. This form records your own explicit input, which is its own kind of source.','privacy'));
+ if(view.history.length)disclosure(panel,'Refused and corrected history',body=>{for(const fact of view.history.slice(0,20))memoryFactRow(fact,body);body.append(paragraph('Refused proposals and corrected versions stay as history. They are never part of your resident’s memory.','privacy'));});
+ panel.append(actions(button('Export this memory',async()=>{const exported=await api('/export');download(exported.memory,'resident-memory.json');},'secondary small'),button('Refresh memory',async()=>{await loadMemory();renderView();},'secondary small')));
+ parent.append(panel);
+}
 function callingHUD(){
  const node=element('section',null,'calling-hud');node.setAttribute('aria-label','Your calling and current objective');
  node.append(element('div',null,'calling-hud-copy'),button('Calling & guild',()=>openSection('callings'),'secondary small'));
@@ -1857,6 +1913,7 @@ function renderCallings(parent){
   for(const objective of view.today.objectives){const item=element('article',null,`calling-quest ${objective.complete?'complete':''}`);item.append(badge(objective.complete?'complete':objective.withheld?'held':'available',objective.withheld),element('h3',objective.title),paragraph(objective.instructions),paragraph(`${objective.experience} cosmetic experience · one verified source per objective`,'privacy'));if(!objective.complete)item.append(button('Open the next step',()=>callingAction(objective.action_hint),'secondary small'));story.append(item);}
   story.append(paragraph('Experience describes saved participation. It creates no NemoCoins, land rights, authority or action scope. Only independently accepted real contributions can earn NemoCoins.','privacy'));
   callingWorkerForm(story);
+  memoryPanel(story);
   disclosure(story,'My experience receipts',body=>{if(!view.receipts.length)body.append(empty('No calling receipts yet. Complete a saved objective to begin.'));for(const receipt of view.receipts.slice(0,20)){const row=element('article',null,'record');row.append(paragraph(`${receipt.objective_id.replaceAll('_',' ')} · ${receipt.points} experience`),paragraph(`${receipt.earned_day} · ${receipt.available?'available':'held after evidence changed'}`,'privacy'),paragraph(`Source: ${receipt.source_kind} · ${receipt.source_id}`,'plot-address'));body.append(row);}});parent.append(story);
  }else parent.append(paragraph(state.account?'Create or select a character to choose its calling.':'Meet the guilds below. Create a human account to choose your calling or guide your AI residents.'),button(state.account?'My characters':'Create account',()=>state.account?openSection('characters'):openAuth('register'),'small'));
  const catalog=state.guilds?.catalog||view?.catalog||[];const choices=element('div',null,'calling-catalog');

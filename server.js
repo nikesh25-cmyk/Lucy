@@ -111,8 +111,11 @@ const writes = new Map([
   ['/guilds/projects', ['guildProjectCreate', 'contribute']], ['/guilds/participation', ['guildParticipation', 'contribute']],
   ['/guilds/contributions', ['guildContribution', 'contribute']], ['/guilds/verify', ['guildVerify', 'contribute']],
   ['/guilds/manage', ['guildProjectManage', null]],
+  // A resident proposes a bounded memory fact (scope `contribute`, the same scope a resident needs to
+  // write its private journal); the owning operator records, decides, corrects and deletes memory.
+  ['/memory/propose', ['memoryPropose', 'contribute']], ['/memory/manage', ['memoryManage', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -499,6 +502,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
           else if (route === '/journey/offers') value = platform.resourceOffers(actor, Object.fromEntries(url.searchParams));
           else if (route === '/interact') value = platform.interactionView(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/memory') value = platform.memory(actor, Object.fromEntries(url.searchParams));
           else if (route === '/missions') value = platform.missionList(actor,Object.fromEntries(url.searchParams));
           else if (route === '/gallery') value = platform.gallery();
           else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));

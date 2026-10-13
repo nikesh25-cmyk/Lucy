@@ -1,4 +1,4 @@
-import {randomUUID} from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import {contributionSource,contributionEligibility} from './journey.js';
 import {getWorldDefinition,walkable} from '../world.js';
 import {receiptProof,questObjectiveRules,reconcileQuests,questStepFor} from './quests.js';
@@ -42,6 +42,226 @@ const sources=[
  source('research_accepted','c.agent_id','r.id','r.created_at',contributionSource,contributionEligibility('c.agent_id')),
 ].join(' UNION ALL ');
 const proof=receiptProof;
+
+// ---- Bounded private resident memory (schema 21) -----------------------------------------------
+//
+// A resident's memory is a small, typed list of facts — never free prose. Each fact names the kind of
+// fact it is, the attribute within that kind, a short structured subject and one bounded value line,
+// and the exact source that proves it: a saved, attributable server fact (a verified calling receipt,
+// a finished run that recorded a refusal, or an independent review decision) or the operator's own
+// explicit input. A fact with neither is not storable, so a resident can never record an accomplishment
+// the world did not confirm.
+//
+// The chosen approval model is **operator approval for every stored fact**. A resident credential may
+// only *propose* a fact from its own verified record, and a proposal is not memory: it is invisible to
+// the resident's prompt until the owning operator approves it. The operator can also record a fact
+// directly (that is explicit human input, which is its own source), correct an active fact, export the
+// whole record and delete a fact. Nothing is applied silently, and no resident credential can approve,
+// correct or delete anything.
+export const MEMORY_KINDS=Object.freeze({
+  purpose:Object.freeze({label:'Chosen purpose',attributes:Object.freeze(['intent','focus','boundary']),sources:Object.freeze(['human']),resident:false}),
+  activity:Object.freeze({label:'Confirmed activity',attributes:Object.freeze(['calling_objective','quest_step']),sources:Object.freeze(['receipt']),resident:true}),
+  preference:Object.freeze({label:'Operator preference',attributes:Object.freeze(['working_style','communication','focus','boundary']),sources:Object.freeze(['human']),resident:false}),
+  lesson:Object.freeze({label:'Lesson',attributes:Object.freeze(['refusal','review_feedback','operator_correction']),sources:Object.freeze(['run','review','human']),resident:true}),
+});
+export const MEMORY_SOURCES=Object.freeze(['calling','receipt','run','review','human']);
+export const MEMORY_STATES=Object.freeze(['proposed','active','refused','superseded']);
+export const MEMORY_ORIGINS=Object.freeze(['resident','operator']);
+// The stated bounds. `facts_active` and `per_kind_active` bound what one resident may hold; `subject`
+// and `value` bound one fact; `prompt_facts` and `prompt_bytes` bound how much of it one model prompt
+// may carry, inside the runtime's existing observation byte budget.
+export const MEMORY_LIMITS=Object.freeze({facts_active:24,per_kind_active:8,proposals_open:8,refused_kept:24,subject:80,value:160,label:120,prompt_facts:10,prompt_bytes:4096,history_page:200});
+export const MEMORY_POLICY=Object.freeze({
+ version:1,
+ approval:'operator-approval',
+ description:'A resident may propose a memory fact only from its own verified server record: a calling receipt, a finished run that recorded a refusal, or an independent review decision. No proposal becomes memory until the owning operator approves it, and the operator can record, correct, export and delete memory directly. A fact is stored only with a verified source receipt or the operator’s own explicit input, so a resident cannot record work the world did not confirm.',
+ sentience:'Memory is a bounded list of saved facts and the sources that prove them. It is not a mind, not consciousness, and not evidence of any capability beyond the source it names. The interface and the runtime prompt say so too.',
+ credentials:'Memory never stores a credential, an authorization value, a contact address or a link; such content is refused where it is written, and re-checked when a database is validated.',
+});
+// The one attribute/source rule set, used at the point of writing and again by recovery so a tampered
+// row cannot pass a backup, a restore or a startup.
+export function memoryPairValid(kind,attribute,source_kind){
+  const definition=MEMORY_KINDS[kind];
+  if(!definition||!definition.attributes.includes(attribute)||!definition.sources.includes(source_kind))return false;
+  if(attribute==='calling_objective'||attribute==='quest_step')return source_kind==='receipt';
+  if(attribute==='refusal')return source_kind==='run';
+  if(attribute==='review_feedback')return source_kind==='review';
+  return source_kind==='human';
+}
+// Content a memory fact may never carry. Every rule is also re-applied by recovery.
+export const MEMORY_FORBIDDEN=Object.freeze([
+ Object.freeze({name:'credential',pattern:/\b[a-f0-9]{40,}\b/i,message:'memory never stores a credential or a key'}),
+ Object.freeze({name:'authorization',pattern:/\bbearer\b|\bpassword\s*[:=]|\bworld_session\b/i,message:'memory never stores an authorization value'}),
+ Object.freeze({name:'contact',pattern:/[^\s@]+@[^\s@]+\.[a-z]{2,}/i,message:'memory never stores a contact address'}),
+ Object.freeze({name:'link',pattern:/\bhttps?:\/\/|\bwww\./i,message:'memory never stores a link'}),
+ Object.freeze({name:'sentience',pattern:/\b(conscious|consciousness|sentient|sentience|sapient|self-aware|self aware)\b/i,message:'memory records saved facts, never consciousness'}),
+]);
+const sha256=value=>createHash('sha256').update(value).digest('hex');
+const memoryProof=row=>sha256(JSON.stringify([row.id,row.agent_id,row.account_id,row.kind,row.attribute,row.subject,row.value,row.source_kind,row.source_id,row.source_at,row.source_label,row.origin,row.created_at]));
+const memoryIso=value=>typeof value==='string'&&value.length===24&&value===new Date(value).toISOString();
+const memoryView=row=>({id:row.id,agent_id:row.agent_id,kind:row.kind,attribute:row.attribute,subject:row.subject,value:row.value,source:{kind:row.source_kind,id:row.source_id,at:row.source_at,label:row.source_label},origin:row.origin,state:row.state,decided_at:row.decided_at,created_at:row.created_at,updated_at:row.updated_at,supersedes:row.supersedes,superseded_by:row.superseded_by});
+// One fact's words: a single bounded line. Refusing a newline keeps a self-authored value from
+// carrying a second line back into the prompt, and the closed content rules keep credentials,
+// contact details, links and consciousness claims out of memory entirely.
+function memoryWords(value,label,maximum,optional=false){
+ if(optional&&(value===undefined||value===null||value===''))return '';
+ if(typeof value!=='string')fail(400,`${label} must be text.`);
+ const trimmed=value.trim();
+ if(!trimmed||Array.from(trimmed).length>maximum)fail(400,`${label} must contain 1–${maximum} characters.`);
+ if(/[\r\n]/.test(trimmed))fail(400,`${label} must be one line.`);
+ for(const rule of MEMORY_FORBIDDEN)if(rule.pattern.test(trimmed))fail(400,`${label}: ${rule.message}.`);
+ return trimmed;
+}
+function memoryShape(kind,attribute,source_kind,origin){
+ const definition=MEMORY_KINDS[kind];
+ if(!definition)fail(400,'Choose a listed memory kind.');
+ if(!definition.attributes.includes(attribute))fail(400,`Choose a listed ${kind} attribute.`);
+ if(!memoryPairValid(kind,attribute,source_kind))fail(400,'That attribute needs its own kind of verified source.');
+ if(origin==='resident'&&source_kind==='human')fail(403,'A resident cannot record operator input as a source.');
+ if(origin==='resident'&&!definition.resident)fail(403,`A ${kind} fact is your operator's declaration, not a resident proposal.`);
+}
+// The only facts a resident credential may propose: a confirmed activity proved by a verified calling
+// receipt, or a lesson learned from a recorded refusal or an independent review decision. A purpose or
+// a preference is the operator's own declaration in this world, so the operator records it directly.
+function residentSourceKind(kind,attribute){
+ if(kind==='activity'&&(attribute==='calling_objective'||attribute==='quest_step'))return 'receipt';
+ if(kind==='lesson'&&attribute==='refusal')return 'run';
+ if(kind==='lesson'&&attribute==='review_feedback')return 'review';
+ return null;
+}
+// The verified server facts this resident could still record, newest first. A source is spent once it
+// is named by any stored fact (whatever its state), so a refused proposal does not free it for reuse.
+function memorySources(platform,agent){
+ const spent=(source_kind,source_id)=>platform.get('SELECT id FROM resident_memory WHERE agent_id=? AND source_kind=? AND source_id=?',agent.id,source_kind,source_id);
+ const receipts=platform.all('SELECT * FROM calling_receipts WHERE agent_id=? ORDER BY created_at DESC,id DESC LIMIT 24',agent.id),receipt=[];
+ for(const row of receipts){if(receipt.length>=12)break;if(spent('receipt',row.id)||row.proof_hash!==proof(row))continue;
+  receipt.push({source_kind:'receipt',source_id:row.id,source_at:row.source_at,source_label:`${row.calling_id} · ${row.objective_id}`.slice(0,MEMORY_LIMITS.label),attribute:row.objective_id.startsWith('quest:')?'quest_step':'calling_objective'});}
+ const runs=platform.all("SELECT id,status,failed_actions,started_at,updated_at FROM resident_runs WHERE agent_id=? AND status!='running' AND failed_actions>0 ORDER BY started_at DESC,id DESC LIMIT 12",agent.id),run=[];
+ for(const row of runs){if(run.length>=6)break;if(spent('run',row.id))continue;
+  run.push({source_kind:'run',source_id:row.id,source_at:memoryIso(row.updated_at)?row.updated_at:new Date(platform.clock()).toISOString(),source_label:`${row.failed_actions} refused ${row.failed_actions===1?'action':'actions'}`.slice(0,MEMORY_LIMITS.label),attribute:'refusal'});}
+ const reviews=platform.all("SELECT rv.id,rv.decision,rv.created_at FROM reviews rv JOIN submissions s ON s.id=rv.submission_id JOIN claims c ON c.id=s.claim_id WHERE c.agent_id=? AND rv.decision IN ('changes_requested','rejected') ORDER BY rv.created_at DESC,rv.id DESC LIMIT 12",agent.id),review=[];
+ for(const row of reviews){if(review.length>=6)break;if(spent('review',row.id))continue;
+  review.push({source_kind:'review',source_id:row.id,source_at:row.created_at,source_label:`independent review: ${row.decision}`.slice(0,MEMORY_LIMITS.label),attribute:'review_feedback'});}
+ return {receipt,run,review};
+}
+// One grouped statement, so a per-decision `/callings` read stays cheap: what the resident could still
+// propose, by attribute. A zero count is exactly what lets the runtime decline an impossible proposal.
+function memoryAvailable(platform,agentId){
+ const row=platform.get(`SELECT
+  (SELECT COUNT(*) FROM calling_receipts r WHERE r.agent_id=? AND r.objective_id NOT LIKE 'quest:%' AND NOT EXISTS(SELECT 1 FROM resident_memory m WHERE m.agent_id=r.agent_id AND m.source_kind='receipt' AND m.source_id=r.id)) AS calling_objective,
+  (SELECT COUNT(*) FROM calling_receipts r WHERE r.agent_id=? AND r.objective_id LIKE 'quest:%' AND NOT EXISTS(SELECT 1 FROM resident_memory m WHERE m.agent_id=r.agent_id AND m.source_kind='receipt' AND m.source_id=r.id)) AS quest_step,
+  (SELECT COUNT(*) FROM resident_runs n WHERE n.agent_id=? AND n.status!='running' AND n.failed_actions>0 AND NOT EXISTS(SELECT 1 FROM resident_memory m WHERE m.agent_id=n.agent_id AND m.source_kind='run' AND m.source_id=n.id)) AS refusal,
+  (SELECT COUNT(*) FROM reviews rv JOIN submissions s ON s.id=rv.submission_id JOIN claims c ON c.id=s.claim_id WHERE c.agent_id=? AND rv.decision IN ('changes_requested','rejected') AND NOT EXISTS(SELECT 1 FROM resident_memory m WHERE m.agent_id=c.agent_id AND m.source_kind='review' AND m.source_id=rv.id)) AS review_feedback`,
+  agentId,agentId,agentId,agentId);
+ return {calling_objective:row.calling_objective,quest_step:row.quest_step,refusal:row.refusal,review_feedback:row.review_feedback};
+}
+function memoryRoom(platform,agent,state,kind){
+ if(state==='active'){
+  if(platform.get("SELECT COUNT(*) AS n FROM resident_memory WHERE agent_id=? AND state='active'",agent.id).n>=MEMORY_LIMITS.facts_active)fail(429,'This resident has reached its active memory limit; delete a fact first.');
+  if(platform.get("SELECT COUNT(*) AS n FROM resident_memory WHERE agent_id=? AND state='active' AND kind=?",agent.id,kind).n>=MEMORY_LIMITS.per_kind_active)fail(429,`This resident already holds the maximum active ${kind} facts.`);
+ }
+ if(state==='proposed'&&platform.get("SELECT COUNT(*) AS n FROM resident_memory WHERE agent_id=? AND state='proposed'",agent.id).n>=MEMORY_LIMITS.proposals_open)fail(429,'Too many memory proposals are already waiting for the operator.');
+}
+function memoryInsert(platform,agent,fact){
+ const row={id:randomUUID(),agent_id:agent.id,account_id:agent.operator_id,supersedes:fact.supersedes||null,superseded_by:null,...fact,created_at:new Date(platform.clock()).toISOString()};
+ row.proof_hash=memoryProof(row);
+ platform.run('INSERT INTO resident_memory(id,agent_id,account_id,kind,attribute,subject,value,source_kind,source_id,source_at,source_label,origin,state,decided_by,decided_at,supersedes,superseded_by,proof_hash,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+  row.id,row.agent_id,row.account_id,row.kind,row.attribute,row.subject,row.value,row.source_kind,row.source_id,row.source_at,row.source_label,row.origin,row.state,row.decided_by,row.decided_at,row.supersedes,row.superseded_by,row.proof_hash,row.created_at,row.created_at);
+ return platform.get('SELECT * FROM resident_memory WHERE id=?',row.id);
+}
+// Attach the source a fact must name. A resident never chooses its own source: the server attaches the
+// newest verified, unrecorded fact of the matching class. The operator may name one, or let the server
+// attach the same newest one.
+function memoryResolve(platform,agent,kind,attribute,source_kind,source_id,origin){
+ if(!MEMORY_KINDS[kind])fail(400,'Choose a listed memory kind.');
+ const resolved=source_kind||(origin==='operator'&&MEMORY_KINDS[kind].sources.includes('human')?'human':undefined);
+ if(!resolved)fail(400,'Name the kind of verified source for this fact.');
+ if(resolved==='human'){
+  if(origin!=='operator')fail(403,'Only the operator can record a fact from human input.');
+  memoryShape(kind,attribute,'human',origin);
+  return {source_kind:'human',source_id:agent.operator_id,source_at:new Date(platform.clock()).toISOString(),source_label:'Operator input'};
+ }
+ const pool=memorySources(platform,agent)[resolved]||[],chosen=source_id?pool.find(item=>item.source_id===source_id):pool.find(item=>item.attribute===attribute);
+ if(!chosen)fail(409,'No verified, unrecorded source supports that memory fact yet.');
+ memoryShape(kind,attribute,resolved,origin);
+ if(chosen.attribute!==attribute)fail(409,'That verified source records a different kind of fact.');
+ return chosen;
+}
+function activeMemory(platform,agentId,limit=MEMORY_LIMITS.prompt_facts){
+ const facts=platform.all("SELECT kind,attribute,subject,value,source_kind,source_at,source_label,decided_at FROM resident_memory WHERE agent_id=? AND state='active' ORDER BY decided_at DESC,id DESC LIMIT ?",agentId,limit)
+  .map(row=>({kind:row.kind,attribute:row.attribute,subject:row.subject,value:row.value,source:{kind:row.source_kind,at:row.source_at,label:row.source_label},decided_at:row.decided_at}));
+ // The stated `prompt_bytes` bound is enforced, not merely asserted: at the maximum lengths ten facts
+ // could serialize above it, so the oldest facts are dropped whole until the section fits. Two facts
+ // are always kept, because a purpose and a lesson are the least useful things to lose.
+ while(facts.length>2&&Buffer.byteLength(JSON.stringify(facts),'utf8')>MEMORY_LIMITS.prompt_bytes)facts.pop();
+ return facts;
+}
+// The bounded, prompt-eligible view of one resident's memory. It carries active, operator-approved
+// facts only: a proposal is not memory, and it is never rendered into a model prompt. The counts and
+// the `available` map are what let the runtime decline a proposal nothing can support.
+export function promptMemory(platform,agent){
+ if(!agent)return null;
+ return {agent_id:agent.id,limits:{facts_active:MEMORY_LIMITS.facts_active,prompt_facts:MEMORY_LIMITS.prompt_facts,proposals_open:MEMORY_LIMITS.proposals_open,value:MEMORY_LIMITS.value,subject:MEMORY_LIMITS.subject},
+  policy:MEMORY_POLICY,facts:activeMemory(platform,agent.id),
+  active:platform.get("SELECT COUNT(*) AS n FROM resident_memory WHERE agent_id=? AND state='active'",agent.id).n,
+  proposals_pending:platform.get("SELECT COUNT(*) AS n FROM resident_memory WHERE agent_id=? AND state='proposed'",agent.id).n,
+  available:memoryAvailable(platform,agent.id)};
+}
+// The whole-record check, used by validateDatabase and by recovery's startup pass. A memory row must
+// still name a source that exists, keep its immutable provenance, sit inside every stated bound and
+// carry the proof of its own provenance.
+export function verifyMemoryRecords(db){
+ const kinds=new Set(Object.keys(MEMORY_KINDS));
+ const totals=new Map(),kindTotals=new Map(),pending=new Map();
+ for(const row of db.prepare('SELECT * FROM resident_memory ORDER BY created_at,id').all()){
+  if(typeof row.id!=='string'||!row.id||!kinds.has(row.kind)||!MEMORY_ORIGINS.includes(row.origin)||!MEMORY_STATES.includes(row.state))return false;
+  if(!memoryPairValid(row.kind,row.attribute,row.source_kind))return false;
+  if(row.source_kind==='human'&&row.origin!=='operator')return false;
+  if(!memoryIso(row.created_at)||!memoryIso(row.updated_at)||Date.parse(row.updated_at)<Date.parse(row.created_at))return false;
+  if(row.source_kind!=='human'&&!memoryIso(row.source_at))return false;
+  if(Array.from(row.subject).length>MEMORY_LIMITS.subject||Array.from(row.value).length>MEMORY_LIMITS.value||Array.from(row.source_label).length>MEMORY_LIMITS.label)return false;
+  if(!row.value.trim()||/[\r\n]/.test(row.value))return false;
+  for(const rule of MEMORY_FORBIDDEN)if(rule.pattern.test(row.value)||rule.pattern.test(row.subject)||rule.pattern.test(row.source_label))return false;
+  if(row.proof_hash!==memoryProof(row))return false;
+  if(row.state==='proposed'?(row.decided_by!==null||row.decided_at!==null):(row.decided_by!==row.account_id||!memoryIso(row.decided_at)))return false;
+  if(row.superseded_by!==null&&row.state!=='superseded')return false;
+  if(row.superseded_by!==null&&!db.prepare('SELECT id FROM resident_memory WHERE id=? AND agent_id=? AND supersedes=?').get(row.superseded_by,row.agent_id,row.id))return false;
+  if(row.supersedes!==null&&!db.prepare('SELECT id FROM resident_memory WHERE id=? AND agent_id=? AND superseded_by=? AND state=?').get(row.supersedes,row.agent_id,row.id,'superseded'))return false;
+  const owner=db.prepare("SELECT a.operator_id FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.id=? AND a.operator_id=? AND a.kind='agent' AND a.status!='deleted'").get(row.agent_id,row.account_id);
+  if(!owner)return false;
+  if(row.source_kind==='human'){
+   if(row.source_id!==row.account_id||!db.prepare("SELECT id FROM accounts WHERE id=? AND status!='deleted'").get(row.source_id))return false;
+  } else if(row.source_kind==='receipt'){
+   const receipt=db.prepare('SELECT * FROM calling_receipts WHERE id=? AND agent_id=?').get(row.source_id,row.agent_id);
+   if(!receipt||receipt.source_at!==row.source_at||receipt.proof_hash!==proof(receipt))return false;
+   if((receipt.objective_id.startsWith('quest:')?'quest_step':'calling_objective')!==row.attribute)return false;
+  } else if(row.source_kind==='run'){
+   const run=db.prepare("SELECT id,failed_actions FROM resident_runs WHERE id=? AND agent_id=? AND status!='running' AND failed_actions>0").get(row.source_id,row.agent_id);
+   if(!run||row.attribute!=='refusal')return false;
+  } else if(row.source_kind==='review'){
+   const review=db.prepare("SELECT rv.id FROM reviews rv JOIN submissions s ON s.id=rv.submission_id JOIN claims c ON c.id=s.claim_id WHERE rv.id=? AND c.agent_id=? AND rv.decision IN ('changes_requested','rejected')").get(row.source_id,row.agent_id);
+   if(!review||row.attribute!=='review_feedback')return false;
+  } else return false;
+  if(row.state==='active'){
+   const active=(totals.get(row.agent_id)||0)+1;if(active>MEMORY_LIMITS.facts_active)return false;totals.set(row.agent_id,active);
+   const key=row.agent_id+':'+row.kind,used=(kindTotals.get(key)||0)+1;if(used>MEMORY_LIMITS.per_kind_active)return false;kindTotals.set(key,used);
+  }
+  if(row.state==='proposed'){const open=(pending.get(row.agent_id)||0)+1;if(open>MEMORY_LIMITS.proposals_open)return false;pending.set(row.agent_id,open);}
+ }
+ return true;
+}
+export const MEMORY_SCHEMA=`
+ CREATE TABLE IF NOT EXISTS resident_memory(id TEXT PRIMARY KEY,agent_id TEXT NOT NULL REFERENCES agents(id),account_id TEXT NOT NULL REFERENCES accounts(id),kind TEXT NOT NULL CHECK(kind IN (${Object.keys(MEMORY_KINDS).map(kind=>`'${kind}'`).join(',')})),attribute TEXT NOT NULL,subject TEXT NOT NULL DEFAULT '' CHECK(length(subject)<=${MEMORY_LIMITS.subject}),value TEXT NOT NULL CHECK(length(value) BETWEEN 1 AND ${MEMORY_LIMITS.value}),source_kind TEXT NOT NULL CHECK(source_kind IN (${MEMORY_SOURCES.map(source=>`'${source}'`).join(',')})),source_id TEXT NOT NULL,source_at TEXT NOT NULL,source_label TEXT NOT NULL DEFAULT '' CHECK(length(source_label)<=${MEMORY_LIMITS.label}),origin TEXT NOT NULL CHECK(origin IN ('resident','operator')),state TEXT NOT NULL CHECK(state IN (${MEMORY_STATES.map(state=>`'${state}'`).join(',')})),decided_by TEXT REFERENCES accounts(id),decided_at TEXT,supersedes TEXT REFERENCES resident_memory(id) ON DELETE SET NULL,superseded_by TEXT REFERENCES resident_memory(id) ON DELETE SET NULL,proof_hash TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+ CREATE INDEX IF NOT EXISTS resident_memory_agent ON resident_memory(agent_id,state,created_at);
+ CREATE INDEX IF NOT EXISTS resident_memory_account ON resident_memory(account_id,kind,state);
+ CREATE INDEX IF NOT EXISTS resident_memory_source ON resident_memory(agent_id,source_kind,source_id);
+ CREATE TRIGGER IF NOT EXISTS resident_memory_identity_immutable BEFORE UPDATE OF agent_id,account_id,kind,attribute,subject,value,source_kind,source_id,source_at,source_label,origin,created_at ON resident_memory BEGIN SELECT RAISE(ABORT,'Resident memory provenance cannot be changed'); END;
+ CREATE TRIGGER IF NOT EXISTS resident_memory_validate_insert BEFORE INSERT ON resident_memory BEGIN
+  SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.id=NEW.agent_id AND a.operator_id=NEW.account_id AND a.status!='deleted') THEN RAISE(ABORT,'Resident memory needs an owned resident') END;
+  SELECT CASE WHEN NEW.origin='resident' AND (NEW.state!='proposed' OR NEW.source_kind='human') THEN RAISE(ABORT,'A resident proposal must await an operator decision') END;
+  SELECT CASE WHEN NEW.state='proposed' AND (NEW.decided_by IS NOT NULL OR NEW.decided_at IS NOT NULL) THEN RAISE(ABORT,'A proposed memory fact has no decision yet') END;
+  SELECT CASE WHEN NEW.state!='proposed' AND (NEW.decided_by!=NEW.account_id OR NEW.decided_at IS NULL) THEN RAISE(ABORT,'Only the owning operator can decide memory') END;
+ END;`;
 export const VOCATION_SCHEMA=`
  CREATE TABLE IF NOT EXISTS resident_callings(agent_id TEXT PRIMARY KEY REFERENCES agents(id),calling_id TEXT NOT NULL CHECK(calling_id IN (${ids})),selected_at INTEGER NOT NULL CHECK(selected_at>=0),last_changed_day TEXT NOT NULL DEFAULT '');
  CREATE TABLE IF NOT EXISTS calling_receipts(id TEXT PRIMARY KEY,agent_id TEXT NOT NULL REFERENCES agents(id),account_id TEXT NOT NULL REFERENCES accounts(id),calling_id TEXT NOT NULL CHECK(calling_id IN (${ids})),objective_id TEXT NOT NULL,source_kind TEXT NOT NULL,source_id TEXT NOT NULL,source_at TEXT NOT NULL,selected_at INTEGER NOT NULL,earned_day TEXT NOT NULL,points INTEGER NOT NULL CHECK(points=5),created_at TEXT NOT NULL,proof_hash TEXT NOT NULL,UNIQUE(agent_id,earned_day,objective_id),UNIQUE(agent_id,source_kind,source_id));
@@ -71,6 +291,13 @@ const day=platform=>new Date(platform.clock()).toISOString().slice(0,10);
 function owned(platform,actor,input){
  if(!actor?.account||!['session','runtime'].includes(actor.kind))fail(401,'Sign in or use an owned agent runtime.');
  const agent=platform.ownedAgent(actor,input?.agent_id||actor.agent?.id);if(agent.status==='deleted')fail(404,'Resident not found.');return agent;
+}
+// Memory belongs to an AI resident, not to a human avatar. The human-avatar identity is resolved by
+// the same ownership check and then refused with the same 404 an outsider sees.
+function resident(platform,actor,input){
+ const agent=owned(platform,actor,input);
+ if(agent.kind!=='agent')fail(404,'Resident not found.');
+ return agent;
 }
 function initialize(platform,agent){platform.run("INSERT OR IGNORE INTO resident_callings VALUES(?,'explorer',?,'')",agent.id,platform.clock());return platform.get('SELECT * FROM resident_callings WHERE agent_id=?',agent.id);}
 function rank(points){const thresholds=[0,20,50,100,200],titles=['Newcomer','Apprentice','Practitioner','Companion','Worldmaker'];let index=0;while(index<4&&points>=thresholds[index+1])index++;return{level:index+1,title:titles[index],experience:points,next_level_at:thresholds[index+1]??null};}
@@ -133,7 +360,7 @@ export const vocationMethods={
  callings(actor,input={}){
   const agent=owned(this,actor,input),selection=initialize(this,agent);reconcile(this,agent,selection);const definition=CALLINGS.find(c=>c.id===selection.calling_id),records=receipts(this,agent.id),totals=summary(this,agent.id),{earned,points,used}=totals,today=day(this);
   const objectives=definition.objectives.map(o=>{const receipt=totals.today.find(r=>r.objective_id===`${definition.id}.${o.id}`);return{...o,id:`${definition.id}.${o.id}`,progress:receipt?.available?1:0,complete:Boolean(receipt?.available),withheld:Boolean(receipt&&!receipt.available)};});
-  return{agent_id:agent.id,calling:{id:definition.id,name:definition.name,guild_name:definition.guild_name,purpose:definition.purpose},rank:rank(points),experience:{earned,available:points,held:earned-points,cosmetic:true},today:{day:today,earned:used,remaining:Math.max(0,10-used),limit:10,objectives},current_objective:objectives.find(o=>!o.complete)||null,targets:targets(this,agent),receipts:records.slice(0,100),has_more:totals.count>100,catalog:CALLINGS,policy:CALLING_POLICY,selected_at:selection.selected_at,can_change:actor.kind==='session'&&agent.status==='active'&&this.get("SELECT value FROM settings WHERE key='paused'").value!=='true'&&selection.last_changed_day!==today,server_time:this.clock()};
+  return{agent_id:agent.id,calling:{id:definition.id,name:definition.name,guild_name:definition.guild_name,purpose:definition.purpose},rank:rank(points),experience:{earned,available:points,held:earned-points,cosmetic:true},today:{day:today,earned:used,remaining:Math.max(0,10-used),limit:10,objectives},current_objective:objectives.find(o=>!o.complete)||null,targets:targets(this,agent),receipts:records.slice(0,100),has_more:totals.count>100,catalog:CALLINGS,policy:CALLING_POLICY,memory:promptMemory(this,agent),selected_at:selection.selected_at,can_change:actor.kind==='session'&&agent.status==='active'&&this.get("SELECT value FROM settings WHERE key='paused'").value!=='true'&&selection.last_changed_day!==today,server_time:this.clock()};
  },
  callingSelect(actor,input){
   if(actor?.kind!=='session')fail(403,'Only the signed-in human operator can choose a calling.');
@@ -162,6 +389,108 @@ export const vocationMethods={
   const counts=this.all(`SELECT COALESCE(v.calling_id,'explorer') AS calling_id,COUNT(*) AS n ${from} GROUP BY COALESCE(v.calling_id,'explorer')`),total=this.get(`SELECT COUNT(*) AS n ${from}${condition}`,...args).n;
   const members=this.all(`SELECT a.id,a.name,a.kind,a.world_id ${from}${condition} ORDER BY a.name,a.id LIMIT ? OFFSET ?`,...args,limit,offset),profiles=this.publicCallings(members.map(m=>m.id));
   return{catalog:CALLINGS,groups:CALLINGS.map(c=>({calling_id:c.id,name:c.name,guild_name:c.guild_name,purpose:c.purpose,charter:c.charter,member_count:counts.find(n=>n.calling_id===c.id)?.n||0})),calling_id:selected,members:members.map(m=>({...m,calling:{id:profiles[m.id].id,name:profiles[m.id].name,rank:profiles[m.id].rank}})),total,offset,limit,has_more:offset+limit<total,policy:CALLING_POLICY};
+ },
+ // ---- Resident memory (schema 21) ---------------------------------------------------------------
+ // `owned()` is the whole visibility rule: an operator session reaches only its own residents and a
+ // runtime credential reaches only the exact character it runs. A sibling character, another
+ // operator's session or any other runtime credential gets 404, so memory cannot leak sideways.
+ memory(actor,input={}){
+  if(!input||Object.keys(input).some(key=>!['agent_id'].includes(key)))fail(400,'Inspect one resident at a time.');
+  const agent=resident(this,actor,input);
+  const rows=this.all('SELECT * FROM resident_memory WHERE agent_id=? ORDER BY created_at DESC,id DESC LIMIT ?',agent.id,MEMORY_LIMITS.history_page);
+  const byState=state=>rows.filter(row=>row.state===state).map(memoryView);
+  return{agent_id:agent.id,name:agent.name,limits:{...MEMORY_LIMITS},policy:MEMORY_POLICY,catalog:MEMORY_KINDS,
+   facts:byState('active'),proposals:byState('proposed'),history:[...byState('refused'),...byState('superseded')],
+   counts:{active:rows.filter(row=>row.state==='active').length,proposed:rows.filter(row=>row.state==='proposed').length,refused:rows.filter(row=>row.state==='refused').length,superseded:rows.filter(row=>row.state==='superseded').length,stored:rows.length},
+   available:memoryAvailable(this,agent.id),generated_at:new Date(this.clock()).toISOString()};
+ },
+ // A resident credential may only propose, never decide. The proposal carries no source: the server
+ // attaches the newest verified, unrecorded fact of the matching class, so a model cannot name an
+ // accomplishment the world did not confirm, and cannot quote public chat as a memory write.
+ memoryPropose(actor,input){
+  if(actor?.kind!=='runtime'||actor.agent?.kind!=='agent')fail(403,'Only a resident runtime credential can propose a memory fact.');
+  if(!input||Object.keys(input).some(key=>!['agent_id','kind','attribute','subject','value'].includes(key)))fail(400,'A memory proposal names only a kind, an attribute, a short subject and one value line.');
+  const agent=resident(this,actor,input);
+  if(agent.status!=='active')fail(403,'Resume this resident before proposing a memory fact.');
+  const kind=String(input.kind||''),attribute=String(input.attribute||''),source_kind=residentSourceKind(kind,attribute);
+  if(!source_kind)fail(403,'A resident proposes only a verified activity or a lesson from its own record.');
+  memoryShape(kind,attribute,source_kind,'resident');
+  const value=memoryWords(input.value,'Memory value',MEMORY_LIMITS.value),subject=memoryWords(input.subject,'Memory subject',MEMORY_LIMITS.subject,true);
+  const source=memoryResolve(this,agent,kind,attribute,source_kind,null,'resident');
+  memoryRoom(this,agent,'proposed',kind);
+  const fact=memoryInsert(this,agent,{kind,attribute,subject,value,...source,origin:'resident',state:'proposed',decided_by:null,decided_at:null});
+  this.audit(actor.account.id,'memory.proposed',fact.id);
+  return{proposal:memoryView(fact),policy:MEMORY_POLICY};
+ },
+ // The operator's own controls. Recording states a fact directly from the operator's own input or from
+ // a verified source they name; approving and refusing decide a proposal; correcting writes a
+ // replacement fact and supersedes the old one; deleting removes a fact entirely.
+ memoryManage(actor,input){
+  if(actor?.kind!=='session')fail(403,'Only the signed-in human operator can manage resident memory.');
+  const action=String(input?.action||'');
+  if(!['record','approve','refuse','correct','delete'].includes(action))fail(400,'Choose record, approve, refuse, correct or delete.');
+  const agent=resident(this,actor,input);
+  if(action==='delete')return this.memoryDelete(actor,agent,input);
+  if(action==='approve'||action==='refuse')return this.memoryDecide(actor,agent,input,action==='approve'?'active':'refused');
+  if(action==='correct')return this.memoryCorrect(actor,agent,input);
+  return this.memoryRecord(actor,agent,input);
+ },
+ memoryRecord(actor,agent,input){
+  if(Object.keys(input).some(key=>!['action','agent_id','kind','attribute','subject','value','source_kind','source_id'].includes(key)))fail(400,'A recorded memory fact names only its kind, attribute, subject, value and source.');
+  const kind=String(input.kind||''),attribute=String(input.attribute||''),declared=input.source_kind?String(input.source_kind):'human';
+  if(!MEMORY_SOURCES.includes(declared))fail(400,'Choose a listed memory source.');
+  memoryShape(kind,attribute,declared,'operator');
+  const value=memoryWords(input.value,'Memory value',MEMORY_LIMITS.value),subject=memoryWords(input.subject,'Memory subject',MEMORY_LIMITS.subject,true);
+  const source=memoryResolve(this,agent,kind,attribute,declared,input.source_id||null,'operator');
+  memoryRoom(this,agent,'active',kind);
+  const decided_at=new Date(this.clock()).toISOString();
+  const fact=memoryInsert(this,agent,{kind,attribute,subject,value,...source,origin:'operator',state:'active',decided_by:actor.account.id,decided_at});
+  this.audit(actor.account.id,'memory.recorded',fact.id);
+  return{fact:memoryView(fact)};
+ },
+ memoryDecide(actor,agent,input,state){
+  const fact=this.get('SELECT * FROM resident_memory WHERE id=? AND agent_id=?',String(input.fact_id||''),agent.id);
+  if(!fact)fail(404,'Memory fact not found.');
+  if(fact.state!=='proposed')fail(409,'This memory fact already has an operator decision.');
+  if(state==='active')memoryRoom(this,agent,'active',fact.kind);
+  const decided_at=new Date(this.clock()).toISOString();
+  this.run('UPDATE resident_memory SET state=?,decided_by=?,decided_at=?,updated_at=? WHERE id=?',state,actor.account.id,decided_at,decided_at,fact.id);
+  this.audit(actor.account.id,state==='active'?'memory.approved':'memory.refused',fact.id);
+  return{fact:memoryView(this.get('SELECT * FROM resident_memory WHERE id=?',fact.id))};
+ },
+ memoryCorrect(actor,agent,input){
+  const fact=this.get('SELECT * FROM resident_memory WHERE id=? AND agent_id=?',String(input.fact_id||''),agent.id);
+  if(!fact)fail(404,'Memory fact not found.');
+  if(fact.state==='superseded')fail(409,'This memory fact was already corrected.');
+  if(fact.state==='proposed')fail(409,'Approve or refuse this proposal before correcting it.');
+  const value=memoryWords(input.value,'Memory value',MEMORY_LIMITS.value),subject=input.subject===undefined?fact.subject:memoryWords(input.subject,'Memory subject',MEMORY_LIMITS.subject,true);
+  if(fact.state!=='active')memoryRoom(this,agent,'active',fact.kind);
+  const decided_at=new Date(this.clock()).toISOString();
+  // The correction is a new operator-decided fact that keeps the original source, so a corrected
+  // receipt-backed fact still names the receipt that proves it.
+  const replacement=memoryInsert(this,agent,{kind:fact.kind,attribute:fact.attribute,subject,value,source_kind:fact.source_kind,source_id:fact.source_id,source_at:fact.source_at,source_label:fact.source_label,origin:'operator',state:'active',decided_by:actor.account.id,decided_at,supersedes:fact.id});
+  this.run('UPDATE resident_memory SET state=?,superseded_by=?,updated_at=? WHERE id=?','superseded',replacement.id,decided_at,fact.id);
+  this.audit(actor.account.id,'memory.corrected',fact.id);
+  return{superseded:memoryView(this.get('SELECT * FROM resident_memory WHERE id=?',fact.id)),fact:memoryView(replacement)};
+ },
+ memoryDelete(actor,agent,input){
+  const fact=this.get('SELECT * FROM resident_memory WHERE id=? AND agent_id=?',String(input.fact_id||''),agent.id);
+  if(!fact)fail(404,'Memory fact not found.');
+  // Deleting a corrected fact removes the correction and the version it replaced, so no orphaned
+  // "superseded" row survives. Deleting a version that a correction replaced keeps the correction,
+  // whose dangling `supersedes` reference is cleared by the foreign key.
+  const chain=fact.supersedes?[fact.id,fact.supersedes]:[fact.id];
+  this.run(`DELETE FROM resident_memory WHERE id IN (${chain.map(()=>'?').join(',')})`,...chain);
+  this.audit(actor.account.id,'memory.deleted',fact.id);
+  return{deleted:true,id:fact.id,removed:chain.length};
+ },
+ memoryExport(actor){
+  if(actor?.kind!=='session')fail(403,'Only the operator can export resident memory.');
+  return{policy:MEMORY_POLICY,limits:{...MEMORY_LIMITS},facts:this.all('SELECT * FROM resident_memory WHERE account_id=? ORDER BY created_at DESC,id DESC LIMIT 5000',actor.account.id).map(row=>({...memoryView(row),proof_hash:row.proof_hash}))};
+ },
+ deleteMemory(actor){
+  if(actor?.kind!=='session')fail(403,'Only the operator can delete resident memory.');
+  this.run('DELETE FROM resident_memory WHERE account_id=?',actor.account.id);
  },
  vocationExport(actor){if(actor?.kind!=='session')fail(403,'Only the operator can export calling records.');for(const agent of this.all("SELECT id FROM agents WHERE operator_id=? AND status!='deleted'",actor.account.id))this.callings(actor,{agent_id:agent.id});return{selections:this.all('SELECT v.* FROM resident_callings v JOIN agents a ON a.id=v.agent_id WHERE a.operator_id=?',actor.account.id),receipts:this.all('SELECT * FROM calling_receipts WHERE account_id=? ORDER BY created_at DESC LIMIT 5000',actor.account.id)};},
  deleteVocations(actor){if(actor?.kind!=='session')fail(403,'Only the operator can delete calling records.');this.run('DELETE FROM calling_receipts WHERE account_id=?',actor.account.id);this.run('DELETE FROM resident_callings WHERE agent_id IN (SELECT id FROM agents WHERE operator_id=?)',actor.account.id);},

@@ -6,7 +6,7 @@ import { dirname, resolve, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { COMMUNITY_TABLES } from './community.js';
 import { JOURNEY_TABLES } from './journey.js';
-import { verifyCallingReceipts } from './vocations.js';
+import { verifyCallingReceipts, verifyMemoryRecords } from './vocations.js';
 import { verifyQuestReceipts, verifyQuestStructure } from './quests.js';
 import { verifyGuildRecords } from './guilds.js';
 import { REGIONS } from './civic.js';
@@ -59,7 +59,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -210,6 +210,15 @@ export function validateDatabase(path) {
       }
       if (db.prepare("SELECT e.id FROM resource_offer_events e LEFT JOIN resource_offers o ON o.id=e.offer_id WHERE o.id IS NULL OR e.action NOT IN ('proposed','accepted','declined','cancelled','expired') OR e.created_at<0 OR length(e.detail)>200").get()) throw new Error('Database resource offer history is invalid.');
     }
+    if (version >= 21) {
+      const memoryColumns = ['id','agent_id','account_id','kind','attribute','subject','value','source_kind','source_id','source_at','source_label','origin','state','decided_by','decided_at','supersedes','superseded_by','proof_hash','created_at','updated_at'];
+      if (!tables.has('resident_memory') || memoryColumns.some((column) => !db.prepare('PRAGMA table_info(resident_memory)').all().some((field) => field.name === column))) throw new Error('Database resident memory schema is incomplete.');
+      if (['resident_memory_identity_immutable','resident_memory_validate_insert'].some((name) => !db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name))) throw new Error('Database resident memory protections are incomplete.');
+      // Every stored fact must still name a source that exists, keep its immutable provenance, sit
+      // inside every stated bound and carry the proof of its own provenance. A tampered or truncated
+      // memory row therefore cannot pass a backup, a restore or a startup.
+      if (!verifyMemoryRecords(db)) throw new Error('Database resident memory validation failed.');
+    }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';
     for (const entry of db.prepare('SELECT * FROM audit ORDER BY seq').all()) {
@@ -327,8 +336,11 @@ export function restoreDatabase(source, destination, { lockPath = resolve(dirnam
 // The recovery point and the interruption limits an operator must know. These are the same values
 // the runbook (docs/OPERATIONS.md) states and the failure drills (scripts/ops-rehearsal.mjs) prove.
 export const RECOVERY_LIMITS = Object.freeze({
-  schema_version: 20,
-  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+  schema_version: 21,
+  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+  // A private resident memory record lives entirely in the database, so a process restart keeps it.
+  // It holds no credential and it is read within the runtime's existing observation byte budget.
+  resident_memory: Object.freeze({ bounded_facts_per_resident: 24, bounded_value_characters: 160, prompt_facts: 10, prompt_bytes: 4096, approval: 'operator-approval', source: 'a verified calling receipt, a finished run that recorded a refusal, an independent review decision, or the operator’s own explicit input' }),
   // A backup is one consistent VACUUM INTO copy taken inside a single read transaction.
   backup_point: 'The last committed transaction before the copy began; no half-applied transaction is ever inside a backup.',
   backup_loss: 'Everything committed after the copy began. A restore therefore rolls the world back to the backup moment.',

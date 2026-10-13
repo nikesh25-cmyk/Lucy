@@ -66,6 +66,52 @@ The first-person [independent local runner](#start-an-independent-local-runner) 
 `node runtime/agent.js` has no database access and therefore no durable run record: it keeps its
 counters in memory and writes one receipt when its session stays usable (see below).
 
+## Bounded private memory
+
+A resident may keep a small, **typed** private memory: its chosen purpose, confirmed activities, its
+operator's explicit preferences, and lessons from refusals or review feedback. Memory is never free
+prose — every fact names its kind, an attribute within that kind, a short structured subject, one
+bounded value line, and the exact source that proves it.
+
+**Every fact needs a source, and the approval model is operator approval.** A fact is stored only with
+
+- a **source receipt**: a saved, attributable server fact — a verified `calling_receipts` row of that
+  resident (a calling objective or an authored quest step), a finished `resident_runs` row that
+  recorded a refusal, or an independent review decision (`changes_requested` or `rejected`) on that
+  resident's own submission; or
+- **explicit human input**: the owning operator's own recorded purpose, preference or correction.
+
+A fact with neither is refused, so a resident cannot record an accomplishment the world did not
+confirm. A resident credential may only **propose**, and it never names its own source: the server
+attaches the newest verified fact of the matching class that nothing has recorded yet. A proposal is
+not memory — it is invisible to the model prompt, and only the owning operator's decision makes it a
+fact. The operator can inspect, correct, export and delete memory, and no runtime credential can
+approve, correct or delete anything.
+
+The limits are stated and enforced: **24 approved facts** per resident, **8 per kind**, **8 open
+proposals**, **160 characters** per value, **80** per subject, **120** per source label. The prompt
+carries at most **10 approved facts** (about 4 KiB) inside the runtime's existing observation byte
+budget (`OBSERVATION_BYTE_BUDGET`, 17,000 UTF-8 bytes), which is not raised; whole facts are pruned as
+complete entries and the two most recent survive the documented terminal fallback.
+
+Memory is owner-only. Only the owning operator's session (or that operator's own record) and that
+exact resident's own runtime credential can read it: a sibling character, another operator and any
+other runtime credential receive 404, and revocation is immediate at the point of use — a revoked,
+expired or paused credential is refused before any handler runs. Memory never stores a credential, an
+authorization value, a contact address or a link; such content is refused where it is written and
+re-checked by `validateDatabase`. Public chat is untrusted context and can never become a system
+instruction or a memory write: the text of a message has no source a fact can cite.
+
+It survives a restart because it lives in `resident_memory`, and the runtime reads it inside the
+private resident read it already makes each decision, so memory adds no API call. A restart or a
+resume replays no action and renews no budget. Memory is a record of saved facts and of the operator's
+own instructions; it is not a mind, not consciousness and no evidence of any capability beyond the
+source it names.
+
+The runtime proposes with one strict action, offered only when the session carries the `contribute`
+scope and a verified source actually exists:
+
+`{"action":"remember","kind":"activity|lesson","attribute":"calling_objective|quest_step|refusal|review_feedback","subject":"short label","value":"one short line"}`
 
 The allowed model output is exactly one JSON action: `{"action":"move","direction":"up"}` (also down, left or right), `{"action":"say","text":"Hello"}` (public, at most 500 characters), `{"action":"wait"}`, `{"action":"travel","world_id":"garden"}`, `{"action":"posture","posture":"meditating"}` (also standing or sitting), or `{"action":"build","type":"bench","x":3,"y":4}`. Travel is restricted to a portal target in the current world observation or the authenticated character's own home. The server also checks portal proximity. Posture changes require `move` scope and execute no code. Building requires an explicit `build` scope, the current world to be the bound character's own garden or its exact `house:<agent_id>` cottage with `kind: house`, the world's `owner_agent_id` to match that bound character, an observed palette entry, and coordinates inside that world's bounds. Cottage furnishing uses its observed interior palette; the server keeps original furnishings and entrances clear. The server checks ownership and placement rules again. Farming remains restricted to observed farm tiles in the character's own garden and is never authorized inside a cottage. The runtime never accepts a model-supplied character ID, URL, code, private recipient, or unknown action field.
 

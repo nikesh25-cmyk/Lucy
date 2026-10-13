@@ -22,9 +22,9 @@ test('an exchange survives a backup and restore, and a schema 19 database migrat
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const backup = join(directory, 'backup.sqlite');
   backupDatabase(f.platform.db, backup);
-  assert.equal(validateDatabase(backup).schema_version, 20);
+  assert.equal(validateDatabase(backup).schema_version, 21);
   const restored = restoreDatabase(backup, join(directory, 'restored.sqlite'));
-  assert.equal(restored.schema_version, 20);
+  assert.equal(restored.schema_version, 21);
   const reopened = new Platform(join(directory, 'restored.sqlite'), f.clock);
   t.after(() => reopened.close());
   assert.equal(reopened.get('SELECT status FROM resource_offers WHERE id=?', offer.id).status, 'accepted');
@@ -39,7 +39,7 @@ test('an exchange survives a backup and restore, and a schema 19 database migrat
   assert.equal(validateDatabase(f.database).schema_version, 19, 'a pre-change database is still a valid schema 19 database');
   const migrated = new Platform(f.database, f.clock);
   t.after(() => migrated.close());
-  assert.equal(validateDatabase(f.database).schema_version, 20);
+  assert.equal(validateDatabase(f.database).schema_version, 21);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM resource_offers').n, 0);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM resource_offer_events').n, 0);
   assert.equal(migrated.verifyAudit(), true);
@@ -47,7 +47,7 @@ test('an exchange survives a backup and restore, and a schema 19 database migrat
   const actor = migrated.authenticate(f.credentials.alice.token);
   const next = migrated.transaction(() => migrated.offerCreate(actor, { agent_id: alice.id, recipient_agent_id: bob.id, items: { herbs: 1 } }, 'p-next'));
   assert.equal(next.status, 'proposed');
-  assert.equal(validateDatabase(f.database).schema_version, 20);
+  assert.equal(validateDatabase(f.database).schema_version, 21);
 });
 
 test('recovery re-checks a stored offer: a duplicated settlement fails validation', async (t) => {
@@ -55,7 +55,7 @@ test('recovery re-checks a stored offer: a duplicated settlement fails validatio
   stock(f, alice, 'herbs', 2);
   const offer = f.tx('offerCreate', f.actor('alice'), { agent_id: alice.id, recipient_agent_id: bob.id, items: { herbs: 2 } }, 'p-tamper');
   f.tx('offerAccept', f.actor('bob'), { offer_id: offer.id }, 'a-tamper');
-  assert.equal(validateDatabase(f.database).schema_version, 20);
+  assert.equal(validateDatabase(f.database).schema_version, 21);
   // Two settlement events would mean the escrow settled twice; recovery refuses it.
   f.platform.run('INSERT INTO resource_offer_events VALUES(?,?,?,?,?,?)', 'dup', offer.id, f.actor('bob').account.id, 'accepted', '', 0);
   assert.throws(() => validateDatabase(f.database), /history is invalid/);
@@ -75,9 +75,9 @@ test('an offer database that lost a protection fails validation', async (t) => {
   const f = await fixture(t), alice = f.agent('alice'), bob = f.agent('bob');
   stock(f, alice, 'herbs', 1);
   f.tx('offerCreate', f.actor('alice'), { agent_id: alice.id, recipient_agent_id: bob.id, items: { herbs: 1 } }, 'p-guard');
-  assert.equal(validateDatabase(f.database).schema_version, 20);
+  assert.equal(validateDatabase(f.database).schema_version, 21);
   f.platform.db.exec('DROP TRIGGER resource_offers_lifecycle');
   assert.throws(() => validateDatabase(f.database), /protections are incomplete/);
   f.platform.db.exec(RESOURCE_OFFER_SCHEMA);
-  assert.equal(validateDatabase(f.database).schema_version, 20);
+  assert.equal(validateDatabase(f.database).schema_version, 21);
 });
