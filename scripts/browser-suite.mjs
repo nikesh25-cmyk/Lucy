@@ -2700,7 +2700,7 @@ define('hero-introduction-film',async()=>{
     const info=await waitForCondition(async()=>video.evaluate(v=>v.currentTime>0.2?{duration:v.duration,width:v.videoWidth,height:v.videoHeight}:null),'Chrome to decode and advance the film');
     expect(info.duration>90&&info.width===1280&&info.height===720,'the complete 720p introduction must be playable',{actual:describe(info)});
     await visitor.page.getByRole('button',{name:'Close introduction',exact:true}).click();
-    expect(await video.evaluate(v=>v.paused),'closing the film must pause audio and video');
+    await waitForCondition(async()=>video.evaluate(v=>v.paused),'closing the film to pause audio and video');
     await mkdir(join(RESULTS,'hero-introduction-film'),{recursive:true});
     await visitor.page.screenshot({path:join(RESULTS,'hero-introduction-film','desktop.png')});
     await visitor.page.setViewportSize({width:390,height:844});

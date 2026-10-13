@@ -445,7 +445,7 @@ function paintHero(){
  else{draw(canvas,start,{world,camera:{x:0,y:0},objects:[],portals:[],visitors:[],self:null});canvas.dataset.graphics='pixel';}
 }
 function openAuth(mode='login'){state.authMode=mode;renderAuth();$('#auth-notice').hidden=true;$('#auth-dialog').showModal();$('#auth-area section:not([hidden]) input')?.focus();}
-$('#close-introduction').addEventListener('click',()=>$('#introduction-dialog').close());
+$('#close-introduction').addEventListener('click',()=>{$('#introduction-film').pause();$('#introduction-dialog').close();});
 $('#introduction-dialog').addEventListener('close',()=>$('#introduction-film').pause());
 $('#close-auth').addEventListener('click',()=>$('#auth-dialog').close());
 function finishAuth(){if($('#auth-dialog').open)$('#auth-dialog').close();$('#auth-notice').hidden=true;}
