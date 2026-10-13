@@ -607,6 +607,10 @@ function applyGameShell(){
   document.body.classList.toggle('game-menu-open',world&&state.gameMenuOpen);
   document.body.classList.toggle('game-tools-open',world&&state.gameDrawer==='tools');
   document.body.classList.toggle('game-chat-open',world&&state.gameDrawer==='chat');
+  // The chat panel owns the pointer while it is open. The touch layer is switched off through its own
+  // module (which hides it and stops its gestures) rather than by a rule in a main stylesheet, so the
+  // touch class never leaks into the desktop shell.
+  touchControls?.setEnabled(!(world&&state.gameDrawer==='chat'));
   // The guide remains mounted and server-derived while a conversation has the keyboard. Its
   // compact marker stays visible, and the conversation header offers a route back to its controls.
   const guideHost=$('#game-guide-host');if(guideHost)guideHost.inert=Boolean(world&&state.gameDrawer==='chat');

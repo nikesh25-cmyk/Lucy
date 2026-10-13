@@ -140,10 +140,10 @@ test('a crop ripens on the server clock and one harvest is credited once through
   assert.equal(harvested.data.interaction.kind, 'crop_patch');
   assert.equal(harvested.data.interaction.action, 'garden');
   assert.equal(harvested.data.result.crop.harvested_at, f.clock());
-  assert.deepEqual(harvested.data.result.inventory, [{ kind: 'herbs', quantity: 2 }]);
+  assert.deepEqual(harvested.data.result.inventory, [{ kind: 'herbs', quantity: 4 }]);
   const stored = storedCrop(f, alice);
   assert.equal(stored.harvested_at, f.clock());
-  assert.deepEqual(inventory(f, alice), { herbs: 2 });
+  assert.deepEqual(inventory(f, alice), { herbs: 4 });
   assert.equal(f.platform.get('SELECT harvests FROM journey_profiles WHERE agent_id=?', alice.id).harvests, 1);
   assert.equal(harvestCount(f), 1);
 
@@ -157,7 +157,7 @@ test('a crop ripens on the server clock and one harvest is credited once through
   assert.equal(again.status, 409);
   assert.equal(again.data.error, 'There is no growing crop on this tile.');
   assert.match(again.data.next_step, /Plant herbs, fiber or wood on this tile first/);
-  assert.deepEqual(inventory(f, alice), { herbs: 2 }, 'the second click must gather nothing again');
+  assert.deepEqual(inventory(f, alice), { herbs: 4 }, 'the second click must gather nothing again');
   assert.equal(f.platform.get('SELECT harvests FROM journey_profiles WHERE agent_id=?', alice.id).harvests, 1);
   assert.equal(harvestCount(f), 1);
 
@@ -192,7 +192,7 @@ test('a harvested tile carries a new planting with its own growth time, and gath
   assert.equal((await tend(f, alice)).status, 200);
   f.advance(HERB_GROWTH - TEND_SAVING);
   assert.equal((await harvest(f, alice)).status, 200);
-  assert.deepEqual(inventory(f, alice), { herbs: 2 });
+  assert.deepEqual(inventory(f, alice), { herbs: 4 });
 
   // Cycle two: the same tile takes a new planting, timed from its own planting and nothing else.
   const replanted = await plant(f, alice, 'wood');
@@ -209,7 +209,7 @@ test('a harvested tile carries a new planting with its own growth time, and gath
   f.advance(WOOD_GROWTH - HERB_GROWTH);
   const harvested = await harvestByHand(f, alice, 'cycle-2-harvest');
   assert.equal(harvested.status, 200);
-  assert.deepEqual(harvested.data.result.inventory, [{ kind: 'herbs', quantity: 2 }, { kind: 'wood', quantity: 2 }]);
+  assert.deepEqual(harvested.data.result.inventory, [{ kind: 'herbs', quantity: 4 }, { kind: 'wood', quantity: 2 }]);
   assert.equal(f.platform.get('SELECT harvests FROM journey_profiles WHERE agent_id=?', alice.id).harvests, 2);
   assert.equal(harvestCount(f), 2);
 

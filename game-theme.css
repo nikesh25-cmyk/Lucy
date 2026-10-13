@@ -205,7 +205,6 @@ body.game-world #game-conversation-host #world-chat-card form>button{min-height:
   body.game-world.game-chat-open .game-guide-next{height:35px;padding:5px 9px}
   body.game-world.game-chat-open .world-bottom,
   body.game-world.game-chat-open .game-hud-bottom,
-  body.game-world.game-chat-open .nm-touch{display:none}
   body.game-world #game-conversation-host{top:110px;max-height:min(340px,calc(100dvh - 250px))}
   body.game-world #game-conversation-host #world-chat-card .field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   body.game-world #game-conversation-host #world-chat-card .message-list{max-height:66px}
