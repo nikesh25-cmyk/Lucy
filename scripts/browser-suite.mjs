@@ -2582,6 +2582,7 @@ define('shared-build-and-restart', async () => {
     offers: rows('SELECT * FROM resource_offers WHERE id=?', offerId),
     offerEvents: rows('SELECT * FROM resource_offer_events WHERE offer_id=? ORDER BY id', offerId),
     inventory: rows('SELECT * FROM journey_inventory WHERE agent_id IN (?,?) ORDER BY agent_id,kind', host.id, guest.id),
+    memory: rows('SELECT * FROM resident_memory WHERE agent_id=? ORDER BY id',ai.id),
   });
   await step('two human operators and one AI resident meet on the host’s stewarded plot', async () => {
     await apiExpect(fixtures().owner, 'POST', '/land/assign', { plot_id: plot, purpose: 'A shared learning path', description: 'A disposable test of building and item exchange across two operators.' });
@@ -2630,6 +2631,22 @@ define('shared-build-and-restart', async () => {
     expect(blocks.find(b=>b.creator_agent_id===guest.id)?.grant_id===grantId,'the guest block must name its live grant');
     await waitForClient(admin.page,p=>{const b=window.__nemoworld?.world?.()?.blocks||[];return b.filter(x=>x.plot_id===p).length===3?true:null;},plot,'the other client to receive all three saved blocks');
     return 'three stored blocks: human host, human guest with grant, AI scoped runtime; same shared view';
+  });
+  await step('the operator records a private AI purpose while human calling controls remain usable',async()=>{
+    await openTab(owner.page,'Callings & guilds');
+    expect(await owner.page.locator('.calling-story').count()===1,'a human player must be able to open its calling without an AI-memory 404');
+    await openWorldAs(owner.page,ai.id);await openTab(owner.page,'Callings & guilds');
+    const form=owner.page.locator('#view form').filter({has:owner.page.getByRole('button',{name:'Record a memory fact from your own input',exact:true})});
+    await form.locator('[name="kind"]').selectOption('purpose');await form.locator('[name="attribute"]').selectOption('intent');
+    await form.locator('[name="value"]').fill('Build a welcoming shared learning path.');
+    await form.getByRole('button',{name:'Record a memory fact from your own input',exact:true}).click();
+    await waitForCondition(async()=>row("SELECT id FROM resident_memory WHERE agent_id=? AND state='active'",ai.id),'the approved purpose to be saved');
+    const stranger=await apiRequest(`/memory?agent_id=${ai.id}`,{token:fixtures().admin.token});
+    expect(stranger.status===404,'the other operator must not read the AI resident’s private memory');
+    const own=await apiRequest('/memory',{token:runtime.token});
+    expect(own.status===200&&own.body.facts.some(f=>f.value==='Build a welcoming shared learning path.'),'the resident credential observes its own approved purpose');
+    await openWorldAs(owner.page,host.id);
+    return 'human calling screen usable; one operator-approved AI purpose; other operator refused 404';
   });
   await step('the host offers one herb and the named recipient accepts once through the UI',async()=>{
     await openTab(owner.page,'Garden & workshop');

@@ -1811,7 +1811,7 @@ async function loadGuilds(){
 // the world did not save.
 async function loadMemory(){
  const id=state.selected;
- if(!state.account||!selected()){state.memory=null;return;}
+ if(!state.account||selected()?.kind!=='agent'){state.memory=null;return;}
  const result=await api(`/memory?agent_id=${encodeURIComponent(id)}`);
  if(id===state.selected)state.memory=result;
 }

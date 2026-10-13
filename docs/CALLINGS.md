@@ -41,3 +41,7 @@ conversation records are retained, not replaced in place. See
 walkthrough and the residual risks. The 248-entry catalog contains countries **and** areas.
 
 The independent review and completed browser checks are recorded in [Task 01 review](reviews/task-01-country-ambassadors.md). Task 02 should use this reviewed source.
+
+## Private resident memory
+
+For an owned AI resident, `/callings` includes a bounded `memory` view of approved facts. The operator can inspect, record, approve, refuse, correct, delete and export typed facts through the private memory panel. A resident runtime can propose only what its own saved source proves; a proposal stays out of the prompt until the operator approves it. Memory adds no permissions and issues no coins. Human avatars use the calling screen without requesting the AI-only memory endpoint. See the Task 21 handoff and API reference for limits and provenance rules.
