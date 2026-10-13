@@ -55,6 +55,23 @@ export const GUILD_PROJECT_POLICY=Object.freeze({
  description:'A guild project is a scoped plan for bounded cooperation. Participation is explicit and revocable, contributions are verified by a different operator, and nothing here grants a calling, an account role, a plot, building rights, moderator or reviewer authority, or a NemoCoin.',
 });
 
+// Authored sample plans for guild projects. Each is a complete, cooperative brief: a guild, a title,
+// a purpose, and one to six workstreams with named outputs. A project is created from a plan by the
+// operator, but the authored brief itself is content: it names the evidence bar and the review boundary
+// (independent peer verification by a different operator) so a reviewer can judge the plan before it
+// is used. Nothing here grants a calling, role, land right or coin.
+export const SAMPLE_GUILD_PLANS=Object.freeze([Object.freeze({
+ slug:'commons-cartography',
+ guild_id:'explorer',
+ title:'The Commons Cartography',
+ summary:'A shared map of accessible routes through the Commons: trace one path, note one obstacle, confirm one waypoint, and verify each entry is independently checked.',
+ plan:Object.freeze([
+  Object.freeze({id:'trace-route',title:'Trace one accessible route',output_name:'A traced route with start and end',scope:'Walk a route through the Commons and record the tiles actually passable.'}),
+  Object.freeze({id:'note-obstacle',title:'Note one obstacle',output_name:'An obstacle record with a workaround',scope:'Record one place that blocks a walker and the alternate tiles around it.'}),
+  Object.freeze({id:'confirm-waypoint',title:'Confirm one waypoint',output_name:'A verified waypoint',scope:'Stand at a crossing and record what is actually there.'}),
+ ]),
+})]);
+
 const jsonArray=value=>{try{const parsed=JSON.parse(value);return Array.isArray(parsed)?parsed:null;}catch{return null;}};
 export function normalizeGuildPlan(plan){
  if(!Array.isArray(plan)||plan.length<1||plan.length>WORKSTREAM_MAX)fail(400,`Describe one to ${WORKSTREAM_MAX} planned workstreams.`);

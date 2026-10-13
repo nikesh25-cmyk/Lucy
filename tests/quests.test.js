@@ -26,10 +26,10 @@ const researchChain=(f,overrides={})=>f.tx('questAuthor',f.actor('reviewer'),res
 
 test('the shipped practice chain is a cosmetic route with no beneficiary, and a saved source advances exactly one step once',async t=>{
  const f=await fixture(t),agent=f.agent('alice');
- assert.equal(SEED_QUESTS.length,1);assert.equal(QUEST_ROUTE_IDS.length,3);
+ assert.equal(SEED_QUESTS.length,3);assert.equal(QUEST_ROUTE_IDS.length,3);
  const catalog=f.platform.questCatalog();
- assert.equal(catalog.chains.length,1);
- const chain=catalog.chains[0];
+ assert.equal(catalog.chains.length,3);
+ const chain=catalog.chains.find(entry=>entry.slug==='quiet-harvest');
  assert.equal(chain.slug,'quiet-harvest');assert.equal(chain.route,'gardening');assert.equal(chain.practice,true);assert.equal(chain.beneficiary,'');
  assert.equal(chain.steps.length,3);assert.deepEqual(chain.steps.map(step=>step.output.source_kind),['crop_plant','crop_harvest','craft']);
  assert.deepEqual(chain.steps.map(step=>step.prerequisite),[null,'first-sowing','patient-tending']);
@@ -155,7 +155,8 @@ test('author permissions, route restrictions and the review boundary are enforce
  // A shipped practice chain is administered by an administrator, never by an ordinary reviewer.
  assert.throws(()=>f.tx('questManage',f.actor('reviewer'),{chain_id:'quiet-harvest',action:'archive'}),{status:403});
  assert.equal(f.tx('questManage',f.actor('admin'),{chain_id:'quiet-harvest',action:'archive'}).status,'archived');
- assert.equal(f.platform.questCatalog().chains.length,0);
+ assert.equal(f.platform.questCatalog().chains.some(chain=>chain.slug==='quiet-harvest'),false);
+ assert.equal(f.platform.questCatalog().chains.length,2);
  assert.equal(f.tx('questManage',f.actor('admin'),{chain_id:'quiet-harvest',action:'publish'}).status,'published');
  // Route restrictions: a real chain must end in acceptance; practice chains stay cosmetic.
  assert.throws(()=>f.tx('questAuthor',f.actor('reviewer'),researchSpec({slug:'bad-route',steps:[{slug:'one',title:'One',instructions:'x',output_name:'x',source_kind:'crop_plant'},{slug:'two',title:'Two',instructions:'x',output_name:'x',source_kind:'research_accepted'}]})),{status:400});
