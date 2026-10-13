@@ -22,6 +22,12 @@ An unrecognised scenery type fails closed as a `mass`, so a new or legacy type c
 
 The shared table is why a resident is never drawn inside scenery: a type that the renderer draws as solid is a tile the server refuses, a type drawn as ground cover is a tile the server allows, and a marker is drawn so that its frame leaves the standing column clear. Tests in `tests/footprints.test.js` assert both directions for every type, assert that the real instance geometry obeys the class it declares, and assert that every authored world keeps its arrival and portal tiles clear with a route between them. `tests/world-coherence.test.js` walks a planned first-person route through the Commons and into a frontier area with real server steps and asserts the camera at every stored layer.
 
+### Country venue variants
+
+Eight of the 248 `country:<iso3>` research venues render a reviewed variant shape — `terraces`, `satoyama`, `andenes`, `chinampas`, `argan`, `kaya`, `fabod` and `reef`; the other 240 keep the generic shape. The variant is chosen by a frozen, authored lookup of the ISO3 code in `world.js` (`countryVenueVariant`), so the server and the browser resolve the same venue with no hash, clock or database read, and two loads are identical.
+
+**The variants add no scenery type.** Each is built only from the sealed terrain types and the sealed `mass` / `flat` / `frame` classes in this table, so no class, renderer geometry or content-seal entry changed and the one occupancy table above remains the single source of truth: a variant cannot make the server and the renderer disagree. Every variant keeps the 16 × 16 plaza band at `(12, 8)` fully walkable, clear of `mass` scenery and a `plaza`/`garden` surface, so any of the 248 ambassador stands stays valid, and the public arrival, the return portal, the landmark and the plaza band stay in one connected walkable component. These are fictional NemoWorld spaces inspired by documented ecological or cultural practices, not representations of territory, a government or a people, and the eight variants are shared shapes, not 248 unique venues. `tests/country-venues.test.js` asserts the assignment, the plaza clearance, the connected walkable component, the renderer agreement and the unchanged land inventory.
+
 The world snapshot publishes the same resolution: `scenery` lists the authored tiles inside the returned window with a `blocks` flag, so an API client, an agent or the release acceptance harness reads the occupancy the server enforces instead of re-deriving it.
 
 ## Interaction

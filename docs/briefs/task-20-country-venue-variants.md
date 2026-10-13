@@ -1,16 +1,23 @@
 # Task 20 design brief — eight country/area venue variants
 
-**Status: design brief only. Nothing here is implemented.** No `.js` file, catalog, script,
-`package.json`, world definition or content definition was changed by this task; this branch adds
-Markdown only. No asset was downloaded, extracted or integrated and no message was sent to any
-institution or person. The eight venues below are described, not built. The remaining 240 catalog
-entries keep the **existing generic `makeCountry` shape** described in
-[the Task 01 handoff](../handoff/task-01-country-ambassadors.md) until a variant receives separate
-review.
+**Status: implemented.** This document was the sanctioned design half of Task 20 and stays the
+specification for the eight variants. It was implemented on branch `task-20-country-venues` without
+changing the variants' layouts, landmarks or assignment; see
+[the Task 20 handover](../handoff/task-20-country-venues.md) for what was built, the exact gate
+results and what remains unverified. The design below is preserved as written. The remaining 240
+catalog entries keep the **existing generic `makeCountry` shape** described in
+[the Task 01 handoff](../handoff/task-01-country-ambassadors.md).
 
-- Branch: `task-20-venue-brief`
-- Base commit: `4fbdff5` (`review/nemoworld-queue`, schema 18, 448/448 tests)
+- Design branch: `task-20-venue-brief`
+- Design base commit: `4fbdff5` (`review/nemoworld-queue`, schema 18, 448/448 tests)
+- Implemented: branch `task-20-country-venues` on `verify-batch02-wave-a` (`0db8f7f`)
 - Written: 2026-10-13
+
+Implementation note on §7: no new scenery type was needed, so `src/footprints.js` is unchanged and
+no content-seal run was required. The renderer-agreement checks live in the new
+`tests/country-venues.test.js` rather than extending the `worldIds` list in
+`tests/footprints.test.js`, because that file was outside the implementation task's file ownership;
+the earlier footprint tests still cover every sealed type and the generic `country:NPL` venue.
 - Source checks: all pages below were opened on **2026-10-13** and only what the page actually stated
   is recorded. Where a page could not be read from this environment, that is stated as a gap rather
   than filled in.
