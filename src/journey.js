@@ -11,7 +11,10 @@ const readText = (value, label, maximum, optional = false) => {
 // content layer. Only the keepsakes a resident starts with are eligible from the outset; the
 // gated ones carry an unlock threshold and are added by cosmeticOptions as they are earned.
 const crops = Object.freeze(content.crops());
-const tendSaving = 5 * 60_000;
+// Every number one crop obeys is the sealed definition's own rule, resolved once here: the growth
+// time, the yield the ground returns, the garden's growing cap and the five minutes a tend may save.
+// A harvest amount, a tending saving or a garden limit therefore cannot drift from content/**.
+const cropRules = Object.freeze(Object.fromEntries(content.rules('crop').map((item) => [item.id, item.rules])));
 const recipes = Object.freeze(content.recipes());
 const titles = Object.freeze(content.cosmetics('title'));
 const avatars = Object.freeze(content.cosmetics('avatar').filter((id) => content.entry(id, 'cosmetic').rules.unlock_at_shared_visits === undefined));
@@ -30,6 +33,44 @@ export const JOURNEY_SCHEMA = `
   CREATE TABLE IF NOT EXISTS journey_inventory(agent_id TEXT NOT NULL REFERENCES agents(id),kind TEXT NOT NULL,quantity INTEGER NOT NULL CHECK(quantity>=0),PRIMARY KEY(agent_id,kind));
   CREATE TABLE IF NOT EXISTS journey_crops(agent_id TEXT NOT NULL REFERENCES agents(id),x INTEGER NOT NULL,y INTEGER NOT NULL,kind TEXT NOT NULL CHECK(kind IN (${Object.keys(crops).map((kind) => `'${kind}'`).join(',')})),planted_at INTEGER NOT NULL,tended_at INTEGER,harvested_at INTEGER,PRIMARY KEY(agent_id,x,y));
 `;
+
+// ---------------------------------------------------------------------------------------------
+// The crop lifecycle.
+//
+// One planting is three saved integers on one tile: when it went in, when it was tended (or null),
+// and when it was gathered (or null). Everything else a resident or a garden panel can see — the
+// named stage, how carefully the crop was kept, the amount the ground will return, whether the bed
+// still holds seed — is **derived** from those three numbers, the sealed definition's own rules and
+// the injected server clock. There is no stage counter, no quality roll, no random yield and no
+// seed item to hold, so a re-read, a restart or a replayed request cannot change any of it, and the
+// quantity credited to a shelf is always explained by the record that produced it.
+// ---------------------------------------------------------------------------------------------
+
+/** The four named bands a crop passes through. Only the last one is the moment a harvest is allowed. */
+export const CROP_STAGES = Object.freeze(['sprout', 'leafing', 'ripening', 'ready']);
+/** How carefully a crop was kept, read from the saved tend time alone. */
+export const CROP_CARE = Object.freeze(['plain', 'careful', 'bountiful', 'late']);
+/** What each kind of care is worth at harvest. A late tend still saves time but gathers no more. */
+export const CROP_CARE_BONUS = Object.freeze({ plain: 0, careful: 1, bountiful: 2, late: 0 });
+export const CROP_LIMITS = Object.freeze({
+  growing: Math.min(...Object.values(cropRules).map((rules) => rules.max_growing)),
+  stages: CROP_STAGES.length - 1,
+  yield_bonus: Math.max(...Object.values(CROP_CARE_BONUS)),
+  saved_seed_window_ms: 60 * 60_000,
+});
+/** The crop vocabulary and bounds a garden panel may render, so a client never invents its own. */
+export const CROP_POLICY = Object.freeze({
+  version: 1,
+  stages: CROP_STAGES,
+  care: CROP_CARE,
+  care_bonus: CROP_CARE_BONUS,
+  growing: CROP_LIMITS.growing,
+  saved_seed_window_ms: CROP_LIMITS.saved_seed_window_ms,
+  stored: 'the planting, the tend and the harvest are the only stored facts; stage, care, yield and saved seed are derived from them, the sealed crop rules and the server clock',
+  yield: 'the sealed yield of the kind, raised by the care the crop itself earned, and never above that base plus the largest care bonus',
+  saved_seed: 'a bed whose crop was tended and then gathered keeps seed for one hour of server time; a second sowing of the same kind inside that hour begins already cared for',
+  peaceful: 'no crop dies, rots, wilts or goes hungry, a missed seed window costs nothing but the difference, and no part of this loop mints a coin, costs money or moves land',
+});
 
 // ---------------------------------------------------------------------------------------------
 // Resident-to-resident resource offers.
@@ -202,15 +243,88 @@ function initialize(platform, agentId) {
 function inventory(platform, agentId) {
   return platform.all('SELECT kind,quantity FROM journey_inventory WHERE agent_id=? AND quantity>0 ORDER BY kind', agentId).map((item) => ({ ...item }));
 }
-function cropSaving(crop) {
-  if (crop.tended_at == null) return 0;
-  // Tending saves five minutes, capped by the growth still ahead of the crop so a
+/** The growth one crop still has ahead of it, after the saving its own saved tend earned. */
+function cropGrowth(crop) {
+  const rules = cropRules[crop.kind];
+  if (crop.tended_at == null) return rules.grow_ms;
+  // Tending saves its declared five minutes, capped by the growth still ahead of the crop so a
   // tend is never a no-op and never shortens a crop by more than it had left.
-  return Math.min(tendSaving, Math.max(0, crops[crop.kind] - (crop.tended_at - crop.planted_at)));
+  const saving = Math.min(rules.tend_saving_ms, Math.max(0, rules.grow_ms - (crop.tended_at - crop.planted_at)));
+  return Math.max(1, rules.grow_ms - saving);
+}
+/** The length of one named stage of this crop, so the bands always divide the growth it really has. */
+const cropBand = (crop) => Math.ceil(cropGrowth(crop) / CROP_LIMITS.stages);
+/**
+ * The band this crop stands in, from the saved planting, the saved tend and the server clock alone.
+ * Tending shortens the growth the bands divide, so a tend moves the crop on as well as shortening it.
+ */
+function cropStage(crop, time) {
+  const elapsed = Math.max(0, time - crop.planted_at), growth = cropGrowth(crop);
+  return elapsed >= growth ? CROP_STAGES.length - 1 : Math.min(CROP_LIMITS.stages - 1, Math.floor(elapsed / cropBand(crop)));
+}
+/**
+ * How carefully a crop was kept, from the saved tend time alone: a tend inside the crop's own first
+ * third is bountiful, one inside its first two thirds is careful, and a tend that arrived later — or
+ * after the crop was already ready — gathers no more than an untended crop.
+ */
+export function cropCare(crop) {
+  if (crop.tended_at == null) return 'plain';
+  const grow = cropRules[crop.kind].grow_ms, waited = crop.tended_at - crop.planted_at;
+  if (waited <= grow / 3) return 'bountiful';
+  if (waited <= (grow * 2) / 3) return 'careful';
+  return 'late';
+}
+/**
+ * What one harvest of this crop returns, derived from the saved planting and the tend recorded on it.
+ * The sealed `yield.quantity` is the floor an untended crop returns and the care the crop earned is
+ * the only thing that raises it, so the amount is bounded by the sealed base and the largest care
+ * bonus, and reading the same saved row again always returns the same amount.
+ */
+export function cropYield(crop) {
+  const base = cropRules[crop.kind].yield.quantity, care = cropCare(crop), bonus = CROP_CARE_BONUS[care];
+  const maximum = base + CROP_LIMITS.yield_bonus;
+  return { base, care, bonus, min: base, max: maximum, quantity: Math.min(maximum, base + bonus) };
+}
+// The saved seed a gathered bed still holds. Only a crop that was tended and then gathered leaves
+// seed, and only for the declared window; both are read from the row this planting will replace.
+export function savedSeedFrom(previous, kind, time) {
+  if (!previous || previous.kind !== kind || previous.tended_at == null || previous.harvested_at == null) return false;
+  return time - previous.harvested_at <= CROP_LIMITS.saved_seed_window_ms;
 }
 function cropView(crop, time) {
-  const readyAt = crop.planted_at + crops[crop.kind] - cropSaving(crop);
-  return { ...crop, ready_at: readyAt, ready: crop.harvested_at == null && time >= readyAt };
+  const growth = cropGrowth(crop), readyAt = crop.planted_at + growth, band = cropBand(crop), index = cropStage(crop, time);
+  const last = CROP_STAGES.length - 1, boundary = (stage) => Math.min(readyAt, crop.planted_at + stage * band);
+  return {
+    ...crop, ready_at: readyAt, ready: crop.harvested_at == null && time >= readyAt,
+    stage: CROP_STAGES[index], stage_index: index, stage_at: index === 0 ? crop.planted_at : boundary(index),
+    next_stage_at: index === last ? null : boundary(index + 1),
+    care: cropCare(crop), yield: cropYield(crop),
+    seed: crop.harvested_at == null ? null : {
+      kind: crop.kind, until: crop.harvested_at + CROP_LIMITS.saved_seed_window_ms,
+      spent: time > crop.harvested_at + CROP_LIMITS.saved_seed_window_ms,
+    },
+  };
+}
+/**
+ * The bounded, derived shape of one resident's garden: what is standing, how far on, how carefully it
+ * was kept, when the next change lands and which beds still hold saved seed. Every number here is
+ * counted from the rows the passport already read, so a garden panel cannot disagree with the crops
+ * beside it and no extra query is made.
+ */
+function gardenView(cropViews) {
+  const growing = cropViews.filter((crop) => crop.harvested_at == null), waiting = growing.filter((crop) => !crop.ready);
+  const count = (items, key, value) => items.filter((crop) => crop[key] === value).length;
+  const seed = cropViews.filter((crop) => crop.seed && !crop.seed.spent);
+  return {
+    beds: cropViews.length, growing: growing.length, ready: growing.filter((crop) => crop.ready).length,
+    by_stage: Object.fromEntries(CROP_STAGES.map((stage) => [stage, count(growing, 'stage', stage)])),
+    by_care: Object.fromEntries(CROP_CARE.map((care) => [care, count(growing, 'care', care)])),
+    next_stage_at: waiting.length ? Math.min(...waiting.map((crop) => crop.next_stage_at)) : null,
+    next_ready_at: waiting.length ? Math.min(...waiting.map((crop) => crop.ready_at)) : null,
+    saved_seed_beds: seed.length,
+    saved_seed: seed.map((crop) => ({ x: crop.x, y: crop.y, kind: crop.seed.kind, until: crop.seed.until })),
+    limits: CROP_POLICY,
+  };
 }
 /**
  * The stored crop on one garden tile, as the passport and the direct world interaction both read it.
@@ -291,6 +405,9 @@ export const journeyMethods = {
   journey(actor, input = {}) {
     const agent = owned(this, actor, input);
     const state = this.get('SELECT * FROM journey_profiles WHERE agent_id=?', agent.id) || { bio: '', purpose: '', title: 'Resident', avatar: 'sprout', harvests: 0, crafts: 0 };
+    // One clock read for the whole passport, so the crops, the garden summary and the published server
+    // time all describe the same moment.
+    const now = this.clock();
     // One bounded page of the resident's own visit history, oldest first so the arrival at the
     // Commons always survives truncation. The badge, skill and totals below read counts from SQL,
     // never from this page, so the bound cannot change what a resident has earned.
@@ -306,14 +423,17 @@ export const journeyMethods = {
       { id: 'contribute', name: 'Have a real contribution independently accepted', progress: earnedMerit.accepted, target: 1 },
     ].map((quest) => ({ ...quest, complete: quest.progress >= quest.target }));
     const badges = [sharedVisits >= 3 && { id: 'explorer', name: 'Explorer' }, state.harvests > 0 && { id: 'gardener', name: 'Gardener' }, state.crafts > 0 && { id: 'maker', name: 'Maker' }, earnedMerit.adopted > 0 && { id: 'useful_work', name: 'Work put to use' }].filter(Boolean);
+    // The garden is derived once and read twice: the crops the workshop panel lists and the summary
+    // the tending cadence is told from are the same rows at the same clock, so they cannot disagree.
+    const cropViews = this.all('SELECT x,y,kind,planted_at,tended_at,harvested_at FROM journey_crops WHERE agent_id=? ORDER BY y,x', agent.id).map((crop) => cropView(crop, now));
     return {
       agent_id: agent.id, profile: { bio: state.bio, purpose: state.purpose, title: state.title, avatar: state.avatar },
       profile_options: cosmeticOptions(this, agent.id, state), discoveries, discovery_count: discoveryCount, discoveries_truncated: discoveryCount > discoveries.length,
       skills: [{ id: 'exploration', name: 'Exploration', level: Math.min(3, Math.floor(sharedVisits / 2)) }, { id: 'gardening', name: 'Gardening', level: Math.min(3, Math.floor(state.harvests / 3)) }, { id: 'crafting', name: 'Crafting', level: Math.min(3, Math.floor(state.crafts / 3)) }],
       badges, journal: this.all('SELECT id,text,created_at FROM journey_journal WHERE agent_id=? ORDER BY created_at DESC,rowid DESC LIMIT 200', agent.id),
-      inventory: inventory(this, agent.id), crops: this.all('SELECT x,y,kind,planted_at,tended_at,harvested_at FROM journey_crops WHERE agent_id=? ORDER BY y,x', agent.id).map((crop) => cropView(crop, this.clock())),
+      inventory: inventory(this, agent.id), crops: cropViews, garden: gardenView(cropViews),
       recipes: recipes.map((recipe) => ({ ...recipe, ingredients: { ...recipe.ingredients } })), quests,
-      callings:this.callings(actor,{agent_id:agent.id}), coins:this.coins(actor,{agent_id:agent.id}), merit: earnedMerit, goodwill: earnedGoodwill, unlocks: sharedVisits >= 3 ? ['explorer_banner'] : [], server_time: this.clock(),
+      callings:this.callings(actor,{agent_id:agent.id}), coins:this.coins(actor,{agent_id:agent.id}), merit: earnedMerit, goodwill: earnedGoodwill, unlocks: sharedVisits >= 3 ? ['explorer_banner'] : [], server_time: now,
     };
   },
   updateProfile(actor, input) {
@@ -339,34 +459,52 @@ export const journeyMethods = {
   },
   gardenAction(actor, input) {
     const agent = owned(this, actor, input, true);
+    // Every refusal below keeps its exact wording: the direct world interaction maps these messages to
+    // their own next usable step (src/spaces.js), so a reworded refusal would silently lose its hint.
     if (agent.world_id !== `home:${agent.id}`) fail(403, 'Tend crops inside your own garden.');
     if (!['plant', 'tend', 'harvest'].includes(input.action)) fail(400, 'Choose plant, tend, or harvest.');
     if (!Number.isInteger(input.x) || !Number.isInteger(input.y)) fail(400, 'Choose a farm tile.');
     if (!this.get("SELECT id FROM world_objects WHERE world_id=? AND x=? AND y=? AND type='farm'", agent.world_id, input.x, input.y)) fail(409, 'Place a farm tile before planting there.');
     const previous = this.get('SELECT * FROM journey_crops WHERE agent_id=? AND x=? AND y=?', agent.id, input.x, input.y);
     const time = this.clock();
+    let outcome = {};
     if (input.action === 'plant') {
       if (!Object.hasOwn(crops, input.kind)) fail(400, 'Choose herbs, fiber, or wood.');
       if (previous && previous.harvested_at == null) fail(409, 'This tile already has a growing crop.');
-      if (this.get('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=? AND harvested_at IS NULL', agent.id).n >= 20) fail(429, 'A garden holds twenty growing crops.');
+      // The cap the garden enforces is the sealed one (`CROP_LIMITS.growing`). The refusal below keeps
+      // its exact wording because the direct world interaction maps this sentence to its own next
+      // usable step (src/spaces.js), so the sealed cap and that sentence are pinned together by
+      // tests/resident-life-farm.test.js.
+      if (this.get('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=? AND harvested_at IS NULL', agent.id).n >= CROP_LIMITS.growing) fail(429, 'A garden holds twenty growing crops.');
       initialize(this, agent.id);
-      this.run('INSERT INTO journey_crops VALUES(?,?,?,?,?,NULL,NULL) ON CONFLICT(agent_id,x,y) DO UPDATE SET kind=excluded.kind,planted_at=excluded.planted_at,tended_at=NULL,harvested_at=NULL', agent.id, input.x, input.y, input.kind, time);
+      // A bed whose last crop was tended and then gathered inside the saved-seed window sows from that
+      // seed: the sowing is recorded as cared for from the moment it goes in, so it keeps the tend's
+      // saving and gathers with the care it was sown with. Both halves are read from the two saved
+      // times of the row this planting replaces, and a fresh bed or a spent window sows plainly.
+      const fromSavedSeed = savedSeedFrom(previous, input.kind, time);
+      this.run('INSERT INTO journey_crops VALUES(?,?,?,?,?,?,NULL) ON CONFLICT(agent_id,x,y) DO UPDATE SET kind=excluded.kind,planted_at=excluded.planted_at,tended_at=excluded.tended_at,harvested_at=NULL', agent.id, input.x, input.y, input.kind, time, fromSavedSeed ? time : null);
+      outcome = { from_saved_seed: fromSavedSeed };
     } else {
       if (!previous || previous.harvested_at != null) fail(409, 'There is no growing crop on this tile.');
       if (input.action === 'tend') {
         if (previous.tended_at != null) fail(409, 'This crop has already been tended.');
         this.run('UPDATE journey_crops SET tended_at=? WHERE agent_id=? AND x=? AND y=? AND tended_at IS NULL AND harvested_at IS NULL', time, agent.id, input.x, input.y);
       } else {
-        if (!cropView(previous, time).ready) fail(409, 'This crop is still growing.');
+        const harvested = cropView(previous, time);
+        if (!harvested.ready) fail(409, 'This crop is still growing.');
         const changed = this.run('UPDATE journey_crops SET harvested_at=? WHERE agent_id=? AND x=? AND y=? AND harvested_at IS NULL', time, agent.id, input.x, input.y);
         if (!changed.changes) fail(409, 'This crop was already harvested.');
-        this.run('INSERT INTO journey_inventory VALUES(?,?,2) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=quantity+2', agent.id, previous.kind);
+        // The amount is the crop's own derived yield, so the shelf always holds exactly what the saved
+        // planting and tend explain: the sealed base, raised by the care this crop earned.
+        const gathered = harvested.yield.quantity;
+        this.run('INSERT INTO journey_inventory VALUES(?,?,?) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=quantity+excluded.quantity', agent.id, previous.kind, gathered);
         this.run('UPDATE journey_profiles SET harvests=harvests+1 WHERE agent_id=?', agent.id);
+        outcome = { gathered: { kind: previous.kind, quantity: gathered, base: harvested.yield.base, care: harvested.yield.care } };
       }
     }
     this.audit(actor.account.id, `journey.${input.action}`, agent.id);
     const result = this.get('SELECT x,y,kind,planted_at,tended_at,harvested_at FROM journey_crops WHERE agent_id=? AND x=? AND y=?', agent.id, input.x, input.y);
-    return { crop: cropView(result, time), inventory: inventory(this, agent.id) };
+    return { crop: cropView(result, time), inventory: inventory(this, agent.id), ...outcome };
   },
   craftItem(actor, input) {
     const agent = owned(this, actor, input, true), recipe = recipes.find((item) => item.id === input.recipe_id);
