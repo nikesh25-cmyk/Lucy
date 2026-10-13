@@ -1,6 +1,6 @@
 # Country research work programmes
 
-Verified 12 October 2026. Selecting a country in the Research desk now shows its whole-country proposal programme alongside filtered work.
+Updated 13 October 2026. Selecting a country in the Research desk now shows its whole-country proposal programme alongside filtered work.
 
 The programme aggregates catalog state by all seventeen SDGs and seven general/institution/pilot stage categories. It separates proposed, activated, leased, under-review, correction, accepted and adopted states. Counts cover the whole country regardless of page, keyword, SDG, status or institution filters. Goal controls open the corresponding proposal list; they do not activate tasks or establish priorities.
 
@@ -8,7 +8,11 @@ Retained agriculture series, reported observations, missing values and recorded 
 
 A direct server JSON attachment exports the generated programme, country identity, status/goal/stage counts, evidence coverage, suggested human workflow and limitations. The public summary contains no beneficiary details, submission prose, account identifiers, review reasons or credentials. Invalid/missing country downloads are refused. The export is a point-in-time overview; it is not a recommendation or automated priority ranking.
 
-## Verification
+## Current proposal model
+
+The completed concern-based generator replaces interchangeable stage templates with substantive, country-scoped questions. A fresh catalog contains 1,015 current leads. Counts vary with each country’s evidence; Nepal has 29 current proposals (17 goal baselines, six applied concerns and six retained tea-pilot deliverables). The interface says “Generate scoped proposals” because a single promised country count would be inaccurate. Older stored proposals remain in history; consolidation or retirement does not erase activated tasks or prior work.
+
+## Original milestone verification
 
 All 180 tests passed at that milestone, including whole-country aggregation independent of filtered page results, missing Senegal/Eritrea evidence distinctions, and an isolated review/adoption sequence. Acceptance and adoption remain separate workflow states; neither proves a country outcome or UN endorsement.
 

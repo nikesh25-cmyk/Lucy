@@ -97,6 +97,7 @@ export function productionDatabaseRefusal(databasePath, projectRoot, workspace) 
 
 /** The scenarios the suite runs, in order, with the regression each one encodes. */
 export const SCENARIOS = Object.freeze([
+  { id: 'hero-introduction-film', title: 'The supplied introduction plays on the landing page and fits mobile', regression: null },
   { id: 'accounts-and-switching', title: 'Signup, login, logout and account switching', regression: null },
   { id: 'credential-exclusion', title: 'Credential exclusion from browser storage', regression: 'queue review correction 2' },
   { id: 'private-draft-isolation', title: 'Private draft isolation between operators', regression: 'queue review correction 2' },
@@ -118,6 +119,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'interaction-ambassador-desk', title: 'A country ambassador desk answers through the existing conversation action', regression: null },
   { id: 'interaction-state-refusals', title: 'Paused, revoked, wrong-owner and observer refusals keep the server authoritative', regression: null },
   { id: 'consolidated-proposal-history', title: 'Retired research templates remain readable but cannot become missions', regression: 'batch 02 integration correction' },
+  { id: 'shared-build-and-restart', title: 'Two humans and an AI runtime build together, exchange items and keep progress after restart', regression: 'shared integration' },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -598,7 +600,7 @@ async function main() {
 
     for (const id of wanted) {
       const definition = SCENARIOS.find((entry) => entry.id === id);
-      if (id !== 'accounts-and-switching' && !state.fixtures.ready) {
+      if (id !== 'accounts-and-switching' && id !== 'hero-introduction-film' && !state.fixtures.ready) {
         console.log('');
         console.log(`SKIP  ${id} — the fictional account fixtures need the first administrator, so run accounts-and-switching first`);
         state.skipped.push(id);
@@ -2562,6 +2564,137 @@ define('interaction-state-refusals', async () => {
 
 // The suite runs only when it is the entry point, so a unit test can import the pure helpers above
 // (and `npm test` keeps passing with no node_modules directory).
+// Integration acceptance: the host and guest are human avatars in separate browsers. The AI
+// resident uses a scoped runtime credential (a deterministic API action, not an LLM decision).
+// Starter herbs and initial positions are explicitly prepared fixtures; all subsequent building,
+// grants, exchange and progress cross the real server and are checked again after a process restart.
+define('shared-build-and-restart', async () => {
+  const owner = await actor('owner'), admin = await actor('admin');
+  const guest = fixtures().characters.player, ai = fixtures().characters.walker;
+  const world = 'frontier:0:0', plot = 'plot:0:0:5:5';
+  const host = await apiExpect(fixtures().owner, 'POST', '/agents', { kind: 'human', name: 'Shared host', capabilities: 'Build together in this acceptance fixture', limitations: 'No real-world output', color: '#397f79', symbol: '✦' });
+  let grantId, offerId, runtime;
+  const coinsBefore = count('SELECT COUNT(*) FROM coin_rewards');
+  const snapshot = () => JSON.stringify({
+    blocks: rows('SELECT * FROM frontier_blocks WHERE plot_id=? ORDER BY x,y,z', plot),
+    grants: rows('SELECT * FROM plot_grants WHERE plot_id=? ORDER BY id', plot),
+    grantEvents: rows('SELECT * FROM plot_grant_events WHERE grant_id=? ORDER BY id', grantId),
+    offers: rows('SELECT * FROM resource_offers WHERE id=?', offerId),
+    offerEvents: rows('SELECT * FROM resource_offer_events WHERE offer_id=? ORDER BY id', offerId),
+    inventory: rows('SELECT * FROM journey_inventory WHERE agent_id IN (?,?) ORDER BY agent_id,kind', host.id, guest.id),
+  });
+  await step('two human operators and one AI resident meet on the host’s stewarded plot', async () => {
+    await apiExpect(fixtures().owner, 'POST', '/land/assign', { plot_id: plot, purpose: 'A shared learning path', description: 'A disposable test of building and item exchange across two operators.' });
+    for (const [resident, x, y] of [[host,31,32],[guest,34,33],[ai,32,33]]) {
+      write('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE id=?', world,x,y,resident.id);
+    }
+    write('INSERT INTO journey_inventory(agent_id,kind,quantity) VALUES(?,?,?)',host.id,'herbs',3);
+    runtime = await apiExpect(fixtures().owner, 'POST', '/runtime/start', { agent_id:ai.id, minutes:10,max_calls:20,scopes:['read','build'] });
+    await openApp(owner.page,ACTORS.owner); await openWorldAs(owner.page,host.id);
+    await openApp(admin.page,ACTORS.admin); await openWorldAs(admin.page,guest.id);
+    for (const page of [owner.page,admin.page]) await waitForClient(page, w => {
+      const view=window.__nemoworld?.world?.();return view?.world?.id===w&&view.participants.some(p=>p.kind==='human')&&view.participants.some(p=>p.kind==='agent')?true:null;
+    },world,'both browsers to see the shared humans and AI');
+    return 'two human browser sessions and one AI resident in frontier:0:0; three fixture herbs';
+  });
+  await step('the host previews without writing, keeps the form, and confirms narrow guest access',async()=>{
+    const card=owner.page.locator('.grant-card'), form=card.locator('form');
+    await form.locator('[name="guest_agent_id"]').selectOption(guest.id);
+    await form.locator('[name="purpose"]').fill('Help lay our shared path');
+    await form.locator('input[name="block_types"][value="path"]').check();
+    const before=count('SELECT COUNT(*) FROM plot_grants');
+    await card.getByRole('button',{name:'Preview the exact collaboration access without granting it',exact:true}).click();
+    await card.locator('#grant-report').getByText('This preview wrote 0 rows.',{exact:true}).waitFor();
+    expect(count('SELECT COUNT(*) FROM plot_grants')===before,'a preview must create no grant');
+    expect(await form.locator('[name="purpose"]').inputValue()==='Help lay our shared path','preview must preserve the purpose');
+    expect(await form.locator('[name="guest_agent_id"]').inputValue()===guest.id,'preview must preserve the intended guest');
+    await form.getByRole('button',{name:'Grant building access',exact:true}).click();
+    const grant=await waitForCondition(async()=>row('SELECT id FROM plot_grants WHERE plot_id=? AND guest_agent_id=?',plot,guest.id),'the confirmed grant to be saved');grantId=grant.id;
+    await admin.page.reload({waitUntil:'domcontentloaded'});await settle(admin.page);await openWorldAs(admin.page,guest.id);
+    expect((await admin.page.locator('.grant-card').textContent()).includes('Help lay our shared path'),'the guest must see the held grant, even when it owns another plot');
+    return `saved grant ${grantId}; path blocks on layer 0 only`;
+  });
+  const place=async(page,x,y)=>{
+    await page.locator('.frontier-hotbar').getByRole('button',{name:/^\d+ path$/}).click();
+    const form=page.locator('#view form').filter({has:page.getByRole('button',{name:'Apply block at coordinates',exact:true})});
+    await form.locator('[name="x"]').fill(String(x));await form.locator('[name="y"]').fill(String(y));await form.locator('[name="z"]').fill('0');
+    await frontierClick(page,form.getByRole('button',{name:'Apply block at coordinates',exact:true}));
+    await waitForCondition(async()=>row('SELECT id FROM frontier_blocks WHERE world_id=? AND x=? AND y=? AND z=0',world,x,y),'the human’s block to be saved');
+  };
+  await step('both humans build through the UI and the scoped AI runtime adds an attributed block',async()=>{
+    await place(owner.page,31,31);await place(admin.page,32,32);
+    await apiExpect(runtime,'POST','/frontier/build',{world_id:world,x:33,y:32,z:0,type:'wood'});
+    const blocks=rows('SELECT x,y,type,creator_agent_id,grant_id FROM frontier_blocks WHERE plot_id=?',plot);
+    expect(blocks.length===3,'three blocks must be stored',{actual:describe(blocks)});
+    expect(new Set(blocks.map(b=>b.creator_agent_id)).size===3,'each human and AI build must have its own attribution');
+    expect(blocks.find(b=>b.creator_agent_id===guest.id)?.grant_id===grantId,'the guest block must name its live grant');
+    await waitForClient(admin.page,p=>{const b=window.__nemoworld?.world?.()?.blocks||[];return b.filter(x=>x.plot_id===p).length===3?true:null;},plot,'the other client to receive all three saved blocks');
+    return 'three stored blocks: human host, human guest with grant, AI scoped runtime; same shared view';
+  });
+  await step('the host offers one herb and the named recipient accepts once through the UI',async()=>{
+    await openTab(owner.page,'Garden & workshop');
+    const card=owner.page.locator('#view .card',{has:owner.page.getByRole('heading',{name:'Give what you grew',exact:true})});
+    const form=card.locator('form');await form.locator('[name="recipient_agent_id"]').selectOption(guest.id);await form.locator('[name="kind"]').selectOption('herbs');
+    await form.locator('[name="quantity"]').fill('1');await form.locator('[name="note"]').fill('Thank you for building together');
+    await form.getByRole('button',{name:'Offer items',exact:true}).click();
+    const offer=await waitForCondition(async()=>row('SELECT id,status FROM resource_offers WHERE offerer_agent_id=? AND recipient_agent_id=?',host.id,guest.id),'the escrowed offer');offerId=offer.id;
+    expect(scalar('SELECT quantity FROM journey_inventory WHERE agent_id=? AND kind=?',host.id,'herbs')===2,'the offer must escrow exactly one herb');
+    await openTab(admin.page,'Garden & workshop');
+    await admin.page.locator('#view').getByRole('button',{name:'Accept',exact:true}).click();
+    await waitForCondition(async()=>row('SELECT status FROM resource_offers WHERE id=?',offerId)?.status==='accepted','the browser acceptance to settle');
+    expect(scalar('SELECT quantity FROM journey_inventory WHERE agent_id=? AND kind=?',guest.id,'herbs')===1,'the named recipient receives exactly one item');
+    expect(count("SELECT COUNT(*) FROM resource_offer_events WHERE offer_id=? AND action='accepted'",offerId)===1,'one acceptance event only');
+    expect(count('SELECT COUNT(*) FROM coin_rewards')===coinsBefore,'shared building and item exchange issue no coin');
+    return 'offer accepted through the UI; two herbs on host shelf and one on recipient shelf';
+  });
+  await step('a full process restart preserves blocks, grants, item exchange and inventories',async()=>{
+    const before=snapshot();await stopServer();await startServer();
+    expect(snapshot()===before,'the exact shared progress must survive a server restart');
+    for(const [page,resident,account] of [[owner.page,host,ACTORS.owner],[admin.page,guest,ACTORS.admin]]) {
+      await openApp(page,account);await openWorldAs(page,resident.id);
+      await waitForClient(page,p=>{const v=window.__nemoworld?.world?.();return v?.world?.id==='frontier:0:0'&&v.blocks.filter(b=>b.plot_id===p).length===3?true:null;},plot,'the restarted clients to reload saved construction');
+    }
+    return 'both clients reconnected; all three blocks and settled inventory exchange survived byte-for-byte';
+  });
+  await step('revoking access refuses the guest’s existing session and preserves completed construction',async()=>{
+    await owner.page.locator('.grant-card').getByRole('button',{name:`Revoke the collaboration granted to ${guest.name}`,exact:true}).click();
+    await waitForCondition(async()=>row('SELECT status FROM plot_grants WHERE id=?',grantId)?.status==='revoked','revocation to persist');
+    const refused=await apiRequest('/frontier/build',{method:'POST',token:fixtures().admin.token,body:{agent_id:guest.id,world_id:world,x:32,y:31,z:0,type:'path'}});
+    expect(refused.status===403,'cached guest credentials must lose building access immediately',{actual:describe(refused.body)});
+    expect(count('SELECT COUNT(*) FROM frontier_blocks WHERE plot_id=?',plot)===3,'revocation must preserve the work already built');
+    return '403 for cached guest session after revocation; three attributed blocks remain';
+  });
+  return 'two humans and a scoped AI runtime built together, exchanged one item, and reloaded their saved progress after a real server restart';
+});
+
+define('hero-introduction-film',async()=>{
+  const visitor=await context('film-visitor');await visitor.page.goto(baseUrl(),{waitUntil:'domcontentloaded'});await settle(visitor.page);
+  await step('the landing film has an accessible poster and waits for playback intent',async()=>{
+    const video=visitor.page.locator('#hero-introduction');await video.waitFor({state:'visible'});
+    const info=await video.evaluate(v=>({autoplay:v.autoplay,paused:v.paused,controls:v.controls,preload:v.preload,poster:v.poster}));
+    expect(!info.autoplay&&info.paused&&info.controls&&info.preload==='none','the hero must not autoplay or download the film at page load',{actual:describe(info)});
+    expect(info.poster.endsWith('/assets/media/nemoworld-introduction.jpg'),'the hero must show the supplied film’s poster');
+    return 'user-started playback, native sound/seek/fullscreen controls, poster, no preload';
+  });
+  await step('Chrome decodes the supplied film and closing its introduction pauses playback',async()=>{
+    await visitor.page.getByRole('button',{name:'Watch introduction',exact:true}).click();
+    const video=visitor.page.locator('#introduction-film');
+    await video.evaluate(async v=>{v.muted=true;await v.play();});
+    const info=await waitForCondition(async()=>video.evaluate(v=>v.currentTime>0.2?{duration:v.duration,width:v.videoWidth,height:v.videoHeight}:null),'Chrome to decode and advance the film');
+    expect(info.duration>90&&info.width===1280&&info.height===720,'the complete 720p introduction must be playable',{actual:describe(info)});
+    await visitor.page.getByRole('button',{name:'Close introduction',exact:true}).click();
+    expect(await video.evaluate(v=>v.paused),'closing the film must pause audio and video');
+    await mkdir(join(RESULTS,'hero-introduction-film'),{recursive:true});
+    await visitor.page.screenshot({path:join(RESULTS,'hero-introduction-film','desktop.png')});
+    await visitor.page.setViewportSize({width:390,height:844});
+    expect(await visitor.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'the video hero must fit a phone without horizontal overflow');
+    await visitor.page.screenshot({path:join(RESULTS,'hero-introduction-film','mobile.png')});
+    return `Chrome played ${info.duration.toFixed(2)} seconds at ${info.width}×${info.height}; close pauses it; 390px mobile fits`;
+  });
+  return 'the supplied introduction plays in Chrome and fits mobile, with no autoplay';
+});
+
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   await main();
 }
+

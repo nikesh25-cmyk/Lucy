@@ -127,18 +127,11 @@ adds no world object and that the shipped `build` route still refuses the arriva
   settlement consistency and event ledger, plus the no-negative-stock rule.
   `tests/inventory-migration.test.js` proves a full exchange survives `backupDatabase` →
   `validateDatabase` → `restoreDatabase` → reopen, and that a schema 19 database migrates.
-- **Reverse (rollback).** Schema 20 is additive, so the previous code (schema 19) opens a migrated
-  database unchanged as long as `user_version` is reset: to return to schema 19, settle or cancel open
-  offers (or accept the escrow as already-debited), then
-  `DROP TRIGGER resource_offers_validate_insert; DROP TRIGGER resource_offers_lifecycle; DROP TRIGGER
-  resource_offer_events_no_update; DROP TRIGGER resource_offer_events_no_delete; DROP TABLE
-  resource_offer_events; DROP TABLE resource_offers; PRAGMA user_version=19;` on the stopped server.
-  A restore from a pre-upgrade backup is the simpler path and preserves the previous world exactly.
+- **Rollback.** Stop the server, preserve the current schema-20 database and restore a verified pre-upgrade backup together with its matching code. Keep the schema-20 copy so post-upgrade construction and exchanges can be recovered or reconciled. Do not drop the offer tables or reset `user_version`: that discards provenance and can strand escrow. Older code refuses the newer database until a matching backup is restored.
 
 ## Limitations and residual risks
 
-- **No UI browser scenario.** The workshop offers panel is added but no browser scenario was written —
-  Task 15 owns `scripts/browser-suite.mjs`.
+- **Original task coverage.** The task shipped without an exchange browser scenario. The subsequent shared-world integration adds real-browser offer/acceptance and restart preservation in `shared-build-and-restart`.
 - **Offers are settled lazily plus on a tick.** Items from an expired offer return on the next offer
   route call or within three seconds from the server tick; nothing is lost, but a process that never
   ticks and is never asked would leave the escrow held. The offer still cannot be accepted after its

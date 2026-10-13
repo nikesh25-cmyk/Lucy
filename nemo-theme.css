@@ -117,3 +117,8 @@ dialog,#auth-dialog,.mayor-dialog{background:linear-gradient(145deg,#12382e,#082
 .directory-body>.actions button{min-height:44px}}
 @media(max-width:600px){.plot-grid .plot-cell{min-height:44px}
 .land-atlas .land-area{min-height:44px}}
+
+/* The introduction is user-started, with native sound, seek and fullscreen controls. */
+.hero-film{align-self:center;min-width:0}.hero-film video,.introduction-dialog video{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#031710}.hero-film .hero-art-caption{position:static}.hero-film .hero-art-caption small{line-height:1.6}.introduction-dialog{width:min(1040px,94vw);max-height:92vh;overflow:auto}.introduction-dialog .dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem}.introduction-dialog p{margin-top:1rem;color:var(--muted)}
+.hero-film{transform:none}
+@media(max-width:650px){.welcome .hero-film{order:-1;width:100%}.welcome h1 em{display:block}.welcome h1{line-height:1.08}}

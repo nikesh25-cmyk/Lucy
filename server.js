@@ -17,6 +17,7 @@ import { mayorModelCountryContext } from './src/mayor-evidence.js';
 import { runAgent } from './runtime/agent.js';
 import { civicAtlas, REGIONS, AMBASSADOR_REMIT, mayorTopic } from './src/civic.js';
 import { manifest } from './src/content.js';
+import { serveVideo } from './src/media.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -30,6 +31,8 @@ const residentRunDetail = (result, status) => {
   return `Local resident: ${result.model_calls} model decisions, ${result.action_count} actions${failures.length ? ` (${failures.join(', ')})` : ''}; ${status} · ${stop}. ${result.last_action?.action ? `Last confirmed action: ${result.last_action.action}. ` : ''}No research acceptance or adoption is implied.`;
 };
 const files = new Map([
+  ['/assets/media/nemoworld-introduction.mp4', ['assets/media/nemoworld-introduction.mp4', 'video/mp4']],
+  ['/assets/media/nemoworld-introduction.jpg', ['assets/media/nemoworld-introduction.jpg', 'image/jpeg']],
   ['/src/voxel-world.js',['src/voxel-world.js','text/javascript; charset=utf-8']],
   ['/src/voxel-geometry.js',['src/voxel-geometry.js','text/javascript; charset=utf-8']],
   ['/assets/vendor/three-voxel.js',['assets/vendor/three-voxel.js','text/javascript; charset=utf-8']],
@@ -396,6 +399,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         const file = files.get(path);
         if (!file) return json(response, 404, { error: 'Not found.' });
         if (!['GET', 'HEAD'].includes(request.method)) { response.setHeader('Allow', 'GET, HEAD'); return json(response, 405, { error: 'Method not allowed.' }); }
+        if (file[1] === 'video/mp4') return await serveVideo(request, response, join(root, file[0]));
         const data = await readFile(join(root, file[0]));
         response.writeHead(200, { 'Content-Type': file[1], 'Cache-Control': 'no-cache' });
         return response.end(request.method === 'HEAD' ? undefined : data);

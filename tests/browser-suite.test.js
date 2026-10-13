@@ -46,8 +46,8 @@ test('a missing database path or workspace is refused rather than guessed', () =
 test('the suite runs its scenarios in order, and a focused run keeps only the named ones', () => {
   const all = selectedScenarios();
   assert.deepEqual(all, SCENARIOS.map((scenario) => scenario.id));
-  assert.equal(all.length, 22);
-  assert.equal(new Set(all).size, 22);
+  assert.equal(all.length, 24);
+  assert.equal(new Set(all).size, 24);
   for (const scenario of SCENARIOS) {
     assert.equal(typeof scenario.title, 'string');
     assert.ok(scenario.title.length > 0);

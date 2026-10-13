@@ -34,7 +34,7 @@ be reviewed before approving it.
 | Property | Value | Why |
 | --- | --- | --- |
 | `type` / `runtime` | `web` / `node` | one HTTP process serving `/api/v1` and the static interface |
-| `plan` | `1c-2g` (1 CPU / 2 GB) | the smallest current published plan that leaves headroom for Node 24, SQLite and the WAL on the same volume. See the correction in §4 |
+| `plan` | omitted | select and approve a compatible paid instance during setup; the integration does not authorize a resize |
 | `numInstances` | `1` | the world is one process over one SQLite file in WAL mode. Render also refuses to scale a service that has an attached disk |
 | `autoDeployTrigger` | `off` | a merge does not deploy by itself; releases follow `docs/RELEASE_CHECKLIST.md`. Change to `checksPass` only once the gates run in CI for that branch |
 | `buildCommand` | `npm run check` | the syntax gate as the build. The application has **no runtime dependencies**, so no `npm install` is needed to serve it |
@@ -333,3 +333,7 @@ backup, `.env`, token or setup code. Never enable a second instance against the 
 ## Integration correction — 13 October 2026
 
 The proposed pre-deploy check silently skipped the service database because [Render persistent disks are unavailable during build and pre-deploy commands](https://render.com/docs/disks). It was removed from `render.yaml`. `server.js` now validates any existing database while holding its process lock, before migrations, seed writes or listening. `tests/startup-integrity.test.js` executes the real server entry point against corrupt, foreign and newer-schema worlds (refusal without source bytes changing) and a valid world (successful restart with audited records preserved). The earlier shell-only rehearsal did not prove this hosting boundary. No hosted deployment has been performed.
+
+## Integration clarification — 13 October 2026
+
+The historical plan recommendation above is not an approved hosting change. The current Blueprint omits `plan`; deployment remains off. Choose a compatible instance and review its charges explicitly during provider setup. No purchase, deployment or resize was performed.

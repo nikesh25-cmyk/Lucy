@@ -2,7 +2,7 @@
 
 The repository contains a Render Blueprint in `render.yaml`. It runs one Node 24 web service with a persistent disk for accounts, characters, gardens, conversations, evidence, and backups. Render terminates HTTPS and supplies `RENDER_EXTERNAL_URL`; the server uses that origin for Host checks, browser writes, and secure cookies.
 
-This file prepares deployment. A live login URL exists after the hosting provider creates the service. It requires your Render account, repository access, and approval of Render's current charges. The Blueprint selects a **paid instance (`1c-2g`) and a 1 GB persistent disk**; the plan and disk size are your decision, so confirm them and inspect the provider's current price before approving. No hosting account or payment is created by the code.
+This file prepares deployment. A live login URL exists after the hosting provider creates the service. It requires your Render account, repository access, and approval of Render's current charges. The Blueprint specifies a **1 GB persistent disk** and leaves the instance plan to your setup decision. Choose a compatible paid plan and inspect the provider’s current price before approving; applying this source must not automatically resize an existing service. No hosting account or payment is created by the code.
 
 ## Create the service and its administrator
 

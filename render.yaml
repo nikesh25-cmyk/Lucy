@@ -24,11 +24,8 @@ services:
   - type: web
     name: shared-world-seed
     runtime: node
-    # Current Render plan id (1 CPU / 2 GB). The previous value, `starter`, is a legacy instance
-    # name that is no longer in Render's published plan list. Confirm the price and resize
-    # deliberately: this world is one process with one SQLite writer, so a larger plan is a latency
-    # and migration-headroom decision, not a capacity multiplier.
-    plan: 1c-2g
+    # No plan or resize is selected by this source change. Review and select a compatible paid
+    # instance in the provider setup before enabling the persistent disk or approving charges.
     numInstances: 1
     # Release control: a merge to the branch does not deploy by itself. Change to `checksPass` only
     # after the release gates in docs/RELEASE_CHECKLIST.md run in CI for that branch.

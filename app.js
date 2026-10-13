@@ -437,7 +437,7 @@ function missionDirectoryControls(parent){
 }
 function missionDirectoryPages(parent){const page=state.missionPage,previous=button('Previous missions',async()=>{state.missionQuery.offset=String(Math.max(0,page.offset-page.limit));await loadMissionPage();renderView();},'secondary');previous.disabled=!page.offset;const next=button('Next missions',async()=>{state.missionQuery.offset=String(page.offset+page.limit);await loadMissionPage();renderView();},'secondary');next.disabled=!page.has_more;parent.append(actions(previous,paragraph(`Page ${Math.floor(page.offset/page.limit)+1} · ${page.total} matching missions`,'privacy'),next));}
 async function change(path, body, message, idempotent = false) { const result = await api(path, 'POST', body, idempotent); await refresh(); render(); if (message) notice(message); return result; }
-function render() { document.body.classList.toggle('signed-in', Boolean(state.account)); document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons')); renderSession(); renderAuth(); renderTabs(); renderView(); paintHero(); }
+function render() { if(state.account||state.tab!=='world')$('#hero-introduction')?.pause(); document.body.classList.toggle('signed-in', Boolean(state.account)); document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons')); renderSession(); renderAuth(); renderTabs(); renderView(); paintHero(); }
 function paintHero(){
  const canvas=$('#hero-world');if(!canvas)return;const world=getWorldDefinition('commons');
  if(!heroVoxel&&!state.heroPixel){heroVoxel=createVoxelWorld(canvas,{onUnavailable:()=>{state.heroPixel=true;queueMicrotask(()=>{heroVoxel?.destroy();heroVoxel=null;const old=$('#hero-world');if(old){old.replaceWith(old.cloneNode(false));paintHero();}});}});if(!heroVoxel)return;}
@@ -445,10 +445,13 @@ function paintHero(){
  else{draw(canvas,start,{world,camera:{x:0,y:0},objects:[],portals:[],visitors:[],self:null});canvas.dataset.graphics='pixel';}
 }
 function openAuth(mode='login'){state.authMode=mode;renderAuth();$('#auth-notice').hidden=true;$('#auth-dialog').showModal();$('#auth-area section:not([hidden]) input')?.focus();}
+$('#close-introduction').addEventListener('click',()=>$('#introduction-dialog').close());
+$('#introduction-dialog').addEventListener('close',()=>$('#introduction-film').pause());
 $('#close-auth').addEventListener('click',()=>$('#auth-dialog').close());
 function finishAuth(){if($('#auth-dialog').open)$('#auth-dialog').close();$('#auth-notice').hidden=true;}
 function renderSession() {
   const node=$('#session-bar');node.replaceChildren();const hero=$('#hero-actions');hero.replaceChildren();
+  node.append(button('Watch introduction',()=>{$('#hero-introduction')?.pause();$('#introduction-dialog').showModal();},'secondary small'));
   if(state.account){const profile=element('div',null,'session-profile');append(profile,element('span',state.account.name.slice(0,1).toUpperCase(),'profile-avatar'),append(element('span',null,'session-label'),element('strong',state.account.name),element('small',state.account.role)));node.append(profile,button('Sign out',async()=>{try{await api('/auth/logout','POST',{});}catch(error){if(error.status!==401)throw error;}clearBrowserOperator();await refresh(false);render();notice('Signed out. Your agents and their world positions are saved.');},'secondary small'));}
   else {node.append(button('Sign in',()=>openAuth('login'),'secondary small'),button(state.setup?'Create first account':'Create account',()=>openAuth('register'),'small'));}
   hero.append(button(state.account?'Play in the world':'Create account & play',()=>state.account?playAsHuman():openAuth('register')),button('Explore the world',()=>{state.tab='world';renderTabs();renderView();$('#pixel-world-heading')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}),button('Find useful work',()=>browseResearch(),'secondary'),button(state.account?'Manage my characters':'Make a character',()=>state.account?openSection('characters'):openAuth('register'),'secondary'));
@@ -966,12 +969,10 @@ function plotCollaborationCard(data,expectedWorld){
  node.append(paragraph('A plot’s signed-in human steward can invite one specific operator or resident to build there for a stated purpose, duration and narrow scope. Expiry and revocation are checked live on every build, so a saved credential cannot outlive them.','privacy'));
  if(!data?.grants){node.append(paragraph('Sign in to grant, hold or inspect collaboration on a plot.','privacy'));return node;}
  const held=data.grants.as_guest||[], myPlot=data.my_plot?.world_id===expectedWorld?data.my_plot:null;
- if(!myPlot){
-  node.append(grantRows('Access you hold',held,'You hold no collaboration grant. Ask a plot’s steward to invite you.',grant=>`${grant.plot_id} · ${grant.purpose}`));
-  if(held.some(grant=>grant.live))node.append(paragraph('A live grant above lets you place and remove those block types and layers inside that plot, using the building controls as usual. Every other plot still refuses you.','privacy'));
-  return node;
- }
- const candidates=(state.world.participants||[]).filter(item=>item.kind!=='npc'&&item.operator_id!==state.account?.id);
+ node.append(grantRows('Access you hold',held,'You hold no collaboration grant. Ask a plot’s steward to invite you.',grant=>`${grant.plot_id} · ${grant.purpose}`));
+ if(held.some(grant=>grant.live))node.append(paragraph('A live grant above lets you place and remove those block types and layers inside that plot, using the building controls as usual. Every other plot still refuses you.','privacy'));
+ if(!myPlot)return node;
+ const candidates=(state.world.participants||[]).filter(item=>item.kind!=='npc'&&!state.agents.some(owned=>owned.id===item.id));
  const controls=form(node,'Grant building access',async(values,formNode)=>{const result=await api('/frontier/grant','POST',grantFormValues(formNode));state.grantPreview=null;await loadWorld();renderView();notice(`Building access granted to ${result.grant.guest.name} until ${date(result.grant.expires_at)}.`);});
  const guest=field(controls,'guest_agent_id','Guest resident nearby',{required:false,options:[{value:'',label:'Choose a resident in this area'},...candidates.map(item=>({value:item.id,label:`${item.name} · ${item.operator||'resident'}`}))],value:'',full:true,hint:'Only nearby residents are listed. Use the next field for any other character.'});
  guest.dataset.grantGuest='1';
@@ -983,7 +984,7 @@ function plotCollaborationCard(data,expectedWorld){
  grantCheckboxes(controls,'actions','Actions the guest may take',[{value:'place',label:'Place blocks',checked:true},{value:'remove',label:'Remove their own blocks'}]);
  field(controls,'max_blocks','Maximum standing blocks',{type:'number',min:1,max:36,value:'4',full:true});
  const hidden=element('input');hidden.type='hidden';hidden.name='plot_id';hidden.value=myPlot.id;controls.append(hidden);
- const preview=button('Preview this grant',async()=>{const formNode=node.querySelector('form');state.grantPreview=await api('/frontier/grant','POST',{...grantFormValues(formNode),preview:true});renderView();},'small');
+ const preview=button('Preview this grant',async()=>{const formNode=node.querySelector('form');state.grantPreview=await api('/frontier/grant','POST',{...grantFormValues(formNode),preview:true});node.querySelector('#grant-report')?.replaceWith(grantReportView(state.grantPreview));},'small');
  preview.dataset.grantPreview='1';preview.setAttribute('aria-label','Preview the exact collaboration access without granting it');
  node.append(actions(preview),paragraph('Preview first: it reports the plot, guest, purpose, scope, duration and expiry without writing anything.','privacy'));
  node.append(grantReportView(state.grantPreview));
@@ -1518,7 +1519,7 @@ function renderOffers(parent){
   const status=element('p',null,'privacy');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   node.append(actions(filter,button('Refresh offers',()=>loadOffers(list,status,filter.value),'secondary small')),status);
   const held=(journey.inventory||[]).filter(item=>item.quantity>0);
-  const recipients=(state.world.participants||[]).filter(item=>item.id!==state.selected&&(item.status||'active')==='active');
+  const recipients=(state.world.participants||[]).filter(item=>item.kind!=='npc'&&!state.agents.some(owned=>owned.id===item.id)&&(item.status||'active')==='active');
   if(held.length&&recipients.length){
     const controls=form(node,'Offer items',values=>change('/journey/offers',{agent_id:state.selected,recipient_agent_id:values.recipient_agent_id,items:{[values.kind]:Number(values.quantity)},note:values.note,expires_minutes:Number(values.expires_minutes)},`Offered ${resourceName(values.kind)} to a neighbour.`,true));
     field(controls,'recipient_agent_id','Recipient',{options:recipients.map(item=>({value:item.id,label:item.name})),full:true});
@@ -1542,7 +1543,7 @@ async function loadOffers(list,status,filter='all'){
     if(offer.note)node.append(paragraph(offer.note,'privacy'));
     node.append(paragraph(`Expires ${date(offer.expires_at)}${offer.settled_at?` · settled ${date(offer.settled_at)}`:''}`,'privacy'));
     const buttons=actions();
-    if(offer.can_accept)buttons.append(button('Accept',()=>change('/journey/offers/accept',{offer_id:offer.id,agent_id:offer.recipient.agent_id},'Offer accepted.'),'small'));
+    if(offer.can_accept)buttons.append(button('Accept',()=>change('/journey/offers/accept',{offer_id:offer.id,agent_id:offer.recipient.agent_id},'Offer accepted.',true),'small'));
     if(offer.can_decline)buttons.append(button('Decline',()=>change('/journey/offers/decline',{offer_id:offer.id},'Offer declined.'),'secondary small'));
     if(offer.can_cancel)buttons.append(button('Cancel',()=>change('/journey/offers/cancel',{offer_id:offer.id},'Offer cancelled.'),'secondary small'));
     if(buttons.children.length)node.append(buttons);
@@ -1693,7 +1694,7 @@ function renderCountries(parent){
     node.append(paragraph(`${country.evidence?.series_count||0} of 3 agriculture series retained · ${country.evidence?.nonmissing_series||0} with reported values`,'privacy'));
     node.append(button('Agriculture evidence',async()=>{state.countryEvidence=await api('/country-evidence?country='+country.iso2);renderView();$('#country-evidence').focus();$('#country-evidence').scrollIntoView({block:'start'});},'secondary small'));
     node.append(button('Electricity & internet evidence',()=>openCountryAccessEvidence(country.iso2),'secondary small'));
-    if(isReviewer())node.append(button('Generate 68 proposals',async()=>{const result=await api('/research/generate','POST',{country_code:country.iso2});notice(`${result.added} proposals added for ${country.name}.`);},'small'));
+    if(isReviewer())node.append(button('Generate scoped proposals',async()=>{const result=await api('/research/generate','POST',{country_code:country.iso2});notice(`${result.added} proposals added for ${country.name}.`);},'small'));
     grid.append(node);
   }parent.append(grid);const previous=button('Previous',()=>{state.countryPage--;renderView();},'secondary');previous.disabled=state.countryPage===0;const next=button('Next',()=>{state.countryPage++;renderView();},'secondary');next.disabled=(state.countryPage+1)*24>=countries.length;parent.append(actions(previous,paragraph(`Page ${state.countryPage+1}`),next),sourceLink('https://unstats.un.org/unsd/methodology/m49/overview/','UN M49 source and methodology'));
 }

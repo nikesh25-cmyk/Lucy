@@ -155,7 +155,7 @@ test('cosmetic calling experience and NemoCoins are described separately and agr
 test('the dialog contract holds: every dialog is named, escapable and marks what is required', () => {
   // index.html: each dialog is a native modal with an accessible name and a labelled close control.
   const dialogs = [...page.matchAll(/<dialog[^>]*>/g)].map((match) => match[0]);
-  assert.equal(dialogs.length, 2, 'the shell ships two dialogs');
+  assert.equal(dialogs.length, 3, 'account, credential and introduction dialogs are all named');
   for (const dialog of dialogs) assert.match(dialog, /aria-labelledby="[^"]+"/, `${dialog} must be named by a heading`);
   assert.match(page, /id="close-auth" class="icon-button" aria-label="Close account dialog"/, 'the account dialog has a labelled close button');
   assert.match(page, /id="close-credential"/, 'the credential dialog has a close button');
