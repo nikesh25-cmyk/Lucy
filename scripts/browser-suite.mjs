@@ -2090,6 +2090,25 @@ define('shared-presence-two-clients', async () => {
     return `world_objects row bench at 17,4 attributed to ${walker.id}; the other browser showed it (frame latency ${stream.lastLatencyMs} ms)`;
   });
 
+  await step('a character profile opens a saved direct text conversation', async () => {
+    await openTab(owner.page, 'World list');
+    const profile = owner.page.locator('#view .agent-row', { hasText: neighbour.name }).first();
+    await profile.getByRole('button', { name: 'Send direct message', exact: true }).click();
+    const form = owner.page.locator('#world-chat-card form');
+    expect(await form.locator('[name="channel"]').inputValue() === 'private', 'the profile action must select the private channel');
+    expect(await form.locator('[name="recipient_id"]').inputValue() === neighbour.id, 'the profile action must address the chosen character');
+    const text = 'A saved hello from the character profile';
+    await form.locator('[name="text"]').fill(text);
+    await form.getByRole('button', { name: 'Send message', exact: true }).click();
+    const saved = await waitForCondition(async () => row('SELECT agent_id,channel,recipients,text FROM messages WHERE text=?', text), 'the direct message to be saved');
+    expect(saved.agent_id === walker.id && saved.channel === 'private' && JSON.parse(saved.recipients).includes(neighbour.id), 'the saved conversation must retain sender, private channel and recipient', { actual: describe(saved) });
+    await stranger.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(stranger.page);
+    const received = await clientWorld(stranger.page);
+    expect(received.messages.some(message => message.text === text && message.channel === 'private'), 'the recipient operator must be able to read the stored message');
+    return 'the profile selected a private recipient; the database saved the text and the recipient operator read it';
+  });
+
   return 'two real browsers saw each other move and build, with the database agreeing and no private data crossing';
 });
 

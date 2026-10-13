@@ -34,7 +34,7 @@ try {
   await mkdir(join(game,'mods','nemo_probe'),{recursive:true});
   await cp(new URL('./nemoworld_game/',import.meta.url),game,{recursive:true});
   await writeFile(join(game,'mods','nemo_probe','mod.conf'),'name = nemo_probe\ndepends = nemo\n');
-  await writeFile(join(game,'mods','nemo_probe','init.lua'),`local code = ${JSON.stringify(issued.code)}\ncore.register_on_mods_loaded(function()\n core.after(1,function() core.registered_chatcommands.nemo_pair.func('Probe',code) end)\n core.after(3,function()\n  local placer={is_player=function() return true end,get_player_name=function() return 'Probe' end}\n  core.registered_items['nemo:place_wood'].on_place(nil,placer,{type='node',above={x=33,y=0,z=32}})\n  core.log('action','NEMO_PROBE_CALLBACK_INVOKED')\n end)\n core.after(8,function() core.log('action','NEMO_PROBE_RENDERED ' .. core.get_node({x=33,y=0,z=32}).name) end)\nend)\n`);
+  await writeFile(join(game,'mods','nemo_probe','init.lua'),`local code = ${JSON.stringify(issued.code)}\ncore.register_on_mods_loaded(function()\n core.after(1,function() core.registered_chatcommands.nemo_pair.func('Probe',code) end)\n core.after(3,function()\n  local placer={is_player=function() return true end,get_player_name=function() return 'Probe' end}\n  core.registered_items['nemo:place_wood'].on_place(nil,placer,{type='node',above={x=33,y=0,z=32}})\n  core.log('action','NEMO_PROBE_CALLBACK_INVOKED')\n end)\n core.after(4,function() core.registered_chatcommands.nemo_move.func('Probe','left'); core.log('action','NEMO_PROBE_MOVE_REQUESTED') end)\n core.after(8,function() core.log('action','NEMO_PROBE_RENDERED ' .. core.get_node({x=33,y=0,z=32}).name) end)\nend)\n`);
   const world=join(user,'worlds','slice'); await mkdir(world,{recursive:true});
   await writeFile(join(world,'world.mt'),'gameid = nemoworld\nbackend = sqlite3\nmg_name = singlenode\n');
   const config=join(user,'minetest.conf');
@@ -45,8 +45,10 @@ try {
   const deadline=Date.now()+20000;
   while(Date.now()<deadline && !logs.includes('NEMO_PROBE_RENDERED')) await new Promise(r=>setTimeout(r,100));
   assert.match(logs,/NEMO_PROBE_CALLBACK_INVOKED/);
+  assert.match(logs,/NEMO_PROBE_MOVE_REQUESTED/);
   assert.match(logs,/NEMO_PROBE_RENDERED nemo:wood/,logs.slice(-2500));
   assert.equal(platform.get('SELECT type FROM frontier_blocks WHERE world_id=? AND x=33 AND y=32 AND z=0','frontier:0:0')?.type,'wood',logs.slice(-2000));
+  assert.equal(platform.get('SELECT x FROM agents WHERE id=?',human.id)?.x,31,logs.slice(-2000));
   const response=await fetch(`${api}/api/v1/world?world_id=frontier:0:0&agent_id=${human.id}&x=28&y=28`,{headers:{Authorization:`Bearer ${login.token}`}});
   const web=await response.json(); assert.equal(web.blocks.some(b=>b.x===33&&b.y===32&&b.type==='wood'),true);
   engine.kill('SIGINT'); await new Promise(r=>engine.once('exit',r)); engine=null;
@@ -62,7 +64,7 @@ try {
   while(Date.now()<restartDeadline && !logs.includes('NEMO_PROBE_RESTARTED')) await new Promise(r=>setTimeout(r,100));
   assert.match(logs,/NEMO_PROBE_RESTARTED air/,logs.slice(-2500));
   assert.equal(platform.get('SELECT COUNT(*) n FROM frontier_blocks WHERE world_id=?','frontier:0:0').n,0);
-  process.stdout.write('PASS: Luanti 5.17 callback -> NemoWorld row -> web; restart reconciled removed node (1 placed, 1 removed)\n');
+  process.stdout.write('PASS: Luanti 5.17 callback -> NemoWorld row -> web; authoritative movement saved; restart reconciled removed node (1 placed, 1 removed)\n');
 } finally {
   if(engine){engine.kill('SIGINT'); await new Promise(r=>{if(engine.exitCode!==null)r();else engine.once('exit',r)})}
   if(bridge) await new Promise(r=>bridge.close(r));

@@ -9,8 +9,13 @@ local size = 48
 local paired = {}
 local projected = {}
 local busy = {}
+local motion = {}
 local reconciled = false
 local emerging = false
+local motion_clock = 0
+local sync_elapsed = 0
+local move_cooldown = 0.16
+local motion_threshold = 0.55
 local names = {stone=true, wood=true, glass=true, brick=true, sand=true, grass=true, path=true}
 local terrain_types = {meadow=true,tree=true,water=true,garden=true,path=true,plaza=true,grass=true}
 local markers = {}
@@ -25,20 +30,87 @@ end
 local function request(path, payload, callback)
   http.fetch({url=endpoint .. path, method='POST', data=core.write_json(payload), timeout=5,
     extra_headers={'Content-Type: application/json', 'X-Nemo-Mod-Key: ' .. mod_key}}, function(response)
-    local body = response.succeeded and core.parse_json(response.data) or nil
-    if not response.succeeded or type(body) ~= 'table' then callback(false, 'Bridge unavailable.')
+    local parsed, body = false, nil
+    if response and response.succeeded and type(response.data) == 'string' then
+      parsed, body = pcall(core.parse_json, response.data)
+    end
+    -- A malformed success response must still call back. In particular, sync() clears its busy
+    -- flag only inside this callback; leaving it pending would stop future world refreshes.
+    if not parsed or type(body) ~= 'table' then callback(false, 'Bridge unavailable or invalid response.')
     elseif response.code < 200 or response.code >= 300 then callback(false, body.error or 'Action refused.')
     else callback(true, body) end
   end)
 end
 local function key(pos) return pos.x .. ':' .. pos.y .. ':' .. pos.z end
-local function sync(name)
-  if not paired[name] or busy[name] or emerging then return end
-  busy[name] = true
+local sync
+local function stop_player(player)
+  if player and player.set_velocity then player:set_velocity({x=0, y=0, z=0}) end
+end
+local function set_anchor(name, player, pos, release)
+  if not player or not pos then return end
+  local target = {x=pos.x, y=math.max(2, pos.z + 2), z=pos.y}
+  local current = player:get_pos()
+  local state = motion[name] or {}
+  local dx, dy, dz = current.x - target.x, current.y - target.y, current.z - target.z
+  -- A sync is a reconciliation point, not a heartbeat teleport. Small differences are normal
+  -- while Luanti settles a step and are left alone to avoid visible jitter.
+  if release or not state.anchor or math.max(math.abs(dx), math.abs(dy), math.abs(dz)) > 0.45 then
+    player:set_pos(target)
+    stop_player(player)
+  end
+  state.anchor = {x=target.x, y=target.y, z=target.z}
+  if release then
+    state.in_flight = false
+    state.last_direction = nil
+  end
+  motion[name] = state
+end
+local function request_move(name, direction)
+  local state = motion[name] or {}
+  local generation = state.generation
+  if not paired[name] then return false, 'Pair first.' end
+  if state.in_flight then return false, 'Movement is still being confirmed.' end
+  if motion_clock - (state.last_request or -math.huge) < move_cooldown then return false, 'Movement is cooling down.' end
+  state.in_flight = true
+  state.last_request = motion_clock
+  state.last_direction = direction
+  motion[name] = state
+  request('/native/action', {player=name, action='move', direction=direction}, function(ok, data)
+    if motion[name] ~= state or state.generation ~= generation then return end
+    if not ok then
+      state.in_flight = false
+      state.last_direction = nil
+      message(name, data)
+      sync(name, false)
+    else
+      -- Keep the gate closed until state reconciliation proves where the authoritative avatar is.
+      sync(name, true)
+    end
+  end)
+  return true
+end
+sync = function(name, release_motion)
+  if not paired[name] then return end
+  if busy[name] or emerging then
+    local state = motion[name] or {}
+    state.sync_after = true
+    state.release_after = state.release_after or release_motion
+    motion[name] = state
+    return
+  end
+  local state = motion[name]
+  local generation = state and state.generation
+  busy[name] = state
   request('/native/state', {player=name}, function(ok, data)
+    if motion[name] ~= state or state.generation ~= generation then return end
     busy[name] = nil
     if not ok then paired[name] = nil; message(name, data); return end
     local function apply()
+      if not paired[name] or motion[name] ~= state or state.generation ~= generation then
+        emerging = false
+        if paired[name] then sync(name) end
+        return
+      end
       core.load_area({x=0,y=-1,z=0}, {x=47,y=7,z=47})
       for _, tile in ipairs(data.terrain or {}) do
         if tile.x >= 0 and tile.x < 48 and tile.y >= 0 and tile.y < 48 then
@@ -90,9 +162,12 @@ local function sync(name)
       end
       local player = core.get_player_by_name(name)
       if player and data.player then
-        local p = data.player
-        player:set_pos({x=p.x, y=math.max(2, p.z + 2), z=p.y})
+        set_anchor(name, player, data.player, release_motion)
       end
+      local follow_up = state and state.sync_after
+      local follow_release = state and state.release_after
+      if follow_up then state.sync_after = nil end
+      if follow_up then state.release_after = nil; sync(name, follow_release) end
     end
     if reconciled then apply() else
       emerging = true
@@ -153,36 +228,81 @@ core.register_on_generated(function(minp, maxp)
 end)
 core.register_on_joinplayer(function(player)
   local name = player:get_player_name()
+  motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge}
   player:set_pos({x=24,y=2,z=24})
   local inventory = player:get_inventory()
   for kind in pairs(names) do inventory:add_item('main', 'nemo:place_' .. kind) end
   message(name, 'Pair with /nemo_pair CODE. Move with /nemo_move up|down|left|right. Click with a block item to request placement; punch a block to request removal.')
 end)
-core.register_on_leaveplayer(function(player) paired[player:get_player_name()] = nil end)
+core.register_on_leaveplayer(function(player)
+  local name = player:get_player_name()
+  paired[name] = nil
+  busy[name] = nil
+  motion[name] = nil
+end)
 core.register_chatcommand('nemo_pair', {params='CODE', description='Pair this player to an operator-owned human avatar', func=function(name, code)
   if not code:match('^[a-f0-9]+$') then return false, 'Invalid pairing code.' end
+  local previous = motion[name]
+  if not previous then
+    -- The native smoke probe invokes chat commands with a synthetic player name and does not
+    -- run Luanti's join callback first. Keep the same session guard for that path.
+    previous = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=0}
+    motion[name] = previous
+  end
+  local pairing_attempt = (previous and previous.pairing_attempt or 0) + 1
+  if previous then previous.pairing_attempt = pairing_attempt end
   request('/native/pair', {player=name, code=code}, function(ok, data)
-    if ok then paired[name] = true; message(name, 'Paired to frontier:0:0.'); sync(name)
+    if motion[name] ~= previous or not motion[name] or motion[name].pairing_attempt ~= pairing_attempt then return end
+    if ok then
+      local next_generation = ((previous and previous.generation) or 0) + 1
+      motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=next_generation}
+      paired[name] = true
+      busy[name] = nil
+      message(name, 'Paired to frontier:0:0.'); sync(name)
     else message(name, data) end
   end)
   return true, 'Pairing request sent.'
 end})
 core.register_chatcommand('nemo_move', {params='up|down|left|right', description='Request one authoritative step', func=function(name, direction)
   if not ({up=true,down=true,left=true,right=true})[direction] then return false, 'Choose up, down, left or right.' end
-  if not paired[name] then return false, 'Pair first.' end
-  request('/native/action', {player=name, action='move', direction=direction}, function(ok, data)
-    if not ok then message(name, data) else sync(name) end
-  end)
+  local accepted, reason = request_move(name, direction)
+  if not accepted then return false, reason end
   return true, 'Step requested.'
 end})
-local elapsed = 0
 core.register_globalstep(function(dt)
-  elapsed = elapsed + dt
-  if elapsed < 5 then return end
-  elapsed = 0
-  for name in pairs(paired) do sync(name) end
+  motion_clock = motion_clock + dt
+  sync_elapsed = sync_elapsed + dt
+  if sync_elapsed >= 5 then
+    sync_elapsed = 0
+    for name in pairs(paired) do sync(name) end
+  end
   for _, player in ipairs(core.get_connected_players()) do
-    local p=player:get_pos()
-    if p.x < 0 or p.x >= 48 or p.z < 0 or p.z >= 48 or p.y < -1 or p.y > 12 then player:set_pos({x=24,y=2,z=24}) end
+    local name = player:get_player_name()
+    local state = motion[name]
+    local p = player:get_pos()
+    if p.x < 0 or p.x >= 48 or p.z < 0 or p.z >= 48 or p.y < -1 or p.y > 12 then
+      local safe = state and state.anchor or {x=24,y=2,z=24}
+      player:set_pos(safe)
+      stop_player(player)
+      p = player:get_pos()
+    end
+    if paired[name] and state and state.anchor then
+      local dx, dz = p.x - state.anchor.x, p.z - state.anchor.z
+      if state.in_flight then
+        -- Keep client-side physics from carrying the player through a second tile while the
+        -- bridge is confirming the first one. The authoritative response will release the gate.
+        if math.max(math.abs(dx), math.abs(p.y - state.anchor.y), math.abs(dz)) > 0.2 then
+          player:set_pos(state.anchor)
+          stop_player(player)
+        end
+      elseif math.max(math.abs(dx), math.abs(dz)) >= motion_threshold then
+        local direction
+        if math.abs(dx) >= math.abs(dz) then direction = dx > 0 and 'right' or 'left'
+        else direction = dz > 0 and 'down' or 'up' end
+        player:set_pos(state.anchor)
+        stop_player(player)
+        request_move(name, direction)
+      end
+    end
   end
 end)

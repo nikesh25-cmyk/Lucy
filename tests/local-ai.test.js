@@ -96,6 +96,32 @@ test('mayor reply context preserves distinct identity and rechecks pause before 
  f.advance(3000);paused=true;const second=await ask();assert.equal(second.mode,'rules');assert.equal(second.model_fallback,true);const stored=f.platform.get('SELECT mode,answer FROM ambassador_conversations WHERE id=?',second.id);assert.equal(stored.mode,'rules');assert.notEqual(stored.answer,'Research needs a beneficiary and independent reviewer.');
 });
 
+test('country ambassador model remembers only this account and ambassador recent conversation',async t=>{
+ const {fixture}=await import('./helpers.js'),{createApp}=await import('../server.js');
+ const f=await fixture(t),contexts=[];
+ const app=createApp({platform:f.platform,mayorModel:async input=>{
+  contexts.push(JSON.parse(input.prompt.split(' Context: ')[1]));
+  return JSON.stringify({answer:'I can help scope this question with retained context and independent human review.',sources:[]});
+ }});
+ await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
+ t.after(async()=>{await app.stopWorkers();await new Promise(resolve=>{app.server.close(resolve);app.server.closeAllConnections();});});
+ const ask=async(ambassador_id,question,credential=f.credentials.alice.token)=>{
+  const response=await fetch('http://127.0.0.1:'+app.server.address().port+'/api/v1/ambassadors/talk',{method:'POST',headers:{Authorization:'Bearer '+credential,'Content-Type':'application/json'},body:JSON.stringify({ambassador_id,question})});
+  assert.equal(response.status,200,JSON.stringify(await response.clone().json()));
+  assert.equal((await response.json()).mode,'local-model');
+  f.advance(3000);
+ };
+ await ask('amb-NPL','How should we scope agriculture?');
+ await ask('amb-NPL','What about standards?');
+ await ask('amb-JPN','How do we start?');
+ await ask('amb-NPL','Who should review this?',f.credentials.bob.token);
+ assert.deepEqual(contexts[0].prior_turns,[]);
+ assert.equal(contexts[1].prior_turns.length,1);
+ assert.equal(contexts[1].prior_turns[0].question,'How should we scope agriculture?');
+ assert.deepEqual(contexts[2].prior_turns,[]);
+ assert.deepEqual(contexts[3].prior_turns,[]);
+});
+
 test('mayor financial facts and purported completed enforcement/contact actions require published fallback',async()=>{
  const {mayorDraft}=await import('../runtime/model.js');for(const answer of ['The UN has not funded any Lucy project.','The project was financed yesterday.','We have banned the farmer.','I contacted the minister.','I have sent your recommendation.','Verify the latest directive (June 2026).'])assert.throws(()=>mayorDraft({answer}),/authority/);
  assert.equal(mayorDraft({answer:'Funding and buyer interest are not established by the supplied context. Human moderators decide reports.'}),'Funding and buyer interest are not established by the supplied context. Human moderators decide reports.');
