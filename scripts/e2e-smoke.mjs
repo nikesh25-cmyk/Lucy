@@ -8,6 +8,13 @@
 // directory and any world already running on this machine are never touched,
 // no module from src/ is imported, and no request is mocked.
 //
+// The one exception to "only over HTTP" is stated where it happens: the crop
+// step moves the *stored planting time* of its own disposable row back by the
+// crop's growth time, because a real herb takes twenty minutes of wall clock to
+// ripen and waiting for it tests nothing. The server still decides readiness
+// from its own clock and that stored time, and every input and every assertion
+// around it is an HTTP request.
+//
 // Run it with:  npm run e2e
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -17,6 +24,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer as createTcpServer } from 'node:net';
 import { request as httpRequest } from 'node:http';
+import { DatabaseSync } from 'node:sqlite';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 // Public hosting is defined by an exact external HTTPS origin; the process still
@@ -79,6 +87,25 @@ function headerOf(response, name) {
 
 const state = { workspace: null, database: null, port: null, child: null, notes: [], results: [] };
 let serverOutput = [];
+
+/**
+ * One connection to the harness's own disposable database. The harness reads it to confirm what the
+ * API reported, and writes it in exactly one place: the crop step's time compression, which the
+ * server's own readiness rule then evaluates unchanged. The shipped data directory is never opened.
+ */
+function storage() {
+  const db = new DatabaseSync(state.database);
+  db.exec('PRAGMA busy_timeout=5000');
+  return db;
+}
+function readRow(sql, ...params) {
+  const db = storage();
+  try { return db.prepare(sql).get(...params) ?? null; } finally { db.close(); }
+}
+function writeRow(sql, ...params) {
+  const db = storage();
+  try { return db.prepare(sql).run(...params); } finally { db.close(); }
+}
 
 function apiRequest(path, options = {}) {
   const { method = 'GET', token, cookie, body: payload, headers = {}, apiClient } = options;
@@ -906,7 +933,163 @@ async function main() {
       return `200 travel to ${home}; saved crop patch at ${site.x},${site.y}; 200 plant; first practice step complete from one saved crop_plant fact; one receipt (quest:quiet-harvest.first-sowing, 5 of 10 cosmetic experience today, available); 0 coins from the practice path (balance 0, no receipt, ledger valid); 400 refused client completion; 403 refused self-review (authorized human account required); the earlier independent acceptance still holds its single 10-coin receipt`;
     });
 
-    await step('16. one shared restoration step with two actors', async () => {
+    await step('16. the practice crop ripens on the server clock and its harvest answers the second step once', async () => {
+      // The planting from step 15 is still growing. Its growth time is read from the API rather than
+      // assumed, and the guard is proved first: an early harvest through the real interaction route is
+      // refused and writes nothing.
+      const journey = expectStatus(await get(`/journey?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /journey for the practice planting');
+      const crop = journey.crops.find((item) => item.harvested_at === null);
+      expectThat(crop, 'the practice planting from step 15 must still be growing', { expected: 'one growing crop', actual: describe(journey.crops) });
+      expectThat(crop.ready === false && crop.ready_at > crop.planted_at, 'a fresh crop must publish its own future ripening instant', { expected: 'ready=false with ready_at after planted_at', actual: describe(crop) });
+
+      // The interaction route needs the resident on or beside the tile, so it walks there over the
+      // shipped movement route and the same terrain the renderer draws.
+      const home = `home:${world.newcomerAgent}`;
+      const garden = expectStatus(await get(`/world?world_id=${encodeURIComponent(home)}&agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /world for the practice garden');
+      const me = (garden.participants || []).find((entry) => entry.id === world.newcomerAgent);
+      expectThat(me, 'the practice resident must appear in its own garden', { expected: `participant ${world.newcomerAgent}`, actual: describe((garden.participants || []).map((entry) => entry.id)) });
+      const terrain = await readTerrain(home, null);
+      const occupied = new Set([...terrain.solid, `${crop.x},${crop.y}`]);
+      for (const object of garden.objects || []) occupied.add(`${object.x},${object.y}`);
+      const beside = [{ x: crop.x, y: crop.y - 1 }, { x: crop.x - 1, y: crop.y }, { x: crop.x + 1, y: crop.y }, { x: crop.x, y: crop.y + 1 }]
+        .find((tile) => walkableTile(terrain.grid, tile.x, tile.y) && !occupied.has(`${tile.x},${tile.y}`));
+      expectThat(beside, 'the practice garden must offer a walkable tile beside the crop patch', { expected: `a free tile beside ${crop.x},${crop.y}`, actual: describe({ position: { x: me.x, y: me.y }, terrain: terrain.grid[me.y]?.slice(Math.max(0, me.x - 3), me.x + 4) }) });
+      world.newcomerPosition = await walkTo(world.newcomerToken, { x: me.x, y: me.y }, beside, terrain.grid, occupied, { agent_id: world.newcomerAgent });
+
+      const early = await post('/interact', { agent_id: world.newcomerAgent, x: crop.x, y: crop.y, action: 'garden', garden_action: 'harvest' }, { token: world.newcomerToken, headers: { 'Idempotency-Key': 'e2e-harvest-early' } });
+      expectStatus(early, 409, 'POST /interact harvesting a crop that is still growing');
+      expectThat(/still growing/.test(early.body?.error || ''), 'the refusal must name the crop’s own state', { expected: 'an error about the crop still growing', actual: describe(early.body), request: early.request, response: early });
+      expectThat(readRow('SELECT harvested_at FROM journey_crops WHERE agent_id=? AND x=? AND y=?', world.newcomerAgent, crop.x, crop.y).harvested_at === null, 'a refused harvest must store nothing', { expected: 'harvested_at=NULL', actual: describe(readRow('SELECT harvested_at FROM journey_crops WHERE agent_id=? AND x=? AND y=?', world.newcomerAgent, crop.x, crop.y)) });
+
+      // Time compression, stated plainly: rather than waiting the crop's own growth time in wall clock,
+      // the harness moves the stored planting time back by that growth plus a second. The server still
+      // computes readiness from its own clock and that stored time, and everything else here is HTTP.
+      const growth = crop.ready_at - crop.planted_at;
+      const backdated = Date.now() - growth - 1000;
+      writeRow('UPDATE journey_crops SET planted_at=? WHERE agent_id=? AND x=? AND y=?', backdated, world.newcomerAgent, crop.x, crop.y);
+      state.notes.push(`the crop step moved this disposable row’s stored planting time back by ${growth} ms instead of waiting it out: journey_crops at ${crop.x},${crop.y} for ${world.newcomerAgent} (planted_at ${crop.planted_at} → ${backdated})`);
+
+      const ripened = expectStatus(await get(`/journey?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /journey after the stored planting time was moved back');
+      const mature = ripened.crops.find((item) => item.x === crop.x && item.y === crop.y);
+      expectThat(mature.ready === true && mature.harvested_at === null, 'the crop must read as ready once the server’s clock has passed its ripening instant', { expected: 'ready=true', actual: describe(mature) });
+
+      const harvested = expectStatus(await post('/interact', { agent_id: world.newcomerAgent, x: crop.x, y: crop.y, action: 'garden', garden_action: 'harvest' }, { token: world.newcomerToken, headers: { 'Idempotency-Key': 'e2e-harvest-1' } }), 200, 'POST /interact harvesting the mature crop');
+      expectThat(harvested.interaction?.kind === 'crop_patch' && harvested.interaction?.action === 'garden', 'the harvest must run the crop patch’s own garden action', { expected: 'crop_patch / garden', actual: describe(harvested.interaction) });
+      expectThat(harvested.result?.crop?.harvested_at !== null && harvested.result?.inventory?.some((item) => item.kind === 'herbs' && item.quantity === 2), 'the harvest must store the gathering and the two resources it yields', { expected: 'a stored harvest with two herbs', actual: describe(harvested.result) });
+      const replay = expectStatus(await post('/interact', { agent_id: world.newcomerAgent, x: crop.x, y: crop.y, action: 'garden', garden_action: 'harvest' }, { token: world.newcomerToken, headers: { 'Idempotency-Key': 'e2e-harvest-1' } }), 200, 'POST /interact replaying the same harvest key');
+      expectThat(replay.replay === true, 'the same click with the same key must be one write', { expected: 'replay=true', actual: describe(replay.replay) });
+      const again = await post('/interact', { agent_id: world.newcomerAgent, x: crop.x, y: crop.y, action: 'garden', garden_action: 'harvest' }, { token: world.newcomerToken, headers: { 'Idempotency-Key': 'e2e-harvest-2' } });
+      expectStatus(again, 409, 'POST /interact harvesting an already gathered tile');
+      const shelf = expectStatus(await get(`/journey?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /journey after the harvest');
+      expectThat(shelf.inventory.filter((item) => item.kind === 'herbs').every((item) => item.quantity === 2), 'a second harvest must gather nothing more', { expected: 'two herbs', actual: describe(shelf.inventory) });
+
+      // The harvest advances the practice chain's second step and leaves the keepsake step waiting,
+      // because the shared ten-a-day cosmetic allowance is now spent by the planting and the harvest.
+      const board = expectStatus(await get(`/quests?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /quests after the mature harvest');
+      const chain = board.chains.find((item) => item.slug === 'quiet-harvest');
+      expectThat(chain.steps[1].state === 'complete' && chain.steps[1].saved_facts.some((fact) => fact.source_kind === 'crop_harvest'), 'the saved harvest must complete the second step and name its own source', { expected: 'patient-tending complete from crop_harvest', actual: describe({ state: chain.steps[1]?.state, facts: chain.steps[1]?.saved_facts }) });
+      expectThat(board.next_action?.step_slug === 'keepsake' && board.progress[0].complete === false, 'the chain must offer its last step without claiming it', { expected: 'keepsake waiting, chain incomplete', actual: describe({ next: board.next_action?.step_slug, progress: board.progress[0] }) });
+      const calling = expectStatus(await get(`/callings?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /callings after the mature harvest');
+      expectThat(calling.today.earned === 10 && calling.today.remaining === 0, 'the planting and the harvest must spend the shared ten points of the day exactly', { expected: 'today.earned=10, remaining=0', actual: describe(calling.today) });
+      expectThat(calling.receipts.filter((receipt) => receipt.objective_id.startsWith('quest:')).length === 2, 'the practice chain must hold exactly two step receipts', { expected: 'two quest receipts', actual: describe(calling.receipts.map((receipt) => receipt.objective_id)) });
+      const wallet = expectStatus(await get(`/coins?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /coins after the mature harvest');
+      expectThat(wallet.balance === 0 && wallet.receipt_count === 0 && wallet.integrity_valid === true, 'a harvested crop must mint no NemoCoin', { expected: 'zero coins and a valid ledger', actual: describe({ balance: wallet.balance, receipts: wallet.receipt_count, valid: wallet.integrity_valid }) });
+      world.practice = { tile: `${crop.x},${crop.y}`, growthMs: growth, harvestAt: harvested.result.crop.harvested_at };
+      return `planted ${crop.x},${crop.y} refused while growing (409), ripened by moving the stored planting time back ${growth} ms, then harvested once (two herbs, replay-safe, a second click refused); quest:quiet-harvest.patient-tending complete from crop_harvest; keepsake still waiting; 10 of 10 cosmetic points spent today; 0 coins`;
+    });
+
+    await step('17. a guild contribution is reworked after changes are requested and only a pledge can be withdrawn', async () => {
+      // The admin's resident organises a two-workstream plan; the newcomer's resident contributes and
+      // the third operator verifies. Nothing in this step grants land, a role or a coin.
+      const verifier = expectStatus(await post('/agents', { kind: 'agent', name: 'Neighbour verifier', color: '#5b8c5a', symbol: '◆', capabilities: 'Verifies recorded cooperative work independently', limitations: 'No external tools and no real-world claims' }, { token: world.neighborToken }), 201, 'POST /agents for the verifying operator');
+      const plan = [
+        { id: 'trace-route', title: 'Trace one accessible route', output_name: 'A traced route with start and end', scope: 'Walk a route through the Commons and record the tiles actually passable' },
+        { id: 'note-obstacle', title: 'Note one obstacle', output_name: 'An obstacle record with a workaround', scope: 'Record one place that blocks a walker and the detour around it' },
+      ];
+      const project = expectStatus(await post('/guilds/projects', { agent_id: world.agentId, guild_id: 'explorer', title: 'Acceptance route register', summary: 'Two bounded workstreams for the acceptance run.', visibility: 'private', plan }, { token: world.adminToken }), 201, 'POST /guilds/projects');
+      expectThat(project.plan.length === 2 && project.participants.find((person) => person.id === world.agentId)?.role === 'organiser', 'the creating resident must be the organiser of a two-workstream plan', { expected: 'two workstreams and one organiser', actual: describe({ plan: project.plan?.length, participants: project.participants }) });
+      expectThat(project.shared_status?.totals?.planned_workstreams === 2 && project.shared_status.all_workstreams_verified === false, 'an untouched plan must publish its workstreams and claim nothing verified', { expected: 'two planned workstreams, nothing verified', actual: describe(project.shared_status) });
+      expectStatus(await get(`/guilds/project?id=${project.id}`, { token: world.newcomerToken }), 404, 'GET /guilds/project as another operator while it is private');
+      const shared = expectStatus(await post('/guilds/manage', { id: project.id, action: 'share', reason: 'Ready for the neighbours.' }, { token: world.adminToken }), 200, 'POST /guilds/manage share');
+      expectThat(shared.shared === true && shared.visibility === 'public', 'sharing must be the one-way private to public action', { expected: 'shared=true and public', actual: describe(shared) });
+      expectThat(expectStatus(await post('/guilds/manage', { id: project.id, action: 'share', reason: 'Shared a second time by mistake.' }, { token: world.adminToken }), 200, 'POST /guilds/manage share again').shared === false, 'sharing an already public project must not be a second change', { expected: 'shared=false', actual: 'the second share reported a change' });
+
+      expectStatus(await post('/guilds/participation', { agent_id: world.newcomerAgent, project_id: project.id, action: 'join' }, { token: world.newcomerToken }), 200, 'POST /guilds/participation join');
+      const pledged = expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: project.id, workstream_id: 'trace-route', action: 'pledge', commitment: 'I will walk and record one route.' }, { token: world.newcomerToken }), 200, 'POST /guilds/contributions pledge');
+      expectThat(pledged.contributions[0].outcome.code === 'pledge' && pledged.shared_status.totals.commitments === 1, 'a pledge must read as an intention and stay the plan’s only commitment', { expected: 'one pledge and nothing verified', actual: describe({ outcome: pledged.contributions[0].outcome, totals: pledged.shared_status.totals }) });
+      const submitted = expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: project.id, workstream_id: 'trace-route', action: 'submit', evidence: 'A route recorded on the server with the tiles that blocked it.', sources: [{ url: 'https://example.org/route', location: 'Section 1' }] }, { token: world.newcomerToken }), 200, 'POST /guilds/contributions submit');
+      const contributionId = submitted.contributions[0].id;
+      expectThat(submitted.contributions[0].outcome.code === 'unverified_claim' && submitted.contributions[0].outcome.completed === false, 'a submission must stay an unverified claim', { expected: 'an unverified claim', actual: describe(submitted.contributions[0].outcome) });
+      expectStatus(await post('/guilds/verify', { agent_id: world.newcomerAgent, project_id: project.id, contribution_id: contributionId, action: 'approve', reason: 'Approving my own operator’s work.' }, { token: world.newcomerToken }), 403, 'POST /guilds/verify by the contributor’s operator');
+      expectStatus(await post('/guilds/verify', { agent_id: world.agentId, project_id: project.id, contribution_id: contributionId, action: 'approve', reason: 'Approving inside my own project.' }, { token: world.adminToken }), 403, 'POST /guilds/verify by the project creator');
+
+      // A request for changes: the note is kept with the claim, nothing reads as an outcome, and the
+      // same operator may not verify a claim that is not waiting.
+      const reworked = expectStatus(await post('/guilds/verify', { agent_id: verifier.id, project_id: project.id, contribution_id: contributionId, action: 'changes_requested', reason: 'The record needs the detour and the tile numbers.' }, { token: world.neighborToken }), 200, 'POST /guilds/verify changes_requested');
+      const entry = reworked.contributions[0];
+      expectThat(entry.status === 'changes_requested' && entry.outcome.completed === false && entry.outcome.verified === false && entry.review_note.includes('detour'), 'a request for changes must keep the note without reading as an outcome', { expected: 'changes_requested with its note and no verification', actual: describe({ status: entry.status, outcome: entry.outcome, note: entry.review_note, verified_by: entry.verified_by }) });
+      expectThat(reworked.shared_status.totals.verified_contributions === 0 && reworked.shared_status.workstreams[0].claimed === 1, 'the plan must count a reworked claim as a claim and not as a verified outcome', { expected: 'one claim, nothing verified', actual: describe(reworked.shared_status.workstreams) });
+      expectStatus(await post('/guilds/verify', { agent_id: verifier.id, project_id: project.id, contribution_id: contributionId, action: 'approve', reason: 'Approving a claim that is not waiting.' }, { token: world.neighborToken }), 409, 'POST /guilds/verify on a claim that is not awaiting verification');
+
+      const resubmitted = expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: project.id, workstream_id: 'trace-route', action: 'submit', evidence: 'The same route with the detour around the blocked passage.', sources: [{ url: 'https://example.org/route', location: 'Section 2' }] }, { token: world.newcomerToken }), 200, 'POST /guilds/contributions resubmit');
+      expectThat(resubmitted.contributions[0].status === 'submitted' && resubmitted.contributions[0].review_note === '', 'the rework must replace the claim and clear the earlier note', { expected: 'submitted with an empty note', actual: describe(resubmitted.contributions[0]) });
+      const verified = expectStatus(await post('/guilds/verify', { agent_id: verifier.id, project_id: project.id, contribution_id: contributionId, action: 'approve', reason: 'Checked the recorded detour and its tiles independently.' }, { token: world.neighborToken }), 200, 'POST /guilds/verify approve after the rework');
+      expectThat(verified.contributions[0].outcome.completed === true && verified.contributions[0].verified_by === verifier.name, 'only the independent approval may read as a completed outcome', { expected: 'completed=true verified by the third operator', actual: describe(verified.contributions[0]) });
+      expectThat(verified.shared_status.totals.verified_contributions === 1 && verified.shared_status.all_workstreams_verified === false, 'one verified workstream must not mark the whole plan verified', { expected: 'one verified workstream', actual: describe(verified.shared_status) });
+      for (const action of ['pledge', 'submit', 'withdraw']) expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: project.id, workstream_id: 'trace-route', action, commitment: 'A fresh intention.', evidence: 'A fresh claim.' }, { token: world.newcomerToken }), 409, `POST /guilds/contributions ${action} on a verified workstream`);
+
+      const pledgeSecond = expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: project.id, workstream_id: 'note-obstacle', action: 'pledge', commitment: 'I will note one obstacle.' }, { token: world.newcomerToken }), 200, 'POST /guilds/contributions pledge the second workstream');
+      expectThat(pledgeSecond.shared_status.totals.commitments === 1, 'the second workstream’s pledge must be counted as a commitment', { expected: 'one commitment', actual: describe(pledgeSecond.shared_status.totals) });
+      const withdrawn = expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: project.id, workstream_id: 'note-obstacle', action: 'withdraw' }, { token: world.newcomerToken }), 200, 'POST /guilds/contributions withdraw');
+      expectThat(withdrawn.contributions.length === 1 && withdrawn.shared_status.totals.commitments === 0, 'a withdrawn pledge must leave the plan counting nothing', { expected: 'one retained contribution and no commitments', actual: describe({ contributions: withdrawn.contributions.length, totals: withdrawn.shared_status.totals }) });
+      expectThat(readRow('SELECT COUNT(*) AS n FROM guild_contributions WHERE project_id=?', project.id).n === 1, 'only the withdrawal may remove a row, and the verified record must stay', { expected: 'one guild_contributions row', actual: describe(readRow('SELECT COUNT(*) AS n FROM guild_contributions WHERE project_id=?', project.id)) });
+      const guildWallet = expectStatus(await get(`/coins?agent_id=${world.newcomerAgent}`, { token: world.newcomerToken }), 200, 'GET /coins after the guild work');
+      expectThat(guildWallet.balance === 0 && guildWallet.receipt_count === 0, 'cooperative verification must mint nothing', { expected: 'zero coins', actual: describe({ balance: guildWallet.balance, receipts: guildWallet.receipt_count }) });
+      world.guildProject = { id: project.id, verifierId: verifier.id, contributionId };
+      return `private project shared once (a second share changed nothing); pledge → claim → 403 self and creator verification → 409 re-verification → changes_requested (note kept, nothing verified) → resubmitted → verified by ${verifier.name} (1 of 2 workstreams); the second pledge withdrawn; one guild_contributions row and zero coins`;
+    });
+
+    await step('18. the guild project closes, reopens and archives, and its plan bounds are enforced', async () => {
+      const { id } = world.guildProject;
+      const projectsBefore = readRow('SELECT COUNT(*) AS n FROM guild_projects').n;
+      const bounds = async (plan, label) => expectStatus(await post('/guilds/projects', { agent_id: world.agentId, guild_id: 'explorer', title: 'An over-large plan', summary: 'A plan this world must refuse.', plan }, { token: world.adminToken }), 400, label);
+      await bounds([], 'POST /guilds/projects with no workstream');
+      await bounds(Array.from({ length: 7 }, (_, index) => ({ id: `work-${index}`, title: `Planned work ${index}`, output_name: `A result ${index}`, scope: `Do the bounded work ${index}` })), 'POST /guilds/projects with seven workstreams');
+      await bounds([{ id: 'trace-route', title: 'One', output_name: 'One result', scope: 'Do one thing' }, { id: 'trace-route', title: 'Two', output_name: 'Two results', scope: 'Do another thing' }], 'POST /guilds/projects with a repeated workstream id');
+      await bounds([{ id: 'trace-route', title: 'One', output_name: '', scope: 'Do one thing' }], 'POST /guilds/projects with a missing output name');
+      expectThat(readRow('SELECT COUNT(*) AS n FROM guild_projects').n === projectsBefore, 'a refused plan must store no project', { expected: `${projectsBefore} projects`, actual: describe(readRow('SELECT COUNT(*) AS n FROM guild_projects')) });
+      expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: id, workstream_id: 'missing', action: 'pledge', commitment: 'Nothing to pledge to.' }, { token: world.newcomerToken }), 404, 'POST /guilds/contributions for a workstream the plan does not name');
+
+      // Closing stops new participation and new claims, and still lets a participant withdraw a pledge.
+      expectStatus(await post('/guilds/participation', { agent_id: world.newcomerAgent, project_id: id, action: 'join' }, { token: world.newcomerToken }), 200, 'POST /guilds/participation re-join for the close step');
+      expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: id, workstream_id: 'note-obstacle', action: 'pledge', commitment: 'A standing pledge before the plan closes.' }, { token: world.newcomerToken }), 200, 'POST /guilds/contributions pledge before closing');
+      const closed = expectStatus(await post('/guilds/manage', { id, action: 'close', reason: 'The plan is being revised.' }, { token: world.adminToken }), 200, 'POST /guilds/manage close');
+      expectThat(closed.status === 'closed', 'the organiser must be able to close the plan', { expected: 'status=closed', actual: describe(closed.status) });
+      const joinClosed = await post('/guilds/participation', { agent_id: world.guildProject.verifierId, project_id: id, action: 'join' }, { token: world.neighborToken });
+      expectStatus(joinClosed, 409, 'POST /guilds/participation join while the plan is closed');
+      expectThat(/not open to new participants/.test(joinClosed.body?.error || ''), 'the refusal must say the plan is closed to new participants', { expected: 'a closed-plan refusal', actual: describe(joinClosed.body), request: joinClosed.request, response: joinClosed });
+      const pledgeClosed = await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: id, workstream_id: 'trace-route', action: 'pledge', commitment: 'A pledge while the plan is closed.' }, { token: world.newcomerToken });
+      expectStatus(pledgeClosed, 409, 'POST /guilds/contributions pledge while the plan is closed');
+      const withdrewWhileClosed = expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: id, workstream_id: 'note-obstacle', action: 'withdraw' }, { token: world.newcomerToken }), 200, 'POST /guilds/contributions withdraw while the plan is closed');
+      expectThat(withdrewWhileClosed.shared_status.totals.commitments === 0, 'a standing pledge must stay withdrawable while the plan is closed', { expected: 'no commitments', actual: describe(withdrewWhileClosed.shared_status.totals) });
+
+      const reopened = expectStatus(await post('/guilds/manage', { id, action: 'reopen', reason: 'The revision is done.' }, { token: world.adminToken }), 200, 'POST /guilds/manage reopen');
+      expectThat(reopened.status === 'open', 'the organiser must be able to reopen the plan', { expected: 'status=open', actual: describe(reopened.status) });
+      expectStatus(await post('/guilds/contributions', { agent_id: world.newcomerAgent, project_id: id, workstream_id: 'note-obstacle', action: 'pledge', commitment: 'The obstacle, recorded after the reopening.' }, { token: world.newcomerToken }), 200, 'POST /guilds/contributions pledge after reopening');
+
+      const archived = expectStatus(await post('/guilds/manage', { id, action: 'archive', reason: 'Archived for the record.' }, { token: world.adminToken }), 200, 'POST /guilds/manage archive');
+      expectThat(archived.status === 'archived', 'the organiser must be able to archive the plan', { expected: 'status=archived', actual: describe(archived.status) });
+      expectStatus(await get(`/guilds/project?id=${id}`), 404, 'GET /guilds/project for an archived plan');
+      expectStatus(await get(`/guilds/project?id=${id}`, { token: world.newcomerToken }), 404, 'GET /guilds/project for an archived plan as a former participant');
+      expectStatus(await post('/guilds/participation', { agent_id: world.newcomerAgent, project_id: id, action: 'join' }, { token: world.newcomerToken }), 404, 'POST /guilds/participation on an archived plan');
+      const board = expectStatus(await get('/guilds', { token: world.newcomerToken }), 200, 'GET /guilds after the archive');
+      expectThat(!board.projects.some((item) => item.id === id), 'an archived plan must leave the board', { expected: 'the archived plan absent', actual: describe(board.projects.map((item) => item.id)) });
+      expectThat(readRow('SELECT status FROM guild_projects WHERE id=?', id).status === 'archived', 'the archived plan must stay stored', { expected: 'status=archived', actual: describe(readRow('SELECT status FROM guild_projects WHERE id=?', id)) });
+      expectThat(readRow('SELECT COUNT(*) AS n FROM land_stewardships WHERE account_id=?', world.newcomerId).n === 0, 'taking part in a guild project must never grant a plot', { expected: 'no stewardship', actual: describe(readRow('SELECT COUNT(*) AS n FROM land_stewardships WHERE account_id=?', world.newcomerId)) });
+      return `plan bounds refused (empty, seven, duplicate id, missing output name) and no project stored; closed: join 409 and pledge 409, a standing pledge still withdrawable; reopened and pledged again; archived: unreadable, unlistable and unjoinable while the row stays stored; no stewardship granted`;
+    });
+
+    await step('19. one shared restoration step with two actors', async () => {
       // Two operators, each with a resident, on a garden no earlier step touched. The plan is read
       // from the API, so no tile and no object type is hard-coded here.
       const restorer = expectStatus(await post('/agents', { kind: 'agent', name: 'Groundskeeper A', color: '#397f79', symbol: '✦', capabilities: 'Carries and places the plan’s own objects', limitations: 'No external tools and no real-world claims' }, { token: world.adminToken }), 201, 'POST /agents (Groundskeeper A)');
@@ -963,7 +1146,7 @@ async function main() {
       return `occurrence ${eventId} scheduled; ${read.event.participants.map((participant) => participant.name).join(' and ')} pledged from two operators; ground ${measured.progress}/${measured.target} placed; guide: A counted ${mine.contributions.find((entry) => entry.step_id === 'ground').counted}, B counted ${other.contributions.find((entry) => entry.step_id === 'ground').counted} (operator_distinct), ${guide.restoration.remaining.length} steps remaining`;
     });
 
-    await step('17. restart persistence', async () => {
+    await step('20. restart persistence', async () => {
       const { restorerId, helperId, garden, eventId, firstSlot, secondSlot } = world.restoration;
       const snapshot = async () => {
         const read = expectStatus(await get(`/restoration?event_id=${encodeURIComponent(eventId)}`), 200, 'GET /restoration for the snapshot');
@@ -1020,6 +1203,8 @@ async function main() {
   console.log(`SUMMARY  ${state.results.length} steps passed, 0 failed`);
   console.log('  coins            one fixed 10-coin receipt for an independently accepted contribution; ledger integrity verified');
   console.log('  newcomer         a member account with one AI resident, one chosen calling, one country ambassador read, one saved practice activity with one cosmetic receipt (5 of 10 today) and zero coins');
+  if (world.practice) console.log(`  practice crop    the same planting ripened on the server clock (its stored planting time moved back ${world.practice.growthMs} ms by the harness) and its one harvest answered step two at ${world.practice.tile}`);
+  if (world.guildProject) console.log('  guild projects   one private plan shared, a contribution reworked after changes were requested and verified by a different operator, a pledge withdrawn, then the plan closed, reopened and archived');
   console.log(`  first-ten-minutes one shared garden restored by two operators (${world.firstPlay?.ground ?? 'n/a'} ground tiles placed, the guide attributing each counted step to its own operator with ${world.firstPlay?.remaining?.length ?? 0} steps remaining); every saved row, both pledges and both saved places survived a real server restart`);
   if (state.notes.length) {
     console.log('  notes');

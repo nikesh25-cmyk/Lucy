@@ -1524,8 +1524,19 @@ define('guild-cooperation', async () => {
     await openTab(stranger.page, 'Open world');
     await stranger.page.locator('#view select[name="agent"]').selectOption(neighbour.id);
     await settle(stranger.page);
-    await openTab(stranger.page, 'Guild projects');
-    const board = await stranger.page.locator('#view').textContent();
+    // Selecting a resident starts the client's own asynchronous enter-and-refresh, whose trailing render
+    // can put the world back over a board a tab switch just opened, and a click the rebuilt navigation
+    // swallowed leaves the previous section on screen. Wait for the board itself, re-opening the section
+    // within bounds, instead of reading #view on a fixed delay.
+    let board = '';
+    for (let attempt = 0; attempt < 4 && !/Browser shared growing plan/.test(board); attempt += 1) {
+      if (attempt) await stranger.page.waitForTimeout(500);
+      await openTab(stranger.page, 'Guild projects');
+      board = await waitForCondition(async () => {
+        const text = (await stranger.page.locator('#view').textContent().catch(() => '')) || '';
+        return /Browser shared growing plan/.test(text) ? text : null;
+      }, 'the guild board to render the public project', { timeout: 5000 }).catch(() => '');
+    }
     expect(/Browser shared growing plan/.test(board), 'a public guild project must be listed for everyone', { actual: board?.slice(0, 200) });
     expect(!/Browser private growing plan/.test(board), 'a private guild project must never be listed for another operator', { actual: 'the private project appeared on the board' });
     const listing = await inPage(stranger.page, '/guilds?limit=24', { method: 'GET' });
@@ -1538,10 +1549,12 @@ define('guild-cooperation', async () => {
   await step('the second operator joins the public project and the server records it', async () => {
     const card = stranger.page.locator('#view .cooperative-project', { hasText: publicTitle }).first();
     await card.getByRole('button', { name: 'Join this guild project', exact: true }).click();
+    // The organiser is already a participant, so waiting for "any participant exists" would be satisfied
+    // before the click's write lands. Wait for the joining resident's own row instead.
     const stored = await waitForCondition(async () => {
       const participants = rows('SELECT p.agent_id,p.role,p.state,a.operator_id FROM guild_participants p JOIN agents a ON a.id=p.agent_id WHERE p.project_id=?', state.fixtures.guildProjects.public.id);
-      return participants.length ? participants : null;
-    }, 'the participation to be stored');
+      return participants.some((participant) => participant.agent_id === neighbour.id) ? participants : null;
+    }, `the participation of the neighbouring resident to be stored`);
     const joined = stored.find((participant) => participant.agent_id === neighbour.id);
     expect(joined, 'the joining resident must be recorded', { actual: describe(stored.map((participant) => participant.agent_id)) });
     expect(joined.operator_id === state.fixtures.stranger.id, 'the participant must be owned by the joining operator', { expected: state.fixtures.stranger.id, actual: describe(joined.operator_id) });
@@ -2211,19 +2224,36 @@ define('subscription-entitlement-and-revocation', async () => {
   });
 
   await step('making the garden private closes the outsider’s subscription', async () => {
+    // The notice area holds one message at a time and the client writes more than one as the feed is
+    // closed: the revocation sentence, and the refusal a later world read raises for itself. Record
+    // every notice from here on, so a sentence the client really wrote cannot be lost to a later
+    // overwrite and read as “the client never explained it”.
+    await stranger.page.evaluate(() => {
+      const node = document.querySelector('#notice');
+      window.__noticeHistory = [];
+      if (!node) return;
+      const record = () => {
+        const text = (node.textContent || '').trim();
+        if (text && window.__noticeHistory[window.__noticeHistory.length - 1] !== text) window.__noticeHistory.push(text);
+      };
+      record();
+      new MutationObserver(record).observe(node, { childList: true, characterData: true, subtree: true });
+    });
     await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'private' });
     const closed = await waitForClient(stranger.page, () => { const c = window.__nemoworld?.lastClosed?.(); return c && c.reason === 'access_revoked' ? c : null; }, null, 'the outsider’s subscription to be revoked', 5000);
     expect(closed.reason === 'access_revoked', 'the revocation must name the lost access', { expected: 'access_revoked', actual: describe(closed) });
-    // The close event and the visible notice are separate client updates, so wait for the notice to
-    // carry the reason instead of reading it the instant the stream closes (a load-timing race).
-    let notice = '';
+    // The close event and the visible notice are separate client updates, so wait for the recorded
+    // history to carry the reason rather than sampling the element, which a later notice overwrites.
+    let notice = '', history = [];
     try {
       notice = await waitForClient(stranger.page, () => {
-        const text = document.querySelector('#notice')?.textContent || '';
-        return /no longer open to you|garden is now private/i.test(text) ? text : null;
+        const seen = window.__noticeHistory || [];
+        return seen.find((text) => /no longer open to you|garden is now private/i.test(text)) || null;
       }, null, 'the client’s notice to explain why the live feed stopped', 5000);
-    } catch { notice = await stranger.page.locator('#notice').textContent().catch(() => ''); }
-    expect(/no longer open to you|garden is now private/i.test(notice || ''), 'the client must explain why the live feed stopped', { actual: describe((notice || '').trim().slice(0, 160)) });
+    } catch { /* The history below carries what the page did show. */ }
+    history = await stranger.page.evaluate(() => window.__noticeHistory || []).catch(() => []);
+    if (!notice) notice = history.find((text) => /no longer open to you|garden is now private/i.test(text)) || history[history.length - 1] || '';
+    expect(/no longer open to you|garden is now private/i.test(notice || ''), 'the client must explain why the live feed stopped', { expected: 'a notice naming the lost access or the private garden', actual: describe({ observed: (notice || '').trim().slice(0, 160), history: history.map((text) => text.slice(0, 160)) }) });
     const refused = await inPage(stranger.page, `/events?world_id=${encodeURIComponent(garden)}`, { method: 'GET' });
     expect(refused.status === 403, 'an authenticated but unentitled client must be refused the private channel', { expected: 'HTTP 403', actual: `HTTP ${refused.status}` });
     return `access_revoked closed the stream and a fresh subscription answered ${refused.status}`;
@@ -2622,7 +2652,13 @@ define('interaction-ambassador-desk', async () => {
     const form = interactionActionForm(page);
     await form.locator('[name="question"]').fill('Which registered sources should we read first?');
     await form.getByRole('button', { name: /^Talk to / }).click();
-    const stored = await waitForCondition(async () => row('SELECT account_id,ambassador_id,question FROM ambassador_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 1', state.fixtures.owner.id), 'the conversation turn to be stored');
+    // This operator already holds one turn with this ambassador from an earlier scenario, so waiting for
+    // "a newest row exists" would be satisfied before the click's write lands. Wait for a genuine count
+    // increase instead, exactly as the phone step of the first-play scenario does.
+    const stored = await waitForCondition(async () => {
+      const turns = rows('SELECT account_id,ambassador_id,question FROM ambassador_conversations WHERE account_id=? ORDER BY created_at DESC,rowid DESC', state.fixtures.owner.id);
+      return turns.length > before ? turns[0] : null;
+    }, 'the conversation turn to be stored');
     expect(count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', state.fixtures.owner.id) === before + 1, 'the desk must store exactly one turn', { expected: `${before + 1} turns`, actual: count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', state.fixtures.owner.id) });
     expect(/^amb-/.test(stored.ambassador_id), 'the stored turn must name the ambassador', { actual: describe(stored.ambassador_id) });
     expect(stored.account_id === state.fixtures.owner.id, 'the turn must belong to the signed-in operator', { actual: describe(stored.account_id) });
@@ -5039,13 +5075,16 @@ define('first-ten-minutes', async () => {
     expect(control.status === 200 && control.body?.status === 'paused', 'the operator must be able to pause its own resident', { expected: 'HTTP 200 with status=paused', actual: `HTTP ${control.status} ${describe(control.body)}` });
     await page.reload({ waitUntil: 'domcontentloaded' });
     await settle(page);
-    await page.waitForTimeout(1000); // let the concurrent first-play read land before the next render
     await openGameTab(page, 'Open world');
     await waitForGuide(page);
     const blockedRead = await readFirstPlay(page, resident.id, garden);
     expect(blockedRead.next_step?.id === 'restore' && blockedRead.next_step?.blocked?.code === 'resident_unavailable',
       'the server must report the paused resident on its still unfinished restoration step',
       { expected: 'restore blocked=resident_unavailable', actual: describe(blockedRead.next_step) });
+    // The guide draws its own first-play read asynchronously. The server has just told this step that
+    // the resident is unavailable, so wait for the card to carry that decision rather than sampling the
+    // DOM a fixed second after the reload and hoping the render has landed.
+    await waitForClient(page, () => document.querySelector('#game-guide-host .game-guide-card.game-guide-next [data-guide="blocked"]') ? true : null, null, 'the guide to render the paused resident’s refusal', 10_000);
     const card = await page.evaluate(() => {
       const next = document.querySelector('#game-guide-host .game-guide-card.game-guide-next');
       const action = next?.querySelector('.game-guide-action') || null;
