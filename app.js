@@ -1884,6 +1884,7 @@ function callingCard(){
  const view=state.callings,node=card(view?view.calling.name:'Your calling','A PURPOSE IN THIS WORLD');node.classList.add('calling-card');
  if(!view){node.append(paragraph('Choose a peaceful vocation. Let it guide how your character helps the world.'),button('Choose a calling',()=>openSection('callings'),'small'));return node;}
  node.append(badge(`${view.rank.title} · level ${view.rank.level}`),paragraph(view.calling.purpose),paragraph(`${view.calling.guild_name} · ${view.experience.available} cosmetic experience`,'privacy'));
+ if(view.pathway)node.append(paragraph(`Pathway ${view.pathway.completed} / ${view.pathway.total}${view.pathway.next?` · next: ${view.pathway.next.title}`:' · every tier credited'}`,'privacy'));
  for(const objective of view.today.objectives){const item=element('div',null,`calling-objective ${objective.complete?'complete':''}`);item.append(element('span',objective.complete?'✓':'◇','objective-mark'),paragraph(objective.title));node.append(item);}
  if(view.current_objective)node.append(button('Follow my calling',()=>callingAction(view.current_objective.action_hint),'small'));
  if(state.quests?.next_action)node.append(questNextCard(state.quests.next_action,{compact:true}));
@@ -1904,6 +1905,52 @@ function callingWorkerForm(parent){
   body.append(actions(button('View runs',()=>openSection('history'),'secondary small'),button('Stop my local AI',async()=>{const result=await api('/residents/cancel','POST',{});notice(result.stopping?'Stop requested. Check the run receipt after cleanup.':'No local resident is running.');},'secondary small')),paragraph('A calling never grants permissions. Decisions have time and API budgets; revoking access stops the runtime. Research work still uses scoped missions and separate human review.','privacy'));
  });
 }
+// The pathway is one calling's practice ladder, computed on the server from saved receipts and
+// recorded adoptions. Two things matter in this reader: the three states stay visibly apart (practice,
+// verified contribution, external adoption are not degrees of one thing), and the next challenge names
+// the concrete saved fact that is still missing. Nothing here can credit a tier, and nothing here
+// claims that a tier is a qualification.
+const PATHWAY_STATE_KEYS=Object.freeze({'practice':'practice','verified-contribution':'verified','external-adoption':'adopted'});
+function pathwayTierCard(tier){
+ const node=element('article',null,'calling-quest');node.dataset.pathwayTier=tier.slug;
+ node.append(badge(tier.state),element('h3',`Tier ${tier.ordinal} · ${tier.title}`),paragraph(tier.summary));
+ for(const item of tier.requires){
+  const row=element('div',null,'quest-row');append(row,paragraph(`${item.have} of ${item.min} · ${item.label}`),badge(item.evidence));
+  if(item.have<item.min)row.append(button('Open this step',()=>callingAction(item.action.kind),'secondary small'));
+  node.append(row);
+ }
+ for(const fact of tier.evidence)node.append(paragraph(`Saved fact: ${fact.kind} · ${fact.source_id} · ${fact.earned_day}`,'plot-address'));
+ if(tier.requires.some(item=>item.kind==='research_accepted'))node.append(paragraph('This tier is credited only by an independent human acceptance of real scoped work. Neither the contributor nor a model can accept it.','privacy'));
+ for(const recipe of tier.recipes)node.append(paragraph(`Suggested recipe: ${recipe.name} — ${Object.entries(recipe.ingredients).map(([kind,count])=>`${count} ${kind}`).join(', ')}. Every recipe stays available; the pathway only suggests which one suits this calling.`,'privacy'));
+ return node;
+}
+function pathwayCard(pathway){
+ if(!pathway)return null;
+ const node=card(`${pathway.name} · pathway`,'PRACTICE · VERIFIED CONTRIBUTION · EXTERNAL ADOPTION');node.classList.add('pathway-card');
+ node.append(paragraph(pathway.summary));
+ node.append(metrics([['Pathway tiers',`${pathway.completed} / ${pathway.total}`,'Credited only from saved server facts'],['Different practice kinds',pathway.diversity.distinct_kinds,`${pathway.diversity.kinds_per_tier} unlock the banner decoration`],['Verified contributions',pathway.contribution.verified.count,'Independent human acceptance'],['External adoption',pathway.contribution.adopted.count,'Recorded by the mission owner']]));
+ node.append(paragraph(pathway.policy.diversity,'privacy'));
+ const states=element('div',null,'pathway-states');states.dataset.pathwayStates='three';
+ for(const state of pathway.states){
+  const key=PATHWAY_STATE_KEYS[state.id],record=pathway.contribution[key],row=element('article',null,'record');
+  row.dataset.pathwayState=state.id;row.append(badge(state.badge),element('h3',state.label),paragraph(state.detail,'privacy'),paragraph(`Your record: ${record.count}${key==='practice'?` · ${pathway.diversity.distinct_kinds} different kind${pathway.diversity.distinct_kinds===1?'':'s'} of saved practice`:''}`));
+  states.append(row);
+ }
+ node.append(paragraph('These three states are not the same thing and no tier turns one into another. Only the third leaves NemoWorld, and it is still a record written here.','privacy'),states);
+ if(pathway.next){
+  const next=element('section',null,'card quest-next');next.dataset.pathwayNext=pathway.next.tier_slug;
+  next.setAttribute('aria-label',`Next pathway challenge: tier ${pathway.next.ordinal}, ${pathway.next.title}`);
+  next.append(paragraph('NEXT CHALLENGE','eyebrow'),element('h3',`Tier ${pathway.next.ordinal} · ${pathway.next.title}`),paragraph(pathway.next.summary));
+  for(const item of pathway.next.missing)next.append(paragraph(`Still needed: ${item.needs} more · ${item.label} (${item.have} of ${item.min})`),button('Open this step',()=>callingAction(item.action.kind),'secondary small'));
+  if(pathway.next.requires_human_review)next.append(paragraph('A different, authorized human reviewer must accept this work before the tier counts. You cannot accept your own contribution.','privacy'));
+  node.append(next);
+ } else node.append(paragraph('Every tier of this pathway is credited from saved facts. Nothing further is owed here, and a pathway is not a qualification or a professional credential.','privacy'));
+ const grid=element('div',null,'grid two');for(const tier of pathway.tiers)grid.append(pathwayTierCard(tier));node.append(grid);
+ const unlocks=pathway.unlocks||[];
+ if(unlocks.length)disclosure(node,'Cosmetic decorations and suggested recipes',body=>{for(const unlock of unlocks)body.append(paragraph(`${unlock.earned?'Earned':'Ahead'} · ${unlock.kind==='cosmetic'?'decoration':'suggested recipe'} · ${unlock.label}: ${unlock.detail}`,'privacy'));});
+ node.append(paragraph(pathway.disclosure,'privacy'));
+ return node;
+}
 function renderCallings(parent){
  parent.append(heading('Every resident has a calling','Build a peaceful world through exploration, care, craft and useful knowledge. Humans choose; AI residents work within their permissions.'));
  const view=state.callings;
@@ -1914,7 +1961,9 @@ function renderCallings(parent){
   story.append(paragraph('Experience describes saved participation. It creates no NemoCoins, land rights, authority or action scope. Only independently accepted real contributions can earn NemoCoins.','privacy'));
   callingWorkerForm(story);
   memoryPanel(story);
-  disclosure(story,'My experience receipts',body=>{if(!view.receipts.length)body.append(empty('No calling receipts yet. Complete a saved objective to begin.'));for(const receipt of view.receipts.slice(0,20)){const row=element('article',null,'record');row.append(paragraph(`${receipt.objective_id.replaceAll('_',' ')} · ${receipt.points} experience`),paragraph(`${receipt.earned_day} · ${receipt.available?'available':'held after evidence changed'}`,'privacy'),paragraph(`Source: ${receipt.source_kind} · ${receipt.source_id}`,'plot-address'));body.append(row);}});parent.append(story);
+  disclosure(story,'My experience receipts',body=>{if(!view.receipts.length)body.append(empty('No calling receipts yet. Complete a saved objective to begin.'));for(const receipt of view.receipts.slice(0,20)){const row=element('article',null,'record');row.append(paragraph(`${receipt.objective_id.replaceAll('_',' ')} · ${receipt.points} experience`),paragraph(`${receipt.earned_day} · ${receipt.available?'available':'held after evidence changed'}`,'privacy'),paragraph(`Source: ${receipt.source_kind} · ${receipt.source_id}`,'plot-address'));body.append(row);}});
+  parent.append(story);
+  const pathwayNode=pathwayCard(view.pathway);if(pathwayNode)parent.append(pathwayNode);
  }else parent.append(paragraph(state.account?'Create or select a character to choose its calling.':'Meet the guilds below. Create a human account to choose your calling or guide your AI residents.'),button(state.account?'My characters':'Create account',()=>state.account?openSection('characters'):openAuth('register'),'small'));
  const catalog=state.guilds?.catalog||view?.catalog||[];const choices=element('div',null,'calling-catalog');
  for(const calling of catalog){const node=card(calling.name,calling.guild_name);node.classList.add('calling-choice');node.dataset.calling=calling.id;node.append(paragraph(calling.purpose),paragraph(calling.charter,'privacy'));if(view){const choice=button(view.calling.id===calling.id?'Current calling':`Become ${/^[AEIOU]/.test(calling.name)?'an':'a'} ${calling.name}`,async()=>{state.callings=await api('/callings/select','POST',{agent_id:state.selected,calling_id:calling.id});await loadGuilds();await loadWorld();renderView();notice(`Your calling is ${calling.name}. ${calling.guild_name} welcomes you.`);},'secondary small');choice.disabled=view.calling.id===calling.id||!view.can_change||state.world.paused;node.append(choice);}choices.append(node);}parent.append(choices,paragraph('Your operator can change a calling once per UTC day. Guilds are affiliations that follow this choice. Guild membership carries no moderation or ownership powers.','privacy'));

@@ -403,6 +403,37 @@ The grant, its revocation and its history are append-only: `scope`, `purpose`, `
 
 See [CALLINGS.md](CALLINGS.md) for `GET /callings`, human-only `POST /callings/select`, and public paginated `GET /callings/guilds`. Cosmetic experience uses saved server sources, with no coin or scope grants. New public calling profiles are on world `participants`; the legacy `agents` alias retains its earlier fields.
 
+## Competence pathways
+
+See [PATHWAYS.md](PATHWAYS.md) for the model. Every calling has one practice ladder, and `GET /callings` carries it as a `pathway` object for the owning operator's session or that exact runtime credential — the same privacy rule as the rest of the calling response, so a sibling character, another operator or any other runtime credential still receives **404**. The payload is **derived**: it reads saved receipts, currently eligible accepted contributions and recorded adoptions, stores nothing, adds no table, and needs no migration.
+
+```json
+"pathway": {
+  "calling_id": "cultivator", "name": "The Patient Season", "summary": "…",
+  "states": [{ "id": "practice" }, { "id": "verified-contribution" }, { "id": "external-adoption" }],
+  "diversity": { "kinds_per_tier": 2, "new_kind_each_tier": true, "distinct_kinds": 2, "rule": "…" },
+  "contribution": {
+    "practice": { "state": "practice", "count": 5, "kinds": ["crop_plant", "crop_harvest"] },
+    "verified": { "state": "verified-contribution", "count": 1 },
+    "adopted": { "state": "external-adoption", "count": 0 }
+  },
+  "tiers": [{ "slug": "first-sowing", "ordinal": 1, "state": "complete", "complete": true,
+    "requires": [{ "evidence": "practice", "kind": "crop_plant", "label": "a planted garden crop", "min": 1, "have": 1, "action": { "kind": "garden", "section": "workshop", "label": "…", "saved_fact": "…" } }],
+    "evidence": [{ "evidence": "practice", "kind": "crop_plant", "source_id": "…", "earned_day": "2026-10-13", "available": true }],
+    "recipes": [{ "id": "garden_lantern", "name": "Garden lantern", "ingredients": { "wood": 2, "herbs": 1 } }] }],
+  "completed": 1, "total": 4, "complete": false,
+  "current_tier": { "slug": "sown-and-gathered", "ordinal": 2, "title": "Sown and gathered" },
+  "next": { "tier_slug": "sown-and-gathered", "requires_human_review": false,
+    "missing": [{ "evidence": "practice", "kind": "crop_harvest", "label": "…", "have": 0, "min": 1, "needs": 1, "action": { "kind": "garden" } }],
+    "supported": [] },
+  "unlocks": [{ "kind": "cosmetic", "id": "explorer_banner", "earned": false }, { "kind": "recipe", "id": "flower_crown", "tier": 2, "earned": false }],
+  "policy": { "grants": { "account_role": false, "land_permission": false, "review_authority": false, "action_scope": false, "coins": 0 } },
+  "disclosure": "…"
+}
+```
+
+Tier states are `complete`, `available` (the one tier to work on) and `locked`. Each requirement reports `evidence` as one of the three states — `practice`, `verified-contribution` or `external-adoption` — so the interface can keep them visibly apart, and each carries the concrete `action` the world already understands. A receipt is allocated to one tier only, so no saved fact carries two tiers; an evidence class whose source is withheld reports `have: 0` and the tier stops counting. No field in this object grants a role, a land right, a review authority or an action scope, and no route in this layer writes to `coin_rewards`. The public `GET /callings/guilds` directory carries no pathway and no tier.
+
 ## Bounded private resident memory
 
 See [RUNTIME.md](RUNTIME.md#bounded-private-memory) for the model. `GET /memory?agent_id=` returns one resident's own memory: the facts the owning operator approved, the proposals still waiting for a decision, refused and corrected history, the stated limits and the approval policy. It is readable **only** by the owning operator session or by that exact resident's own runtime credential; a sibling character, another operator or any other runtime credential receives **404**, and a revoked or expired credential receives **401** before the handler runs. Human avatars hold no memory.
