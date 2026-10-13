@@ -1079,6 +1079,54 @@ function renderSafety(parent) {
   }
   for(const appeal of state.safety.appeals){const record=element('article',null,'record');append(record,element('h3','Appeal'),badge(appeal.status),paragraph(appeal.reason));if(appeal.decision)record.append(paragraph(`Decision: ${appeal.decision}`));if(isModerator()&&appeal.status==='open'){const fields=form(record,'Record appeal decision',async(data)=>change('/appeals/decide',{appeal_id:appeal.id,...data},'Appeal decision recorded.'));field(fields,'decision','Decision',{options:[{value:'upheld',label:'Uphold original decision'},{value:'overturned',label:'Overturn original decision'}]});field(fields,'reason','Reason',{type:'textarea',max:2000,full:true});record.append(paragraph('The original moderator and appellant cannot decide this appeal.','privacy'));}node.append(record);}parent.append(node);
 }
+function formatBytes(value){if(!Number.isFinite(value))return '—';const units=['B','KiB','MiB','GiB'];let size=value,unit=0;while(size>=1024&&unit<units.length-1){size/=1024;unit+=1;}return `${unit?size.toFixed(1):size} ${units[unit]}`;}
+function formatSpan(seconds){if(!Number.isFinite(seconds)||seconds<0)return '—';if(seconds<60)return `${Math.floor(seconds)} s`;if(seconds<3600)return `${Math.floor(seconds/60)} m`;if(seconds<86400)return `${Math.floor(seconds/3600)} h ${Math.floor(seconds%3600/60)} m`;return `${Math.floor(seconds/86400)} d ${Math.floor(seconds%86400/3600)} h`;}
+// The administrator dashboard. Every figure is read from the running process or from the database;
+// nothing here is estimated or invented. It is reached only through the administrator role check on
+// /operations and is never part of a public response.
+function renderDiagnostics(parent,diagnostics){
+  if(!diagnostics)return;
+  const model=diagnostics.model||{},queue=model.queue||{},inference=model.inference||{},counters=model.since_process_start||{},workers=diagnostics.workers||{},integrity=diagnostics.integrity||{},storage=diagnostics.storage,backups=diagnostics.backups||{},runs=diagnostics.runs||{},jobs=diagnostics.jobs||{},failures=diagnostics.failures||{};
+  const node=card('Operational health','ADMINISTRATION · ACTUAL COUNTERS');
+  node.append(paragraph('Every figure below is read from this running process or from the database; none is estimated. Administrators only. This panel is never served publicly.'));
+  const numbers=element('div',null,'numbers');const number=(value,label)=>{const item=element('div');append(item,element('strong',String(value)),element('small',label));numbers.append(item);};
+  number(formatSpan(diagnostics.process?.uptime_seconds),'process uptime');
+  number(`${integrity.quick_check==='ok'?'ok':'needs a look'} · schema ${diagnostics.schema?.version??'—'}`,'database check');
+  number(`${workers.resident?.active??0} of ${workers.resident?.limit??1}`,'resident workers running');
+  number(`${workers.research?.active??0} of ${workers.research?.limit??0}`,'research workers running');
+  number(model.configured?`${inference.in_flight??0} in flight · ${queue.waiting??0} waiting`:'not configured','model inference');
+  number(runs.interrupted??0,'interrupted runs');
+  number(backups.count??0,'verified backups');
+  number(storage?formatBytes(storage.total_bytes):'—','storage in use');
+  number(failures.count_24h??0,'failures recorded, last 24 h');
+  node.append(numbers);
+  node.append(paragraph(!model.configured?'No local model is configured. Resident runs and country conversations use their rules fallback, so every inference counter stays at zero.':inference.in_flight?'The local model is working on an inference right now. A resident run started in the browser is not by itself proof of model work: this line is.':'The local model is configured and idle — no inference is in flight and none is waiting. A switched-on resident run spends most of its time observing the world, so read this line, not the run list, before assuming the model is busy.',model.configured&&inference.in_flight?'':'muted'));
+  disclosure(node,'Model queue and inference',(body)=>{
+    append(body,paragraph(model.state_note||'Model state unavailable.','privacy'));
+    append(body,paragraph(`State ${model.state||'—'} · in flight ${inference.in_flight??0}${inference.oldest_started_at?` since ${date(inference.oldest_started_at)} (${formatSpan(Math.floor((inference.elapsed_ms||0)/1000))})`:''} · queue ${queue.active??0} running, ${queue.waiting??0} waiting of ${queue.max_waiting??0} · saturation ${queue.saturation??0}${queue.full?' (full)':''}.`,'privacy'));
+    append(body,paragraph(`Since this process started: ${counters.started??0} inferences dispatched, ${counters.completed??0} completed, ${counters.failed??0} failed, ${counters.rejected_saturated??0} refused because the queue was full. Last inference finished ${date(counters.last_finished_at)} (${counters.last_result||'none'}).`,'privacy'));
+    append(body,paragraph('These counters are never persisted in the database. Reload, clear them by restarting the process, and cross-check with the recorded runs below, which are durable.','privacy'));
+  });
+  disclosure(node,'Storage and backups',(body)=>{
+    append(body,storage?paragraph(`Database ${formatBytes(storage.database_bytes)}, write-ahead log ${formatBytes(storage.wal_bytes)}, shared memory index ${formatBytes(storage.shm_bytes)}. A live world keeps a write-ahead log, so the database file alone understates what must be copied.`,'privacy'):paragraph('Storage size is unavailable for this installation.','privacy'));
+    append(body,paragraph(backups.latest?`Newest verified backup ${backups.latest.filename} · ${formatBytes(backups.latest.bytes)} · ${date(backups.latest.created_at)}. ${backups.count} kept in ${backups.directory}. Backups contain accounts and private data: keep the directory private.`:`No application backup file is present in ${backups.directory}.`,'privacy'));
+    const recovery=diagnostics.recovery||{};
+    append(body,paragraph(`Recovery point: ${recovery.backup_point||'—'}`,'privacy'));
+    append(body,paragraph(`Interruption policy: ${recovery.replay_policy||'—'}`,'privacy'));
+  });
+  disclosure(node,'Workers and interrupted runs',(body)=>{
+    append(body,paragraph(`Resident workers ${workers.resident?.active??0} running (limit ${workers.resident?.limit??1}), research workers ${workers.research?.active??0} running (limit ${workers.research?.limit??0}). Requests above a limit are refused with 429 and counted here: ${workers.capacity_refusals_since_start??0} refusals since this process started${workers.last_capacity_refusal_at?`, last ${date(workers.last_capacity_refusal_at)}`:''}.`,'privacy'));
+    append(body,paragraph(`Runs: ${runs.running??0} running, ${runs.interrupted??0} interrupted, ${runs.completed??0} completed, ${runs.stopped??0} stopped, ${runs.failed??0} failed. Last 24 hours: ${runs.interrupted_24h??0} interrupted, ${runs.failed_24h??0} failed.`,'privacy'));
+    const classes=Object.entries(runs.by_interruption||{});append(body,paragraph(classes.length?`Interruption classes recorded: ${classes.map(([name,count])=>`${name} ${count}`).join(', ')}.`:'No interrupted run is recorded in this database.','privacy'));
+    append(body,paragraph(`Recorded runs: ${jobs.running??0} still marked running, ${jobs.interrupted??0} interrupted, ${jobs.failed_24h??0} failed, ${jobs.stopped_24h??0} stopped and ${jobs.completed_24h??0} completed in the last 24 hours.`,'privacy'));
+  });
+  disclosure(node,'Recent failure counters',(body)=>{
+    const recent=failures.recent||[];
+    if(!recent.length)body.append(empty('No failed, stopped or interrupted event is recorded for this world.'));
+    else{append(body,paragraph(`${failures.count_24h??0} recorded in the last 24 hours; newest ${date(failures.last_at)}. Times and event names only — never a payload, a credential or a private record.`,'privacy'));for(const event of recent)body.append(paragraph(`${date(event.created_at)} · ${event.event}`,'privacy'));}
+  });
+  parent.append(node);
+}
 function renderOperations(parent) {
   const operations=state.operations;if(!operations)return;
   parent.append(heading('Care for the world','Invite trusted operators, manage access, stop world activity, and preserve its records.'));
@@ -1090,6 +1138,7 @@ function renderOperations(parent) {
   disclosure(record,'Recent activity',(body)=>{for(const audit of operations.audit.slice(0,40))body.append(paragraph(`${date(audit.created_at)} · ${audit.event} · ${audit.record_id||'world'}`,'privacy'));});
   disclosure(record,'Connection budgets',(body)=>{for(const runtime of operations.runtime_budgets)body.append(paragraph(`${state.world.participants.find((a)=>a.id===runtime.agent_id)?.name||runtime.agent_id} · ${runtime.used_calls}/${runtime.max_calls} calls · expires ${date(runtime.expires_at)}${runtime.revoked?' · revoked':''}`,'privacy'));});
   disclosure(record,'Recorded agent runs',(body)=>{if(!operations.jobs.length)body.append(empty('No agent runs have been recorded.'));for(const job of operations.jobs){const failure=parseResearchFailure(job.detail);body.append(paragraph(`${job.status}: ${failure?`${failure.label}${failure.source_number?` · Source ${failure.source_number}`:''}. ${failure.action} ${failure.claim_note}`:job.detail} · ${date(job.created_at)}`,'privacy'));}});parent.append(record);
+  renderDiagnostics(parent,operations.diagnostics);
 }
 function renderHelp(parent) {
   renderStartHere(parent);

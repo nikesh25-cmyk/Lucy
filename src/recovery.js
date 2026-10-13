@@ -1,7 +1,7 @@
 import {verifyCoinLedger} from './coins.js';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, createHash } from 'node:crypto';
-import { mkdirSync, chmodSync, existsSync, readFileSync, writeFileSync, unlinkSync, copyFileSync, renameSync, lstatSync, constants } from 'node:fs';
+import { mkdirSync, chmodSync, existsSync, readFileSync, readdirSync, statSync, writeFileSync, unlinkSync, copyFileSync, renameSync, lstatSync, constants } from 'node:fs';
 import { dirname, resolve, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { COMMUNITY_TABLES } from './community.js';
@@ -261,4 +261,91 @@ export function restoreDatabase(source, destination, { lockPath = resolve(dirnam
     if (existsSync(temporary)) unlinkSync(temporary);
     release();
   }
+}
+
+// ---- Bounded operational diagnostics -----------------------------------------------------------
+// The recovery point and the interruption limits an operator must know. These are the same values
+// the runbook (docs/OPERATIONS.md) states and the failure drills (scripts/ops-rehearsal.mjs) prove.
+export const RECOVERY_LIMITS = Object.freeze({
+  schema_version: 18,
+  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+  // A backup is one consistent VACUUM INTO copy taken inside a single read transaction.
+  backup_point: 'The last committed transaction before the copy began; no half-applied transaction is ever inside a backup.',
+  backup_loss: 'Everything committed after the copy began. A restore therefore rolls the world back to the backup moment.',
+  // Interruption classes written by recoverWorkerJobs(). Nothing is ever replayed automatically.
+  replay_policy: 'A recorded action is never replayed. Continuing interrupted work is an explicit operator resume with a fresh credential and the remaining budgets.',
+  interruption_classes: Object.freeze(['no_action_yet', 'model_call_in_flight', 'action_dispatched_unconfirmed', 'action_confirmed', 'unknown']),
+  // Work that a process death can lose, and work it cannot.
+  at_risk: 'One model decision in flight (never an action it had not dispatched), the in-memory worker maps, and any write committed after the newest backup.',
+  not_at_risk: 'Every committed world, land, coin, quest, guild, audit and resident-run record, because those live in the database and not in the process.',
+});
+const BACKUP_NAME = /^world-\d+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.sqlite$/;
+
+// The storage a world actually occupies: the database plus the write-ahead log and its shared
+// memory index. Sizes are read with stat() and never by loading file contents.
+export function storageUsage(databasePath) {
+  const path = resolve(databasePath);
+  const bytes = (suffix) => {
+    const candidate = `${path}${suffix}`;
+    try { return existsSync(candidate) && lstatSync(candidate).isFile() ? statSync(candidate).size : 0; } catch { return 0; }
+  };
+  const database_bytes = bytes(''), wal_bytes = bytes('-wal'), shm_bytes = bytes('-shm');
+  return { database_bytes, wal_bytes, shm_bytes, total_bytes: database_bytes + wal_bytes + shm_bytes };
+}
+
+// A cheap integrity read used by the administrator dashboard. It opens the database read-only and
+// runs PRAGMA quick_check, which reports corruption without repairing anything and never writes.
+export function integritySnapshot(databasePath) {
+  const path = resolve(databasePath);
+  regularFile(path);
+  const started = Date.now();
+  const db = new DatabaseSync(path, { readOnly: true });
+  try {
+    const quick_check = db.prepare('PRAGMA quick_check').get().quick_check;
+    return {
+      quick_check,
+      checked_at: new Date().toISOString(),
+      check_duration_ms: Date.now() - started,
+      schema_version: db.prepare('PRAGMA user_version').get().user_version,
+      page_count: db.prepare('PRAGMA page_count').get().page_count,
+      journal_mode: db.prepare('PRAGMA journal_mode').get().journal_mode,
+    };
+  } finally { db.close(); }
+}
+
+// Which verified backups exist, newest first. Only names this application creates are counted, so a
+// stray private file in the directory is never listed or reported to a dashboard.
+export function backupInventory(directory, { limit = 5 } = {}) {
+  const path = resolve(directory);
+  const empty = { directory: path, count: 0, latest: null, recent: [] };
+  let entries;
+  try { entries = readdirSync(path, { withFileTypes: true }); } catch { return empty; }
+  const files = entries
+    .filter((entry) => entry.isFile() && BACKUP_NAME.test(entry.name))
+    .map((entry) => {
+      const stats = statSync(resolve(path, entry.name));
+      return { filename: entry.name, bytes: stats.size, created_at: new Date(stats.mtimeMs).toISOString() };
+    })
+    .sort((left, right) => right.created_at.localeCompare(left.created_at));
+  return { directory: path, count: files.length, latest: files[0] || null, recent: files.slice(0, limit) };
+}
+
+// The diagnostics payload is built from named counters and never from stored rows. This pass is the
+// second line of defence: a field name that names a secret is dropped, and a value that looks like a
+// token, a stored password digest, an email address or a private artifact reference is replaced.
+// It is the reason the drill can plant a secret and grep the produced output for it.
+const SECRET_FIELD = /(?:password|pass_hash|secret|token|credential|hash|salt|email|contact|authorization|cookie|private)/i;
+const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+const PASSWORD_DIGEST = /\b[0-9a-f]{16,}:[0-9a-f]{64,}\b/gi;
+const LONG_HEX = /\b[0-9a-f]{40,}\b/gi;
+const redactText = (value) => value.replace(PASSWORD_DIGEST, '[redacted-password-digest]').replace(LONG_HEX, '[redacted-token-or-hash]').replace(EMAIL, '[redacted-email]');
+export function redactDiagnostics(value, depth = 0) {
+  if (depth > 6) return '[redacted-depth]';
+  if (Array.isArray(value)) return value.slice(0, 200).map((item) => redactDiagnostics(item, depth + 1));
+  if (value && typeof value === 'object') {
+    const output = {};
+    for (const [key, item] of Object.entries(value)) output[key] = SECRET_FIELD.test(key) ? '[redacted-field]' : redactDiagnostics(item, depth + 1);
+    return output;
+  }
+  return typeof value === 'string' ? redactText(value) : value;
 }
