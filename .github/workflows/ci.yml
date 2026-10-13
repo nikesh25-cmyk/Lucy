@@ -12,3 +12,25 @@ jobs:
           node-version: '24'
       - run: npm run check
       - run: npm test
+  browser-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # The production server stays dependency-free; playwright-core is a dev dependency used only
+      # to drive the already-installed Chrome build. No browser is downloaded and no model runs.
+      - run: npm ci
+      - name: Locate the system Chrome
+        run: |
+          which google-chrome || which google-chrome-stable || which chromium || which chromium-browser
+          google-chrome --version || google-chrome-stable --version
+      - run: npm run browser
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: test-results/
+          if-no-files-found: ignore

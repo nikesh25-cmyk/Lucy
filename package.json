@@ -11,12 +11,16 @@
     "local": "node scripts/local-launch.mjs",
     "test": "node --test",
     "e2e": "node scripts/e2e-smoke.mjs",
+    "browser": "node scripts/browser-suite.mjs",
     "agent": "node runtime/agent.js",
     "backup": "node scripts/recovery.js backup",
     "restore": "node scripts/recovery.js restore",
-    "check": "node --check server.js && node --check scripts/local-launch.mjs && node --check src/platform.js && node --check src/database.js && node --check src/spaces.js && node --check src/community.js && node --check src/journey.js && node --check src/atmosphere.js && node --check src/recovery.js && node --check runtime/agent.js && node --check src/civic-engine.js && node --check src/mayor-evidence.js && node --check src/frontier.js && node --check src/voxel-world.js && node --check src/voxel-geometry.js && node --check src/footprints.js && node --check src/elevation.js && node --check src/world-walk.js && node --check app.js && node --check world.js && node --check src/vocations.js && node --check src/quests.js && node --check src/guilds.js && node --check src/camera-controls.js && node --check src/content.js && node --check src/placement-policy.js && node --check scripts/perf-profile.mjs && node --check scripts/load-harness.mjs",
+    "check": "node --check server.js && node --check scripts/local-launch.mjs && node --check scripts/e2e-smoke.mjs && node --check scripts/browser-suite.mjs && node --check src/platform.js && node --check src/database.js && node --check src/spaces.js && node --check src/community.js && node --check src/journey.js && node --check src/atmosphere.js && node --check src/recovery.js && node --check runtime/agent.js && node --check src/civic-engine.js && node --check src/mayor-evidence.js && node --check src/frontier.js && node --check src/voxel-world.js && node --check src/voxel-geometry.js && node --check src/footprints.js && node --check src/elevation.js && node --check src/world-walk.js && node --check app.js && node --check world.js && node --check src/vocations.js && node --check src/quests.js && node --check src/guilds.js && node --check src/camera-controls.js && node --check src/content.js && node --check src/placement-policy.js && node --check scripts/perf-profile.mjs && node --check scripts/load-harness.mjs",
     "research": "node runtime/research-worker.js",
     "perf": "node scripts/perf-profile.mjs",
     "load": "node scripts/load-harness.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.0"
   }
 }
