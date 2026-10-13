@@ -46,8 +46,8 @@ test('a missing database path or workspace is refused rather than guessed', () =
 test('the suite runs its scenarios in order, and a focused run keeps only the named ones', () => {
   const all = selectedScenarios();
   assert.deepEqual(all, SCENARIOS.map((scenario) => scenario.id));
-  assert.equal(all.length, 40);
-  assert.equal(new Set(all).size, 40);
+  assert.equal(all.length, 41);
+  assert.equal(new Set(all).size, 41);
   assert.equal(all[all.length - 1], 'signout-privacy', 'the sign-out scenario stays last');
   for (const id of [
     'hero-introduction-film', 'game-entry-and-observation', 'signed-in-game-play',

@@ -125,6 +125,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'subscription-entitlement-and-revocation', title: 'A private world and a revoked session both lose their live feed', regression: null },
   { id: 'interaction-hint-and-distance', title: 'The interaction hint, its one-tile requirement and an out-of-range refusal', regression: null },
   { id: 'game-hud-interaction-prompt-and-aim', title: 'The game HUD exposes a usable interaction prompt and matching aim guidance', regression: null },
+  { id: 'next-passage-cue', title: 'The HUD names the next passage the server sends, and nothing when there is none', regression: null },
   { id: 'interaction-saved-world-changes', title: 'A planted crop patch and a bench posture survive a reload', regression: null },
   { id: 'interaction-door-and-crafting', title: 'A doorway travels to another world and a crafting station crafts once per click', regression: null },
   { id: 'interaction-ambassador-desk', title: 'A country ambassador desk answers through the existing conversation action', regression: null },
@@ -2800,6 +2801,201 @@ define('game-hud-interaction-prompt-and-aim', async () => {
   });
 
   return 'the real game HUD, interaction control and aim line stayed synchronized after reading a usable doorway';
+});
+
+/**
+ * The HUD's next-passage line, the visible half of the server's `next_passage` field. The scenario
+ * re-composes the line from the payload the client is holding, so a client-invented label, direction,
+ * distance or count fails here, and it checks the five states the line must tell apart: a resident
+ * with a passage, that same resident after a confirmed step, a resident standing on the passage the
+ * server planned an empty route to, a paused world (the payload still carries a cue, so withholding it
+ * is the HUD's own honest choice), and a viewer with no resident at all (the server sends `null` and
+ * the HUD must show nothing rather than an empty or invented hint).
+ */
+define('next-passage-cue', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const wanderer = fixtures().characters.wanderer;
+  // A browser with no resident in this world. The server answers such a viewer with `next_passage:
+  // null` (pinned by tests/passage-cue.test.js), and the HUD must not turn that into a hint.
+  const observer = await context('next-passage-cue-observer');
+
+  /** The cue exactly as this client holds the server's payload. */
+  const payloadCue = (target) => target.evaluate(() => window.__nemoworld?.world?.()?.next_passage ?? null);
+  /** The rendered line: its text, and whether it is actually shown. */
+  const hudLine = (target) => target.evaluate(() => {
+    const node = document.querySelector('#game-next-passage');
+    if (!node) return { exists: false, text: '', hidden: false, visible: false, live: null };
+    const style = getComputedStyle(node), box = node.getBoundingClientRect();
+    return {
+      exists: true, text: (node.textContent || '').trim(), hidden: Boolean(node.hidden),
+      visible: style.display !== 'none' && style.visibility !== 'hidden' && !node.hidden && box.height > 0 && box.width > 0,
+      // The cue must not be a live region: the step count changes as the resident walks and the world
+      // poll re-reads it every three seconds, so announcing it would interrupt a screen reader.
+      live: node.getAttribute('aria-live'),
+    };
+  });
+  /** The line the HUD claims to compose, re-made from the server's own two fields. */
+  const composed = (cue) => `${cue.label} · ${cue.steps} step${cue.steps === 1 ? '' : 's'}`;
+  /** The revealed cue: the payload's own field paired with the visible line, or null while they disagree. */
+  const revealed = async (target) => {
+    const cue = await payloadCue(target), line = await hudLine(target);
+    return cue && cue.kind && line.visible ? { cue, line } : null;
+  };
+  const position = () => row('SELECT x,y FROM agents WHERE id=?', wanderer.id);
+  /** The world cardinal one grid step produces on this world's axes. */
+  const cardinalOf = (dx, dy) => (dy === -1 ? 'up' : dy === 1 ? 'down' : dx === 1 ? 'right' : 'left');
+  /** The four cardinals clockwise, used to read the whole control map from one measured step. */
+  const CARDINAL_CYCLE = { up: 'right', right: 'down', down: 'left', left: 'up' };
+  /**
+   * Which movement control carries which world direction. It is read from the first confirmed step
+   * this scenario measures rather than assumed: a control's direction is relative to the camera in
+   * first person, and the mapping preserves this cycle, so one measured step names all four.
+   */
+  const controlFor = {};
+
+  await step('the HUD names the passage the server sends for this resident', async () => {
+    await sendToCommons(fixtures().admin, wanderer.id);
+    await openApp(page, ACTORS.admin);
+    await openWorldAs(page, wanderer.id);
+    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await page.locator('#game-hud').waitFor({ state: 'visible' });
+    const first = await waitForCondition(() => revealed(page), 'the HUD to show the passage the server sends for its own resident');
+    const expected = composed(first.cue);
+    expect(first.line.text === expected, 'the HUD must compose the cue from the server’s own label and planned route length', { expected, actual: first.line.text });
+    expect(first.line.live === null, 'the cue must not be a live region the world poll re-announces', { expected: 'no aria-live attribute', actual: describe(first.line.live) });
+    // The named tile must be a passage this payload really exposes, not a decorative point.
+    const exposed = await page.evaluate(({ x, y }) => {
+      const view = window.__nemoworld.world();
+      return {
+        portal: (view.portals || []).some((item) => item.x === x && item.y === y),
+        gate: ((view.frontier && view.frontier.gates) || []).some((item) => item.x === x && item.y === y),
+        world: view.world && view.world.name,
+      };
+    }, { x: first.cue.x, y: first.cue.y });
+    expect(exposed.portal || exposed.gate || first.cue.kind === 'portal', 'the named passage must be one the payload itself exposes', { actual: describe({ kind: first.cue.kind, x: first.cue.x, y: first.cue.y, exposed }) });
+    // It describes the resident's own world, and the HUD is showing that same world.
+    const shown = await page.evaluate(() => ({ id: window.__nemoworld?.worldId?.() || '', name: document.querySelector('.game-place strong')?.textContent?.trim() || '' }));
+    expect(first.cue.world_id === shown.id, 'the cue must describe the world the resident stands in', { expected: shown.id, actual: first.cue.world_id });
+    expect(shown.name && shown.name === exposed.world, 'the HUD must be showing that same world', { expected: exposed.world, actual: shown.name });
+    state.notes.push(`next-passage cue: “${first.line.text}” composed from the payload’s own ${first.cue.kind} ${first.cue.label} at ${first.cue.x},${first.cue.y} in ${first.cue.world_id} (${first.cue.distance} tiles, ${first.cue.steps} planned steps)`);
+    return `HUD “${first.line.text}” from the payload’s own ${first.cue.label} at ${first.cue.x},${first.cue.y} in ${first.cue.world_id}`;
+  });
+
+  await step('a confirmed step re-reads the cue instead of freezing the first wording', async () => {
+    const before = await revealed(page);
+    const start = position();
+    let direction = null, arrived = null;
+    for (const candidate of ['Move up', 'Move left', 'Move down', 'Move right']) {
+      await page.locator(`#view button[aria-label="${candidate}"]`).click();
+      // Bounded: a blocked direction leaves the resident where it stood, and the next control is tried.
+      const step_ = await waitForCondition(() => { const now = position(); return now.x !== start.x || now.y !== start.y ? now : null; },
+        `the “${candidate}” control to carry one confirmed step`, { timeout: 3000, interval: 100 }).catch(() => null);
+      if (step_) { direction = candidate.replace('Move ', ''); arrived = step_; break; }
+    }
+    expect(direction, 'one of the four movement controls must carry a confirmed step out of the arrival tile', { expected: 'one tile of movement', actual: `${start.x},${start.y} blocked in all four directions` });
+    let control = direction, cardinal = cardinalOf(arrived.x - start.x, arrived.y - start.y);
+    for (let index = 0; index < 4; index += 1) { controlFor[cardinal] = control; control = CARDINAL_CYCLE[control]; cardinal = CARDINAL_CYCLE[cardinal]; }
+    const moved = await waitForCondition(async () => {
+      const cue = await payloadCue(page);
+      if (!cue || !cue.kind) return null;
+      if (cue.label === before.cue.label && cue.steps === before.cue.steps) return null;
+      const line = await hudLine(page);
+      return line.visible ? { cue, line } : null;
+    }, 'the client to read a new cue after the step');
+    expect(moved.line.text === composed(moved.cue), 'after the step the HUD must follow the new payload line for line', { expected: composed(moved.cue), actual: moved.line.text });
+    expect(moved.line.text !== before.line.text, 'the cue must be recomputed from where the resident stands, not a fixed string', { expected: `a line other than “${before.line.text}”`, actual: moved.line.text });
+    expect(arrived.x === moved.cue.from.x && arrived.y === moved.cue.from.y, 'the payload’s own `from` tile must be where the resident now stands', { expected: `${start.x},${start.y} + one ${direction} step`, actual: `${moved.cue.from.x},${moved.cue.from.y}` });
+    // Out and back: the walk returns the resident to the tile it started from, so no later scenario
+    // shares a moved fixture, and the first wording comes back with the first tile.
+    await page.locator(`#view button[aria-label="Move ${OPPOSITE_DIRECTION[direction]}"]`).click();
+    const restored = await waitForCondition(async () => {
+      const now = position();
+      if (now.x !== start.x || now.y !== start.y) return null;
+      const line = await hudLine(page);
+      return line.visible && line.text === before.line.text ? line : null;
+    }, 'the resident to walk back to its starting tile and the cue to return to its first wording');
+    state.notes.push(`next-passage cue after one ${direction} step: “${before.line.text}” → “${moved.line.text}” → “${restored.text}” back on ${start.x},${start.y}`);
+    return `${start.x},${start.y} → ${arrived.x},${arrived.y} and back: “${before.line.text}” → “${moved.line.text}” → “${restored.text}”`;
+  });
+
+  await step('a resident standing on the passage is told the empty route, not nothing', async () => {
+    // The arrival tile is one step from the doorway the server names, so standing on that tile makes
+    // the server's own planned route empty. The HUD shows the server's answer for that state instead
+    // of dropping a cue it was sent, and it stops being empty the moment the resident steps off.
+    const before = await revealed(page);
+    const start = position();
+    // Walking on, then back off: the door tile is one cardinal step from the resident's own tile, and
+    // the control for a world direction is read from the step this scenario already measured.
+    const control = controlFor[cardinalOf(before.cue.x - start.x, before.cue.y - start.y)];
+    expect(control, 'the step that finds the doorway must be one the movement controls can carry', { expected: `a control for the step from ${start.x},${start.y} to ${before.cue.x},${before.cue.y}`, actual: describe(controlFor) });
+    await page.locator(`#view button[aria-label="Move ${control}"]`).click();
+    const on = await waitForCondition(() => { const now = position(); return now.x === before.cue.x && now.y === before.cue.y ? now : null; },
+      'the resident to stand on the passage tile', { timeout: 5000, interval: 100 });
+    const standing = await waitForCondition(async () => {
+      const cue = await payloadCue(page);
+      if (!cue || cue.steps !== 0) return null;
+      const line = await hudLine(page);
+      return line.visible ? { cue, line } : null;
+    }, 'the payload’s own empty route to reach the HUD', { timeout: 10_000 });
+    expect(standing.cue.world_id === before.cue.world_id && standing.cue.label === before.cue.label, 'standing on the passage must still name the same passage', { expected: describe({ label: before.cue.label, world_id: before.cue.world_id }), actual: describe({ label: standing.cue.label, world_id: standing.cue.world_id }) });
+    expect(standing.line.text === composed(standing.cue), 'the empty route must be shown from the server’s own fields', { expected: composed(standing.cue), actual: standing.line.text });
+    await page.locator(`#view button[aria-label="Move ${OPPOSITE_DIRECTION[control]}"]`).click();
+    const off = await waitForCondition(async () => {
+      const now = position();
+      if (now.x !== start.x || now.y !== start.y) return null;
+      const line = await hudLine(page);
+      return line.visible && line.text === before.line.text ? line : null;
+    }, 'the resident to step off the passage and the cue to count steps again', { timeout: 5000 });
+    state.notes.push(`next-passage cue standing on the passage: “${standing.line.text}” on ${on.x},${on.y}, back to “${off.text}” on ${start.x},${start.y}`);
+    return `on the ${before.cue.label} tile ${on.x},${on.y}: “${standing.line.text}”, back to “${off.text}”`;
+  });
+
+  await step('a paused world shows no passage, and resuming brings the same cue back', async () => {
+    const before = await revealed(page);
+    await apiExpect(fixtures().admin, 'POST', '/operations/pause', { paused: true });
+    let withheld = null;
+    try {
+      withheld = await waitForCondition(async () => {
+        const line = await hudLine(page);
+        return !line.visible && line.text === '' ? line : null;
+      }, 'the HUD to withhold the passage while the world is paused');
+      // The payload that hid the line still carries a cue, so the HUD made an honest choice on a
+      // paused world rather than the server sending nothing.
+      const held = await page.evaluate(() => ({ paused: Boolean(window.__nemoworld.world().paused), cue: window.__nemoworld.world().next_passage }));
+      expect(held.paused === true && held.cue && held.cue.kind, 'the hidden line must be the HUD’s own decision on a paused world the server still describes', { expected: 'a paused payload that still carries a cue', actual: describe({ paused: held.paused, kind: held.cue && held.cue.kind }) });
+    } finally {
+      // The platform pause is a shared setting: it is resumed even when an assertion above failed.
+      await apiExpect(fixtures().admin, 'POST', '/operations/pause', { paused: false });
+    }
+    const resumed = await waitForCondition(async () => { const line = await hudLine(page); return line.visible && line.text === before.line.text ? line : null; }, 'the cue to return when the world resumes');
+    expect(!(await page.evaluate(() => Boolean(window.__nemoworld.world().paused))), 'the platform must be running again', { actual: 'the world is still paused' });
+    state.notes.push(`next-passage cue while paused: “${before.line.text}” withheld (line ${withheld.exists ? 'present but hidden and empty' : 'absent'}) with the payload still carrying the ${before.cue.kind} ${before.cue.label}, and restored on resume`);
+    return `paused: “${before.line.text}” withheld, then “${resumed.text}” restored after the resume`;
+  });
+
+  await step('a viewer with no resident is shown no passage at all', async () => {
+    const observerPage = observer.page;
+    await observerPage.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(observerPage);
+    await observerPage.locator('#hero-actions').getByRole('button', { name: /Observe/i }).first().click();
+    await settle(observerPage);
+    await observerPage.locator('#game-hud').waitFor({ state: 'visible' });
+    // `next_passage` is a field of the payload, so a missing payload and a null field are told apart.
+    const observed = await observerPage.evaluate(() => {
+      const view = window.__nemoworld?.world?.();
+      return { payload: Boolean(view), cue: view && 'next_passage' in view ? view.next_passage : 'absent', world: window.__nemoworld?.worldId?.() || '' };
+    });
+    expect(observed.payload, 'the observing browser must hold a world payload', { actual: 'no payload' });
+    expect(observed.cue === null, 'a viewer without a resident must be sent no cue at all', { expected: 'null', actual: describe(observed.cue) });
+    const line = await hudLine(observerPage);
+    expect(!line.visible && line.text === '', 'the HUD must show nothing rather than an empty or invented hint', { expected: 'no visible passage line', actual: describe(line) });
+    state.notes.push(`next-passage cue for a viewer with no resident: payload ${describe(observed.cue)}, the line ${line.exists ? 'present but hidden and empty' : 'absent'}`);
+    return `observing ${observed.world} with next_passage=${describe(observed.cue)} and no passage line rendered`;
+  });
+
+  return 'the HUD named the passage the payload sent for the resident, followed a confirmed step, withheld the cue on a paused world, and showed nothing for a viewer with no resident';
 });
 
 define('interaction-saved-world-changes', async () => {
