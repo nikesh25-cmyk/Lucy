@@ -134,12 +134,29 @@ function nearestResident(platform, worldId, viewer) {
   const ambassadors = platform.all("SELECT id,name,iso3,x,y FROM npc_ambassadors WHERE world_id=? AND status='active'", worldId)
     .map((row) => ({ kind: 'npc', source: 'npc_ambassadors', id: row.id, name: row.name, x: row.x, y: row.y, row }));
   if (!viewer) return ambassadors[0] || null;
-  const residents = platform.all("SELECT a.id,a.name,a.kind,a.capabilities,a.limitations,a.x,a.y FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.world_id=? AND a.status='active' AND a.kind='agent' AND a.operator_id!=? AND o.status='active'", worldId, viewer.operator_id)
+  // A stored active character is not evidence that its model is listening. Only a current,
+  // chat-scoped managed run with a usable credential is a server-confirmed opportunity to reply.
+  // External runtimes remain unknown here: a credential alone does not prove a process is running.
+  const residents = platform.all(`SELECT a.id,a.name,a.kind,a.capabilities,a.limitations,a.x,a.y,
+    EXISTS(SELECT 1 FROM resident_runs r JOIN tokens t ON t.hash=r.credential_hash
+      WHERE r.agent_id=a.id AND r.status='running' AND t.agent_id=a.id AND t.kind='runtime'
+      AND t.revoked=0 AND t.expires_at>? AND t.used_calls<t.max_calls
+      AND EXISTS(SELECT 1 FROM json_each(t.scopes) WHERE value='chat')) AS managed_chat_run
+    FROM agents a JOIN accounts o ON o.id=a.operator_id
+    WHERE a.world_id=? AND a.status='active' AND a.kind='agent' AND a.operator_id!=? AND o.status='active'
+      AND a.x BETWEEN ? AND ? AND a.y BETWEEN ? AND ? AND ABS(a.x-?)+ABS(a.y-?)<=?
+    ORDER BY managed_chat_run DESC,ABS(a.x-?)+ABS(a.y-?),a.id LIMIT 1`,
+    platform.clock(), worldId, viewer.operator_id,
+    viewer.x - ENCOUNTER_RADIUS, viewer.x + ENCOUNTER_RADIUS,
+    viewer.y - ENCOUNTER_RADIUS, viewer.y + ENCOUNTER_RADIUS,
+    viewer.x, viewer.y, ENCOUNTER_RADIUS, viewer.x, viewer.y)
     .map((row) => ({ kind: 'agent', source: 'agents', id: row.id, name: row.name, x: row.x, y: row.y, row }));
   return [...ambassadors, ...residents]
     .map((candidate) => ({ ...candidate, distance: Math.abs(viewer.x - candidate.x) + Math.abs(viewer.y - candidate.y) }))
     .filter((candidate) => candidate.distance <= ENCOUNTER_RADIUS)
-    .sort((left, right) => (left.kind === 'agent' ? 0 : 1) - (right.kind === 'agent' ? 0 : 1) || left.distance - right.distance || String(left.id).localeCompare(String(right.id)))[0] || null;
+    .sort((left, right) => (left.kind === 'agent' ? 0 : 1) - (right.kind === 'agent' ? 0 : 1)
+      || Number(Boolean(right.row.managed_chat_run)) - Number(Boolean(left.row.managed_chat_run))
+      || left.distance - right.distance || String(left.id).localeCompare(String(right.id)))[0] || null;
 }
 
 /** A deterministic existing scripted fallback, with a usable public venue. */
@@ -172,6 +189,10 @@ function encounterFrom(platform, candidate, viewer, actor) {
     role_label: calling ? calling.name : 'Resident',
     calling: calling ? { id: calling.id, name: calling.name, purpose: calling.purpose } : null,
     honest_statement: `I’m ${candidate.name}, an AI resident operated by another person, following the ${calling ? calling.name : 'explorer'} calling. I am a bounded program: I act only through the actions this world checks and records, I hold no account of my own, and I represent no company, institution, government or person beyond my operator.`,
+    response_availability: candidate.row.managed_chat_run ? 'managed_chat_run' : 'unconfirmed',
+    response_note: candidate.row.managed_chat_run
+      ? 'A bounded local AI run with chat permission is currently recorded. A private message you send is stored; a reply is possible during this run, but not guaranteed.'
+      : 'A private message you send is stored. No local AI run is confirmed for this resident, so a reply may wait until its operator starts one; an external runtime may have a different status.',
     limitations: candidate.row.limitations, capabilities: candidate.row.capabilities,
     cannot: [...FIRST_PLAY_ENCOUNTER_CANNOT], scripted: false, distance: candidate.distance ?? null,
     actions: canConverse ? [action('meet', `Message ${candidate.name}`, '/messages', 'chat', { agent_id: viewer.id, channel: 'private', recipient_id: candidate.id }, true)] : [],

@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createFirstPlayGuide } from '../src/ui/first-play-guide.js';
+import { createFirstPlayGuide, guideCards, guideModel } from '../src/ui/first-play-guide.js';
+
+test('the encounter renders the server reply expectation as accessible text', () => {
+  const note = 'Your private message is saved. A reply may wait until the operator runs this resident.';
+  const model = guideModel({ encounter: { kind: 'agent', name: 'Mira', role_label: 'Cultivator',
+    response_availability: 'unconfirmed', response_note: note, actions: [] } });
+  const card = guideCards(model).encounter;
+  assert.equal(model.encounter.response_availability, 'unconfirmed');
+  assert.equal(card.children.find((child) => child.attrs?.['data-guide'] === 'encounter-response')?.text, note);
+});
 
 test('an encounter opens a text composer without posting a blank message or claiming completion', async () => {
   const writes = [], composed = [], changes = [];

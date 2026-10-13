@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { createApp } from '../server.js';
 import { Platform } from '../src/platform.js';
@@ -199,8 +200,45 @@ test('a nearby operated resident is described by its own calling and one shared 
   assert.ok(encounter.cannot.length > 0);
   assert.deepEqual(encounter.actions[0].body, { agent_id: alice.id, channel: 'private', recipient_id: bob.id });
   assert.equal(encounter.actions[0].requires_input, true);
+  assert.equal(encounter.response_availability, 'unconfirmed');
+  assert.match(encounter.response_note, /message you send is stored.*reply may wait/i);
   assert.equal(guide(f, 'alice', alice).next_step.actions.length, 0, 'calling remains the first incomplete step');
   await expectServed(t, f, encounter.actions.map((item) => item.route));
+});
+
+test('a confirmed chat-scoped managed run is preferred without claiming an external runtime is offline', async (t) => {
+  const f = await fixture(t);
+  const alice = f.agent('alice');
+  const nearer = f.agent('bob');
+  const farther = f.agent('reviewer');
+  const at = position(f, alice.id);
+  standAt(f, nearer.id, at.x + 1, at.y);
+  standAt(f, farther.id, at.x + 3, at.y);
+
+  const external = f.tx('runtime', f.actor('bob'), nearer.id, { scopes: ['read', 'chat'] });
+  assert.equal(guide(f, 'alice', alice).encounter.agent_id, nearer.id);
+  assert.equal(guide(f, 'alice', alice).encounter.response_availability, 'unconfirmed', 'a usable external credential does not prove a live process');
+
+  const readonly = f.tx('runtime', f.actor('reviewer'), farther.id, { scopes: ['read'] });
+  const hash = (token) => createHash('sha256').update(token).digest('hex');
+  f.platform.startResidentRun({ id: 'readonly-guide-run', account_id: f.actor('reviewer').account.id, agent_id: farther.id,
+    permission: 'observe', decisions: 2, minutes: 5, credential_hash: hash(readonly.token) });
+  assert.equal(guide(f, 'alice', alice).encounter.agent_id, nearer.id, 'a read-only managed run cannot answer chat');
+
+  const chat = f.tx('runtime', f.actor('reviewer'), farther.id, { scopes: ['read', 'chat'] });
+  f.platform.startResidentRun({ id: 'chat-guide-run', account_id: f.actor('reviewer').account.id, agent_id: farther.id,
+    permission: 'explore', decisions: 2, minutes: 5, credential_hash: hash(chat.token) });
+  let encounter = guide(f, 'alice', alice).encounter;
+  assert.equal(encounter.agent_id, farther.id, 'a known chat run is offered before a nearer unconfirmed resident');
+  assert.equal(encounter.response_availability, 'managed_chat_run');
+  assert.match(encounter.response_note, /reply is possible.*not guaranteed/i);
+  assert.deepEqual(encounter.actions[0].body, { agent_id: alice.id, channel: 'private', recipient_id: farther.id });
+
+  f.platform.run('UPDATE tokens SET revoked=1 WHERE hash=?', hash(chat.token));
+  encounter = guide(f, 'alice', alice).encounter;
+  assert.equal(encounter.agent_id, nearer.id, 'revoking the managed run credential removes its preferred availability');
+  assert.equal(encounter.response_availability, 'unconfirmed');
+  assert.equal(f.platform.get('SELECT revoked FROM tokens WHERE hash=?', hash(external.token)).revoked, 0);
 });
 
 test('a country ambassador is described by its authored civic identity', async (t) => {

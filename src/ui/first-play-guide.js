@@ -198,6 +198,8 @@ export function guideModel(snapshot, options = {}) {
       purpose: String(snapshot.encounter.calling.purpose ?? ''),
     }) : null,
     honest_statement: String(snapshot.encounter.honest_statement ?? ''),
+    response_availability: snapshot.encounter.response_availability ?? null,
+    response_note: String(snapshot.encounter.response_note ?? ''),
     limitations: String(snapshot.encounter.limitations ?? ''),
     capabilities: String(snapshot.encounter.capabilities ?? ''),
     cannot: Object.freeze((Array.isArray(snapshot.encounter.cannot) ? snapshot.encounter.cannot : []).map(String)),
@@ -359,6 +361,7 @@ const encounterCard = (encounter, handlers, blocked = false) => {
     el('p', { class: 'game-guide-role', attrs: { 'data-guide': 'encounter-role' }, text: [encounter.role_label, encounter.scripted ? 'Scripted resident' : null, Number.isFinite(encounter.distance) ? `${encounter.distance} tiles away` : null].filter(Boolean).join(' · ') }),
     encounter.calling ? el('p', { class: 'game-guide-calling', text: `${encounter.calling.name} — ${encounter.calling.purpose}` }) : null,
     encounter.honest_statement ? el('p', { class: 'game-guide-honest', attrs: { 'data-guide': 'encounter-honest' }, text: encounter.honest_statement }) : null,
+    encounter.response_note ? el('p', { class: 'game-guide-response', attrs: { 'data-guide': 'encounter-response' }, text: encounter.response_note }) : null,
     encounter.limitations ? el('p', { class: 'game-guide-limits', attrs: { 'data-guide': 'encounter-limits' }, text: encounter.limitations }) : null,
     encounter.capabilities ? el('p', { class: 'game-guide-capabilities', text: encounter.capabilities }) : null,
   ];
