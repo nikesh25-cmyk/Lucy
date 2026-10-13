@@ -498,3 +498,46 @@ See [the task 23 handoff](handoff/task-23-cooperative-events.md) for the model. 
 Four steps answer four different kinds of saved work, and every calling answers at least one of them: Groundskeepers (Builder, Steward) place the plan's objects; Growers (Cultivator, Artisan) sow in their own gardens; Makers (Artisan, Cultivator) craft real keepsakes; Keepers (Host, Explorer, Mediator, Researcher) join a circle another operator keeps. When every step is measured, the server writes the rest of the garden — beds, lanterns and a welcome stone — in the same transaction that records the occurrence `completed`, once, guarded by `status='scheduled'`. The nine objects are ordinary `world_objects` rows in the convenor's garden: they are drawn, they are readable, they survive a restart, and the world's own interaction panel reads a placed bench back as a fixture of that garden.
 
 What a restoration never does: it mints no NemoCoin, grants no calling, account role, stewardship, plot, building right outside the plan's own tiles, moderator right or reviewer right. The one write it adds is the planned object on the planned tile, while the window is open, by a pledged participant of the right calling who stands beside it.
+
+## Versioned evidence library
+
+See [version-specific human evidence review](EVIDENCE_REVIEW.md) for the reviewer's model and [the task 25 handoff](handoff/task-25-evidence-library.md) for the design. The library retains one **capture** per exact version of a public source: its identity (URL, host, path), SHA-256, size, retrieval timestamp, declared date, unit, provenance and licence, and the exact supporting location a reviewer can open. It performs **no network fetch of its own**: a capture either references bytes already retained under `catalog/` or records the SHA-256 a contributor's reader computed. A research artifact that cites a source is pinned to the **exact version** it named, so a later source change can never rewrite the historical support — it only changes the state a reviewer sees.
+
+```json
+{
+  "total": 222, "offset": 0, "limit": 25, "has_more": true,
+  "limits": { "max_sources": 2048, "max_captures": 8192, "max_captures_per_source": 8, "max_retained_bytes": 100663296, "per_artifact_evidence": 10, "retained_bytes": 596346, "captures": 222 },
+  "sources": [{ "id": "…", "source_key": "api.worldbank.org/v2/country/AFG/indicator/NV.AGR.TOTL.ZS?…", "url": "https://api.worldbank.org/…", "host": "api.worldbank.org", "path": "/v2/country/AFG/indicator/NV.AGR.TOTL.ZS", "status": "active", "withdrawn_reason": "", "cited_versions": 0, "conflict": false,
+    "versions": [{ "id": "…", "sha256": "…", "bytes": 2851, "retained": true, "retained_path": "catalog/statistics/AFG-NV.AGR.TOTL.ZS-94dd0bc76812abe2.json", "retrieved_at": "2026-10-11T15:03:49.437Z", "declared_date": "", "unit": "% of GDP", "locator": "Retained raw response catalog/statistics/…", "evidence_kind": "normalized-statistics", "provenance": "World Bank WDI…", "license": { "name": "CC BY 4.0", "url": "https://creativecommons.org/licenses/by/4.0/", "attribution": "World Bank, World Development Indicators…" }, "origin": "catalog", "supersedes": null }] }]
+}
+```
+
+| Request | Access | Purpose |
+| --- | --- | --- |
+| `GET /evidence?q=&offset=&limit=` | Any signed-in account (`limit` 1–100, default 25) | The bounded library: `{ total, offset, limit, has_more, limits, sources:[…] }`. Refused with **401** without a credential. |
+| `GET /evidence/draft?claim_id=` | The owning operator session only | Resolve a saved draft's cited sources to their exact versions. Reads storage and writes nothing; another operator gets **404**. |
+| `POST /evidence/capture` | `admin` session | Store or reuse one exact version: `{ url, sha256, bytes?, retained?, retained_path?, retrieved_at, declared_date?, unit?, title?, locator?, evidence_kind?, provenance?, license?, excerpt?, supersedes? }`. **201** with the stored capture. A host the library does not already know is refused with **403**; a retained file whose bytes do not hash to the declared SHA-256, a malformed hash or stamp, or a capture past the quota is refused with **409/400** and stores nothing. |
+| `POST /evidence/withdraw` | `reviewer`/`admin` session | Record that a source is gone or now refuses: `{ url?|source_id, reason }`. Appended to the source's history; the identity and every captured version stay readable. **200**. |
+
+Every cited source in `GET /history` and `GET /gallery` carries an `evidence` array, one entry per source, aligned by `source_number`:
+
+```json
+{ "source_number": 1, "url": "…", "locator": "…", "cited_date": "2026-10-11", "state": "captured", "state_note": "…",
+  "source_key": "…", "source_status": "active", "withdrawn_reason": "", "capture": { "…": "…" }, "versions": [ { "…": "…" } ],
+  "conflict": false, "declared_dates": ["2026-01-01"], "units": ["% of GDP"] }
+```
+
+`state` is exactly one of five values and they are never conflated:
+
+| State | Meaning |
+| --- | --- |
+| `captured` | The citation is pinned to one exact stored version and no newer version is retained. |
+| `missing` | **No capture exists.** A saved link alone is not verified evidence and must not be presented as support. |
+| `stale` | A newer capture of the same source exists than the one cited. The cited version is unchanged. |
+| `replaced` | A newer version explicitly supersedes the cited version (a `supersedes` link). The original is retained and visible. |
+| `withdrawn` | The source is gone or now refuses. The cited version is retained exactly. |
+
+Conflicting declared dates and units are **kept visible**, never normalised away: `conflict` is true and `declared_dates`/`units` list every distinct value, while `versions` carries each capture in full. A citation whose source carries only a URL and no capture (`missing`) is never credited as support.
+
+**Retention and quota.** The library holds at most **2 048** sources and **8 192** captures, at most **8** versions of any one source, and **96 MiB** of bytes retained under `catalog/`. When a new capture would exceed a quota the oldest version **not cited by any submission** is evicted; a version that any submission cites is **never** evicted, so an over-quota capture that has only cited candidates left fails closed with a clear error (never a partial record, never a deleted citation). The schema-22 validation re-checks every stored source, capture, event and citation on a backup, a restore and a startup.
+

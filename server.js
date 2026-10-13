@@ -116,8 +116,11 @@ const writes = new Map([
   ['/restoration/open', ['restorationOpen', null]], ['/restoration/join', ['restorationJoin', 'contribute']],
   ['/restoration/leave', ['restorationLeave', 'contribute']], ['/restoration/contribute', ['restorationContribute', 'contribute']],
   ['/restoration/place', ['restorationPlace', 'build']],
+  // The versioned evidence library. A curator capture extends an already-registered host; a reviewer
+  // records that a source is withdrawn. Both fail closed on an unapproved host, a bad hash or a quota.
+  ['/evidence/capture', ['evidenceCapture', null]], ['/evidence/withdraw', ['evidenceWithdraw', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/restoration']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/restoration', '/evidence', '/evidence/draft']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -505,6 +508,8 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/interact') value = platform.interactionView(actor, Object.fromEntries(url.searchParams));
           else if (route === '/memory') value = platform.memory(actor, Object.fromEntries(url.searchParams));
           else if (route === '/restoration') value = platform.restoration(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/evidence') value = platform.evidenceLibrary(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/evidence/draft') value = platform.draftEvidence(actor, Object.fromEntries(url.searchParams));
           else if (route === '/missions') value = platform.missionList(actor,Object.fromEntries(url.searchParams));
           else if (route === '/gallery') value = platform.gallery();
           else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));
@@ -667,7 +672,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         }catch{platform.authenticate(token,scope);result.mode='rules';result.model_fallback=true;}
       }
       if (route === '/auth/logout') cookie(response, '', 0, hosting);
-      return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/tasks/follow-up', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs', '/quests/author', '/quests/join', '/guilds/projects'].includes(route) ? 201 : 200, result);
+      return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/tasks/follow-up', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs', '/quests/author', '/quests/join', '/guilds/projects', '/evidence/capture'].includes(route) ? 201 : 200, result);
     } catch (error) {
       if (!error.status) console.error('HTTP request failed:', error.code || error.name || 'UnknownError');
       const status = error.status || (error.code === 'ERR_SQLITE_ERROR' && /constraint/i.test(error.message) ? 409 : 500);

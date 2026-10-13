@@ -17,7 +17,9 @@ import { journeyMethods } from './journey.js';
 import { civicMethods } from './civic-engine.js';
 import { REGIONS } from './civic.js';
 import { dirname, resolve } from 'node:path';
-import { classifyResidentRun, storageUsage, integritySnapshot, backupInventory, redactDiagnostics, RECOVERY_LIMITS, INTERRUPTION_SUMMARY, RESIDENT_RUN_PHASES, RESIDENT_RUN_STATUSES } from './recovery.js';
+import { readFileSync } from 'node:fs';
+import { isIP } from 'node:net';
+import { classifyResidentRun, storageUsage, integritySnapshot, backupInventory, redactDiagnostics, RECOVERY_LIMITS, INTERRUPTION_SUMMARY, RESIDENT_RUN_PHASES, RESIDENT_RUN_STATUSES, EVIDENCE_LIMITS, EVIDENCE_KINDS, evidenceSourceKey } from './recovery.js';
 
 const scrypt = promisify(scryptCallback);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -34,6 +36,41 @@ const publicAccount = ({ id, name, role: accountRole, status, created_at }) => (
 // Bounded reads: each listing below returns the most recent records up to these limits.
 const MISSION_LIMIT = 200, GALLERY_LIMIT = 200, SAFETY_LIMIT = 200, HISTORY_LIMIT = 200, EXPORT_LIMIT = 500;
 const parsed = (value) => { try { const item = JSON.parse(value || '{}'); return item && typeof item === 'object' && !Array.isArray(item) ? item : {}; } catch { return {}; } };
+// The four states an evidence citation can be in, and the healthy one. They are never conflated: a
+// newer capture of the same source leaves the cited version untouched and only changes this label.
+const EVIDENCE_STATE_NOTES = Object.freeze({
+  captured: 'This citation is pinned to one exact stored version and no newer version is retained.',
+  missing: 'No capture exists for this citation. A saved link alone is not verified evidence and must not be presented as support.',
+  stale: 'A newer version of this source is retained than the one cited. The cited version is unchanged; the difference is shown, never rewritten.',
+  replaced: 'A newer version explicitly supersedes the cited one. The original version is retained and remains visible.',
+  withdrawn: 'The source is withdrawn or unavailable. The cited version is retained exactly as it was captured.',
+});
+const evidenceStamp = (value) => typeof value === 'string' && (value.length === 24 && value === new Date(value).toISOString() || /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value);
+// The public shape of one capture. Bytes retained under catalog/ are referenced, never copied, so a
+// reviewer reads the exact stored file; a hash-only capture is honest that its bytes were not kept.
+const captureView = (capture) => ({
+  id: capture.id, seq: capture.seq, sha256: capture.sha256, bytes: capture.bytes, retained: Boolean(capture.retained),
+  retained_path: capture.retained_path, retrieved_at: capture.retrieved_at, declared_date: capture.declared_date,
+  unit: capture.unit, title: capture.title, locator: capture.locator, evidence_kind: capture.evidence_kind,
+  provenance: capture.provenance, license: { name: capture.license_name, url: capture.license_url, attribution: capture.license_attribution },
+  excerpt: capture.excerpt, origin: capture.origin, supersedes: capture.supersedes,
+});
+const evidenceState = (capture, versions, withdrawn) => {
+  if (!capture) return 'missing';
+  if (withdrawn) return 'withdrawn';
+  if (versions.some((version) => version.seq > capture.seq && version.supersedes === capture.id)) return 'replaced';
+  const newest = versions[versions.length - 1];
+  return newest && newest.id !== capture.id ? 'stale' : 'captured';
+};
+const evidenceConflicts = (versions) => ({ declared_dates: [...new Set(versions.map((version) => version.declared_date).filter(Boolean))], units: [...new Set(versions.map((version) => version.unit).filter(Boolean))] });
+// The reader's own host/DNS protection, reused here. A forbidden scheme, a literal IP, a localhost
+// name or a host outside the stated allowlist fails closed before any evidence row is written.
+const approvedEvidenceUrl = (value, domains) => {
+  let url; try { url = new URL(value); } catch { fail(400, 'Evidence needs a valid source URL.'); }
+  const allowlist = Array.isArray(domains) && domains.length ? domains : [url.hostname];
+  if (url.protocol !== 'https:' || url.username || url.password || url.port || !allowlist.includes(url.hostname) || isIP(url.hostname) || url.hostname === 'localhost' || url.hostname.endsWith('.local')) fail(400, 'Evidence must reference an approved public HTTPS hostname.');
+  return url;
+};
 // A stored resident run as the operator's own history renders it: the last confirmed action is an
 // object, remaining model decisions are derived, and the credential hash is never exposed.
 const runView = (row) => { const { credential_hash, ...rest } = row; return { ...rest, last_action: parsed(row.last_action), pending_action: parsed(row.pending_action), decisions_remaining: Math.max(0, row.decision_budget - row.model_calls) }; };
@@ -47,7 +84,7 @@ export class Platform {
     // The file-level integrity scan is the one expensive diagnostic read, so its result is reused
     // for a short window. `checked_at` reports when it actually ran, never when it was served.
     this.integrityCache = { at: Number.NEGATIVE_INFINITY, value: null };
-    this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); this.initQuests(); this.initGuilds();
+    this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); this.initQuests(); this.initGuilds(); this.initEvidence();
   }
   get(sql, ...args) { return this.db.prepare(sql).get(...args); }
   all(sql, ...args) { return this.db.prepare(sql).all(...args); }
@@ -431,6 +468,10 @@ export class Platform {
     const version = this.get('SELECT COALESCE(MAX(version),0)+1 AS n FROM submissions WHERE claim_id=?', claim.id).n;
     const id = randomUUID();
     this.run('INSERT INTO submissions VALUES(?,?,?,?,?,?,?,?,?,?,?)', id, claim.id, version, artifact, JSON.stringify(normalized), text(input.method, 'Method'), text(input.limitations, 'Limitations'), text(input.rights, 'Rights or permission statement'), 'pending_review', key, now());
+    // Pin each cited source to the exact evidence version it names. A citation with no capture keeps
+    // its link and is recorded as unverified; the artifact itself is never rewritten.
+    const citations = normalized.map((source, index) => { const cite = this.attachEvidence(source, index + 1); return { ...cite, submission_id: id, created_at: now() }; });
+    for (const cite of citations) this.run('INSERT INTO submission_evidence(submission_id,source_number,capture_id,url,locator,cited_date,state,created_at) VALUES(?,?,?,?,?,?,?,?)', cite.submission_id, cite.source_number, cite.capture_id, cite.url, cite.locator, cite.cited_date, cite.state, cite.created_at);
     this.run("UPDATE claims SET status='submitted' WHERE id=?", claim.id);
     this.run('UPDATE claim_drafts SET archived=1 WHERE claim_id=?',claim.id);
     this.run("UPDATE tasks SET status='under_review' WHERE id=?", claim.task_id);
@@ -470,6 +511,8 @@ export class Platform {
     const args = reviewer ? [actor.account.id, actor.account.role === 'admin' ? 1 : 0, actor.account.id] : [actor.account.id];
     if (runtime) args.push(actor.agent.id);
     const submissions = this.all(`SELECT s.*,c.task_id,t.title AS task_title,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC,s.rowid DESC LIMIT ?`, ...args, HISTORY_LIMIT).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
+    const evidenceBySubmission = this.evidenceForSubmissions(submissions.map((s) => s.id));
+    for (const submission of submissions) submission.evidence = evidenceBySubmission[submission.id] || [];
     const ids = new Set(submissions.map((s) => s.id));
     // A resident's claim list grows for as long as the operator exists, so it takes the same
     // HISTORY_LIMIT bound as every other listing on this page. The runtime's own-agent filter is
@@ -489,8 +532,11 @@ export class Platform {
     };
   }
   gallery(submissionId=null) {
-    return this.all(`SELECT s.id,s.status,s.artifact,s.sources,s.method,s.limitations,s.rights,s.version,s.created_at,c.task_id,c.agent_id,t.title AS task_title,m.title AS mission,m.demo,m.beneficiary,m.rubric,COALESCE(a.name,o.name) AS contributor,r.id AS review_id,r.decision AS review_decision,r.reason,r.created_at AS reviewed_at,h.name AS reviewer,
+    const records = this.all(`SELECT s.id,s.status,s.artifact,s.sources,s.method,s.limitations,s.rights,s.version,s.created_at,c.task_id,c.agent_id,t.title AS task_title,m.title AS mission,m.demo,m.beneficiary,m.rubric,COALESCE(a.name,o.name) AS contributor,r.id AS review_id,r.decision AS review_decision,r.reason,r.created_at AS reviewed_at,h.name AS reviewer,
       (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted'${submissionId?' AND s.id=?':''} ORDER BY s.created_at DESC,s.rowid DESC LIMIT ?`,...(submissionId?[submissionId]:[]),GALLERY_LIMIT).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
+    const evidenceBySubmission = this.evidenceForSubmissions(records.map((record) => record.id));
+    for (const record of records) record.evidence = evidenceBySubmission[record.id] || [];
+    return records;
   }
   deliveryPacket(input){
     const record=this.gallery(text(input.submission,'Submission identifier',100))[0];
@@ -805,6 +851,249 @@ export class Platform {
     const id = randomUUID();
     this.run('INSERT INTO jobs VALUES(?,?,?,?,?)', id, actor.agent.id, input.status, text(input.detail, 'Run summary', 500), now());
     this.audit(actor.account.id, `job.${input.status}`, id); return { id };
+  }
+  // ---- Versioned evidence library (schema 22) ---------------------------------------------------
+  // One capture is one immutable exact version of one public source: identity, hash, size, retrieval
+  // time, declared date, unit, licence and the exact location a reviewer can open. A submission (and
+  // a saved draft, resolved on read) points at the exact version it cited, so adding a newer capture
+  // of the same source can never rewrite the historical support — it only changes the state a
+  // reviewer sees. Nothing here fetches: a capture references bytes already retained under catalog/
+  // or records the hash a contributor's reader computed.
+  initEvidence() {
+    if (this.get('SELECT COUNT(*) AS n FROM evidence_captures').n) return;
+    const series = [];
+    for (const name of ['agriculture-statistics', 'access-statistics']) {
+      let catalog;
+      try { catalog = JSON.parse(readFileSync(new URL(`../catalog/${name}.json`, import.meta.url), 'utf8')); } catch { continue; }
+      for (const country of catalog.countries || []) for (const entry of country.series || []) if (entry && typeof entry.url === 'string' && typeof entry.sha256 === 'string' && typeof entry.raw_file === 'string') series.push(entry);
+    }
+    if (!series.length) return;
+    this.transaction(() => { for (const entry of series) this.seedRetainedCapture(entry); });
+  }
+  // Import one already-retained catalog response. The retained bytes are re-hashed here; if they no
+  // longer match the catalog's declared SHA-256, nothing is stored rather than storing a wrong record.
+  seedRetainedCapture(series) {
+    if (!/^catalog\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\.json$/.test(series.raw_file)) return;
+    let file;
+    try { file = readFileSync(new URL(`../${series.raw_file}`, import.meta.url)); } catch { return; }
+    if (file.length < 1 || file.length > 1_000_000 || hash(file) !== series.sha256) return;
+    const window = series.window || {};
+    this.registerCapture({
+      url: series.url, sha256: series.sha256, retained: true, retained_path: series.raw_file, retrieved_at: series.retrieved_at,
+      declared_date: '', unit: series.unit || '', title: series.name || '', provenance: series.publisher || '',
+      locator: `Retained raw response ${series.raw_file}; WDI source 2; ${series.country_iso3 || ''}/${series.indicator || ''}; annual rows ${window.start ?? ''}–${window.end ?? ''}`,
+      evidence_kind: 'normalized-statistics', origin: 'catalog',
+      license: series.license || {},
+    });
+  }
+  // Store (or reuse) one exact evidence version. Every check runs before a row is written, so an
+  // over-quota capture, a forbidden host or a retained file that does not match its hash fails closed
+  // and leaves no partial record behind.
+  registerCapture(fields, { domains = [] } = {}) {
+    const url = approvedEvidenceUrl(fields.url, domains);
+    const sourceKey = evidenceSourceKey(url.href);
+    const sha256 = String(fields.sha256 || '').toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(sha256)) fail(400, 'An evidence capture needs the SHA-256 of the exact bytes.');
+    const origin = ['catalog', 'submission', 'curator'].includes(fields.origin) ? fields.origin : 'submission';
+    const evidenceKind = EVIDENCE_KINDS.includes(fields.evidence_kind) ? fields.evidence_kind : 'web-excerpt';
+    const retained = fields.retained ? 1 : 0;
+    let retainedPath = '', bytes = Number.isInteger(fields.bytes) && fields.bytes > 0 ? fields.bytes : 0;
+    if (retained) {
+      retainedPath = String(fields.retained_path || '');
+      if (!/^catalog\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(retainedPath)) fail(400, 'Retained evidence must live under catalog/.');
+      let file; try { file = readFileSync(new URL(`../${retainedPath}`, import.meta.url)); } catch { fail(409, 'The retained evidence file could not be read.'); }
+      if (file.length < 1 || file.length > 1_000_000) fail(409, 'The retained evidence file is outside its byte limit.');
+      if (hash(file) !== sha256) fail(409, 'The retained evidence bytes do not match the declared SHA-256; no record was written.');
+      bytes = file.length;
+    }
+    const retrievedAt = String(fields.retrieved_at || '');
+    if (!evidenceStamp(retrievedAt)) fail(400, 'An evidence capture needs a retrieval date or timestamp.');
+    const declaredDate = fields.declared_date ? String(fields.declared_date) : '';
+    if (declaredDate && !evidenceStamp(declaredDate)) fail(400, 'A declared publication date must be an ISO date.');
+    const license = fields.license || {};
+    let source = this.get('SELECT * FROM evidence_sources WHERE source_key=?', sourceKey);
+    if (source && this.get('SELECT id FROM evidence_captures WHERE source_id=? AND sha256=?', source.id, sha256)) return this.get('SELECT * FROM evidence_captures WHERE source_id=? AND sha256=?', source.id, sha256);
+    if (!source && this.get('SELECT COUNT(*) AS n FROM evidence_sources').n >= EVIDENCE_LIMITS.max_sources) fail(409, 'The evidence library reached its source quota; a new source cannot be stored.');
+    this.evidenceReserve(retained ? bytes : 0, source ? source.id : null);
+    const created = now();
+    if (!source) {
+      this.run('INSERT INTO evidence_sources(id,source_key,url,host,path,status,created_at) VALUES(?,?,?,?,?,?,?)', randomUUID(), sourceKey, url.href, url.hostname, url.pathname, 'active', created);
+      source = this.get('SELECT * FROM evidence_sources WHERE source_key=?', sourceKey);
+    } else if (source.status === 'withdrawn') {
+      // A fresh capture is the observation that the source is available again. The withdrawal stays in
+      // the append-only event history; the identity itself is never rewritten.
+      this.run("UPDATE evidence_sources SET status='active',withdrawn_reason='' WHERE id=?", source.id);
+      this.run('INSERT INTO evidence_events(id,source_id,kind,detail,created_at) VALUES(?,?,?,?,?)', randomUUID(), source.id, 'restored', 'A new capture of this source was stored; it is available again.', created);
+    }
+    let supersedes = null;
+    if (fields.supersedes) {
+      const prior = this.get('SELECT * FROM evidence_captures WHERE id=?', fields.supersedes);
+      if (!prior || prior.source_id !== source.id) fail(400, 'A superseding capture must name an earlier version of the same source.');
+      supersedes = prior.id;
+    }
+    const id = randomUUID();
+    this.run('INSERT INTO evidence_captures(id,source_id,source_key,url,sha256,bytes,retained,retained_path,retrieved_at,declared_date,unit,title,locator,evidence_kind,provenance,license_name,license_url,license_attribution,excerpt,origin,supersedes,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      id, source.id, sourceKey, url.href, sha256, bytes, retained, retainedPath, retrievedAt, declaredDate,
+      String(fields.unit || '').slice(0, 120), String(fields.title || '').slice(0, 200), String(fields.locator || '').slice(0, 300),
+      evidenceKind, String(fields.provenance || '').slice(0, 200), String(license.name || '').slice(0, 120), String(license.url || '').slice(0, 200),
+      String(license.attribution || '').slice(0, 300), String(fields.excerpt || '').slice(0, EVIDENCE_LIMITS.max_excerpt_characters), origin, supersedes, created);
+    return this.get('SELECT * FROM evidence_captures WHERE id=?', id);
+  }
+  // Hold a new capture to the library quota. A version a submission cites is never evicted, so when
+  // the only candidates for eviction are cited this refuses instead of deleting cited evidence.
+  evidenceReserve(bytes, sourceId) {
+    if (sourceId) while (this.get('SELECT COUNT(*) AS n FROM evidence_captures WHERE source_id=?', sourceId).n + 1 > EVIDENCE_LIMITS.max_captures_per_source) {
+      if (!this.evictOldest(sourceId)) fail(409, 'This source already keeps its maximum number of versions and every version is cited; a new version cannot be stored.');
+    }
+    while (this.get('SELECT COUNT(*) AS n FROM evidence_captures').n + 1 > EVIDENCE_LIMITS.max_captures) {
+      if (!this.evictOldest(null)) fail(409, 'The evidence library is full and every version is cited; a new capture cannot be stored.');
+    }
+    if (bytes) while (this.retainedBytes() + bytes > EVIDENCE_LIMITS.max_retained_bytes) {
+      if (!this.evictOldest(null, true)) fail(409, 'The evidence library is at its retained-byte quota and every retained version is cited; a new capture cannot be stored.');
+    }
+  }
+  retainedBytes() { return this.get('SELECT COALESCE(SUM(bytes),0) AS n FROM evidence_captures WHERE retained=1').n; }
+  evictOldest(sourceId, retainedOnly = false) {
+    const filter = `${retainedOnly ? ' AND c.retained=1' : ''} AND NOT EXISTS(SELECT 1 FROM submission_evidence e WHERE e.capture_id=c.id)`;
+    const row = sourceId
+      ? this.get(`SELECT c.id FROM evidence_captures c WHERE c.source_id=?${filter} ORDER BY c.rowid ASC LIMIT 1`, sourceId)
+      : this.get(`SELECT c.id FROM evidence_captures c WHERE 1=1${filter} ORDER BY c.rowid ASC LIMIT 1`);
+    if (!row) return false;
+    this.run('DELETE FROM evidence_captures WHERE id=?', row.id);
+    return true;
+  }
+  // A curator extends the library only on a host the library already knows. A new host is registered
+  // through an approved research task, not by an operator typing a URL into the curator API.
+  evidenceCapture(actor, input = {}) {
+    role(actor, ['admin']);
+    let host = ''; try { host = new URL(input.url).hostname; } catch { fail(400, 'Evidence needs a valid source URL.'); }
+    if (!this.get('SELECT id FROM evidence_sources WHERE host=? LIMIT 1', host)) fail(403, 'Register this host through an approved research task before capturing it.');
+    return this.registerCapture({ ...input, origin: 'curator' }, { domains: this.all('SELECT DISTINCT host FROM evidence_sources').map((row) => row.host) });
+  }
+  // Recording a source as gone or refusing is itself an observation: the withdrawal is written with
+  // its reason and timestamp, the identity and every captured version stay readable.
+  evidenceWithdraw(actor, input = {}) {
+    role(actor, ['reviewer', 'admin']);
+    let key = ''; try { key = evidenceSourceKey(new URL(input.url).href); } catch { key = ''; }
+    const source = this.get('SELECT * FROM evidence_sources WHERE source_key=? OR id=?', key, input.source_id || '');
+    if (!source) fail(404, 'Evidence source not found.');
+    if (source.status === 'withdrawn') fail(409, 'This source is already recorded as withdrawn.');
+    const reason = text(input.reason, 'Withdrawal reason', 200);
+    this.run("UPDATE evidence_sources SET status='withdrawn',withdrawn_reason=? WHERE id=?", reason, source.id);
+    this.run('INSERT INTO evidence_events(id,source_id,kind,detail,created_at) VALUES(?,?,?,?,?)', randomUUID(), source.id, 'withdrawn', reason, now());
+    this.audit(actor.account.id, 'evidence.withdrawn', source.id);
+    return { source_id: source.id, status: 'withdrawn', reason };
+  }
+  // Attach one cited source to the exact version it names. A citation that declares the SHA-256 its
+  // reader computed pins that version (storing it if it is not yet retained); a bare link keeps its
+  // URL but is recorded as missing/unverified and is never shown as support.
+  attachEvidence(source, sourceNumber) {
+    const location = typeof source.location === 'string' ? source.location : '';
+    const cite = { submission_id: null, source_number: sourceNumber, capture_id: null, url: source.url, locator: location, cited_date: source.date || '', state: 'missing' };
+    let url; try { url = new URL(source.url); } catch { return cite; }
+    if (!['http:', 'https:'].includes(url.protocol)) return cite;
+    const sha256 = /SHA256\s+([a-f0-9]{64})/i.exec(location)?.[1]?.toLowerCase() || null;
+    if (!sha256) return cite;
+    let capture = this.get('SELECT * FROM evidence_captures WHERE source_key=? AND sha256=?', evidenceSourceKey(url.href), sha256);
+    if (!capture) {
+      try { capture = this.registerCapture({ url: url.href, sha256, retrieved_at: source.date || now().slice(0, 10), locator: location.replace(/;?\s*SHA256\s+[a-f0-9]{64}\s*$/i, '').trim(), evidence_kind: 'web-excerpt', origin: 'submission' }); }
+      catch { capture = null; }
+    }
+    return { ...cite, capture_id: capture?.id || null, state: capture ? 'captured' : 'missing' };
+  }
+  // One cited source resolved against the library, without writing anything. Used for a private draft.
+  resolveCitation(source, sourceNumber) {
+    const location = typeof source.location === 'string' ? source.location : '';
+    const entry = { source_number: sourceNumber, url: source.url || '', locator: location, cited_date: source.date || '', state: 'missing', state_note: EVIDENCE_STATE_NOTES.missing, source_key: null, source_status: null, withdrawn_reason: '', capture: null, versions: [], conflict: false, declared_dates: [], units: [] };
+    let url; try { url = new URL(source.url); } catch { return entry; }
+    if (!['http:', 'https:'].includes(url.protocol)) return entry;
+    const key = evidenceSourceKey(url.href), src = this.get('SELECT * FROM evidence_sources WHERE source_key=?', key);
+    const versions = src ? this.all('SELECT c.*,c.rowid AS seq FROM evidence_captures c WHERE c.source_id=? ORDER BY c.rowid ASC', src.id) : [];
+    const sha = /SHA256\s+([a-f0-9]{64})/i.exec(location)?.[1]?.toLowerCase() || null;
+    const capture = sha ? versions.find((version) => version.sha256 === sha) || null : null;
+    const state = evidenceState(capture, versions, Boolean(src && src.status === 'withdrawn'));
+    const conflicts = evidenceConflicts(versions);
+    return { ...entry, state, state_note: EVIDENCE_STATE_NOTES[state], source_key: key, source_status: src?.status || null, withdrawn_reason: src?.withdrawn_reason || '', capture: capture ? captureView(capture) : null, versions: versions.map(captureView), conflict: conflicts.declared_dates.length > 1 || conflicts.units.length > 1, ...conflicts };
+  }
+  // The evidence attached to a batch of submissions, assembled in four queries rather than per row.
+  evidenceForSubmissions(ids) {
+    const unique = [...new Set(ids || [])].filter((id) => typeof id === 'string');
+    if (!unique.length) return {};
+    const marks = unique.map(() => '?').join(',');
+    const cites = this.all(`SELECT * FROM submission_evidence WHERE submission_id IN (${marks}) ORDER BY submission_id,source_number`, ...unique);
+    if (!cites.length) return {};
+    const captureIds = [...new Set(cites.map((cite) => cite.capture_id).filter(Boolean))];
+    const captures = captureIds.length ? this.all(`SELECT c.*,c.rowid AS seq FROM evidence_captures c WHERE c.id IN (${captureIds.map(() => '?').join(',')})`, ...captureIds) : [];
+    const captureById = new Map(captures.map((capture) => [capture.id, capture]));
+    const sourceIds = [...new Set(captures.map((capture) => capture.source_id))];
+    const sources = sourceIds.length ? this.all(`SELECT * FROM evidence_sources WHERE id IN (${sourceIds.map(() => '?').join(',')})`, ...sourceIds) : [];
+    const sourceById = new Map(sources.map((source) => [source.id, source]));
+    const versionsBySource = new Map();
+    for (const id of sourceIds) versionsBySource.set(id, this.all('SELECT c.*,c.rowid AS seq FROM evidence_captures c WHERE c.source_id=? ORDER BY c.rowid ASC', id));
+    const bySubmission = {};
+    for (const cite of cites) {
+      const capture = cite.capture_id ? captureById.get(cite.capture_id) : null;
+      const source = capture ? sourceById.get(capture.source_id) : null;
+      const versions = source ? versionsBySource.get(source.id) || [] : [];
+      const state = evidenceState(capture, versions, Boolean(source && source.status === 'withdrawn'));
+      const conflicts = evidenceConflicts(versions);
+      (bySubmission[cite.submission_id] ||= []).push({
+        source_number: cite.source_number, url: cite.url, locator: cite.locator, cited_date: cite.cited_date, state, state_note: EVIDENCE_STATE_NOTES[state],
+        source_key: source?.source_key || null, source_status: source?.status || null, withdrawn_reason: source?.withdrawn_reason || '',
+        capture: capture ? captureView(capture) : null, versions: versions.map(captureView),
+        conflict: conflicts.declared_dates.length > 1 || conflicts.units.length > 1, ...conflicts,
+      });
+    }
+    return bySubmission;
+  }
+  // The reviewer's evidence panel for one submission: every version of every cited source, its exact
+  // location, library hash and licence, the state of the citation, and any date/unit disagreement.
+  submissionEvidence(submissionId) { return this.evidenceForSubmissions([submissionId])[submissionId] || []; }
+  // A private draft points at the same exact versions. The resolution reads storage and writes nothing.
+  draftEvidence(actor, options = {}) {
+    if (actor?.kind !== 'session') fail(403, 'Saved drafts require the human operator session.');
+    const claim = this.get('SELECT * FROM claims WHERE id=?', options.claim_id || '');
+    const draft = this.get('SELECT * FROM claim_drafts WHERE claim_id=?', options.claim_id || '');
+    if (!claim || claim.account_id !== actor.account.id || !draft) fail(404, 'Saved draft not found.');
+    const content = (() => { try { return JSON.parse(draft.content); } catch { return null; } })();
+    if (!content || typeof content.values !== 'object') fail(409, 'The saved draft is unreadable.');
+    const byIndex = new Map();
+    for (const [key, value] of Object.entries(content.values)) {
+      const structured = /^source_(\d+)_(url|location|date)$/.exec(key);
+      const plain = structured ? null : /^(url|location|date)_(\d+)$/.exec(key);
+      if (!structured && !plain) continue;
+      const index = structured ? Number(structured[1]) : Number(plain[2]);
+      const field = structured ? structured[2] : plain[1];
+      if (!byIndex.has(index)) byIndex.set(index, { url: '', location: '', date: '' });
+      byIndex.get(index)[field] = typeof value === 'string' ? value : '';
+    }
+    return { claim_id: claim.id, format: content.format || 'evidence-form-v1', sources: [...byIndex.entries()].sort((a, b) => a[0] - b[0]).map(([index, source]) => this.resolveCitation(source, index + 1)) };
+  }
+  // A bounded, searchable view of the library. Every cited count and every state is read from storage.
+  evidenceLibrary(actor, options = {}) {
+    // Reviewer inspection: the library is where a reviewer checks a source and its exact version, so
+    // it is readable by a reviewer or administrator, not by any caller that can merely sign in.
+    role(actor, ['admin', 'reviewer']);
+    const limit = Math.min(100, Math.max(1, Number(options.limit) || 25));
+    const offset = Math.min(1_000_000, Math.max(0, Math.floor(Number(options.offset) || 0)));
+    const q = typeof options.q === 'string' ? options.q.trim().slice(0, 120) : '';
+    const args = q ? [`%${q.replace(/[%_\\]/g, '\\$&')}%`, `%${q.replace(/[%_\\]/g, '\\$&')}%`] : [];
+    const where = q ? "WHERE source_key LIKE ? ESCAPE '\\' OR url LIKE ? ESCAPE '\\'" : '';
+    const total = this.get(`SELECT COUNT(*) AS n FROM evidence_sources ${where}`, ...args).n;
+    const sources = this.all(`SELECT * FROM evidence_sources ${where} ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
+    return {
+      total, offset, limit, has_more: offset + sources.length < total,
+      limits: { max_sources: EVIDENCE_LIMITS.max_sources, max_captures: EVIDENCE_LIMITS.max_captures, max_captures_per_source: EVIDENCE_LIMITS.max_captures_per_source, max_retained_bytes: EVIDENCE_LIMITS.max_retained_bytes, per_artifact_evidence: EVIDENCE_LIMITS.per_artifact_evidence, retained_bytes: this.retainedBytes(), captures: this.get('SELECT COUNT(*) AS n FROM evidence_captures').n },
+      sources: sources.map((source) => {
+        const versions = this.all('SELECT c.*,c.rowid AS seq FROM evidence_captures c WHERE c.source_id=? ORDER BY c.rowid ASC', source.id);
+        const conflicts = evidenceConflicts(versions);
+        return {
+          id: source.id, source_key: source.source_key, url: source.url, host: source.host, path: source.path, status: source.status, withdrawn_reason: source.withdrawn_reason,
+          versions: versions.map(captureView), cited_versions: this.get('SELECT COUNT(*) AS n FROM submission_evidence e JOIN evidence_captures c ON c.id=e.capture_id WHERE c.source_id=?', source.id).n,
+          conflict: conflicts.declared_dates.length > 1 || conflicts.units.length > 1,
+        };
+      }),
+    };
   }
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
