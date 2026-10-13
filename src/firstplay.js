@@ -373,7 +373,7 @@ export const firstPlayMethods = {
     const restorationInput = viewer ? { agent_id: viewer.id } : {};
     if (input.world_id) restorationInput.world_id = input.world_id;
     const eventView = viewer
-      ? this.restorationForAccount(actor, viewer.id) || this.restoration(actor, restorationInput).event
+      ? this.restorationForAccount(actor, viewer.id, input.world_id) || this.restoration(actor, restorationInput).event
       : this.restoration(actor, restorationInput).event;
     const operators = new Map();
     if (eventView?.participants.length) {

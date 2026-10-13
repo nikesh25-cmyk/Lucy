@@ -1744,6 +1744,9 @@ define('phone-conversation', async () => {
   const walker = fixtures().characters.walker;
   const neighbour = fixtures().characters.neighbour;
   await sendToCommons(fixtures().owner, walker.id);
+  // The Neighbour is owned by the stranger operator and earlier scenarios may have moved it; put it
+  // back in the Commons so it is a visible recipient in this scenario's own world.
+  await sendToCommons(fixtures().stranger, neighbour.id);
 
   await step('enter the game shell as the saved resident', async () => {
     await openApp(page, ACTORS.owner);

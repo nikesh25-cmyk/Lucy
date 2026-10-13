@@ -620,8 +620,13 @@ export const communityMethods = {
    * when many newer events have been opened. No census is re-run: the event view is built with the
    * existing helpers once an event is selected.
    */
-  restorationForAccount(actor, agentId, limit = RESTORATION_LIST) {
+  restorationForAccount(actor, agentId, worldId = null, limit = RESTORATION_LIST) {
     const agent = this.ownedAgent(actor, agentId);
+    // When the guide is showing one garden (a requested world), the bounded account read is scoped to
+    // that garden, so an older contribution there stays visible without ever surfacing another
+    // garden's occurrence. Without a requested world the account's contribution in any garden is the
+    // guide's subject, which is the case a returning contributor to another operator's garden needs.
+    const scope = typeof worldId === 'string' && worldId ? worldId : null;
     // Counted work is recorded in the audit trail: an object placed on a planned tile, or an
     // explicit contribution of a sowing, craft or circle membership. Pledges are not counted work.
     const eventIds = this.all(`SELECT DISTINCT substr(record_id, 1, instr(record_id, '|') - 1) AS event_id
@@ -630,7 +635,7 @@ export const communityMethods = {
       ORDER BY seq DESC LIMIT ?`, actor.account.id, RESTORATION_PREFIX.length, RESTORATION_PREFIX, limit).map((row) => row.event_id);
     for (const eventId of eventIds) {
       const event = this.restorationEventRecord(eventId);
-      if (this.restorationPhase(event) !== 'cancelled') return this.restorationEventView(event, agent.id);
+      if ((scope === null || event.world_id === scope) && this.restorationPhase(event) !== 'cancelled') return this.restorationEventView(event, agent.id);
     }
     return null;
   },
