@@ -13,9 +13,9 @@ implements recommendation 3 of [the voxel engine reuse decision](VOXEL_ENGINE_RE
 | `furniture` | 27 | `content/furniture/*.json` | `rules.palettes`, `walkable`, `footprint` (`occupied`/`open`), `rules.geometry` (the builder name implemented in `src/voxel-world.js`) |
 | `crop` | 3 | `content/crops/*.json` | `rules.grow_ms`, `yield` (`item`, `quantity`), `tile_object`, `max_growing`, `tend_saving_ms` |
 | `appearance` | 20 | `content/appearances/*.json` | `rules.roster_roles`, `sprite`, `directions`, `walk_rows`, `action_rows_excluded`; CC0-1.0 art |
-| `cosmetic` | 29 | `content/cosmetics/*.json` | `rules.cosmetic_kind`, `earned_by`, and for crafts `name`/`ingredients`/`output` |
+| `cosmetic` | 32 | `content/cosmetics/*.json` | `rules.cosmetic_kind`, `earned_by`, and for crafts `name`/`ingredients`/`output` |
 
-`content/content-manifest.json` indexes all **86** entries (7 + 27 + 3 + 20 + 29) by file, digest,
+`content/content-manifest.json` indexes all **89** entries (7 + 27 + 3 + 20 + 32) by file, digest,
 license and asset. The counts above, the manifest and the drift guards are recomputed and asserted
 by `tests/content.test.js`, so this table cannot silently diverge from the definitions.
 
@@ -77,7 +77,7 @@ the same object as `manifest()`:
 {
   "schema_version": 1,
   "generated_by": "scripts/seal-content.mjs",
-  "kinds": { "appearance": 20, "block": 7, "cosmetic": 29, "crop": 3, "furniture": 27 },
+  "kinds": { "appearance": 20, "block": 7, "cosmetic": 32, "crop": 3, "furniture": 27 },
   "entries": [{ "id": "…", "kind": "…", "file": "content/…", "sha256": "…", "license": { "…": "…" }, "assets": [] }],
   "support": [{ "path": "content/palettes.json", "sha256": "…" }, { "path": "content/notices.json", "sha256": "…" }, { "path": "content/index.js", "sha256": "…" }]
 }
