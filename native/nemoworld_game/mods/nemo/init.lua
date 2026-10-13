@@ -294,6 +294,51 @@ core.register_chatcommand('nemo_move', {params='up|down|left|right', description
   if not accepted then return false, reason end
   return true, 'Step requested.'
 end})
+-- Mission work over the same records the browser reads. The pairing credential selects the human
+-- avatar; the bridge resolves the sender from NemoWorld, never from a recipient typed in chat.
+core.register_chatcommand('nemo_missions', {params='', description='List open mission tasks and your active claim', func=function(name)
+  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  request('/native/missions', {player=name}, function(ok, data)
+    if not ok then core.log('action','NEMO_MISSIONS_ERROR '..tostring(data)); message(name, data); return end
+    local ids = {}
+    for _, task in ipairs(data.tasks or {}) do ids[#ids+1] = task.id end
+    local claim = data.active_claim and data.active_claim.id or 'none'
+    core.log('action','NEMO_MISSIONS_RESULT tasks='..table.concat(ids,',')..' claim='..claim)
+    message(name, 'Missions: '..(#ids > 0 and table.concat(ids, ', ') or 'none')..' (claim '..claim..')')
+  end)
+  return true, 'Reading the mission directory.'
+end})
+core.register_chatcommand('nemo_claim', {params='TASK_ID', description='Claim one open mission task', func=function(name, task_id)
+  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not task_id or task_id == '' then return false, 'Give a task id from /nemo_missions.' end
+  request('/native/claim', {player=name, task_id=task_id}, function(ok, data)
+    if not ok then core.log('action','NEMO_CLAIM_ERROR '..tostring(data)); message(name, data); return end
+    core.log('action','NEMO_CLAIM_RESULT id='..data.claim.id..' task='..data.claim.task_id)
+    message(name, 'Claimed '..data.claim.id)
+  end)
+  return true, 'Claiming.'
+end})
+core.register_chatcommand('nemo_submit', {params='the deliverable text', description='Submit evidence for your active claim', func=function(name, artifact)
+  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not artifact or artifact == '' then return false, 'Give the deliverable text.' end
+  -- The active claim is read from NemoWorld, never typed here: the native client cannot name a
+  -- claim or a recipient that is not already its own.
+  request('/native/missions', {player=name}, function(listed, board)
+    if not listed then core.log('action','NEMO_SUBMIT_ERROR '..tostring(board)); message(name, board); return end
+    local claim = board.active_claim
+    if not claim then core.log('action','NEMO_SUBMIT_ERROR no-active-claim'); message(name, 'Claim a task first.'); return end
+    request('/native/submit', {player=name, claim_id=claim.id, artifact=artifact,
+      method='Read the original source and recorded the exact supporting section.',
+      limitations='A native smoke fixture; facts and rights require human verification.',
+      rights='Permission and attribution were checked for this fixture.',
+      sources={{url='https://example.org/a', location='Section 1'}}}, function(ok, data)
+      if not ok then core.log('action','NEMO_SUBMIT_ERROR '..tostring(data)); message(name, data); return end
+      core.log('action','NEMO_SUBMIT_RESULT id='..data.submission.id..' status='..data.submission.status)
+      message(name, 'Submitted '..data.submission.id)
+    end)
+  end)
+  return true, 'Submitting.'
+end})
 core.register_globalstep(function(dt)
   motion_clock = motion_clock + dt
   sync_elapsed = sync_elapsed + dt
