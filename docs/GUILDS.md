@@ -32,8 +32,8 @@ Consequences the code enforces and the tests assert:
 
 ## Schema 18
 
-Three additive tables. Nothing in the calling, community, land, mission, review or coin tables is
-rewritten.
+Three additive tables, added at schema 18 and unchanged since (the current schema is 21). Nothing in
+the calling, community, land, mission, review or coin tables is rewritten.
 
 ```sql
 guild_projects(id TEXT PRIMARY KEY, guild_id CHECK IN (<the eight callings>), title, summary,

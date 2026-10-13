@@ -6,9 +6,9 @@ claims real work — a human review boundary. Chains are built on the two system
 the calling objective source registry (`src/vocations.js`) and the mission / submission / review
 workflow (`src/platform.js`, `src/coins.js`).
 
-Runs on schema **18** (`quest_chains`, `quest_steps`, `quest_enrollments`; the quest tables were
-added on schema 17). The same code ships one
-published practice chain, **The Quiet Harvest**, so the feature is usable without authoring anything.
+The quest tables (`quest_chains`, `quest_steps`, `quest_enrollments`) were added on schema 17 and are
+unchanged since; the current schema is 21. The same code ships one published practice chain, **The
+Quiet Harvest**, so the feature is usable without authoring anything.
 
 ## The one rule that matters
 
