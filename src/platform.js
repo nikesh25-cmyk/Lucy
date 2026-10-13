@@ -11,6 +11,7 @@ import { start } from '../world.js';
 import { spaceMethods } from './spaces.js';
 import { communityMethods } from './community.js';
 import { vocationMethods } from './vocations.js';
+import { firstPlayMethods } from './firstplay.js';
 import { questMethods } from './quests.js';
 import { guildMethods } from './guilds.js';
 import { journeyMethods } from './journey.js';
@@ -321,17 +322,22 @@ export class Platform {
     if (!['public', 'nearby', 'private', 'mission'].includes(channel)) fail(400, 'Invalid conversation channel.');
     const recent = this.get('SELECT created_at FROM messages WHERE account_id=? ORDER BY created_at DESC LIMIT 1', actor.account.id);
     if (recent && this.clock() - Date.parse(recent.created_at) < 1500) fail(429, 'Please wait before sending another message.');
-    let recipients = [], missionId = null;
+    let recipients = [], missionId = null, privateEncounter = false;
     if (['nearby', 'private'].includes(channel) && !agent) fail(400, 'Select an agent avatar for this channel.');
     if (channel === 'private') {
-      const target = this.get("SELECT id FROM agents WHERE id=? AND status='active'", input.recipient_id || '');
+      const target = this.get("SELECT a.id,a.kind,a.operator_id,a.world_id,a.x,a.y,o.status AS operator_status FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.id=? AND a.status='active'", input.recipient_id || '');
       if (!target || target.id === agent.id) fail(400, 'Select another active avatar.');
       recipients = [agent.id, target.id];
+      // Private messages remain available across worlds. Only a private message sent while the
+      // other operator's AI resident is physically within encounter range proves an in-world meet.
+      privateEncounter = actor.account.status === 'active' && target.kind === 'agent' && target.operator_id !== agent.operator_id && target.operator_status === 'active'
+        && target.world_id === agent.world_id && Math.abs(target.x - agent.x) + Math.abs(target.y - agent.y) <= 6;
     }
-    if (channel === 'nearby') recipients = this.all("SELECT id FROM agents WHERE status='active' AND world_id=? AND ABS(x-?)+ABS(y-?)<=3", worldId, agent.x, agent.y).map((item) => item.id);
+    if (channel === 'nearby') recipients = this.all("SELECT a.id FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.status='active' AND o.status='active' AND a.world_id=? AND ABS(a.x-?)+ABS(a.y-?)<=3", worldId, agent.x, agent.y).map((item) => item.id);
     if (channel === 'mission') { missionId = text(input.mission_id, 'Mission', 80); if (!this.get('SELECT id FROM missions WHERE id=?', missionId)) fail(404, 'Mission not found.'); }
     const id = randomUUID();
     this.run('INSERT INTO messages(id,agent_id,account_id,channel,mission_id,recipients,text,created_at,world_id) VALUES(?,?,?,?,?,?,?,?,?)', id, agent?.id || null, actor.account.id, channel, missionId, JSON.stringify(recipients), content, new Date(this.clock()).toISOString(), worldId);
+    if (privateEncounter) this.audit(actor.account.id, 'firstplay.resident_met', `${agent.id}|${id}`);
     if (agent) this.run('UPDATE agents SET last_seen=?,verified=CASE WHEN ?=1 THEN 1 ELSE verified END WHERE id=?', this.clock(), actor.kind === 'runtime' ? 1 : 0, agent.id);
     // Only a public message in a world is ever pushed. Nearby, direct and mission conversations stay
     // in their own access-controlled routes and are never sent to an event subscriber.
@@ -1220,7 +1226,7 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, questMethods, guildMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, questMethods, guildMethods, firstPlayMethods);
 
 Object.assign(Platform.prototype,draftMethods);
 

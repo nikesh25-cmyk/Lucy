@@ -94,7 +94,7 @@ for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'bl
 }
 // The interface components of the game shell. Each one is a browser module app.js imports, so the
 // hand-maintained table has to serve it; tests/content-http.test.js walks that graph from /app.js.
-for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls']) {
+for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls', 'first-play-guide']) {
   files.set(`/src/ui/${component}.js`, [`src/ui/${component}.js`, 'text/javascript; charset=utf-8']);
 }
 files.set('/game-mobile.css', ['game-mobile.css', 'text/css; charset=utf-8']);
@@ -149,7 +149,7 @@ const writes = new Map([
   // records that a source is withdrawn. Both fail closed on an unapproved host, a bad hash or a quota.
   ['/evidence/capture', ['evidenceCapture', null]], ['/evidence/withdraw', ['evidenceWithdraw', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/restoration', '/evidence', '/evidence/draft', '/review/workbench']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -496,7 +496,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact', '/restoration'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact', '/first-play', '/restoration'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
@@ -537,6 +537,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/journey/offers') value = platform.resourceOffers(actor, Object.fromEntries(url.searchParams));
           else if (route === '/interact') value = platform.interactionView(actor, Object.fromEntries(url.searchParams));
           else if (route === '/memory') value = platform.memory(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/first-play') value = platform.firstPlay(actor, Object.fromEntries(url.searchParams));
           else if (route === '/restoration') value = platform.restoration(actor, Object.fromEntries(url.searchParams));
           else if (route === '/evidence') value = platform.evidenceLibrary(actor, Object.fromEntries(url.searchParams));
           else if (route === '/evidence/draft') value = platform.draftEvidence(actor, Object.fromEntries(url.searchParams));

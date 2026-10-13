@@ -112,6 +112,10 @@ const fail=(status,message)=>{throw Object.assign(new Error(message),{status});}
 const human=(actor,roles)=>{if(actor?.kind!=='session'||!roles.includes(actor.account.role))fail(403,'An authorized human account is required.');};
 const text=(value,max,label)=>{if(typeof value!=='string'||!value.trim()||value.length>max)fail(400,`${label} must contain 1–${max} characters.`);return value.trim();};
 const integer=(value,fallback,max)=>{if(value==null||value==='')return fallback;const n=Number(value);if(!Number.isInteger(n)||n<0||n>max)fail(400,'Invalid pagination.');return n;};
+// The one identity sentence a country ambassador always opens with. It is authored once here and
+// returned byte-identically wherever an ambassador speaks or is described, so no other module re-types
+// its wording.
+export function ambassadorIdentity(country){return `I’m the NemoWorld country ambassador for ${country.name}. I am a fictional research guide: I do not represent ${country.name}, any government or the United Nations. My remit is source-based research for this country or area.`;}
 export const CIVIC_SCHEMA=`
 CREATE TABLE IF NOT EXISTS npc_mayors(id TEXT PRIMARY KEY,region_id TEXT NOT NULL,world_id TEXT NOT NULL,name TEXT NOT NULL,sprite INTEGER NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,direction TEXT NOT NULL DEFAULT 'down',status TEXT NOT NULL DEFAULT 'active',ticks INTEGER NOT NULL DEFAULT 0,last_tick INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS mayor_conversations(id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),npc_id TEXT NOT NULL REFERENCES npc_mayors(id),question TEXT NOT NULL,answer TEXT NOT NULL,created_at TEXT NOT NULL,mode TEXT NOT NULL DEFAULT 'rules',country_context TEXT,source_numbers TEXT NOT NULL DEFAULT '[]');
@@ -368,6 +372,14 @@ export const civicMethods={
     if(Object.hasOwn(input,'context'))fail(400,'The assigned country context cannot be overridden.');
     const row=this.get("SELECT * FROM npc_ambassadors WHERE id=? AND status='active'",String(input.ambassador_id||input.id||input.npc_id||''));
     if(!row)fail(404,'Active country ambassador not found.');
+    // Ordinary research conversations remain account-level. A first-play encounter names an owned
+    // active character and must happen while that character stands near this visible ambassador;
+    // only then can the saved conversation count as an in-world meeting for that character.
+    const meetingAgent=input.agent_id===undefined?null:this.ownedAgent(actor,input.agent_id);
+    if(meetingAgent){
+      if(meetingAgent.status!=='active')fail(403,'Resume this character before meeting the ambassador.');
+      if(meetingAgent.world_id!==row.world_id||Math.abs(meetingAgent.x-row.x)+Math.abs(meetingAgent.y-row.y)>6)fail(409,'Walk this character within six tiles of the ambassador in its country venue before asking a first-play question.');
+    }
     const supplied=String(input.country_code??'').trim().toUpperCase();
     if(supplied&&![row.iso2.toUpperCase(),row.iso3.toUpperCase(),row.m49].includes(supplied))fail(400,`Country mismatch: this ambassador answers only for ${row.name} (${row.iso3}).`);
     const last=this.get('SELECT created_at FROM ambassador_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 1',actor.account.id);if(last&&this.clock()-Date.parse(last.created_at)<1500)fail(429,'Please allow the ambassador to finish.');
@@ -376,7 +388,7 @@ export const civicMethods={
     // uses an internal option for a general question; request fields cannot disable context.
     const withContext=!legacyWithoutContext,country_context=withContext?this.ambassadorContext(country,created_at):null;
     const retained=country_context?country_context.sources.filter(source=>source.status==='retained').length:0;
-    let answer=`I’m the NemoWorld country ambassador for ${country.name}. I am a fictional research guide: I do not represent ${country.name}, any government or the United Nations. My remit is source-based research for this country or area.`;
+    let answer=ambassadorIdentity(country);
     if(topic==='moderation')answer+=' Use the Safety desk to report a specific message or resident. Human moderators review evidence, decide actions, and provide an appeal route. I can guide you through the process; I cannot impose sanctions.';
     else if(topic==='assembly')answer+=` World Assembly is an independent NemoWorld institution. Its reference desk contains ${PROGRAMMES.institutions.length} records covering principal organs, General Assembly committees, ECOSOC commissions, specialized agency groups, funds and other entities. It does not enumerate every UN programme or subsidiary body. UN sources inform NemoWorld proposals; NemoWorld has no UN endorsement.`;
     else if(!withContext)answer+=` Choose a country or area to attach its registered country context and numbered sources before making findings.`;
@@ -386,6 +398,7 @@ export const civicMethods={
     const source_numbers=!country_context||['moderation','assembly'].includes(topic)?[]:country_context.sources.filter(source=>source.status==='retained').map(source=>source.number);
     const id=randomUUID();
     this.run('INSERT INTO ambassador_conversations(id,account_id,ambassador_id,question,answer,created_at,country_context,source_numbers) VALUES(?,?,?,?,?,?,?,?)',id,actor.account.id,row.id,question,answer,created_at,country_context?JSON.stringify(country_context):null,JSON.stringify(source_numbers));
+    if(meetingAgent)this.audit(actor.account.id,'firstplay.ambassador_met',`${meetingAgent.id}|${id}`);
     this.run('DELETE FROM ambassador_conversations WHERE account_id=? AND id NOT IN (SELECT id FROM ambassador_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 100)',actor.account.id,actor.account.id);
     return {id,ambassador_id:row.id,country:{name:country.name,iso2:country.iso2,iso3:country.iso3,m49:country.m49},question,answer,created_at,mode:'rules',country_context,source_numbers};
   },

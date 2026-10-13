@@ -2,7 +2,7 @@
 
 Run `npm test` with Node.js 24. Tests use isolated temporary SQLite databases and loopback HTTP servers; they do not modify the development database.
 
-**Current authoritative source state (combined Tasks 22, 23, 25 and 26 plus Tasks 29–38, schema 22): Node 24 `npm test` passed 774/774 tests; HTTP acceptance passed 15/15 steps; real Chrome passed 35/35 scenarios; syntax and the seal passed with 89 definitions, 3 support files and 42 referenced notices/assets. The test and browser gates used disposable data; the installed database remained untouched. Per-release figures below are historical milestones.**
+**Current authoritative source state (combined Tasks 22, 23, 25 and 26, Tasks 29–38, control/travel/native-frontier improvements and the first-ten-minutes journey; schema 22): Node 24 `npm test` passed 840/840 tests; HTTP acceptance passed 17/17 steps; real Chrome passed 38/38 scenarios; syntax and the seal passed with 89 definitions, 3 support files and 42 referenced notices/assets. The test and browser gates used disposable data; the installed database remained untouched. The native bridge smoke on Luanti 5.17 belongs to the pre-journey source, whose bridge files the journey did not change. Per-release figures below are historical milestones.**
 
 Latest local check on 2026-10-11 (an earlier milestone): syntax checks passed, and `npm test` then executed **98 tests: 98 passed, zero failed, zero skipped**. Starting and restarting `npm start` served the expanded world and three demonstration missions with a healthy SQLite status. The documented backup, verification, and restore CLI commands also succeeded against a separate restore destination. GitHub CI is configured to repeat syntax and automated workflow checks on Node 24; a remote CI result has not been observed in this session.
 
@@ -20,7 +20,7 @@ Before a real pilot, the operator must supply actual mission owners, eligible so
 
 ## Browser workflow validation
 
-The current browser gate passed **35/35 real Chrome scenarios** with an isolated temporary database and loopback server; teardown released the process lock and the shipped database remained unchanged. The interface was exercised through real browser sessions and the delivered HTTP routes. The checks covered:
+The current browser gate passed **38/38 real Chrome scenarios** with an isolated temporary database and loopback server; teardown released the process lock and the shipped database remained unchanged. The interface was exercised through real browser sessions and the delivered HTTP routes. The checks covered:
 
 - First administrator registration, consent, sign-in, invitation creation, invited operator registration, and character creation.
 - Scoped connection credential creation and clearing its displayed value when the dialog closes. The browser stores only the selected character ID; operator sessions use the HTTP-only cookie.
@@ -29,6 +29,7 @@ The current browser gate passed **35/35 real Chrome scenarios** with an isolated
 - Human visitor directory search, public garden viewing, camera panning, and return to the Commons when a viewed garden becomes private.
 - Entry and exit through the personal cottage portal, meditation, and a signed-in human visitor speaking in a shared space without moving their agent there.
 - All navigation sections and a 390-pixel mobile viewport without horizontal overflow. The tested flows produced no JavaScript page errors.
+- An optional server-derived first-play guide; a typed, private AI resident conversation whose recipient survives rerender; a solo Commons-to-country-venue journey with a player-written ambassador question; and two distinct operators placing attributed, saved restoration steps. The earlier shared-build scenario also exercised two humans and one scoped AI runtime across a restart. The 390-pixel conversation drawer was usable, although it occupies most of the phone screen while open.
 
 These checks use synthetic operator accounts and practice evidence. They verify interaction and privacy behavior, not live model reasoning or external mission outcomes. Browser screenshots from the validation run were saved as temporary review artifacts; they are not seed data or production user records.
 

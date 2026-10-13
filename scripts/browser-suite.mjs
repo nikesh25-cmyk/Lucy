@@ -25,6 +25,8 @@ import { request as httpRequest } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { RESTORATION_PLAN } from '../src/community.js';
 import { validateDatabase } from '../src/recovery.js';
+import { planWalk } from '../src/world-walk.js';
+import { getWorldDefinition } from '../world.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const RESULTS = join(ROOT, 'test-results');
@@ -134,6 +136,9 @@ export const SCENARIOS = Object.freeze([
   { id: 'game-shell-entry-and-continue', title: 'Play, Observe and Continue enter the world, and the shell keeps one overlay, one HUD and one drawer', regression: null },
   { id: 'management-interface-and-roles', title: '/manage hosts the governance surfaces, and only a privileged role sees the entry', regression: null },
   { id: 'private-memory-and-journal-boundaries', title: 'A private memory and a private journal are refused to another operator and to a sibling character', regression: null },
+  { id: 'first-ten-minutes', title: 'One derived next action, a chosen calling, a saved action, a dismissed and resumed guide, and a resumed place', regression: null },
+  { id: 'first-play-solo-ambassador', title: 'A new solo operator follows the guide through the Commons, asks a nearby scripted ambassador, and retains that saved meeting', regression: null },
+  { id: 'restoration-two-clients', title: 'Two browsers restore one shared garden and the attributed result survives a reload in both', regression: null },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -4121,6 +4126,1225 @@ define('private-memory-and-journal-boundaries', async () => {
   });
 
   return 'private memory and the private journal stayed readable by the owning operator alone';
+});
+
+// ---------------------------------------------------------------------------------------------
+// Scenario — the first ten minutes, through one browser
+//
+// One disposable operator is created through the real dialog, creates one AI resident through the
+// shipped character form, and enters the world from the entry overlay. Every guide assertion compares
+// the rendered guide with the server's own `GET /api/v1/first-play` read and with the saved rows in
+// the temporary database, so the guide can only ever reflect a stored fact.
+//
+// Integration notes this scenario encodes (they are product behaviour, not test scaffolding):
+//   · `createCharacter` submits the calling the form holds, which defaults to `explorer`. Selecting
+//     the default calling is a no-op on the server (`changed:false`), so a resident created with the
+//     default truly has no `calling.selected` audit row and the calling step is genuinely unfinished.
+//   · The guide's `next_step` is always the *first* unfinished step, so a saved practice action
+//     advances the derived `progress.done` count while the shown step stays the earliest gap.
+// ---------------------------------------------------------------------------------------------
+
+/** Opens the shipped game shell — the presentation that mounts the first-play guide. */
+async function openGame(page, credentials = null) {
+  await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+  await settle(page);
+  if (credentials && !await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, credentials);
+}
+
+/**
+ * Opens one navigation section in the game shell. The game shell keeps the sidebar off canvas until
+ * the world menu is opened, so the menu is opened first and every later click re-opens it (a section
+ * change closes the menu again).
+ */
+async function openGameTab(page, label) {
+  const target = nav(page, label);
+  if (!await page.evaluate(() => document.body.classList.contains('game-menu-open'))) {
+    await page.locator('#game-menu-button').click();
+    await page.waitForFunction(() => document.body.classList.contains('game-menu-open'), null, { timeout: PAGE_TIMEOUT_MS });
+  }
+  await target.click();
+  await settle(page);
+  await page.waitForTimeout(150);
+}
+
+/** Enters the world through the entry overlay's own Continue control, then waits for the guide. */
+/** Everything the entry-screen and in-world waits need to explain a failure. */
+const entryState = (page) => page.evaluate(() => ({
+  classes: document.body.className,
+  tab: document.querySelector('#navigation button[aria-current="page"]')?.getAttribute('aria-label') || null,
+  gameMode: typeof window.__nemoworld?.gameMode === 'function' ? window.__nemoworld.gameMode() : null,
+  selected: typeof window.__nemoworld?.selected === 'function' ? window.__nemoworld.selected() : null,
+  heroButtons: [...document.querySelectorAll('#hero-actions button')].map((node) => (node.textContent || '').trim()),
+  stored: { gameMode: sessionStorage.getItem('nemoworld-game-mode'), selected: localStorage.getItem('selected-agent') },
+  leftovers: Object.keys(localStorage).filter((key) => key.startsWith('nemoworld-draft:') || key.startsWith('nemoworld-focus')),
+}));
+
+async function enterWorldAs(page, agentId, name) {
+  await page.evaluate((id) => { localStorage.setItem('selected-agent', id); sessionStorage.setItem('nemoworld-game-mode', 'entry'); }, agentId);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await settle(page);
+  try {
+    await page.waitForFunction(() => document.body.classList.contains('game-entry'), null, { timeout: PAGE_TIMEOUT_MS });
+  } catch (error) {
+    throw new BrowserSuiteFailure('the entry screen never owned the door after the reload', { expected: 'body.game-world.game-entry', actual: describe(await entryState(page)), detail: error.message });
+  }
+  const hidden = await guideRoot(page);
+  expect(hidden.present === false || hidden.display === 'none', 'the guide must not show while the entry screen owns the door', { expected: 'the guide absent or display:none on the entry screen', actual: describe(hidden) });
+  const entry = page.locator('#hero-actions').getByRole('button', { name: `Continue as ${name}`, exact: true });
+  await entry.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+  await entry.click();
+  await page.locator('#game-hud').waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+  try {
+    await page.waitForFunction(() => window.__nemoworld?.selected?.() && window.__nemoworld?.gameMode?.() === 'play', null, { timeout: PAGE_TIMEOUT_MS });
+  } catch (error) {
+    throw new BrowserSuiteFailure('Continue never opened the world as the resident', { expected: 'selected=agent, gameMode=play', actual: describe(await entryState(page)), detail: error.message });
+  }
+  await waitForGuide(page);
+  const shown = await guideRoot(page);
+  expect(shown.present && shown.display !== 'none' && shown.position === 'fixed', 'the guide must float as a fixed overlay once the world is open', { expected: 'position:fixed, displayed, with the guide root rendered', actual: describe(shown) });
+  return shown;
+}
+
+/** The first-play guide root as the browser laid it out: presence, display, position and the reduced class. */
+const guideRoot = (page) => page.evaluate(() => {
+  const root = document.querySelector('#game-guide-host .game-guide');
+  if (!root) return { present: false, display: null, position: null, reduced: false };
+  const style = getComputedStyle(root);
+  return { present: true, display: style.display, position: style.position, reduced: root.classList.contains('game-guide-reduced') };
+});
+
+/**
+ * One shipped write driven from the page that already loaded the application, waiting out the
+ * server's own 429 throttles (movement and building) instead of failing the scenario on them.
+ */
+async function pageWrite(page, path, body) {
+  let response = await inPage(page, path, { body });
+  for (let attempt = 0; attempt < 6 && response.status === 429; attempt++) {
+    await sleep(300);
+    response = await inPage(page, path, { body });
+  }
+  return response;
+}
+
+/** Opens the shipped game shell and waits for the first-play guide to paint. */
+async function enterGameShell(page) {
+  await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+  await settle(page);
+  await waitForGuide(page);
+}
+
+/**
+ * Captures the guide as evidence. The guide is now the theme's fixed `.game-guide` overlay, so the
+ * screenshot is taken at the current viewport with no page scrolling.
+ */
+async function captureGuide(page, file) {
+  await waitForGuide(page);
+  await page.screenshot({ path: file });
+}
+
+/**
+ * Opens the restoration panel and selects one exact occurrence. The board lists every occurrence, so
+ * a run that already holds other restorations cannot leave this scenario acting on the wrong one.
+ */
+async function openRestorationEvent(page, eventId) {
+  await openRestoration(page);
+  const board = page.locator('#view select[aria-label="Restoration"]');
+  if (await board.count()) {
+    const values = await board.locator('option').evaluateAll((nodes) => nodes.map((node) => node.value));
+    expect(values.includes(eventId), 'the restoration board must offer the occurrence this scenario opened', { expected: eventId, actual: describe(values) });
+    if (await board.inputValue() !== eventId) { await board.selectOption(eventId); await settle(page); }
+    expect(await board.inputValue() === eventId, 'the panel must show the occurrence this scenario opened', { expected: eventId, actual: await board.inputValue() });
+  }
+}
+
+const GUIDE_NEXT = '#game-guide-host .game-guide-card.game-guide-next';
+
+async function waitForGuide(page) {
+  await page.locator(GUIDE_NEXT).waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+}
+
+/** The first-play guide exactly as the browser rendered it. */
+const guideDom = (page) => page.evaluate(() => {
+  const host = document.querySelector('#game-guide-host');
+  const nextCard = host?.querySelector('.game-guide-card.game-guide-next') || null;
+  const meter = host?.querySelector('[data-guide="meter"]');
+  const restoration = host?.querySelector('.game-guide-card.game-guide-restoration') || null;
+  return {
+    hasHost: Boolean(host),
+    nextCards: host ? host.querySelectorAll('.game-guide-card.game-guide-next').length : 0,
+    nextTitle: nextCard ? (nextCard.querySelector('.game-guide-title')?.textContent || '').trim() : null,
+    nextTitles: nextCard ? [...nextCard.querySelectorAll('.game-guide-title')].map((node) => (node.textContent || '').trim()) : [],
+    target: nextCard?.querySelector('[data-guide="target"]')?.textContent?.trim() || null,
+    progress: host?.querySelector('[data-guide="progress"]')?.textContent?.trim() || null,
+    done: meter ? Number(meter.getAttribute('value')) : null,
+    total: meter ? Number(meter.getAttribute('max')) : null,
+    actions: nextCard ? [...nextCard.querySelectorAll('.game-guide-action')].map((node) => ({ id: node.getAttribute('data-guide-action'), label: (node.textContent || '').trim(), height: node.getBoundingClientRect().height })) : [],
+    dismissal: Boolean(host?.querySelector('.game-guide-dismissed')),
+    resume: Boolean(host?.querySelector('[data-guide="resume"]')),
+    hasRestoration: Boolean(restoration),
+    restorationRows: restoration ? [...restoration.querySelectorAll('tr[data-actor]')].map((tr) => ({
+      actor: tr.getAttribute('data-actor'), step: tr.getAttribute('data-step'), distinct: tr.getAttribute('data-distinct'),
+      cells: [...tr.querySelectorAll('td')].map((td) => (td.textContent || '').trim()),
+    })) : [],
+    remaining: restoration ? [...restoration.querySelectorAll('.game-guide-remaining li')].map((li) => (li.textContent || '').trim()) : [],
+    titles: host ? [...host.querySelectorAll('.game-guide-title')].map((node) => (node.textContent || '').trim()) : [],
+  };
+});
+
+/** The server's own first-play read, through the page's own signed-in session. */
+async function readFirstPlay(page, agentId = null, worldId = null) {
+  const params = new URLSearchParams();
+  if (agentId) params.set('agent_id', agentId);
+  if (worldId) params.set('world_id', worldId);
+  const query = params.toString();
+  const read = await inPage(page, `/first-play${query ? `?${query}` : ''}`, { method: 'GET' });
+  return read.body;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Keyboard and text equivalents for the guide
+//
+// The guide's controls are real `<button>` elements, so Tab moves between them and Enter/Space
+// activates them natively. The shell binds no guide shortcut: its one keydown handler hands Enter,
+// Space and `I` to the interaction prompt (only while a fixture stands within six tiles) and stands
+// the world's own keys down whenever a `<button>` holds focus, so a focused guide control keeps its
+// native activation. These helpers therefore drive the guide with the keyboard alone.
+// ---------------------------------------------------------------------------------------------
+
+/** A stable key for one focusable guide control, from the attributes the guide itself sets. */
+const controlKey = (node) => {
+  if (!node) return '?';
+  if (node.action) return `action:${node.action}`;
+  if (node.guide) return `guide:${node.guide}`;
+  if (node.encounter) return `encounter:${node.encounter}`;
+  return String(node.tag || '?');
+};
+
+/** The element the page currently focuses, described without naming a specific control. */
+const focusedControl = (page) => page.evaluate(() => {
+  const node = document.activeElement;
+  if (!node || node === document.body) return null;
+  return {
+    inGuide: Boolean(node.closest?.('#game-guide-host')),
+    action: node.getAttribute?.('data-guide-action'),
+    guide: node.getAttribute?.('data-guide'),
+    encounter: node.getAttribute?.('data-guide-encounter-action'),
+    tag: node.tagName,
+    text: (node.textContent || '').trim().slice(0, 80),
+    disabled: Boolean(node.disabled),
+    tabindex: node.getAttribute?.('tabindex'),
+  };
+});
+
+/** The guide's focusable controls in document order, with the state each one carries. */
+const guideControls = (page) => page.evaluate(() => {
+  const root = document.querySelector('#game-guide-host .game-guide');
+  if (!root) return [];
+  return [...root.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')]
+    .filter((node) => node.getClientRects().length > 0)
+    .map((node) => ({
+      action: node.getAttribute('data-guide-action'),
+      guide: node.getAttribute('data-guide'),
+      encounter: node.getAttribute('data-guide-encounter-action'),
+      tag: node.tagName,
+      text: (node.textContent || '').trim().slice(0, 60),
+      disabled: Boolean(node.disabled),
+      tabindex: node.getAttribute('tabindex'),
+    }));
+});
+
+/** The action line the guide renders as a live region. */
+const guideLiveRegion = (page) => page.evaluate(() => {
+  const node = document.querySelector('#game-guide-host .game-guide-action-line');
+  if (!node) return null;
+  const title = node.querySelector('.game-guide-title');
+  return {
+    role: node.getAttribute('role'),
+    live: node.getAttribute('aria-live'),
+    atomic: node.getAttribute('aria-atomic'),
+    text: (node.textContent || '').trim(),
+    titleText: title ? (title.textContent || '').trim() : null,
+    titleTag: title ? title.tagName : null,
+  };
+});
+
+/** Tabs forward until a guide control satisfies `accept`. It never clicks and never navigates. */
+async function tabToGuideControl(page, accept, label, maxTabs = 400) {
+  for (let index = 0; index < maxTabs; index++) {
+    await page.keyboard.press('Tab');
+    const active = await focusedControl(page);
+    if (active && active.inGuide && accept(active)) return active;
+  }
+  throw new BrowserSuiteFailure(`Tab never reached ${label}`, { expected: label, actual: `no matching guide control after ${maxTabs} Tab presses` });
+}
+
+/** Tabs through the guide's subtree and returns the controls in the order focus reached them. */
+async function tabSweepGuide(page, maxTabs = 400) {
+  const seen = [];
+  for (let index = 0; index < maxTabs; index++) {
+    await page.keyboard.press('Tab');
+    const active = await focusedControl(page);
+    if (active?.inGuide) { seen.push(controlKey(active)); continue; }
+    if (seen.length) break; // focus left the guide after visiting it
+  }
+  return seen;
+}
+
+/** Walks a resident with the world's own keyboard keys, one checked tile at a time. */
+async function walkWithKeyboard(page, agentId, moves) {
+  for (const key of moves) {
+    let arrived = null;
+    for (let attempt = 0; attempt < 3 && !arrived; attempt++) {
+      const before = row('SELECT x,y FROM agents WHERE id=?', agentId);
+      await page.keyboard.press(key);
+      arrived = await waitForCondition(async () => {
+        const now = row('SELECT x,y FROM agents WHERE id=?', agentId);
+        return Math.abs(now.x - before.x) + Math.abs(now.y - before.y) === 1 ? now : null;
+      }, `a keyboard ${key} step to be saved`, { timeout: 2500, interval: 100 }).catch(() => null);
+    }
+    expect(arrived, `the keyboard ${key} step must move the resident exactly one tile`, { actual: describe(row('SELECT x,y FROM agents WHERE id=?', agentId)) });
+  }
+  return row('SELECT x,y FROM agents WHERE id=?', agentId);
+}
+
+// ---------------------------------------------------------------------------------------------
+// The shipped per-account message throttle and the typed encounter contract
+//
+// The guide may open a private composer but cannot supply words for its operator. Opening it must
+// write no row. Only a later, typed submission may advance the derived meeting step. The actual send
+// still obeys the server's 1500 ms per-account message throttle.
+// ---------------------------------------------------------------------------------------------
+const MESSAGE_THROTTLE_MS = 1500;
+
+/** Waits out the remainder of the shipped per-account throttle, from that account's own last message. */
+async function waitForMessageWindow(accountId) {
+  const last = row('SELECT created_at FROM messages WHERE account_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1', accountId);
+  if (!last) return 0;
+  const remaining = Math.max(0, MESSAGE_THROTTLE_MS - (Date.now() - Date.parse(last.created_at)));
+  if (remaining) await sleep(remaining + 50);
+  return remaining;
+}
+
+/** Runs one typed submission and reports the HTTP statuses the page itself saw for its message write. */
+async function withMessageWatch(page, task) {
+  const statuses = [];
+  const record = (response) => { if (response.request().method() === 'POST' && response.url().includes('/api/v1/messages')) statuses.push(response.status()); };
+  page.on('response', record);
+  try {
+    const value = await task();
+    // The row commits before the response is delivered, and Playwright reports a response
+    // asynchronously, so wait for the page's own status before detaching — a refusal has to surface
+    // here rather than slip past a closed listener.
+    await waitForCondition(async () => (statuses.length ? true : null), 'the page’s own message response', { timeout: 5000 }).catch(() => {});
+    return { statuses, value };
+  } finally { page.off('response', record); }
+}
+
+/** Waits for one exactly-new private message row and returns it, never an earlier path's row. */
+async function waitForNewMessage(agentId, before) {
+  return waitForCondition(async () => {
+    const now = count('SELECT COUNT(*) AS n FROM messages WHERE agent_id=? AND channel=?', agentId, 'private');
+    return now === before + 1 ? row('SELECT id,agent_id,channel,text,recipients FROM messages WHERE agent_id=? AND channel=? ORDER BY created_at DESC,rowid DESC LIMIT 1', agentId, 'private') : null;
+  }, 'the typed encounter to store exactly one new private message');
+}
+
+/** A guide encounter prepares the existing text form; it cannot post or mark the meeting itself. */
+async function openGuideComposer(page, trigger, agentId, recipientId) {
+  const before = count('SELECT COUNT(*) AS n FROM messages WHERE agent_id=?', agentId);
+  const writes = [];
+  const record = (request) => {
+    if (request.method() === 'POST' && request.url().includes('/api/v1/messages')) writes.push(request.url());
+  };
+  page.on('request', record);
+  try {
+    await trigger();
+    const form = page.locator('#world-chat-card form');
+    await form.locator('[name="text"]').waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    // The guide action is asynchronous: the drawer can become visible before its composer receives
+    // focus. Wait for that final focus handoff rather than sampling mid-click.
+    await waitForCondition(async () => form.evaluate((node) => document.activeElement === node.elements.namedItem('text')).catch(() => false),
+      'the private composer to receive focus', { timeout: 3000, interval: 50 }).catch(() => null);
+    const prepared = await form.evaluate((node) => ({
+      channel: node.elements.namedItem('channel')?.value,
+      recipient: node.elements.namedItem('recipient_id')?.value,
+      text: node.elements.namedItem('text')?.value,
+      focused: document.activeElement === node.elements.namedItem('text'),
+      active: { tag: document.activeElement?.tagName, id: document.activeElement?.id, name: document.activeElement?.getAttribute('name') },
+    }));
+    expect(prepared.channel === 'private' && prepared.recipient === recipientId && prepared.text === '' && prepared.focused,
+      'the guide must open a blank, focused private composer for the named resident',
+      { expected: { channel: 'private', recipient: recipientId, text: '', focused: true }, actual: prepared });
+    expect(writes.length === 0 && count('SELECT COUNT(*) AS n FROM messages WHERE agent_id=?', agentId) === before,
+      'opening the encounter must send no canned or blank message and complete no saved step',
+      { expected: 'zero POST /messages and zero new rows', actual: describe({ writes, before, after: count('SELECT COUNT(*) AS n FROM messages WHERE agent_id=?', agentId) }) });
+    return form;
+  } finally { page.off('request', record); }
+}
+
+/** The guide's own refusal notice, when a click or key press was refused. */
+const guideRefusal = (page) => page.evaluate(() => (document.querySelector('#game-guide-host [data-guide="error"]')?.textContent || '').trim());
+
+/** Creates one disposable operator through the real dialog, waiting out the server's auth limiter. */
+async function signUp(page, { name, email, password }) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.locator('#session-bar').getByRole('button', { name: /Create account/, exact: false }).click();
+    await page.locator('#auth-dialog').waitFor({ state: 'visible' });
+    const form = page.locator('#auth-area section:not([hidden]) form');
+    await form.locator('[aria-label="Operator display name"]').fill(name);
+    await form.locator('[aria-label="Private contact email"]').fill(email);
+    await form.locator('[aria-label="Password"]').fill(password);
+    await form.locator('select[name="entry"]').selectOption('agent');
+    await form.locator('input[name="consent"]').check();
+    await form.getByRole('button', { name: 'Create account', exact: true }).click();
+    const deadline = Date.now() + PAGE_TIMEOUT_MS;
+    let outcome = 'timeout';
+    while (Date.now() < deadline) {
+      const observed = await page.evaluate(() => {
+        const notice = document.querySelector('#auth-notice');
+        return { signedIn: document.body.classList.contains('signed-in'), notice: notice?.textContent || '', failed: Boolean(notice && !notice.hidden && notice.classList.contains('error')) };
+      });
+      if (observed.signedIn) { outcome = 'signed-in'; break; }
+      if (/Too many authentication attempts/i.test(observed.notice)) { outcome = 'rate-limited'; break; }
+      if (observed.failed) { outcome = `refused: ${observed.notice}`; break; }
+      await sleep(200);
+    }
+    if (outcome === 'signed-in') { await settle(page); return; }
+    if (outcome === 'rate-limited' && attempt === 0) {
+      console.log('        signup           the authentication limiter refused this attempt; waiting a minute before retrying once');
+      await page.locator('#close-auth').click().catch(() => {});
+      await sleep(62_000);
+      continue;
+    }
+    throw new BrowserSuiteFailure('the interface could not create the disposable operator', { expected: `a signed-in session for ${email}`, actual: outcome });
+  }
+}
+
+/** Creates one AI resident through the shipped character form, leaving the calling at its default. */
+async function createResidentThroughInterface(page, name) {
+  const form = page.locator('#view form[data-draft-section="character-create"]');
+  await form.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+  await form.locator('[aria-label="Character name"]').fill(name);
+  await form.getByRole('button', { name: 'Create character', exact: true }).click();
+  const resident = await waitForCondition(async () => row("SELECT id,kind,status FROM agents WHERE name=?", name), 'the interface to create the resident');
+  // The saved row appears while the ship is still finishing: `createCharacter` then re-reads the
+  // world and calls `selectAgent`, which writes the tab's own game mode. Settle that first — the
+  // shipped behaviour is that creating a character enters the world as it — so a later "enter via the
+  // entry overlay" cannot race the ship's own `play` write and boot straight into the world.
+  await page.waitForFunction((id) => window.__nemoworld?.selected?.() === id && window.__nemoworld?.gameMode?.() === 'play', resident.id, { timeout: PAGE_TIMEOUT_MS });
+  return resident;
+}
+
+const GARDEN_UNWALKABLE = new Set(['water', 'tree', 'building', 'fountain', 'wall']);
+const gardenWalkable = (type) => typeof type === 'string' && !GARDEN_UNWALKABLE.has(type);
+
+/** A free, walkable garden tile away from the resident, the doorways and every stored object. */
+async function gardenFarmTile(page, agentId) {
+  const home = `home:${agentId}`;
+  const read = await inPage(page, `/world?world_id=${encodeURIComponent(home)}&agent_id=${encodeURIComponent(agentId)}`, { method: 'GET' });
+  const descriptor = read.body;
+  const resident = (descriptor.participants || []).find((entry) => entry.id === agentId) || descriptor.camera;
+  const near = (point, x, y) => Math.abs(point.x - x) + Math.abs(point.y - y) <= 1;
+  const tiles = [];
+  for (let row = 0; row < descriptor.terrain.length; row++) {
+    for (let column = 0; column < descriptor.terrain[row].length; column++) {
+      const x = descriptor.camera.x + column, y = descriptor.camera.y + row;
+      if (!gardenWalkable(descriptor.terrain[row][column])) continue;
+      if (near(resident, x, y)) continue;
+      if ((descriptor.portals || []).some((portal) => near(portal, x, y))) continue;
+      if ((descriptor.objects || []).some((object) => object.x === x && object.y === y)) continue;
+      tiles.push({ x, y, distance: Math.abs(resident.x - x) + Math.abs(resident.y - y) });
+    }
+  }
+  tiles.sort((left, right) => left.distance - right.distance || left.y - right.y || left.x - right.x);
+  return tiles[0] || null;
+}
+
+define('first-ten-minutes', async () => {
+  const player = await context('first-ten');
+  const page = player.page;
+  const EMAIL = 'tester.first-ten@browser.test';
+  const NAME = 'Ten-minute tester';
+  const RESIDENT = 'Commons newcomer';
+  let resident = null, nextBeforeDismiss = null, sentComposerNode = null, firstPrivateMessage = null;
+
+  await step('a disposable operator signs up through the real dialog with no resident yet', async () => {
+    await openGame(page);
+    expect(await page.evaluate(() => document.body.classList.contains('game-world')), 'the game shell must open in the world presentation', { actual: 'no game-world class on the body' });
+    const before = await readFirstPlay(page);
+    expect(before && before.viewer === null && before.progress.done === 0, 'with no resident the derived guide counts no completed step', { expected: 'viewer=null, progress.done=0', actual: describe({ viewer: before?.viewer, done: before?.progress?.done }) });
+    await signUp(page, { name: NAME, email: EMAIL, password: PASSWORD });
+    const account = row('SELECT id,name,email,role FROM accounts WHERE email=?', EMAIL);
+    expect(account && account.role === 'member', 'the dialog must create the disposable member account', { expected: 'a stored member account', actual: describe(account) });
+    expect(count('SELECT COUNT(*) AS n FROM agents WHERE operator_id=?', account.id) === 0, 'the new operator must start with no resident', { actual: `${count('SELECT COUNT(*) AS n FROM agents WHERE operator_id=?', account.id)} residents` });
+    state.fixtures.firstTen = { accountId: account.id, email: EMAIL };
+    return `account ${account.id} created through the dialog with no resident; the guide reported 0 of 5`;
+  });
+
+  await step('the interface creates one AI resident and the guide counts exactly that saved row', async () => {
+    resident = await createResidentThroughInterface(page, RESIDENT);
+    expect(resident.kind === 'agent' && resident.status === 'active', 'the created character must be an active AI resident', { actual: describe(resident) });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='calling.selected' AND record_id=?", resident.id) === 0, 'creating a resident with the default calling must not record a chosen calling', { actual: 'a calling.selected row appeared' });
+    const after = await readFirstPlay(page, resident.id, 'commons');
+    expect(after?.viewer?.agent_id === resident.id && after.progress.done === 1, 'the saved agents row must be the one completed step', { expected: 'progress.done=1', actual: describe({ viewer: after?.viewer?.agent_id, done: after?.progress?.done }) });
+    expect(after.next_step?.id === 'calling' && after.next_step?.ordinal === 2, 'the next step must be the calling the resident has not chosen', { expected: 'calling at ordinal 2', actual: describe(after.next_step) });
+    return `agents row ${resident.id}; guide done=1, next=${after.next_step.id}`;
+  });
+
+  await step('the entry overlay enters the world and shows exactly one next action', async () => {
+    await enterWorldAs(page, resident.id, RESIDENT);
+    const guide = await guideDom(page);
+    expect(guide.hasHost && guide.nextCards === 1, 'the world view must host exactly one next-action card', { actual: describe({ host: guide.hasHost, next: guide.nextCards }) });
+    expect(guide.progress === 'Step 2 of 5', 'the guide must state the step and the authored total', { expected: 'Step 2 of 5', actual: describe(guide.progress) });
+    expect(guide.done === 1 && guide.total === 5, 'the meter must carry the derived done count and the five authored steps', { expected: 'done=1, total=5', actual: describe({ done: guide.done, total: guide.total }) });
+    expect(guide.nextTitles.length === 1 && guide.nextTitles[0] === 'Choose a calling', 'the next card must carry exactly one task title, never a list', { expected: ['Choose a calling'], actual: describe(guide.nextTitles) });
+    return `Step 2 of 5, done 1, one title “${guide.nextTitles[0]}”`;
+  });
+
+  await step('a forged completion record in this browser changes nothing', async () => {
+    await page.evaluate(() => localStorage.setItem('nemoworld-newcomer', JSON.stringify({ completed: ['enter', 'calling', 'meet', 'practice', 'restore'], acknowledged: true })));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await waitForGuide(page);
+    const guide = await guideDom(page);
+    const server = await readFirstPlay(page, resident.id, 'commons');
+    expect(guide.progress === 'Step 2 of 5' && guide.nextTitles[0] === 'Choose a calling', 'the guide must still report the unfinished calling after the forged list', { expected: 'Step 2 of 5 · Choose a calling', actual: describe({ progress: guide.progress, titles: guide.nextTitles }) });
+    expect(server.progress.done === 1 && server.next_step.id === 'calling', 'the server read must agree that only the resident row is saved', { expected: 'done=1, next=calling', actual: describe({ done: server.progress?.done, next: server.next_step?.id }) });
+    return 'the forged localStorage record was ignored; the guide still reads Step 2 of 5';
+  });
+
+  await step('a calling is chosen through the interface and a calling.selected audit row is written', async () => {
+    await openGameTab(page, 'Callings & guilds');
+    const choice = page.locator('#view .calling-choice[data-calling="cultivator"]');
+    await choice.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await choice.getByRole('button', { name: /^Become/ }).click();
+    const audit = await waitForCondition(async () => row("SELECT seq,event,record_id FROM audit WHERE event='calling.selected' AND record_id=?", resident.id), 'the saved calling.selected audit row');
+    expect(audit.record_id === resident.id, 'the audit row must name the resident', { actual: describe(audit) });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='calling.selected' AND record_id=?", resident.id) === 1, 'choosing once must write exactly one audit row', { actual: 'the audit count differs' });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await waitForGuide(page);
+    const guide = await guideDom(page);
+    const server = await readFirstPlay(page, resident.id, 'commons');
+    expect(server.progress.done === 2 && server.steps.find((item) => item.id === 'calling').done === true, 'the guide must advance to two saved steps after the calling', { expected: 'done=2 with calling done', actual: describe({ done: server.progress?.done, steps: server.steps?.map((item) => [item.id, item.done]) }) });
+    expect(guide.done === 2 && guide.progress === 'Step 3 of 5', 'the rendered guide must agree with the server read', { expected: 'done=2, Step 3 of 5', actual: describe({ done: guide.done, progress: guide.progress }) });
+    return `calling.selected audit for ${resident.id}; guide advanced to ${server.progress.done} of 5 (${guide.progress})`;
+  });
+
+  await step('the forged completion record still changes nothing after the real step', async () => {
+    await page.evaluate(() => localStorage.setItem('nemoworld-newcomer', JSON.stringify({ completed: ['enter', 'calling', 'meet', 'practice', 'restore'], acknowledged: true })));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await waitForGuide(page);
+    const guide = await guideDom(page);
+    const server = await readFirstPlay(page, resident.id, 'commons');
+    expect(server.progress.done === 2, 'the forged record must not add a completed step', { expected: 'done=2', actual: describe(server.progress) });
+    expect((guide.progress || '').startsWith('Step 3 of 5'), 'the rendered guide must still name the first unfinished step', { expected: 'Step 3 of 5', actual: describe(guide.progress) });
+    return `still ${server.progress.done} of 5 after the forged record`;
+  });
+
+  await step('one real saved practice action is stored and leaves a calling receipt', async () => {
+    const home = `home:${resident.id}`;
+    // The game shell hides the world title that carries the workspace "Go home" control, so the
+    // travel is the same shipped route driven from the page.
+    const travelled = await pageWrite(page, `/agents/${resident.id}/travel`, { world_id: home });
+    expect(travelled.status === 200 && travelled.body?.world_id === home, 'the resident must travel into its own garden by the shipped route', { expected: `HTTP 200 into ${home}`, actual: `HTTP ${travelled.status} ${describe(travelled.body)}` });
+    await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', resident.id).world_id === home ? home : null, 'the resident to stand in its own garden');
+    const site = await gardenFarmTile(page, resident.id);
+    expect(site, 'the garden must offer a free walkable tile for a crop patch', { actual: 'no free tile in the published window' });
+    const built = await pageWrite(page, `/agents/${resident.id}/build`, { type: 'farm', x: site.x, y: site.y });
+    expect(built.status === 201, 'the crop patch must be saved by the shipped build route', { expected: 'HTTP 201', actual: `HTTP ${built.status} ${describe(built.body)}` });
+    const planted = await pageWrite(page, '/journey/garden', { agent_id: resident.id, action: 'plant', kind: 'herbs', x: site.x, y: site.y });
+    expect(planted.status === 200 && planted.body?.crop?.kind === 'herbs', 'the sowing must be saved in the resident’s own garden', { expected: 'HTTP 200 with a herbs crop', actual: `HTTP ${planted.status} ${describe(planted.body)}` });
+    expect(count('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=? AND x=? AND y=?', resident.id, site.x, site.y) === 1, 'exactly one sowing row must exist', { actual: 'the crop row is missing' });
+    await openGameTab(page, 'Callings & guilds');
+    const receipt = await waitForCondition(async () => row('SELECT id,objective_id,source_kind FROM calling_receipts WHERE agent_id=?', resident.id), 'the calling receipt earned by the saved sowing');
+    expect(receipt.source_kind === 'crop_plant', 'the receipt must name the saved sowing as its source', { expected: 'source_kind=crop_plant', actual: describe(receipt) });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await waitForGuide(page);
+    const server = await readFirstPlay(page, resident.id, home);
+    expect(server.progress.done === 3 && server.steps.find((item) => item.id === 'practice').done === true, 'the guide must advance again after the saved practice action', { expected: 'done=3 with practice done', actual: describe({ done: server.progress?.done, steps: server.steps?.map((item) => [item.id, item.done]) }) });
+    return `journey_crops row at ${site.x},${site.y}; calling_receipts ${receipt.objective_id}; guide done=${server.progress.done}`;
+  });
+
+  await step('a nearby resident gives the guide its one meeting action to drive', async () => {
+    const viewer = row('SELECT world_id,x,y FROM agents WHERE id=?', resident.id);
+    const helper = fixtures().characters.neighbour;
+    // Another operator's resident four tiles away: inside the guide's six-tile encounter radius.
+    // Opening the private composer cannot silently complete the meeting; only typed, saved words do.
+    // Move other close residents clear so this is the server's nearest candidate.
+    for (const other of rows("SELECT id,x,y FROM agents WHERE world_id=? AND status='active' AND id NOT IN (?,?)", viewer.world_id, resident.id, helper.id)) {
+      if (Math.abs(other.x - viewer.x) + Math.abs(other.y - viewer.y) <= 3) write('UPDATE agents SET x=?,y=? WHERE id=?', Math.min(30, viewer.x + 16), Math.min(22, viewer.y + 10), other.id);
+    }
+    write("UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1,status='active' WHERE id=?", viewer.world_id, viewer.x + 4, viewer.y, helper.id);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await waitForGuide(page);
+    const guide = await guideDom(page);
+    const action = guide.actions.find((item) => item.id === 'meet-nearest');
+    expect(guide.nextTitle === 'Meet a resident and read its limits' && action, 'the guide must publish its one meeting action for the nearby resident', { expected: 'meet-nearest on the meeting step', actual: describe({ title: guide.nextTitle, actions: guide.actions }) });
+    return `the guide offers “${action.label}”`;
+  });
+
+  await step('the guide dismisses to a single bar and resumes without writing a step', async () => {
+    nextBeforeDismiss = (await guideDom(page)).nextTitle;
+    const before = { receipts: count('SELECT COUNT(*) AS n FROM calling_receipts WHERE agent_id=?', resident.id), audits: count('SELECT COUNT(*) AS n FROM audit'), agents: count('SELECT COUNT(*) AS n FROM agents'), crops: count('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=?', resident.id) };
+    // Dismiss repaints the guide itself: no navigation, reload or section change may stand between
+    // the click and the assertion, so the dismissed bar has to replace the action card immediately.
+    await page.locator('#game-guide-host [data-guide="dismiss"]').click();
+    const dismissed = await guideDom(page);
+    expect(dismissed.dismissal && dismissed.nextCards === 0, 'dismissing must immediately replace the action card with the dismissed bar, with no navigation', { expected: 'the dismissed bar and no action card', actual: describe({ dismissal: dismissed.dismissal, next: dismissed.nextCards }) });
+    expect(dismissed.titles.length === 0, 'the dismissed bar must carry no task title', { actual: describe(dismissed.titles) });
+    expect(dismissed.resume, 'the dismissed bar must offer the resume control', { actual: 'no [data-guide="resume"]' });
+    await page.locator('#game-guide-host [data-guide="resume"]').click();
+    const resumed = await guideDom(page);
+    expect(resumed.nextCards === 1 && resumed.nextTitle === nextBeforeDismiss, 'resuming must immediately bring back the same task title, with no navigation', { expected: nextBeforeDismiss, actual: describe({ next: resumed.nextCards, title: resumed.nextTitle }) });
+    const after = { receipts: count('SELECT COUNT(*) AS n FROM calling_receipts WHERE agent_id=?', resident.id), audits: count('SELECT COUNT(*) AS n FROM audit'), agents: count('SELECT COUNT(*) AS n FROM agents'), crops: count('SELECT COUNT(*) AS n FROM journey_crops WHERE agent_id=?', resident.id) };
+    expect(describe(after) === describe(before), 'dismissing and resuming must write nothing at all', { expected: describe(before), actual: describe(after) });
+    return `dismissed to the bar and resumed “${resumed.nextTitle}” immediately, with no row changed`;
+  });
+
+  await step('the camera choice and the saved place survive a reload with the same next step', async () => {
+    await page.locator('#world').focus();
+    await page.keyboard.press('v');
+    await page.waitForFunction(() => (document.querySelector('#world-reticle')?.textContent || '').startsWith('First person'), null, { timeout: PAGE_TIMEOUT_MS });
+    expect(await page.evaluate(() => localStorage.getItem('nemoworld-first-person')) === 'true', 'the camera choice must be written to localStorage', { actual: describe(await page.evaluate(() => localStorage.getItem('nemoworld-first-person'))) });
+    const placed = row('SELECT world_id,x,y,z FROM agents WHERE id=?', resident.id);
+    const before = await readFirstPlay(page, resident.id, placed.world_id);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await waitForGuide(page);
+    const after = row('SELECT world_id,x,y,z FROM agents WHERE id=?', resident.id);
+    expect(await page.evaluate(() => window.__nemoworld?.selected?.()) === resident.id, 'the reload must restore the same character', { expected: resident.id, actual: describe(await page.evaluate(() => window.__nemoworld?.selected?.())) });
+    expect((await page.evaluate(() => document.querySelector('#world-reticle')?.textContent || '')).startsWith('First person'), 'the camera choice must survive the reload', { actual: describe(await page.evaluate(() => document.querySelector('#world-reticle')?.textContent)) });
+    expect(after.world_id === placed.world_id && after.x === placed.x && after.y === placed.y && after.z === placed.z, 'the reload must show the same world and tile the database stores', { expected: describe(placed), actual: describe(after) });
+    const reader = await readFirstPlay(page, resident.id, after.world_id);
+    expect(reader.next_step?.id === before.next_step?.id && reader.progress.done === before.progress.done, 'the guide must resume at the same step and the same count', { expected: describe({ next: before.next_step?.id, done: before.progress?.done }), actual: describe({ next: reader.next_step?.id, done: reader.progress?.done }) });
+    return `restored ${after.world_id}:${after.x},${after.y} in first person at the same step (${reader.next_step?.id})`;
+  });
+
+  await step('desktop and 390px phone open a blank conversation without claiming a saved meeting', async () => {
+    await mkdir(join(RESULTS, 'first-ten-minutes'), { recursive: true });
+    const world = row('SELECT world_id FROM agents WHERE id=?', resident.id).world_id;
+    const other = fixtures().characters.neighbour.id;
+    const desktopButton = page.locator(GUIDE_NEXT).locator('.game-guide-action').first();
+    await openGuideComposer(page, () => desktopButton.click(), resident.id, other);
+    const desktopRefusal = await guideRefusal(page);
+    expect(desktopRefusal === '', 'opening the desktop composer must not show a refusal', { expected: 'no refusal notice', actual: describe(desktopRefusal) });
+    await captureGuide(page, join(RESULTS, 'first-ten-minutes', 'desktop.png'));
+    const afterDesktop = await readFirstPlay(page, resident.id, world);
+    expect(afterDesktop.next_step?.id === 'meet' && afterDesktop.steps.find((item) => item.id === 'meet').done === false,
+      'opening the composer must leave the meeting step unfinished', { expected: 'meet unfinished', actual: describe({ next: afterDesktop.next_step?.id, steps: afterDesktop.steps }) });
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(250);
+    const phoneButton = page.locator(GUIDE_NEXT).locator('.game-guide-action').first();
+    // The shell swaps the guide's nodes on a world repaint, so a single measurement can land on a
+    // detached node (an empty box). Re-measure until the button is laid out; the ≥44px assertion stands.
+    const box = await waitForCondition(async () => phoneButton.boundingBox().catch(() => null), 'the guide’s phone button to be laid out');
+    expect(box && box.height >= 44, 'the guide’s primary button must be at least 44 CSS pixels tall on a phone', { expected: 'height >= 44', actual: describe(box) });
+    const width = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, viewport: innerWidth }));
+    expect(width.scroll <= 390 + 1, 'the phone layout must not scroll horizontally', { expected: 'scrollWidth <= 391', actual: describe(width) });
+    await openGuideComposer(page, () => phoneButton.click(), resident.id, other);
+    await captureGuide(page, join(RESULTS, 'first-ten-minutes', 'phone.png'));
+    const afterPhone = await readFirstPlay(page, resident.id, world);
+    expect(afterPhone.next_step?.id === 'meet' && afterPhone.progress.done === afterDesktop.progress.done,
+      'neither composer opening may advance the derived meeting step', { expected: describe({ next: afterDesktop.next_step?.id, done: afterDesktop.progress?.done }), actual: describe({ next: afterPhone.next_step?.id, done: afterPhone.progress?.done }) });
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    return `desktop.png and phone.png at 390×844; a ${Math.round(box.height)}px button, no sideways scroll, blank private composer, zero message writes`;
+  });
+
+  await step('a reduced-motion phone opens the same blank composer with no transition or saved step', async () => {
+    const reduced = await context('first-ten-reduced');
+    await reduced.page.emulateMedia({ reducedMotion: 'reduce' });
+    await openGame(reduced.page, { email: EMAIL, password: PASSWORD });
+    await reduced.page.setViewportSize({ width: 390, height: 844 });
+    await enterWorldAs(reduced.page, resident.id, RESIDENT);
+    const button = reduced.page.locator(GUIDE_NEXT).locator('.game-guide-action').first();
+    const reducedRoot = await guideRoot(reduced.page);
+    expect(reducedRoot.present && reducedRoot.reduced === true, 'the guide root must carry the reduced-motion class for a viewer who asked for it', { expected: 'a .game-guide root with game-guide-reduced', actual: describe(reducedRoot) });
+    // One atomic in-page read: the shell swaps the guide's nodes on a world repaint, and a node handed
+    // to Playwright can detach between its resolution and the evaluation (a detached node reports '').
+    const duration = await reduced.page.evaluate(() => {
+      const node = document.querySelector('#game-guide-host .game-guide .game-guide-action');
+      return node ? getComputedStyle(node).transitionDuration : null;
+    });
+    expect(typeof duration === 'string' && duration.split(',').every((part) => part.trim() === '0s'), 'a reduced-motion viewer must receive no transition on the guide control', { expected: '0s', actual: describe(duration) });
+    const box = await waitForCondition(async () => button.boundingBox().catch(() => null), 'the reduced-motion guide button to be laid out');
+    expect(box && box.height >= 44, 'the reduced-motion phone button must stay tappable', { expected: 'height >= 44', actual: describe(box) });
+    await openGuideComposer(reduced.page, () => button.click(), resident.id, fixtures().characters.neighbour.id);
+    const reducedRefusal = await guideRefusal(reduced.page);
+    expect(reducedRefusal === '', 'the reduced-motion composer must open without a refusal', { expected: 'no refusal notice', actual: describe(reducedRefusal) });
+    const server = await readFirstPlay(reduced.page, resident.id, row('SELECT world_id FROM agents WHERE id=?', resident.id).world_id);
+    expect(server.next_step?.id === 'meet' && server.steps.find((item) => item.id === 'meet').done === false,
+      'the reduced-motion guide must leave the meeting unfinished until text is sent', { expected: 'meet unfinished', actual: describe(server.next_step?.id) });
+    return `390px reduced motion: a ${Math.round(box.height)}px button, transitionDuration ${duration}, zero message writes`;
+  });
+
+  await step('the one next action is exposed as text in the guide’s live region', async () => {
+    const guide = await guideDom(page);
+    const live = await guideLiveRegion(page);
+    expect(live && live.role === 'status' && live.live === 'polite' && live.atomic === 'true', 'the action line must be an atomic, polite live region', { expected: 'role=status, aria-live=polite, aria-atomic=true', actual: describe(live) });
+    expect(live.titleText === guide.nextTitle && (guide.nextTitle || '').length > 0, 'the live region must carry the same next-action title the guide shows', { expected: guide.nextTitle, actual: describe(live.titleText) });
+    expect(live.text.includes(guide.nextTitle), 'a text-only reader must read the action title as rendered text, not only inside an aria-label', { expected: `the title inside the live region’s text`, actual: describe(live.text.slice(0, 200)) });
+    expect(['H1', 'H2', 'H3'].includes(live.titleTag), 'the title must be a real heading element with text content', { actual: describe(live.titleTag) });
+    const labelled = await page.evaluate((title) => {
+      const node = document.querySelector('#game-guide-host .game-guide-action-line');
+      const titleNode = node?.querySelector('.game-guide-title') || null;
+      return { titleText: titleNode?.textContent?.trim() || null, ariaLabel: titleNode?.getAttribute('aria-label') || null };
+    }, guide.nextTitle);
+    expect(labelled.titleText === guide.nextTitle, 'the title must be element text, not an attribute', { expected: guide.nextTitle, actual: describe(labelled) });
+    return `live region role=status · text “${live.titleText}”`;
+  });
+
+  await step('every guide control is reachable by Tab in document order', async () => {
+    const controls = await guideControls(page);
+    const expectedOrder = controls.map(controlKey);
+    expect(expectedOrder.length >= 2, 'the guide must expose its next action and its dismiss control', { expected: 'at least two controls', actual: describe(expectedOrder) });
+    for (const control of controls) {
+      expect(control.tabindex !== '-1', 'no guide control may be removed from the tab order', { expected: 'no tabindex="-1"', actual: describe(control) });
+      expect(control.disabled === false, 'no guide control may be disabled while its step is available', { expected: 'enabled', actual: describe(control) });
+    }
+    let seen = await tabSweepGuide(page);
+    // A world repaint re-mounts the guide and can drop focus mid-sweep; retry the sweep rather than
+    // accept a short one, and assert the order it finally reports.
+    for (let attempt = 0; attempt < 2 && describe(seen) !== describe(expectedOrder); attempt++) seen = await tabSweepGuide(page);
+    expect(describe(seen) === describe(expectedOrder), 'Tab must reach every guide control exactly once, in document order', { expected: describe(expectedOrder), actual: describe(seen) });
+    return `Tab reached ${seen.join(' → ')} (document order, none skipped)`;
+  });
+
+  await step('a saved keyboard walk refreshes the guide’s nearby target without a reload', async () => {
+    const garden = `home:${resident.id}`;
+    const beforeGuide = await readFirstPlay(page, resident.id, garden);
+    const beforeDistance = beforeGuide.next_step?.target?.distance;
+    expect(beforeGuide.next_step?.id === 'meet' && Number.isFinite(beforeDistance), 'the meeting target must have a server-derived starting distance', { actual: describe(beforeGuide.next_step) });
+    await page.locator('#world').focus();
+    await page.keyboard.press('v'); // leave first person: WASD then walks in world directions
+    await page.waitForFunction(() => !(document.querySelector('#world-reticle')?.textContent || '').startsWith('First person'), null, { timeout: PAGE_TIMEOUT_MS });
+    const before = row('SELECT x,y FROM agents WHERE id=?', resident.id);
+    const moves = [...Array(Math.max(0, 13 - before.x)).fill('d'), ...Array(Math.max(0, 9 - before.y)).fill('s')];
+    const arrived = await walkWithKeyboard(page, resident.id, moves);
+    expect(arrived.x === 13 && arrived.y === 9, 'the keyboard walk must reach the intended garden tile', { expected: '13,9', actual: describe(arrived) });
+    const updated = await readFirstPlay(page, resident.id, garden);
+    const afterDistance = updated.next_step?.target?.distance;
+    expect(updated.next_step?.id === 'meet' && Number.isFinite(afterDistance) && afterDistance !== beforeDistance,
+      'the saved walk must change the server-derived distance to the same resident',
+      { expected: `meet at a distance different from ${beforeDistance}`, actual: describe({ next: updated.next_step, arrived }) });
+    const targetLine = await waitForCondition(async () => {
+      const guide = await guideDom(page);
+      return guide.target?.includes(`${afterDistance} tile`) ? guide.target : null;
+    }, 'the guide’s target distance to update after the saved keyboard walk');
+    expect(targetLine.includes(updated.next_step.target.label), 'the repainted target must still name the same resident', { expected: updated.next_step.target.label, actual: targetLine });
+    // More than six tiles from every fixture, so the interaction prompt owns nothing and Enter belongs
+    // to the focused control (the prompt claims Enter only while a fixture stands within six tiles).
+    const clear = await inPage(page, `/interact?world_id=${encodeURIComponent(garden)}&agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    expect(clear.status === 200 && clear.body?.fixture === null && clear.body?.nearby?.length === 0, 'no fixture may stand within six tiles of the walked-to tile', { expected: 'fixture=null and nearby=[]', actual: `HTTP ${clear.status} ${describe({ fixture: clear.body?.fixture, nearby: clear.body?.nearby })}` });
+    // The prompt only re-reads on a world render, and it claims Enter while it holds a fixture, so a
+    // render is forced with the keyboard ('v') and the prompt must go hidden before the activation.
+    await page.locator('#world').focus();
+    await page.keyboard.press('v');
+    await page.waitForFunction(() => document.querySelector('#game-prompt-host')?.hidden === true, null, { timeout: PAGE_TIMEOUT_MS });
+    const prompt = await page.evaluate(() => ({ hidden: document.querySelector('#game-prompt-host')?.hidden === true, text: (document.querySelector('#game-prompt-host')?.textContent || '').trim() }));
+    expect(prompt.hidden && prompt.text === '', 'the interaction prompt must offer no fixture, so Enter belongs to the focused control', { expected: 'an empty, hidden prompt', actual: describe(prompt) });
+    expect(updated.next_step?.actions?.some((action) => action.id === 'meet-nearest'), 'the meeting action must still be published for the nearby resident', { expected: 'meet-nearest still offered', actual: describe(updated.next_step?.actions) });
+    return `walked to ${arrived.x},${arrived.y} by keyboard; guide target ${beforeDistance} → ${afterDistance} tiles without reload; no fixture claims Enter`;
+  });
+
+  await step('keyboard-only activation opens typed chat; only sending the typed text completes meeting', async () => {
+    const garden = `home:${resident.id}`;
+    const before = await readFirstPlay(page, resident.id, garden);
+    expect(before.next_step?.id === 'meet' && before.next_step.actions.some((action) => action.id === 'meet-nearest'), 'the next step must be the meeting action this test drives', { expected: 'meet with a meet-nearest action', actual: describe({ next: before.next_step?.id, actions: before.next_step?.actions }) });
+    const recipientId = fixtures().characters.neighbour.id;
+    const rowCount = count('SELECT COUNT(*) AS n FROM messages WHERE agent_id=? AND channel=?', resident.id, 'private');
+    const focused = await tabToGuideControl(page, (node) => node.action === 'meet-nearest', 'the guide’s next-action control');
+    expect(focused.action === 'meet-nearest' && focused.text.includes('Message'), 'document.activeElement must really be the guide’s next-action button', { expected: 'the guide’s “Message …” control', actual: describe(focused) });
+    const form = await openGuideComposer(page, () => page.keyboard.press('Enter'), resident.id, recipientId);
+    const stillWaiting = await readFirstPlay(page, resident.id, garden);
+    expect(stillWaiting.next_step?.id === 'meet' && stillWaiting.progress.done === before.progress.done,
+      'the keyboard activation alone must not complete a meeting', { expected: describe({ next: before.next_step?.id, done: before.progress.done }), actual: describe({ next: stillWaiting.next_step?.id, done: stillWaiting.progress.done }) });
+    const words = 'Hello. I am tending this garden. What bounded work are you doing here?';
+    await page.keyboard.type(words);
+    expect(await form.locator('[name="text"]').inputValue() === words, 'the operator must type the message rather than accept a canned one', { actual: describe(await form.locator('[name="text"]').inputValue()) });
+    await page.keyboard.press('Tab');
+    const submit = await page.evaluate(() => ({ text: (document.activeElement?.textContent || '').trim(), type: document.activeElement?.getAttribute('type') }));
+    expect(submit.type === 'submit' && submit.text === 'Send message', 'Tab from the typed field must reach the real submit button', { expected: 'Send message submit button', actual: describe(submit) });
+    await waitForMessageWindow(state.fixtures.firstTen.accountId);
+    sentComposerNode = await form.elementHandle();
+    const attempt = await withMessageWatch(page, async () => { await page.keyboard.press('Enter'); return waitForNewMessage(resident.id, rowCount); });
+    const stored = attempt.value;
+    expect(attempt.statuses.includes(200) && !attempt.statuses.includes(429), 'the page must see the typed keyboard message accepted (HTTP 200), never refused', { expected: 'HTTP 200', actual: describe(attempt.statuses) });
+    const keyboardRefusal = await guideRefusal(page);
+    expect(keyboardRefusal === '', 'the typed submission must not show a guide refusal', { expected: 'no refusal notice', actual: describe(keyboardRefusal) });
+    expect(stored.agent_id === resident.id && stored.channel === 'private' && stored.text === words && JSON.parse(stored.recipients).includes(recipientId),
+      'the saved row must contain only the operator’s exact typed words and the intended AI resident',
+      { expected: describe({ agent_id: resident.id, channel: 'private', text: words, recipient: recipientId }), actual: describe(stored) });
+    firstPrivateMessage = stored;
+    const after = await readFirstPlay(page, resident.id, garden);
+    expect(after.steps.find((item) => item.id === 'meet').done === true && after.progress.done === before.progress.done + 1,
+      'only the saved private message may complete this character’s meeting step',
+      { expected: `meet done; ${before.progress.done + 1} steps counted`, actual: describe({ next: after.next_step?.id, done: after.progress.done, steps: after.steps }) });
+    const guide = await waitForCondition(async () => {
+      const shown = await guideDom(page);
+      return shown.done === after.progress.done ? shown : null;
+    }, 'the rendered guide to re-read the saved typed meeting');
+    expect(guide.progress === `Step ${after.next_step?.ordinal} of ${after.progress.total}` && guide.nextTitle === after.next_step?.title, 'the rendered guide must agree with the re-read it just made', { expected: `Step ${after.next_step?.ordinal} of ${after.progress.total} · ${after.next_step?.title}`, actual: describe({ progress: guide.progress, title: guide.nextTitle }) });
+    return `Tab → Enter opened blank chat; typed ${words.length} characters → Tab → Enter saved private message ${stored.id} (HTTP ${attempt.statuses.join('/')}); guide advanced to ${guide.progress}`;
+  });
+
+  await step('a second typed reply keeps the private recipient after the first send rerenders the world', async () => {
+    const garden = `home:${resident.id}`;
+    const recipientId = fixtures().characters.neighbour.id;
+    expect(sentComposerNode && await sentComposerNode.evaluate((node) => !node.isConnected),
+      'the first accepted message must have replaced the original conversation form during a world render',
+      { expected: 'the original form is disconnected', actual: sentComposerNode ? await sentComposerNode.evaluate((node) => ({ connected: node.isConnected })) : 'no original form' });
+    const form = page.locator('#world-chat-card form');
+    await form.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const fresh = await form.evaluate((node) => ({ channel: node.elements.namedItem('channel')?.value, recipient: node.elements.namedItem('recipient_id')?.value, text: node.elements.namedItem('text')?.value }));
+    expect(fresh.channel === 'private' && fresh.recipient === recipientId && fresh.text === '',
+      'the fresh composer must keep the private channel and recipient while clearing the submitted words',
+      { expected: { channel: 'private', recipient: recipientId, text: '' }, actual: fresh });
+    const words = 'I can help with the next garden step. Which part needs a human operator?';
+    await form.locator('[name="text"]').focus();
+    await page.keyboard.type(words);
+    expect(await form.locator('[name="text"]').inputValue() === words, 'the second message must also be typed by the operator', { actual: describe(await form.locator('[name="text"]').inputValue()) });
+    const before = count('SELECT COUNT(*) AS n FROM messages WHERE agent_id=? AND channel=?', resident.id, 'private');
+    await waitForMessageWindow(state.fixtures.firstTen.accountId);
+    const attempt = await withMessageWatch(page, async () => { await form.getByRole('button', { name: 'Send message', exact: true }).click(); return waitForNewMessage(resident.id, before); });
+    const saved = attempt.value;
+    expect(attempt.statuses.includes(200) && !attempt.statuses.includes(429), 'the second typed reply must be accepted through the visible form', { expected: 'HTTP 200', actual: describe(attempt.statuses) });
+    const pair = rows('SELECT id,agent_id,channel,text,recipients FROM messages WHERE id IN (?,?)', firstPrivateMessage.id, saved.id);
+    expect(pair.length === 2 && pair.every((message) => message.agent_id === resident.id && message.channel === 'private' && JSON.parse(message.recipients).includes(recipientId)) && saved.text === words,
+      'both saved messages must stay private to the same intended AI resident after the rerender',
+      { expected: 'two private rows with the same sender and recipient, and exact second text', actual: describe(pair) });
+    const observer = await api(fixtures().owner, 'GET', `/world?world_id=${encodeURIComponent(garden)}`);
+    expect(observer.status === 200 && !observer.body?.messages?.some((message) => pair.some((privateMessage) => privateMessage.id === message.id || privateMessage.text === message.text)),
+      'an unrelated operator’s world read must contain neither private turn',
+      { expected: 'HTTP 200 with neither turn in messages', actual: describe({ status: observer.status, messages: observer.body?.messages?.map((message) => message.text).slice(-5) }) });
+    const recipient = await api(fixtures().stranger, 'GET', `/world?world_id=${encodeURIComponent(garden)}&agent_id=${encodeURIComponent(recipientId)}`);
+    expect(recipient.status === 200 && pair.every((message) => recipient.body?.messages?.some((entry) => entry.id === message.id && entry.channel === 'private' && entry.text === message.text)),
+      'the addressed resident’s operator must be able to read both turns',
+      { expected: 'HTTP 200 with both private turns', actual: describe({ status: recipient.status, messages: recipient.body?.messages?.map((message) => message.text).slice(-5) }) });
+    const guide = await readFirstPlay(page, resident.id, garden);
+    expect(guide.steps.find((item) => item.id === 'meet').done === true && guide.progress.done === 4,
+      'the second message must preserve the one already completed meeting step without adding a fictitious step',
+      { expected: 'meet=true, done=4', actual: describe({ done: guide.progress.done, meet: guide.steps.find((item) => item.id === 'meet') }) });
+    await page.keyboard.press('Escape');
+    return `two separately typed HTTP 200 messages remained private after the form rerender; an unrelated operator saw neither and the recipient operator saw both`;
+  });
+
+  await step('the guide dismisses and resumes from the keyboard alone', async () => {
+    const beforeTitle = (await guideDom(page)).nextTitle;
+    const dismiss = await tabToGuideControl(page, (node) => node.guide === 'dismiss', 'the guide’s dismiss control');
+    expect(dismiss.guide === 'dismiss', 'document.activeElement must really be the dismiss control', { expected: 'data-guide="dismiss"', actual: describe(dismiss) });
+    await page.keyboard.press('Enter');
+    const dismissed = await guideDom(page);
+    expect(dismissed.dismissal && dismissed.nextCards === 0, 'Enter on the dismiss control must immediately replace the action card with the dismissed bar', { expected: 'the dismissed bar and no action card', actual: describe({ dismissal: dismissed.dismissal, next: dismissed.nextCards }) });
+    expect(dismissed.titles.length === 0, 'the dismissed bar must carry no task title', { actual: describe(dismissed.titles) });
+    const resume = await tabToGuideControl(page, (node) => node.guide === 'resume', 'the guide’s resume control');
+    expect(resume.guide === 'resume', 'document.activeElement must really be the resume control', { expected: 'data-guide="resume"', actual: describe(resume) });
+    await page.keyboard.press('Enter');
+    const resumed = await guideDom(page);
+    expect(resumed.nextCards === 1 && resumed.nextTitle === beforeTitle, 'Enter on the resume control must immediately bring the action card back', { expected: beforeTitle, actual: describe({ next: resumed.nextCards, title: resumed.nextTitle }) });
+    return `Tab → Enter dismissed to the bar, Tab → Enter resumed “${resumed.nextTitle}” — no pointer, no navigation`;
+  });
+
+  await step('a paused resident receives an announced refusal and recovers without invented restoration work', async () => {
+    const garden = `home:${resident.id}`;
+    const control = await pageWrite(page, '/agents/control', { agent_id: resident.id, status: 'paused' });
+    expect(control.status === 200 && control.body?.status === 'paused', 'the operator must be able to pause its own resident', { expected: 'HTTP 200 with status=paused', actual: `HTTP ${control.status} ${describe(control.body)}` });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await page.waitForTimeout(1000); // let the concurrent first-play read land before the next render
+    await openGameTab(page, 'Open world');
+    await waitForGuide(page);
+    const blockedRead = await readFirstPlay(page, resident.id, garden);
+    expect(blockedRead.next_step?.id === 'restore' && blockedRead.next_step?.blocked?.code === 'resident_unavailable',
+      'the server must report the paused resident on its still unfinished restoration step',
+      { expected: 'restore blocked=resident_unavailable', actual: describe(blockedRead.next_step) });
+    const card = await page.evaluate(() => {
+      const next = document.querySelector('#game-guide-host .game-guide-card.game-guide-next');
+      const action = next?.querySelector('.game-guide-action') || null;
+      const alert = next?.querySelector('[data-guide="blocked"]') || null;
+      const refusal = document.querySelector('#game-guide-host [data-guide="resume-refusal"]');
+      return {
+        actionRendered: Boolean(action && action.getClientRects().length),
+        actionDisabled: Boolean(action?.disabled),
+        actionAriaDisabled: action?.getAttribute('aria-disabled') || null,
+        actionKey: action ? (action.getAttribute('data-guide-action') || '') : null,
+        alertRole: alert?.getAttribute('role') || null,
+        alertLive: alert?.getAttribute('aria-live') || null,
+        alertText: (alert?.textContent || '').trim(),
+        refusalText: (refusal?.textContent || '').trim(),
+      };
+    });
+    expect(!card.actionRendered || card.actionDisabled && card.actionAriaDisabled === 'true',
+      'a paused resident may have no available restoration action; any action it does show must be disabled and aria-disabled',
+      { expected: 'no action, or an action that is disabled and aria-disabled="true"', actual: describe(card) });
+    expect(card.alertRole === 'alert' && card.alertLive === 'assertive' && card.alertText.length > 0, 'the refusal must be announced as an assertive alert with text', { expected: 'role=alert with the refusal text', actual: describe({ role: card.alertRole, live: card.alertLive, text: card.alertText }) });
+    expect(card.refusalText.length > 0, 'the resume card must state how to recover the resident', { actual: describe(card.refusalText) });
+    const sweep = await tabSweepGuide(page);
+    expect(!sweep.includes(`action:${card.actionKey}`), 'a natively disabled action is not in the tab order — it is announced, not focusable', { expected: `no action:${card.actionKey} among the tabbed controls`, actual: describe(sweep) });
+    expect(sweep.length >= 1, 'the guide must stay keyboard-operable while blocked', { actual: describe(sweep) });
+    const back = await pageWrite(page, '/agents/control', { agent_id: resident.id, status: 'active' });
+    expect(back.status === 200 && back.body?.status === 'active', 'the resident must be resumable', { expected: 'HTTP 200 with status=active', actual: `HTTP ${back.status} ${describe(back.body)}` });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await waitForGuide(page);
+    const recovered = await page.evaluate(() => {
+      const action = document.querySelector('#game-guide-host .game-guide-card.game-guide-next .game-guide-action');
+      return { rendered: Boolean(action && action.getClientRects().length), disabled: Boolean(action?.disabled), blocked: Boolean(document.querySelector('#game-guide-host [data-guide="blocked"]')) };
+    });
+    expect(recovered.blocked === false && (!recovered.rendered || recovered.disabled === false),
+      'resuming the resident must remove the refusal without inventing a restoration action',
+      { expected: 'no blocked alert; any available action enabled', actual: describe(recovered) });
+    return `blocked restoration: refusal text announced, no enabled action, guide operable by Tab (${sweep.join(' → ')}), refusal cleared after resume`;
+  });
+
+  return 'one disposable operator chose a calling, saved a practice action, typed a private AI-resident message, walked and returned to a resumed place; every completed step came from saved rows';
+});
+
+// A genuinely new account has no second operator's AI resident in the Commons. The authored solo
+// fallback must lead it to a scripted country ambassador; opening the question
+// field writes nothing, and only a question asked by its own nearby character completes meeting.
+define('first-play-solo-ambassador', async () => {
+  const page = (await context('first-play-solo')).page;
+  const EMAIL = 'tester.solo-ambassador@browser.test';
+  const RESIDENT = 'Solo newcomer';
+  const QUESTION = 'Which numbered country sources can I inspect before proposing a garden task?';
+  let account = null, resident = null, starter = null;
+  let displaced = [];
+
+  try {
+  await step('a new account chooses a calling with no other operator in the Commons', async () => {
+    await openGame(page);
+    await signUp(page, { name: 'Solo tester', email: EMAIL, password: PASSWORD });
+    account = row('SELECT id,email,role FROM accounts WHERE email=?', EMAIL);
+    expect(account?.role === 'member', 'the solo route must use a newly registered member account', { actual: describe(account) });
+    resident = await createResidentThroughInterface(page, RESIDENT);
+    await enterWorldAs(page, resident.id, RESIDENT);
+    await openGameTab(page, 'Callings & guilds');
+    const choice = page.locator('#view .calling-choice[data-calling="cultivator"]');
+    await choice.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await choice.getByRole('button', { name: /^Become/ }).click();
+    await waitForCondition(async () => row("SELECT seq FROM audit WHERE event='calling.selected' AND record_id=?", resident.id), 'the solo resident’s calling selection to be saved');
+    await openTab(page, 'Open world');
+    starter = row("SELECT a.id,a.name,a.world_id,a.x,a.y FROM npc_ambassadors a JOIN worlds w ON w.id=a.world_id WHERE a.status='active' AND w.visibility='public' ORDER BY CASE WHEN a.iso3='NPL' THEN 0 ELSE 1 END,a.name LIMIT 1");
+    expect(starter && /^country:/.test(starter.world_id), 'an active scripted country ambassador must stand in a public generated venue', { actual: describe(starter) });
+    // The suite has independent AI fixtures. Keep them out of this new operator's path so this
+    // scenario exercises the actual solo-install fallback, then restore their exact positions.
+    displaced = rows("SELECT id,world_id,x,y,z FROM agents WHERE id!=? AND kind='agent' AND status='active' AND world_id IN (?,?)", resident.id, 'commons', starter.world_id);
+    for (const other of displaced) write('UPDATE agents SET world_id=?,x=8,y=8,z=0 WHERE id=?', `home:${other.id}`, other.id);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await waitForGuide(page);
+    const first = await readFirstPlay(page, resident.id, 'commons');
+    expect(first.viewer?.world_id === 'commons' && first.encounter === null && first.next_step?.id === 'meet' && first.next_step?.actions?.[0]?.id === 'visit-ambassador' && first.next_step.target.world_id === starter.world_id,
+      'the solo Commons must offer the country venue rather than pretending a live AI resident is present',
+      { expected: `meet, no encounter, visit-ambassador into ${starter.world_id}`, actual: describe({ viewer: first.viewer, encounter: first.encounter, step: first.next_step }) });
+    expect(first.progress.done === 2 && first.steps.find((item) => item.id === 'meet').done === false,
+      'account creation and calling selection must leave the meeting unfinished', { expected: 'done=2, meet=false', actual: describe(first.progress) });
+    return `new account ${account.id}, resident ${resident.id}, calling saved in Commons; the guide offers ${starter.world_id}`;
+  });
+
+    await step('the guide travels from the Commons directory into a public country venue', async () => {
+      const directory = await readFirstPlay(page, resident.id, 'commons');
+      expect(directory.encounter === null && directory.next_step?.actions?.[0]?.id === 'visit-ambassador' && directory.next_step.actions[0].route === `/agents/${resident.id}/travel` && directory.next_step.actions[0].body.world_id === starter.world_id,
+        'the Commons guide must publish the shipped travel route into the scripted country venue',
+        { expected: `visit-ambassador into ${starter.world_id}`, actual: describe({ encounter: directory.encounter, step: directory.next_step }) });
+      const rendered = await waitForCondition(async () => {
+        const guide = await guideDom(page);
+        return guide.actions.some((action) => action.id === 'visit-ambassador') ? guide : null;
+      }, 'the Commons guide to show its country venue action');
+      expect(rendered.target?.includes(starter.world_id) || rendered.target?.includes('scripted ambassador'),
+        'the visible target must explain the country fallback', { actual: describe(rendered.target) });
+      await page.locator(GUIDE_NEXT).locator('[data-guide-action="visit-ambassador"]').click();
+      await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', resident.id)?.world_id === starter.world_id ? true : null, 'the solo resident to enter the ambassador venue');
+      expect(count("SELECT COUNT(*) AS n FROM audit WHERE actor=? AND event='world.entered' AND record_id=?", account.id, starter.world_id) === 1,
+        'one real server travel action must record entry to the country venue', { expected: 'one world.entered row', actual: count("SELECT COUNT(*) AS n FROM audit WHERE actor=? AND event='world.entered' AND record_id=?", account.id, starter.world_id) });
+      const arrived = await readFirstPlay(page, resident.id, starter.world_id);
+      expect(arrived.steps.find((item) => item.id === 'meet').done === false,
+        'travelling alone must not complete the conversation', { expected: 'meet=false', actual: describe(arrived.steps.find((item) => item.id === 'meet')) });
+      return `guide travel saved Commons → ${starter.world_id}; meeting remains unfinished`;
+    });
+
+    await step('walking into range reveals the scripted ambassador and its bounded question action', async () => {
+      const before = await readFirstPlay(page, resident.id, starter.world_id);
+      const initial = row('SELECT x,y FROM agents WHERE id=?', resident.id);
+      const startingDistance = Math.abs(initial.x - starter.x) + Math.abs(initial.y - starter.y);
+      if (startingDistance > 6) {
+        const refused = await inPage(page, '/ambassadors/talk', { body: { ambassador_id: starter.id, agent_id: resident.id, question: 'A premature test question' } });
+        expect(refused.status === 409 && count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', account.id) === 0,
+          'a character outside six tiles must be refused without saving an ambassador turn',
+          { expected: 'HTTP 409 and zero rows', actual: describe({ status: refused.status, body: refused.body }) });
+      }
+      if (startingDistance > 1) {
+        const objects = rows('SELECT type,x,y FROM world_objects WHERE world_id=?', starter.world_id);
+        const route = planWalk(getWorldDefinition(starter.world_id), initial, { x: starter.x, y: starter.y - 1 }, { objects });
+        expect(Array.isArray(route) && route.length > 0, 'the authored country venue must have a walkable route to the ambassador’s stand', { actual: describe({ initial, stand: starter, route }) });
+        const keys = { up: 'w', right: 'd', down: 's', left: 'a' };
+        await page.locator('#world').focus();
+        for (const direction of route) {
+          await walkWithKeyboard(page, resident.id, [keys[direction]]);
+          await sleep(150); // the same 120 ms server movement limit every human keyboard walk obeys
+        }
+      }
+      const position = row('SELECT world_id,x,y FROM agents WHERE id=?', resident.id);
+      const distance = Math.abs(position.x - starter.x) + Math.abs(position.y - starter.y);
+      expect(position.world_id === starter.world_id && distance <= 6, 'the character must physically stand within the server’s encounter radius', { expected: `in ${starter.world_id}, distance <= 6`, actual: describe({ position, distance }) });
+      const near = await readFirstPlay(page, resident.id, starter.world_id);
+      expect(near.encounter?.kind === 'npc' && near.encounter.scripted === true && near.encounter.npc_id === starter.id && near.next_step?.actions?.[0]?.id === 'meet-nearest',
+        'the nearby guide must describe the scripted ambassador and offer its question action',
+        { expected: `scripted ${starter.id} with meet-nearest`, actual: describe({ encounter: near.encounter, step: near.next_step }) });
+      expect(near.next_step.actions[0].body.agent_id === resident.id && near.next_step.actions[0].body.ambassador_id === starter.id,
+        'the authored question action must bind the selected character and the country ambassador', { actual: describe(near.next_step.actions[0].body) });
+      const card = await waitForCondition(async () => {
+        const guide = await guideDom(page);
+        return guide.actions.some((action) => action.id === 'meet-nearest') ? guide : null;
+      }, 'the guide to refresh after the walk');
+      const encounter = (await page.locator('#game-guide-host .game-guide-encounter').textContent()) || '';
+      expect(/Scripted resident/.test(encounter) && encounter.includes(starter.name) && /cannot/i.test(encounter),
+        'the visible encounter must identify the ambassador as scripted and state its limits', { actual: encounter.slice(0, 400) });
+      return `walked from ${initial.x},${initial.y} to ${position.x},${position.y}; ${card.actions[0].label} appears with a scripted-resident limitation`;
+    });
+
+    await step('only an operator-typed nearby question saves the meeting for this character', async () => {
+      const before = count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', account.id);
+      const writes = [];
+      const recordRequest = (request) => { if (request.method() === 'POST' && request.url().includes('/api/v1/ambassadors/talk')) writes.push(request.postDataJSON()); };
+      page.on('request', recordRequest);
+      let dialog;
+      try {
+        await page.locator(GUIDE_NEXT).locator('[data-guide-action="meet-nearest"]').click();
+        dialog = page.locator('dialog.mayor-dialog');
+        await dialog.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+        const question = dialog.locator('[aria-label="Your question"]');
+        expect(await question.inputValue() === '' && writes.length === 0 && count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', account.id) === before,
+          'opening the ambassador composer must leave it blank and save no canned question',
+          { expected: 'blank question, zero POSTs and rows', actual: describe({ value: await question.inputValue(), writes, before }) });
+      } finally { page.off('request', recordRequest); }
+      const field = dialog.locator('[aria-label="Your question"]');
+      await field.focus();
+      await page.keyboard.type(QUESTION);
+      expect(await field.inputValue() === QUESTION, 'the solo operator must type its own country question', { expected: QUESTION, actual: await field.inputValue() });
+      const responses = [];
+      const recordResponse = (response) => {
+        if (response.request().method() === 'POST' && response.url().includes('/api/v1/ambassadors/talk')) {
+          responses.push({ status: response.status(), body: response.request().postDataJSON() });
+        }
+      };
+      page.on('response', recordResponse);
+      let stored;
+      try {
+        await dialog.getByRole('button', { name: /^Ask / }).click();
+        stored = await waitForCondition(async () => row('SELECT id,account_id,ambassador_id,question,answer FROM ambassador_conversations WHERE account_id=? ORDER BY created_at DESC LIMIT 1', account.id), 'the nearby question to be saved');
+        await waitForCondition(async () => responses.length ? true : null, 'the browser’s ambassador talk response');
+      } finally { page.off('response', recordResponse); }
+      expect(responses.length === 1 && responses[0].status === 200 && responses[0].body?.agent_id === resident.id && responses[0].body?.ambassador_id === starter.id,
+        'the real dialog must send one accepted question bound to this nearby character and ambassador',
+        { expected: `one HTTP 200 with agent_id=${resident.id} and ambassador_id=${starter.id}`, actual: describe(responses) });
+      expect(count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=?', account.id) === before + 1 && stored.ambassador_id === starter.id && stored.question === QUESTION,
+        'one exact question and its scripted response must be stored against the new account', { actual: describe(stored) });
+      expect(count("SELECT COUNT(*) AS n FROM audit WHERE actor=? AND event='firstplay.ambassador_met' AND record_id=?", account.id, `${resident.id}|${stored.id}`) === 1,
+        'the server must attribute this saved nearby question to this character exactly once', { actual: 'the meeting audit was missing or duplicated' });
+      const after = await readFirstPlay(page, resident.id, starter.world_id);
+      expect(after.progress.done === 3 && after.steps.find((item) => item.id === 'meet').done === true && after.next_step?.id === 'practice',
+        'only the accepted nearby question may advance this character to the practice step',
+        { expected: 'done=3, meet=true, next=practice', actual: describe({ progress: after.progress, steps: after.steps, next: after.next_step }) });
+      await dialog.locator('button', { hasText: 'Close' }).first().click();
+      return `typed ${QUESTION.length} characters, HTTP 200, one attributed conversation ${stored.id}; guide advanced to practice`;
+    });
+
+    await step('the attributed meeting and the country venue survive a reload', async () => {
+      const saved = row('SELECT world_id,x,y,z FROM agents WHERE id=?', resident.id);
+      const conversations = count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=? AND ambassador_id=?', account.id, starter.id);
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await settle(page);
+      await waitForGuide(page);
+      const resumed = row('SELECT world_id,x,y,z FROM agents WHERE id=?', resident.id);
+      const guide = await readFirstPlay(page, resident.id, starter.world_id);
+      expect(describe(resumed) === describe(saved) && guide.resume?.world_id === starter.world_id && guide.progress.done === 3 && guide.steps.find((item) => item.id === 'meet').done === true,
+        'reload must retain the resident’s exact venue position and the server-derived meeting',
+        { expected: describe({ saved, done: 3, meet: true }), actual: describe({ resumed, progress: guide.progress, meet: guide.steps.find((item) => item.id === 'meet') }) });
+      expect(count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=? AND ambassador_id=?', account.id, starter.id) === conversations,
+        'returning must neither lose nor duplicate the saved question', { expected: conversations, actual: count('SELECT COUNT(*) AS n FROM ambassador_conversations WHERE account_id=? AND ambassador_id=?', account.id, starter.id) });
+      return `reloaded at ${saved.world_id}:${saved.x},${saved.y}; one saved scripted encounter still completes meeting`;
+    });
+  } finally {
+    for (const other of displaced) write('UPDATE agents SET world_id=?,x=?,y=?,z=? WHERE id=?', other.world_id, other.x, other.y, other.z, other.id);
+  }
+
+  return `one newly registered solo account reached ${starter.world_id}, typed a distance-checked question to its scripted ambassador and resumed with the saved meeting`;
+});
+
+// ---------------------------------------------------------------------------------------------
+// Scenario — one shared restoration seen by two browsers
+//
+// Two operators, two independent browser contexts, one public garden that no earlier scenario used.
+// A opens the restoration on its own garden and takes the groundskeeping step; B travels in, pledges
+// and places the second planned object. Every claim is checked against `community_events`,
+// `community_rsvps`, `world_objects` and `audit`, the page's own world payload, and the guide's
+// shared-restoration card, which must attribute each counted step to its own operator.
+// ---------------------------------------------------------------------------------------------
+
+define('restoration-two-clients', async () => {
+  const owner = await actor('owner');
+  const stranger = await actor('stranger');
+
+  // A fresh operator session for the second operator: an earlier scenario revokes every stored session
+  // token of this account, so its fixture session cannot be reused.
+  const strangerTicket = await apiOperatorSession(ACTORS.stranger.email, PASSWORD);
+  const gardener = await apiExpect(fixtures().owner, 'POST', '/agents', { name: 'Aster the builder', kind: 'agent', color: '#397f79', symbol: '✦', capabilities: 'Carries and places the plan’s own objects', limitations: 'No external tools and no real-world claims' });
+  const helper = await apiExpect(strangerTicket, 'POST', '/agents', { name: 'Bramble the builder', kind: 'agent', color: '#aa7845', symbol: '✿', capabilities: 'Carries and places the plan’s own objects', limitations: 'No external tools and no real-world claims' });
+  await apiExpect(fixtures().owner, 'POST', '/callings/select', { agent_id: gardener.id, calling_id: 'builder' });
+  await apiExpect(strangerTicket, 'POST', '/callings/select', { agent_id: helper.id, calling_id: 'builder' });
+  const garden = `home:${gardener.id}`;
+  const eventId = `restoration:${garden}`;
+  const [firstSlot, secondSlot] = RESTORATION_GROUND.slots;
+
+  await step('the garden is opened to visitors and the owner opens one restoration through the interface', async () => {
+    await apiPatch(fixtures().owner, `/agents/${gardener.id}/home`, { visibility: 'public' });
+    await openApp(owner.page, ACTORS.owner);
+    await selectResident(owner.page, gardener.id, gardener.name);
+    await openTab(owner.page, 'Open world');
+    await owner.page.locator('#view').getByRole('button', { name: 'Go home', exact: true }).first().click();
+    await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', gardener.id).world_id === garden ? garden : null, 'the owner’s resident to travel into the garden it will restore');
+    await openRestoration(owner.page);
+    await openDisclosure(owner.page, 'Open a restoration');
+    const form = owner.page.locator('form[data-draft-section="restoration-open"]');
+    await form.locator('[name="hours"]').fill('3');
+    await form.getByRole('button', { name: 'Open the restoration', exact: true }).click();
+    const stored = await waitForCondition(async () => row('SELECT * FROM community_events WHERE id=?', eventId), 'the restoration occurrence to be stored');
+    expect(stored.status === 'scheduled', 'the occurrence must be scheduled', { actual: describe(stored.status) });
+    expect(stored.world_id === garden && stored.creator_agent_id === gardener.id, 'the occurrence must name the garden and its convenor', { actual: describe({ world: stored.world_id, creator: stored.creator_agent_id }) });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.opened' AND record_id=?", eventId) === 1, 'opening must write exactly one audit row', { actual: 'the audit count differs' });
+    state.fixtures.restoration = { id: eventId, garden, gardener: gardener.id, helper: helper.id };
+    return `community_events ${eventId} scheduled; audit restoration.opened written once`;
+  });
+
+  await step('the owner pledges and places the first planned object as a Groundskeeper', async () => {
+    await openRestorationEvent(owner.page, eventId);
+    await owner.page.locator('#view').getByRole('button', { name: 'Pledge to help with this restoration', exact: true }).click();
+    await waitForCondition(async () => count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=? AND agent_id=?', eventId, gardener.id) === 1 ? true : null, 'the owner’s pledge to be stored');
+    expect(count('SELECT COUNT(*) AS n FROM community_events WHERE id=?', eventId) === 1, 'the restoration must still be exactly one row', { actual: 'the event count differs' });
+    const pledged = await readFirstPlay(owner.page, gardener.id, garden);
+    const pledgedWork = pledged.restoration?.actors.find((actor) => actor.agent_id === gardener.id)?.contributions || [];
+    expect(pledged.steps.find((item) => item.id === 'restore').done === false && pledgedWork.length === 0 && pledged.restoration?.steps_completed === 0,
+      'a pledge must be visible as a promise but cannot count as restoration work or finish the guide',
+      { expected: 'restore=false, no counted contribution, 0 completed steps', actual: describe({ restore: pledged.steps.find((item) => item.id === 'restore'), work: pledgedWork, steps_completed: pledged.restoration?.steps_completed }) });
+    placeResident(gardener.id, garden, firstSlot.x, firstSlot.y - 1);
+    await owner.page.locator('#view').getByRole('button', { name: `Place the ${firstSlot.type} at ${firstSlot.x}, ${firstSlot.y}`, exact: true }).click();
+    const saved = await waitForCondition(async () => row('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, firstSlot.x, firstSlot.y), `the ${firstSlot.type} to be saved on its planned tile`);
+    expect(saved.type === firstSlot.type, 'the saved object must be the object the plan named', { expected: firstSlot.type, actual: describe(saved.type) });
+    const firstAudit = `${eventId}|${gardener.id}|${firstSlot.x},${firstSlot.y}|${firstSlot.type}`;
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.placed' AND record_id=?", firstAudit) === 1,
+      'the first placement audit must name this operator’s resident, exact tile and object once', { actual: describe(firstAudit) });
+    const first = await readFirstPlay(owner.page, gardener.id, garden);
+    const firstCounted = first.restoration?.actors.find((actor) => actor.agent_id === gardener.id)?.contributions.find((item) => item.step_id === 'ground')?.counted;
+    expect(firstCounted === 1 && first.steps.find((item) => item.id === 'restore').done === false,
+      'one operator’s counted placement must remain unfinished until another operator saves work',
+      { expected: 'ground counted=1; restore=false', actual: describe({ counted: firstCounted, restore: first.steps.find((item) => item.id === 'restore') }) });
+    return `community_rsvps row for ${gardener.id}; world_objects ${saved.type} at ${firstSlot.x},${firstSlot.y}`;
+  });
+
+  await step('the stranger travels in, pledges and places the second planned object', async () => {
+    await travelTo(strangerTicket, helper.id, garden);
+    expect(count('SELECT COUNT(*) AS n FROM journey_visits WHERE agent_id=? AND world_id=?', helper.id, garden) === 1, 'walking in must record the visit a pledge requires', { actual: 'no journey_visits row' });
+    await openApp(stranger.page, ACTORS.stranger);
+    await selectResident(stranger.page, helper.id, helper.name);
+    placeResident(helper.id, garden, secondSlot.x, secondSlot.y - 1);
+    await openRestorationEvent(stranger.page, eventId);
+    await stranger.page.locator('#view').getByRole('button', { name: 'Pledge to help with this restoration', exact: true }).click();
+    await waitForCondition(async () => count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=?', eventId) === 2 ? true : null, 'both pledges to be stored');
+    expect(rows('SELECT DISTINCT a.operator_id FROM community_rsvps r JOIN agents a ON a.id=r.agent_id WHERE r.event_id=?', eventId).length === 2, 'the pledges must come from two operators', { actual: describe(rows('SELECT a.operator_id FROM community_rsvps r JOIN agents a ON a.id=r.agent_id WHERE r.event_id=?', eventId)) });
+    const promiseOnly = await readFirstPlay(stranger.page, helper.id, garden);
+    expect(promiseOnly.steps.find((item) => item.id === 'restore').done === false &&
+      !(promiseOnly.restoration?.actors.find((actor) => actor.agent_id === helper.id)?.contributions || []).length,
+    'two distinct pledges alone must still leave the helper with no counted work and an unfinished guide',
+    { expected: 'helper restore=false, no counted contribution', actual: describe({ restore: promiseOnly.steps.find((item) => item.id === 'restore'), actor: promiseOnly.restoration?.actors.find((actor) => actor.agent_id === helper.id) }) });
+    await stranger.page.locator('#view').getByRole('button', { name: `Place the ${secondSlot.type} at ${secondSlot.x}, ${secondSlot.y}`, exact: true }).click();
+    const saved = await waitForCondition(async () => row('SELECT type FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, secondSlot.x, secondSlot.y), `the ${secondSlot.type} to be saved on its planned tile`);
+    expect(saved.type === secondSlot.type, 'the stranger’s saved object must be the object the plan named', { expected: secondSlot.type, actual: describe(saved.type) });
+    const secondAudit = `${eventId}|${helper.id}|${secondSlot.x},${secondSlot.y}|${secondSlot.type}`;
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.placed' AND record_id=?", secondAudit) === 1,
+      'the second placement audit must name the other operator’s resident, exact tile and object once', { actual: describe(secondAudit) });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.opened'") >= 1 && count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.joined'") >= 2 && count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.placed'") >= 2, 'the audit trail must hold the open, both joins and both placements', { actual: describe({ opened: count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.opened'"), joined: count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.joined'"), placed: count("SELECT COUNT(*) AS n FROM audit WHERE event='restoration.placed'") }) });
+    for (const [page, agentId] of [[owner.page, gardener.id], [stranger.page, helper.id]]) {
+      const derived = await readFirstPlay(page, agentId, garden);
+      expect(derived.steps.find((item) => item.id === 'restore').done === true,
+        'the guide may complete shared restoration only after both distinct operators placed counted objects',
+        { expected: 'restore=true from two saved objects', actual: describe({ viewer: agentId, restore: derived.steps.find((item) => item.id === 'restore'), actors: derived.restoration?.actors }) });
+    }
+    return `two pledges and two distinct operators’ counted placements; world_objects ${saved.type} at ${secondSlot.x},${secondSlot.y}; both derived guides record restoration done`;
+  });
+
+  await step('neither browser can mark a step, and the guide attributes each counted step', async () => {
+    const rsvpsBefore = count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=?', eventId);
+    const objectsBefore = count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden);
+    for (const [page, agentId] of [[owner.page, gardener.id], [stranger.page, helper.id]]) {
+      const forged = await inPage(page, '/quests/complete', { body: { agent_id: agentId, chain_id: 'gathering-garden' } });
+      expect(forged.status === 400, 'a raw client completion must be refused with the derived-fact rule', { expected: 'HTTP 400', actual: `HTTP ${forged.status} ${describe(forged.body)}` });
+      const forgedRead = await inPage(page, `/first-play?agent_id=${encodeURIComponent(agentId)}&world_id=${encodeURIComponent(garden)}&completed=restore`, { method: 'GET' });
+      expect(forgedRead.status === 400, 'a client-supplied completion flag must not enter the guide read', { expected: 'HTTP 400', actual: `HTTP ${forgedRead.status} ${describe(forgedRead.body)}` });
+    }
+    expect(count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=?', eventId) === rsvpsBefore, 'a refused completion must write no participation row', { actual: 'the rsvp count changed' });
+    expect(count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden) === objectsBefore, 'a refused completion must write no object', { actual: 'the object count changed' });
+    // The guide only exists in the game presentation, so both browsers now enter the game shell at
+    // the garden their resident stands in.
+    await enterGameShell(owner.page);
+    await enterGameShell(stranger.page);
+    let remaining = [];
+    for (const [page, mine, other] of [[owner.page, gardener.name, helper.name], [stranger.page, helper.name, gardener.name]]) {
+      const guide = await guideDom(page);
+      expect(guide.hasRestoration, 'the guide must render the shared-restoration card', { actual: 'no .game-guide-restoration card' });
+      const otherRow = guide.restorationRows.find((entry) => entry.actor === other);
+      const mineRow = guide.restorationRows.find((entry) => entry.actor === mine);
+      expect(otherRow && otherRow.distinct === 'true' && otherRow.step === 'ground' && Number(otherRow.cells[2]) >= 1, 'the guide must attribute the other operator’s counted step to its own name', { expected: `${other} · ground · counted with data-distinct=true`, actual: describe(guide.restorationRows) });
+      expect(mineRow && mineRow.distinct === 'false' && mineRow.step === 'ground' && Number(mineRow.cells[2]) >= 1, 'the guide must attribute the viewer’s own counted step to its own name', { expected: `${mine} · ground · counted with data-distinct=false`, actual: describe(guide.restorationRows) });
+      expect(guide.remaining.length >= 3, 'the card must list what remains with the surviving steps', { actual: describe(guide.remaining) });
+      remaining = guide.remaining;
+      const live = await page.evaluate((world) => { const view = window.__nemoworld?.world?.(); return { world: view?.world?.id, objects: (view?.objects || []).map((object) => `${object.type}@${object.x},${object.y}`) }; }, garden);
+      expect(live.world === garden && live.objects.includes(`${firstSlot.type}@${firstSlot.x},${firstSlot.y}`) && live.objects.includes(`${secondSlot.type}@${secondSlot.x},${secondSlot.y}`), 'the page’s own world payload must show both placed objects', { expected: `${firstSlot.type}@${firstSlot.x},${firstSlot.y} and ${secondSlot.type}@${secondSlot.x},${secondSlot.y}`, actual: describe(live) });
+    }
+    await mkdir(join(RESULTS, 'restoration-two-clients'), { recursive: true });
+    await captureGuide(owner.page, join(RESULTS, 'restoration-two-clients', 'desktop.png'));
+    await owner.page.setViewportSize({ width: 390, height: 844 });
+    await owner.page.waitForTimeout(250);
+    await captureGuide(owner.page, join(RESULTS, 'restoration-two-clients', 'phone.png'));
+    await owner.page.setViewportSize({ width: 1440, height: 900 });
+    return `both guides named ${gardener.name} (data-distinct=true for ${helper.name}) and ${helper.name} (data-distinct=false for itself), with ${remaining.length} steps remaining`;
+  });
+
+  await step('the shared result survives a reload in both browsers', async () => {
+    const snapshot = () => ({
+      objects: rows('SELECT type,x,y FROM world_objects WHERE world_id=? ORDER BY x,y', garden),
+      rsvps: rows('SELECT agent_id FROM community_rsvps WHERE event_id=? ORDER BY agent_id', eventId),
+      event: row('SELECT status,starts_at,ends_at FROM community_events WHERE id=?', eventId),
+    });
+    const before = snapshot();
+    await owner.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(owner.page);
+    await waitForGuide(owner.page);
+    await stranger.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(stranger.page);
+    await waitForGuide(stranger.page);
+    expect(describe(snapshot()) === describe(before), 'the placement, the two pledges and the occurrence must survive the reload', { expected: describe(before), actual: describe(snapshot()) });
+    for (const page of [owner.page, stranger.page]) {
+      const guide = await guideDom(page);
+      expect(guide.hasRestoration && guide.restorationRows.length >= 2, 'the reloaded guide must keep both attributions', { actual: describe(guide.restorationRows) });
+    }
+    for (const [page, agentId] of [[owner.page, gardener.id], [stranger.page, helper.id]]) {
+      const derived = await readFirstPlay(page, agentId, garden);
+      expect(derived.steps.find((item) => item.id === 'restore').done === true,
+        'the shared restoration step must remain derived as done after both browser reloads', { actual: describe({ viewer: agentId, restore: derived.steps.find((item) => item.id === 'restore') }) });
+    }
+    const view = await inPage(stranger.page, `/world?world_id=${encodeURIComponent(garden)}&agent_id=${encodeURIComponent(helper.id)}`, { method: 'GET' });
+    const types = (view.body.objects || []).map((object) => `${object.type}@${object.x},${object.y}`);
+    expect(types.includes(`${firstSlot.type}@${firstSlot.x},${firstSlot.y}`) && types.includes(`${secondSlot.type}@${secondSlot.x},${secondSlot.y}`), 'the world read must still publish both placed objects', { actual: describe(types) });
+    return `after the reload: ${before.objects.length} objects in ${garden}, ${before.rsvps.length} pledges, the guide still attributed both operators`;
+  });
+
+  return `two browsers restored ${garden} together: ${count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden)} objects saved, ${count('SELECT COUNT(*) AS n FROM community_rsvps WHERE event_id=?', eventId)} pledges from two operators, every step derived from the rows the world already held`;
 });
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {

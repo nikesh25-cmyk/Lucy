@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createFirstPlayGuide } from '../src/ui/first-play-guide.js';
+
+test('an encounter opens a text composer without posting a blank message or claiming completion', async () => {
+  const writes = [], composed = [], changes = [];
+  const guide = createFirstPlayGuide({
+    transport: async (...args) => { writes.push(args); return { id: 'unexpected' }; },
+    onCompose: async (action) => { composed.push(action); },
+    onChange: () => changes.push('repaint'),
+  });
+  const snapshot = { next_step: { id: 'meet', actions: [] }, progress: { done: 2, total: 5 } };
+  guide.update(snapshot);
+  const action = { id: 'meet-nearest', route: '/messages', method: 'POST', requires_input: true, body: { agent_id: 'viewer', channel: 'private', recipient_id: 'resident' } };
+  const result = await guide.activate(action);
+  assert.deepEqual(result, { ok: true, composing: true });
+  assert.deepEqual(composed, [action]);
+  assert.deepEqual(writes, []);
+  assert.equal(guide.model().progress.done, 2);
+  assert.equal(guide.model().confirmation, null);
+  assert.deepEqual(changes, [], 'opening a composer preserves focus instead of repainting the guide');
+});
+
+test('a refused guide action stays readable through a repaint and dismissal resets on sign-out', async () => {
+  let changes = 0;
+  const guide = createFirstPlayGuide({
+    transport: async () => { throw Object.assign(new Error('The world is paused.'), { status: 403 }); },
+    onChange: () => { changes++; },
+  });
+  const snapshot = { next_step: { id: 'restore', actions: [] } };
+  guide.update(snapshot);
+  const result = await guide.activate({ id: 'join', route: '/restoration/join', body: {} });
+  assert.equal(result.ok, false);
+  guide.update(snapshot);
+  assert.match(guide.model().error.message, /paused/);
+  assert.equal(changes, 1);
+  guide.dismiss();
+  assert.equal(guide.dismissed, true);
+  guide.reset();
+  assert.equal(guide.dismissed, false);
+  assert.equal(guide.model().ready, false);
+});
