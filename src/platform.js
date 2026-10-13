@@ -155,7 +155,14 @@ export class Platform {
   }
   authenticate(token, scope = null) {
     if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) fail(401, 'Authentication required.');
-    const credential = this.get('SELECT * FROM tokens WHERE hash=?', hash(token));
+    return this.authorize(hash(token), scope);
+  }
+  // Resolution from a stored credential hash. The event channel keeps only the hash of a live
+  // subscription's credential, so it can re-check revocation, expiry and scope without retaining the
+  // secret itself. The checks below are the same ones `authenticate` has always applied.
+  authorize(credentialHash, scope = null) {
+    if (typeof credentialHash !== 'string' || !/^[a-f0-9]{64}$/.test(credentialHash)) fail(401, 'Authentication required.');
+    const credential = this.get('SELECT * FROM tokens WHERE hash=?', credentialHash);
     if (!credential || credential.revoked || credential.expires_at <= this.clock()) fail(401, 'This session expired or was revoked.');
     const account = this.get('SELECT * FROM accounts WHERE id=?', credential.account_id);
     if (account.status !== 'active') fail(403, 'This operator account is suspended.');
@@ -174,6 +181,13 @@ export class Platform {
     this.run('UPDATE agents SET last_seen=?,verified=1 WHERE id=?', this.clock(), actor.agent.id);
     const used = actor.credential.used_calls + 1;
     if (used === Math.ceil(actor.credential.max_calls * .8)) this.audit(actor.account.id, 'runtime.budget_warning', actor.agent.id);
+  }
+  // The one read-entitlement decision: a caller may observe a world only through the same check the
+  // `/world` route applies, so a private garden stays private on the event channel too. A violation
+  // is reported as an ordinary `false`, not an error, because the caller is deciding eligibility.
+  canReadWorld(actor, id) {
+    try { this.space(actor, id); return true; }
+    catch (error) { if ([403, 404].includes(error.status)) return false; throw error; }
   }
   active() { if (this.get("SELECT value FROM settings WHERE key='paused'").value === 'true') fail(503, 'The platform is paused.'); }
   me(actor) {
@@ -222,6 +236,7 @@ export class Platform {
     if (input.emote !== 'none' && this.clock() - agent.last_emote < 5000) fail(429, 'Allow five seconds between expressions.');
     const until = input.emote === 'none' ? 0 : this.clock() + 10000;
     this.run('UPDATE agents SET emote=?,emote_until=?,last_emote=?,last_seen=? WHERE id=?', input.emote, until, this.clock(), this.clock(), agent.id);
+    this.events?.publish(agent.world_id, { agents: [{ id: agent.id, x: agent.x, y: agent.y, z: agent.z, posture: agent.posture, status: agent.status, emote: input.emote, emote_until: until }] });
     return { agent_id: agent.id, emote: input.emote, emote_until: until };
   }
   agentControl(actor, id, status) {
@@ -232,6 +247,9 @@ export class Platform {
     this.run('UPDATE agents SET status=? WHERE id=?', status, id);
     if (status !== 'active') this.run("UPDATE tokens SET revoked=1 WHERE agent_id=?", id);
     this.audit(actor.account.id, `agent.${status}`, id);
+    const currentAgent = this.get('SELECT x,y,z,posture,world_id FROM agents WHERE id=?', id);
+    this.events?.publish(currentAgent.world_id, { agents: [{ id, x: currentAgent.x, y: currentAgent.y, z: currentAgent.z, posture: currentAgent.posture, status }] });
+    if (status !== 'active') this.events?.revalidateNow?.();
     return { status };
   }
   runtime(actor, agentId, input) {
@@ -278,6 +296,9 @@ export class Platform {
     const id = randomUUID();
     this.run('INSERT INTO messages(id,agent_id,account_id,channel,mission_id,recipients,text,created_at,world_id) VALUES(?,?,?,?,?,?,?,?,?)', id, agent?.id || null, actor.account.id, channel, missionId, JSON.stringify(recipients), content, new Date(this.clock()).toISOString(), worldId);
     if (agent) this.run('UPDATE agents SET last_seen=?,verified=CASE WHEN ?=1 THEN 1 ELSE verified END WHERE id=?', this.clock(), actor.kind === 'runtime' ? 1 : 0, agent.id);
+    // Only a public message in a world is ever pushed. Nearby, direct and mission conversations stay
+    // in their own access-controlled routes and are never sent to an event subscriber.
+    if (channel === 'public') this.events?.publish(worldId, { messages: [{ id, channel, text: content, created_at: new Date(this.clock()).toISOString(), world_id: worldId, author: agent?.name || actor.account.name, agent_id: agent?.id || null }] });
     return { id };
   }
   expireClaims() {

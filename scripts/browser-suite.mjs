@@ -110,6 +110,8 @@ export const SCENARIOS = Object.freeze([
   { id: 'reward-refusals', title: 'Reward refusals: self-review and an NPC credential', regression: null },
   { id: 'forged-coin-receipt-refused', title: 'A forged coin receipt is refused by the database itself', regression: 'queue review correction 5' },
   { id: 'resident-run-resume-refusal', title: 'An interrupted resident run and the bounded resume refusal', regression: 'queue review correction 4' },
+  { id: 'shared-presence-two-clients', title: 'Two browser clients see each other move and build over the event channel', regression: null },
+  { id: 'subscription-entitlement-and-revocation', title: 'A private world and a revoked session both lose their live feed', regression: null },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -170,6 +172,16 @@ async function apiExpect(ticket, method, path, payload, statuses = [200, 201], o
   const allowed = Array.isArray(statuses) ? statuses : [statuses];
   if (!allowed.includes(response.status)) {
     throw new BrowserSuiteFailure(`fixture request ${method} ${path} was refused`, { expected: `HTTP ${allowed.join(' or ')}`, actual: `HTTP ${response.status} ${response.raw}` });
+  }
+  return response.body;
+}
+
+/** The one PATCH route a fixture needs: the owner changes a garden's visiting visibility. */
+async function apiPatch(ticket, path, payload, statuses = [200]) {
+  const response = await apiRequest(path, { method: 'PATCH', token: ticket.token, body: payload });
+  const allowed = Array.isArray(statuses) ? statuses : [statuses];
+  if (!allowed.includes(response.status)) {
+    throw new BrowserSuiteFailure(`fixture request PATCH ${path} was refused`, { expected: `HTTP ${allowed.join(' or ')}`, actual: `HTTP ${response.status} ${response.raw}` });
   }
   return response.body;
 }
@@ -1756,6 +1768,212 @@ define('resident-run-resume-refusal', async () => {
     return `refused: ${message} · no run, no credential`;
   });
   return 'recovery classified the interrupted run and the interface refused an unbounded resume';
+});
+
+// ---------------------------------------------------------------------------------------------
+// Scenarios 15–16 — the shared-world event channel, driven in two real browsers
+//
+// The page exposes a read-only introspection hook (`window.__nemoworld`) so a scenario can read what
+// the *other* client's view actually holds. It reports only data the page already renders.
+// ---------------------------------------------------------------------------------------------
+
+const clientStream = (page) => page.evaluate(() => window.__nemoworld?.stream?.() || null);
+const clientWorld = (page) => page.evaluate(() => window.__nemoworld?.world?.() || {});
+const clientPresence = (page) => page.evaluate(() => window.__nemoworld?.presence?.() || []);
+const clientClosed = (page) => page.evaluate(() => window.__nemoworld?.lastClosed?.() || null);
+const waitForClient = (page, evaluator, argument, label, timeout = 6000) =>
+  waitForCondition(() => page.evaluate(evaluator, argument), label, { timeout, interval: 50 });
+
+/** Real animation-frame timestamps the browser delivers, sampled while a presence tween is running. */
+function clientFrameCadence(page, durationMs = 400) {
+  return page.evaluate((duration) => new Promise((resolve) => {
+    const stamps = [];
+    const start = performance.now();
+    const tick = (now) => { stamps.push(now); if (now - start < duration) requestAnimationFrame(tick); else resolve(stamps); };
+    requestAnimationFrame(tick);
+  }), durationMs);
+}
+
+const frameIntervals = (stamps) => stamps.slice(1).map((value, index) => value - stamps[index]);
+const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+
+/** Point one browser at a world by making its selected resident travel there through the interface. */
+async function openWorldAs(page, agentId) {
+  await openTab(page, 'Open world');
+  const select = page.locator('#view select[name="agent"]');
+  if (await select.count()) { await select.selectOption(agentId); await settle(page); await page.waitForTimeout(500); }
+}
+
+define('shared-presence-two-clients', async () => {
+  const owner = await actor('owner');
+  const stranger = await actor('stranger');
+  const walker = fixtures().characters.walker;
+  const neighbour = fixtures().characters.neighbour;
+  const steward = fixtures().characters.steward;
+  const garden = `home:${walker.id}`;
+
+  await step('both residents stand in the Commons and both browsers hold a live subscription', async () => {
+    for (const [ticket, agentId] of [[fixtures().owner, walker.id], [fixtures().stranger, neighbour.id]]) {
+      const current = row('SELECT world_id FROM agents WHERE id=?', agentId).world_id;
+      if (current !== 'commons') await apiExpect(ticket, 'POST', `/agents/${agentId}/travel`, { world_id: 'commons' });
+    }
+    await openApp(owner.page, ACTORS.owner);
+    await openWorldAs(owner.page, walker.id);
+    await openApp(stranger.page, ACTORS.stranger);
+    await openWorldAs(stranger.page, neighbour.id);
+    const ownerStream = await waitForClient(owner.page, () => { const s = window.__nemoworld?.stream?.(); return s && s.ready && s.world === 'commons' ? s : null; }, null, 'the owner browser to subscribe to the Commons');
+    const otherStream = await waitForClient(stranger.page, () => { const s = window.__nemoworld?.stream?.(); return s && s.ready && s.world === 'commons' ? s : null; }, null, 'the second browser to subscribe to the Commons');
+    expect(ownerStream.world === 'commons' && otherStream.world === 'commons', 'both browsers must hold a subscription to the world they are showing', { actual: describe({ owner: ownerStream, other: otherStream }) });
+    return `two Server-Sent Events subscriptions on commons (event channel ready on both pages)`;
+  });
+
+  await step('client A walks and client B’s view follows over the channel', async () => {
+    const before = row('SELECT x,y FROM agents WHERE id=?', walker.id);
+    const started = Date.now();
+    // Sample the observing browser's real animation-frame cadence while the interpolation runs.
+    const cadence = clientFrameCadence(stranger.page, 450);
+    let moved = null;
+    for (const direction of ['Move up', 'Move left', 'Move down', 'Move right']) {
+      await owner.page.locator(`#view button[aria-label="${direction}"]`).click();
+      await owner.page.waitForTimeout(450);
+      const current = row('SELECT x,y FROM agents WHERE id=?', walker.id);
+      if (Math.abs(current.x - before.x) + Math.abs(current.y - before.y) === 1) { moved = current; break; }
+    }
+    expect(moved, 'the walked resident must step exactly one tile', { expected: `one tile from ${before.x},${before.y}`, actual: describe(row('SELECT x,y FROM agents WHERE id=?', walker.id)) });
+    const seen = await waitForClient(stranger.page, ([id, x, y]) => {
+      const agent = window.__nemoworld?.world?.()?.participants?.find((item) => item.id === id);
+      return agent && agent.x === x && agent.y === y ? { x: agent.x, y: agent.y } : null;
+    }, [walker.id, moved.x, moved.y], 'the second browser to show the walked tile', 2000);
+    expect(seen.x === moved.x && seen.y === moved.y, 'the other client must show the server-confirmed tile', { expected: `${moved.x},${moved.y}`, actual: describe(seen) });
+    // The published tile must equal what the database stores, so the view never invents a position.
+    const stored = row('SELECT x,y FROM agents WHERE id=?', walker.id);
+    expect(stored.x === moved.x && stored.y === moved.y, 'the database must agree with the pushed tile', { expected: `${moved.x},${moved.y}`, actual: describe(stored) });
+    const stream = await clientStream(stranger.page);
+    const presence = await clientPresence(stranger.page);
+    const record = presence.find((item) => item.id === walker.id);
+    expect(record && record.confirmed.x === moved.x && record.confirmed.y === moved.y, 'the second client’s presence record must hold the confirmed tile', { actual: describe(record) });
+    const intervals = frameIntervals(await cadence);
+    const elapsed = Date.now() - started;
+    const cadenceSummary = intervals.length ? `animation frames: median ${median(intervals).toFixed(1)} ms, max ${Math.max(...intervals).toFixed(1)} ms over ${intervals.length + 1} frames` : 'no animation frames were observed';
+    state.notes.push(`move: click → the other client’s view in ${elapsed} ms; channel frame delivery ${stream.lastLatencyMs} ms; ${cadenceSummary}`);
+    return `walker ${before.x},${before.y} → ${moved.x},${moved.y}; the other browser showed it in ${elapsed} ms (frame latency ${stream.lastLatencyMs} ms); ${cadenceSummary}`;
+  });
+
+  await step('a private message never reaches the other client, and a public one does', async () => {
+    const secret = 'A browser private note that must never reach another client';
+    const publicText = 'A browser public greeting that both clients may read';
+    await apiExpect(fixtures().owner, 'POST', '/messages', { agent_id: walker.id, channel: 'private', recipient_id: steward.id, text: secret }, [200]);
+    await stranger.page.waitForTimeout(1600);
+    const afterPrivate = await clientWorld(stranger.page);
+    expect(!afterPrivate.messages.some((message) => message.text === secret), 'a private message must never enter another client’s state', { actual: describe(afterPrivate.messages.map((message) => message.text).slice(-5)) });
+    const dom = await stranger.page.locator('#view').textContent();
+    expect(!dom.includes(secret), 'a private message must never be rendered for another client', { actual: 'the private text appeared on the page' });
+    await owner.page.waitForTimeout(1600);
+    await apiExpect(fixtures().owner, 'POST', '/messages', { agent_id: walker.id, channel: 'public', text: publicText }, [200]);
+    await waitForClient(stranger.page, (text) => (window.__nemoworld?.world?.()?.messages || []).some((message) => message.text === text) ? text : null, publicText, 'the public message to reach the second client');
+    return `the private note stayed private while the public greeting reached the other client`;
+  });
+
+  await step('client A returns home and client B follows it into the garden', async () => {
+    await owner.page.locator('#view').getByRole('button', { name: 'Go home', exact: true }).click();
+    await settle(owner.page);
+    await owner.page.waitForTimeout(700);
+    const home = row('SELECT world_id FROM agents WHERE id=?', walker.id).world_id;
+    expect(home === garden, 'the resident must arrive in its own garden', { expected: garden, actual: describe(home) });
+
+    await apiExpect(fixtures().stranger, 'POST', `/agents/${neighbour.id}/travel`, { world_id: garden });
+    await stranger.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(stranger.page);
+    await openWorldAs(stranger.page, neighbour.id);
+    const ownerStream = await waitForClient(owner.page, (world) => { const s = window.__nemoworld?.stream?.(); return s && s.ready && s.world === world ? s : null; }, garden, 'the owner browser to subscribe to the garden');
+    const otherStream = await waitForClient(stranger.page, (world) => { const s = window.__nemoworld?.stream?.(); return s && s.ready && s.world === world ? s : null; }, garden, 'the second browser to subscribe to the garden');
+    const otherWorld = await clientWorld(stranger.page);
+    const walkerVisible = otherWorld.participants?.some((agent) => agent.id === walker.id);
+    expect(walkerVisible, 'the second client must see the resident that already stands in the garden', { actual: describe(otherWorld.participants?.map((agent) => agent.id)) });
+    return `${garden} streams to both browsers (${ownerStream.world} / ${otherStream.world}); both residents are present`;
+  });
+
+  await step('client A builds an object and client B’s view updates without a world rebuild', async () => {
+    const objectsBefore = count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden);
+    await owner.page.locator('#view').getByRole('button', { name: 'Start building', exact: true }).click();
+    await settle(owner.page);
+    const buildForm = owner.page.locator('#view form').filter({ has: owner.page.getByRole('button', { name: 'Apply at tile', exact: true }) });
+    await owner.page.locator('#view select[name="kind"]').selectOption('bench');
+    await buildForm.locator('input[name="x"]').fill('17');
+    await buildForm.locator('input[name="y"]').fill('4');
+    await buildForm.getByRole('button', { name: 'Apply at tile', exact: true }).click();
+    const saved = await waitForCondition(async () => row('SELECT type,x,y FROM world_objects WHERE world_id=? AND x=17 AND y=4', garden), 'the placed object to be stored');
+    expect(saved.type === 'bench', 'the saved object must be the chosen one', { expected: 'bench', actual: describe(saved) });
+    expect(count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden) === objectsBefore + 1, 'exactly one object must be added', { actual: `${count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden)} objects` });
+    const seen = await waitForClient(stranger.page, ([x, y]) => {
+      const object = (window.__nemoworld?.world?.()?.objects || []).find((item) => item.x === x && item.y === y);
+      return object ? object : null;
+    }, [17, 4], 'the second browser to show the placed object', 2500);
+    expect(seen.type === 'bench', 'the other client must show the stored object type', { expected: 'bench', actual: describe(seen) });
+    const stream = await clientStream(stranger.page);
+    state.notes.push(`build: object delta delivered to the other client (channel frame delivery ${stream.lastLatencyMs} ms)`);
+    return `world_objects row bench at 17,4 attributed to ${walker.id}; the other browser showed it (frame latency ${stream.lastLatencyMs} ms)`;
+  });
+
+  return 'two real browsers saw each other move and build, with the database agreeing and no private data crossing';
+});
+
+define('subscription-entitlement-and-revocation', async () => {
+  const owner = await actor('owner');
+  const stranger = await actor('stranger');
+  const walker = fixtures().characters.walker;
+  const garden = `home:${walker.id}`;
+
+  await step('a public garden streams to an outsider', async () => {
+    await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'public' });
+    await openApp(stranger.page, ACTORS.stranger);
+    // Point the visitor at the public garden through the world directory; the world view subscribes to it.
+    await openTab(stranger.page, 'Explore worlds');
+    const search = stranger.page.locator('#view form').filter({ has: stranger.page.locator('[aria-label="World or garden name"]') });
+    await search.locator('[aria-label="World or garden name"]').fill('Walker');
+    await search.getByRole('button', { name: 'Search gardens', exact: true }).click();
+    await settle(stranger.page);
+    const card = stranger.page.locator('#view .world-directory-card', { hasText: 'Walker' }).first();
+    await card.waitFor({ state: 'visible' });
+    await card.getByRole('button', { name: 'Look around', exact: true }).click();
+    await settle(stranger.page);
+    const stream = await waitForClient(stranger.page, (world) => { const s = window.__nemoworld?.stream?.(); return s && s.ready && s.world === world ? s : null; }, garden, 'the outsider to subscribe to the public garden');
+    expect(stream.world === garden, 'a public garden must stream to a signed-in outsider', { actual: describe(stream) });
+    expect(count('SELECT COUNT(*) AS n FROM worlds WHERE id=? AND visibility=?', garden, 'public') === 1, 'the garden must be public in the database', { actual: 'the garden was not public' });
+    return `a live subscription on the public garden ${garden}`;
+  });
+
+  await step('making the garden private closes the outsider’s subscription', async () => {
+    await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'private' });
+    const closed = await waitForClient(stranger.page, () => { const c = window.__nemoworld?.lastClosed?.(); return c && c.reason === 'access_revoked' ? c : null; }, null, 'the outsider’s subscription to be revoked', 5000);
+    expect(closed.reason === 'access_revoked', 'the revocation must name the lost access', { expected: 'access_revoked', actual: describe(closed) });
+    // The client is told, and a direct subscription attempt while private is refused as well.
+    const notice = await stranger.page.locator('#notice').textContent().catch(() => '');
+    expect(/no longer open to you|garden is now private/i.test(notice || ''), 'the client must explain why the live feed stopped', { actual: describe((notice || '').trim().slice(0, 160)) });
+    const refused = await inPage(stranger.page, `/events?world_id=${encodeURIComponent(garden)}`, { method: 'GET' });
+    expect(refused.status === 403, 'an authenticated but unentitled client must be refused the private channel', { expected: 'HTTP 403', actual: `HTTP ${refused.status}` });
+    return `access_revoked closed the stream and a fresh subscription answered ${refused.status}`;
+  });
+
+  await step('a session revoked mid-subscription loses its live feed', async () => {
+    // Reopen the public garden so a fresh subscription is open, then revoke the stored session
+    // credential directly. This is the server-side revocation the channel must notice by itself: the
+    // client keeps its stream open and is not the one that closes it.
+    await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'public' });
+    await openTab(stranger.page, 'Open world');
+    // Which world the visitor shows is not the point here: the point is that a live subscription exists
+    // when the credential is revoked. Either world is a readable one, so a ready stream is expected.
+    const stream = await waitForClient(stranger.page, () => { const s = window.__nemoworld?.stream?.(); return s && s.ready ? s : null; }, null, 'the visitor to hold a live subscription again');
+    expect(stream.ready, 'the visitor must hold a fresh subscription', { actual: describe(stream) });
+    write("UPDATE tokens SET revoked=1 WHERE kind='session' AND account_id=?", state.fixtures.stranger.id);
+    const closed = await waitForClient(stranger.page, () => { const c = window.__nemoworld?.lastClosed?.(); return c && c.reason === 'session_revoked' ? c : null; }, null, 'the revoked session to lose its subscription', 6000);
+    expect(closed.reason === 'session_revoked', 'a revoked credential must end the subscription', { expected: 'session_revoked', actual: describe(closed) });
+    const live = count("SELECT COUNT(*) AS n FROM tokens t JOIN accounts a ON a.id=t.account_id WHERE a.email=? AND t.kind='session' AND t.revoked=0", ACTORS.stranger.email);
+    expect(live === 0, 'the session credential must be revoked in the database', { actual: `live=${live}` });
+    return `session_revoked closed the feed while the stored session token is revoked`;
+  });
+
+  return 'a private world and a revoked session both ended the live feed for a client that lost its right to it';
 });
 
 // The suite runs only when it is the entry point, so a unit test can import the pure helpers above

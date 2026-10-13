@@ -105,7 +105,7 @@ const writes = new Map([
   ['/guilds/contributions', ['guildContribution', 'contribute']], ['/guilds/verify', ['guildVerify', 'contribute']],
   ['/guilds/manage', ['guildProjectManage', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/events']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -149,6 +149,171 @@ function tokenFrom(request) {
 function cookie(response, token, expires, hosting) {
   response.setHeader('Set-Cookie', `world_session=${token}; Path=/; HttpOnly; SameSite=Strict${hosting.publicOrigin ? '; Secure' : ''}; Max-Age=${Math.max(0, Math.floor((expires - Date.now()) / 1000))}`);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Bounded real-time event channel.
+//
+// One authenticated Server-Sent Events subscription per client, layered on the existing node:http
+// server with no new dependency. A subscriber is bound to exactly one world and receives only the
+// bounded deltas that world's mutations publish: moving avatars, saved objects and frontier blocks,
+// and public chat. Every subscription is authorized against the same read check `/world` uses, and
+// every subscription is re-authorized on a short interval so a revoked session, a suspended account
+// or a garden that has just become private loses its private feed instead of keeping it.
+//
+// The numbers below are enforced in `createEventHub` and asserted by `tests/realtime-bounds.test.js`.
+//   max_connections            64   concurrent subscriptions held by one server process
+//   max_connections_per_account 4   concurrent subscriptions for one operator account
+//   max_pending_updates       256   coalesced updates buffered for one slow client before it is dropped
+//   max_pending_bytes       65536   buffered payload bytes for one slow client before it is dropped
+//   frames_per_second          20   update frames written to one client per second (the rest coalesce)
+//   heartbeat_ms            15000   a `: ping` comment keeps an idle connection alive
+//   revalidate_ms            1000   the longest a revoked session can keep a private subscription
+// ---------------------------------------------------------------------------------------------
+export const EVENT_LIMITS = Object.freeze({
+  max_connections: 64,
+  max_connections_per_account: 4,
+  max_pending_updates: 256,
+  max_pending_bytes: 65536,
+  frames_per_second: 20,
+  heartbeat_ms: 15000,
+  revalidate_ms: 1000,
+});
+
+/**
+ * The channel, separated from HTTP routing so its bounds can be proven directly. It never reads the
+ * database itself: a mutation hands it a plain, already-bounded delta, and it decides which
+ * subscribers of that world may receive it.
+ */
+export function createEventHub({ platform, limits = EVENT_LIMITS, clock = Date.now } = {}) {
+  const frameMs = Math.max(10, Math.ceil(1000 / limits.frames_per_second));
+  const subscribers = new Set(), byAccount = new Map();
+  const counters = { opened: 0, refused: 0, closed: 0, revoked: 0, overflow_closed: 0, write_closed: 0, frames: 0, updates: 0, revalidations: 0 };
+  let timer = null, retired = false;
+
+  const totalPending = (sub) => sub.pending.agents.size + sub.pending.objects.size + sub.pending.blocks.size + sub.pending.messages.size;
+  const counts = () => ({ ...counters, connections: subscribers.size, accounts: byAccount.size, limits: { ...limits } });
+
+  function start() { if (timer || retired) return; timer = setInterval(tick, frameMs); timer.unref?.(); }
+  function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+  function accountCount(accountId) { return byAccount.get(accountId)?.size || 0; }
+
+  function write(sub, chunk) {
+    try { return sub.response.write(chunk); }
+    catch { close(sub, 'write_failed', false); counters.write_closed += 1; return false; }
+  }
+
+  function subscribe({ actor, worldId, request, response }) {
+    if (retired) return { ok: false, status: 503, error: 'The event channel is closed.' };
+    if (subscribers.size >= limits.max_connections) { counters.refused += 1; return { ok: false, status: 503, error: 'The event channel is at capacity. Try again shortly.' }; }
+    if (accountCount(actor.account.id) >= limits.max_connections_per_account) { counters.refused += 1; return { ok: false, status: 429, error: 'This account already holds the maximum number of event subscriptions.' }; }
+    const sub = {
+      id: randomUUID(), response, accountId: actor.account.id, worldId, kind: actor.kind,
+      credentialHash: actor.credential.hash, openedAt: clock(), lastValidatedAt: clock(), lastHeartbeatAt: clock(),
+      pending: { agents: new Map(), objects: new Map(), blocks: new Map(), messages: new Map(), refresh: false },
+      pendingBytes: 0, backpressure: false, closed: false,
+    };
+    response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });
+    response.on('close', () => close(sub, 'client_closed', false));
+    response.on('error', () => close(sub, 'client_error', false));
+    response.on('drain', () => { if (!sub.closed && sub.backpressure) { sub.backpressure = false; flush(sub); } });
+    request.socket?.setNoDelay?.(true); request.socket?.setKeepAlive?.(true);
+    write(sub, 'retry: 3000\n\n');
+    write(sub, `event: ready\ndata: ${JSON.stringify({ world_id: worldId, frames_per_second: limits.frames_per_second, heartbeat_ms: limits.heartbeat_ms })}\n\n`);
+    if (sub.closed) return { ok: false, status: 500, error: 'This subscription could not be opened.' };
+    subscribers.add(sub);
+    if (!byAccount.has(sub.accountId)) byAccount.set(sub.accountId, new Set());
+    byAccount.get(sub.accountId).add(sub);
+    counters.opened += 1; start();
+    return { ok: true, id: sub.id, world_id: worldId };
+  }
+
+  function merge(sub, update) {
+    for (const item of update.agents || []) if (typeof item?.id === 'string') sub.pending.agents.set(item.id, item);
+    for (const item of update.objects || []) if (Number.isInteger(item?.x) && Number.isInteger(item?.y)) sub.pending.objects.set(`${item.x},${item.y}`, item);
+    for (const item of update.blocks || []) if (Number.isInteger(item?.x) && Number.isInteger(item?.y)) sub.pending.blocks.set(`${item.x},${item.y},${item.z ?? 0}`, item);
+    for (const item of update.messages || []) if (typeof item?.id === 'string') sub.pending.messages.set(item.id, item);
+    if (update.refresh === true) sub.pending.refresh = true;
+  }
+
+  /** Merge one bounded delta into every subscriber bound to that world. Returns how many queued. */
+  function publish(worldId, update = {}) {
+    if (retired || typeof worldId !== 'string' || !worldId) return 0;
+    let queued = 0;
+    for (const sub of subscribers) {
+      if (sub.closed || sub.worldId !== worldId) continue;
+      merge(sub, update);
+      sub.pendingBytes = Buffer.byteLength(JSON.stringify({ agents: [...sub.pending.agents.values()], objects: [...sub.pending.objects.values()], blocks: [...sub.pending.blocks.values()], messages: [...sub.pending.messages.values()] }));
+      if (totalPending(sub) > limits.max_pending_updates || sub.pendingBytes > limits.max_pending_bytes) {
+        counters.overflow_closed += 1;
+        close(sub, 'buffer_overflow', true);
+        continue;
+      }
+      queued += 1;
+    }
+    if (queued) start();
+    return queued;
+  }
+
+  function flush(sub) {
+    const p = sub.pending, count = totalPending(sub);
+    if (sub.closed || sub.backpressure || (!count && !p.refresh)) return;
+    const frame = {
+      world_id: sub.worldId,
+      // The server's own send time, so a client can report how long a frame actually took to arrive.
+      t: clock(),
+      ...(p.agents.size ? { agents: [...p.agents.values()] } : {}),
+      ...(p.objects.size ? { objects: [...p.objects.values()] } : {}),
+      ...(p.blocks.size ? { blocks: [...p.blocks.values()] } : {}),
+      ...(p.messages.size ? { messages: [...p.messages.values()] } : {}),
+      ...(p.refresh ? { refresh: true } : {}),
+    };
+    p.agents.clear(); p.objects.clear(); p.blocks.clear(); p.messages.clear(); p.refresh = false; sub.pendingBytes = 0;
+    counters.frames += 1; counters.updates += count;
+    if (write(sub, `event: update\ndata: ${JSON.stringify(frame)}\n\n`) === false) sub.backpressure = true;
+  }
+
+  function revalidate(sub) {
+    sub.lastValidatedAt = clock();
+    counters.revalidations += 1;
+    let actor;
+    try { actor = platform.authorize(sub.credentialHash, 'read'); }
+    catch { counters.revoked += 1; close(sub, 'session_revoked', true); return false; }
+    if (!platform.canReadWorld(actor, sub.worldId)) { counters.revoked += 1; close(sub, 'access_revoked', true); return false; }
+    return true;
+  }
+
+  /** Force every subscriber to be re-authorized on the next tick (a visibility change, a pause…). */
+  function revalidateNow() { for (const sub of subscribers) sub.lastValidatedAt = Number.NEGATIVE_INFINITY; start(); }
+
+  function tick() {
+    if (retired) return;
+    const now = clock();
+    for (const sub of [...subscribers]) {
+      if (sub.closed) continue;
+      if (now - sub.lastValidatedAt >= limits.revalidate_ms && !revalidate(sub)) continue;
+      if (now - sub.lastHeartbeatAt >= limits.heartbeat_ms) { sub.lastHeartbeatAt = now; if (write(sub, ': ping\n\n') === false) sub.backpressure = true; }
+      flush(sub);
+    }
+    if (!subscribers.size) stop();
+  }
+
+  function close(sub, reason, notify) {
+    if (sub.closed) return;
+    sub.closed = true;
+    subscribers.delete(sub);
+    const set = byAccount.get(sub.accountId);
+    if (set) { set.delete(sub); if (!set.size) byAccount.delete(sub.accountId); }
+    counters.closed += 1;
+    if (notify) write(sub, `event: closed\ndata: ${JSON.stringify({ reason })}\n\n`);
+    try { sub.response.end(); } catch { /* The peer is already gone. */ }
+    if (!subscribers.size) stop();
+  }
+
+  function closeAll() { retired = true; stop(); for (const sub of [...subscribers]) close(sub, 'server_shutdown', true); }
+  return { subscribe, publish, revalidateNow, closeAll, counts, get size() { return subscribers.size; }, limits };
+}
+
 
 export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, residentRunner = runAgent, researchRunner = runResearch, researchConcurrency = 4, modelQueueWait = 8, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null } = {}) {
   if(!Number.isInteger(researchConcurrency)||researchConcurrency<1||researchConcurrency>8)throw new Error('Research concurrency must be between one and eight.');
@@ -201,9 +366,22 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
     process: { started_at: new Date(processStartedAt).toISOString(), uptime_seconds: Math.floor((Date.now() - processStartedAt) / 1000), node: process.version, pid: process.pid },
     model: modelDiagnostics(),
     workers: { research: { active: researchRuns.size, limit: researchConcurrency, available: Math.max(0, researchConcurrency - researchRuns.size) }, resident: { active: residentRuns.size, limit: 1, available: residentRuns.size ? 0 : 1 }, interrupted: platform.get("SELECT COUNT(*) AS n FROM jobs WHERE status='interrupted'").n, capacity_refusals_since_start: capacityRefusals.count, last_capacity_refusal_at: capacityRefusals.last_at },
+    events: hub.counts(),
     backups: backupInventory(backupDir),
   });
   const authLimiter = createAuthenticationLimiter({ publicMode: Boolean(hosting.publicOrigin) });
+  // The bounded event channel lives beside the HTTP server, not inside a route, so a mutation made by
+  // any client reaches every entitled subscriber of that world.
+  const hub = createEventHub({ platform });
+  platform.events = hub;
+  // A frontier build reports exactly which cells changed; this turns that result into one bounded
+  // delta. A blueprint is planned in advance, so an applied structure is sent cell by cell.
+  const frontierDelta = (result) => {
+    if (!result || typeof result.world_id !== 'string' || result.changed === false) return null;
+    if (result.applied === true && Array.isArray(result.blocks)) return result.blocks.map((block) => ({ op: 'set', x: block.x, y: block.y, z: block.z, type: block.type }));
+    if (result.removed === true && Array.isArray(result.cells)) return result.cells.map((cell) => ({ op: 'remove', x: cell.x, y: cell.y, z: cell.z ?? 0 }));
+    return [{ op: result.removed === true ? 'remove' : 'set', x: result.x, y: result.y, z: result.z ?? 0, ...(result.removed === true ? {} : { type: result.type }) }];
+  };
   const server = createServer(async (request, response) => {
     headers(response, hosting);
     try {
@@ -239,6 +417,24 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         return json(response, 200, { setup_required: setupRequired, setup_code_required: setupRequired && Boolean(hosting.publicOrigin), registration_open:platform.registrationPolicy().mode==='open', registration:platform.registrationPolicy() });
       }
       if (route === '/civic' && request.method === 'GET') return json(response, 200, civicAtlas());
+      // The event channel subscribes a client to one world. It performs its own authentication and
+      // entitlement check before any stream header is written, so an unauthenticated caller or an
+      // outsider to a private world receives an ordinary JSON refusal. Only GET opens a stream; a
+      // POST to `/events` remains the community-event write it has always been.
+      if (route === '/events' && request.method === 'GET') {
+        const subscriptionToken = tokenFrom(request);
+        if (!subscriptionToken) return json(response, 401, { error: 'Sign in to subscribe to world events.' });
+        let subscriber;
+        try { subscriber = platform.authenticate(subscriptionToken, 'read'); }
+        catch (error) { return json(response, error.status || 401, { error: error.message }); }
+        const requestedWorld = url.searchParams.get('world_id') || subscriber.agent?.world_id || 'commons';
+        if (typeof requestedWorld !== 'string' || !requestedWorld || requestedWorld.length > 80) return json(response, 400, { error: 'Choose a valid world to subscribe to.' });
+        try { platform.space(subscriber, requestedWorld); }
+        catch (error) { return json(response, error.status || 403, { error: error.message }); }
+        const opened = hub.subscribe({ actor: subscriber, worldId: requestedWorld, request, response });
+        if (!opened.ok) return json(response, opened.status, { error: opened.error });
+        return; // The stream stays open until the client, the session or the channel ends it.
+      }
       if (route === '/auth/register' || route === '/auth/login') {
         let endAttempt;
         try {
@@ -423,6 +619,11 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         platform.charge(actor);
         return value;
       });
+      if (route === '/frontier/build') {
+        const delta = frontierDelta(result);
+        if (delta && delta.length) hub.publish(result.world_id, { blocks: delta });
+      }
+      if (route === '/frontier/expand' && result?.created === true) hub.publish(result.target_world_id, { refresh: true });
       if((route==='/ambassadors/talk'||route==='/mayors/talk') && civicModel){
         try{
           const ambassador=platform.get('SELECT * FROM npc_ambassadors WHERE id=?',result.ambassador_id);
@@ -451,24 +652,26 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   });
   let mayorTimer;
   server.once('listening',()=>{mayorTimer=setInterval(()=>{try{platform.transaction(()=>platform.tickMayors());}catch{/* A shutdown may have closed storage. */}},3000);mayorTimer.unref();});
-  server.once('close',()=>{clearInterval(mayorTimer);for(const run of [...researchRuns.values(),...residentRuns.values()])run.controller.abort();});
+  server.once('close',()=>{clearInterval(mayorTimer);hub.closeAll();for(const run of [...researchRuns.values(),...residentRuns.values()])run.controller.abort();});
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
-  return { server, platform, stopWorkers:async()=>{const runs=[...researchRuns.values(),...residentRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));} };
+  return { server, platform, hub, stopEvents:()=>hub.closeAll(), stopWorkers:async()=>{const runs=[...researchRuns.values(),...residentRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));} };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  let platform, releaseLock, server, stopWorkers;
+  let platform, releaseLock, server, stopWorkers, stopEvents;
   try {
     const hosting = hostingConfiguration();
     const databasePath = process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite');
     releaseLock = acquireProcessLock(join(dirname(databasePath), 'server.lock'));
     platform = new Platform(databasePath);
-    ({ server, stopWorkers } = createApp({ platform, backupDir: join(dirname(databasePath), 'backups'), publicOrigin: hosting.publicOrigin || '', setupCode: hosting.setupCode }));
+    ({ server, stopWorkers, stopEvents } = createApp({ platform, backupDir: join(dirname(databasePath), 'backups'), publicOrigin: hosting.publicOrigin || '', setupCode: hosting.setupCode }));
     let closing = false;
     const close = () => {
       if (closing) return;
       closing = true;
+      // An open event stream is a live response, so it has to end before the server can close.
+      stopEvents();
       server.close(async () => { await stopWorkers(); platform.close(); releaseLock(); });
       server.closeIdleConnections();
     };

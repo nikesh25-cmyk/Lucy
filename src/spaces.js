@@ -178,6 +178,7 @@ export const spaceMethods = {
     const position = settle(stepped.blocked ? agent : stepped.position, layers);
     const grounded = isGrounded(position, layers);
     this.run("UPDATE agents SET x=?,y=?,z=?,grounded=?,posture='standing',last_move=?,last_seen=?,verified=CASE WHEN ?=1 THEN 1 ELSE verified END WHERE id=?", position.x, position.y, position.z, grounded ? 1 : 0, this.clock(), this.clock(), actor.kind === 'runtime' ? 1 : 0, agent.id);
+    this.events?.publish(agent.world_id, { agents: [{ id: agent.id, x: position.x, y: position.y, z: position.z, grounded: grounded ? 1 : 0, posture: 'standing', status: agent.status }] });
     return { ...position, grounded, blocked: stepped.blocked, world_id: agent.world_id, posture: 'standing' };
   },
   moveAgent(actor, ...args) { return this.stepAgent(actor, actionInput(args), false); },
@@ -219,6 +220,11 @@ export const spaceMethods = {
     this.run("UPDATE agents SET world_id=?,x=?,y=?,z=?,grounded=1,posture='standing',last_move=?,last_seen=? WHERE id=?", target.id, arrival.x, arrival.y, arrivalZ, this.clock(), this.clock(), agent.id);
     this.audit(actor.account.id, 'world.entered', target.id);
     this.recordVisit?.(actor, agent.id, target.id);
+    // The same arrival delta reaches both the world the resident left (which drops it) and the world it
+    // entered (which adds it): the client removes any participant whose world_id is not its own.
+    const arrivalDelta = { agents: [{ id: agent.id, x: arrival.x, y: arrival.y, z: arrivalZ, world_id: target.id, posture: 'standing', status: agent.status }] };
+    this.events?.publish(agent.world_id, arrivalDelta);
+    this.events?.publish(target.id, arrivalDelta);
     return { ...arrival, z: arrivalZ, grounded: true, world_id: target.id, posture: 'standing', entered: true };
   },
   build(actor, agentId, input) {
@@ -247,6 +253,7 @@ export const spaceMethods = {
       this.run('INSERT INTO world_objects(id,world_id,type,x,y,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(world_id,x,y) DO UPDATE SET type=excluded.type', randomUUID(), world.id, type, position.x, position.y, new Date(this.clock()).toISOString());
     }
     this.audit(actor.account.id, input.remove === true ? `${world.kind === 'house' ? 'cottage' : 'garden'}.removed` : `${world.kind === 'house' ? 'cottage' : 'garden'}.built`, world.id);
+    this.events?.publish(world.id, { objects: [{ op: input.remove === true ? 'remove' : 'set', x: position.x, y: position.y, ...(input.remove === true ? {} : { type: input.type || input.kind }) }] });
     return { world_id: world.id, x: position.x, y: position.y, removed: input.remove === true };
   },
   homeSettings(actor, agentId, input) {
@@ -264,6 +271,9 @@ export const spaceMethods = {
       this.run('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE world_id IN (?,?) AND id!=?', 'commons', start.x, start.y, world.id, `house:${agentId}`, agentId);
     }
     this.audit(actor.account.id, 'garden.settings', world.id);
+    // Changing a garden to private returns its visitors to the Commons and must also revoke any
+    // subscription that no longer has a right to observe it, so every subscriber is re-checked now.
+    this.events?.revalidateNow?.();
     return { id: world.id, name, visibility };
   },
   heartbeat(actor, agentId) {
@@ -277,6 +287,7 @@ export const spaceMethods = {
     if (agent.status !== 'active') fail(403, 'The agent is paused.');
     if (!['standing', 'sitting', 'meditating'].includes(input.posture)) fail(400, 'Choose standing, sitting, or meditating.');
     this.run('UPDATE agents SET posture=?,last_seen=? WHERE id=?', input.posture, this.clock(), agentId);
+    this.events?.publish(agent.world_id, { agents: [{ id: agent.id, x: agent.x, y: agent.y, z: agent.z, posture: input.posture, status: agent.status }] });
     return { posture: input.posture };
   },
 };

@@ -17,7 +17,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 const $ = (selector) => document.querySelector(selector);
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -63,7 +63,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();render();
+ walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -150,14 +150,180 @@ function cameraFor(position = worldPosition()) {
   const world = definition(); return { x: Math.max(0, Math.min((world.width || world.columns) - 20, Math.floor(position.x - 10))), y: Math.max(0, Math.min((world.height || world.rows) - 14, Math.floor(position.y - 7))) };
 }
 function paintWorld() {
-  const canvas = $('#world'); if (!canvas) return; const owned = viewedAgent(); const agent=owned?{...owned,...state.world.participants.find(item=>item.id===owned.id)}:null; state.camera = cameraFor();
-  if(state.graphics==='voxel'){if(!voxelView){voxelView=createVoxelWorld(canvas,{onPick:pick=>guarded(()=>pickWorld(pick)),onLook:look=>queueLook(look.yaw,look.pitch,{apply:false}),onUnavailable:()=>{if(state.graphicsUnavailable)return;state.graphics='pixel';state.graphicsUnavailable=true;queueMicrotask(()=>renderView());}});if(!voxelView)return;if(state.voxelOrbit)voxelView.setOrbit(state.voxelOrbit);}voxelView.render(state.world,{definition:definition(),position:worldPosition(),self:agent||null,selection:state.voxelSelection,parcelSelection:state.parcelSelection,cameraMode:state.firstPerson&&agent?'first-person':'orbit',facing:state.facing,dayPhase:state.world.atmosphere?.phase});canvas.dataset.graphics='voxel';}
-  else {draw(canvas, worldPosition(), { blocks:state.world.blocks||[],world: definition(), camera: state.camera, objects: state.world.objects || [], portals: worldPortals(), visitors: state.world.participants.filter((a) => a.id !== agent?.id && a.status !== 'revoked'), self: agent || null, sprites:mayorSprites, dayPhase: state.world.atmosphere?.phase });canvas.dataset.graphics='pixel';}
+  const canvas = $('#world'); if (!canvas) return; const owned = viewedAgent(); const agent=owned?{...owned,...state.world.participants.find(item=>item.id===owned.id)}:null;
+  // Presentation applies the interpolation; the confirmed values in `state.world` are never rewritten.
+  const now = performance.now(), base = worldPosition(), displayPosition = base?.id ? displayed(base, now) : base;
+  state.camera = cameraFor(displayPosition);
+  syncEventStream();
+  if(state.graphics==='voxel'){if(!voxelView){voxelView=createVoxelWorld(canvas,{onPick:pick=>guarded(()=>pickWorld(pick)),onLook:look=>queueLook(look.yaw,look.pitch,{apply:false}),onUnavailable:()=>{if(state.graphicsUnavailable)return;state.graphics='pixel';state.graphicsUnavailable=true;queueMicrotask(()=>renderView());}});if(!voxelView)return;if(state.voxelOrbit)voxelView.setOrbit(state.voxelOrbit);}voxelView.render(state.world,{definition:definition(),position:displayPosition,self:agent||null,selection:state.voxelSelection,parcelSelection:state.parcelSelection,cameraMode:state.firstPerson&&agent?'first-person':'orbit',facing:state.facing,dayPhase:state.world.atmosphere?.phase});canvas.dataset.graphics='voxel';}
+  else {draw(canvas, displayPosition, { blocks:state.world.blocks||[],world: definition(), camera: state.camera, objects: state.world.objects || [], portals: worldPortals(), visitors: state.world.participants.filter((a) => a.id !== agent?.id && a.status !== 'revoked').map((item) => displayed(item, now)), self: agent ? displayed(agent, now) : null, sprites:mayorSprites, dayPhase: state.world.atmosphere?.phase });canvas.dataset.graphics='pixel';}
   syncWorldControls();updateCallingHUD();const overview=$('#world-overview');if(overview)drawMiniMap(overview,definition(),{camera:state.camera,position:agent||null,objects:state.world.objects||[],blocks:state.world.blocks||[],portals:worldPortals()});
 }
 function worldURL() { const position = cameraFor(); const query = new URLSearchParams({ view:state.graphics==='voxel'?'voxel':'pixel',world_id: currentWorldId(), x: String(Math.floor(position.x)), y: String(Math.floor(position.y)) }); if (selected() && state.account) query.set('agent_id', state.selected); return `/world?${query}`; }
 function normalizeWorld(world) { return { ...world, participants: world.participants || world.agents || [] }; }
-async function loadWorld() { state.world = normalizeWorld(await api(worldURL())); }
+async function loadWorld() { state.world = normalizeWorld(await api(worldURL())); seedPresence(state.world.participants); }
+
+// ---------------------------------------------------------------------------------------------
+// Shared-world presence. One bounded event subscription per client, and a presentation-only
+// interpolation between the server's confirmed tiles.
+//
+// The authoritative position is always the server's: `state.world.participants` and the selected
+// agent hold exactly what the server stored. Interpolation only ever draws the segment between two
+// consecutive confirmed tiles and never passes the newest one, so the display can never claim a tile
+// the server has not confirmed. A refused step is reconciled immediately: the tween is dropped and
+// the avatar is drawn at its stored tile again.
+// ---------------------------------------------------------------------------------------------
+const DISPLAY_TWEEN_MS = 180; // the longest glide between two confirmed tiles (the server steps every 120 ms)
+const presence = new Map();
+let presenceFrame = 0;
+
+function displayCoords(record, now) {
+  const t = record.duration > 0 ? Math.min(1, Math.max(0, (now - record.at) / record.duration)) : 1;
+  if (t >= 1) return { ...record.confirmed };
+  const eased = t * t * (3 - 2 * t);
+  return {
+    x: record.from.x + (record.confirmed.x - record.from.x) * eased,
+    y: record.from.y + (record.confirmed.y - record.from.y) * eased,
+    z: (record.from.z || 0) + ((record.confirmed.z || 0) - (record.from.z || 0)) * eased,
+  };
+}
+/** Remember one server-confirmed position. A tile change glides from wherever the avatar is drawn. */
+function noteConfirmed(item) {
+  if (!item || typeof item.id !== 'string' || !Number.isFinite(item.x) || !Number.isFinite(item.y)) return;
+  const target = { x: item.x, y: item.y, z: Number.isFinite(item.z) ? item.z : 0 };
+  const record = presence.get(item.id);
+  if (!record) { presence.set(item.id, { confirmed: target, from: { ...target }, at: performance.now(), duration: 0 }); return; }
+  if (record.confirmed.x === target.x && record.confirmed.y === target.y && record.confirmed.z === target.z) return;
+  const now = performance.now();
+  presence.set(item.id, { confirmed: target, from: displayCoords(record, now), at: now, duration: DISPLAY_TWEEN_MS });
+  schedulePresence();
+}
+function seedPresence(participants) { for (const item of participants || []) noteConfirmed(item); }
+/** Draw an avatar where the interpolation currently places it; the record it came from is unchanged. */
+function displayed(item, now) { const record = presence.get(item.id); return record ? { ...item, ...displayCoords(record, now) } : item; }
+/** Snap one avatar back to its stored tile: used when the server refuses a step. */
+function reconcilePresence(id) {
+  const record = presence.get(id);
+  if (record) { record.from = { ...record.confirmed }; record.at = 0; record.duration = 0; }
+  if (state.tab === 'world' && $('#world')) paintWorld();
+}
+function presenceSettling(now) { for (const record of presence.values()) if (record.duration > 0 && record.at + record.duration > now) return true; return false; }
+function schedulePresence() {
+  if (presenceFrame || state.tab !== 'world') return;
+  const step = () => {
+    presenceFrame = 0;
+    if (state.tab === 'world' && $('#world')) paintWorld();
+    if (presenceSettling(performance.now())) presenceFrame = requestAnimationFrame(step);
+  };
+  presenceFrame = requestAnimationFrame(step);
+}
+
+function closeEventStream() {
+  const stream = state.eventStream;
+  state.eventStream = null;
+  if (stream?.source) { try { stream.source.close(); } catch { /* already closed */ } }
+}
+/** Keep exactly one live subscription, bound to the world currently on screen. */
+function syncEventStream() {
+  const world = state.account ? currentWorldId() : null;
+  if (!world || state.tab !== 'world') return closeEventStream();
+  const stream = state.eventStream;
+  if (stream && stream.world === world && !stream.closed) return;
+  closeEventStream();
+  if (typeof EventSource !== 'function') return; // an old browser keeps the polling fallback
+  const source = new EventSource(`/api/v1/events?world_id=${encodeURIComponent(world)}`);
+  const record = { world, source, ready: false, closed: false, errors: 0, updates: 0, lastAt: null };
+  state.eventStream = record;
+  source.addEventListener('ready', () => { record.ready = true; guarded(applyAuthoritativeSnapshot); });
+  source.addEventListener('update', (event) => { try { applyWorldUpdate(JSON.parse(event.data)); } catch { /* a malformed frame is ignored */ } });
+  source.addEventListener('closed', (event) => {
+    record.closed = true;
+    let reason = 'closed';
+    try { reason = JSON.parse(event.data).reason || reason; } catch { /* keep the generic reason */ }
+    try { source.close(); } catch { /* already closed */ }
+    record.reason = reason;
+    state.eventStreamClosed = { world: record.world, reason, at: Date.now() };
+    if (reason === 'session_revoked') notice('Your session ended, so the live world feed stopped. Sign in again to resume it.');
+    else if (reason === 'access_revoked') notice('This place is no longer open to you, so the live world feed stopped.');
+  });
+  source.addEventListener('error', () => {
+    record.errors += 1;
+    // A stream that never connects (a signed-out tab, a refused world) must not retry forever; the
+    // ordinary polls keep the view current until the next repaint tries a fresh subscription.
+    if (!record.ready && record.errors >= 5) { record.closed = true; try { source.close(); } catch { /* already closed */ } }
+  });
+}
+/** A reconnect (or first connect) always re-reads the authoritative snapshot, so nothing diverges. */
+async function applyAuthoritativeSnapshot() {
+  if (moving || walkActive) return;
+  const world = state.eventStream?.world;
+  await loadWorld();
+  if (!state.eventStream || state.eventStream.world !== world) return;
+  seedPresence(state.world.participants);
+  if (state.tab === 'world') { paintWorld(); refreshMessageList(); }
+}
+/** Apply one bounded frame: nearby avatars, saved objects, frontier blocks and public chat. */
+function applyWorldUpdate(data) {
+  if (!data || data.world_id !== currentWorldId()) return;
+  const stream = state.eventStream;
+  if (stream) { stream.updates += 1; stream.lastAt = performance.now(); if (Number.isFinite(data.t)) stream.lastLatencyMs = Date.now() - data.t; }
+  const world = currentWorldId();
+  state.world.participants = state.world.participants || [];
+  const participants = state.world.participants;
+  let unknown = false;
+  for (const agent of data.agents || []) {
+    if (!agent || typeof agent.id !== 'string') continue;
+    const index = participants.findIndex((item) => item.id === agent.id);
+    if (agent.world_id && agent.world_id !== world) { if (index >= 0) participants.splice(index, 1); continue; }
+    if (index >= 0) Object.assign(participants[index], agent);
+    else unknown = true;
+    noteConfirmed(agent);
+    const owned = state.agents.find((item) => item.id === agent.id);
+    if (owned) Object.assign(owned, agent);
+  }
+  state.world.objects = state.world.objects || [];
+  for (const change of data.objects || []) {
+    const index = state.world.objects.findIndex((item) => item.x === change.x && item.y === change.y);
+    if (change.op === 'remove') { if (index >= 0) state.world.objects.splice(index, 1); }
+    else if (index >= 0) Object.assign(state.world.objects[index], { type: change.type, kind: change.type });
+    else state.world.objects.push({ type: change.type, kind: change.type, x: change.x, y: change.y });
+  }
+  state.world.blocks = state.world.blocks || [];
+  for (const change of data.blocks || []) {
+    const z = change.z || 0;
+    const index = state.world.blocks.findIndex((item) => item.x === change.x && item.y === change.y && (item.z || 0) === z);
+    if (change.op === 'remove') { if (index >= 0) state.world.blocks.splice(index, 1); }
+    else if (index >= 0) Object.assign(state.world.blocks[index], change);
+    else state.world.blocks.push({ x: change.x, y: change.y, z, type: change.type });
+  }
+  state.world.messages = state.world.messages || [];
+  for (const message of data.messages || []) {
+    if (!message?.id || state.world.messages.some((item) => item.id === message.id)) continue;
+    state.world.messages.push(message);
+  }
+  if (state.world.messages.length > 200) state.world.messages = state.world.messages.slice(-200);
+  // A participant this client has never seen is completed from the authoritative snapshot instead of
+  // rendered half-known, and each world change repaints without rebuilding stable geometry.
+  if (data.refresh || unknown) guarded(applyAuthoritativeSnapshot);
+  else if (state.tab === 'world') { paintWorld(); refreshMessageList(); }
+}
+/** Replace the chat list, but never while someone is typing in it or in any other form. */
+function refreshMessageList() {
+  const messages = $('.message-list');
+  if (!messages) return;
+  const active = document.activeElement;
+  if (active && (active.closest('form') || active.closest('.message-list'))) return;
+  const replacement = chatCard().querySelector('.message-list');
+  if (replacement) messages.replaceWith(replacement);
+}
+window.__nemoworld = {
+  presence: () => [...presence.entries()].map(([id, record]) => ({ id, confirmed: { ...record.confirmed }, display: displayCoords(record, performance.now()), tweening: record.duration > 0 && record.at + record.duration > performance.now() })),
+  stream: () => (state.eventStream ? { world: state.eventStream.world, ready: state.eventStream.ready, closed: state.eventStream.closed, reason: state.eventStream.reason || null, errors: state.eventStream.errors, updates: state.eventStream.updates, lastLatencyMs: state.eventStream.lastLatencyMs ?? null } : null),
+  lastClosed: () => state.eventStreamClosed || null,
+  world: () => state.world,
+  worldId: () => currentWorldId(),
+  selected: () => state.selected,
+};
 async function loadDirectory() { const result = await api(`/worlds?${new URLSearchParams({ q: state.worldQuery, offset: String(state.worldOffset), limit: '12' })}`); state.worlds = Array.isArray(result) ? result : result.worlds || result.items || []; state.worldTotal = result.total ?? state.worlds.length; state.directoryHasMore = result.has_more ?? state.worldOffset + state.worlds.length < state.worldTotal; }
 async function loadAmbassadors() { state.ambassadorPage = await api('/ambassadors?' + new URLSearchParams({ q: state.ambassadorQuery.q || '', group: state.ambassadorQuery.group || '', offset: String(state.ambassadorOffset || 0), limit: '20',...(isModerator()&&state.ambassadorIncludePaused?{include_paused:'1'}:{}) })); state.ambassadors = state.ambassadorPage.entries || []; }
 async function openAmbassador(id) { state.ambassadorProfile = await api('/ambassador?id=' + encodeURIComponent(id)); newcomerComplete('ambassador'); await openSection('civic'); }
@@ -221,9 +387,9 @@ function climbDirection() {
 async function climbAgent(direction) {
   const agent=viewedAgent();if(!agent)return;
   walkVersion++;motionRevision++;const oldWorld=agent.world_id,epoch=state.sessionEpoch||0;
-  const position=await motionRequest('/climb',{agent_id:agent.id,direction});
+  let position;try{position=await motionRequest('/climb',{agent_id:agent.id,direction});}catch(error){reconcilePresence(agent.id);throw error;}
   if(epoch!==(state.sessionEpoch||0)||selected()?.id!==agent.id)return;
-  const crossed=position.world_id!==oldWorld;Object.assign(agent,position);
+  const crossed=position.world_id!==oldWorld;Object.assign(agent,position);if(position.blocked)reconcilePresence(agent.id);
   if(crossed){state.focus=null;state.voxelSelection=null;state.building=false;state.inspectedResident=null;}
   await loadWorld();
   if(position.blocked)notice('Step-up requires a neighboring column no more than one layer higher and clear headroom.');
@@ -242,6 +408,7 @@ async function refresh(all = true) {
   }
   const [world, missions, gallery] = await Promise.all([api(worldURL()), api('/missions?'+new URLSearchParams({limit:'12',...state.missionQuery})), api('/gallery')]);
   state.world = normalizeWorld(world); state.missionPage=missions;mergeMissionContext(); state.gallery = Array.isArray(gallery) ? gallery : gallery.submissions || [];
+  seedPresence(state.world.participants);
   await loadDirectory();
   if(!state.assembly){const [countries,assembly]=await Promise.all([api('/countries?limit=248'),api('/assembly')]);state.countries=countries.entries;state.assembly=assembly;}
   await loadResearch();state.mayors=(await api('/mayors')).mayors;await loadAmbassadors();
@@ -791,7 +958,7 @@ async function moveAgent(direction,automatic=false) {
   if(!automatic)walkVersion++;if (moving) return; moving = true;motionRevision++;
   try {
     const agent=viewedAgent();
-    let crossed=false;if (agent) { const position=await motionRequest('/move',{agent_id:agent.id,direction});crossed=position.world_id!==agent.world_id;Object.assign(agent,position);if(crossed){state.focus=null;state.voxelSelection=null;state.building=false;} }
+    let crossed=false;if (agent) { let position; try { position=await motionRequest('/move',{agent_id:agent.id,direction}); } catch (error) { reconcilePresence(agent.id); throw error; } crossed=position.world_id!==agent.world_id;Object.assign(agent,position);if(position.blocked)reconcilePresence(agent.id);if(crossed){state.focus=null;state.voxelSelection=null;state.building=false;} }
     else {const delta={up:[0,-3],down:[0,3],left:[-3,0],right:[3,0]}[direction];const world=definition(),position=worldPosition();state.focus={x:Math.max(0,Math.min((world.width||world.columns)-1,position.x+delta[0])),y:Math.max(0,Math.min((world.height||world.rows)-1,position.y+delta[1]))};}
     await loadWorld();if(state.tab==='world'&&state.graphics==='voxel'&&!crossed){paintWorld();return;}if(state.tab==='world'){const focusedMap=document.activeElement?.id==='world';renderView();if(focusedMap)$('#world')?.focus({preventScroll:true});}
   } finally {moving=false;}
@@ -1273,6 +1440,7 @@ setInterval(async()=>{
     if(revision!==motionRevision||moving||walkActive||observedWorld!==currentWorldId())return;
     if(me)state.agents=me.agents;
     state.world=normalizeWorld(world);
+    seedPresence(state.world.participants);
     if(state.account&&selected())await loadCallings();
     if(state.account)for(const agent of state.agents){const live=state.world.participants.find((item)=>item.id===agent.id);if(live)Object.assign(agent,live);}
     if(state.tab==='world'){
