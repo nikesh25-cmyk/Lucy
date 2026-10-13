@@ -286,7 +286,7 @@ test('a modified receipt and a forged receipt crediting the wrong wallet fail wa
   // 3. The original installation and its one honest receipt are untouched by all of the above.
   assert.equal(wallet(f,f.resident).balance,10);
   assert.equal(verifyCoinLedger(f.platform.db),true);
-  assert.equal(validateDatabase(f.database).schema_version,18);
+  assert.equal(validateDatabase(f.database).schema_version,20);
   assert.equal(f.platform.get('SELECT status FROM submissions WHERE id=?',submission.id).status,'accepted');
   assert.equal(f.platform.get('SELECT decision FROM reviews WHERE id=?',review.id).decision,'accepted');
 });

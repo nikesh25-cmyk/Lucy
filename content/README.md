@@ -20,7 +20,7 @@ content/
   furniture/     one JSON file per placeable world object    (27)
   crops/         one JSON file per growable crop              (3)
   appearances/   one JSON file per NPC appearance             (20)
-  cosmetics/     one JSON file per cosmetic                    (29)
+  cosmetics/     one JSON file per cosmetic                    (32)
   palettes.json            the three authored build palettes, in their code order
   content-manifest.json    generated index: every file, digest, license and asset
   notices.json             generated map of every notice file and asset a definition references

@@ -17,7 +17,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 const $ = (selector) => document.querySelector(selector);
 const state = { account: null, agents: [], world: { participants: [], messages: [], paused: false }, missions: [], tasks: [], gallery: [], history: { claims: [], submissions: [], reviews: [] }, safety: { reports: [], appeals: [] }, operations: null, tab: 'world', selected: localStorage.getItem('selected-agent') || '', setup: false, viewWorld: '', worlds: [], worldTotal: 0, worldQuery: '', worldOffset: 0, directoryHasMore: false, camera: { x: 0, y: 0 }, focus: null, building: false, buildKind: 'flowers', authMode: 'login', setupCodeRequired: false, community: {circles:[],projects:[],events:[],thanks:[],counts:{},pagination:{}}, communitySection: 'circles', communityQuery:'', communityOffset:0, journey:null };
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
-Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,interaction:null,interactionRefusal:null,interactionError:null});
+Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:false,callings:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,interaction:null,interactionRefusal:null,interactionError:null});
 let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -63,7 +63,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -847,7 +847,7 @@ function frontierCard(){
  if(!viewedAgent())node.append(button(state.account?'Play as myself':'Create account & play',()=>state.account?playAsHuman():openAuth('register')));
  else{node.append(paragraph('Steward a plot above, then choose a block and click a face or use coordinates. Stack up to eight layers inside your plot. Roads and conservation land stay clear.','privacy'));
  const controls=form(node,'Apply block at coordinates',async data=>buildAt(Number(data.x),Number(data.y),Number(data.z)));const mine=data.my_plot?.world_id===expectedWorld?data.my_plot:null;field(controls,'x','Block X',{type:'number',min:0,max:47,value:mine?mine.x+1:Math.min(47,worldPosition().x+2)});field(controls,'y','Block Y',{type:'number',min:0,max:47,value:mine?mine.y+1:Math.min(47,worldPosition().y+2)});field(controls,'z','Block height',{type:'number',min:0,max:7,value:0,full:true});}
- node.append(blueprintCard(data,expectedWorld));
+ node.append(blueprintCard(data,expectedWorld),plotCollaborationCard(data,expectedWorld));
  const gates=element('div',null,'frontier-gates');for(const gate of data.neighbors){const direction={up:'North',down:'South',left:'West',right:'East'}[gate.direction];const row=element('div',null,'frontier-gate');row.append(element('strong',direction),paragraph(gate.exists?'Neighboring area is open':'New area available','privacy'));
  row.append(button(viewedAgent()?'Walk to gate':'Look at gate',async()=>{if(viewedAgent())await walkTo(gate.x,gate.y);else{state.focus={x:gate.x,y:gate.y};await loadWorld();paintWorld();}},'secondary small'));
  if(gate.exists&&!viewedAgent())row.append(button('Explore area',()=>visitWorld(gate.target_world_id),'secondary small'));
@@ -909,6 +909,87 @@ function blueprintCard(data,expectedWorld){
  node.append(actions(preview,apply,remove));
  if(disabled)node.append(paragraph(player?'Your character is paused; blueprints stay disabled until it is active again.':'Play as your character to preview and build a blueprint.','privacy'));
  node.append(blueprintReportView(state.blueprintReport));
+ return node;
+}
+/**
+ * Plot collaboration. A steward's human operator invites one specific operator or resident to build
+ * on this plot for a stated purpose, a stated duration and a deliberately narrow scope, previews the
+ * exact access, then confirms, lists or revokes it. A guest reads what it may do here and elsewhere.
+ * The preview is a read and writes nothing. Every value the server returns is written as text, so a
+ * grant can never introduce markup into the page.
+ */
+function grantCheckboxes(parent,name,legendText,options){
+ const group=element('fieldset',null,'choice-group');group.append(element('legend',legendText));
+ for(const option of options){const label=element('label',null,'choice');const box=element('input');box.type='checkbox';box.name=name;box.value=String(option.value);box.checked=Boolean(option.checked);box.setAttribute('aria-label',`${legendText}: ${option.label}`);label.append(box,element('span',option.label));group.append(label);}
+ parent.append(group);return group;
+}
+function grantFormValues(formNode){
+ const values=Object.fromEntries(new FormData(formNode));
+ const guest=String(values.grant_agent_id||'').trim()||String(values.guest_agent_id||'').trim();
+ const payload={plot_id:values.plot_id,purpose:values.purpose,duration_minutes:Number(values.duration_minutes),block_types:[...formNode.querySelectorAll('input[name="block_types"]:checked')].map(box=>box.value),layers:[...formNode.querySelectorAll('input[name="layers"]:checked')].map(box=>Number(box.value)),actions:[...formNode.querySelectorAll('input[name="actions"]:checked')].map(box=>box.value),max_blocks:Number(values.max_blocks)};
+ if(guest)payload.guest_agent_id=guest;
+ return payload;
+}
+function grantRows(title,grants,emptyText,line){
+ const node=element('div',null,'grant-list');node.append(element('h3',title));
+ if(!grants.length){node.append(paragraph(emptyText,'privacy'));return node;}
+ for(const grant of grants){
+  const row=element('article',null,'grant-row');
+  row.append(element('strong',line(grant)),badge(grant.status));
+  row.append(paragraph(`${grant.purpose} · ${grant.permissions}`,'privacy'));
+  row.append(paragraph(`${grant.live?'Live':'Not usable'} · from ${grant.steward_name} to ${grant.guest_name} · ${grant.used_blocks} of ${grant.scope?grant.scope.max_blocks:'—'} allowed blocks standing · recorded use ${grant.uses} · expires ${date(grant.expires_at)}${grant.revoked_at?` · revoked ${date(grant.revoked_at)}`:''}.`,'privacy'));
+  if(grant.can_revoke){
+   const revoke=button('Revoke this access',async()=>{await api('/frontier/grant/revoke','POST',{grant_id:grant.id});state.grantPreview=null;await loadWorld();renderView();notice(`Collaboration revoked for ${grant.guest_name}. Their next build here is refused immediately.`);},'secondary small');
+   revoke.dataset.grantRevoke=grant.id;revoke.setAttribute('aria-label',`Revoke the collaboration granted to ${grant.guest_name}`);
+   row.append(revoke);
+  }
+  node.append(row);
+ }
+ return node;
+}
+function grantReportView(report){
+ const node=element('div',null,'grant-report');node.id='grant-report';node.tabIndex=0;
+ node.setAttribute('role','status');node.setAttribute('aria-live','polite');
+ node.setAttribute('aria-label','Collaboration preview: plot, guest, purpose, scope, duration and expiry');
+ if(!report){node.append(paragraph('Preview the exact access before you confirm it. A preview reads storage and writes nothing.','privacy'));return node;}
+ const grant=report.grant;
+ node.append(element('strong',`${grant.guest.name} may build on ${grant.plot_address||grant.plot_id}`));
+ node.append(paragraph(`Purpose: ${grant.purpose}.`));
+ node.append(paragraph(`Scope: ${grant.permissions}`));
+ node.append(paragraph(`Duration ${grant.duration_minutes} minutes, expiring ${date(grant.expires_at)}. It is enforced at every build and can be revoked at any time.`));
+ node.append(paragraph(`Plot ${grant.plot_id}${grant.plot_purpose?` is stewarded for “${grant.plot_purpose}”`:''}; stewardship and the land registry are unchanged by a grant.`,'privacy'));
+ node.append(paragraph(`This preview wrote ${report.writes} rows.`,'privacy'));
+ return node;
+}
+function plotCollaborationCard(data,expectedWorld){
+ const node=card('Plot collaboration','REVOCABLE BUILDING ACCESS');node.classList.add('grant-card');
+ node.append(paragraph('A plot’s signed-in human steward can invite one specific operator or resident to build there for a stated purpose, duration and narrow scope. Expiry and revocation are checked live on every build, so a saved credential cannot outlive them.','privacy'));
+ if(!data?.grants){node.append(paragraph('Sign in to grant, hold or inspect collaboration on a plot.','privacy'));return node;}
+ const held=data.grants.as_guest||[], myPlot=data.my_plot?.world_id===expectedWorld?data.my_plot:null;
+ if(!myPlot){
+  node.append(grantRows('Access you hold',held,'You hold no collaboration grant. Ask a plot’s steward to invite you.',grant=>`${grant.plot_id} · ${grant.purpose}`));
+  if(held.some(grant=>grant.live))node.append(paragraph('A live grant above lets you place and remove those block types and layers inside that plot, using the building controls as usual. Every other plot still refuses you.','privacy'));
+  return node;
+ }
+ const candidates=(state.world.participants||[]).filter(item=>item.kind!=='npc'&&item.operator_id!==state.account?.id);
+ const controls=form(node,'Grant building access',async(values,formNode)=>{const result=await api('/frontier/grant','POST',grantFormValues(formNode));state.grantPreview=null;await loadWorld();renderView();notice(`Building access granted to ${result.grant.guest.name} until ${date(result.grant.expires_at)}.`);});
+ const guest=field(controls,'guest_agent_id','Guest resident nearby',{required:false,options:[{value:'',label:'Choose a resident in this area'},...candidates.map(item=>({value:item.id,label:`${item.name} · ${item.operator||'resident'}`}))],value:'',full:true,hint:'Only nearby residents are listed. Use the next field for any other character.'});
+ guest.dataset.grantGuest='1';
+ field(controls,'grant_agent_id','Or a resident id',{required:false,max:80,full:true,hint:'Optional. A character id from anywhere in the world.'});
+ field(controls,'purpose','Stated purpose',{max:120,full:true,hint:'What this operator is invited to build, in plain words.'});
+ field(controls,'duration_minutes','Duration',{options:[{value:'30',label:'30 minutes'},{value:'120',label:'2 hours'},{value:'480',label:'8 hours'},{value:'1440',label:'1 day'},{value:'4320',label:'3 days'},{value:'10080',label:'7 days'}],value:'120',full:true});
+ grantCheckboxes(controls,'block_types','Block types the guest may place',(data.palette||[]).map((type)=>({value:type,label:type})));
+ grantCheckboxes(controls,'layers','Layers the guest may use',[0,1,2,3,4,5,6,7].map((z)=>({value:z,label:`Layer ${z}`,checked:z===0})));
+ grantCheckboxes(controls,'actions','Actions the guest may take',[{value:'place',label:'Place blocks',checked:true},{value:'remove',label:'Remove their own blocks'}]);
+ field(controls,'max_blocks','Maximum standing blocks',{type:'number',min:1,max:36,value:'4',full:true});
+ const hidden=element('input');hidden.type='hidden';hidden.name='plot_id';hidden.value=myPlot.id;controls.append(hidden);
+ const preview=button('Preview this grant',async()=>{const formNode=node.querySelector('form');state.grantPreview=await api('/frontier/grant','POST',{...grantFormValues(formNode),preview:true});renderView();},'small');
+ preview.dataset.grantPreview='1';preview.setAttribute('aria-label','Preview the exact collaboration access without granting it');
+ node.append(actions(preview),paragraph('Preview first: it reports the plot, guest, purpose, scope, duration and expiry without writing anything.','privacy'));
+ node.append(grantReportView(state.grantPreview));
+ const listed=(data.grants.as_steward||[]).filter(grant=>grant.plot_id===myPlot.id).map(grant=>({...grant,can_revoke:grant.status==='active'}));
+ node.append(grantRows('Collaboration on this plot',listed,'No one else may build here. Stewardship alone does not let another operator build.',grant=>`${grant.guest_name} · ${grant.scope?grant.scope.block_types.join(', '):''}`));
+ node.append(paragraph('A guest can place and remove only their own blocks inside this scope. They cannot grant access onward, acquire land, use blueprints or touch your own construction. Their builds spend their own daily action budget, not yours.','privacy'));
  return node;
 }
 function blueprintReportView(report){
@@ -1421,6 +1502,53 @@ function renderWorkshop(parent){
   const bench=card('The crafting bench','MAKE SOMETHING TO KEEP');const recipes=element('div',null,'grid three');for(const recipe of journey.recipes){const node=card(recipe.name);append(node,paragraph(Object.entries(recipe.ingredients).map(([kind,quantity])=>`${quantity} ${resourceName(kind)}`).join(' + '),'privacy'),paragraph(`Makes ${resourceName(recipe.output)}`,'muted'));const enough=Object.entries(recipe.ingredients).every(([kind,quantity])=>(journey.inventory.find(item=>item.kind===kind)?.quantity||0)>=quantity);const make=button('Craft keepsake',()=>change('/journey/craft',{agent_id:state.selected,recipe_id:recipe.id},'Keepsake crafted. Choose it in your resident passport.'),'small');make.disabled=!enough||selected().status!=='active';node.append(make);if(!enough)node.append(paragraph('Grow the required resources first.','privacy'));recipes.append(node);}bench.append(recipes);parent.append(bench);
   const garden=card('Your growing garden','PLANT · TEND · HARVEST');const here=viewedAgent()?.id===state.selected&&currentWorldId()===`home:${state.selected}`;garden.append(paragraph('Seeds are free. Herbs grow in 20 minutes, fiber in 25, and wood in 30. Tend once to shorten growth, with a minimum of 20 minutes from planting.','muted'));if(!here)garden.append(empty('Bring your character home to plant, tend, or harvest its crop patches.'),button('Go home',()=>travelAgent(`home:${state.selected}`),'small'));
   const patches=here?(state.world.objects||[]).filter(item=>(item.type||item.kind)==='farm'):[];for(const patch of patches){const crop=journey.crops.find(item=>item.x===patch.x&&item.y===patch.y),node=element('article',null,'crop-patch');node.append(element('h3',`Crop patch · ${patch.x}, ${patch.y}`));if(crop&&!crop.harvested_at){append(node,badge(resourceName(crop.kind)),paragraph(crop.ready?'Ready to harvest':`Ready ${date(crop.ready_at)}`,'privacy'));const controls=actions();if(!crop.tended_at)controls.append(button('Tend patch',()=>change('/journey/garden',{agent_id:state.selected,action:'tend',x:patch.x,y:patch.y},'Patch tended.'),'secondary small'));const harvest=button('Harvest resources',()=>change('/journey/garden',{agent_id:state.selected,action:'harvest',x:patch.x,y:patch.y},'Harvest gathered. Two resources added to your shelf.'),'small');harvest.disabled=!crop.ready;controls.append(harvest);node.append(controls);}else{const inputs=form(node,'Plant crop',values=>change('/journey/garden',{agent_id:state.selected,action:'plant',x:patch.x,y:patch.y,kind:values.kind},'Seeds planted. Return when your crop is ready.'));field(inputs,'kind','Crop',{options:[{value:'herbs',label:'Herbs · 20 minutes'},{value:'fiber',label:'Fiber · 25 minutes'},{value:'wood',label:'Wood · 30 minutes'}],full:true});}garden.append(node);}if(here&&!patches.length)garden.append(empty('Place a Crop patch with the garden build palette, then return here to plant.'),button('Build a crop patch',()=>{state.tab='world';state.building=true;state.buildKind='farm';render();},'small'));garden.append(button('Refresh growth',async()=>{await loadJourney();await loadWorld();renderView();},'secondary small'));parent.append(garden);
+  renderOffers(parent);
+}
+// Resource offers: the operator-facing half of the internal-resource economy. A resident offers
+// grown or crafted items to a neighbour of another operator; the recipient's operator accepts or
+// declines and the offering side can cancel. The panel is a thin client over the shipped routes and
+// invents no outcome: it renders the server's own offer state and sends intent only.
+function renderOffers(parent){
+  const journey=state.journey;if(!journey)return;
+  const node=card('Give what you grew','RESOURCE OFFERS');
+  node.append(paragraph('Offer grown or crafted items to a neighbour — a resident of another operator. An offer moves items only: it is not money, a NemoCoin, or land. The items leave your shelf while the offer stands, only the named recipient’s operator can accept it, and if it expires or you cancel it the items return to you.','privacy'));
+  const list=element('div',null,'grid two');node.append(list);
+  const filter=element('select');filter.setAttribute('aria-label','Which offers to show');
+  for(const [value,label] of [['all','All offers'],['incoming','Offered to me'],['outgoing','I offered']]){const option=element('option',label);option.value=value;filter.append(option);}
+  const status=element('p',null,'privacy');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+  node.append(actions(filter,button('Refresh offers',()=>loadOffers(list,status,filter.value),'secondary small')),status);
+  const held=(journey.inventory||[]).filter(item=>item.quantity>0);
+  const recipients=(state.world.participants||[]).filter(item=>item.id!==state.selected&&(item.status||'active')==='active');
+  if(held.length&&recipients.length){
+    const controls=form(node,'Offer items',values=>change('/journey/offers',{agent_id:state.selected,recipient_agent_id:values.recipient_agent_id,items:{[values.kind]:Number(values.quantity)},note:values.note,expires_minutes:Number(values.expires_minutes)},`Offered ${resourceName(values.kind)} to a neighbour.`,true));
+    field(controls,'recipient_agent_id','Recipient',{options:recipients.map(item=>({value:item.id,label:item.name})),full:true});
+    field(controls,'kind','What to offer',{options:held.map(item=>({value:item.kind,label:`${item.quantity} ${resourceName(item.kind)}`})),full:true});
+    field(controls,'quantity','Quantity',{type:'number',min:1,max:99,value:'1'});
+    field(controls,'expires_minutes','Expires in minutes',{type:'number',min:1,max:10080,value:'1440'});
+    field(controls,'note','Note',{required:false,max:200,full:true,hint:'Optional.'});
+  } else node.append(empty(recipients.length?'Grow or make something on the shelf first.':'Stand in a shared place beside a neighbour — a resident of another operator — to offer to them.'));
+  parent.append(node);
+  guarded(()=>loadOffers(list,status,filter.value));
+  filter.addEventListener('change',()=>guarded(()=>loadOffers(list,status,filter.value)));
+}
+async function loadOffers(list,status,filter='all'){
+  const data=await api(`/journey/offers?agent_id=${encodeURIComponent(state.selected)}`);
+  const offers=(data.offers||[]).filter(offer=>filter==='all'||offer.direction===filter);
+  list.replaceChildren();
+  if(!offers.length){list.append(empty('No offers to show. Offers you make and offers made to you appear here.'));status.textContent='';return;}
+  for(const offer of offers){
+    const node=card(offer.direction==='incoming'?`From ${offer.offerer.name}`:`To ${offer.recipient.name}`,offer.status.toUpperCase());
+    node.append(paragraph(Object.entries(offer.items).map(([kind,quantity])=>`${quantity} ${resourceName(kind)}`).join(' + ')));
+    if(offer.note)node.append(paragraph(offer.note,'privacy'));
+    node.append(paragraph(`Expires ${date(offer.expires_at)}${offer.settled_at?` · settled ${date(offer.settled_at)}`:''}`,'privacy'));
+    const buttons=actions();
+    if(offer.can_accept)buttons.append(button('Accept',()=>change('/journey/offers/accept',{offer_id:offer.id,agent_id:offer.recipient.agent_id},'Offer accepted.'),'small'));
+    if(offer.can_decline)buttons.append(button('Decline',()=>change('/journey/offers/decline',{offer_id:offer.id},'Offer declined.'),'secondary small'));
+    if(offer.can_cancel)buttons.append(button('Cancel',()=>change('/journey/offers/cancel',{offer_id:offer.id},'Offer cancelled.'),'secondary small'));
+    if(buttons.children.length)node.append(buttons);
+    list.append(node);
+  }
+  status.textContent=`${offers.length} offer${offers.length===1?'':'s'} shown.`;
 }
 
 async function boot() {

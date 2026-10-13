@@ -11,10 +11,13 @@ import { verifyQuestReceipts, verifyQuestStructure } from './quests.js';
 import { verifyGuildRecords } from './guilds.js';
 import { REGIONS } from './civic.js';
 import { GARDEN_PALETTE,HOUSE_PALETTE } from './placement-policy.js';
+import { GRANT_SCOPE_LIMITS, grantScopeNarrow, grantScopeValue } from './frontier.js';
 
 const countryCatalog=JSON.parse(readFileSync(new URL('../catalog/countries.json',import.meta.url),'utf8')).entries;
 const requiredTables = ['accounts', 'invites', 'agents', 'tokens', 'missions', 'tasks', 'claims', 'submissions', 'reviews', 'adoptions', 'messages', 'reports', 'appeals', 'jobs', 'settings', 'audit'];
 const digest = (value) => createHash('sha256').update(value).digest('hex');
+/** The one stored timestamp format: a 24-character UTC ISO string, exactly as `Date` writes it. */
+const isoTime = (value) => typeof value === 'string' && value.length === 24 && value === new Date(value).toISOString();
 
 // One bounded managed resident run. `phase` names exactly what was in flight when the process last
 // wrote, so a restart can tell a model call apart from a sent action. `interrupted` is the honest
@@ -56,7 +59,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -149,6 +152,63 @@ export function validateDatabase(path) {
       // A stored guild row must still satisfy every write-time rule, including that a verification
       // names an independent operator, so a tampered board cannot pass a backup or a restore.
       if(!verifyGuildRecords(db))throw new Error('Database guild project validation failed.');
+    }
+    if (version >= 19) {
+      const columns={plot_grants:['id','plot_id','steward_account_id','guest_account_id','guest_agent_id','purpose','scope','expires_at','created_at','revoked_at','revoked_by','uses','last_used_at','status'],plot_grant_events:['id','grant_id','plot_id','account_id','action','detail','created_at']};
+      for(const [table,fields] of Object.entries(columns))if(!tables.has(table)||fields.some(column=>!db.prepare(`PRAGMA table_info(${table})`).all().some(field=>field.name===column)))throw new Error('Database plot collaboration schema is incomplete.');
+      if(!db.prepare('PRAGMA table_info(frontier_blocks)').all().some(column=>column.name==='grant_id'))throw new Error('Database plot collaboration schema is incomplete.');
+      if(['plot_grants_validate_insert','plot_grants_lifecycle','plot_grants_no_delete','plot_grant_events_append_only','plot_grant_events_no_delete','land_stewardships_revoke_grants'].some(name=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name))||!db.prepare("SELECT name FROM sqlite_schema WHERE type='index' AND name='one_active_plot_grant'").get())throw new Error('Database plot collaboration protections are incomplete.');
+      // The shipped plot guard must be the one that knows about grants. A database that kept a
+      // stewardship-only guard would refuse every guest build, so it fails validation here rather
+      // than in the world.
+      const guard=db.prepare("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name='frontier_blocks_plot_insert'").get()?.sql||'';
+      if(!/plot_grants/.test(guard)||!/json_each/.test(guard))throw new Error('Database plot collaboration guard is incomplete.');
+      // Every stored grant must still satisfy the rules that created it: a different guest operator,
+      // a narrow scope, an ordered expiry inside fourteen days, and — while it is active — a real
+      // steward for its plot. A revoked grant keeps its immutable identity and adds its revocation.
+      for(const grant of db.prepare('SELECT * FROM plot_grants').all()){
+        if(!isoTime(grant.created_at)||!isoTime(grant.expires_at)||grant.expires_at<=grant.created_at)throw new Error('Database plot collaboration grant is invalid.');
+        if(grant.expires_at>new Date(Date.parse(grant.created_at)+GRANT_SCOPE_LIMITS.duration_minutes_max*60000).toISOString())throw new Error('Database plot collaboration grant is invalid.');
+        if(grant.guest_account_id===grant.steward_account_id||!grantScopeNarrow(grantScopeValue(grant)))throw new Error('Database plot collaboration scope is invalid.');
+        if(!['active','revoked'].includes(grant.status))throw new Error('Database plot collaboration grant state is invalid.');
+        if(grant.status==='revoked'&&(!isoTime(grant.revoked_at)||grant.revoked_by===null||grant.revoked_by===undefined))throw new Error('Database plot collaboration grant state is invalid.');
+        if(grant.status==='active'&&(grant.revoked_at!==null||grant.revoked_by!==null))throw new Error('Database plot collaboration grant state is invalid.');
+        if(!Number.isInteger(grant.uses)||grant.uses<0||(grant.last_used_at!==''&&!isoTime(grant.last_used_at)))throw new Error('Database plot collaboration counter is invalid.');
+        if(grant.guest_agent_id!==''&&!db.prepare('SELECT id FROM agents WHERE id=? AND operator_id=?').get(grant.guest_agent_id,grant.guest_account_id))throw new Error('Database plot collaboration guest is invalid.');
+        if(grant.status==='active'&&!db.prepare('SELECT s.plot_id FROM land_stewardships s JOIN land_parcels p ON p.id=s.plot_id WHERE s.plot_id=? AND s.account_id=? AND p.reserved=0').get(grant.plot_id,grant.steward_account_id))throw new Error('Database plot collaboration steward is invalid.');
+      }
+      for(const event of db.prepare('SELECT * FROM plot_grant_events').all())if(!db.prepare('SELECT id FROM plot_grants WHERE id=? AND plot_id=?').get(event.grant_id,event.plot_id)||!isoTime(event.created_at)||typeof event.detail!=='string'||event.detail.length>200)throw new Error('Database plot collaboration history is invalid.');
+      // A stored guest block must name a grant that belongs to the same plot, the same operator and
+      // (when the grant named one) the same resident, so an authorship cannot be re-pointed.
+      if(db.prepare("SELECT b.id FROM frontier_blocks b JOIN plot_grants g ON g.id=b.grant_id WHERE b.plot_id!=g.plot_id OR b.creator_account_id!=g.guest_account_id OR (g.guest_agent_id!='' AND g.guest_agent_id!=b.creator_agent_id)").get())throw new Error('Database plot collaboration construction is invalid.');
+    }
+    if (version >= 20) {
+      const offerColumns = ['id','offerer_agent_id','offerer_account_id','recipient_agent_id','recipient_account_id','items','note','status','propose_key','accept_key','proposed_at','expires_at','settled_at','settled_by_account_id'];
+      if (!tables.has('resource_offers') || offerColumns.some((column) => !db.prepare('PRAGMA table_info(resource_offers)').all().some((field) => field.name === column))) throw new Error('Database resource offer schema is incomplete.');
+      if (!tables.has('resource_offer_events') || ['id','offer_id','account_id','action','detail','created_at'].some((column) => !db.prepare('PRAGMA table_info(resource_offer_events)').all().some((field) => field.name === column))) throw new Error('Database resource offer history is incomplete.');
+      if (['resource_offers_validate_insert','resource_offers_lifecycle','resource_offer_events_no_update','resource_offer_events_no_delete'].some((name) => !db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name))) throw new Error('Database resource offer protections are incomplete.');
+      // The no-negative-stock rule at the storage layer: a resident shelf is never negative. The
+      // CHECK on journey_inventory already refuses a negative write; this re-checks what is stored.
+      if (db.prepare('SELECT agent_id FROM journey_inventory WHERE quantity<0 LIMIT 1').get()) throw new Error('Database resident inventory is invalid.');
+      // Every stored offer must still satisfy the rules that created it: two different residents of
+      // two different operators, a positive item list, a life that expires after it was proposed, a
+      // settlement consistent with its status, and exactly one settlement event. A replayed or a
+      // duplicated settlement cannot pass this, so a backup or a restore carries a coherent offer.
+      for (const offer of db.prepare('SELECT o.*,oa.operator_id AS offerer_operator,ra.operator_id AS recipient_operator FROM resource_offers o LEFT JOIN agents oa ON oa.id=o.offerer_agent_id LEFT JOIN agents ra ON ra.id=o.recipient_agent_id').all()) {
+        if (offer.offerer_operator == null || offer.recipient_operator == null || offer.offerer_agent_id === offer.recipient_agent_id || offer.offerer_account_id === offer.recipient_account_id || offer.offerer_account_id !== offer.offerer_operator || offer.recipient_account_id !== offer.recipient_operator) throw new Error('Database resource offer parties are invalid.');
+        if (!['proposed','accepted','declined','cancelled','expired'].includes(offer.status)) throw new Error('Database resource offer state is invalid.');
+        if (!Number.isInteger(offer.proposed_at) || offer.proposed_at < 0 || !Number.isInteger(offer.expires_at) || offer.expires_at <= offer.proposed_at) throw new Error('Database resource offer timeline is invalid.');
+        if ((offer.status === 'proposed') !== (offer.settled_at === null) || (offer.status === 'accepted') !== (offer.accept_key !== null) || (['accepted','declined','cancelled'].includes(offer.status)) !== (offer.settled_by_account_id !== null)) throw new Error('Database resource offer settlement is invalid.');
+        if (typeof offer.note !== 'string' || offer.note.length > 200) throw new Error('Database resource offer note is invalid.');
+        let items;
+        try { items = JSON.parse(offer.items); } catch { throw new Error('Database resource offer items are invalid.'); }
+        if (!items || typeof items !== 'object' || Array.isArray(items) || !Object.keys(items).length || Object.values(items).some((quantity) => !Number.isInteger(quantity) || quantity <= 0)) throw new Error('Database resource offer items are invalid.');
+        const events = db.prepare('SELECT action FROM resource_offer_events WHERE offer_id=?').all(offer.id);
+        const proposed = events.filter((event) => event.action === 'proposed').length, settled = events.length - proposed;
+        if (proposed !== 1 || (offer.status === 'proposed' ? settled !== 0 : settled !== 1)) throw new Error('Database resource offer history is invalid.');
+        if (offer.status !== 'proposed' && !events.some((event) => event.action === offer.status)) throw new Error('Database resource offer history is invalid.');
+      }
+      if (db.prepare("SELECT e.id FROM resource_offer_events e LEFT JOIN resource_offers o ON o.id=e.offer_id WHERE o.id IS NULL OR e.action NOT IN ('proposed','accepted','declined','cancelled','expired') OR e.created_at<0 OR length(e.detail)>200").get()) throw new Error('Database resource offer history is invalid.');
     }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';
@@ -267,8 +327,8 @@ export function restoreDatabase(source, destination, { lockPath = resolve(dirnam
 // The recovery point and the interruption limits an operator must know. These are the same values
 // the runbook (docs/OPERATIONS.md) states and the failure drills (scripts/ops-rehearsal.mjs) prove.
 export const RECOVERY_LIMITS = Object.freeze({
-  schema_version: 18,
-  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+  schema_version: 20,
+  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
   // A backup is one consistent VACUUM INTO copy taken inside a single read transaction.
   backup_point: 'The last committed transaction before the copy began; no half-applied transaction is ever inside a backup.',
   backup_loss: 'Everything committed after the copy began. A restore therefore rolls the world back to the backup moment.',

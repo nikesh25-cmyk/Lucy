@@ -24,7 +24,7 @@ test('SQLite backups recover durable changes and preserve the previous database'
   platform.close();
   const result = restoreDatabase(backup, path);
   assert.ok(result.preserved_original);
-  assert.equal(validateDatabase(path).schema_version, 18);
+  assert.equal(validateDatabase(path).schema_version, 20);
   const restored = new Platform(path), preserved = new Platform(result.preserved_original);
   try {
     assert.equal(restored.all('SELECT event FROM audit').length, 1);
@@ -39,7 +39,7 @@ test('restore rejects active server locks and malformed backups', (t) => {
   try { assert.throws(() => restoreDatabase(backup, path), /running/); } finally { release(); }
   writeFileSync(join(directory, 'bad.sqlite'), 'not a database');
   assert.throws(() => restoreDatabase(join(directory, 'bad.sqlite'), path));
-  assert.equal(validateDatabase(path).schema_version, 18);
+  assert.equal(validateDatabase(path).schema_version, 20);
 });
 test('stale process locks are reclaimed and released safely', (t) => {
   const directory = setup(t), path = join(directory, 'server.lock');
@@ -55,7 +55,7 @@ test('a validated backup restores over a corrupt original without discarding its
   const platform = new Platform(path); backupDatabase(platform.db, backup); platform.close();
   writeFileSync(path, 'damaged original');
   const result = restoreDatabase(backup, path);
-  assert.equal(validateDatabase(path).schema_version, 18);
+  assert.equal(validateDatabase(path).schema_version, 20);
   assert.equal(statSync(result.preserved_original).size, 'damaged original'.length);
 });
 
@@ -71,7 +71,8 @@ test('version one backups restore and migrate without losing accounts, avatars o
   const legacy = new DatabaseSync(source);
   legacy.exec('PRAGMA foreign_keys=OFF; DROP VIEW calling_source_events; DROP VIEW calling_objective_rules; DROP TABLE calling_receipts; DROP TABLE resident_callings');
   for (const table of [...COMMUNITY_TABLES, ...JOURNEY_TABLES]) legacy.exec(`DROP TABLE ${table}`);
-  legacy.exec(`DROP TABLE land_stewardships; DROP TABLE land_events; DROP TABLE land_parcels;
+  legacy.exec(`DROP TRIGGER land_stewardships_revoke_grants; DROP TABLE plot_grant_events; DROP TABLE plot_grants;
+    DROP TABLE land_stewardships; DROP TABLE land_events; DROP TABLE land_parcels;
     DROP TABLE frontier_actions; DROP TABLE frontier_blocks; DROP TABLE frontier_sectors;
     DROP TABLE world_objects; DROP TABLE worlds;
     DROP INDEX agents_spatial; DROP INDEX messages_world;
@@ -87,7 +88,7 @@ test('version one backups restore and migrate without losing accounts, avatars o
   assert.equal(restoreDatabase(source, destination).schema_version, 1);
   const restored = new Platform(destination);
   try {
-    assert.equal(validateDatabase(destination).schema_version, 18);
+    assert.equal(validateDatabase(destination).schema_version, 20);
     const restoredActor = restored.authenticate(credentials.token);
     assert.equal(restored.me(restoredActor).account.name, 'Original owner');
     assert.equal(restored.me(restoredActor).agents[0].name, 'Original avatar');
@@ -112,7 +113,7 @@ test('version two state upgrades atomically and version three recovery requires 
   assert.equal(validateDatabase(path).schema_version, 2);
   const upgraded = new Platform(path);
   try {
-    assert.equal(validateDatabase(path).schema_version, 18);
+    assert.equal(validateDatabase(path).schema_version, 20);
     const nextActor = upgraded.authenticate(credentials.token);
     assert.equal(upgraded.me(nextActor).agents[0].id, avatar.id);
     assert.equal(upgraded.journey(nextActor, { agent_id: avatar.id }).discoveries[0].world_id, 'commons');

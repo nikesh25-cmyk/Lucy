@@ -39,8 +39,8 @@ test('the content layer, its palettes and every definition declare schema versio
   assert.equal(bundle.notices.schema_version, 1);
   for (const definition of entries()) assert.equal(definition.schema_version, 1, `${definition.kind}:${definition.id} must declare schema version 1`);
   assert.deepEqual(CONTENT_KINDS, ['block', 'furniture', 'crop', 'appearance', 'cosmetic']);
-  assert.deepEqual(manifest().kinds, { appearance: 20, block: 7, cosmetic: 29, crop: 3, furniture: 27 });
-  assert.equal(entries().length, 86);
+  assert.deepEqual(manifest().kinds, { appearance: 20, block: 7, cosmetic: 32, crop: 3, furniture: 27 });
+  assert.equal(entries().length, 89);
   assert.deepEqual(palettes(), ['garden', 'house', 'frontier']);
   for (const kind of CONTENT_KINDS) assert.equal(entries(kind).length, manifest().kinds[kind], `${kind} count must match the sealed manifest`);
 });

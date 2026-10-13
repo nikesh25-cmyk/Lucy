@@ -78,7 +78,7 @@ for (const item of manifest().entries) files.set(`/${item.file}`, [item.file, 'a
 for (const file of manifest().support) files.set(`/${file.path}`, [file.path, file.path.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'application/json; charset=utf-8']);
 const writes = new Map([
   ['/callings/select', ['callingSelect', null]],
-  ['/land/assign',['landAssign',null]], ['/land/release',['landRelease',null]], ['/frontier/expand',['frontierExpand','build']], ['/frontier/build',['frontierBuild','build']], ['/operations/registration',['registrationSettings',null]],
+  ['/land/assign',['landAssign',null]], ['/land/release',['landRelease',null]], ['/frontier/expand',['frontierExpand','build']], ['/frontier/build',['frontierBuild','build']], ['/frontier/grant',['plotGrantCreate',null]], ['/frontier/grant/revoke',['plotGrantRevoke',null]], ['/operations/registration',['registrationSettings',null]],
   ['/drafts', ['draftSave', null]], ['/drafts/resume', ['draftResume', null]], ['/drafts/archive', ['draftArchive', null]],
   ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]], ['/residents/resume', ['residentResume', null]],
   ['/research/run', ['researchRun', null]], ['/research/cancel', ['researchCancel', null]], ['/mayors/talk', ['mayorTalk', 'chat']], ['/mayors/control', ['mayorControl', null]], ['/ambassadors/talk', ['ambassadorTalk', 'chat']], ['/ambassadors/control', ['ambassadorControl', null]], ['/research/generate', ['researchGenerate', null]], ['/research/activate', ['researchActivate', null]],
@@ -101,13 +101,15 @@ const writes = new Map([
   ['/community/manage', ['manageCommunity', null]],
   ['/journey/profile', ['updateProfile', 'contribute']], ['/journey/journal', ['writeJournal', 'contribute']],
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
+  ['/journey/offers', ['offerCreate', 'contribute']], ['/journey/offers/accept', ['offerAccept', null]],
+  ['/journey/offers/decline', ['offerDecline', null]], ['/journey/offers/cancel', ['offerCancel', 'contribute']],
   ['/quests/author', ['questAuthor', null]], ['/quests/manage', ['questManage', null]],
   ['/quests/join', ['questJoin', null]], ['/quests/leave', ['questLeave', null]], ['/quests/complete', ['questComplete', null]],
   ['/guilds/projects', ['guildProjectCreate', 'contribute']], ['/guilds/participation', ['guildParticipation', 'contribute']],
   ['/guilds/contributions', ['guildContribution', 'contribute']], ['/guilds/verify', ['guildVerify', 'contribute']],
   ['/guilds/manage', ['guildProjectManage', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/events', '/interact']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -486,10 +488,12 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/land') value=platform.land(actor,Object.fromEntries(url.searchParams));
           else if (route === '/land/plot') value=platform.landPlot(actor,Object.fromEntries(url.searchParams));
           else if (route === '/frontier') value=platform.frontierMap(actor,Object.fromEntries(url.searchParams));
+          else if (route === '/frontier/grants') value=platform.plotGrants(actor,Object.fromEntries(url.searchParams));
           else if (route === '/worlds') value = platform.worldList(actor, Object.fromEntries(url.searchParams));
           else if (route === '/community') value = platform.community(actor, Object.fromEntries(url.searchParams));
           else if(route==='/coins')value=platform.coins(actor,Object.fromEntries(url.searchParams));
           else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/journey/offers') value = platform.resourceOffers(actor, Object.fromEntries(url.searchParams));
           else if (route === '/interact') value = platform.interactionView(actor, Object.fromEntries(url.searchParams));
           else if (route === '/missions') value = platform.missionList(actor,Object.fromEntries(url.searchParams));
           else if (route === '/gallery') value = platform.gallery();
@@ -617,7 +621,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         else if (route === '/operations/pause') {
           if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
           value = platform.pause(actor, input.paused);
-        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
         else value = platform[method](actor, input);
         platform.charge(actor);
         return value;
@@ -657,7 +661,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
     }
   });
   let mayorTimer;
-  server.once('listening',()=>{mayorTimer=setInterval(()=>{try{platform.transaction(()=>platform.tickMayors());}catch{/* A shutdown may have closed storage. */}},3000);mayorTimer.unref();});
+  server.once('listening',()=>{mayorTimer=setInterval(()=>{try{platform.transaction(()=>platform.tickMayors());}catch{/* A shutdown may have closed storage. */}try{platform.transaction(()=>platform.expireOffers());}catch{/* A shutdown may have closed storage. */}},3000);mayorTimer.unref();});
   server.once('close',()=>{clearInterval(mayorTimer);hub.closeAll();for(const run of [...researchRuns.values(),...residentRuns.values()])run.controller.abort();});
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
