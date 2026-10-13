@@ -599,12 +599,17 @@ function applyGameShell(){
   // of them (or the world menu) is always how the world opens. `state.gameMode` is remembered in this
   // tab, so choosing play or observe is not repeated on every refresh.
   const world=state.gamePresentation&&state.tab==='world';
+  const openingChat=world&&state.gameDrawer==='chat'&&!document.body.classList.contains('game-chat-open');
+  if(openingChat){const stale=$('#notice');if(stale&&!stale.classList.contains('error'))stale.hidden=true;}
   if(!world)gameAudio.stop();
   document.body.classList.toggle('game-world',world);
   document.body.classList.toggle('game-entry',world&&state.gameMode==='entry');
   document.body.classList.toggle('game-menu-open',world&&state.gameMenuOpen);
   document.body.classList.toggle('game-tools-open',world&&state.gameDrawer==='tools');
   document.body.classList.toggle('game-chat-open',world&&state.gameDrawer==='chat');
+  // The guide remains mounted and server-derived while a conversation has the keyboard. Its
+  // compact marker stays visible, and the conversation header offers a route back to its controls.
+  const guideHost=$('#game-guide-host');if(guideHost)guideHost.inert=Boolean(world&&state.gameDrawer==='chat');
   document.body.classList.toggle('game-building',world&&state.building);
   document.body.dataset.gameDrawer=state.gameDrawer;
   $('#game-menu-button')?.setAttribute('aria-expanded',String(world&&state.gameMenuOpen));
@@ -1403,7 +1408,8 @@ document.addEventListener('keydown',(event)=>{
 });
 function chatCard({floating=false}={}) {
   const node = card(floating?null:'Conversation', 'VOICES IN THE WORLD');node.id='world-chat-card'; const messages = element('div', null, 'message-list'); messages.setAttribute('aria-label', 'Recent world conversations');
-  if (!state.world.messages.length) messages.append(paragraph('The plaza is quiet. Start a conversation.', 'muted'));
+  if(!state.world.messages.length)messages.classList.add('message-list-empty');
+  if (!state.world.messages.length&&!floating) messages.append(paragraph('The plaza is quiet. Start a conversation.', 'muted'));
   for (const message of state.world.messages.slice(-35)) { const row = element('article', null, 'chat-message'); const author = element('div', null, 'row'); append(author, element('strong', message.author), badge(message.channel)); if (state.account) author.append(button('Report', () => reportPrompt('message', message.id), 'secondary small')); append(row, author, paragraph(message.text), element('small', date(message.created_at))); messages.append(row); }
   node.append(messages);
   if (state.account&&state.gameMode!=='observe') {
@@ -1417,7 +1423,7 @@ function chatCard({floating=false}={}) {
     const mission = field(controls, 'mission_id', 'Mission', { required: false, options: state.missions.map((m) => ({value:m.id,label:m.title})), full:true }); mission.closest('label').hidden = channel.value !== 'mission';
     channel.addEventListener('change', () => { state.chatChannel=channel.value;if(channel.value!=='private'){state.chatRecipientId='';state.chatRecipientName='';recipient.value='';}recipient.closest('label').hidden = channel.value !== 'private'; recipient.required = channel.value === 'private'; mission.closest('label').hidden = channel.value !== 'mission'; });
     recipient.addEventListener('change',()=>{state.chatRecipientId=recipient.value;state.chatRecipientName=recipient.selectedOptions[0]?.textContent||'';});
-    const textField=field(controls, 'text', 'Message', { type:'textarea',max:500,full:true });if(!state.chatDraft)state.chatDraft=scopedChatDraft();textField.value=state.chatDraft||'';textField.addEventListener('input',()=>setChatDraft(textField.value)); node.append(paragraph('Direct conversations are visible to the participating agents’ operators. They are not end-to-end encrypted.', 'privacy'));
+    const textField=field(controls, 'text', 'Message', { type:'textarea',max:500,full:true });if(!state.chatDraft)state.chatDraft=scopedChatDraft();textField.value=state.chatDraft||'';textField.addEventListener('input',()=>setChatDraft(textField.value)); node.append(paragraph('Direct conversations are visible to the participating agents’ operators. They are not end-to-end encrypted. An AI replies only while its runtime is active.', 'privacy'));
   } else node.append(paragraph(state.gameMode==='observe'?'Observation is read-only. Choose Play to join this conversation.':'Sign in to join the conversation as a visitor or agent operator.', 'privacy'));
   return node;
 }
@@ -1425,8 +1431,11 @@ function gameConversationHost(){
   const host=element('div',null,'game-conversation-host');host.id='game-conversation-host';host.setAttribute('role','dialog');host.setAttribute('aria-label','Conversation');
   const header=element('div',null,'game-conversation-header');
   const title=element('span','Conversation');
-  const close=button('Close conversation',()=>setGameDrawer(''),'game-conversation-close');
-  header.append(title,close);host.append(header,chatCard({floating:true}));
+  const guide=button('Current task',()=>{setGameDrawer('');const target=$('#game-guide-host .game-guide-action:not(:disabled), #game-guide-host [data-guide="resume"], #game-guide-host [data-guide="dismiss"]');target?.focus({preventScroll:true});},'game-conversation-guide');
+  guide.setAttribute('aria-controls','game-guide-host');
+  const close=button('Close',()=>setGameDrawer(''),'game-conversation-close');
+  close.setAttribute('aria-label','Close conversation');
+  header.append(title,guide,close);host.append(header,chatCard({floating:true}));
   return host;
 }
 function openCharacterConversation(resident) {
@@ -1463,7 +1472,7 @@ function openCharacterConversation(resident) {
   };
   requestAnimationFrame(focusComposer);
   setTimeout(focusComposer,280);
-  notice(`Direct message to ${resident.name}. Their operator can read it; an AI replies only when its runtime is active.`);
+  if(!(state.gamePresentation&&state.tab==='world'))notice(`Direct message to ${resident.name}. Their operator can read it; an AI replies only when its runtime is active.`);
 }
 function renderList(parent) {
   parent.append(heading('A world you can read', 'Every place, character, and conversation is available without using the map.'));
@@ -1526,15 +1535,16 @@ function renderMissions(parent) {
 function sources(parent, records, evidence) {
   const list=element('ul',null,'sources');(records||[]).forEach((source,index)=> {const item=element('li'); const link=element('a',source.url);try{const url=new URL(source.url);if(['http:','https:'].includes(url.protocol)){link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';}}catch{}append(item,link,element('span',` · ${source.location} · ${source.date||'Date not supplied'}`));const entry=(evidence||[])[index];if(entry)item.append(evidenceView(entry));list.append(item);});parent.append(list);
 }
-function evidenceBadge(state){return badge({captured:'captured version',missing:'unverified link',stale:'stale version',replaced:'replaced version',withdrawn:'withdrawn source'}[state]||state,state==='captured');}
+function evidenceBadge(state){return badge({captured:'captured version',missing:'unverified source',stale:'stale version',replaced:'replaced version',withdrawn:'withdrawn source'}[state]||state,state==='captured');}
+function checkedEvidenceBytes(capture){return capture?.verification?capture.verification==='retained-bytes-hash-checked':Boolean(capture?.retained);}
 function evidenceView(entry){
   const node=element('div',null,'evidence-state');node.append(evidenceBadge(entry.state),paragraph(entry.state_note,'privacy'));
   const capture=entry.capture;
-  if(capture)node.append(paragraph(`Exact version ${capture.sha256} · ${capture.retained?`retained ${capture.bytes} bytes at ${capture.retained_path}`:'hash recorded; bytes not retained in the library'} · retrieved ${capture.retrieved_at}${capture.declared_date?` · source-declared date ${capture.declared_date}`:''}${capture.unit?` · unit ${capture.unit}`:''}`,'source-hash'),paragraph(`Supporting location: ${capture.locator||'not recorded'}`,'privacy'));
+  if(capture)node.append(paragraph(`${checkedEvidenceBytes(capture)?'Retained, hash-checked source bytes':'Historical hash-only record'} · SHA-256 ${capture.sha256} · ${checkedEvidenceBytes(capture)?`${capture.bytes} source bytes retained at ${capture.retained_path}`:'source bytes not retained and checked in this library; this record cannot establish captured support'} · recorded retrieval ${capture.retrieved_at}${capture.declared_date?` · source-declared date ${capture.declared_date}`:''}${capture.unit?` · unit ${capture.unit}`:''}`,'source-hash'),paragraph(`Supporting location: ${capture.locator||'not recorded'}`,'privacy'));
   if(capture&&capture.provenance)node.append(paragraph(`Provenance: ${capture.provenance}`,'privacy'));
   if(capture&&capture.license&&(capture.license.name||capture.license.attribution))node.append(paragraph(`Rights: ${[capture.license.name,capture.license.attribution].filter(Boolean).join(' — ')}${capture.license.url?` · ${capture.license.url}`:''}`,'privacy'),paragraph('The library retains each source’s stated licence and attribution; reuse still requires review.','privacy'));
   if(entry.conflict)node.append(paragraph(`Conflicting evidence kept visible — declared dates: ${(entry.declared_dates||[]).join(', ')||'none'}; units: ${(entry.units||[]).join(', ')||'none'}. Both values are shown rather than normalised away.`,'privacy'));
-  if((entry.versions||[]).length>1)disclosure(node,`All ${entry.versions.length} retained versions of this source`,body=>{for(const version of entry.versions)body.append(paragraph(`${version.retained?'retained':'hash-only'} · ${version.sha256} · retrieved ${version.retrieved_at}${version.declared_date?` · date ${version.declared_date}`:''}${version.unit?` · unit ${version.unit}`:''} · ${version.locator||'location not recorded'}${version.supersedes?` · supersedes ${version.supersedes}`:''}`,'source-hash'));});
+  if((entry.versions||[]).length>1)disclosure(node,`All ${entry.versions.length} recorded versions of this source`,body=>{for(const version of entry.versions)body.append(paragraph(`${checkedEvidenceBytes(version)?'retained, hash-checked source bytes':'historical hash-only record'} · ${version.sha256} · recorded retrieval ${version.retrieved_at}${version.declared_date?` · date ${version.declared_date}`:''}${version.unit?` · unit ${version.unit}`:''} · ${version.locator||'location not recorded'}${version.supersedes?` · supersedes ${version.supersedes}`:''}`,'source-hash'));});
   return node;
 }
 // The one state a reviewer and a contributor both read: pending, accepted, held (quarantined) or
@@ -1795,7 +1805,7 @@ function renderHistory(parent) {
 function renderReview(parent) {
   parent.append(heading('Human review','Check original evidence, permissions, context, and mission criteria before accepting work. You cannot review your own contributions.'));
   const library=card('Versioned evidence library','REVIEWER INSPECTION');
-  library.append(paragraph('Every capture is one exact version of a public source, with its identity, hash, retained bytes, retrieval date, declared date, unit, provenance and licence. A citation pins the version it named; a later capture of the same source never rewrites the cited version, it only changes the state shown. A saved link with no capture is unverified evidence and is never presented as support.','privacy'));
+  library.append(paragraph('Each library record stores a source identity, hash and retrieval metadata. Retained source bytes are hash-checked for later inspection; historical hash-only declarations are unverified and cannot establish captured support. A verified citation pins its retained version; a later capture of the same source never rewrites it, only the state shown. A saved link with no retained capture is unverified evidence and is never presented as support.','privacy'));
   library.append(button('Load evidence library',async()=>{state.evidenceLibrary=await api('/evidence?limit=50');renderView();},'secondary small'));
   if(state.evidenceLibrary){
     library.append(paragraph(`${state.evidenceLibrary.limits.captures} captures across ${state.evidenceLibrary.total} sources · ${state.evidenceLibrary.limits.retained_bytes} of ${state.evidenceLibrary.limits.max_retained_bytes} retained bytes · up to ${state.evidenceLibrary.limits.max_captures_per_source} versions per source. Cited versions are never evicted.`,'privacy'));
@@ -3286,6 +3296,7 @@ function mountFirstPlayGuide(){
   host.replaceChildren();
   const node=renderNode(tree,document);
   if(node)host.append(node);
+  host.inert=state.gameDrawer==='chat';
 }
 
 // The touch layer (task 37) needs a coarse pointer or a narrow screen. It binds no key event, so the

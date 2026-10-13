@@ -164,3 +164,51 @@ body.game-world #game-conversation-host #world-chat-card form{display:flex;flex-
 body.game-world #game-conversation-host #world-chat-card textarea{min-height:52px;max-height:110px;resize:vertical}
 @media(max-width:650px){body.game-world #game-conversation-host{top:110px;right:10px;width:min(320px,calc(100vw - 20px));max-height:min(340px,calc(100dvh - 250px))}body.game-world #game-conversation-host #world-chat-card .message-list{max-height:min(140px,24dvh)}}
 @media(prefers-reduced-motion:reduce){body.game-world #game-conversation-host{transition:none}}
+
+/* Conversation is the active task while the composer has focus. Keep the server-derived guide in
+   the DOM as a one-line marker, and let Current task in the conversation header reopen its full
+   controls. The guide host is inert during chat, so clipped actions cannot receive keyboard focus. */
+body.game-world.game-chat-open .game-place,
+body.game-world.game-chat-open .game-live-count,
+body.game-world.game-chat-open .world-panel>.minimap-card,
+body.game-world.game-chat-open .world-reticle,
+body.game-world.game-chat-open .game-target,
+body.game-world.game-chat-open .game-prompt-host,
+body.game-world.game-chat-open .game-overlay-host,
+body.game-world.game-chat-open .game-control-hint{display:none}
+body.game-world.game-chat-open .game-guide{top:84px;bottom:auto;max-height:48px;width:min(340px,calc(100vw - 40px));overflow:hidden;pointer-events:none}
+body.game-world.game-chat-open .game-guide-card:not(.game-guide-next){display:none}
+body.game-world.game-chat-open .game-guide-next{display:flex;align-items:center;gap:9px;height:46px;padding:8px 12px;overflow:hidden}
+body.game-world.game-chat-open .game-guide-next>:not(.game-guide-progress):not(.game-guide-action-line){display:none}
+body.game-world.game-chat-open .game-guide-action-line{min-width:0;overflow:hidden}
+body.game-world.game-chat-open .game-guide-action-line>:not(.game-guide-title){display:none}
+body.game-world.game-chat-open .game-guide-progress{flex:none;white-space:nowrap}
+body.game-world.game-chat-open .game-guide-title{font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.game-world #game-conversation-host{overflow:hidden}
+body.game-world .game-conversation-header{padding:7px 10px;gap:6px}
+body.game-world .game-conversation-header span{margin-right:auto;white-space:nowrap}
+body.game-world .game-conversation-guide{min-height:42px;padding:5px 8px;border:1px solid #d8d8ad80;border-radius:8px;background:#0f3a31;color:#f3f0d8;font-size:.62rem;white-space:nowrap}
+body.game-world .game-conversation-close{min-height:42px;padding:5px 9px;white-space:nowrap}
+body.game-world #game-conversation-host #world-chat-card{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:11px 13px;scrollbar-width:thin}
+body.game-world #game-conversation-host #world-chat-card .message-list{flex:0 1 auto;max-height:90px;margin:0 0 6px;padding:0}
+body.game-world #game-conversation-host #world-chat-card .message-list:empty{display:none}
+body.game-world #game-conversation-host #world-chat-card .message-list-empty{display:none}
+body.game-world #game-conversation-host #world-chat-card .message-list p{margin:2px 0}
+body.game-world #game-conversation-host #world-chat-card form{margin-top:5px;gap:5px}
+body.game-world #game-conversation-host #world-chat-card .field-grid{gap:0 8px}
+body.game-world #game-conversation-host #world-chat-card label{gap:3px;margin-bottom:7px}
+body.game-world #game-conversation-host #world-chat-card label small{font-size:.62rem}
+body.game-world #game-conversation-host #world-chat-card form>button{min-height:44px}
+@media(min-width:651px){body.game-world #game-conversation-host{max-height:min(470px,calc(100dvh - 260px))}}
+@media(max-width:650px){
+  body.game-world.game-chat-open .game-guide{top:68px;left:10px;right:10px;width:min(320px,calc(100vw - 20px));max-height:36px}
+  body.game-world.game-chat-open .game-guide-next{height:35px;padding:5px 9px}
+  body.game-world.game-chat-open .world-bottom,
+  body.game-world.game-chat-open .game-hud-bottom,
+  body.game-world.game-chat-open .nm-touch{display:none}
+  body.game-world #game-conversation-host{top:110px;max-height:min(340px,calc(100dvh - 250px))}
+  body.game-world #game-conversation-host #world-chat-card .field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.game-world #game-conversation-host #world-chat-card .message-list{max-height:66px}
+  body.game-world #game-conversation-host #world-chat-card>.eyebrow{display:none}
+  body.game-world .game-conversation-header span{font-size:.78rem}
+}
