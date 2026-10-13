@@ -98,7 +98,9 @@ export function productionDatabaseRefusal(databasePath, projectRoot, workspace) 
 /** The scenarios the suite runs, in order, with the regression each one encodes. */
 export const SCENARIOS = Object.freeze([
   { id: 'hero-introduction-film', title: 'The supplied introduction plays on the landing page and fits mobile', regression: null },
+  { id: 'game-entry-and-observation', title: 'The game opens to Play and Observe with a full world stage and usable mobile controls', regression: null },
   { id: 'accounts-and-switching', title: 'Signup, login, logout and account switching', regression: null },
+  { id: 'signed-in-game-play', title: 'A human enters the game, walks with the keyboard, opens its drawers and returns to the saved position', regression: null },
   { id: 'credential-exclusion', title: 'Credential exclusion from browser storage', regression: 'queue review correction 2' },
   { id: 'private-draft-isolation', title: 'Private draft isolation between operators', regression: 'queue review correction 2' },
   { id: 'refresh-and-focus-restoration', title: 'Refresh returns to the right form and restores focus', regression: 'queue review correction 3' },
@@ -345,7 +347,9 @@ const ACTORS = {
  * run of one scenario still starts from a real signed-in session.
  */
 async function openApp(page, credentials = null) {
-  await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+  // The detailed workspace remains a user-reachable view. Existing acceptance scenarios exercise
+  // its forms directly; the separate game-entry scenario opens the default world-first screen.
+  await page.goto(`${baseUrl()}/?mode=workspace`, { waitUntil: 'domcontentloaded' });
   await settle(page);
   if (credentials && !await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, credentials);
 }
@@ -600,7 +604,7 @@ async function main() {
 
     for (const id of wanted) {
       const definition = SCENARIOS.find((entry) => entry.id === id);
-      if (id !== 'accounts-and-switching' && id !== 'hero-introduction-film' && !state.fixtures.ready) {
+      if (id !== 'accounts-and-switching' && id !== 'hero-introduction-film' && id !== 'game-entry-and-observation' && !state.fixtures.ready) {
         console.log('');
         console.log(`SKIP  ${id} — the fictional account fixtures need the first administrator, so run accounts-and-switching first`);
         state.skipped.push(id);
@@ -2694,7 +2698,7 @@ define('hero-introduction-film',async()=>{
     return 'user-started playback, native sound/seek/fullscreen controls, poster, no preload';
   });
   await step('Chrome decodes the supplied film and closing its introduction pauses playback',async()=>{
-    await visitor.page.getByRole('button',{name:'Watch introduction',exact:true}).click();
+    await visitor.page.locator('#hero-actions').getByRole('button',{name:'Watch the film',exact:true}).click();
     const video=visitor.page.locator('#introduction-film');
     await video.evaluate(async v=>{v.muted=true;await v.play();});
     const info=await waitForCondition(async()=>video.evaluate(v=>v.currentTime>0.2?{duration:v.duration,width:v.videoWidth,height:v.videoHeight}:null),'Chrome to decode and advance the film');
@@ -2709,6 +2713,194 @@ define('hero-introduction-film',async()=>{
     return `Chrome played ${info.duration.toFixed(2)} seconds at ${info.width}×${info.height}; close pauses it; 390px mobile fits`;
   });
   return 'the supplied introduction plays in Chrome and fits mobile, with no autoplay';
+});
+
+define('game-entry-and-observation', async () => {
+  const visitor = await context('game-visitor');
+  const page = visitor.page;
+  await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+  await settle(page);
+
+  await step('the landing screen offers Play and Observe, and Play asks the visitor to sign up', async () => {
+    const actions = page.locator('#hero-actions');
+    await actions.waitFor({ state: 'visible' });
+    const play = actions.getByRole('button', { name: /Play/i }).first();
+    const observe = actions.getByRole('button', { name: /Observe/i }).first();
+    expect(await play.isVisible() && await observe.isVisible(), 'both game entry choices must be usable', { expected: 'visible Play and Observe buttons' });
+    await play.click();
+    await page.locator('#auth-dialog').waitFor({ state: 'visible' });
+    expect(await page.locator('#auth-dialog').evaluate((dialog) => dialog.open), 'anonymous Play must lead to account creation', { actual: 'the account dialog is not open' });
+    await page.locator('#close-auth').click();
+    return 'Play opened the account dialog; Observe remained available without an account';
+  });
+
+  await step('Observe loads the public world as a screen-filling scene', async () => {
+    await page.locator('#hero-actions').getByRole('button', { name: /Observe/i }).first().click();
+    await settle(page);
+    await page.locator('#game-hud').waitFor({ state: 'visible' });
+    const canvas = page.locator('#world');
+    await canvas.waitFor({ state: 'visible' });
+    const stage = await canvas.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      return { width: box.width, height: box.height, viewportWidth: innerWidth, viewportHeight: innerHeight };
+    });
+    expect(stage.width >= stage.viewportWidth * 0.75 && stage.height >= stage.viewportHeight * 0.5,
+      'the 3D world must occupy most of the desktop viewport', { expected: 'at least 75% of width and 50% of height', actual: describe(stage) });
+    const observed = await page.evaluate(() => ({
+      world: window.__nemoworld?.worldId?.(),
+      participants: window.__nemoworld?.world?.()?.participants,
+    }));
+    expect(observed.world === 'commons' && Array.isArray(observed.participants),
+      'Observe must load server world data for the Commons', { actual: describe(observed) });
+    const before = (await page.locator('#world-reticle').textContent())?.trim() || '';
+    await canvas.focus();
+    await page.keyboard.press('ArrowRight');
+    const after = await waitForCondition(async () => {
+      const line = (await page.locator('#world-reticle').textContent())?.trim() || '';
+      return line !== before ? line : null;
+    }, 'the observer camera to respond to an arrow key');
+    expect(/at \d+, \d+/.test(after), 'keyboard observation must keep the camera location readable', { actual: after });
+    await mkdir(join(RESULTS, 'game-entry-and-observation'), { recursive: true });
+    await page.screenshot({ path: join(RESULTS, 'game-entry-and-observation', 'desktop.png') });
+    return `3D scene ${Math.round(stage.width)}×${Math.round(stage.height)} in ${stage.viewportWidth}×${stage.viewportHeight}; public ${observed.world} loaded; ArrowRight moved the observer camera`;
+  });
+
+  await step('the phone layout keeps the world and menu accessible without sideways scrolling', async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(200);
+    const canvas = page.locator('#world');
+    const stage = await canvas.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      return { width: box.width, height: box.height, viewportWidth: innerWidth, viewportHeight: innerHeight, scrollWidth: document.documentElement.scrollWidth };
+    });
+    expect(stage.scrollWidth <= stage.viewportWidth, 'the game screen must fit a 390px phone without horizontal overflow', { actual: describe(stage) });
+    expect(stage.width >= 300 && stage.height >= 350, 'the mobile world must remain a usable scene', { actual: describe(stage) });
+    const menu = page.locator('#game-menu-button');
+    expect(await menu.isVisible(), 'the mobile world menu must remain visible', { actual: 'no visible #game-menu-button' });
+    expect((await menu.getAttribute('aria-label')) || (await menu.textContent())?.trim(), 'the world menu must have an accessible name');
+    await menu.click();
+    await nav(page, 'Open world').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.querySelector('.sidebar')?.getBoundingClientRect().left >= -1, null, { timeout: 2000 });
+    const metrics = await page.evaluate(() => {
+      const box = (selector) => {
+        const node = document.querySelector(selector);
+        if (!node) return null;
+        const rect = node.getBoundingClientRect(), style = getComputedStyle(node);
+        return { x: Math.round(rect.x), y: Math.round(rect.y), right: Math.round(rect.right), bottom: Math.round(rect.bottom), width: Math.round(rect.width), height: Math.round(rect.height), transform: style.transform, overflow: style.overflow, position: style.position };
+      };
+      return {
+        sidebar: box('.sidebar'), navigation: box('#navigation'), firstNavButton: box('#navigation button'),
+        openWorldButton: box('#navigation button[aria-label="Open world"]'), masthead: box('.masthead'),
+        sessionBar: box('#session-bar'), signIn: box('#session-bar button:nth-of-type(2)'),
+        createAccount: box('#session-bar button:nth-of-type(3)'), menuButton: box('#game-menu-button'),
+      };
+    });
+    state.notes.push(`mobile menu geometry: ${describe(metrics)}`);
+    expect(metrics.openWorldButton.x >= 0 && metrics.openWorldButton.right <= stage.viewportWidth,
+      'the opened mobile menu must display its navigation labels inside the viewport', { actual: describe(metrics.openWorldButton) });
+    expect(metrics.sessionBar.y >= metrics.masthead.y && metrics.sessionBar.bottom <= metrics.masthead.bottom,
+      'the mobile account actions must fit inside the header', { actual: describe({ masthead: metrics.masthead, sessionBar: metrics.sessionBar }) });
+    await page.screenshot({ path: join(RESULTS, 'game-entry-and-observation', 'mobile-menu.png') });
+    return `390px phone: scene ${Math.round(stage.width)}×${Math.round(stage.height)}, world menu opened`;
+  });
+
+  return 'visitors can choose Play or Observe, explore the public world on desktop, and use its menu on a phone';
+});
+
+define('signed-in-game-play', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const player = fixtures().characters.player;
+  await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+  await settle(page);
+  if (!await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, ACTORS.admin);
+
+  await step('the visible Play control enters as the saved human player in first person', async () => {
+    const play = page.locator('#game-mode-button');
+    await play.waitFor({ state: 'visible' });
+    expect((await play.textContent())?.trim() === 'Play as human',
+      'a signed-in visitor with no selected resident must have a direct Play action', { actual: (await play.textContent())?.trim() });
+    await play.click();
+    await page.waitForFunction((id) =>
+      window.__nemoworld?.selected?.() === id &&
+      (document.querySelector('#world-reticle')?.textContent || '').startsWith('First person'), player.id,
+    { timeout: PAGE_TIMEOUT_MS });
+    const stored = row('SELECT world_id,x,y,z,kind FROM agents WHERE id=?', player.id);
+    expect(stored?.kind === 'human', 'Play must select the stored human player', { actual: describe(stored) });
+    const canvas = page.locator('#world');
+    expect(await canvas.isVisible(), 'the first-person world canvas must be visible');
+    await mkdir(join(RESULTS, 'signed-in-game-play'), { recursive: true });
+    await page.screenshot({ path: join(RESULTS, 'signed-in-game-play', 'desktop-play.png') });
+    return `${player.name} entered ${stored.world_id} at ${stored.x},${stored.y} in first person`;
+  });
+
+  let moved = null;
+  await step('a keyboard walking key changes exactly one stored tile', async () => {
+    await page.locator('#world').focus();
+    const before = row('SELECT world_id,x,y FROM agents WHERE id=?', player.id);
+    for (const key of ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown']) {
+      await page.keyboard.press(key);
+      moved = await waitForCondition(() => {
+        const current = row('SELECT world_id,x,y FROM agents WHERE id=?', player.id);
+        return current.world_id === before.world_id && Math.abs(current.x - before.x) + Math.abs(current.y - before.y) === 1 ? current : null;
+      }, `a keyboard ${key} step to be saved`, { timeout: 1800, interval: 100 }).catch(() => null);
+      if (moved) break;
+    }
+    expect(moved, 'one keyboard walking direction must move the human player one tile', { expected: `one step from ${before.x},${before.y}`, actual: describe(row('SELECT world_id,x,y FROM agents WHERE id=?', player.id)) });
+    await page.waitForFunction(([x,y]) => (document.querySelector('#world-reticle')?.textContent || '').includes(`at ${x}, ${y}`), [moved.x, moved.y], { timeout: PAGE_TIMEOUT_MS });
+    return `${before.x},${before.y} → ${moved.x},${moved.y} saved in the database`;
+  });
+
+  await step('Chat and More reveal the existing world tools from the game HUD', async () => {
+    const hud = page.locator('#game-hud');
+    await hud.getByRole('button', { name: 'Chat', exact: true }).click();
+    await page.waitForFunction(() => document.body.dataset.gameDrawer === 'chat', null, { timeout: PAGE_TIMEOUT_MS });
+    await page.locator('#world-chat-card').waitFor({ state: 'visible' });
+    await hud.getByRole('button', { name: 'More', exact: true }).click();
+    await page.waitForFunction(() => document.body.dataset.gameDrawer === 'tools', null, { timeout: PAGE_TIMEOUT_MS });
+    await page.locator('.world-aside').waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: 'Close world tools', exact: true }).click();
+    expect(await page.evaluate(() => document.body.dataset.gameDrawer) === '', 'the tools drawer must close through its own visible control');
+    return 'Chat and More opened the existing world panels; Close returned to the scene';
+  });
+
+  await step('a reload returns to the same human player and server-saved tile', async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await page.locator('#game-hud').waitFor({ state: 'visible' });
+    const selected = await page.evaluate(() => window.__nemoworld?.selected?.());
+    const current = row('SELECT world_id,x,y FROM agents WHERE id=?', player.id);
+    const shown = (await page.locator('#game-coordinates').textContent())?.trim();
+    expect(selected === player.id, 'reload must restore the selected human player', { expected: player.id, actual: selected });
+    expect(current.world_id === moved.world_id && current.x === moved.x && current.y === moved.y,
+      'reload must retain the server-saved world and tile', { expected: describe(moved), actual: describe(current) });
+    expect(shown === `${current.x}, ${current.y}`, 'the game HUD must show the saved tile after reload', { expected: `${current.x}, ${current.y}`, actual: shown });
+    const aim = (await page.locator('#world-reticle').textContent())?.trim() || '';
+    expect(aim.startsWith('First person'), 'the same tab must restore first-person play after reload', { actual: aim.slice(0, 180) });
+    return `${player.name} restored at ${current.world_id}:${current.x},${current.y}`;
+  });
+
+  await step('the human quickbar remains tappable on a phone', async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    try {
+      await page.waitForFunction(() => document.querySelector('.sidebar')?.getBoundingClientRect().right <= 2, null, { timeout: 2000 });
+      const controls = await page.locator('#game-hud .game-quickbar button').evaluateAll((buttons) => buttons.map((button) => {
+        const box = button.getBoundingClientRect();
+        return { label: button.textContent?.trim(), x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), height: Math.round(box.height) };
+      }));
+      expect(controls.length === 6, 'the phone quickbar must retain all six game actions', { actual: describe(controls) });
+      expect(controls.every((control) => control.x >= 0 && control.right <= 390 && control.height >= 40),
+        'every phone quickbar action must fit the screen with a tappable height', { actual: describe(controls) });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        'the signed-in game must fit a 390px phone without sideways scrolling');
+      await page.screenshot({ path: join(RESULTS, 'signed-in-game-play', 'mobile-play.png') });
+      return `six quickbar actions fit a 390px phone, each at least 40px tall`;
+    } finally {
+      await page.setViewportSize({ width: 1440, height: 900 });
+    }
+  });
+
+  return 'the human player used the game HUD, walked by keyboard, and returned to the saved world position';
 });
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {

@@ -47,6 +47,7 @@ const files = new Map([
   ['/missions', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/nemo-theme.css', ['nemo-theme.css','text/css; charset=utf-8']],
+  ['/game-theme.css', ['game-theme.css','text/css; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ['/world.js', ['world.js', 'text/javascript; charset=utf-8']],
   ['/src/trade-preview.js', ['src/trade-preview.js', 'text/javascript; charset=utf-8']],

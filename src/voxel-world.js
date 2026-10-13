@@ -9,7 +9,7 @@ import content from './content.js';
 // (#cbb46c) than this lantern glow (#e2ca83): two different colours share the name, so neither may
 // stand in for the other. The frontier block colours and the agent colours are resolved from the
 // content layer below, where each one is a sealed definition.
-const LOCAL_COLORS = Object.freeze({ dirt: '#927052', meadow: '#79a86d', leaf: '#468969', leaves: '#468969', water: '#4b9dad', snow: '#e5eeee',
+const LOCAL_COLORS = Object.freeze({ dirt: '#927052', meadow: '#79a86d', leaf: '#468969', leaves: '#468969', water: '#4b9dad', waterglint: '#9bcfc4', snow: '#e5eeee',
   plaza: '#e3d7b4', floor: '#c8aa82', rug: '#869e8c', trunk: '#81664a', roof: '#bd7961', dark: '#324842', cream: '#f1e9cb', gold: '#e2ca83' });
 const COLORS = Object.freeze({ ...LOCAL_COLORS, ...Object.fromEntries(content.palette('frontier').map((id) => [id, content.color(id, 'block')])) });
 const AGENT_COLORS = Object.freeze(Object.fromEntries(content.cosmetics('agent_color').map((id) => [id, content.color(id, 'cosmetic')])));
@@ -24,6 +24,14 @@ const callingStyle = item => typeof item.calling?.id === 'string' && Object.hasO
 const variant = (base, x, y) => new THREE.Color(base).multiplyScalar(0.91 + ((x * 47 + y * 91) % 7) * 0.025).getHex();
 const validColor = value => typeof value === 'string' && /^#[a-f\d]{6}$/i.test(value) ? value : null;
 const hash = value => { let result = 0; for (const char of String(value)) result = Math.imul(result ^ char.charCodeAt(0), 16777619); return result >>> 0; };
+// The four named phases come from src/atmosphere.js. These are renderer-only light and horizon
+// colours; they do not change any saved tile, world rule or content definition.
+const ATMOSPHERE = Object.freeze({
+  dawn: { sky: '#d9c7a7', fog: '#c9c8aa', zenith: '#f8dfb3', ground: '#6e8069', sun: '#ffd79d', skyLight: 1.55, sunLight: 1.9, sunHeight: 16, fogNear: 23, fogFar: 53 },
+  day: { sky: '#a9ccc5', fog: '#b6d1c0', zenith: '#eff7e7', ground: '#697f64', sun: '#fff0c9', skyLight: 1.9, sunLight: 2.35, sunHeight: 25, fogNear: 28, fogFar: 62 },
+  dusk: { sky: '#c59e86', fog: '#c1a68d', zenith: '#f6d3ae', ground: '#667568', sun: '#ffbe78', skyLight: 1.4, sunLight: 1.75, sunHeight: 13, fogNear: 23, fogFar: 52 },
+  night: { sky: '#334d57', fog: '#405b60', zenith: '#9ebbc0', ground: '#344841', sun: '#b7c8bb', skyLight: 0.92, sunLight: 0.85, sunHeight: 20, fogNear: 18, fogFar: 42 },
+});
 
 function createResources() {
   const geometry = new THREE.BoxGeometry(1, 1, 1), materials = new Map();
@@ -34,6 +42,7 @@ function createResources() {
         depthWrite: false, depthTest: style === 'parcel-boundary' })
       : new THREE.MeshLambertMaterial({ color, flatShading: true,
         ...(style === 'glass' ? { transparent: true, opacity: 0.58, depthWrite: false } : {}),
+        ...(style === 'cloud' ? { transparent: true, opacity: 0.74, depthWrite: false } : {}),
         ...(style === 'glow' ? { emissive: color, emissiveIntensity: 0.28 } : {}) }));
     return materials.get(key);
   }
@@ -44,7 +53,7 @@ function cubeBatch(resources) {
   const batches = new Map(); let cubes = 0;
   const add = (x, height, y, width, depth, length, color, pick = null, style = 'solid') => {
     const key = `${color}:${style}`;
-    if (!batches.has(key)) batches.set(key, { material: resources.material(color, style), instances: [] });
+    if (!batches.has(key)) batches.set(key, { material: resources.material(color, style), style, instances: [] });
     batches.get(key).instances.push({ x, height, y, width, depth, length, pick }); cubes++;
   };
   function finish() {
@@ -56,7 +65,8 @@ function cubeBatch(resources) {
         dummy.position.set(item.x, item.height, item.y); dummy.scale.set(item.width, item.depth, item.length); dummy.updateMatrix();
         mesh.setMatrixAt(index, dummy.matrix); mesh.userData.picks[index] = item.pick;
       });
-      mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere(); mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere();
+      mesh.castShadow = !['cloud', 'detail'].includes(batch.style); mesh.receiveShadow = !['cloud', 'detail'].includes(batch.style);
       group.add(mesh); if (mesh.userData.picks.some(Boolean)) pickables.push(mesh);
     }
     return { group, pickables, cubes, batches: batches.size };
@@ -89,6 +99,7 @@ function tree(batch, x, y, type, pick) {
     // The canopy starts above the drawn resident's head, so a neighbour is never inside the leaves.
     batch.add(x + .5, height + .78, y + .5, 1.4, 1.15, 1.4, variant('#438367', x, y), pick);
     batch.add(x + .5, height + 1.47, y + .5, .95, .55, .95, variant('#6a9f73', x, y), pick);
+    batch.add(x + .5, height + 1.82, y + .5, .5, .24, .5, variant('#8eb189', x, y), pick);
     if (type === 'fruit') for (const dx of [-.45, .35]) batch.add(x + .5 + dx, height + .95, y + .78, .17, .17, .17, '#d7905d', pick);
   }
 }
@@ -157,7 +168,10 @@ function terrainScene(resources, definition, snapshot, plan, cullHidden = true) 
     // An interior base cube has no exposed face, so it is skipped; the slab below always stays.
     if (!cullHidden || !cellOccludedBelow(definition, snapshot, plan, x, y)) batch.add(x + .5, type === 'water' ? -.82 : -.5, y + .5, 1, 1, 1, variant(COLORS.dirt, x, y), pick);
     batch.add(x + .5, type === 'water' ? -.16 : -.04, y + .5, 1, .08, 1, variant(base, x, y), pick);
-    if (type === 'water') batch.add(x + .5, -.095, y + .5, .99, .08, .99, variant(COLORS.water, x, y), pick);
+    if (type === 'water') {
+      batch.add(x + .5, -.095, y + .5, .99, .08, .99, variant(COLORS.water, x, y), pick);
+      if ((x * 3 + y * 5) % 4 === 0) batch.add(x + .48, -.048, y + .28, .32, .014, .035, COLORS.waterglint, null, 'detail');
+    }
     if (type === 'bridge') for (let i = 0; i < 4; i++) batch.add(x + .5, .03, y + .125 + i * .25, 1, .13, .22, COLORS.wood, pick);
     if (type === 'tree' && !['tree', 'fruit', 'palm', 'cactus', 'mountain'].includes(scenery.get(`${x},${y}`))) tree(batch, x, y, 'tree', pick);
     if (type === 'wall') batch.add(x + .5, .85, y + .5, 1, 1.7, 1, '#839489', pick);
@@ -195,7 +209,7 @@ function terrainScene(resources, definition, snapshot, plan, cullHidden = true) 
   if (definition.kind !== 'interior') {
     const centerX = (plan.window.x + plan.window.right) / 2, centerY = (plan.window.y + plan.window.bottom) / 2;
     for (const [dx, dy, size] of [[-12, -9, 1], [9, -13, 1.3], [-10, 13, .8], [15, 8, 1.1]]) {
-      for (const [cx, cy, length] of [[0, 0, 4.4], [1.2, .8, 3], [-1.1, -.4, 3.2]]) batch.add(centerX + dx + cx, 10 + cy * .1, centerY + dy + cy, length * size, .5 * size, 1.6 * size, '#e1ebe4');
+      for (const [cx, cy, length] of [[0, 0, 4.4], [1.2, .8, 3], [-1.1, -.4, 3.2]]) batch.add(centerX + dx + cx, 10 + cy * .1, centerY + dy + cy, length * size, .5 * size, 1.6 * size, '#e1ebe4', null, 'cloud');
     }
   }
   const result = batch.finish();
@@ -388,7 +402,9 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(48, 1, .1, 100), contents = createVoxelScene(); scene.add(contents.root);
-  const sky = new THREE.HemisphereLight('#e8f3ed', '#667b56', 2.1), sun = new THREE.DirectionalLight('#fff1d0', 2.6);
+  scene.background = new THREE.Color(ATMOSPHERE.day.sky); scene.fog = new THREE.Fog(ATMOSPHERE.day.fog, ATMOSPHERE.day.fogNear, ATMOSPHERE.day.fogFar);
+  const sky = new THREE.HemisphereLight(ATMOSPHERE.day.zenith, ATMOSPHERE.day.ground, ATMOSPHERE.day.skyLight);
+  const sun = new THREE.DirectionalLight(ATMOSPHERE.day.sun, ATMOSPHERE.day.sunLight);
   sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -24; sun.shadow.camera.right = 24;
   sun.shadow.camera.top = 24; sun.shadow.camera.bottom = -24; sun.shadow.camera.near = .5; sun.shadow.camera.far = 65;
   sun.shadow.bias = -.001; sun.shadow.normalBias = .03; scene.add(sky, sun, sun.target);
@@ -410,10 +426,14 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     if (destroyed || lost || !lastSnapshot) return;
     resize(); const placement = orbitInput.mode === 'first-person' ? firstPersonCamera(target, orbitInput.orbit) : orbitCamera(target, orbitInput.orbit);
     camera.position.set(placement.eye.x, placement.eye.y, placement.eye.z); camera.lookAt(placement.target.x, placement.target.y, placement.target.z); camera.updateMatrixWorld();
-    const night = ['night', 'evening'].includes(lastOptions?.dayPhase || lastSnapshot.atmosphere?.phase);
-    scene.background = new THREE.Color(night ? '#789495' : '#b8d5cd'); scene.fog = new THREE.Fog(scene.background, 25, 48);
-    sky.intensity = night ? 1.2 : 2.1; sun.intensity = night ? 1.1 : 2.6;
-    sun.position.set(target.x - 14, 25, target.y + 9); sun.target.position.set(target.x, 0, target.y); sun.target.updateMatrixWorld();
+    const namedPhase = lastOptions?.dayPhase || lastSnapshot.atmosphere?.phase || 'day';
+    const phase = namedPhase === 'evening' ? 'dusk' : namedPhase;
+    const atmosphere = Object.hasOwn(ATMOSPHERE, phase) ? ATMOSPHERE[phase] : ATMOSPHERE.day;
+    scene.background.set(atmosphere.sky); scene.fog.color.set(atmosphere.fog);
+    scene.fog.near = atmosphere.fogNear; scene.fog.far = atmosphere.fogFar;
+    sky.color.set(atmosphere.zenith); sky.groundColor.set(atmosphere.ground); sky.intensity = atmosphere.skyLight;
+    sun.color.set(atmosphere.sun); sun.intensity = atmosphere.sunLight;
+    sun.position.set(target.x - 14, atmosphere.sunHeight, target.y + 9); sun.target.position.set(target.x, 0, target.y); sun.target.updateMatrixWorld();
     const selected = lastOptions?.selection;
     selection.visible = !!selected && Number.isInteger(selected.x) && Number.isInteger(selected.y);
     if (selection.visible) selection.position.set(selected.x + .5, Math.max(0, selected.z || 0) + .5, selected.y + .5);
