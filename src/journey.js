@@ -74,16 +74,13 @@ export const contributionSource = `submissions s JOIN claims c ON c.id=s.claim_i
   JOIN missions m ON m.id=t.mission_id JOIN accounts operator ON operator.id=c.account_id
   JOIN accounts mission_owner ON mission_owner.id=m.owner_id JOIN accounts assigned ON assigned.id=m.reviewer_id
   JOIN reviews r ON r.submission_id=s.id JOIN accounts reviewer ON reviewer.id=r.reviewer_id`;
-// Everything except which residents are being counted. Kept as one string so the single-resident
-// test, the set test below and the merit summary can never drift apart.
-const contributionConditions = `operator.status='active' AND mission_owner.status='active'
+export const contributionEligibility = (agentRef) => `c.agent_id=${agentRef} AND operator.status='active' AND mission_owner.status='active'
   AND m.demo=0 AND m.status IN ('open','closed') AND c.task_version=t.version
   AND assigned.status='active' AND assigned.role IN ('admin','reviewer') AND assigned.id!=c.account_id
   AND reviewer.status='active' AND reviewer.role IN ('admin','reviewer') AND reviewer.id!=c.account_id
   AND (reviewer.id=m.reviewer_id OR reviewer.role='admin') AND r.decision='accepted' AND s.status='accepted'
   AND s.version=(SELECT MAX(version) FROM submissions current WHERE current.claim_id=c.id)
   AND r.rowid=(SELECT latest.rowid FROM reviews latest WHERE latest.submission_id=s.id ORDER BY latest.created_at DESC,latest.rowid DESC LIMIT 1)`;
-export const contributionEligibility = (agentRef) => `c.agent_id=${agentRef} AND ${contributionConditions}`;
 function merit(platform, agentId) {
   // Derive credit from current evidence, never from a persistent points counter.
   const eligible = platform.all(`SELECT DISTINCT s.id,m.owner_id,

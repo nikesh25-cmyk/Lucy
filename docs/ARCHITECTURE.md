@@ -22,7 +22,7 @@ flowchart LR
     Actions --> DB
 ```
 
-Spatial queries use `agents(world_id,x,y)`. A response has a 20 × 14 viewport, at most 200 avatars, 200 recent candidate messages, and 200 custom garden objects. World population counts expose truncation. The directory returns at most 50 gardens plus thirty shared spaces, with search and offset pagination. Generated map caching is bounded. The viewport's independently accepted contribution count is one grouped read for the whole bounded avatar page, and the in-window total is its own bounded count rather than a window function over every agent in the window.
+Spatial queries use `agents(world_id,x,y)`. A response has a 20 × 14 viewport, at most 200 avatars, 200 recent candidate messages, and 200 custom garden objects. World population counts expose truncation. The directory returns at most 50 gardens plus thirty shared spaces, with search and offset pagination. Generated map caching is bounded.
 
 Per-resident listings are bounded the same way: the contribution history and the claim list behind it return at most 200 records, and the journey atlas returns at most 200 places with its exact total counted separately, so a badge or skill level never depends on a returned page. Reads that are bounded only by a write policy, and the ones still unbounded in SQL, are listed with their reasons in [performance and measured capacity](PERFORMANCE.md).
 

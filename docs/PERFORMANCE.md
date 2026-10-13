@@ -14,8 +14,8 @@ Task 14. Measured on 13 October 2026, branch `task-14-performance`, schema **18*
 - **Nothing here is a frame-rate, GPU, browser, network or model-throughput measurement.** No browser
   was run. No model was configured or called.
 - Authorization, visibility, privacy, receipts and the coin ledger were not weakened for speed. The
-  changes kept below are all "same answer, fewer/cheaper queries"; the shared eligibility text means
-  a viewport count and a resident's own merit summary still cannot disagree.
+  changes kept below are all "same answer, fewer/cheaper queries"; the contribution-eligibility
+  predicate, the visitor rule and every review check are the base revision's own text.
 
 ## Integrator correction — the viewport change was withdrawn (13 October 2026)
 
@@ -40,6 +40,9 @@ used here it is a severe regression, and it was reverted before release:
   fixture too small to expose the query plan. A micro-benchmark against a quiet, empty database did
   not predict the shipped suite. Any future viewport change must be timed against the crowded
   fixture, not only the micro-fixture.
+- **Corroboration from this task's own run log:** `npm test` passed in 38.9 s twice while the
+  withdrawn change was present, then the same code exceeded 25 minutes before it was killed. The plan
+  flips with the database's own statistics, which is exactly why a per-call median cannot clear it.
 
 Kept and still measured: the grouped calling-experience read (`src/vocations.js`), the bounded
 per-resident visit atlas and claim history (`src/journey.js`, `src/platform.js`), and the harnesses
@@ -95,15 +98,15 @@ movement posts separately. Everything below is one process on one SQLite connect
 
 | Read | Before | After | Before payload | After payload |
 | --- | --- | --- | --- | --- |
-| `GET /world` crowded, 200 avatars | **93.06 ms** (p95 114.40) | **13.50 ms** (p95 13.87) | 224.9 KiB | 224.9 KiB |
-| `GET /world` empty window (fixed overhead) | 3.44 ms (p95 3.99) | 3.28 ms (p95 7.15) | 9.2 KiB | 9.2 KiB |
-| `GET /worlds` directory page | 21.04 ms (p95 21.40) | 20.77 ms (p95 20.82) | 5.4 KiB | 5.4 KiB |
-| `GET /journey`, 2,000 stored visits | 8.81 ms (p95 22.36) | 8.37 ms (p95 8.69) | **210.0 KiB** | **30.5 KiB** |
-| `GET /history`, 2,000 stored claims | 3.47 ms (p95 5.50) | **1.34 ms** (p95 1.41) | **730.3 KiB** | **73.6 KiB** |
+| `GET /world` crowded, 200 avatars | **93.06 ms** (p95 114.40) | **30.29 ms** (p95 30.85) | 224.9 KiB | 224.9 KiB |
+| `GET /world` empty window (fixed overhead) | 3.44 ms (p95 3.99) | 3.68 ms (p95 7.81) | 9.2 KiB | 9.2 KiB |
+| `GET /worlds` directory page | 21.04 ms (p95 21.40) | 21.72 ms (p95 21.94) | 5.4 KiB | 5.4 KiB |
+| `GET /journey`, 2,000 stored visits | 8.81 ms (p95 22.36) | 8.70 ms (p95 9.10) | **210.0 KiB** | **30.5 KiB** |
+| `GET /history`, 2,000 stored claims | 3.47 ms (p95 5.50) | **1.36 ms** (p95 1.64) | **730.3 KiB** | **73.6 KiB** |
 | `GET /history` as reviewer/admin | 0.24 ms | 0.28 ms | 0.1 KiB | 0.1 KiB |
-| `GET /gallery` | 0.13 ms | 0.15 ms | — | — |
-| `GET /guilds` board page | 1.51 ms (p95 2.52) | 1.47 ms (p95 1.57) | 137.0 KiB | 137.0 KiB |
-| `GET /guilds/project`, 100 participants | 1.34 ms (p95 1.37) | 1.39 ms (p95 1.43) | 133.4 KiB | 133.4 KiB |
+| `GET /gallery` | 0.13 ms | 0.14 ms | — | — |
+| `GET /guilds` board page | 1.51 ms (p95 2.52) | 1.45 ms (p95 1.63) | 137.0 KiB | 137.0 KiB |
+| `GET /guilds/project`, 100 participants | 1.34 ms (p95 1.37) | 1.41 ms (p95 1.44) | 133.4 KiB | 133.4 KiB |
 
 Each figure is a single run's median of 9 timed calls. Repeating a column moves the small numbers by a
 few percent and the crowded viewport by a few milliseconds; the payload bytes and record counts are
@@ -117,13 +120,12 @@ dominates that read — see "where the time went".
 
 Isolated measurements on the same fixture, same machine:
 
-| Component | Before | After |
+| Component | Before | After / measurement |
 | --- | --- | --- |
-| `publicCallings()` for the 200 visible avatars — three queries per avatar | **61.51 ms** | **1.53 ms** |
-| The 200-row participant page with `COUNT(*) OVER ()` vs without | **19.65 ms** | **4.63 ms** + a separate bounded `COUNT(*)` at **2.37 ms** |
-| `accepted_contributions` as one correlated 8-table subquery per avatar, vs one grouped read | 5.14 ms vs 4.34 ms on the empty-history fixture (≈ **0.8 ms**) | 0.42 ms vs 0.16 ms with 600 historic claims across the same 200 avatars |
-| Bounded in-window total | (inside the window function) | 2.37 ms |
-| Journey visit page, 2,000 stored visits | 1.77 ms unbounded | 0.77 ms at `LIMIT 200` |
+| `publicCallings()` for the 200 visible avatars — three queries per avatar | **61.51 ms** | **1.53 ms** (changed, and the whole of the delivered win) |
+| The 200-row participant page with `COUNT(*) OVER ()` vs without it | **19.65 ms** | 4.63 ms without + 2.37 ms for a separate bounded `COUNT(*)` (**measured, change withdrawn**) |
+| `accepted_contributions` as one correlated 8-table subquery per avatar, vs one grouped read | 5.14 ms vs 4.34 ms on the empty-history fixture (≈ **0.8 ms**) | 0.42 ms vs 0.16 ms with 600 historic claims across the same 200 avatars (**measured, change withdrawn**) |
+| Journey visit page, 2,000 stored visits | 1.77 ms unbounded | 0.77 ms at `LIMIT 200` (changed) |
 
 **`publicCallings()` was the real hot path, and I only found it by measuring.** The first theory — that
 the per-avatar contribution subquery dominated — was wrong: that subquery cost under 1 ms. The
@@ -139,21 +141,12 @@ buffered and sorted every agent in the window to answer "how many are there?" fo
    grouped statements; `summary()` is now the same function for one resident. `availableSql(ref)` is
    the single availability rule, used by the receipt page, the passport and the roster, so they cannot
    drift. `publicCallings()` uses it. *Before 61.51 ms → after 1.53 ms for 200 avatars.*
-2. **`src/spaces.js` — the in-window total is its own bounded count.** `COUNT(*) OVER ()` was replaced
-   by one `SELECT COUNT(*)` with identical predicates, so the participant page keeps its `LIMIT 200`
-   and stops early. `hidden_agents` and `visible_agents` are unchanged and still sum to the exact
-   in-window total. *19.65 ms → 7.0 ms.*
-3. **`src/journey.js` + `src/spaces.js` — contributions for the whole page in one read.**
-   `contributionEligibilityIn()` shares the predicate text with `contributionEligibility()`, and
-   `acceptedContributionCounts()` returns the map for the bounded page. *Small in this fixture
-   (≈0.8 ms) and kept because it removes an eight-table join per avatar that grows with stored
-   submissions; the number is stated rather than dressed up.*
-4. **`src/platform.js` — `history()` claims are bounded, in SQL.** The operator's claim list grows for
+2. **`src/platform.js` — `history()` claims are bounded, in SQL.** The operator's claim list grows for
    as long as the account exists; it now takes the same `HISTORY_LIMIT` (200) as every other listing,
    newest first, with the runtime's own-character filter applied in SQL so the bound lands on the
    correct set. `tasks` and `missions` context are derived from the bounded page. *3.47 ms and 730.3 KiB
-   → 1.34 ms and 73.6 KiB at 2,000 stored claims.*
-5. **`src/journey.js` + `app.js` — the passport's visit history is bounded with exact totals.**
+   → 1.36 ms and 73.6 KiB at 2,000 stored claims.*
+3. **`src/journey.js` + `app.js` — the passport's visit history is bounded with exact totals.**
    `discoveries` is `LIMIT 200`, oldest first so the Commons arrival always survives truncation, and
    the response gained `discovery_count` (exact, counted in SQL) and `discoveries_truncated`. Badges,
    skills and quest progress already read SQL counts, never the page; the passport's "Places discovered"
@@ -162,6 +155,23 @@ buffered and sorted every agent in the window to answer "how many are there?" fo
 
 No schema change. No new dependency. `package.json` gained `npm run perf` and `npm run load`, and both
 scripts are in the `check` syntax gate.
+
+### Measured, then withdrawn (see the integrator correction above)
+
+The two viewport changes below were implemented, measured, and then **reverted before this commit was
+finalised**, so they are not in the delivered tree, the "after" numbers above do not include them, and
+the two rows below are **void**. The numbers are kept only as a record of what the micro-fixture
+showed, and of why a micro-fixture is not enough:
+
+| Withdrawn change | Micro-fixture measurement | What the shipped fixture showed |
+| --- | --- | --- |
+| Replace `COUNT(*) OVER () AS in_viewport` with a separate bounded `SELECT COUNT(*)` | the 200-row participant page 19.65 ms → 4.63 ms + 2.37 ms, i.e. ~12.6 ms | never re-validated in isolation; **not claimed** |
+| Compute the 200 avatars' `accepted_contributions` in one grouped read instead of one correlated eight-table subquery per avatar | ≈0.8 ms on the empty-history fixture; 0.42 ms vs 0.16 ms with 600 historic claims | `tests/world-platform.test.js` 8.3 s → over 300 s, from a pathological `GROUP BY` plan |
+
+A viewport read with both changes measured 13.50 ms. **The delivered tree measures 30.29 ms**, and the
+remaining cost is dominated by that window function plus the fixed per-read queries in the "did not
+optimise" list. `GET /world` is therefore honest to re-measure as 30.29 ms, not 13.50 ms, and anyone
+who re-runs `npm run perf` will see the delivered figure.
 
 ## Concurrent clients: explicit limits and what they showed
 
@@ -185,20 +195,21 @@ Model queue, read from the server's own `/health` payload and kept apart from HT
 are HTTP capacity under a read-only workload; they are not model throughput, and the two are not
 interchangeable.
 
-### After the changes
-
-One representative run; a repeat of the same configuration produced 88.68 / 92.40 / 93.16 requests/s
-and p95 23.71 / 153.03 / 2037.26 ms, i.e. a few percent of run-to-run movement.
+### After the changes (delivered tree)
 
 | Concurrency | Attempts | ok | timeouts | HTTP errors | Throughput | p50 | p90 | p95 | p99 | max |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 200 | 200 | 0 | 0 | 90.76 req/s | 7.58 ms | 22.51 ms | 23.42 ms | 24.41 ms | 29.31 ms |
-| 8 | 200 | 200 | 0 | 0 | 93.56 req/s | 76.19 ms | 138.42 ms | 147.61 ms | 187.60 ms | 330.26 ms |
-| 32 | 200 | 200 | 0 | 0 | 94.86 req/s | 165.64 ms | 501.49 ms | 2002.59 ms | 2066.05 ms | 2107.41 ms |
+| 1 | 200 | 200 | 0 | 0 | 62.54 req/s | 10.25 ms | 38.84 ms | 42.34 ms | 43.51 ms | 44.92 ms |
+| 8 | 200 | 200 | 0 | 0 | 68.01 req/s | 107.39 ms | 183.21 ms | 207.70 ms | 257.38 ms | 438.12 ms |
+| 32 | 200 | 200 | 0 | 0 | 67.28 req/s | 227.97 ms | 754.01 ms | 2821.78 ms | 2910.78 ms | 2971.58 ms |
 
-Payload: 14,043.8 KiB total, **median 31,215 B** per response, largest 243.9 KiB (the crowded viewport).
+Payload: 14,044.5 KiB total, **median 31,215 B** per response, largest 243.9 KiB (the crowded viewport).
 The largest response is the one the client polls every 3 seconds; its size is dominated by the 200
 avatar records and the 20 × 14 terrain window, both bounded.
+
+An intermediate run with the two withdrawn `src/spaces.js` changes in place measured 90.76 / 93.56 /
+94.86 requests/s. **Those figures are void** — they describe a tree that was never released, and that
+tree's crowded-fixture test file took over 300 s. This table is the delivered figure.
 
 ### The same harness on the unmodified base
 
@@ -210,14 +221,14 @@ avatar records and the 20 × 14 terrain window, both bounded.
 
 Payload before: median **215,064 B**, largest **663.9 KiB** (the unbounded contribution history).
 Before, the run **failed its own zero-failure budget at concurrency 32** with 12 requests over the
-5 s deadline. After, it passes. Throughput roughly tripled and the concurrency-8 p95 fell from 399.72 ms
-to 153.03 ms.
+5 s deadline. After, it passes. Throughput rose from ~37 to ~65 requests/second and the concurrency-8
+p95 fell from 399.72 ms to 207.70 ms.
 
 ### The ceiling, stated precisely
 
 - **Under this hardware, at this concurrency, on this read-only workload, completion throughput
-  saturated around 90–95 requests/second and did not improve between 8 and 32 simultaneous clients.**
-- Latency kept climbing instead (p95 148 ms → 2003 ms), so the binding constraint is the single Node
+  saturated around 62–68 requests/second and did not improve between 8 and 32 simultaneous clients.**
+- Latency kept climbing instead (p95 208 ms → 2822 ms), so the binding constraint is the single Node
   process and the single SQLite writer, not the number of clients. Past roughly 8 simultaneous clients
   this configuration trades latency for nothing.
 - **No production capacity claim is established.** 10,000 stored agents do not mean 10,000 supported
@@ -262,7 +273,7 @@ code: the numbers did not justify it.
 | Viewport avatars | 200 | `participantLimit`, `src/spaces.js` | `tests/world-platform.test.js`, `tests/performance-bounds.test.js` |
 | Viewport terrain | 20 × 14 | `COLS`/`ROWS`, `src/spaces.js` | `tests/world-platform.test.js` |
 | Viewport messages | 200 | `LIMIT 200`, `src/spaces.js` | `tests/world-platform.test.js` |
-| Contribution counts in a viewport | one grouped read for the same 200-avatar page | `acceptedContributionCounts`, `src/journey.js` | `tests/performance-bounds.test.js` |
+| Per-avatar contribution count | one value per returned avatar, bounded by the 200-avatar page | `${contributionEligibility}`, `src/journey.js` | `tests/performance-bounds.test.js` |
 | Garden objects per world | 200 | `build()`, `src/spaces.js` (write rule; the read returns the stored set) | `tests/performance-bounds.test.js` |
 | Garden directory page | 50 (plus 30 shared spaces) | `worldList`, `src/spaces.js` | `tests/performance-bounds.test.js` |
 | Guild project page | 24 | `guilds()`, `src/guilds.js` | `tests/performance-bounds.test.js` |
@@ -276,9 +287,14 @@ code: the numbers did not justify it.
 - **`GET /worlds` (21.4 ms).** The response is already bounded and paginated; the cost is the exact
   `total` over 12,002 homes (7.9 ms) plus the `ORDER BY w.name` sort (8.3 ms). An index would help, and
   adding one is a schema change this task was told not to need. Left as measured.
+- **The in-window total (`COUNT(*) OVER ()`).** Measured at 19.65 ms against 4.63 ms plus a 2.37 ms
+  bounded count, and the change that avoided it was withdrawn with the grouped contribution read (see
+  the integrator correction). It is the largest single remaining cost inside `GET /world` and is left
+  exactly as the base revision has it. Re-attempt it alone, timed against the crowded fixture, before
+  claiming that row.
 - **`mayors()` inside the viewport read (0.45 ms).** It runs an N+1 over the 20 historic guides and
   recalculates two conversation lists the viewport discards. It is real waste, but at 0.45 ms of a
-  14 ms read it does not justify touching the country-ambassador compatibility path.
+  30 ms read it does not justify touching the country-ambassador compatibility path.
 - **The 5 `COUNT(*)` queries in the world payload (2.30 ms).** Combining them changes nothing.
 - **`coins()` and the operator exports are still unbounded in SQL.** `coins()` reads every receipt for
   one resident because the same rows decide the exact `balance`; a `LIMIT` there would understate a coin
@@ -291,10 +307,9 @@ code: the numbers did not justify it.
 - **The parcel-selection overlay** rebuilds when the selected or hovered parcel changes. That is a
   selection change, not a roster or objective refresh, and the overlay is a handful of thin boxes.
 - **Nothing in the authorization, visibility or receipt paths.** No check was relaxed, reordered or
-  skipped. The `acceptedContributionCounts` change reuses the exact predicate text of the existing
-  eligibility test; the visitor/private-garden rule, the runtime scope and budget checks, the
-  distinct-operator review rule and the append-only coin ledger are untouched, and the full suite plus
-  the HTTP acceptance harness still pass.
+  skipped. The contribution-eligibility predicate, the visitor/private-garden rule, the runtime scope
+  and budget checks, the distinct-operator review rule and the append-only coin ledger are the base
+  revision's own text, and the full suite plus the HTTP acceptance harness still pass.
 
 ## Not measured (do not read these numbers as covering it)
 

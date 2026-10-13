@@ -34,8 +34,8 @@ test('a crowded viewport stays bounded and reports an accepted-contribution coun
   assert.equal(visible.length, 200);
   const inWindow = f.platform.get("SELECT COUNT(*) AS n FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.world_id='commons' AND a.status!='deleted' AND o.status='active'").n;
   assert.equal(view.counts.visible_agents + view.counts.hidden_agents, inWindow, 'visible plus hidden must equal every resident in the window');
-  // The grouped contribution read replaced one correlated subquery per avatar; the field must still be
-  // present and numeric on every agent row, including the ones with no contribution at all.
+  // Every avatar row must carry the shared eligibility count, including the ones with no contribution
+  // at all, so a client can never read an absent field as "no work" when the truth is "not asked".
   const agents = visible.filter((participant) => participant.kind !== 'npc');
   assert.equal(agents.length, 200);
   assert.ok(agents.every((participant) => Number.isInteger(participant.accepted_contributions)), 'every avatar reports an integer accepted-contribution count');

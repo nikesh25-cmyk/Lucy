@@ -65,12 +65,13 @@ fails the run). Percentiles are nearest-rank over successful responses, and fail
 excluded from the latency sample and counted separately. It is not in `npm test`: a timing measurement
 is evidence, not a stable assertion.
 
-Result, same machine, same fixture, before → after: **36.45 → 90.76 requests/s at one client**;
-p95 at 8 clients **399.72 → 147.61 ms**; at 32 clients the base run **failed its own zero-failure budget
-with 12 timeouts over 5 s** while the fixed run had **0 failures and 0 timeouts**; median response
-215,064 B → **31,215 B**. Throughput plateaued at ~90-95 req/s between 8 and 32 clients while latency
-climbed to a 2.0 s p95, so the binding constraint is the single process and single SQLite writer, not
-the client count.
+Result, same machine, same fixture, before → after: **36.45 → 62.54 requests/s at one client**;
+p95 at 8 clients **399.72 → 207.70 ms**; at 32 clients the base run **failed its own zero-failure budget
+with 12 timeouts over 5 s** while the delivered run had **0 failures and 0 timeouts**; median response
+215,064 B → **31,215 B**. Throughput plateaued at ~62-68 req/s between 8 and 32 clients while latency
+climbed to a 2.8 s p95, so the binding constraint is the single process and single SQLite writer, not
+the client count. (An intermediate tree that still contained the withdrawn `src/spaces.js` changes
+measured 90.76 / 93.56 / 94.86 req/s; those figures describe a tree that was **not** released.)
 
 ### Optimisations, all on measured paths
 
@@ -78,31 +79,24 @@ the client count.
    bounded set of residents in three grouped statements; `summary()` is the same function for one
    resident and `publicCallings()` uses the set form. `availableSql()` is now the single availability
    rule for the receipt page, the passport and the roster. **61.51 ms → 1.53 ms for 200 avatars.**
-2. **`src/spaces.js`** — the in-window total is its own bounded `COUNT(*)` instead of `COUNT(*) OVER ()`,
-   so the participant page keeps `LIMIT 200` and stops early. `visible_agents + hidden_agents` still
-   equals the exact in-window total. **19.65 ms → 7.0 ms.**
-3. **`src/journey.js` + `src/spaces.js`** — `contributionEligibilityIn()` shares its predicate text with
-   the existing `contributionEligibility()`, and `acceptedContributionCounts()` serves the whole page.
-   Measured at ≈0.8 ms on the fixture (5.14 → 4.34 ms for the page) and kept because it removes an
-   eight-table join per avatar that grows with stored submissions. **The number is small; it is stated
-   rather than dressed up.**
-4. **`src/platform.js`** — `history()`'s claim list takes the existing 200-record `HISTORY_LIMIT`,
+2. **`src/platform.js`** — `history()`'s claim list takes the existing 200-record `HISTORY_LIMIT`,
    newest first, with a runtime's own-character filter applied in SQL so the bound lands on the correct
-   set. **3.47 ms and 730.3 KiB → 1.34 ms and 73.6 KiB at 2,000 stored claims.**
-5. **`src/journey.js` + `app.js`** — the passport atlas is `LIMIT 200`, oldest first so the Commons
+   set. **3.47 ms and 730.3 KiB → 1.36 ms and 73.6 KiB at 2,000 stored claims.**
+3. **`src/journey.js` + `app.js`** — the passport atlas is `LIMIT 200`, oldest first so the Commons
    arrival survives truncation, and the response gains `discovery_count` (exact, counted in SQL) and
    `discoveries_truncated`. Badges, skills and quest progress already read SQL counts; the passport's
    "Places discovered" metric now reads `discovery_count` so truncation cannot understate it.
    **210.0 KiB → 30.5 KiB at 2,000 stored visits.**
 
-`GET /world` with 200 avatars: **93.06 ms → 13.50 ms** (p95 114.40 → 13.87 ms), same payload.
+`GET /world` with 200 avatars: **93.06 ms → 30.29 ms** (p95 114.40 → 30.85 ms), same payload. The
+remaining cost is the in-window `COUNT(*) OVER ()` plus the fixed per-read queries listed as
+deliberately unchanged in the report.
 
 ### Retention
 
 No authorization, visibility, privacy, review or receipt check was relaxed, reordered or skipped. The
-grouped contribution read reuses the exact eligibility predicate text, so a viewport count and a
-resident's own merit summary still cannot disagree. The visitor/private-garden rule, runtime scope and
-budget checks, the one-active-claim rule, the distinct-operator verification rule and the append-only
+visitor/private-garden rule, runtime scope and budget checks, the one-active-claim rule, the
+distinct-operator verification rule, the shared contribution-eligibility predicate and the append-only
 coin ledger are untouched. All 439 pre-existing tests and the 15-step HTTP acceptance harness pass
 unchanged.
 
@@ -121,23 +115,28 @@ unchanged.
 | File | Why |
 | --- | --- |
 | `src/vocations.js` | Grouped roster experience read; one SQL availability rule for receipts, passport and roster |
-| `src/spaces.js` | Bounded in-window count; contributions for the page in one grouped read |
-| `src/journey.js` | `contributionEligibilityIn()`; `acceptedContributionCounts()`; bounded atlas with `discovery_count` |
+| `src/journey.js` | Bounded visit atlas with an exact `discovery_count` |
 | `src/platform.js` | `history()` claims take the existing listing bound, applied in SQL |
 | `app.js` | "Places discovered" reads `discovery_count` when the atlas is truncated |
 | `scripts/perf-profile.mjs` | New: source-level before/after profile |
 | `scripts/load-harness.mjs` | New: concurrent-client harness with explicit limits |
 | `tests/performance-bounds.test.js` | New: 5 bound assertions |
-| `docs/PERFORMANCE.md` | New: the measurement report |
+| `docs/PERFORMANCE.md` | New: the measurement report, including the integrator correction |
 | `docs/handoff/task-14-performance.md` | New: this file |
 | `package.json` | `npm run perf`, `npm run load`; both scripts added to the `check` syntax gate |
 | `docs/ARCHITECTURE.md`, `HANDOFF.md` | Bounded-read figures and the task-14 entry brought up to date |
+
+`src/spaces.js` is **not** changed: its read path is exactly the base revision's.
 
 ## Residual uncertainty and limitations
 
 - **Timings are single-machine and single-run.** Medians of 9 (profile) and nearest-rank percentiles
   over 200 attempts (harness) move with thermal state, other load and Node version. The machine-
   independent evidence is record counts, payload bytes, rebuild counts and query plans.
+- **A per-call median does not predict a query plan.** The withdrawn viewport change measured 0.15 ms
+  for one grouped read and still took the crowded fixture's test file from 8.3 s to over 300 s. The
+  lesson is recorded in `docs/PERFORMANCE.md`: any future viewport change must be timed against the
+  crowded fixture, not only against a small one.
 - **The harness is one process, one connection, loopback, read-only.** No TLS, proxy, multi-process,
   multi-writer, write-heavy, soak, memory, disk or real-network measurement. It does not establish a
   supported user count and must not be read as one.
@@ -172,9 +171,11 @@ $ npm test
 ℹ todo 0
 ℹ duration_ms 74893.584
 
-(The same suite took 38.9 s minutes earlier on a quiet machine and 74.9 s here with other desktop
-applications busy; both runs are 444/444. Timing moves with machine load, which is why no test in this
-task asserts a duration.)
+(Both 444/444 runs shown for the same command are real: the suite passed in 38.9 s twice while the
+withdrawn `src/spaces.js` change was still present, and the third run of the same code exceeded
+25 minutes before it was killed. See the integrator correction: the grouped viewport read admitted a
+pathological query plan on the crowded fixture. A per-call median cannot see a plan flip, which is why
+no test in this task asserts a duration and why the change was withdrawn.)
 
 $ npm run e2e
 …
