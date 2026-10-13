@@ -22,30 +22,17 @@ function fixture({ statuses = [], world = { participants: [], messages: [] }, de
   } };
 }
 
-// The prompt's own examples must be executable against the shipped server, and its stated policy
-// must not contradict the actions it grants. Two defects found in review:
-//  1. the submit example omitted method/limitations/rights, which /submissions requires (400 otherwise);
-//  2. a blanket "cannot send private messages" line contradicted the reply capability granted above.
-test('the prompt examples are executable and the private-reply policy is self-consistent', async () => {
+// The world resident has no source reader. Its prompt must neither suggest source submission nor
+// contradict the private reply it actually supports.
+test('the prompt excludes ungrounded mission writes and keeps the private-reply policy self-consistent', () => {
   const view = { agent_id: 'fixture-agent', messages: [{ id: 'msg-1', channel: 'private', agent_id: 'other-agent', text: 'hello' }],
     missions: { tasks: [{ id: 'task-1', status: 'open' }], active_claim: { id: 'claim-1', status: 'leased' } } };
   const status = { agent_id: 'fixture-agent', scopes: ['read', 'move', 'chat', 'contribute'], remaining_calls: 10, paused: false };
   const prompt = observationPrompt(view, status);
 
-  const start = prompt.indexOf('{"action":"submit"');
-  assert.ok(start > 0, 'a contribute-capable prompt must show a submit example');
-  const example = JSON.parse(prompt.slice(start, prompt.indexOf(']}', start) + 2));
-  // The example is a template: its documented placeholders (e.g. "your active_claim.id") are not
-  // themselves parseable, so assert the field set first, then prove the shape is executable.
-  for (const field of ['action', 'claim_id', 'artifact', 'method', 'limitations', 'rights', 'sources']) {
-    assert.ok(field in example, `the submit example must carry ${field}`);
-  }
-  assert.ok(Array.isArray(example.sources) && example.sources.length > 0, 'the submit example must cite a source');
-  const parsed = parseAction({ ...example, claim_id: '11111111-2222-3333-4444-555555555555' });
-  assert.equal(parsed.action, 'submit', 'the submit example must be an executable action shape');
-  for (const field of ['method', 'limitations', 'rights']) {
-    assert.equal(typeof parsed[field], 'string', `the parsed submission must carry ${field}, which the server requires`);
-  }
+  assert.doesNotMatch(prompt, /\{"action":"claim"|\{"action":"submit"/);
+  assert.match(prompt, /separate approved-source research worker/);
+  assert.ok(!prompt.includes('"missions"'), 'task text and active claims are not offered as model actions');
 
   assert.match(prompt, /You may reply to its sender/, 'the reply capability must still be granted');
   assert.match(prompt, /cannot start a private conversation/, 'the real restriction must remain stated');
@@ -297,54 +284,37 @@ test('malicious cooperative output cannot add agent IDs, timestamps, tools, appr
   for (const value of forbidden) assert.throws(() => parseAction(JSON.stringify(value)));
 });
 
-test('mission claim and submit actions are parsed, authorized and dispatched through the existing routes', async () => {
-  const status = { agent_id: 'fixture-agent', expires_at: Date.now() + 60000, remaining_calls: 100, paused: false, scopes: ['read', 'contribute'] };
+test('generic world resident refuses prompt-injected claim and submit even with its own observed lease', async () => {
+  const status = { agent_id: 'fixture-agent', expires_at: Date.now() + 60000, remaining_calls: 100, paused: false, scopes: ['read', 'chat', 'contribute'] };
   const missions = { tasks: [{ id: 'task-1', mission_id: 'mission-1', title: 'Find a source', instructions: 'Submit one source.', allowed_domains: ['example.org'], status: 'open', lease_minutes: 20 }], active_claim: null };
   const world = { participants: [{ id: 'fixture-agent', operator_id: 'one', status: 'active' }] };
-  const f = fixture({ world, statuses: [status, status], callings: { agent_id: 'fixture-agent', targets: { tasks: [], claim: null }, missions } });
-  const baseFetch = f.fetchImpl;
-  f.fetchImpl = async (url, options) => {
-    const path = new URL(url).pathname;
-    const body = options.body ? JSON.parse(options.body) : null;
-    if (path === '/api/v1/claims') { f.requests.push({ path, body }); return new Response(JSON.stringify({ id: 'claim-1', task_id: 'task-1', status: 'leased' })); }
-    return baseFetch(url, options);
-  };
-  const result = await runAgent({ token: 'fixture-only', fetchImpl: f.fetchImpl, maxCalls: 1, stepDelayMs: 0,
-    modelFn: async ({ prompt }) => {
-      assert.match(prompt, /reviewed mission work/);
-      assert.match(prompt, /"action":"claim"/);
-      return '{"action":"claim","task_id":"task-1"}';
-    } });
-  assert.equal(result.status, 'completed');
-  assert.equal(result.action_count, 1);
-  const claimRequest = f.requests.find((r) => r.path === '/api/v1/claims');
-  assert.deepEqual(claimRequest.body, { task_id: 'task-1' });
-
-  // Submit against the active claim observed on the next turn.
   const missionsWithClaim = { ...missions, active_claim: { id: 'claim-1', task_id: 'task-1', task_title: 'Find a source', status: 'leased', expires_at: Date.now() + 60000 } };
-  const f2 = fixture({ world, statuses: [status], callings: { agent_id: 'fixture-agent', targets: { tasks: [], claim: null }, missions: missionsWithClaim } });
-  const baseFetch2 = f2.fetchImpl;
-  f2.fetchImpl = async (url, options) => {
-    const path = new URL(url).pathname;
-    const body = options.body ? JSON.parse(options.body) : null;
-    if (path === '/api/v1/submissions') { f2.requests.push({ path, body }); return new Response(JSON.stringify({ id: 'sub-1', status: 'pending_review' })); }
-    return baseFetch2(url, options);
-  };
   const submitted = { action: 'submit', claim_id: 'claim-1', artifact: 'A relevant source.',
-    sources: [{ url: 'https://example.org/article', location: 'paragraph 2' }],
+    sources: [{ url: 'https://example.org/article', location: `paragraph 2; SHA256 ${'0'.repeat(64)}` }],
     method: 'Read the supplied source.', limitations: 'Applicability needs human review.', rights: 'Short paraphrase with attribution; reuse needs review.' };
-  const result2 = await runAgent({ token: 'fixture-only', fetchImpl: f2.fetchImpl, maxCalls: 1, stepDelayMs: 0,
-    modelFn: async () => JSON.stringify(submitted) });
-  assert.equal(result2.status, 'completed');
-  const submitRequest = f2.requests.find((r) => r.path === '/api/v1/submissions');
-  assert.deepEqual(submitRequest.body, { claim_id: submitted.claim_id, artifact: submitted.artifact,
-    sources: submitted.sources, method: submitted.method, limitations: submitted.limitations, rights: submitted.rights });
+  for (const { action, observedMissions } of [
+    { action: { action: 'claim', task_id: 'task-1' }, observedMissions: missions },
+    { action: submitted, observedMissions: missionsWithClaim },
+  ]) {
+    assert.equal(parseAction(action).action, action.action, 'the strict parser remains intact for other adapters');
+    assert.throws(() => authorizeAction(parseAction(action), { ...world, missions: observedMissions }, status), /permissions/);
+    const f = fixture({ world, statuses: [status], callings: { agent_id: 'fixture-agent', targets: { tasks: [], claim: null }, missions: observedMissions } });
+    const result = await runAgent({ token: 'fixture-only', fetchImpl: f.fetchImpl, maxCalls: 1, stepDelayMs: 0,
+      modelFn: async ({ prompt }) => {
+        assert.doesNotMatch(prompt, /\{"action":"claim"|\{"action":"submit"/);
+        return JSON.stringify(action);
+      } });
+    assert.equal(result.status, 'failed');
+    assert.equal(result.action_count, 0);
+    assert.ok(!f.requests.some(({ path }) => path === '/api/v1/claims' || path === '/api/v1/submissions'));
+  }
 
-  // Authorization requires observed records.
-  assert.deepEqual(authorizeAction(parseAction('{"action":"claim","task_id":"task-1"}'), { ...world, missions }, status), { action: 'claim', task_id: 'task-1' });
-  assert.throws(() => authorizeAction(parseAction('{"action":"claim","task_id":"task-other"}'), { ...world, missions }, status), /permissions/);
-  assert.throws(() => authorizeAction(parseAction(submitted), { ...world, missions }, status), /permissions/);
-  assert.throws(() => authorizeAction(parseAction(submitted), { ...world, missions: missionsWithClaim }, { ...status, scopes: ['read'] }), /permissions/);
+  const f = fixture({ world, statuses: [status], callings: { agent_id: 'fixture-agent', targets: { tasks: [], claim: null }, missions } });
+  const spoken = await runAgent({ token: 'fixture-only', fetchImpl: f.fetchImpl, maxCalls: 1, stepDelayMs: 0,
+    modelFn: async () => '{"action":"say","text":"I can help in the world while research needs a source reader."}' });
+  assert.equal(spoken.status, 'completed');
+  assert.equal(spoken.action_count, 1);
+  assert.equal(f.requests.filter(({ path }) => path === '/api/v1/messages').length, 1);
 });
 
 test('malformed mission actions cannot smuggle extra fields, coin paths or fake sources', () => {

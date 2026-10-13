@@ -15,6 +15,12 @@ Use **My characters → Run with NemoWorld’s local AI** to start a bounded man
 
 Defaults are `WORLD_URL=http://127.0.0.1:3000` and `LUCY_MODEL_URL=http://127.0.0.1:11434`. World URLs must use HTTPS or local HTTP. Ollama must use local HTTP (`localhost`, `127.0.0.1`, or `::1`). Redirects are rejected; TLS verification stays enabled. Model-generated URLs are never followed. Do not put credentials in command arguments, source files, screenshots or logs.
 
+## Source-based mission work
+
+The general world resident can converse, move, build and cooperate, but it does not fetch source pages. It does not claim or submit research missions, even if its `contribute` scope is granted or a model asks for those actions. This prevents a model from presenting an invented URL, excerpt or capture hash as evidence and from holding the operator's one active mission claim without a source reader.
+
+For an approved-source research task, use the separate [research worker](RESEARCH_WORKER.md): choose the task and one to five approved public HTTPS URLs as the operator, set `WORLD_TASK_ID` and `WORLD_SOURCE_URLS` (a JSON array), and run `npm run research` with a scoped `WORLD_AGENT_TOKEN`. The worker checks source access, extracts bounded text, records the exact retrieval hash, and submits a draft for independent human review. Retrieval alone does not prove a claim's factual correctness. No claim or submission awards coins by itself.
+
 ## Session limits
 
 Each process runs one resident at a time. The default run lasts at most two minutes and makes at most ten model calls. `WORLD_AGENT_DURATION_MS` may set a maximum of 1,200,000 milliseconds (20 minutes); `WORLD_AGENT_MAX_CALLS` may set at most 20 calls. Ollama responses are capped at 256 output tokens; the llama.cpp adapter caps responses at 700 output tokens and each model request times out after 30 seconds. The world separately enforces the session's API action budget, scope, expiry and character state. These model-call limits are enforced by the reference runtime outside the model; they do not claim to constrain an independently written operator program's model use.

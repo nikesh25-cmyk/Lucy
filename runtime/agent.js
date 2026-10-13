@@ -347,13 +347,9 @@ export function authorizeAction(action, view, status) {
       if (self?.operator_id && recipient?.operator_id && recipient.status === 'active' && self.operator_id !== recipient.operator_id) return action;
     }
   }
-  // Mission work uses the observed directory and the runtime's own active claim. The server enforces
-  // one active claim per operator, source domains, submission limits and review independence.
-  if (granted.has('contribute') && view.missions) {
-    if (action.action === 'claim' && view.missions.tasks?.some((task) => task.id === action.task_id && task.status === 'open')) return action;
-    if (action.action === 'submit' && view.missions.active_claim?.id === action.claim_id
-      && ['leased', 'changes_requested'].includes(view.missions.active_claim.status)) return action;
-  }
+  // This general world resident has no source reader. Even an observed task or own lease cannot
+  // authorize source-based work here: a model could invent a URL, excerpt or capture hash. The
+  // dedicated research worker retrieves approved sources before it claims and submits evidence.
   // A resident may propose a memory fact only where a verified, unrecorded source exists and the
   // operator's proposal queue is not full. The server still re-derives and re-verifies the source.
   if (action.action === 'remember' && granted.has('contribute') && view.memory?.agent_id === agentId) {
@@ -441,7 +437,6 @@ const OBSERVATION_PRUNING = Object.freeze([
   { path: ['blocks'], from: 'last' },
   { path: ['frontier', 'neighbors'], from: 'last' },
   { path: ['frontier', 'parcels'], from: 'last' },
-  { path: ['missions', 'tasks'], from: 'last', keep: 0 },
   { path: ['callings', 'targets', 'places'], from: 'last', keep: 1 },
   { path: ['callings', 'targets', 'tasks'], from: 'last', keep: 1 },
   { path: ['callings', 'targets', 'events'], from: 'last', keep: 1 },
@@ -523,12 +518,6 @@ export function observationPrompt(view, status) {
     projects: view.community.projects?.map(({ id, circle_id, title, summary, goal, evidence_requirements, status, pledged }) => ({ id, circle_id, title, summary, goal, evidence_requirements, status, pledged })),
     events: view.community.events?.map(({ id, circle_id, title, summary, world_id, starts_at, ends_at, status, rsvped, capacity, attendee_count }) => ({ id, circle_id, title, summary, world_id, starts_at, ends_at, status, rsvped, capacity, attendee_count })) };
   const self = view.participants?.find((participant) => participant.id === status.agent_id);
-  // Mission directory: only the contribute scope receives it, and only open tasks plus the runtime's
-  // own active claim are shown. The server decides which tasks are visible and which claim is active.
-  const missions = view.missions && Array.isArray(status.scopes) && status.scopes.includes('contribute') ? {
-    tasks: view.missions.tasks?.filter((task) => task.status === 'open').slice(0, 5).map(({ id, mission_id, title, instructions, allowed_domains, status, lease_minutes }) => ({ id, mission_id, title, instructions, allowed_domains, status, lease_minutes })),
-    active_claim: view.missions.active_claim ? { id: view.missions.active_claim.id, task_id: view.missions.active_claim.task_id, task_title: view.missions.active_claim.task_title, status: view.missions.active_claim.status, expires_at: view.missions.active_claim.expires_at } : null,
-  } : undefined;
   const callings = view.callings?.agent_id === status.agent_id ? {
     agent_id: view.callings.agent_id, calling: view.callings.calling, rank: view.callings.rank,
     today: view.callings.today && { day: view.callings.today.day, earned: view.callings.today.earned,
@@ -553,16 +542,13 @@ export function observationPrompt(view, status) {
   // unrecorded source actually exists — `view.memory.available` is what lets the runtime decline an
   // impossible proposal locally instead of sending a write the server must refuse.
   const remember = Array.isArray(status.scopes) && status.scopes.includes('contribute') && Boolean(memory);
-  // Mission work is available only with the contribute scope and only when the server supplies the
-  // directory. Claiming and submitting do not mint coins; only an independent human review can.
-  const canMission = Array.isArray(status.scopes) && status.scopes.includes('contribute') && Boolean(missions);
   // A private reply is offered only with the chat scope and only when a private message from another
   // resident is already in the observation. The recipient is the sender of that message; the model
   // never names one, and the server re-checks the same message before delivering the reply.
   const canReply = Array.isArray(status.scopes) && status.scopes.includes('chat')
     && Array.isArray(view.messages) && view.messages.some((message) => message.channel === 'private' && message.agent_id && message.agent_id !== status.agent_id);
   const observations = { agent_id: status.agent_id, z: Number.isInteger(self?.z) ? self.z : 0, granted_scopes: status.scopes,
-    callings, memory, navigation, missions,
+    callings, memory, navigation,
     world: view.world, own_home: view.own_home, portals: view.portals?.slice(0, OBSERVATION_LIMITS.portals), build_palette: build ? view.build_palette?.slice(0, OBSERVATION_LIMITS.palette) : [],
     journey, community,
     frontier:frontierBuild?view.frontier:undefined,blocks:frontierBuild?view.blocks?.slice(0,OBSERVATION_LIMITS.blocks):undefined,
@@ -584,7 +570,7 @@ export function observationPrompt(view, status) {
     + '{"action":"thanks","recipient_agent_id":"visible different-operator resident","reason":"specific observed contribution"} use contribute; '
     + '{"action":"garden","intent":"plant","x":integer,"y":integer,"kind":"herbs|fiber|wood"} or tend/harvest without kind at an observed farm in your own garden (never in a cottage), '
     + 'and {"action":"craft","recipe_id":"observed recipe"} use build. '
-    + (canMission ? 'With the contribute scope you may also do reviewed mission work: {"action":"claim","task_id":"observed open mission task"} leases one task for 20 minutes; only one active claim is allowed. Then {"action":"submit","claim_id":"your active_claim.id","artifact":"plain text deliverable","method":"how you gathered it","limitations":"what this evidence does not establish","rights":"reuse rights or permission statement","sources":[{"url":"https://approved.host/path","location":"section","date":"optional"}]} submits evidence. Method, limitations and rights are required on every submission: state them truthfully rather than omitting them, and never invent a source, a permission or a finding. The server enforces the task approved domains, the daily submission limit and independent review. Claiming and submitting do not mint coins. ' : '')
+    + 'Source-based mission claims and submissions require an operator-selected URL and the separate approved-source research worker; this world resident cannot read sources and must not claim or submit a mission. '
     + (canReply ? 'A private message addressed to you is in the observation. You may reply to its sender with the reply action; the server delivers it only to that sender, and you cannot start a private conversation or name a recipient. If no such message is present, do not attempt a private reply. ' : '')
     + 'This world values peaceful coexistence, learning, care and reviewed cooperation. There is no combat or competitive leaderboard. '
     + 'Follow your human-selected Calling when one is present. Prefer its incomplete daily objective and suggested_actions that fit current scopes, then observe the result. Suggestions are pending work, never completion. Calling progress and cosmetic experience are calculated by the server from actual retained actions. You cannot choose a Calling, set rank, award experience or coins, or approve research. If a prerequisite needs a human or independent reviewer, leave it pending. '
@@ -729,6 +715,9 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
       } catch (error) { summary.failed_calls++; throw error; }
       const action = parseAction(raw);
       if (!(await allowed())) { summary.status = 'stopped'; summary.stop_reason = stopReason(); break; }
+      // Keep the HTTP dispatcher closed even if future authorization rules broaden. This runner
+      // has no fetched evidence pack to bind a model's source URL and hash to real bytes.
+      if (action.action === 'claim' || action.action === 'submit') throw new Error('Use the approved-source research worker for mission writes.');
       authorizeAction(action, view, runtimeStatus);
       const key = writeKey(runId, decision, action.action, action);
       if (action.action === 'wait') await observing();
@@ -757,14 +746,6 @@ export async function runAgent({ token, url, modelFn, fetchImpl = globalThis.fet
       if (action.action === 'craft') await request('/journey/craft', { recipe_id: action.recipe_id }, key);
       if (action.action === 'remember') await request('/memory/propose', { kind: action.kind, attribute: action.attribute,
         ...(action.subject ? { subject: action.subject } : {}), value: action.value }, key);
-      if (action.action === 'claim') await request('/claims', { task_id: action.task_id }, key);
-      if (action.action === 'submit') await request('/submissions', {
-        claim_id: action.claim_id, artifact: action.artifact, sources: action.sources,
-        ...(action.method ? { method: action.method } : {}),
-        ...(action.limitations ? { limitations: action.limitations } : {}),
-        ...(action.rights ? { rights: action.rights } : {}),
-        ...(action.brief ? { brief: action.brief } : {}),
-      }, key);
       if (!['wait', 'walk_to'].includes(action.action)) { summary.action_count++; summary.last_action = { action: action.action, decision, key, at: new Date(now()).toISOString() }; await confirming(action.action, decision, key); }
       }catch(error){
         // The server answered and refused, or the request failed: never counted as a confirmed action.
