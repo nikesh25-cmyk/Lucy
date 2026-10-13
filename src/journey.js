@@ -225,17 +225,6 @@ export const journeyMethods = {
     if (!agentIds.length) return {};
     return Object.fromEntries(this.all(`SELECT agent_id,title,avatar FROM journey_profiles WHERE agent_id IN (${agentIds.map(() => '?').join(',')})`, ...agentIds).map(({ agent_id, title, avatar }) => [agent_id, { title, avatar }]));
   },
-  // The viewport's independently accepted contribution count for a bounded page of residents, in one
-  // grouped read instead of one correlated subquery per avatar. The eligibility predicate is the same
-  // text merit() uses, so a roster count and a passport summary can never report different work.
-  acceptedContributionCounts(agentIds) {
-    const ids = (agentIds || []).filter((id) => typeof id === 'string');
-    const counts = new Map();
-    if (!ids.length) return counts;
-    const rows = this.all(`SELECT c.agent_id AS agent_id,COUNT(DISTINCT s.id) AS n FROM ${contributionSource} WHERE ${contributionEligibilityIn(ids.map(() => '?').join(','))} GROUP BY c.agent_id`, ...ids);
-    for (const row of rows) counts.set(row.agent_id, row.n);
-    return counts;
-  },
   deleteJourney(actor) {
     if (actor?.kind !== 'session') fail(403, 'Only your operator can delete resident records.');
     for (const table of JOURNEY_TABLES) this.run(`DELETE FROM ${table} WHERE agent_id IN (SELECT id FROM agents WHERE operator_id=?)`, actor.account.id);

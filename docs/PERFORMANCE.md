@@ -14,8 +14,36 @@ Task 14. Measured on 13 October 2026, branch `task-14-performance`, schema **18*
 - **Nothing here is a frame-rate, GPU, browser, network or model-throughput measurement.** No browser
   was run. No model was configured or called.
 - Authorization, visibility, privacy, receipts and the coin ledger were not weakened for speed. The
-  three changes below are all "same answer, fewer/cheaper queries"; the shared eligibility text means
+  changes kept below are all "same answer, fewer/cheaper queries"; the shared eligibility text means
   a viewport count and a resident's own merit summary still cannot disagree.
+
+## Integrator correction — the viewport change was withdrawn (13 October 2026)
+
+The viewport optimization described below was **not accepted**. On a fixture larger than the ones
+used here it is a severe regression, and it was reverted before release:
+
+- **Withdrawn:** the grouped `accepted_contributions` read for a viewport page
+  (`acceptedContributionCounts` / `contributionEligibilityIn`). On the small fixtures below it looked
+  like a minor win (≈0.8 ms; 0.42 → 0.16 ms with 600 historic claims). On the shipped suite's crowded
+  fixture it is pathological: `tests/world-platform.test.js` went from **8.3 s to over 300 s** (whole
+  file), because `GROUP BY c.agent_id` over an `IN (…200 ids…)` list of the eight-table eligibility
+  predicate admits a far worse query plan than the per-avatar correlated subquery it replaced.
+  Reverting `src/spaces.js` alone restored 6.6 s.
+- **Also withdrawn with it:** the `COUNT(*) OVER ()` → separate bounded `COUNT(*)` replacement in
+  `src/spaces.js` (the 19.65 ms → 4.63 ms + 2.37 ms row below). It shipped in the same file and was
+  never re-validated in isolation, so it is **not claimed**. Re-attempt it on its own, timed against
+  the crowded fixture, before believing that row.
+- **Consequently the two viewport rows below (the `accepted_contributions` row and the
+  participant-page row) are void**, as is the "Contribution counts in a viewport" row of the bounds
+  table. Every other row still holds.
+- **The lesson is recorded deliberately:** both withdrawn rows were justified by measurements on a
+  fixture too small to expose the query plan. A micro-benchmark against a quiet, empty database did
+  not predict the shipped suite. Any future viewport change must be timed against the crowded
+  fixture, not only the micro-fixture.
+
+Kept and still measured: the grouped calling-experience read (`src/vocations.js`), the bounded
+per-resident visit atlas and claim history (`src/journey.js`, `src/platform.js`), and the harnesses
+and bounds tests themselves.
 
 ## Hardware and environment
 

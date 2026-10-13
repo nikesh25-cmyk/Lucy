@@ -7,6 +7,20 @@ npm dependency was added. Nothing in tasks 01–13 was re-litigated.
 
 Full measurements, hardware, limits and the "not measured" list: **[docs/PERFORMANCE.md](../PERFORMANCE.md)**.
 
+## Integrator correction (13 October 2026) — the viewport change was withdrawn
+
+This deliverable was **not accepted as originally written**. The grouped `accepted_contributions`
+viewport read (`acceptedContributionCounts` / `contributionEligibilityIn`) plus the
+`COUNT(*) OVER ()` replacement in `src/spaces.js` were **reverted** by the integrator: on the shipped
+suite's crowded fixture they take `tests/world-platform.test.js` from **8.3 s to over 300 s** (whole
+file), where the original correlated subquery stays at ~6.6 s. The justification for them came from
+fixtures too small to expose the query plan. See the correction section in `docs/PERFORMANCE.md`,
+which voids the corresponding rows and rows of its bounds table.
+
+Kept: the harnesses, the bounds tests, the grouped calling-experience read (`src/vocations.js`) and
+the bounded per-resident visit atlas / claim history (`src/journey.js`, `src/platform.js`). The
+`src/spaces.js` read path is exactly the base revision's.
+
 ## Honesty note first
 
 **A stored record count is not a count of supported simultaneous users.** The 10,000-record fixture
