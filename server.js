@@ -19,6 +19,7 @@ import { runAgent } from './runtime/agent.js';
 import { civicAtlas, REGIONS, AMBASSADOR_REMIT, mayorTopic } from './src/civic.js';
 import { manifest } from './src/content.js';
 import { serveVideo } from './src/media.js';
+import { ensureTradeMarket } from './src/trade-market.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -131,6 +132,11 @@ const writes = new Map([
   ['/journey/garden', ['gardenAction', 'build']], ['/journey/craft', ['craftItem', 'build']],
   ['/journey/offers', ['offerCreate', 'contribute']], ['/journey/offers/accept', ['offerAccept', null]],
   ['/journey/offers/decline', ['offerDecline', null]], ['/journey/offers/cancel', ['offerCancel', 'contribute']],
+  // The trade board. Posting escrows the resident's own grown or crafted goods and claiming receives
+  // them, so both need the `contribute` scope a resident already needs to write its own inventory.
+  // Withdrawing is the posting side's own act. No route here takes a price, a bid or a coin.
+  ['/trade/listings', ['tradePost', 'contribute']], ['/trade/claim', ['tradeClaim', 'contribute']],
+  ['/trade/cancel', ['tradeCancel', 'contribute']],
   ['/quests/author', ['questAuthor', null]], ['/quests/manage', ['questManage', null]],
   ['/quests/join', ['questJoin', null]], ['/quests/leave', ['questLeave', null]], ['/quests/complete', ['questComplete', null]],
   ['/guilds/projects', ['guildProjectCreate', 'contribute']], ['/guilds/participation', ['guildParticipation', 'contribute']],
@@ -149,7 +155,7 @@ const writes = new Map([
   // records that a source is withdrawn. Both fail closed on an unapproved host, a bad hash or a quota.
   ['/evidence/capture', ['evidenceCapture', null]], ['/evidence/withdraw', ['evidenceWithdraw', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -369,6 +375,10 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   if (hosting.publicOrigin && setupRequired && !hosting.setupCode) throw new Error('Set the private LUCY_SETUP_CODE before starting a public server with no administrator.');
   platform.publicMode = Boolean(hosting.publicOrigin);
   platform.setupCode = hosting.setupCode;
+  // The trade board's additive tables exist before the first request, and its stored ledger is
+  // re-checked as the process starts: a board that cannot balance refuses to serve rather than
+  // reporting items that no resident ever grew or crafted.
+  ensureTradeMarket(platform);
   const researchRuns=new Map(),residentRuns=new Map();
   const revokeWorker = credential => platform.run("UPDATE tokens SET revoked=1 WHERE hash=? AND kind='runtime'",createHash('sha256').update(credential.token).digest('hex'));
   const activeWorker = accountId => researchRuns.has(accountId)||residentRuns.has(accountId);
@@ -538,6 +548,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if(route==='/coins')value=platform.coins(actor,Object.fromEntries(url.searchParams));
           else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
           else if (route === '/journey/offers') value = platform.resourceOffers(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/trade/listings') value = platform.tradeBoard(actor, Object.fromEntries(url.searchParams));
           else if (route === '/interact') value = platform.interactionView(actor, Object.fromEntries(url.searchParams));
           else if (route === '/memory') value = platform.memory(actor, Object.fromEntries(url.searchParams));
           else if (route === '/first-play') value = platform.firstPlay(actor, Object.fromEntries(url.searchParams));
@@ -671,7 +682,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         else if (route === '/operations/pause') {
           if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
           value = platform.pause(actor, input.paused);
-        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept', '/trade/listings', '/trade/claim'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
         else value = platform[method](actor, input);
         platform.charge(actor);
         return value;
@@ -720,7 +731,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
     }
   });
   let mayorTimer;
-  server.once('listening',()=>{mayorTimer=setInterval(()=>{try{platform.transaction(()=>platform.tickMayors());}catch{/* A shutdown may have closed storage. */}try{platform.transaction(()=>platform.expireOffers());}catch{/* A shutdown may have closed storage. */}},3000);mayorTimer.unref();});
+  server.once('listening',()=>{mayorTimer=setInterval(()=>{try{platform.transaction(()=>platform.tickMayors());}catch{/* A shutdown may have closed storage. */}try{platform.transaction(()=>platform.expireOffers());}catch{/* A shutdown may have closed storage. */}try{platform.transaction(()=>platform.tradeExpire());}catch{/* A shutdown may have closed storage. */}},3000);mayorTimer.unref();});
   server.once('close',()=>{clearInterval(mayorTimer);hub.closeAll();for(const run of [...researchRuns.values(),...residentRuns.values()])run.controller.abort();});
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
