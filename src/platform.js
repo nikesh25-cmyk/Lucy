@@ -1,7 +1,7 @@
 import {coinMethods,verifyCoinLedger} from './coins.js';
 import {missionDirectory} from './mission-directory.js';
 import { createDeliveryPacket } from './delivery-packet.js';
-import { assessmentReason } from './review-assessment.js';
+import { assessmentReason, adoptionDeclaration, ADOPTION_BOUNDARY, citationComparison, requestedChangesReason, storedAdoption, storedRequestedChanges, submissionState } from './review-assessment.js';
 import { draftMethods } from './drafts.js';
 import { BRIEF_MARKER, normalizeDecisionBrief, serializeDecisionBrief, storedDecisionBrief } from './decision-brief.js';
 import { randomBytes, randomUUID, createHash, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
@@ -486,8 +486,11 @@ export class Platform {
     if (!submission.demo && submission.reviewer_id !== actor.account.id && actor.account.role !== 'admin') fail(403, 'This mission has a different reviewer.');
     if (submission.status !== 'pending_review') fail(409, 'This version has already been reviewed.');
     if (!['accepted', 'changes_requested', 'rejected'].includes(input.decision)) fail(400, 'Invalid review decision.');
+    if (input.requested_changes != null && input.decision !== 'changes_requested') fail(400, 'Requested changes belong to a changes-requested decision.');
     const id = randomUUID();
-    this.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', id, submission.id, actor.account.id, input.decision, assessmentReason(input.reason,input.assessment,storedDecisionBrief(submission.artifact,parse(submission.sources).length),input.decision), now());
+    const assessed = assessmentReason(input.reason,input.assessment,storedDecisionBrief(submission.artifact,parse(submission.sources).length),input.decision);
+    const changes = requestedChangesReason(assessed, input.requested_changes);
+    this.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', id, submission.id, actor.account.id, input.decision, changes.reason, now());
     this.run('UPDATE submissions SET status=? WHERE id=?', input.decision, submission.id);
     this.run('UPDATE claims SET status=?,expires_at=? WHERE id=?', input.decision, this.clock() + 20 * 60_000, submission.claim_id);
     if(input.decision==='changes_requested')this.run('UPDATE claim_drafts SET archived=0 WHERE claim_id=?',submission.claim_id);
@@ -496,7 +499,7 @@ export class Platform {
     if(input.decision==='rejected')this.run("UPDATE research_leads SET status='rejected' WHERE task_id=?",submission.task_id);
     this.audit(actor.account.id, `review.${input.decision}`, id);
     const coin_reward=input.decision==='accepted'?this.awardCoins(actor,submission.id,id):null;
-    return { id, decision: input.decision,...(coin_reward?{coin_reward}:{}) };
+    return { id, decision: input.decision, state: submissionState(input.decision), requested_changes: changes.items, ...(coin_reward?{coin_reward}:{}) };
   }
   reviewCapacity(missionId) {
     const mission = this.get('SELECT * FROM missions WHERE id=?', missionId);
@@ -511,9 +514,17 @@ export class Platform {
     const args = reviewer ? [actor.account.id, actor.account.role === 'admin' ? 1 : 0, actor.account.id] : [actor.account.id];
     if (runtime) args.push(actor.agent.id);
     const submissions = this.all(`SELECT s.*,c.task_id,t.title AS task_title,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC,s.rowid DESC LIMIT ?`, ...args, HISTORY_LIMIT).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
-    const evidenceBySubmission = this.evidenceForSubmissions(submissions.map((s) => s.id));
-    for (const submission of submissions) submission.evidence = evidenceBySubmission[submission.id] || [];
     const ids = new Set(submissions.map((s) => s.id));
+    const evidenceBySubmission = this.evidenceForSubmissions(submissions.map((s) => s.id));
+    const adoptionsBySubmission = this.adoptionsForSubmissions(submissions.map((s) => s.id));
+    const reviews = this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id WHERE r.submission_id IN (SELECT value FROM json_each(?)) ORDER BY r.created_at DESC,r.rowid DESC', JSON.stringify([...ids])).map((review) => ({ ...review, requested_changes: review.decision === 'changes_requested' ? storedRequestedChanges(review.reason) : [] }));
+    for (const submission of submissions) {
+      submission.evidence = evidenceBySubmission[submission.id] || [];
+      submission.adoptions = adoptionsBySubmission[submission.id] || [];
+      submission.state = submissionState(submission.status, submission.adoptions.length > 0);
+      // Exactly what the reviewer asked for, read back from the stored version-specific review record.
+      submission.requested_changes = reviews.find((review) => review.submission_id === submission.id && review.decision === 'changes_requested')?.requested_changes || [];
+    }
     // A resident's claim list grows for as long as the operator exists, so it takes the same
     // HISTORY_LIMIT bound as every other listing on this page. The runtime's own-agent filter is
     // applied in SQL, so a runtime sees the newest records that belong to it rather than the newest
@@ -528,14 +539,33 @@ export class Platform {
       drafts:actor.kind==='session'?this.drafts(actor):[],
       jobs: this.all(`SELECT j.*,a.name AS agent_name FROM jobs j JOIN agents a ON a.id=j.agent_id WHERE a.operator_id=?${actor.kind === 'runtime' ? ' AND j.agent_id=?' : ''} ORDER BY j.created_at DESC LIMIT 100`, actor.account.id, ...(actor.kind === 'runtime' ? [actor.agent.id] : [])),
       runs: this.all(`SELECT r.*,a.name AS agent_name FROM resident_runs r JOIN agents a ON a.id=r.agent_id WHERE a.operator_id=?${actor.kind === 'runtime' ? ' AND r.agent_id=?' : ''} ORDER BY r.started_at DESC,r.id DESC LIMIT 50`, actor.account.id, ...(actor.kind === 'runtime' ? [actor.agent.id] : [])).map(runView),
-      reviews: this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id WHERE r.submission_id IN (SELECT value FROM json_each(?)) ORDER BY r.created_at DESC,r.rowid DESC', JSON.stringify([...ids])),
+      reviews,
     };
+  }
+  // One query for every adoption of the submissions on a page, with the declaring operator named.
+  adoptionsForSubmissions(ids) {
+    const unique = [...new Set(ids || [])].filter((id) => typeof id === 'string');
+    if (!unique.length) return {};
+    const marks = unique.map(() => '?').join(',');
+    const bySubmission = {};
+    for (const row of this.all(`SELECT d.id,d.submission_id,d.owner_id,d.note,d.created_at,o.name AS owner FROM adoptions d JOIN accounts o ON o.id=d.owner_id WHERE d.submission_id IN (${marks}) ORDER BY d.created_at ASC,d.rowid ASC`, ...unique)) {
+      const { note: declaration, owner, ...rest } = row;
+      (bySubmission[row.submission_id] ||= []).push({ ...rest, owner, declaration, ...storedAdoption(declaration), declaration_only: true });
+    }
+    return bySubmission;
   }
   gallery(submissionId=null) {
     const records = this.all(`SELECT s.id,s.status,s.artifact,s.sources,s.method,s.limitations,s.rights,s.version,s.created_at,c.task_id,c.agent_id,t.title AS task_title,m.title AS mission,m.demo,m.beneficiary,m.rubric,COALESCE(a.name,o.name) AS contributor,r.id AS review_id,r.decision AS review_decision,r.reason,r.created_at AS reviewed_at,h.name AS reviewer,
       (SELECT COUNT(*) FROM adoptions d WHERE d.submission_id=s.id) AS adoption_count FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id JOIN reviews r ON r.submission_id=s.id AND r.decision='accepted' JOIN accounts h ON h.id=r.reviewer_id WHERE s.status='accepted'${submissionId?' AND s.id=?':''} ORDER BY s.created_at DESC,s.rowid DESC LIMIT ?`,...(submissionId?[submissionId]:[]),GALLERY_LIMIT).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
     const evidenceBySubmission = this.evidenceForSubmissions(records.map((record) => record.id));
-    for (const record of records) record.evidence = evidenceBySubmission[record.id] || [];
+    const adoptionsBySubmission = this.adoptionsForSubmissions(records.map((record) => record.id));
+    for (const record of records) {
+      record.evidence = evidenceBySubmission[record.id] || [];
+      record.adoptions = adoptionsBySubmission[record.id] || [];
+      // The gallery only holds currently accepted work, so the state is accepted or adopted. A
+      // quarantined or pending version is never shown here.
+      record.state = submissionState(record.status, record.adoptions.length > 0);
+    }
     return records;
   }
   deliveryPacket(input){
@@ -543,14 +573,106 @@ export class Platform {
     if(!record)fail(404,'Accepted contribution not found.');
     return createDeliveryPacket(record);
   }
+  // Adoption is the mission owner's own recorded declaration, with the evidence they attach to it,
+  // and it is refused when it would collapse two roles into one person: an operator cannot adopt
+  // their own contribution, and the reviewer who accepted the version cannot adopt it either.
   adoption(actor, input) {
     role(actor, ['admin', 'reviewer', 'member', 'moderator']);
-    const record = this.get("SELECT s.id,m.owner_id FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id WHERE s.id=? AND s.status='accepted'", input.submission_id || '');
+    const record = this.get(`SELECT s.id,s.version,s.status,c.account_id AS contributor_id,c.agent_id,m.id AS mission_id,m.owner_id,
+      (SELECT r.id FROM reviews r WHERE r.submission_id=s.id ORDER BY r.created_at DESC,r.rowid DESC LIMIT 1) AS review_id,
+      (SELECT r.reviewer_id FROM reviews r WHERE r.submission_id=s.id ORDER BY r.created_at DESC,r.rowid DESC LIMIT 1) AS reviewer_id,
+      (SELECT r.decision FROM reviews r WHERE r.submission_id=s.id ORDER BY r.created_at DESC,r.rowid DESC LIMIT 1) AS review_decision
+      FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id WHERE s.id=?`, input.submission_id || '');
     if (!record || record.owner_id !== actor.account.id) fail(403, 'Only the mission owner can record adoption of accepted work.');
+    if (record.status !== 'accepted' || record.review_decision !== 'accepted') fail(409, 'Only a currently accepted contribution can be declared adopted.');
+    if (record.contributor_id === actor.account.id) fail(403, 'An operator cannot adopt their own contribution; the adopter must be a different person from the contributor.');
+    if (record.reviewer_id === actor.account.id) fail(403, 'The reviewer who accepted this version cannot adopt it; the adopter must be a different person from the reviewer.');
     const id = randomUUID();
-    this.run('INSERT INTO adoptions VALUES(?,?,?,?,?)', id, record.id, actor.account.id, text(input.note, 'Documented use'), now());
+    const declaration = adoptionDeclaration(input.note, input.evidence);
+    this.run('INSERT INTO adoptions VALUES(?,?,?,?,?)', id, record.id, actor.account.id, declaration, now());
     this.audit(actor.account.id, 'adoption.recorded', id);
-    return { id };
+    return { id, submission_id: record.id, declaration, evidence_supplied: Boolean(storedAdoption(declaration).evidence), declaration_only: true, boundary: ADOPTION_BOUNDARY, state: submissionState('accepted', true) };
+  }
+  // ---- The reviewer workbench -------------------------------------------------------------------
+  // One read-only view of everything a human reviewer needs for one submission version: the
+  // criterion it is judged against, each cited source compared against the version the library holds
+  // now, what a previous reviewer asked for, the four roles kept apart with the reason any of them is
+  // refused, and the recorded adoptions. It writes nothing, so opening it can never change a state.
+  reviewWorkbench(actor, options = {}) {
+    if (actor?.kind !== 'session') fail(403, 'The reviewer workbench requires a human operator session.');
+    const route = this.get(`SELECT s.id,s.status,s.version,s.created_at,s.artifact,s.sources,s.method,s.limitations,s.rights,
+      c.account_id AS contributor_id,c.agent_id,c.status AS claim_status,t.id AS task_id,t.title AS task_title,t.instructions,
+      m.id AS mission_id,m.title AS mission_title,m.summary AS mission_summary,m.beneficiary,m.rubric,m.demo,m.status AS mission_status,m.owner_id,m.reviewer_id
+      FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id WHERE s.id=?`, text(options.submission || options.submission_id || '', 'Submission identifier', 100));
+    if (!route) fail(404, 'Submission not found.');
+    // The same parties that can already read this contribution: its mission reviewer or owner, an
+    // administrator, and the contributor themselves.
+    const party = [route.reviewer_id, route.owner_id, route.contributor_id].includes(actor.account.id) || actor.account.role === 'admin';
+    if (!route.demo && !party) fail(403, 'Only the mission owner, its reviewer, an administrator or the contributor can open this review.');
+    const reviews = this.all('SELECT r.*,o.name AS reviewer FROM reviews r JOIN accounts o ON o.id=r.reviewer_id WHERE r.submission_id=? ORDER BY r.created_at DESC,r.rowid DESC', route.id);
+    const latest = reviews[0] || null;
+    const adoptions = this.adoptionsForSubmissions([route.id])[route.id] || [];
+    const state = submissionState(route.status, adoptions.length > 0);
+    const brief = storedDecisionBrief(route.artifact, parse(route.sources).length);
+    const names = new Map(this.all("SELECT id,name FROM accounts WHERE id IN (?,?,?)", route.owner_id, route.contributor_id, route.reviewer_id).map((account) => [account.id, account.name]));
+    const person = (id) => ({ id, name: names.get(id) || 'unknown operator', is_you: id === actor.account.id });
+    const reviewerOf = latest?.reviewer_id || route.reviewer_id;
+    // Each citation: the exact version the contribution pinned, the version the library holds now,
+    // and the difference between them. The cited version is never rewritten by a later capture.
+    const citations = this.submissionEvidence(route.id).map((entry) => {
+      const versions = entry.versions || [];
+      const current = versions.length ? versions[versions.length - 1] : null;
+      return { ...entry, cited_version: entry.capture, current_version: current, comparison: citationComparison(entry.capture, current, entry.state) };
+    });
+    const mayReview = ['admin', 'reviewer'].includes(actor.account.role) && route.status === 'pending_review' && route.contributor_id !== actor.account.id && (route.demo || actor.account.role === 'admin' || route.reviewer_id === actor.account.id);
+    const reviewRefusal = route.status !== 'pending_review' ? 'This version is not waiting for review.'
+      : route.contributor_id === actor.account.id ? 'You cannot review your own or your agents’ contributions; a different human reviewer is required.'
+      : !['admin', 'reviewer'].includes(actor.account.role) ? 'Review needs an authorized reviewer or administrator account.'
+      : route.reviewer_id !== actor.account.id && actor.account.role !== 'admin' ? 'This mission has a different assigned reviewer.' : '';
+    const mayAdopt = route.owner_id === actor.account.id && route.status === 'accepted' && latest?.decision === 'accepted' && route.contributor_id !== actor.account.id && reviewerOf !== actor.account.id;
+    const adoptionRefusal = route.owner_id !== actor.account.id ? 'Only the mission owner can record adoption of accepted work.'
+      : route.status !== 'accepted' || latest?.decision !== 'accepted' ? 'Only a currently accepted contribution can be declared adopted.'
+      : route.contributor_id === actor.account.id ? 'An operator cannot adopt their own contribution; the adopter must be a different person from the contributor.'
+      : reviewerOf === actor.account.id ? 'The reviewer who accepted this version cannot adopt it; the adopter must be a different person from the reviewer.' : '';
+    const receipt = this.get('SELECT id,agent_id,account_id,amount,created_at FROM coin_rewards WHERE submission_id=?', route.id) || null;
+    return {
+      submission: { id: route.id, version: route.version, status: route.status, state, claim_status: route.claim_status, submitted_at: route.created_at, artifact: route.artifact, method: route.method, limitations: route.limitations, rights: route.rights, sources: parse(route.sources), brief },
+      mission: { id: route.mission_id, title: route.mission_title, summary: route.mission_summary, beneficiary: route.beneficiary, rubric: route.rubric, status: route.mission_status, practice: Boolean(route.demo) },
+      task: { id: route.task_id, title: route.task_title, instructions: route.instructions },
+      criteria: { rubric: route.rubric, findings: brief ? brief.findings.map((finding, index) => ({ finding_number: index + 1, text: finding.text, qualification: finding.qualification, source_numbers: finding.source_numbers })) : [], structured: Boolean(brief) },
+      citations,
+      assessment: latest ? { review_id: latest.id, reviewer: person(latest.reviewer_id), decision: latest.decision, reviewed_at: latest.created_at, requested_changes: storedRequestedChanges(latest.reason), reason: latest.reason } : null,
+      reviews: reviews.map((review) => ({ id: review.id, reviewer: person(review.reviewer_id), decision: review.decision, reviewed_at: review.created_at, requested_changes: storedRequestedChanges(review.reason) })),
+      requested_changes: { review_id: latest?.decision === 'changes_requested' ? latest.id : null, items: latest?.decision === 'changes_requested' ? storedRequestedChanges(latest.reason) : [] },
+      adoptions,
+      coin: receipt ? { issued: true, receipt_id: receipt.id, credited_agent: receipt.agent_id, amount: receipt.amount, created_at: receipt.created_at, availability: state.value === 'held' ? 'held' : 'available' } : { issued: false, receipt_id: null, credited_agent: route.agent_id, amount: null, created_at: null, availability: null },
+      availability: {
+        state: state.value,
+        held: state.value === 'held',
+        note: state.value === 'held'
+          ? 'Quarantine holds current availability without rewriting history: the acceptance record and any issued receipt are retained exactly as they are, and the wallet projection reads “held” until the evidence is available again.'
+          : 'Nothing is held: this version is in the state named above and no record has been withdrawn.',
+      },
+      roles: {
+        proposer: { ...person(route.owner_id), role: 'mission owner who proposed the mission and records adoption' },
+        contributor: { ...person(route.contributor_id), role: 'operator whose resident submitted this version' },
+        reviewer: { ...person(reviewerOf), role: route.reviewer_id === route.owner_id ? 'assigned reviewer' : 'assigned independent reviewer' },
+        adopter: { ...person(route.owner_id), role: 'mission owner who may record a documented adoption' },
+        distinct: {
+          contributor_from_reviewer: route.contributor_id !== reviewerOf,
+          adopter_from_contributor: route.owner_id !== route.contributor_id,
+          adopter_from_reviewer: route.owner_id !== reviewerOf,
+        },
+        you: { ...person(actor.account.id), account_role: actor.account.role },
+        may_review: mayReview, review_refusal: mayReview ? '' : reviewRefusal,
+        may_adopt: mayAdopt, adoption_refusal: mayAdopt ? '' : adoptionRefusal,
+      },
+      boundaries: {
+        acceptance: 'Acceptance is a human contribution review of this exact version. It is not independent factual certification, recipient consent, funding, shipment authorization or a real-world outcome.',
+        adoption: ADOPTION_BOUNDARY,
+        evidence: 'States are read from the stored citations and the library. A later capture of a source changes the state shown, never the version the contribution cited.',
+      },
+    };
   }
   report(actor, input) {
     if (!['message', 'submission', 'agent'].includes(input.target_type)) fail(400, 'Invalid report target.');

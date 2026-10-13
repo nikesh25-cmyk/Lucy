@@ -120,7 +120,7 @@ const writes = new Map([
   // records that a source is withdrawn. Both fail closed on an unapproved host, a bad hash or a quota.
   ['/evidence/capture', ['evidenceCapture', null]], ['/evidence/withdraw', ['evidenceWithdraw', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/restoration', '/evidence', '/evidence/draft']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/restoration', '/evidence', '/evidence/draft', '/review/workbench']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -510,6 +510,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/restoration') value = platform.restoration(actor, Object.fromEntries(url.searchParams));
           else if (route === '/evidence') value = platform.evidenceLibrary(actor, Object.fromEntries(url.searchParams));
           else if (route === '/evidence/draft') value = platform.draftEvidence(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/review/workbench') value = platform.reviewWorkbench(actor, Object.fromEntries(url.searchParams));
           else if (route === '/missions') value = platform.missionList(actor,Object.fromEntries(url.searchParams));
           else if (route === '/gallery') value = platform.gallery();
           else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));

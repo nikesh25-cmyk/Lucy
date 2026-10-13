@@ -63,7 +63,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';clearOperatorState(state);localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';clearOperatorState(state);state.workbenches=null;localStorage.removeItem('selected-agent');$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -1138,14 +1138,36 @@ function evidenceView(entry){
   if((entry.versions||[]).length>1)disclosure(node,`All ${entry.versions.length} retained versions of this source`,body=>{for(const version of entry.versions)body.append(paragraph(`${version.retained?'retained':'hash-only'} · ${version.sha256} · retrieved ${version.retrieved_at}${version.declared_date?` · date ${version.declared_date}`:''}${version.unit?` · unit ${version.unit}`:''} · ${version.locator||'location not recorded'}${version.supersedes?` · supersedes ${version.supersedes}`:''}`,'source-hash'));});
   return node;
 }
+// The one state a reviewer and a contributor both read: pending, accepted, held (quarantined) or
+// adopted. It is always shown in words, never as a bare code, and a held version says plainly that
+// the acceptance and any issued receipt are retained while availability is held.
+function stateBadge(value){const node=badge(value?.label||value?.value||'unknown');node.dataset.state=value?.value||'';if(value?.note)node.title=value.note;return node;}
+function stateLine(value){return value?.note?paragraph(`${value.label||value.value}: ${value.note}`,'privacy'):null;}
+// Exactly what the reviewer asked for, read back from the version-specific review record, so the
+// contributor can act on the list without re-reading the whole explanation.
+function requestedChangesView(submission){
+  const items=submission.requested_changes||[];if(!items.length)return null;
+  const node=element('section',null,'review-assessment requested-changes');node.append(element('h4','Changes requested for this version'));
+  const list=element('ol');for(const item of items)list.append(element('li',item));node.append(list);
+  node.append(paragraph('This list belongs to this submission version only. Submit a corrected version against the same task; the reviewer’s whole explanation is kept below.','privacy'));
+  return node;
+}
+function adoptionView(adoption){
+  const node=element('section',null,'review-assessment adoption');node.append(element('h4',`Documented adoption by ${adoption.owner}`),paragraph(adoption.note||adoption.declaration,'artifact'));
+  if(adoption.evidence)node.append(paragraph(`Supporting evidence: ${adoption.evidence}`,'privacy'));
+  node.append(paragraph(`Declared ${date(adoption.created_at)}. ${adoption.declaration_only?'Recorded declaration only:':'Declaration:'} adoption is not proof the work was implemented, not an institutional endorsement and not evidence of a real-world outcome, and it approves no budget, appointment or shipment.`,'privacy'));
+  return node;
+}
 function submissionRecord(submission, reviewMode=false) {
-  const node=element('article',null,'record'); const top=element('div',null,'card-header'); append(top,element('h3',titleOfTask(submission.task_id)),badge(submission.status)); append(node,top,paragraph(`Version ${submission.version} · ${submission.agent_name||submission.contributor||'Your contribution'} · ${date(submission.created_at)}`,'privacy'),submission.brief?decisionBriefView(submission.brief,submission.status==='accepted'):evidenceArtifactView(submission.artifact,submission.sources));
+  const node=element('article',null,'record'); const top=element('div',null,'card-header'); append(top,element('h3',titleOfTask(submission.task_id)),submission.state?stateBadge(submission.state):badge(submission.status)); append(node,top,paragraph(`Version ${submission.version} · ${submission.agent_name||submission.contributor||'Your contribution'} · ${date(submission.created_at)}`,'privacy'),submission.brief?decisionBriefView(submission.brief,submission.status==='accepted'):evidenceArtifactView(submission.artifact,submission.sources));
   sources(node,submission.sources,submission.evidence);disclosure(node,'Method, limits, and permissions',(body)=>append(body,paragraph(`Method: ${submission.method}`),paragraph(`Limits: ${submission.limitations}`),paragraph(`Rights: ${submission.rights}`)));
+  append(node,stateLine(submission.state),requestedChangesView(submission));
+  for(const adoption of submission.adoptions||[])node.append(adoptionView(adoption));
   for(const review of state.history.reviews.filter((r)=>r.submission_id===submission.id)) append(node,reviewReasonView(`${review.decision.replaceAll('_',' ')} by ${review.reviewer}`,review.reason));
   if(state.account)node.append(button('Report contribution',()=>reportPrompt('submission',submission.id),'secondary small'));
   if(reviewMode&&submission.status==='pending_review') {
     if(submission.account_id===state.account.id)node.append(paragraph('Your contribution requires a different human reviewer.','privacy'));
-    else reviewForm(node,submission);
+    else workbenchAndReviewForm(node,submission);
   }
   return node;
 }
@@ -1163,9 +1185,17 @@ function reviewForm(node,submission){
  const inputs=form(node,'Record review',async data=>{
   const payload={submission_id:submission.id,decision:data.decision,reason:data.reason};
   if(submission.brief)payload.assessment={findings:submission.brief.findings.map((finding,index)=>({finding_number:index+1,result:data[`assessment_${index}_result`],checked_source_numbers:data[`assessment_${index}_sources`].trim()?data[`assessment_${index}_sources`].split(',').map(value=>Number(value.trim())):[],notes:data[`assessment_${index}_notes`]})),scope_notes:data.assessment_scope,rights_notes:data.assessment_rights,cost_notes:data.assessment_costs};
+  const changes=Object.keys(data).filter((key)=>/^change_\d+$/.test(key)).map((key)=>data[key]).filter((value)=>value.trim());
+  if(data.decision==='changes_requested')payload.requested_changes=changes;
+  else if(changes.length)throw Error('Requested changes belong to a changes-requested decision.');
   await change('/reviews',payload,'Review recorded with this submission version. The contributor can see your assessment.');
  });
  field(inputs,'decision','Decision',{options:[{value:'changes_requested',label:'Request corrections'},{value:'accepted',label:'Accept contribution'},{value:'rejected',label:'Reject submission'}]});field(inputs,'reason','Explanation against the criteria',{type:'textarea',full:true,max:2000});
+ // One specific, actionable instruction per item. The list is stored with this exact version, so the
+ // contributor reads precisely what was asked for rather than an implied correction.
+ const requested=element('fieldset',null,'full');requested.append(element('legend','Changes the contributor must make'),paragraph('One specific instruction per item, used when the decision is “Request corrections”. The list is kept with this version and shown to the contributor.','privacy'));inputs.append(requested);
+ let changeCount=0;const addChange=()=>{if(changeCount>=10)return;field(requested,`change_${changeCount++}`,'Requested change',{type:'textarea',max:800,full:true,required:false});};
+ addChange();requested.append(actions(button('Add another change',addChange,'secondary small'),button('Remove last change',()=>{if(changeCount<=1)return;const rows=requested.querySelectorAll('label');rows[rows.length-1].remove();changeCount--;},'secondary small')));
  if(!submission.brief)return;
  const guide=element('section',null,'full');guide.append(element('h4','Finding-by-finding evidence assessment'),paragraph('Open the cited source and its supporting location. Record what you checked and why it supports or fails to support the finding. Accept only when all findings are supported within their stated scope. Unknown costs can remain explicit.','privacy'));inputs.append(guide);
  submission.brief.findings.forEach((finding,index)=>{
@@ -1177,6 +1207,60 @@ function reviewForm(node,submission){
  field(inputs,'assessment_scope','Applicability to the proposed recipient and beneficiaries',{type:'textarea',max:800,full:true,hint:'Record geographic, temporal and practical limits; proposed roles remain unconfirmed.'});
  field(inputs,'assessment_rights','Attribution and permissions assessment',{type:'textarea',max:800,full:true});
  if(submission.brief.cost_scenario)field(inputs,'assessment_costs','Cost assumptions assessment',{type:'textarea',max:800,full:true,hint:'Distinguish estimates, source-backed amounts and unknown costs. Acceptance does not approve a budget.'});
+}
+// The reviewer workbench panel. It reads one composite view from the server on demand and writes
+// nothing, so opening it can never change a state. It is the one place the reviewer sees the four
+// roles, the source-version comparison and the state model together before recording a decision.
+function citationComparisonView(citation){
+  const node=element('div',null,'evidence-state comparison');node.append(element('strong',`Source ${citation.source_number} · `),evidenceBadge(citation.state),paragraph(citation.state_note,'privacy'),paragraph(citation.comparison.summary,'privacy'));
+  const table=element('table',null,'evidence-table');table.append(element('caption','The cited version is never rewritten by a later capture.'));
+  const head=element('thead'),row=element('tr');for(const title of ['','Version cited by this contribution','Version the library holds now']){const cell=element('th',title);cell.scope='col';row.append(cell);}head.append(row);table.append(head);
+  const cited=citation.cited_version,current=citation.current_version,body=element('tbody');
+  const line=(label,left,right)=>{const item=element('tr');item.append(element('th',label),element('td',left),element('td',right));body.append(item);};
+  line('Content hash',cited?cited.sha256:'No version pinned',current?current.sha256:'No capture retained');
+  line('Retained bytes',cited?(cited.retained?`${cited.bytes} bytes at ${cited.retained_path}`:'hash only; bytes not retained'):'—',current?(current.retained?`${current.bytes} bytes at ${current.retained_path}`:'hash only; bytes not retained'):'—');
+  line('Retrieved',cited?.retrieved_at||'—',current?.retrieved_at||'—');
+  line('Source-declared date',cited?.declared_date||'not established',current?.declared_date||'not established');
+  line('Unit',cited?.unit||'not recorded',current?.unit||'not recorded');
+  line('Supporting location',cited?.locator||'not recorded',current?.locator||'not recorded');
+  table.append(body);node.append(table);
+  if(citation.comparison.differences.length){const list=element('ul');for(const difference of citation.comparison.differences)list.append(element('li',`${difference.label}: cited “${difference.cited||'not recorded'}”, current “${difference.current||'not recorded'}”`));node.append(paragraph('Fields that differ between the two versions, kept side by side rather than normalised:','privacy'),list);}
+  return node;
+}
+function workbenchView(view){
+  const node=element('section',null,'workbench');
+  node.append(element('h4','Reviewer workbench'),stateBadge(view.submission.state),stateLine(view.submission.state));
+  const roles=element('dl',null,'workbench-roles');
+  for(const [label,role] of [['Proposer',view.roles.proposer],['Contributor',view.roles.contributor],['Reviewer',view.roles.reviewer],['Adopter',view.roles.adopter]])roles.append(element('dt',label),element('dd',`${role.name||'unknown'}${role.is_you?' (you)':''} — ${role.role}`));
+  const distinct=view.roles.distinct;
+  roles.append(element('dt','Roles kept apart'),element('dd',`contributor is not the reviewer: ${distinct.contributor_from_reviewer?'yes':'no'}; adopter is not the contributor: ${distinct.adopter_from_contributor?'yes':'no'}; adopter is not the reviewer: ${distinct.adopter_from_reviewer?'yes':'no'}`));
+  roles.append(element('dt','You can review this version'),element('dd',view.roles.may_review?'Yes. Record a criterion-by-criterion decision below.':view.roles.review_refusal||'No.'));
+  roles.append(element('dt','You can record adoption'),element('dd',view.roles.may_adopt?'Yes. The adoption form is with the accepted contribution in the gallery.':view.roles.adoption_refusal||'No.'));
+  node.append(roles,paragraph(view.availability.note,'privacy'));
+  if(view.coin.issued)node.append(paragraph(`Coin receipt: ${view.coin.amount} coins${view.coin.credited_agent?` for ${view.coin.credited_agent}`:''} · ${view.coin.availability} · ${date(view.coin.created_at)}. Reviewing the same version again cannot issue a second receipt.`,'privacy'));
+  if(view.criteria.structured){const findings=element('div');findings.append(element('h4','Decision criteria and findings'));for(const finding of view.criteria.findings)findings.append(paragraph(`${finding.finding_number}. ${finding.text} ${finding.source_numbers.map(number=>`[Source ${number}]`).join(' ')}`),paragraph(`Qualification: ${finding.qualification}`,'privacy'));node.append(findings);}
+  else node.append(element('h4','Decision criteria'),paragraph(view.criteria.rubric,'privacy'));
+  if(view.citations.length){const citations=element('div');citations.append(element('h4','Source-version comparison'),paragraph('Each cited source is compared against the version the evidence library holds now. A missing, stale, replaced or withdrawn citation is a reason a reviewer may refuse acceptance; nothing on this path edits the contribution or invents a version.','privacy'));for(const citation of view.citations)citations.append(citationComparisonView(citation));node.append(citations);}
+  if(view.requested_changes.items.length){const list=element('ol');for(const item of view.requested_changes.items)list.append(element('li',item));node.append(element('h4','Changes previously requested for this version'),list);}
+  for(const adoption of view.adoptions)node.append(adoptionView(adoption));
+  node.append(paragraph([view.boundaries.acceptance,view.boundaries.adoption].join(' '),'privacy'));
+  return node;
+}
+function workbenchAndReviewForm(node,submission){
+  const panel=element('div');
+  // The workbench is an aid, so it loads on demand; the decision form below is always offered, which
+  // keeps a plain review exactly as reachable as it was before this task.
+  const renderPanel=()=>{
+    const view=(state.workbenches||{})[submission.id];panel.replaceChildren();
+    if(!view){panel.append(paragraph('Open the workbench to compare the cited source versions, read how the four roles are kept apart, and confirm what you are allowed to do before recording a decision. It writes nothing.','privacy'),button('Open the reviewer workbench',async()=>{state.workbenches??={};state.workbenches[submission.id]=await api(`/review/workbench?submission=${encodeURIComponent(submission.id)}`);renderView();},'secondary small'));return;}
+    panel.append(workbenchView(view),paragraph('Your decision is recorded against this exact version only, and the contributor sees every assessment note and each requested change.','privacy'));
+  };
+  const details=disclosure(node,'Reviewer workbench — criteria, source versions and roles',(body)=>{body.append(panel);renderPanel();});
+  // A loaded workbench stays open across the re-render that follows loading it, so the reviewer does
+  // not lose the panel they just asked for.
+  if((state.workbenches||{})[submission.id])details.open=true;
+  reviewForm(node,submission);
+  return panel;
 }
 function draftFor(claim){return (state.history.drafts||[]).find(d=>d.claim_id===claim.id);}
 function attachDraftSaving(inputs,claim,format,counts=null){
@@ -1309,12 +1393,20 @@ function renderReview(parent) {
   for(const submission of pending){const task=state.tasks.find((t)=>t.id===submission.task_id);const mission=state.missions.find((m)=>m.id===task?.mission_id);const node=card(mission?.title||'Mission review');append(node,paragraph(mission?.rubric||'Check all evidence and limitations.'),paragraph(task?.instructions||'','muted'),submissionRecord(submission,true));parent.append(node);}
 }
 function renderGallery(parent) {
-  parent.append(heading('A record of useful work','Human accepted contributions, with sources and limitations preserved. Acceptance and documented adoption are separate steps.'));
+  parent.append(heading('A record of useful work','Human accepted contributions, with sources and limitations preserved. Only currently accepted versions appear here: a pending, held or rejected version never does. Acceptance, documented adoption and the cited evidence stay separate steps.'));
   if(!state.gallery.length){parent.append(empty('The gallery is waiting for its first reviewed contribution. Practice missions are marked clearly.'));return;}
-  const grid=element('div',null,'grid');for(const record of state.gallery){const node=card(record.mission,record.demo?'PRACTICE CONTRIBUTION':'REVIEWED CONTRIBUTION');append(node,badge(record.demo?'demo':'accepted'),paragraph(`By ${record.contributor} · Version ${record.version}`,'privacy'),record.brief?decisionBriefView(record.brief,true):evidenceArtifactView(record.artifact,record.sources));sources(node,record.sources,record.evidence);append(node,reviewReasonView(`Reviewed by ${record.reviewer}`,record.reason),paragraph(`Limits: ${record.limitations}`,'muted'),paragraph(`${record.adoption_count} documented uses`,'privacy'));
+  const grid=element('div',null,'grid');for(const record of state.gallery){const node=card(record.mission,record.demo?'PRACTICE CONTRIBUTION':'REVIEWED CONTRIBUTION');append(node,record.state?stateBadge(record.state):badge(record.demo?'demo':'accepted'),paragraph(`By ${record.contributor} · Version ${record.version}`,'privacy'),record.brief?decisionBriefView(record.brief,true):evidenceArtifactView(record.artifact,record.sources));sources(node,record.sources,record.evidence);append(node,stateLine(record.state),reviewReasonView(`Reviewed by ${record.reviewer}`,record.reason),paragraph(`Limits: ${record.limitations}`,'muted'),paragraph(`${record.adoption_count} documented use${record.adoption_count===1?'':'s'}`,'privacy'));
+    for(const adoption of record.adoptions||[])node.append(adoptionView(adoption));
     const packetLinks=['html','json'].map(format=>{const link=element('a',format==='html'?'Download readable briefing':'Download briefing JSON','secondary small evidence-download');link.href=`/api/v1/briefing?submission=${encodeURIComponent(record.id)}&format=${format}`;link.download='';return link;});node.append(actions(...packetLinks),paragraph('The readable file opens in a browser and can be printed. Sources, review and remaining gaps stay with the recommendation.','privacy'));
     if(state.account)node.append(button('Report contribution',()=>reportPrompt('submission',record.id),'secondary small'));
-    const sourceTask=state.tasks.find(task=>task.id===record.task_id),mission=state.missions.find(item=>item.id===sourceTask?.mission_id);if(mission&&isReviewer()&&(state.account.role==='admin'||mission.owner_id===state.account.id)&&['open','demo'].includes(mission.status))followUpForm(node,record,sourceTask,mission);if(mission?.owner_id===state.account?.id)disclosure(node,'Record real use of this contribution',(body)=>{const inputs=form(body,'Record adoption',async(data)=>change('/adoptions',{submission_id:record.id,note:data.note},'Use recorded.'));field(inputs,'note','Where and how the work was used',{type:'textarea',max:2000,full:true});});
+    const sourceTask=state.tasks.find(task=>task.id===record.task_id),mission=state.missions.find(item=>item.id===sourceTask?.mission_id);if(mission&&isReviewer()&&(state.account.role==='admin'||mission.owner_id===state.account.id)&&['open','demo'].includes(mission.status))followUpForm(node,record,sourceTask,mission);
+    if(mission?.owner_id===state.account?.id){
+      // Adoption is the mission owner's own recorded declaration, and it is refused when it would put
+      // one person in two roles. The interface says which rule applies before the form is offered.
+      const contributedByYou=(state.agents||[]).some(agent=>agent.id===record.agent_id),reviewedByYou=mission.reviewer_id===state.account.id;
+      if(contributedByYou||reviewedByYou)node.append(paragraph(contributedByYou?'You contributed this work, so you cannot also adopt it: the adopter must be a different person from the contributor. Ask another mission owner to record any real use.':'You reviewed this work, so you cannot also adopt it: the adopter must be a different person from the reviewer. Ask the mission owner to record any real use.','privacy'));
+      else disclosure(node,'Record a documented adoption',(body)=>{body.append(paragraph('Adoption is your recorded declaration that you used this accepted version, with the evidence you can name. It is not proof of implementation, not an institutional endorsement and not evidence of a real-world outcome.','privacy'));const inputs=form(body,'Record adoption',async(data)=>change('/adoptions',{submission_id:record.id,note:data.note,evidence:data.evidence},'Adoption declared and recorded with its supporting evidence.'));field(inputs,'note','Where and how the work was used',{type:'textarea',max:1200,full:true});field(inputs,'evidence','Supporting evidence for this use',{type:'textarea',max:400,required:false,full:true,hint:'Name the decision, venue or register where it was used. NemoWorld records your declaration; it does not verify it.'});});
+    }
     grid.append(node);}parent.append(grid);
 }
 function followUpForm(node,record,sourceTask,mission){

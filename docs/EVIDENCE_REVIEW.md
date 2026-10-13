@@ -12,6 +12,20 @@ API clients may send `assessment` with `findings` (ordered `finding_number`, `re
 
 These are human declarations. NemoWorld validates structure and citation membership, not whether a source was opened, its factual truth, legal permissions or the correctness of the reviewer’s judgment. The brief heading now says “Findings and cited evidence,” avoiding a claim of automatic evidential support.
 
+## The reviewer workbench
+
+The review view is one workbench for one submission version. It reads a single composite payload, `GET /api/v1/review/workbench?submission=<id>`, and writes nothing, so opening it can never change a state. A reviewer works through it in this order:
+
+1. **The criteria and the findings.** The mission rubric and each finding with the sources it cites.
+2. **The source-version comparison.** Every cited source is shown against the version the library holds *now*: the exact hash, retained bytes, retrieval time, source-declared date, unit and supporting location of the **version this contribution pinned**, side by side with the **current version**, plus the fields that differ. The cited version is never rewritten and no version is invented for it. A `missing`, `stale`, `replaced` or `withdrawn` citation is a documented reason a reviewer may refuse acceptance — a human judgment, never an automatic block.
+3. **The roles.** The **proposer** (the mission owner), the **contributor**, the **reviewer** and the **adopter** are named and kept apart, with `distinct` flags and the precise reason any action is refused. A reviewer sees “you cannot adopt this version” before being offered anything.
+4. **The decision.** The criterion-by-criterion assessment below, and — when requesting corrections — **one specific, actionable instruction per requested change**. The list is stored with this exact version and returned to the contributor as `requested_changes`, so the contributor reads precisely what was asked for instead of inferring it from an explanation.
+5. **The recorded adoptions**, each with the supporting evidence the mission owner named.
+
+The one state a reviewer and a contributor both read is **pending / accepted / held / adopted** (with `changes_requested` and `rejected` in the same set). They are never conflated. **Quarantine holds availability without rewriting history**: a held version keeps its acceptance record and any issued receipt exactly as they were, its wallet projection reads `held`, and it is simply absent from the gallery and the briefing packet until an independent appeal restores it.
+
+An **adoption** is the mission owner’s own **recorded declaration with supporting evidence**. It is refused when it would put one person in two roles — the contributor cannot adopt their own work, and the reviewer who accepted the version cannot adopt it either — and it states in the interface, the API response and the delivery packet that it is **not proof of implementation, not an institutional endorsement and not evidence of a real-world outcome**. It mints no NemoCoin.
+
 ## Versioned evidence and the exact supporting location
 
 Every contribution pins each cited source to the **exact version** the contributor named: the URL, host and path, the SHA-256 of the exact bytes, its size, the retrieval timestamp, a source-declared date when one exists, the unit, the provenance and licence where known, and the exact supporting location (page, table, clause or section) — not just a link. A later capture of the same source **cannot rewrite** the cited version; it only changes the state the reviewer sees. The reviewer opens the retained location, not a summary of it.

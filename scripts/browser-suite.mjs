@@ -14,6 +14,7 @@
 //               LUCY_CHROME_PATH=/path/to/chrome          use another Chrome build
 //               LUCY_BROWSER_CHANNEL=chrome|msedge        use another installed channel
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -120,6 +121,8 @@ export const SCENARIOS = Object.freeze([
   { id: 'interaction-ambassador-desk', title: 'A country ambassador desk answers through the existing conversation action', regression: null },
   { id: 'interaction-state-refusals', title: 'Paused, revoked, wrong-owner and observer refusals keep the server authoritative', regression: null },
   { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
+  { id: 'reviewer-workbench', title: 'A reviewer assesses each criterion, compares source versions, requests changes and the mission owner records an adoption', regression: null },
+  { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -337,6 +340,9 @@ const ACTORS = {
   owner: { email: 'owner@browser.test', password: PASSWORD, name: 'Browser owner' },
   reviewer: { email: 'reviewer@browser.test', password: PASSWORD, name: 'Browser reviewer' },
   stranger: { email: 'stranger@browser.test', password: PASSWORD, name: 'Browser stranger' },
+  // The reviewer-workbench scenarios keep all four roles on different accounts: the administrator
+  // proposes and later adopts, this operator contributes, and the reviewer is the fourth person.
+  contributor: { email: 'contributor@browser.test', password: PASSWORD, name: 'Browser contributor' },
 };
 
 /**
@@ -2886,8 +2892,16 @@ define('cooperative-restoration-two-operators', async () => {
     await startServer();
     await owner.page.reload({ waitUntil: 'domcontentloaded' });
     await settle(owner.page);
+    // The schema number is never hard-coded here: it is compared against the version the running
+    // server reports for the very database file this scenario validates, so a schema bump cannot
+    // leave a stale literal behind. Validation itself (integrity, tables, ledger, evidence) still
+    // has to succeed for the read to return at all.
     const validation = validateDatabase(state.database);
-    expect(validation.schema_version === 21, 'the database must still validate after the restart', { actual: describe(validation) });
+    const reported = await apiGet('/operations', { token: fixtures().admin.token });
+    // The administrator dashboard reports the running server's own `PRAGMA user_version` under
+    // `diagnostics.schema`, read from the same file this scenario just validated.
+    const serverSchema = reported.status === 200 ? reported.body?.diagnostics?.schema?.version ?? null : null;
+    expect(serverSchema === validation.schema_version, 'the database that validates after the restart must be the schema the running server reports', { expected: `GET /operations schema version ${serverSchema ?? `(HTTP ${reported.status})`}`, actual: describe(validation) });
     const read = await inPage(owner.page, `/restoration?event_id=${encodeURIComponent(eventId)}`, { method: 'GET' });
     expect(read.body.event.phase === 'completed', 'the recorded outcome must survive the restart', { actual: describe(read.body.event.phase) });
     expect(read.body.event.artifact.standing === RESTORATION_TILES.length, 'every restored object must survive the restart', { actual: describe(read.body.event.artifact) });
@@ -2909,6 +2923,318 @@ async function restorationCraft(page, agentId, recipe, before) {
   await interactionActionForm(page).getByRole('button', { name: /^Craft a keepsake\b/ }).click();
   await waitForCondition(async () => count('SELECT crafts FROM journey_profiles WHERE agent_id=?', agentId) > before ? true : null, `the ${recipe} to be recorded`);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Scenario 23 — the reviewer workbench
+//
+// Four people on four accounts: the administrator proposes the mission and later adopts, this
+// operator contributes, the reviewer is a third person, and the adopter role is the mission owner.
+// The reviewer drives the workbench through the interface: criterion by criterion, a comparison of
+// the cited source version against the version the library holds now, a changes-requested round
+// trip the contributor reads back, and finally an acceptance and a recorded adoption.
+// ---------------------------------------------------------------------------------------------
+
+const WORKBENCH_SOURCE = 'https://example.org/workbench-report';
+const randomHash = () => createHash('sha256').update(String(Math.random() * 1e9)).digest('hex');
+
+/** A bounded structured decision brief for the reviewer-workbench fixtures. */
+function workbenchBrief(tag) {
+  return {
+    title: `Browser reviewer fixture ${tag}`,
+    recipient: 'Proposed fixture focal point; unconfirmed',
+    requested_decision: 'Review the cited fixture evidence before any selection.',
+    beneficiaries: 'Fictional browser acceptance community; no operating project.',
+    problem: 'A bounded browser fixture for the reviewer workbench; it describes no real programme.',
+    findings: [{ text: 'This is a browser acceptance fixture, not a real trade or programme finding.', source_numbers: [1], qualification: 'No buyer, shipment or institutional conclusion is claimed.' }],
+    options: [
+      { title: 'Gather evidence first', action: 'Prepare a dated evidence register.', owner: 'Proposed technical focal point; unconfirmed', cost_basis: 'Research budget unknown.', dependencies: 'Producer and reviewer selection.', risks: 'Incomplete local applicability.' },
+      { title: 'Defer the selection', action: 'Record the gaps and defer.', owner: 'Proposed municipality role; unconfirmed', cost_basis: 'No project commitment assumed.', dependencies: 'A documented decision by the responsible institution.', risks: 'Evidence gaps remain open.' },
+    ],
+    recommended_option: 1,
+    recommendation_reason: 'Fixture rationale: the evidence is insufficient for a selection.',
+    milestones: [{ deliverable: 'Dated gap register', owner: 'Proposed research contributor', timing: 'Proposed first month after approval', measure: 'An independent reviewer checks the source locations.' }],
+    evidence_gaps: 'Buyer demand, shipment eligibility and costs remain unknown in this fixture.',
+    cost_scenario: { currency: 'NPR', precision: 2, quantity_kg: 1, rows: [{ item: 'Illustrative preparation', basis: 'estimate', amount: '0.10', assumption: 'Artificial fixture amount; not a real quote.' }, { item: 'Freight', basis: 'unknown', amount: null, assumption: 'No carrier quote or route selected.' }] },
+  };
+}
+
+const workbenchSource = (sha) => ({ url: WORKBENCH_SOURCE, location: `Section 2, paragraph 3; SHA256 ${sha}`, date: '2026-10-11' });
+
+/** The contributor account and one fictional resident, created over the documented API. */
+async function contributorFixtures(name) {
+  const ticket = await ensureAccount(fixtures().admin, ACTORS.contributor);
+  const resident = await apiExpect(ticket, 'POST', '/agents', { kind: 'agent', name, color: '#5d7bb1', symbol: '✎', capabilities: 'Reads approved sources and prepares cited briefs', limitations: 'No external tools and no real-world claims' });
+  return { ticket, resident };
+}
+
+/** Submits one structured decision brief with its source pinned to an exact version. */
+async function submitBrief(ticket, claim, tag, sha, key) {
+  const submission = await apiExpect(ticket, 'POST', '/submissions', {
+    claim_id: claim.id, brief: workbenchBrief(tag), sources: [workbenchSource(sha)],
+    method: 'Read the cited section and recorded its exact location.',
+    limitations: 'A browser fixture; facts and rights still require human verification.',
+    rights: 'Public material recorded with attribution.',
+    mime: 'application/json',
+  }, [201], { headers: { 'Idempotency-Key': key } });
+  return submission;
+}
+
+/** Opens the reviewer workbench panel for one mission card and loads it through the interface. */
+async function openWorkbench(page, missionTitle, submissionId = null) {
+  const card = page.locator('#view .card', { hasText: missionTitle }).first();
+  await card.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+  await openDisclosure(page, 'Reviewer workbench');
+  const open = card.getByRole('button', { name: 'Open the reviewer workbench', exact: true });
+  const offered = await open.count() > 0;
+  if (offered) await open.click();
+  try {
+    await waitForCondition(async () => await card.locator('.workbench').count() > 0 ? true : null, 'the reviewer workbench to render');
+  } catch (error) {
+    // A refused or failing load leaves a notice in the interface; report it with the failure.
+    const notice = await page.locator('#notice').textContent().catch(() => '');
+    const probe = await page.evaluate((title) => { const card = [...document.querySelectorAll('#view .card')].find((node) => (node.textContent || '').includes(title)); if (!card) return 'no matching card'; return [...card.querySelectorAll('*')].filter((node) => node.classList.contains('workbench')).length; }, missionTitle).catch((err) => `probe failed: ${err.message}`);
+    let fetchTiming = 'not measured';
+    if (submissionId) { const started = Date.now(); await inPage(page, `/review/workbench?submission=${encodeURIComponent(submissionId)}`, { method: 'GET' }).catch(() => null); fetchTiming = `${Date.now() - started}ms`; }
+    throw new BrowserSuiteFailure('the reviewer workbench did not render', { expected: 'the workbench panel in the review card', actual: `load button offered: ${offered}; notice: “${(notice || '').trim()}”; workbench panels in the card: ${JSON.stringify(probe)}; an in-page fetch of the same view took ${fetchTiming}`, detail: error.message });
+  }
+  return card;
+}
+
+/** Records one criterion-by-criterion review through the shipped form. */
+async function recordWorkbenchReview(card, { decision, reason, result, notes, change }) {
+  const form = card.locator('form').filter({ hasText: 'Record review' }).first();
+  await form.locator('select[name="decision"]').selectOption(decision);
+  await form.locator('[name="reason"]').fill(reason);
+  if (change) await form.locator('[name="change_0"]').fill(change);
+  await form.locator('[name="assessment_0_result"]').selectOption(result);
+  await form.locator('[name="assessment_0_sources"]').fill('1');
+  await form.locator('[name="assessment_0_notes"]').fill(notes);
+  await form.locator('[name="assessment_scope"]').fill('Fictional browser fixture only; the proposed recipient remains unconfirmed.');
+  await form.locator('[name="assessment_rights"]').fill('Attribution recorded; no reuse permission has been established.');
+  await form.locator('[name="assessment_costs"]').fill('Freight remains unknown and no budget is approved by this review.');
+  await form.getByRole('button', { name: 'Record review', exact: true }).click();
+}
+
+const reviewRow = (submissionId) => row('SELECT * FROM reviews WHERE submission_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1', submissionId);
+
+define('reviewer-workbench', async () => {
+  const reviewer = await actor('reviewer');
+  const admin = await actor('admin');
+  const contributor = await actor('contributor');
+  const { ticket, resident } = await contributorFixtures('Notetaker');
+  const WORKBENCH_TITLE = 'Browser reviewer workbench fixture';
+  const { mission, task } = await makeMission(WORKBENCH_TITLE, 'workbench');
+  const firstSha = randomHash();
+  let first = null, second = null, citedCapture = null, newerCapture = null, claim = null;
+  const requested = 'Name the exact paragraph instead of the whole section.';
+
+  await step('a contributor submits a cited decision brief that pins one exact source version', async () => {
+    claim = await apiExpect(ticket, 'POST', '/claims', { task_id: task.id, agent_id: resident.id }, [201], { headers: { 'Idempotency-Key': 'browser-workbench-claim' } });
+    first = await submitBrief(ticket, claim, 'one', firstSha, 'browser-workbench-submit-1');
+    expect(first.status === 'pending_review', 'the fixture brief must be pending review', { actual: describe(first.status) });
+    const cited = row('SELECT * FROM submission_evidence WHERE submission_id=? AND source_number=1', first.id);
+    expect(cited && cited.capture_id, 'the citation must pin an exact stored version', { actual: describe(cited) });
+    citedCapture = row('SELECT * FROM evidence_captures WHERE id=?', cited.capture_id);
+    expect(citedCapture.sha256 === firstSha && citedCapture.origin === 'submission', 'the pinned version must be the cited hash', { expected: firstSha, actual: describe(citedCapture) });
+    return `submission ${first.id} pins ${firstSha.slice(0, 12)}… as one exact version`;
+  });
+
+  await step('a newer version of that source is captured, and the reviewer compares it in the workbench', async () => {
+    newerCapture = await apiExpect(fixtures().admin, 'POST', '/evidence/capture', { url: WORKBENCH_SOURCE, sha256: randomHash(), retrieved_at: '2026-10-12', locator: 'Browser fixture recapture', evidence_kind: 'web-excerpt', supersedes: citedCapture.id }, [201]);
+    await openApp(reviewer.page, ACTORS.reviewer);
+    const view = await inPage(reviewer.page, `/review/workbench?submission=${encodeURIComponent(first.id)}`, { method: 'GET' });
+    expect(view.status === 200 && view.body.submission.state.value === 'pending', 'the workbench must open for the pending version', { expected: 'HTTP 200 with a pending state', actual: `HTTP ${view.status} ${describe(view.body?.submission?.state)}` });
+    expect(view.body.citations[0].state === 'replaced', 'the citation must read as replaced while the cited version stays pinned', { expected: 'replaced', actual: describe(view.body.citations[0].state) });
+    expect(view.body.citations[0].cited_version.sha256 === firstSha && view.body.citations[0].current_version.sha256 === newerCapture.sha256, 'the comparison must name both versions', { actual: describe(view.body.citations[0].comparison) });
+    expect(view.body.roles.proposer.name === ACTORS.admin.name && view.body.roles.contributor.name === ACTORS.contributor.name && view.body.roles.reviewer.name === ACTORS.reviewer.name, 'the four roles must be named and kept apart', { actual: describe(view.body.roles) });
+    expect(view.body.roles.may_adopt === false && /Only the mission owner/.test(view.body.roles.adoption_refusal), 'the reviewer must be told they cannot adopt', { actual: describe(view.body.roles.adoption_refusal) });
+    // The reviewer drives the same comparison through the interface.
+    await openTab(reviewer.page, 'Review');
+    const card = await openWorkbench(reviewer.page, WORKBENCH_TITLE, first.id);
+    const text = await card.textContent();
+    expect(/replaced version/.test(text), 'the interface must label the replaced citation', { actual: text?.replace(/\s+/g, ' ').slice(0, 300) });
+    expect(text.includes(firstSha) && text.includes(newerCapture.sha256), 'the interface must show both versions side by side', { actual: 'a version hash was missing from the workbench' });
+    expect(/Version cited by this contribution/.test(text) && /Version the library holds now/.test(text), 'the comparison table must name both columns', { actual: text?.replace(/\s+/g, ' ').slice(0, 300) });
+    expect(/Yes\. Record a criterion-by-criterion decision below\./.test(text), 'the workbench must say the reviewer may decide', { actual: text?.replace(/\s+/g, ' ').slice(0, 300) });
+    expect(row('SELECT sha256 FROM evidence_captures WHERE id=?', citedCapture.id).sha256 === firstSha, 'a later capture must never rewrite the cited version', { actual: describe(row('SELECT * FROM evidence_captures WHERE id=?', citedCapture.id)) });
+    return `cited ${firstSha.slice(0, 12)}… vs current ${newerCapture.sha256.slice(0, 12)}…, labelled replaced in the interface`;
+  });
+
+  await step('the reviewer requests specific changes criterion by criterion', async () => {
+    const card = await openWorkbench(reviewer.page, WORKBENCH_TITLE, first.id);
+    await recordWorkbenchReview(card, { decision: 'changes_requested', reason: 'The section is cited but the paragraph is not identified.', result: 'uncertain', notes: 'The cited passage is real but its exact paragraph is not stated.', change: requested });
+    const stored = await waitForCondition(async () => reviewRow(first.id) || null, 'the changes-requested review to be stored');
+    expect(stored.decision === 'changes_requested' && stored.reviewer_id === state.fixtures.reviewer.id, 'the review must name the independent reviewer and the decision', { actual: describe(stored) });
+    expect(/HUMAN EVIDENCE ASSESSMENT — THIS SUBMISSION VERSION/.test(stored.reason) && /Finding 1: Support or applicability uncertain/.test(stored.reason), 'the assessment must be criterion by criterion', { actual: stored.reason.slice(0, 300) });
+    expect(/REQUESTED CHANGES — THIS SUBMISSION VERSION/.test(stored.reason) && stored.reason.includes(requested), 'the requested changes must be stored with this version', { actual: stored.reason.slice(0, 400) });
+    expect(row('SELECT status FROM submissions WHERE id=?', first.id).status === 'changes_requested', 'the version must go back as changes requested', { actual: describe(row('SELECT status FROM submissions WHERE id=?', first.id)) });
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards WHERE agent_id=?', resident.id) === 0, 'a requested correction must issue no coin', { actual: 'a receipt appeared' });
+    return `review by ${stored.reviewer_id} · submission ${first.id} is changes_requested with one named instruction`;
+  });
+
+  await step('the contributor reads exactly what was requested', async () => {
+    await openApp(contributor.page, ACTORS.contributor);
+    await openTab(contributor.page, 'My contributions');
+    const record = contributor.page.locator('#view .record', { hasText: 'Browser reviewer fixture one' }).first();
+    await record.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const text = await record.textContent();
+    expect(text.includes(requested), 'the contributor must read the exact requested change', { actual: text?.replace(/\s+/g, ' ').slice(0, 400) });
+    expect(/Changes requested for this version/.test(text), 'the requested changes must be labelled as such', { actual: text?.replace(/\s+/g, ' ').slice(0, 300) });
+    expect(/Changes requested:/.test(text), 'the changes-requested state must be written out, not coded', { actual: text?.replace(/\s+/g, ' ').slice(0, 300) });
+    const history = await inPage(contributor.page, '/history', { method: 'GET' });
+    const stored = history.body.submissions.find((entry) => entry.id === first.id);
+    expect(Array.isArray(stored.requested_changes) && stored.requested_changes[0] === requested, 'the API must return the same list', { actual: describe(stored.requested_changes) });
+    expect(stored.state.value === 'changes_requested', 'the contributor’s own view must carry the one state value', { actual: describe(stored.state) });
+    return `the contributor reads “${stored.requested_changes[0]}” for version ${stored.version}`;
+  });
+
+  await step('the corrected version is accepted criterion by criterion and issues exactly one receipt', async () => {
+    second = await submitBrief(ticket, claim, 'two', randomHash(), 'browser-workbench-submit-2');
+    expect(second.version === 2 && second.status === 'pending_review', 'the corrected version must be a new pending version', { actual: describe({ version: second.version, status: second.status }) });
+    await reviewer.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(reviewer.page);
+    await openTab(reviewer.page, 'Review');
+    const card = await openWorkbench(reviewer.page, WORKBENCH_TITLE, first.id);
+    await recordWorkbenchReview(card, { decision: 'accepted', reason: 'The paragraph citation is now exact and the unknown freight stays explicit.', result: 'supported', notes: 'Opened the cited paragraph and read the qualification with it.' });
+    const stored = await waitForCondition(async () => { const entry = reviewRow(second.id); return entry && entry.decision === 'accepted' ? entry : null; }, 'the acceptance to be stored');
+    expect(row('SELECT status FROM submissions WHERE id=?', second.id).status === 'accepted', 'the corrected version must be accepted', { actual: describe(row('SELECT status FROM submissions WHERE id=?', second.id)) });
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards WHERE agent_id=?', resident.id) === 1, 'exactly one receipt must be issued', { expected: 'one coin_rewards row', actual: `${count('SELECT COUNT(*) AS n FROM coin_rewards WHERE agent_id=?', resident.id)} rows` });
+    expect(scalar('SELECT amount FROM coin_rewards WHERE agent_id=?', resident.id) === 10, 'the receipt must be the fixed ten-coin award', { actual: describe(scalar('SELECT amount FROM coin_rewards WHERE agent_id=?', resident.id)) });
+    expect(stored.reviewer_id === state.fixtures.reviewer.id, 'the acceptance must be independent', { actual: describe(stored.reviewer_id) });
+    const wallet = await inPage(reviewer.page, `/coins?agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    expect(wallet.status === 403 || wallet.status === 404, 'a reviewer must not read another operator’s wallet', { expected: 'HTTP 403 or 404', actual: `HTTP ${wallet.status}` });
+    return `${stored.decision} by ${stored.reviewer_id}; one 10-coin receipt for ${resident.id}`;
+  });
+
+  await step('the mission owner records a documented adoption with its supporting evidence', async () => {
+    const refused = await inPage(reviewer.page, '/adoptions', { body: { submission_id: second.id, note: 'Adopting the version I reviewed.' } });
+    expect(refused.status === 403 && /Only the mission owner/.test(refused.body?.error || ''), 'the reviewer must not adopt the version they accepted', { expected: 'HTTP 403 from the mission-owner rule', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    await openApp(admin.page, ACTORS.admin);
+    await openTab(admin.page, 'Gallery');
+    const card = admin.page.locator('#view .card', { hasText: WORKBENCH_TITLE }).first();
+    await card.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await openDisclosure(admin.page, 'Record a documented adoption');
+    const form = card.locator('form').filter({ hasText: 'Record adoption' }).first();
+    await form.locator('[name="note"]').fill('Cited in the fictional browser community register.');
+    await form.locator('[name="evidence"]').fill('Register entry REG-BROWSER-2026-10-13.');
+    await form.getByRole('button', { name: 'Record adoption', exact: true }).click();
+    const adoption = await waitForCondition(async () => row('SELECT * FROM adoptions WHERE submission_id=?', second.id) || null, 'the adoption declaration to be stored');
+    expect(/DOCUMENTED ADOPTION — MISSION OWNER DECLARATION/.test(adoption.note), 'the declaration must say what it is', { actual: adoption.note.slice(0, 200) });
+    expect(adoption.note.includes('Register entry REG-BROWSER-2026-10-13.'), 'the supporting evidence must be recorded with it', { actual: adoption.note.slice(0, 400) });
+    expect(/not proof that the work was implemented/.test(adoption.note), 'the declaration must state what it is not', { actual: adoption.note.slice(-300) });
+    expect(adoption.owner_id === state.fixtures.admin.id, 'the adopter must be the mission owner', { expected: state.fixtures.admin.id, actual: describe(adoption.owner_id) });
+    await waitForText(admin.page, 'Register entry REG-BROWSER-2026-10-13.');
+    const view = await inPage(admin.page, `/review/workbench?submission=${encodeURIComponent(second.id)}`, { method: 'GET' });
+    expect(view.body.submission.state.value === 'adopted' && view.body.adoptions.length === 1, 'the workbench must read the adopted state and the declaration', { actual: describe({ state: view.body.submission.state.value, adoptions: view.body.adoptions.length }) });
+    expect(view.body.roles.may_adopt === true && view.body.roles.distinct.adopter_from_reviewer === true, 'the adopter stays a distinct person from the reviewer', { actual: describe(view.body.roles.distinct) });
+    const packet = await inPage(admin.page, `/briefing?submission=${encodeURIComponent(second.id)}&format=json`, { method: 'GET' });
+    expect(packet.status === 200 && packet.body.documented_uses === 1 && packet.body.adoptions[0].declared_by === ACTORS.admin.name, 'the packet must carry the declaration', { actual: `HTTP ${packet.status} ${describe(packet.body?.documented_uses)}` });
+    expect(/recorded declaration by the mission owner/.test(packet.body.boundary) && /not proof that the work was implemented/.test(packet.body.boundary), 'the packet must state the adoption boundary', { actual: packet.body.boundary });
+    return `adoption ${adoption.id} by ${adoption.owner_id} with its supporting evidence; the packet carries the declaration and its boundary`;
+  });
+
+  return `one reviewer assessed both versions criterion by criterion, compared ${first.id} against a newer capture, requested “${requested}” and accepted the correction; the mission owner recorded one adoption with its evidence`;
+});
+
+// ---------------------------------------------------------------------------------------------
+// Scenario 24 — the four states, self-adoption and the quarantine hold
+// ---------------------------------------------------------------------------------------------
+
+define('review-states-and-refusals', async () => {
+  const admin = await actor('admin');
+  const reviewer = await actor('reviewer');
+  const contributor = await actor('contributor');
+  const { ticket, resident } = await contributorFixtures('States resident');
+  // This mission is owned by the contributor's own operator: that is the self-adoption case.
+  const SELF_ADOPTION_TITLE = 'Browser self-adoption fixture';
+  const mission = await apiExpect(fixtures().admin, 'POST', '/missions', {
+    title: SELF_ADOPTION_TITLE, area: 'Climate', summary: 'A bounded fixture whose owner also contributes.',
+    beneficiary: 'Acceptance community', owner_id: ticket.account.id, reviewer_id: state.fixtures.reviewer.id,
+    rubric: 'Check the exact source, its date, its rights and the remaining uncertainty.',
+  });
+  const task = await apiExpect(fixtures().admin, 'POST', '/tasks', { mission_id: mission.id, title: 'Record one source (self-adoption)', instructions: 'Provide the source, its exact location, rights and uncertainty.', rights: 'Public material with attribution.', allowed_domains: ['example.org'] });
+  await apiExpect(fixtures().admin, 'POST', '/missions/status', { mission_id: mission.id, status: 'open' });
+  let submission = null, receipt = null;
+
+  await step('an independently accepted contribution starts accepted with an available receipt', async () => {
+    const claim = await apiExpect(ticket, 'POST', '/claims', { task_id: task.id, agent_id: resident.id }, [201], { headers: { 'Idempotency-Key': 'browser-states-claim' } });
+    submission = await submitBrief(ticket, claim, 'states', randomHash(), 'browser-states-submit');
+    const review = await apiExpect(fixtures().reviewer, 'POST', '/reviews', { submission_id: submission.id, decision: 'accepted', reason: 'Independent fixture acceptance after checking the cited section.' });
+    expect(review.coin_reward?.status === 'awarded', 'the acceptance must award the fixed receipt', { actual: describe(review.coin_reward) });
+    receipt = row('SELECT * FROM coin_rewards WHERE submission_id=?', submission.id);
+    expect(row('SELECT status FROM submissions WHERE id=?', submission.id).status === 'accepted', 'the accepted state must be stored', { actual: describe(row('SELECT status FROM submissions WHERE id=?', submission.id)) });
+    await openApp(contributor.page, ACTORS.contributor);
+    const wallet = await inPage(contributor.page, `/coins?agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    expect(wallet.body.balance === 10 && wallet.body.held === 0, 'the first acceptance must be available, not held', { actual: describe(wallet.body) });
+    return `submission ${submission.id} accepted, receipt ${receipt.id.slice(0, 8)}…, wallet balance ${wallet.body.balance}`;
+  });
+
+  await step('the contributor who owns the mission still cannot adopt their own work', async () => {
+    await openApp(contributor.page, ACTORS.contributor);
+    await openTab(contributor.page, 'Gallery');
+    const card = contributor.page.locator('#view .card', { hasText: SELF_ADOPTION_TITLE }).first();
+    await card.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const text = await card.textContent();
+    expect(/cannot also adopt it/.test(text), 'the interface must explain the separation instead of offering the form', { actual: text?.replace(/\s+/g, ' ').slice(0, 400) });
+    expect(await card.locator('form').filter({ hasText: 'Record adoption' }).count() === 0, 'the contributor must not be offered an adoption control', { actual: 'an adoption form was rendered' });
+    const refused = await inPage(contributor.page, '/adoptions', { body: { submission_id: submission.id, note: 'Adopting my own contribution.' } });
+    expect(refused.status === 403 && /cannot adopt their own contribution/.test(refused.body?.error || ''), 'the server must refuse the self-adoption by name', { expected: 'HTTP 403 naming the contributor rule', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    expect(count('SELECT COUNT(*) AS n FROM adoptions WHERE submission_id=?', submission.id) === 0, 'a refused self-adoption must write no record', { actual: 'an adoption row appeared' });
+    return `the interface offered no control and the server answered ${refused.status}: ${refused.body?.error}`;
+  });
+
+  await step('quarantine holds the coin and the availability without rewriting the record', async () => {
+    const before = { review: row('SELECT * FROM reviews WHERE submission_id=?', submission.id), receipt: row('SELECT * FROM coin_rewards WHERE submission_id=?', submission.id) };
+    const report = await apiExpect(fixtures().reviewer, 'POST', '/reports', { target_type: 'submission', target_id: submission.id, reason: 'Browser fixture: hold this evidence for inspection.' });
+    await apiExpect(fixtures().admin, 'POST', '/moderation', { report_id: report.id, action: 'quarantine', reason: 'Hold for inspection in the browser fixture.' });
+    expect(row('SELECT status FROM submissions WHERE id=?', submission.id).status === 'quarantined', 'the version must be quarantined', { actual: describe(row('SELECT status FROM submissions WHERE id=?', submission.id)) });
+    expect(JSON.stringify(row('SELECT * FROM reviews WHERE submission_id=?', submission.id)) === JSON.stringify(before.review), 'the acceptance record must be untouched', { actual: 'the review row changed' });
+    expect(JSON.stringify(row('SELECT * FROM coin_rewards WHERE submission_id=?', submission.id)) === JSON.stringify(before.receipt), 'the issued receipt must be untouched', { actual: 'the receipt row changed' });
+    const wallet = await inPage(contributor.page, `/coins?agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    expect(wallet.body.balance === 0 && wallet.body.held === 10 && wallet.body.issued === 10, 'quarantine must hold the receipt rather than void it', { expected: 'available 0, held 10, issued 10', actual: describe(wallet.body) });
+    expect(wallet.body.receipts[0].id === before.receipt.id && wallet.body.receipts[0].state === 'held', 'the same receipt must simply read held', { actual: describe(wallet.body.receipts[0]) });
+    // The interface names the held state and keeps saying what is retained.
+    await contributor.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(contributor.page);
+    await openTab(contributor.page, 'My contributions');
+    const record = contributor.page.locator('#view .record', { hasText: 'Browser reviewer fixture states' }).first();
+    await record.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const text = await record.textContent();
+    expect(/Held — quarantined/.test(text), 'the contributor must read the held state in words', { actual: text?.replace(/\s+/g, ' ').slice(0, 300) });
+    expect(/retained exactly as they were/.test(text), 'the held state must say the record is retained', { actual: text?.replace(/\s+/g, ' ').slice(0, 400) });
+    await openTab(contributor.page, 'Coin wallet');
+    const picker = contributor.page.locator('#view select[name="wallet_agent"]');
+    if (await picker.count()) await picker.selectOption(resident.id);
+    // Selecting a wallet character reloads its journey, so the held figure is waited for rather than
+    // read from whichever resident the page happened to hold.
+    const held = await waitForCondition(async () => {
+      const value = await contributor.page.locator('#view .progress-card', { hasText: 'Held coins' }).first().locator('strong').textContent().catch(() => null);
+      return value?.trim() === '10' ? value : null;
+    }, 'the wallet to show the held coin for this resident');
+    expect(held.trim() === '10', 'the wallet must show the held coin', { expected: '10', actual: describe(held) });
+    return `quarantined: the acceptance and receipt rows are byte-identical, the wallet reads available 0 / held 10 and the contribution reads “Held — quarantined”`;
+  });
+
+  await step('a replayed and a simultaneous acceptance still issue exactly one receipt', async () => {
+    const racedTask = await apiExpect(fixtures().admin, 'POST', '/tasks', { mission_id: mission.id, title: 'Record one source (raced)', instructions: 'Provide the source, its exact location, rights and uncertainty.', rights: 'Public material with attribution.', allowed_domains: ['example.org'] });
+    const claim = await apiExpect(ticket, 'POST', '/claims', { task_id: racedTask.id, agent_id: resident.id }, [201], { headers: { 'Idempotency-Key': 'browser-states-race-claim' } });
+    const raced = await submitBrief(ticket, claim, 'raced', randomHash(), 'browser-states-race-submit');
+    const [first, second] = await Promise.all([
+      apiPost('/reviews', { submission_id: raced.id, decision: 'accepted', reason: 'Concurrent acceptance A.' }, { token: state.fixtures.reviewer.token }),
+      apiPost('/reviews', { submission_id: raced.id, decision: 'accepted', reason: 'Concurrent acceptance B.' }, { token: state.fixtures.admin.token }),
+    ]);
+    expect([first.status, second.status].sort().join(',') === '201,409', 'two simultaneous acceptances must resolve to one acceptance and one refusal', { expected: 'HTTP 201 and HTTP 409', actual: `${first.status} and ${second.status}` });
+    const replay = await apiPost('/reviews', { submission_id: raced.id, decision: 'accepted', reason: 'A replay of the same acceptance.' }, { token: state.fixtures.reviewer.token });
+    expect(replay.status === 409, 'a replayed acceptance must be refused', { expected: 'HTTP 409', actual: `HTTP ${replay.status} ${describe(replay.body)}` });
+    const receipts = count('SELECT COUNT(*) AS n FROM coin_rewards WHERE submission_id=?', raced.id);
+    expect(count('SELECT COUNT(*) AS n FROM reviews WHERE submission_id=?', raced.id) === 1 && receipts === 1, 'exactly one review and one receipt must exist for the raced version', { actual: `${count('SELECT COUNT(*) AS n FROM reviews WHERE submission_id=?', raced.id)} reviews, ${receipts} receipts` });
+    const validation = validateDatabase(state.database);
+    expect(validation.accounts >= 5, 'the database must still validate with its coin ledger after the race', { actual: describe(validation) });
+    return `two simultaneous acceptances resolved to ${first.status}/${second.status}, the replay was refused, and exactly one 10-coin receipt exists`;
+  });
+
+  return `the accepted, held and refused states stayed distinct for one contributor; self-adoption was refused without a record and two simultaneous acceptances issued one receipt`;
+});
 
 // The suite runs only when it is the entry point, so a unit test can import the pure helpers above
 // (and `npm test` keeps passing with no node_modules directory).
