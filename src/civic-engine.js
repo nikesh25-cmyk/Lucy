@@ -8,6 +8,14 @@ import content from './content.js';
 const catalog = name => JSON.parse(readFileSync(new URL(`../catalog/${name}.json`,import.meta.url),'utf8'));
 export const COUNTRIES=catalog('countries'), PROGRAMMES=catalog('programmes'), PILOT=catalog('agriculture-pilot'), SDG_TARGETS=catalog('sdg-targets');
 const STATISTICS=catalog('agriculture-statistics'), ACCESS_STATISTICS=catalog('access-statistics');
+// The concern model and theme map replace the interchangeable (goal × stage) templates Task 12 found
+// byte-identical across the 44 LDC seeds. Every generated country proposal belongs to exactly one
+// concern, and two candidate proposals answered by the same evidence are consolidated into one row.
+const RESEARCH_MODEL=catalog('research-concerns');
+export const RESEARCH_CONCERNS=RESEARCH_MODEL.concerns, RESEARCH_THEMES=RESEARCH_MODEL.themes;
+const CONCERN_BY_ID=new Map(RESEARCH_CONCERNS.map(item=>[item.id,item]));
+const CONCERN_ORDER=RESEARCH_CONCERNS.map(item=>item.id);
+const APPLIED_CONCERNS=CONCERN_ORDER.filter(id=>id!=='baseline');
 // Project current evidence eligibility without rewriting historical task/adoption records.
 const researchView=`(SELECT research_leads.*,CASE WHEN task_id IS NOT NULL AND (SELECT s.status FROM submissions s JOIN claims c ON c.id=s.claim_id WHERE c.task_id=research_leads.task_id ORDER BY s.created_at DESC,s.rowid DESC LIMIT 1)='quarantined' THEN 'evidence_withheld' ELSE research_leads.status END AS current_status FROM research_leads) AS research_leads`;
 // The guide sprite sheets are the sealed civic appearances, in roster order; each appearance keeps
@@ -42,6 +50,57 @@ const stages=[
   {id:'proposal',name:'Draft an implementation recommendation',output:'A sourced decision brief with beneficiaries, milestones, budget assumptions, risks and measurable outcomes.'},
 ];
 const rubric='Every factual claim needs a dated primary source and supporting location. Separate facts, estimates and proposals. Record access and reuse rights. Identify local applicability, uncertainty and evidence gaps. No recipient consent, buyer demand, endorsement or adoption may be presumed.';
+// ---- Concern-based country research generation ------------------------------------------------
+// Every proposal names what it is about. The country baseline collects context and dated statistics;
+// the three applied concerns are the product/destination question, the institution mapping and the
+// intervention comparison. They are separate proposals, not interchangeable (goal × stage) templates.
+const fill=(value,ctx)=>{let out=String(value);for(let pass=0;pass<2;pass++)out=out.replaceAll('{country}',ctx.country.name).replaceAll('{goal}',String(ctx.goal)).replaceAll('{goalName}',SDG_GOALS[ctx.goal-1]).replaceAll('{subject}',ctx.theme?.subject||'subject').replaceAll('{subjectBasis}',ctx.theme?.subjectBasis||'');return out;};
+const statisticalGoal=goal=>goal===2;
+const accessGoal=goal=>goal===7||goal===17;
+const agricultureRetained=country=>STATISTICS.countries.some(item=>item.country_code===country.iso2&&(item.series||[]).length>0);
+const themeApplies=(country,theme)=>theme.evidenceGate==='agriculture-series'?agricultureRetained(country):true;
+const themeForGoal=goal=>RESEARCH_THEMES.find(theme=>theme.goals.includes(goal));
+// The goal-specific guidance is retained from the previous generator so the modeled ILO qualifier,
+// the original-provider attribution and the dataset-update caveat are not lost.
+const goalGuidance=(country,goal)=>['Begin with the official SDG framework, then find current country-specific primary evidence. Framework links alone do not establish country findings.',
+  statisticalGoal(goal)?'Use the registered World Bank annual agriculture series for sector context, preserving observation years, percentage units, missing values and the modeled ILO employment qualifier. Dataset update is not publication. These indicators cannot establish crop demand, buyers, export eligibility, available farmland or returns. Inspect provider metadata and footnotes; identify crop-specific evidence and delivery gaps.':'',
+  accessGoal(goal)?`Use the registered World Bank annual ${goal===7?'electricity access':'Internet-use'} percentage series as national context only. Preserve observation years, missing values and original-provider attribution. Consult indicator metadata and country notes. These measures do not establish reliable or affordable supply, broadband coverage, skills or a local project design. A missing value is not zero and a dataset update is not an observation or publication date.`:''].filter(Boolean).join(' ');
+const themeSources=(country,theme)=>theme.id==='agriculture-market-access'?agricultureSources(country).map(item=>item.url)
+  :theme.id==='ldc-cooperation'?[PROGRAMMES.frameworks.find(item=>item.id==='dpoa')?.sourceUrl,...['un-ohrlls','technology-bank','unctad','itc'].map(id=>PROGRAMMES.institutions.find(item=>item.id===id)?.sourceUrl)].filter(Boolean):[];
+const concernSections=(concern,ctx)=>{const f=item=>fill(item,ctx);return [`Outputs: ${concern.outputs.map(f).join(' ')}`,`Acceptance: ${concern.acceptance.map(f).join(' ')}`,`Source prerequisites: ${concern.prerequisites.map(f).join(' ')}`,
+  `Dependencies: ${concern.dependencies.length?concern.dependencies.map(f).join(' '):'None; this concern can start from the registered country context.'}`,`Primary source categories: ${concern.source_categories.map(f).join('; ')}`,`Rights: ${f(concern.rights)}`];};
+function baselineLead(country,goal){
+  const concern=CONCERN_BY_ID.get('baseline'),theme=themeForGoal(goal),available=Boolean(theme&&themeApplies(country,theme));
+  const sources=[`https://sdgs.un.org/goals/goal${goal}`,COUNTRIES.metadata.sourceUrl];
+  if(statisticalGoal(goal))sources.push(...agricultureSources(country).map(item=>item.url));
+  if(accessGoal(goal))sources.push(...accessSources(country).filter(item=>item.goals.includes(goal)).map(item=>item.url));
+  const context=statisticalGoal(goal)?'The three registered annual agriculture series are listed in the sources as national sector context. Province- or crop-level production, current rules and delivery bodies still have to be located.'
+    :accessGoal(goal)?`The registered ${goal===7?'electricity-access':'Internet-use'} series is listed in the sources as national context only.`:"No registered statistical series is held for this goal; the baseline depends on the country's official national sources.";
+  const scopeChoices=!theme?`No scoped theme is registered for SDG ${goal}; select and register a named subject before any applied research is scoped.`
+    :!available?`The registered theme "${theme.title}" has no retained subject evidence for ${country.name}; record that collection gap before scoping it.`
+    :`Applied concerns available for this theme (${theme.title}): ${APPLIED_CONCERNS.map(id=>CONCERN_BY_ID.get(id).name).join('; ')}. Each is emitted as its own proposal and each needs the ${theme.id==='agriculture-market-access'?'commodity and destination':'instrument'} selection first.`;
+  return {id:`${country.iso2}-${goal}-baseline`,country_code:country.iso2,goal,stage:'baseline',title:`${country.name}: ${concern.name} · SDG ${goal}`.slice(0,100),substantive_key:`baseline|${country.iso2}|${goal}`,
+    instructions:[fill(concern.question,{country,goal,theme}),`Scope: country=${country.name} (${country.iso2}); SDG ${goal}, ${SDG_GOALS[goal-1]}; concern=country-baseline.`,context,`Open scope choices: ${scopeChoices}`,...concernSections(concern,{country,goal,theme}),goalGuidance(country,goal)].join('\n'),
+    rubric:concern.acceptance.join(' '),source_urls:sources};
+}
+function appliedLead(country,goal,theme,concernId){
+  const concern=CONCERN_BY_ID.get(concernId);
+  const sources=[...new Set([`https://sdgs.un.org/goals/goal${goal}`,COUNTRIES.metadata.sourceUrl,...themeSources(country,theme)])];
+  return {id:`${country.iso2}-${goal}-${concernId}`,country_code:country.iso2,goal,stage:concernId,title:`${country.name}: ${concern.name} · SDG ${goal}`.slice(0,100),substantive_key:`${concernId}|${theme.id}|${country.iso2}`,
+    instructions:[fill(concern.question,{country,goal,theme}),`Scope: country=${country.name} (${country.iso2}); SDG ${goal}, ${SDG_GOALS[goal-1]}; theme=${theme.title}; concern=${concern.kind}.`,
+      `Subject: ${fill(theme.subject,{country,goal,theme})}. Subject basis: ${fill(theme.subjectBasis,{country,goal,theme})}. Theme limit: ${theme.limit}`,
+      `Open scope choices: ${theme.openScopeChoices.map(item=>fill(item,{country,goal,theme})).join(' ')}`,...concernSections(concern,{country,goal,theme}),goalGuidance(country,goal)].join('\n'),
+    rubric:concern.acceptance.join(' '),source_urls:sources};
+}
+// Pure planner: deterministic ids and a substantive key per candidate. Two candidates with the same
+// key are the same proposal, so only the first is emitted and the rest are recorded as consolidations.
+export function planCountryResearch(country,themes=RESEARCH_THEMES){
+  const leads=[],consolidations=[],seen=new Map();
+  const add=(lead,key)=>{if(seen.has(key)){consolidations.push({dedupe_key:key,country_code:country.iso2,canonical_id:seen.get(key),consolidated_id:lead.id,reason:'same substantive question'});return;}seen.set(key,lead.id);leads.push(lead);};
+  for(let goal=1;goal<=17;goal++)add(baselineLead(country,goal),`baseline|${country.iso2}|${goal}`);
+  for(const theme of themes)for(const goal of theme.goals){if(!themeApplies(country,theme))continue;for(const concernId of APPLIED_CONCERNS)add(appliedLead(country,goal,theme,concernId),`${concernId}|${theme.id}|${country.iso2}`);}
+  return {leads,consolidations};
+}
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const human=(actor,roles)=>{if(actor?.kind!=='session'||!roles.includes(actor.account.role))fail(403,'An authorized human account is required.');};
 const text=(value,max,label)=>{if(typeof value!=='string'||!value.trim()||value.length>max)fail(400,`${label} must contain 1–${max} characters.`);return value.trim();};
@@ -65,6 +124,10 @@ CREATE TABLE IF NOT EXISTS ambassador_legacy_map(guide_id TEXT PRIMARY KEY,regio
 CREATE INDEX IF NOT EXISTS ambassador_legacy_map_ambassador ON ambassador_legacy_map(ambassador_id);
 CREATE TABLE IF NOT EXISTS ambassador_conversations(id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),ambassador_id TEXT NOT NULL REFERENCES npc_ambassadors(id),question TEXT NOT NULL,answer TEXT NOT NULL,created_at TEXT NOT NULL,mode TEXT NOT NULL DEFAULT 'rules',country_context TEXT,source_numbers TEXT NOT NULL DEFAULT '[]');
 CREATE INDEX IF NOT EXISTS ambassador_conversations_account ON ambassador_conversations(account_id,created_at);
+CREATE TABLE IF NOT EXISTS research_lead_versions(id TEXT PRIMARY KEY,lead_id TEXT NOT NULL REFERENCES research_leads(id),revision INTEGER NOT NULL,title TEXT NOT NULL,instructions TEXT NOT NULL,rubric TEXT NOT NULL,source_urls TEXT NOT NULL,substantive_key TEXT,revision_reason TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(lead_id,revision));
+CREATE INDEX IF NOT EXISTS research_lead_versions_lead ON research_lead_versions(lead_id,revision);
+CREATE TABLE IF NOT EXISTS research_lead_consolidations(dedupe_key TEXT PRIMARY KEY,country_code TEXT NOT NULL,canonical_id TEXT NOT NULL,consolidated_id TEXT NOT NULL,reason TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS research_lead_consolidations_country ON research_lead_consolidations(country_code);
 `;
 export const civicMethods={
   initCivic(){
@@ -80,14 +143,55 @@ export const civicMethods={
       }
     });
   },
-  seedCountryResearch(country){
-    for(let goal=1;goal<=17;goal++)for(const stage of stages){
-      const id=`${country.iso2}-${goal}-${stage.id}`;
-      const statistical=goal===2&&stage.id==='baseline',accessBaseline=[7,17].includes(goal)&&stage.id==='baseline',accessRoutes=accessBaseline?accessSources(country).filter(item=>item.goals.includes(goal)):[];
-      const sources=[`https://sdgs.un.org/goals/goal${goal}`,COUNTRIES.metadata.sourceUrl,...(statistical?agricultureSources(country).map(item=>item.url):[]),...accessRoutes.map(item=>item.url)];
-      const instructions=`${stage.output} Scope: ${country.name}; SDG ${goal}, ${SDG_GOALS[goal-1]}. Begin with the official SDG framework, then find current country-specific primary evidence. Framework links alone do not establish country findings.`+(statistical?' Use the registered World Bank annual agriculture series for sector context, preserving observation years, percentage units, missing values and the modeled ILO employment qualifier. Dataset update is not publication. These indicators cannot establish crop demand, buyers, export eligibility, available farmland or returns. Inspect provider metadata and footnotes; identify crop-specific evidence and delivery gaps.':'')+(accessBaseline?' Use the registered World Bank annual '+(goal===7?'electricity access':'Internet-use')+' percentage series as national context only. Preserve observation years, missing values and original-provider attribution. Consult indicator metadata and country notes. These measures do not establish reliable or affordable supply, broadband coverage, skills or a local project design. A missing value is not zero and a dataset update is not an observation or publication date.':'');
-      this.run('INSERT OR IGNORE INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',id,country.iso2,goal,stage.id,`${country.name}: ${stage.name} · SDG ${goal}`.slice(0,100),instructions,rubric,JSON.stringify(sources),new Date().toISOString());
-      if(statistical||accessBaseline)this.run("UPDATE research_leads SET instructions=?,source_urls=? WHERE id=? AND status='proposed' AND task_id IS NULL",instructions,JSON.stringify(sources),id);
+  // A proposal is created or revised through this one path. Every revision archives the content it
+  // replaces, so a previous version is never lost; only a lead still in `proposed` with no task is
+  // eligible, so an activated, leased or accepted lead is never rewritten and keeps its history.
+  recordLead(lead){
+    const created_at=new Date(this.clock()).toISOString(),source_urls=JSON.stringify(lead.source_urls);
+    const existing=this.get('SELECT id,status,task_id,title,instructions,rubric,source_urls FROM research_leads WHERE id=?',lead.id);
+    if(!existing){
+      this.run('INSERT INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',lead.id,lead.country_code,lead.goal,lead.stage,lead.title,lead.instructions,lead.rubric,source_urls,created_at);
+      return 1;
+    }
+    if(existing.status!=='proposed'||existing.task_id)return 0;
+    if(existing.title===lead.title&&existing.instructions===lead.instructions&&existing.rubric===lead.rubric&&existing.source_urls===source_urls)return 0;
+    const revision=this.get('SELECT COALESCE(MAX(revision),0)+1 AS n FROM research_lead_versions WHERE lead_id=?',lead.id).n;
+    this.recordRevision({id:lead.id,substantive_key:lead.substantive_key,title:existing.title,instructions:existing.instructions,rubric:existing.rubric,source_urls:existing.source_urls},revision,'superseded');
+    this.run("UPDATE research_leads SET title=?,instructions=?,rubric=?,source_urls=? WHERE id=? AND status='proposed' AND task_id IS NULL",lead.title,lead.instructions,lead.rubric,source_urls,lead.id);
+    return 1;
+  },
+  recordRevision(version,revision,reason){
+    const source_urls=typeof version.source_urls==='string'?version.source_urls:JSON.stringify(version.source_urls);
+    this.run('INSERT INTO research_lead_versions(id,lead_id,revision,title,instructions,rubric,source_urls,substantive_key,revision_reason,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',randomUUID(),version.id,revision,version.title,version.instructions,version.rubric,source_urls,version.substantive_key||null,reason,new Date(this.clock()).toISOString());
+  },
+  recordConsolidation(item){this.run('INSERT OR IGNORE INTO research_lead_consolidations(dedupe_key,country_code,canonical_id,consolidated_id,reason,created_at) VALUES(?,?,?,?,?,?)',item.dedupe_key,item.country_code,item.canonical_id,item.consolidated_id,item.reason,new Date(this.clock()).toISOString());},
+  // The current proposal plus every archived version, newest first. The live row is the current
+  // revision; the archived rows are the contents that later revisions replaced.
+  researchLeadVersions(id){
+    const lead=this.get('SELECT * FROM research_leads WHERE id=?',String(id||''));if(!lead)return null;
+    const versions=this.all('SELECT * FROM research_lead_versions WHERE lead_id=? ORDER BY revision DESC',lead.id);
+    return {lead_id:lead.id,status:lead.status,current_revision:versions.length+1,current:{title:lead.title,instructions:lead.instructions,rubric:lead.rubric,source_urls:JSON.parse(lead.source_urls)},
+      versions:versions.map(item=>({...item,source_urls:JSON.parse(item.source_urls)}))};
+  },
+  // One baseline per country and goal (country context and dated statistics) plus one proposal per
+  // applied concern for each theme the catalog has scoped and the country has subject evidence for.
+  seedCountryResearch(country,themes=RESEARCH_THEMES){
+    const plan=planCountryResearch(country,themes);
+    for(const lead of plan.leads)this.recordLead(lead);
+    for(const item of plan.consolidations)this.recordConsolidation(item);
+    this.retireInterchangeable(country);
+    return plan;
+  },
+  // An installation seeded by an older generator still holds the retired interchangeable stage rows
+  // (evidence, partners, proposal). Nothing is deleted or rewritten: each such still-proposed row is
+  // recorded as consolidated into the concern row that replaced it, so the desk can say so.
+  retiredSuccessor:{evidence:'interventions',partners:'institutions',proposal:'destination'},
+  retireInterchangeable(country){
+    const rows=this.all("SELECT id,goal,stage FROM research_leads WHERE country_code=? AND status='proposed' AND task_id IS NULL AND stage IN ('evidence','partners','proposal')",country.iso2);
+    for(const row of rows){
+      const successor=`${country.iso2}-${row.goal}-${this.retiredSuccessor[row.stage]}`;
+      if(!this.get('SELECT id FROM research_leads WHERE id=?',successor))continue;
+      this.recordConsolidation({dedupe_key:`retired|${row.id}`,country_code:country.iso2,canonical_id:successor,consolidated_id:row.id,reason:`The interchangeable ${row.stage} template named no commodity, instrument or route and is superseded by the ${this.retiredSuccessor[row.stage]} concern.`});
     }
   },
   countries(actor,input={}){
@@ -105,18 +209,20 @@ export const civicMethods={
     const statistics=sector==='access'?ACCESS_STATISTICS:STATISTICS;
     return {country,sector,routes:sector==='access'?accessSources(country):agricultureSources(country),license:STATISTICS_LICENSE,metadata:statistics.metadata,collection_gaps:(statistics.metadata.unavailable||[]).filter(item=>item.country_code===country.iso2||item.country===country.name),snapshot:statistics.countries.find(item=>item.country_code===country.iso2)||null};
   },
-  assembly(){return {charter:CIVIC_CHARTER,goals:SDG_GOALS,programmes:PROGRAMMES,pilot:PILOT,sdg_targets:SDG_TARGETS,stages,rubric};},
+  assembly(){return {charter:CIVIC_CHARTER,goals:SDG_GOALS,programmes:PROGRAMMES,pilot:PILOT,sdg_targets:SDG_TARGETS,stages,rubric,concerns:RESEARCH_CONCERNS,research_themes:RESEARCH_THEMES,research_dedupe_rule:RESEARCH_MODEL.dedupe_rule};},
   countryResearchPlan(input={}){
     const country=COUNTRIES.entries.find(item=>item.iso2===input.country);if(!country)return null;
     const rows=this.all('SELECT goal,stage,current_status AS status,COUNT(*) AS count FROM '+researchView+' WHERE country_code=? GROUP BY goal,stage,current_status ORDER BY goal,stage,current_status',country.iso2);
     const sum=(items,status)=>items.filter(item=>!status||item.status===status).reduce((n,item)=>n+item.count,0);
     const statuses=[...new Set(rows.map(item=>item.status))].map(status=>({status,count:sum(rows,status)}));
     const goals=SDG_GOALS.map((name,index)=>{const selected=rows.filter(item=>item.goal===index+1);return {number:index+1,name,total:sum(selected),statuses:statuses.map(item=>({status:item.status,count:sum(selected,item.status)}))};});
-    const stageOrder=[...stages.map(item=>({id:item.id,name:item.name})),...stages.map(item=>({id:'target-'+item.id,name:'Target-specific: '+item.name})),{id:'programme-baseline',name:'Institution-specific baseline'},{id:'programme-proposal',name:'Institution-specific recommendation'},{id:'agriculture',name:'Agriculture pilot deliverables'}];
+    const stageOrder=[...RESEARCH_CONCERNS.map(item=>({id:item.id,name:item.name,kind:item.kind})),...stages.map(item=>({id:'target-'+item.id,name:'Target-specific: '+item.name})),{id:'programme-baseline',name:'Institution-specific baseline'},{id:'programme-proposal',name:'Institution-specific recommendation'},{id:'agriculture',name:'Agriculture pilot deliverables'}];
     const stageSummary=stageOrder.map(stage=>{const selected=rows.filter(item=>item.stage===stage.id);return {...stage,total:sum(selected),statuses:statuses.map(item=>({status:item.status,count:sum(selected,item.status)}))};});
+    const concerns=RESEARCH_CONCERNS.map(item=>{const stage=stageSummary.find(entry=>entry.id===item.id);return {id:item.id,name:item.name,kind:item.kind,total:stage?.total||0};});
+    const dedupe={rule:RESEARCH_MODEL.dedupe_rule,consolidations:this.get('SELECT COUNT(*) AS n FROM research_lead_consolidations WHERE country_code=?',country.iso2).n,distinct_questions:sum(rows)};
     const snapshot=STATISTICS.countries.find(item=>item.country_code===country.iso2),series=snapshot?.series||[],points=series.flatMap(item=>item.points);
     const accessSeries=ACCESS_STATISTICS.countries.find(item=>item.country_code===country.iso2)?.series||[],accessPoints=accessSeries.flatMap(item=>item.points),accessEvidence={series:accessSeries.length,reported_values:accessPoints.filter(p=>p.value!==null).length,missing_values:accessPoints.filter(p=>p.value===null).length,coverage:accessSeries.length===2?'retained':accessSeries.length?'partial':'none',limitation:ACCESS_STATISTICS.metadata.limitations};
-    return {country:{name:country.name,iso2:country.iso2,iso3:country.iso3},generated_at:new Date(this.clock()).toISOString(),total:sum(rows),statuses,goals,stages:stageSummary,access_evidence:accessEvidence,agriculture_evidence:{series:series.length,records:points.length,reported_values:points.filter(item=>item.value!==null).length,missing_values:points.filter(item=>item.value===null).length,coverage:series.length===3?'retained':series.length?'partial':'none',gaps:(STATISTICS.metadata.unavailable||[]).filter(item=>item.country_code===country.iso2||item.country===country.name),limitation:'Retained annual agriculture sector observations only. Not evidence of all SDGs, crop demand, buyers, current law or completed research.'},workflow:['Choose a scoped baseline with a named beneficiary and reviewer.','Review country-specific evidence before comparing interventions.','Map responsible institutions and verified public access routes.','Prepare and independently review a decision brief; document actual adoption separately.'],limitations:'Counts describe catalog proposal workflow, not country outcomes or completed studies. Acceptance is independent review inside NemoWorld; adoption is a separately recorded declaration, not institutional endorsement. Evidence withheld means the latest submission is currently quarantined; historical review/adoption receipts are preserved but are not counted as currently available evidence. General and institution-specific stages overlap and do not imply dependencies, priority scores or automatic activation. Source dates, missing values and local applicability still require review.'};
+    return {country:{name:country.name,iso2:country.iso2,iso3:country.iso3},generated_at:new Date(this.clock()).toISOString(),total:sum(rows),statuses,goals,stages:stageSummary,concerns,dedupe,access_evidence:accessEvidence,agriculture_evidence:{series:series.length,records:points.length,reported_values:points.filter(item=>item.value!==null).length,missing_values:points.filter(item=>item.value===null).length,coverage:series.length===3?'retained':series.length?'partial':'none',gaps:(STATISTICS.metadata.unavailable||[]).filter(item=>item.country_code===country.iso2||item.country===country.name),limitation:'Retained annual agriculture sector observations only. Not evidence of all SDGs, crop demand, buyers, current law or completed research.'},workflow:['Choose a scoped baseline with a named beneficiary and reviewer.','Review country-specific evidence before comparing interventions.','Map responsible institutions and verified public access routes.','Prepare and independently review a decision brief; document actual adoption separately.'],limitations:'Counts describe catalog proposal workflow, not country outcomes or completed studies. Acceptance is independent review inside NemoWorld; adoption is a separately recorded declaration, not institutional endorsement. Evidence withheld means the latest submission is currently quarantined; historical review/adoption receipts are preserved but are not counted as currently available evidence. General and institution-specific stages overlap and do not imply dependencies, priority scores or automatic activation. Source dates, missing values and local applicability still require review.'};
   },
   research(actor,input={}){
     const target=input.target?SDG_TARGETS.entries.find(item=>item.code===input.target):null;if(input.target&&!target)fail(400,'Choose a catalog SDG target.');const params=[],where=[],region=input.region?REGIONS.find(item=>item.id===input.region):null;if(input.region&&!region)fail(400,'Choose a catalog research region.');if(region){where.push(`goal IN (${region.researchGoals.map(()=>'?').join(',')})`);params.push(...region.researchGoals);}
@@ -144,7 +250,7 @@ export const civicMethods={
       const target=SDG_TARGETS.entries.find(item=>item.code===input.target_code);if(!target)fail(400,'Choose a catalog SDG target.');let added=0;
       for(const stage of stages){const id=`target-${target.code}-${country.iso2}-${stage.id}`,sources=[target.sourceUrl+'#target-'+target.code,'https://sdgs.un.org/2030agenda',COUNTRIES.metadata.sourceUrl];
         const instructions=`${stage.output} Country: ${country.name}; SDG ${target.goal}, target ${target.code}. Editorial focus: ${target.focus}. Read the full official target at ${target.evidenceLocator}; check current indicator definitions, national priorities, source dates and country-specific evidence before making findings. Years mentioned in original target wording: ${target.originalYears.join(', ')||'none recorded'}. These are not new deadlines. Verify current measurement definitions separately, including poverty thresholds and population coverage; original target wording is not automatically a current statistical definition. Separate global objectives, national observations, proposed work, funding needs and actual support. ${SDG_TARGETS.qualification} NemoWorld proposes this research independently.`;
-        added+=this.run('INSERT OR IGNORE INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',id,country.iso2,target.goal,'target-'+stage.id,`${country.name}: Target ${target.code} · ${stage.name}`.slice(0,100),instructions,rubric,JSON.stringify(sources),new Date().toISOString()).changes;
+        added+=this.recordLead({id,country_code:country.iso2,goal:target.goal,stage:'target-'+stage.id,title:`${country.name}: Target ${target.code} · ${stage.name}`.slice(0,100),instructions,rubric,source_urls:sources,substantive_key:`target-${stage.id}|${target.code}|${country.iso2}`});
       }this.audit(actor.account.id,'research.target_generated',target.code+':'+country.iso2);return {country:country.name,target:target.code,added};
     }
     if(input.institution_id){
@@ -154,7 +260,7 @@ export const civicMethods={
         const id=`programme-${institution.id}-${country.iso2}-${stage.id}`;
         const sources=[...new Set([institution.sourceUrl,...(institution.relatedSourceUrls||[]),...institution.sdgLinks])];
         const instructions=`${stage.output} Country: ${country.name}. Institution reference: ${institution.name}; focus: ${institution.mandate.replace(/\.$/,'')}. ${institution.sourceCheckNote?'Reference retrieval qualification: '+institution.sourceCheckNote+' ':''}Required country evidence: ${(institution.countryResearchChecks||[]).join(' ')||'Verify current country applicability and source dates.'} Proposed research: ${institution.suggestedTaskTypes.join('; ')}. Find current country evidence, latest official programme documents, responsible national institutions and a practical delivery route. Check geographic coverage, eligibility and programme dates. The source framework does not prove country findings, funding, recipient interest, consent or endorsement. NemoWorld proposes this work independently.`;
-        added+=this.run('INSERT OR IGNORE INTO research_leads(id,country_code,goal,stage,title,instructions,rubric,source_urls,created_at) VALUES(?,?,?,?,?,?,?,?,?)',id,country.iso2,goal,`programme-${stage.id}`,`${country.name}: ${stage.name} · ${institution.name}`.slice(0,100),instructions,rubric,JSON.stringify(sources),new Date().toISOString()).changes;
+        added+=this.recordLead({id,country_code:country.iso2,goal,stage:`programme-${stage.id}`,title:`${country.name}: ${stage.name} · ${institution.name}`.slice(0,100),instructions,rubric,source_urls:sources,substantive_key:`programme-${stage.id}|${institution.id}|${country.iso2}`});
       }
       this.audit(actor.account.id,'research.programme_generated',institution.id+':'+country.iso2);
       return {country:country.name,institution:institution.name,added};

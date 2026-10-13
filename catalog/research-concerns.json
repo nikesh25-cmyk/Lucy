@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "researchedOn": "2026-10-13",
+  "task": "Task 24 — repair the research proposal generator",
+  "scope": "Concern model and theme map used by src/civic-engine.js seedCountryResearch. It replaces the interchangeable (goal × stage) templates that Task 12 found byte-identical across the 44 LDC seeds.",
+  "problem": "The previous generator emitted one interchangeable template per (country × goal × stage): the baseline, intervention-comparison, delivery-route and recommendation instructions differed only by country name, so three of the four rows named no commodity, instrument or route and could not be answered as written.",
+  "concern_model": "Every generated country proposal belongs to exactly one concern. The country baseline collects country context and dated statistics. The three applied concerns are the product/destination-specific question, the institution mapping and the intervention comparison. A proposal that would be answered by the same evidence as another is the same proposal and is consolidated instead of emitted twice.",
+  "dedupe_rule": "Two candidate proposals are the same proposal when they share the same substantive key: <concern>|<theme-or-goal>|<country_code>. Baselines key on <country_code>|<goal> because a country baseline is answered by that country's own official statistics and is therefore distinct per country. Applied concerns key on <concern>|<theme>|<country_code>, so two goals that resolve to the same theme and concern for one country produce one row plus a recorded consolidation. The generator never emits the retired interchangeable stage ids (<iso2>-<goal>-evidence, -partners, -proposal): an applied concern is emitted only for a theme the catalog has scoped, and only where the theme's registered subject evidence exists for that country. A goal with no scoped theme keeps its baseline only; its applied concerns are recorded as open scope choices on that baseline.",
+  "concerns": [
+    {
+      "id": "baseline",
+      "name": "Establish the country baseline",
+      "kind": "country-baseline",
+      "question": "What is a source-dated country baseline for {country} on SDG {goal} ({goalName}), and which official national bodies publish {country}'s evidence on this goal?",
+      "outputs": [
+        "A dated baseline table: indicator, value, unit, observation year, provider and URL for every registered series, with a missing value shown as missing.",
+        "A list of {country}'s official national source routes (statistics office, sector ministry, trade or customs authority) with the exact document or page located and its date.",
+        "An evidence-gap register separating absent data, modeled estimates and unverified claims."
+      ],
+      "acceptance": [
+        "Every figure cites provider, indicator id, observation year and retrieval date.",
+        "A missing value is recorded as missing, never as zero, and a dataset update is not presented as an observation or publication date.",
+        "Framework links (sdgs.un.org) are not presented as country findings.",
+        "No crop demand, buyer, export-eligibility, available farmland or return is inferred from sector indicators."
+      ],
+      "prerequisites": [
+        "A named human owner and an independent reviewer exist before the proposal leaves proposed (the proposal itself names neither).",
+        "Each registered series remains retrievable at its recorded SHA256 checksum; an unavailable series is recorded as a collection gap.",
+        "The country's official national source domain is located from an official publisher rather than assumed."
+      ],
+      "dependencies": [],
+      "source_categories": [
+        "Official SDG framework reference (sdgs.un.org)",
+        "UN M49 catalog entry retained for the country",
+        "Registered World Bank WDI series for this goal, where retained",
+        "The country's official national statistics office publication",
+        "The country's sector ministry, regulator or customs authority publication"
+      ],
+      "rights": "Catalog framework and national institution pages are cited for orientation only; paraphrase with attribution and inspect each site's reuse terms. Registered World Bank series are CC BY 4.0 with the original provider attributed per indicator. No full protected text, table, image or logo is reproduced, and no outreach or submission authority is granted."
+    },
+    {
+      "id": "destination",
+      "name": "Scope the product, value chain and destination",
+      "kind": "product-destination",
+      "question": "For {country}, which {subject} will the research cover, and what destination and route does the selected product or service take, with the choice named from {country}'s official sources rather than assumed?",
+      "outputs": [
+        "A named commodity or instrument and value chain, with its producing area or coverage, taken from a dated official source.",
+        "The destination market and the route, with any unresolved route left explicitly unresolved.",
+        "A data dictionary of the official sources used: publisher, document, observation or period basis, retrieval date.",
+        "A list of the scope choices that remain open."
+      ],
+      "acceptance": [
+        "The commodity or instrument, value chain and destination are each named from a dated official source, not from the SDG framework page.",
+        "No buyer, price, preference, eligibility or demand is inferred, and the beneficiary remains a placeholder.",
+        "Fiscal and calendar years are never blended and missing data stays missing.",
+        "Unresolved scope choices are listed rather than guessed."
+      ],
+      "prerequisites": [
+        "The theme's country baseline for this goal has been produced or is produced in the same programme.",
+        "The theme's registered subject evidence exists for {country}; it is the basis recorded on this proposal.",
+        "A named human owner and an independent reviewer exist before activation, and a human owner selects the commodity or instrument."
+      ],
+      "dependencies": [
+        "The country baseline for this theme's goal."
+      ],
+      "source_categories": [
+        "Official national production statistics",
+        "Official national trade or customs statistics",
+        "Official national standards or food-safety authority, where the product is food",
+        "Registered sector series retained for the country"
+      ],
+      "rights": "Public official statistics are paraphrased with attribution and each publisher's reuse terms are inspected. No protected full text, image, logo or database extract is reproduced, and no contact, buyer or authority is implied."
+    },
+    {
+      "id": "institutions",
+      "name": "Map the responsible institutions and public access routes",
+      "kind": "institution-map",
+      "question": "For {country}, which official institutions hold a current remit over eligibility, inspection and market access for the selected {subject}, and which public access route can a researcher actually use?",
+      "outputs": [
+        "A role map separating the statistical body, the standards or inspection authority and the eligibility or permitting authority.",
+        "A document checklist with each item's source reference and retrieval date.",
+        "Candidate public access routes with the current authorisation evidence located.",
+        "A list of bodies whose remit could not be confirmed from an official publisher."
+      ],
+      "acceptance": [
+        "Each institution's remit cites a dated official source rather than a directory listing.",
+        "Regulator, verifier and statistical roles stay separate and are not merged into one body.",
+        "No institution is presented as a partner, recipient, buyer or endorser, and no contact is fabricated.",
+        "A pending or unconfirmed remit stays unresolved rather than being asserted."
+      ],
+      "prerequisites": [
+        "A commodity or instrument has been selected, or the selection is recorded as an explicit open choice.",
+        "The country baseline for this theme's goal exists."
+      ],
+      "dependencies": [
+        "The product/destination concern's selection."
+      ],
+      "source_categories": [
+        "Official publisher of the instrument or rule",
+        "National customs, export or trade authority",
+        "National standards, inspection or food-safety body",
+        "Registered UN programme or committee register record (catalog/programmes.json)"
+      ],
+      "rights": "Public contact routes are research only; no outreach is authorised. Pages are paraphrased with attribution and each site's reuse terms are inspected. No protected full text, table or logo is reproduced."
+    },
+    {
+      "id": "interventions",
+      "name": "Compare practical interventions",
+      "kind": "intervention-comparison",
+      "question": "For {country}, which named interventions for the selected {subject} have documented costs, prerequisites, delivery actors and uncertainties, and how do they compare on the same evidence basis?",
+      "outputs": [
+        "A comparison matrix of at least three named interventions, each with its documented cost basis, prerequisites, delivery actors and uncertainty.",
+        "A note on what cannot be compared and why.",
+        "A bounded cost scenario that separates quoted, official, estimated and unknown costs with a currency and foreign-exchange date."
+      ],
+      "acceptance": [
+        "Every intervention and cost figure cites a dated primary source.",
+        "Costs are separated into quoted, official, estimated and unknown, and no quote is presented as a guaranteed price.",
+        "No export growth, funding, adoption or government response is promised or implied.",
+        "Assumptions and evidence gaps are explicit rather than smoothed over."
+      ],
+      "prerequisites": [
+        "The country baseline and the product/destination selection for this theme exist.",
+        "The institution map exists or its evidence gaps are documented."
+      ],
+      "dependencies": [
+        "The country baseline, the product/destination concern and the institution mapping for this theme."
+      ],
+      "source_categories": [
+        "Dated official programme documents",
+        "Independent evaluations, audits or statistical reviews",
+        "Registered financing-instrument record (catalog/programmes.json)"
+      ],
+      "rights": "Documents are paraphrased with attribution and each publisher's reuse terms are inspected. Menu costs are read as quoted or estimated, never as a final price. No protected full text is reproduced and no commitment or outreach is authorised."
+    }
+  ],
+  "themes": [
+    {
+      "id": "agriculture-market-access",
+      "title": "Agriculture value chains and market access",
+      "goals": [2],
+      "subject": "agricultural commodity and value chain produced in {country}",
+      "subjectBasis": "the registered World Bank agriculture series retained for {country} (sector value added, modeled agricultural employment, arable land) plus {country}'s official production, trade and food-safety sources",
+      "evidenceGate": "agriculture-series",
+      "openScopeChoices": [
+        "The commodity, value chain and producing area, to be selected by a human owner from {country}'s official production statistics rather than assumed here.",
+        "The destination market and route (domestic sale, a regional market, or an identified export market), kept explicit and unresolved until selected.",
+        "The intended beneficiary group, held as a placeholder; no cooperative, exporter or ministry is identified or contacted."
+      ],
+      "limit": "The registered sector indicators are national context only. They cannot establish crop demand, current rules, buyers, prices, available farmland or returns."
+    },
+    {
+      "id": "ldc-cooperation",
+      "title": "LDC cooperation and trade-preference instruments",
+      "goals": [17],
+      "subject": "bilateral, regional or multilateral cooperation or trade-preference instrument available to {country}",
+      "subjectBasis": "{country}'s current LDC status and graduation timeline plus the official publisher of each instrument, its eligibility conditions, rules of origin and programme period",
+      "evidenceGate": "none",
+      "openScopeChoices": [
+        "The cooperation or trade-preference instrument, named by its publishing authority rather than assumed.",
+        "The eligible product or service and its rules of origin, where a trade preference is claimed.",
+        "The responsible national body and the single decision a named public authority is asked to take."
+      ],
+      "limit": "Framework membership and LDC status are not eligibility, funding or partnership. Current status and the current legal text must be verified before any preference statement."
+    }
+  ],
+  "retired_stage_ids": ["evidence", "partners", "proposal"],
+  "notes": [
+    "The retired stage ids are kept only for SDG-target and institution-specific generation, which still produce baseline, intervention-comparison, delivery-route and recommendation rows for one named target or institution.",
+    "Every generated country proposal carries source prerequisites, dependencies, outputs and acceptance criteria so an independent reviewer can decide whether it is answerable.",
+    "No generated proposal selects a beneficiary, activates a mission or asserts an external outcome."
+  ]
+}

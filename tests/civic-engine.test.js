@@ -7,7 +7,7 @@ import { approvedSource,publicAddress,readSource,runResearch } from '../runtime/
 import { createApp } from '../server.js';
 
 test('country proposals survive restart and all district entrances are walkable',async t=>{
-  const f=await fixture(t);assert.equal(COUNTRIES.entries.length,248);assert.equal(f.platform.research(null).catalog_total,2998);
+  const f=await fixture(t);assert.equal(COUNTRIES.entries.length,248);assert.equal(f.platform.research(null).catalog_total,1015);
   const list=f.platform.countries(null,{group:'ldc',limit:248});assert.equal(list.total,44);
   const mayors=f.tx('mayors',null).mayors;assert.equal(mayors.length,20);assert.equal(new Set(mayors.map(mayor=>mayor.sprite)).size,20);
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM accounts').n,5);
