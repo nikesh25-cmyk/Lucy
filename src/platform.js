@@ -436,7 +436,11 @@ export class Platform {
     if (runtime) args.push(actor.agent.id);
     const submissions = this.all(`SELECT s.*,c.task_id,t.title AS task_title,c.agent_id,c.account_id,o.name AS contributor,a.name AS agent_name FROM submissions s JOIN claims c ON c.id=s.claim_id JOIN tasks t ON t.id=c.task_id JOIN missions m ON m.id=t.mission_id JOIN accounts o ON o.id=c.account_id LEFT JOIN agents a ON a.id=c.agent_id WHERE ${predicate} ORDER BY s.created_at DESC,s.rowid DESC LIMIT ?`, ...args, HISTORY_LIMIT).map((s) => ({ ...s, sources: parse(s.sources),brief:storedDecisionBrief(s.artifact,parse(s.sources).length) }));
     const ids = new Set(submissions.map((s) => s.id));
-    const claims=this.all('SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=? ORDER BY c.created_at DESC',actor.account.id).filter(c=>actor.kind!=='runtime'||c.agent_id===actor.agent.id);
+    // A resident's claim list grows for as long as the operator exists, so it takes the same
+    // HISTORY_LIMIT bound as every other listing on this page. The runtime's own-agent filter is
+    // applied in SQL, so a runtime sees the newest records that belong to it rather than the newest
+    // records overall filtered afterwards.
+    const claims = this.all(`SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=?${runtime ? ' AND c.agent_id=?' : ''} ORDER BY c.created_at DESC,c.rowid DESC LIMIT ?`, actor.account.id, ...(runtime ? [actor.agent.id] : []), HISTORY_LIMIT);
     const contextIds=JSON.stringify([...new Set([...claims.map(c=>c.task_id),...submissions.map(s=>s.task_id)])]);
     const tasks=this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id WHERE t.id IN (SELECT value FROM json_each(?))',contextIds).map(task=>({...task,allowed_domains:parse(task.allowed_domains)}));
     const missions=this.all('SELECT m.* FROM missions m WHERE m.id IN (SELECT t.mission_id FROM tasks t WHERE t.id IN (SELECT value FROM json_each(?)))',contextIds);

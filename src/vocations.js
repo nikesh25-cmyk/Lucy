@@ -73,15 +73,34 @@ function owned(platform,actor,input){
  const agent=platform.ownedAgent(actor,input?.agent_id||actor.agent?.id);if(agent.status==='deleted')fail(404,'Resident not found.');return agent;
 }
 function initialize(platform,agent){platform.run("INSERT OR IGNORE INTO resident_callings VALUES(?,'explorer',?,'')",agent.id,platform.clock());return platform.get('SELECT * FROM resident_callings WHERE agent_id=?',agent.id);}
-function available(platform,receipt){return receipt.source_kind!=='research_accepted'||Boolean(platform.get("SELECT source_id FROM calling_source_events WHERE agent_id=? AND source_kind='research_accepted' AND source_id=?",receipt.agent_id,receipt.source_id));}
 function rank(points){const thresholds=[0,20,50,100,200],titles=['Newcomer','Apprentice','Practitioner','Companion','Worldmaker'];let index=0;while(index<4&&points>=thresholds[index+1])index++;return{level:index+1,title:titles[index],experience:points,next_level_at:thresholds[index+1]??null};}
-function receipts(platform,agentId){return platform.all('SELECT * FROM calling_receipts WHERE agent_id=? ORDER BY created_at DESC,id LIMIT 101',agentId).map(r=>({...r,available:available(platform,r)}));}
-function summary(platform,agentId){
- const all=platform.get('SELECT COUNT(*) AS count,COALESCE(SUM(points),0) AS earned FROM calling_receipts WHERE agent_id=?',agentId);
- const held=platform.get("SELECT COALESCE(SUM(r.points),0) AS held FROM calling_receipts r WHERE r.agent_id=? AND r.source_kind='research_accepted' AND NOT EXISTS(SELECT 1 FROM calling_source_events e WHERE e.agent_id=r.agent_id AND e.source_kind=r.source_kind AND e.source_id=r.source_id)",agentId).held;
- const today=platform.all('SELECT * FROM calling_receipts WHERE agent_id=? AND earned_day=? ORDER BY created_at,id',agentId,day(platform)).map(r=>({...r,available:available(platform,r)}));
- return{...all,held,points:all.earned-held,today,used:today.reduce((n,r)=>n+r.points,0)};
+// A receipt is available unless it is a research acceptance with no matching source event yet. The
+// rule is written once, in SQL: `availableSql` is the one test, used for a single receipt page and for
+// a whole avatar roster, so a passport and a viewport cannot report different held experience.
+function availableSql(ref){return `(${ref}.source_kind!='research_accepted' OR EXISTS(SELECT 1 FROM calling_source_events e WHERE e.agent_id=${ref}.agent_id AND e.source_kind=${ref}.source_kind AND e.source_id=${ref}.source_id))`;}
+// `available` stays a JSON boolean in every response: SQLite has no boolean type, so the 0/1 the
+// expression returns is coerced here rather than leaking an integer into the published receipt shape.
+function receipts(platform,agentId){return platform.all(`SELECT r.*,${availableSql('r')} AS available FROM calling_receipts r WHERE r.agent_id=? ORDER BY r.created_at DESC,r.id LIMIT 101`,agentId).map(row=>({...row,available:Boolean(row.available)}));}
+// Experience summaries for a bounded set of residents in three grouped reads. A crowded viewport
+// asks for every visible avatar at once; doing this one resident at a time cost three queries per
+// avatar and dominated the viewport read. `summary` is the same function for a single resident.
+function summaries(platform,agentIds){
+ const ids=[...new Set((agentIds||[]).filter(id=>typeof id==='string'))],result=new Map();if(!ids.length)return result;
+ const marks=ids.map(()=>'?').join(',');
+ const totals=new Map(platform.all(`SELECT agent_id,COUNT(*) AS count,COALESCE(SUM(points),0) AS earned FROM calling_receipts WHERE agent_id IN (${marks}) GROUP BY agent_id`,...ids).map(row=>[row.agent_id,row]));
+ const held=new Map(platform.all(`SELECT r.agent_id,COALESCE(SUM(r.points),0) AS held FROM calling_receipts r WHERE r.agent_id IN (${marks}) AND r.source_kind='research_accepted' AND NOT ${availableSql('r')} GROUP BY r.agent_id`,...ids).map(row=>[row.agent_id,row.held]));
+ const today=new Map();
+ for(const row of platform.all(`SELECT r.agent_id,r.objective_id,r.points,${availableSql('r')} AS available FROM calling_receipts r WHERE r.agent_id IN (${marks}) AND r.earned_day=? ORDER BY r.created_at,r.id`,...ids,day(platform))){
+  if(!today.has(row.agent_id))today.set(row.agent_id,[]);
+  today.get(row.agent_id).push({objective_id:row.objective_id,points:row.points,available:Boolean(row.available)});
+ }
+ for(const id of ids){
+  const all=totals.get(id)||{count:0,earned:0},heldPoints=held.get(id)||0,rows=today.get(id)||[];
+  result.set(id,{count:all.count,earned:all.earned,held:heldPoints,points:all.earned-heldPoints,today:rows,used:rows.reduce((n,r)=>n+r.points,0)});
+ }
+ return result;
 }
+function summary(platform,agentId){return summaries(platform,[agentId]).get(agentId);}
 function reconcile(platform,agent,selection){
  if(agent.status!=='active'||platform.get("SELECT value FROM settings WHERE key='paused'").value==='true')return;
  if(!verifyCallingReceipts(platform.db,agent.id))fail(503,'Calling progress integrity needs administrator inspection.');
@@ -128,7 +147,9 @@ export const vocationMethods={
  publicCallings(agentIds){
   if(!Array.isArray(agentIds)||agentIds.length>220||agentIds.some(id=>typeof id!=='string'))fail(400,'Request at most 220 public calling profiles.');const result={};if(!agentIds.length)return result;
   const list=this.all(`SELECT a.id,a.status,COALESCE(v.calling_id,'explorer') AS calling_id FROM agents a LEFT JOIN resident_callings v ON v.agent_id=a.id WHERE a.id IN (${agentIds.map(()=>'?').join(',')}) AND a.status!='deleted'`,...agentIds);
-  for(const agent of list){const definition=CALLINGS.find(c=>c.id===agent.calling_id),totals=summary(this,agent.id),points=totals.points,earnedToday=totals.today;const next=definition.objectives.find(o=>!earnedToday.some(r=>r.objective_id===`${definition.id}.${o.id}`&&r.available));const r=rank(points);result[agent.id]={id:definition.id,name:definition.name,rank:{level:r.level,title:r.title},current_objective:next?{id:`${definition.id}.${next.id}`,title:next.title,complete:false}:{id:'daily_complete',title:'Today’s calling objectives complete',complete:true}};}
+  // One grouped experience read for the whole roster instead of three queries per visible avatar.
+  const totals=summaries(this,list.map(agent=>agent.id));
+  for(const agent of list){const definition=CALLINGS.find(c=>c.id===agent.calling_id),summaryOf=totals.get(agent.id),points=summaryOf.points,earnedToday=summaryOf.today;const next=definition.objectives.find(o=>!earnedToday.some(r=>r.objective_id===`${definition.id}.${o.id}`&&r.available));const r=rank(points);result[agent.id]={id:definition.id,name:definition.name,rank:{level:r.level,title:r.title},current_objective:next?{id:`${definition.id}.${next.id}`,title:next.title,complete:false}:{id:'daily_complete',title:'Today’s calling objectives complete',complete:true}};}
   for(const npc of this.all(`SELECT id FROM npc_mayors WHERE id IN (${agentIds.map(()=>'?').join(',')})`,...agentIds))result[npc.id]={id:'steward',name:'Steward',rank:{level:0,title:'Civic guide'},current_objective:{id:'civic_guidance',title:'Offer guidance and route concerns to human moderators',complete:false}};
   // Country ambassadors are NPCs too: they display a civic-guide label at level 0, never a calling,
   // experience, rank progress or guild membership. They hold no account and no operator credentials.

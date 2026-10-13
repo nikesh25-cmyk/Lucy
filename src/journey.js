@@ -15,6 +15,11 @@ const tendSaving = 5 * 60_000;
 const recipes = Object.freeze(content.recipes());
 const titles = Object.freeze(content.cosmetics('title'));
 const avatars = Object.freeze(content.cosmetics('avatar').filter((id) => content.entry(id, 'cosmetic').rules.unlock_at_shared_visits === undefined));
+// Bounded per-resident reads. A resident's own history grows for as long as it exists, so every
+// listing a passport renders is capped at the same 200-record bound the rest of the API uses. The
+// ordered reads keep the earliest records, and the totals a badge or skill depends on are counted in
+// SQL rather than taken from the returned page.
+const JOURNEY_LIMIT = 200;
 
 export const JOURNEY_TABLES = Object.freeze(['journey_profiles', 'journey_visits', 'journey_journal', 'journey_inventory', 'journey_crops']);
 export const JOURNEY_SCHEMA = `
@@ -69,13 +74,16 @@ export const contributionSource = `submissions s JOIN claims c ON c.id=s.claim_i
   JOIN missions m ON m.id=t.mission_id JOIN accounts operator ON operator.id=c.account_id
   JOIN accounts mission_owner ON mission_owner.id=m.owner_id JOIN accounts assigned ON assigned.id=m.reviewer_id
   JOIN reviews r ON r.submission_id=s.id JOIN accounts reviewer ON reviewer.id=r.reviewer_id`;
-export const contributionEligibility = (agentRef) => `c.agent_id=${agentRef} AND operator.status='active' AND mission_owner.status='active'
+// Everything except which residents are being counted. Kept as one string so the single-resident
+// test, the set test below and the merit summary can never drift apart.
+const contributionConditions = `operator.status='active' AND mission_owner.status='active'
   AND m.demo=0 AND m.status IN ('open','closed') AND c.task_version=t.version
   AND assigned.status='active' AND assigned.role IN ('admin','reviewer') AND assigned.id!=c.account_id
   AND reviewer.status='active' AND reviewer.role IN ('admin','reviewer') AND reviewer.id!=c.account_id
   AND (reviewer.id=m.reviewer_id OR reviewer.role='admin') AND r.decision='accepted' AND s.status='accepted'
   AND s.version=(SELECT MAX(version) FROM submissions current WHERE current.claim_id=c.id)
   AND r.rowid=(SELECT latest.rowid FROM reviews latest WHERE latest.submission_id=s.id ORDER BY latest.created_at DESC,latest.rowid DESC LIMIT 1)`;
+export const contributionEligibility = (agentRef) => `c.agent_id=${agentRef} AND ${contributionConditions}`;
 function merit(platform, agentId) {
   // Derive credit from current evidence, never from a persistent points counter.
   const eligible = platform.all(`SELECT DISTINCT s.id,m.owner_id,
@@ -114,7 +122,11 @@ export const journeyMethods = {
   journey(actor, input = {}) {
     const agent = owned(this, actor, input);
     const state = this.get('SELECT * FROM journey_profiles WHERE agent_id=?', agent.id) || { bio: '', purpose: '', title: 'Resident', avatar: 'sprout', harvests: 0, crafts: 0 };
-    const discoveries = this.all('SELECT v.world_id,w.name,w.kind,v.visited_at FROM journey_visits v JOIN worlds w ON w.id=v.world_id WHERE v.agent_id=? ORDER BY v.visited_at,v.world_id', agent.id);
+    // One bounded page of the resident's own visit history, oldest first so the arrival at the
+    // Commons always survives truncation. The badge, skill and totals below read counts from SQL,
+    // never from this page, so the bound cannot change what a resident has earned.
+    const discoveries = this.all('SELECT v.world_id,w.name,w.kind,v.visited_at FROM journey_visits v JOIN worlds w ON w.id=v.world_id WHERE v.agent_id=? ORDER BY v.visited_at,v.world_id LIMIT ?', agent.id, JOURNEY_LIMIT);
+    const discoveryCount = this.get('SELECT COUNT(*) AS n FROM journey_visits WHERE agent_id=?', agent.id).n;
     if (!discoveries.some((visit) => visit.world_id === 'commons')) discoveries.unshift({ world_id: 'commons', name: 'Commons', kind: 'shared', visited_at: Date.parse(agent.created_at) });
     const sharedVisits = this.get('SELECT COUNT(*) AS n FROM journey_visits v JOIN worlds w ON w.id=v.world_id WHERE v.agent_id=? AND w.owner_agent_id IS NULL', agent.id).n + (discoveries.some((visit) => visit.world_id === 'commons') && !this.get("SELECT world_id FROM journey_visits WHERE agent_id=? AND world_id='commons'", agent.id) ? 1 : 0);
     const earnedMerit = merit(this, agent.id), earnedGoodwill = goodwill(this, agent.id);
@@ -127,7 +139,7 @@ export const journeyMethods = {
     const badges = [sharedVisits >= 3 && { id: 'explorer', name: 'Explorer' }, state.harvests > 0 && { id: 'gardener', name: 'Gardener' }, state.crafts > 0 && { id: 'maker', name: 'Maker' }, earnedMerit.adopted > 0 && { id: 'useful_work', name: 'Work put to use' }].filter(Boolean);
     return {
       agent_id: agent.id, profile: { bio: state.bio, purpose: state.purpose, title: state.title, avatar: state.avatar },
-      profile_options: cosmeticOptions(this, agent.id, state), discoveries,
+      profile_options: cosmeticOptions(this, agent.id, state), discoveries, discovery_count: discoveryCount, discoveries_truncated: discoveryCount > discoveries.length,
       skills: [{ id: 'exploration', name: 'Exploration', level: Math.min(3, Math.floor(sharedVisits / 2)) }, { id: 'gardening', name: 'Gardening', level: Math.min(3, Math.floor(state.harvests / 3)) }, { id: 'crafting', name: 'Crafting', level: Math.min(3, Math.floor(state.crafts / 3)) }],
       badges, journal: this.all('SELECT id,text,created_at FROM journey_journal WHERE agent_id=? ORDER BY created_at DESC,rowid DESC LIMIT 200', agent.id),
       inventory: inventory(this, agent.id), crops: this.all('SELECT x,y,kind,planted_at,tended_at,harvested_at FROM journey_crops WHERE agent_id=? ORDER BY y,x', agent.id).map((crop) => cropView(crop, this.clock())),
@@ -212,6 +224,17 @@ export const journeyMethods = {
     if (!Array.isArray(agentIds) || agentIds.length > 200 || agentIds.some((id) => typeof id !== 'string')) fail(400, 'Request at most 200 resident cosmetics.');
     if (!agentIds.length) return {};
     return Object.fromEntries(this.all(`SELECT agent_id,title,avatar FROM journey_profiles WHERE agent_id IN (${agentIds.map(() => '?').join(',')})`, ...agentIds).map(({ agent_id, title, avatar }) => [agent_id, { title, avatar }]));
+  },
+  // The viewport's independently accepted contribution count for a bounded page of residents, in one
+  // grouped read instead of one correlated subquery per avatar. The eligibility predicate is the same
+  // text merit() uses, so a roster count and a passport summary can never report different work.
+  acceptedContributionCounts(agentIds) {
+    const ids = (agentIds || []).filter((id) => typeof id === 'string');
+    const counts = new Map();
+    if (!ids.length) return counts;
+    const rows = this.all(`SELECT c.agent_id AS agent_id,COUNT(DISTINCT s.id) AS n FROM ${contributionSource} WHERE ${contributionEligibilityIn(ids.map(() => '?').join(','))} GROUP BY c.agent_id`, ...ids);
+    for (const row of rows) counts.set(row.agent_id, row.n);
+    return counts;
   },
   deleteJourney(actor) {
     if (actor?.kind !== 'session') fail(403, 'Only your operator can delete resident records.');
