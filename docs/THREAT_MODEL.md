@@ -104,18 +104,21 @@ the SQLite file; the research worker ↔ the public internet; the local model �
 ## 4. CSRF and origin checks
 
 There is no CSRF token. The equivalent control is a strict origin/host rule applied to every request
-before routing (`server.js:388` → `src/hosting.js:23-43`):
+before routing (`server.js:388` → `src/hosting.js:34-57`):
 
 - The `Host` header must be present, free of whitespace, `@`, `/`, `\`, `?`, `#` and `%`, and parse as a
-  bare authority (`src/hosting.js:24-28`).
+  bare authority (`src/hosting.js:35-39`).
 - With a public origin configured, `Host` must equal the configured public host; the only exception is a
-  loopback health probe from the same port (`src/hosting.js:29-34`). With no public origin, the server
-  accepts only a loopback `Host` matching its own port (`src/hosting.js:36-37`).
+  loopback health probe from the same port. That exception is decided by the **peer socket** and not by
+  the header: it needs a loopback peer (`127.0.0.0/8`, `::1` or an IPv4-mapped form) *and* a loopback
+  `Host` with the server's own port, so a caller that cannot reach the server over loopback is refused
+  whatever `Host` it names (`src/hosting.js:40-44`, `src/hosting.js:47`). With no public origin, the
+  server accepts only a loopback `Host` matching its own port (`src/hosting.js:49-52`).
 - **Forwarded headers never establish trust**: `X-Forwarded-Host` and `X-Forwarded-Proto` are not read
-  (`src/hosting.js:39-40`), which is asserted by `tests/hosting.test.js`.
-- A present `Origin` must equal the expected origin exactly (`src/hosting.js:41`); a request without
+  (`src/hosting.js:53-54`), which is asserted by `tests/hosting.test.js`.
+- A present `Origin` must equal the expected origin exactly (`src/hosting.js:55`); a request without
   `Origin` for a write must carry a bearer credential or the explicit `x-api-client: operator` marker
-  (`src/hosting.js:42`). Combined with `SameSite=Strict` cookies, a cross-site form post from another
+  (`src/hosting.js:56`). Combined with `SameSite=Strict` cookies, a cross-site form post from another
   origin is rejected before any handler runs.
 - Additional header hardening on every response: `nosniff`, `Referrer-Policy: no-referrer`,
   `X-Frame-Options: DENY`, a `Permissions-Policy` denying camera/microphone/geolocation, a CSP with
@@ -218,8 +221,17 @@ detected by a normalised-text fingerprint.
   (`src/platform.js:692-716`).
 - **Diagnostics never carry private data.** The operator-facing view strips the credential hash
   (`src/platform.js:39`), the account list exposes no email (`src/platform.js:33`), and the
-  administrator payload is passed through a redaction allowlist that also removes token-shaped,
-  digest-shaped and email-shaped values (`src/recovery.js:342`).
+  administrator payload is passed through a redaction pass that drops a field whose name is
+  secret-shaped, drops a field whose final word names narrative content while it carries text or a
+  structure (a message, journal, artifact, prompt, conversation, excerpt or transcript — the material
+  `docs/OPERATIONS.md` §10 forbids, so a counter that merely mentions one still publishes its number),
+  and replaces token-shaped, digest-shaped and email-shaped values (`src/recovery.js:508-533`).
+- **A session end clears the browser's own state.** `clearOperatorState`
+  (`src/browser-session.js:7-11`) drops the operator-visible state an authenticated read filled —
+  account, agents, worlds, history, drafts, residents, resident memory, evidence, land, review
+  workbenches and the private chat target — and advances the session epoch the request guard compares,
+  so a response still in flight when the session ended is discarded rather than rendered. What belongs
+  to the world rather than to a session (the country catalog, camera and graphics preferences) is kept.
 
 Residual: whoever holds the database file holds the private rows; an administrator's export route
 (`/export`) is deliberately complete for the exporting account; and a human who legitimately shares a
@@ -283,12 +295,13 @@ application* that rows were not edited — they are not tamper-proof against the
 
 | Claim | Test |
 | --- | --- |
-| Origin/host rules, forwarded headers ignored, secure cookies, setup-code gate, limiter | `tests/hosting.test.js` |
+| Origin/host rules, forwarded headers ignored, the loopback health exception needing a loopback peer, secure cookies, setup-code gate, limiter | `tests/hosting.test.js` |
 | Runtime scope, budget, kind and human-route refusal | `tests/http.test.js`, `tests/runtime-policy.test.js`, `tests/human-players.test.js` |
 | Private hosts, redirects, binaries, oversized content, interstitials | `tests/civic-engine.test.js:59-62`, `tests/research-failure.test.js`, `tests/research-workflow.test.js` |
 | Coin immutability, forged receipts, replay, daily caps, private wallet | `tests/coins.test.js`, `tests/coin-abuse.test.js` |
 | Event-channel privacy, revocation, bounds, latency | `tests/realtime-channel.test.js`, `tests/realtime-bounds.test.js`, `tests/realtime-latency.test.js` |
-| Backup/restore validation, migration, interrupted workers, diagnostics redaction | `tests/recovery.test.js`, `tests/ops-rehearsal.test.js`, `tests/ops-diagnostics.test.js` |
+| Backup/restore validation, migration, interrupted workers, evidence-library re-checks, diagnostics redaction | `tests/recovery.test.js`, `tests/ops-rehearsal.test.js`, `tests/ops-diagnostics.test.js` |
+| The browser session-end sweep dropping private state | `tests/browser-session.test.js` |
 | Guild verification independence | `tests/guilds.test.js`, `tests/guilds-http.test.js` |
 | The same properties through a real browser | `npm run browser` (`scripts/browser-suite.mjs` scenarios `subscription-entitlement-and-revocation`, `reward-refusals`, `forged-coin-receipt-refused`, `credential-exclusion`, `private-draft-isolation`) |
 
