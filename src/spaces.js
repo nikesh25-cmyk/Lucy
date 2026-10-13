@@ -5,7 +5,7 @@ import { RESTORATION_PLACEMENT_STEP, RESTORATION_ROLES } from './community.js';
 import { contributionSource, contributionEligibility, cropAt } from './journey.js';
 import { blockLayers, canStep, isGrounded, settle, surfaceAt } from './elevation.js';
 import { sceneryBlocks, solidSceneryAt } from './footprints.js';
-import { escapeColumns, nearestClearTile } from './world-walk.js';
+import { escapeColumns, nearestClearTile, planWalk } from './world-walk.js';
 import { GARDEN_PALETTE, HOUSE_PALETTE } from './placement-policy.js';
 import { INTERACTION_DISTANCE } from './camera-controls.js';
 import content from './content.js';
@@ -400,6 +400,26 @@ export const spaceMethods = {
       ...frontierView, terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
       bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null,
       counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='agent'").n, registered_humans: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='human'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n+this.get('SELECT COUNT(*) AS n FROM npc_ambassadors WHERE world_id=?',id).n, visible_agents: participants.length, hidden_agents: hiddenAgents },
+      // A location and next-passage cue: which passage to walk to next, and how many steps it is. The
+      // nearest passages are tried first so the common case costs a single planned route; a resident
+      // with nothing reachable is told why rather than shown a confident wrong direction.
+      next_passage: (() => {
+        if (!viewerAgent || viewerAgent.world_id !== id) return null;
+        const from = { x: viewerAgent.x, y: viewerAgent.y };
+        const options = [];
+        if (world.kind === 'frontier') for (const gate of frontierGates(world.id)) {
+          if (!this.get('SELECT world_id FROM frontier_sectors WHERE world_id=?', gate.targetWorldId)) continue;
+          options.push({ kind: 'gate', direction: gate.direction, label: `${gate.direction} frontier passage`, x: gate.x, y: gate.y, target_world_id: gate.targetWorldId });
+        }
+        for (const portal of definition.portals || []) options.push({ kind: 'portal', label: portal.name || 'doorway', x: portal.x, y: portal.y, target_world_id: portal.targetWorldId || portal.target_world_id });
+        for (const option of options) option.distance = Math.abs(option.x - from.x) + Math.abs(option.y - from.y);
+        options.sort((a, b) => a.distance - b.distance);
+        for (const option of options) {
+          const route = planWalk(definition, from, { x: option.x, y: option.y }, { maxSteps: 512, maxVisited: 4096 });
+          if (route) return { ...option, steps: route.length, world_id: world.id, from };
+        }
+        return { kind: null, reason: 'No reachable passage from here.', world_id: world.id, x: from.x, y: from.y };
+      })(),
       paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true' };
   },
   /**
