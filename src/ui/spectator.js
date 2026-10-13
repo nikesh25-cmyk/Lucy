@@ -207,6 +207,7 @@ export function createSpectatorView(options = {}) {
   let worldId = typeof options.world === 'string' && options.world ? options.world : 'commons';
   let snapshot = null;
   let live = null;
+  let liveGeneration = 0;
   let lastRefusal = null;
   let frames = 0;
   let streams = 0;
@@ -247,17 +248,75 @@ export function createSpectatorView(options = {}) {
     return { x: next.camera.x + Math.floor(Math.min(columns, SPECTATOR_VIEWPORT.columns) / 2), y: next.camera.y + Math.floor(Math.min(rows, SPECTATOR_VIEWPORT.rows) / 2), z: 0 };
   }
 
-  function closeLive() { if (live?.close) { try { live.close(); } catch { /* already closed */ } } live = null; }
+  function closeLive() {
+    // Closing a feed also invalidates callbacks already queued by its EventSource. A late `closed`
+    // from the previous world must never close the new world's connection.
+    liveGeneration += 1;
+    if (live?.close) { try { live.close(); } catch { /* already closed */ } }
+    live = null;
+  }
 
   function openLive() {
     if (!subscribe) return 'none';
     closeLive();
+    const generation = liveGeneration, subscribedWorld = worldId;
+    const current = () => generation === liveGeneration && subscribedWorld === worldId;
+    let readyAttempt = 0, refreshing = false, queuedFrames = [], queueOverflow = false;
     streams += 1;
     const handlers = {
-      onReady: () => setStatus(SPECTATOR_STATUS.CONNECTED, 'ready', 'Live: the world feed is open.'),
-      onFrame: (frame) => applyFrame(frame),
-      onClosed: (reason) => lose(reason || 'closed'),
-      onError: (error) => lose(error?.status === 401 ? 'no_session' : 'stream_error'),
+      onReady: () => {
+        if (!current()) return;
+        // `ready` follows both first connection and EventSource reconnect. The initial `/world`
+        // read happened before subscribing, so an action in that gap would otherwise be missed.
+        // Re-read over the established feed; buffer its frames until the snapshot has arrived.
+        const attempt = ++readyAttempt;
+        refreshing = true; queuedFrames = []; queueOverflow = false;
+        setStatus(SPECTATOR_STATUS.RECONNECTING, 'synchronizing', 'Refreshing the authoritative world after the live feed opened.');
+        void (async () => {
+          try {
+            const payload = await read('/world', { world_id: subscribedWorld, view: 'voxel' });
+            if (!current() || attempt !== readyAttempt) return;
+            if (queueOverflow) {
+              closeLive();
+              setStatus(SPECTATOR_STATUS.SNAPSHOT, 'snapshot_backlog', 'The live feed outran the snapshot. Refresh this view to reconnect.');
+              return;
+            }
+            snapshot = buildSnapshot(payload);
+            camera.setBounds(snapshot.bounds);
+            const followed = camera.following();
+            if (followed) {
+              const resident = snapshot.residents.find((item) => item.id === followed);
+              if (resident) camera.moveResident(followed, resident);
+              else {
+                camera.unfollow();
+                lastRefusal = spectatorRefusal('resident_left', 'The followed resident left this world.', { next_step: 'Choose another visible resident to follow.' });
+              }
+            }
+            const buffered = queuedFrames;
+            queuedFrames = []; refreshing = false;
+            for (const frame of buffered) {
+              if (!current()) return;
+              applyFrame(frame);
+            }
+            if (current()) setStatus(SPECTATOR_STATUS.CONNECTED, 'ready', 'Live: the world feed is open.');
+          } catch (error) {
+            if (!current() || attempt !== readyAttempt) return;
+            const refusal = spectatorRefusalFor(error);
+            lastRefusal = refusal;
+            closeLive();
+            setStatus(SPECTATOR_STATUS.SNAPSHOT, refusal.rule, refusal.message);
+          }
+        })();
+      },
+      onFrame: (frame) => {
+        if (!current()) return;
+        if (refreshing) {
+          if (queuedFrames.length < 256) queuedFrames.push(frame);
+          else queueOverflow = true;
+        } else applyFrame(frame);
+      },
+      onClosed: (reason) => { if (current()) lose(reason || 'closed'); },
+      onError: (error) => { if (current()) lose(error?.status === 401 ? 'no_session' : 'stream_error'); },
     };
     try {
       const opened = subscribe(worldId, handlers);

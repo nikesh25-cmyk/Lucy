@@ -26,6 +26,7 @@ const payload = (overrides = {}) => ({
   counts: { world_agents: 1, visible_agents: 1 },
   ...overrides,
 });
+const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 /** A read double that records every request, so a test can prove what the component asked for. */
 function reader(handlers = {}) {
@@ -117,6 +118,7 @@ test('a session observer is connected, reconnects after a drop and recovers from
   await view.open('commons');
   assert.equal(s.opened.length, 1, 'opening a world starts exactly one subscription');
   s.opened[0].handlers.onReady();
+  await settle();
   assert.equal(view.status().state, SPECTATOR_STATUS.CONNECTED);
   assert.equal(view.status().live, true);
   const dropped = view.lose('buffer_overflow');
@@ -131,7 +133,101 @@ test('a session observer is connected, reconnects after a drop and recovers from
   assert.match(recovered.status.detail, /authoritative public snapshot/i);
   assert.equal(s.opened.length, 2, 'recovery opens a fresh subscription');
   s.opened[1].handlers.onReady();
+  await settle();
   assert.equal(view.status().state, SPECTATOR_STATUS.CONNECTED);
+});
+
+test('a late callback or snapshot from an old stream cannot close or replace the new world', async () => {
+  let finishOldRead;
+  let commonsReads = 0;
+  const s = streamer();
+  const view = createSpectatorView({
+    read: async (_path, { world_id }) => {
+      if (world_id === 'commons' && ++commonsReads === 2) return new Promise((resolve) => { finishOldRead = resolve; });
+      return payload({ world: { ...payload().world, id: world_id, name: world_id } });
+    },
+    subscribe: s.subscribe,
+  });
+  await view.open('commons');
+  s.opened[0].handlers.onReady();
+  assert.equal(typeof finishOldRead, 'function', 'the old feed has a pending authoritative read');
+  await view.open('home:res-1');
+  s.opened[1].handlers.onReady();
+  await settle();
+  assert.equal(view.status().state, SPECTATOR_STATUS.CONNECTED);
+  const current = view.snapshot();
+
+  s.opened[0].handlers.onFrame({ world_id: 'home:res-1', agents: [{ id: 'res-1', x: 1, y: 1 }] });
+  s.opened[0].handlers.onClosed('client_error');
+  s.opened[0].handlers.onError({ status: 401 });
+  s.opened[0].handlers.onReady();
+  finishOldRead(payload({ world: { ...payload().world, id: 'commons', name: 'Stale Commons' } }));
+  await settle();
+  assert.equal(view.worldId(), 'home:res-1');
+  assert.equal(view.snapshot(), current, 'the late old read cannot replace the new snapshot');
+  assert.equal(s.opened[1].closed, 0, 'the new world feed remains open');
+  assert.equal(view.status().state, SPECTATOR_STATUS.CONNECTED);
+  assert.equal(view.streams(), 2, 'stale ready must not open a third feed');
+});
+
+test('ready re-reads a change made between the initial world snapshot and subscribing', async () => {
+  let x = 24, reads = 0;
+  const s = streamer();
+  const view = createSpectatorView({
+    read: async () => { reads += 1; return payload({ participants: [{ ...payload().participants[0], x }] }); },
+    subscribe: s.subscribe,
+  });
+  await view.open('commons');
+  view.follow('res-1');
+  const cameraBefore = view.camera();
+  assert.equal(view.snapshot().residents[0].x, 24);
+  x = 25; // The server stored a move before this client received `ready`.
+  s.opened[0].handlers.onReady();
+  await settle();
+  assert.equal(reads, 2, 'ready must re-read the authoritative world exactly once');
+  assert.equal(s.opened.length, 1, 'the re-read must not reopen the event stream');
+  assert.equal(view.snapshot().residents[0].x, 25);
+  assert.equal(view.target().x, 25, 'the followed camera targets the newly confirmed tile');
+  assert.equal(view.camera().yaw, cameraBefore.yaw, 'reconciliation preserves camera orientation');
+  assert.equal(view.status().state, SPECTATOR_STATUS.CONNECTED);
+});
+
+test('a live update arriving during ready re-read is applied after the snapshot', async () => {
+  let resolveRead, reads = 0;
+  const s = streamer();
+  const view = createSpectatorView({
+    read: async () => ++reads === 1 ? payload() : new Promise((resolve) => { resolveRead = resolve; }),
+    subscribe: s.subscribe,
+  });
+  await view.open('commons');
+  s.opened[0].handlers.onReady();
+  s.opened[0].handlers.onFrame({ world_id: 'commons', agents: [{ id: 'res-1', x: 27, y: 24 }] });
+  resolveRead(payload({ participants: [{ ...payload().participants[0], x: 26 }] }));
+  await settle();
+  assert.equal(view.snapshot().residents[0].x, 27, 'an in-flight frame is not overwritten by the read response');
+  assert.equal(view.frames(), 1);
+  assert.equal(view.status().state, SPECTATOR_STATUS.CONNECTED);
+});
+
+test('a refused ready-time re-read closes the feed and preserves only the last public snapshot', async () => {
+  let privateNow = false;
+  const s = streamer();
+  const view = createSpectatorView({
+    read: async () => {
+      if (privateNow) throw Object.assign(new Error('This garden is private.'), { status: 403 });
+      return payload();
+    },
+    subscribe: s.subscribe,
+  });
+  await view.open('commons');
+  privateNow = true;
+  s.opened[0].handlers.onReady();
+  await settle();
+  assert.equal(s.opened[0].closed, 1);
+  assert.equal(view.status().live, false);
+  assert.equal(view.status().state, SPECTATOR_STATUS.SNAPSHOT);
+  assert.equal(view.lastRefusal().rule, 'world_is_private');
+  assert.deepEqual(view.snapshot().residents.map((resident) => resident.id), ['res-1']);
 });
 
 test('a subscription refusal with no session degrades to a snapshot instead of a broken screen', async () => {
