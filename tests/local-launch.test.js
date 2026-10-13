@@ -50,7 +50,7 @@ test('local launcher selects a free loopback port, ignores hosted origin setting
   child.kill('SIGTERM');
   assert.equal((await finished)[0], 0);
   const saved = new Platform(database);
-  try { assert.equal(saved.get('PRAGMA user_version').user_version, 20); assert.equal(saved.verifyAudit(), true); }
+  try { assert.equal(saved.get('PRAGMA user_version').user_version, 21); assert.equal(saved.verifyAudit(), true); }
   finally { saved.close(); }
 });
 

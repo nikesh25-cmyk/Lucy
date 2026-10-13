@@ -191,7 +191,7 @@ test('HTTP backups preserve community and private journey state in schema three'
   const backup = await f.request('/operations/backup', { account: 'admin', input: {} });
   assert.equal(backup.status, 201);
   const path = join(f.backupDir, backup.data.filename);
-  assert.equal(validateDatabase(path).schema_version, 20);
+  assert.equal(validateDatabase(path).schema_version, 21);
   await f.stop();
   const restoredPath = join(f.directory, 'restored.sqlite');
   restoreDatabase(path, restoredPath, { lockPath: join(f.directory, 'restored.lock') });

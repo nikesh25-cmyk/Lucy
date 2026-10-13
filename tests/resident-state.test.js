@@ -83,7 +83,7 @@ test('a bounded run records real counters, its last confirmed action and its sto
   assert.equal(history.data.runs[0].credential_hash, undefined);
   assert.equal(history.data.runs[0].last_action.action, 'rsvp');
   assert.equal((await call('/history', null, f.credentials.bob.token)).data.runs.length, 0);
-  assert.equal(validateDatabase(f.database).schema_version, 20);
+  assert.equal(validateDatabase(f.database).schema_version, 21);
 });
 
 test('a failed model call and a refused action are counted honestly, never as completed work', async (t) => {
@@ -271,11 +271,11 @@ test('the run-state schema migrates forward and survives a backup round-trip', a
   f.platform.recordResidentRun('kept-run', { status: 'completed', phase: 'finished', stop_reason: 'call_limit', decision: 1, model_calls: 1, action_count: 0 });
   const backup = join(f.directory, 'runs-backup.sqlite');
   backupDatabase(f.platform.db, backup);
-  assert.equal(validateDatabase(backup).schema_version, 20);
+  assert.equal(validateDatabase(backup).schema_version, 21);
   f.platform.close();
   // The verified backup restores over the live database and keeps the run receipt and its counters.
   const restored = restoreDatabase(backup, f.database);
-  assert.equal(restored.schema_version, 20);
+  assert.equal(restored.schema_version, 21);
   assert.ok(restored.preserved_original);
   const reopened = new Platform(f.database); t.after(() => reopened.close());
   assert.equal(reopened.get('SELECT decision FROM resident_runs WHERE id=?', 'kept-run').decision, 1);
@@ -297,11 +297,11 @@ test('a pre-change database migrates forward to the run-state schema without los
   legacy.close();
   assert.equal(validateDatabase(f.database).schema_version, 15);
   const migrated = new Platform(f.database); t.after(() => migrated.close());
-  assert.equal(migrated.get('PRAGMA user_version').user_version, 20);
+  assert.equal(migrated.get('PRAGMA user_version').user_version, 21);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM resident_runs').n, 0);
   assert.equal(migrated.get('SELECT status FROM jobs WHERE id=?', 'legacy-job').status, 'completed');
   assert.equal(migrated.history(migrated.authenticate(f.credentials.alice.token)).jobs.length, before + 1);
-  assert.equal(validateDatabase(f.database).schema_version, 20);
+  assert.equal(validateDatabase(f.database).schema_version, 21);
   assert.equal(migrated.verifyAudit(), true);
 });
 
