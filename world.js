@@ -221,6 +221,145 @@ function makeRegion(id) {
   return { id, ...facts, start: arrival, terrain: grid, objects, landmarks: places, portals: [portal(arrival.x, arrival.y, 'Return to the Commons', 'commons')] };
 }
 
+// ---------------------------------------------------------------------------------------------
+// Purposeful public places inside the existing world registry.
+//
+// Five authored venues. Each is a place a resident walks into from the Commons: one doorway on the
+// shared map, a court behind it, a stated purpose and scenery of its own. They are **data** — one
+// plan per place, expanded by one builder — so a layout can be reviewed without reading code.
+//
+// A venue is a fictional NemoWorld place and is not a real-world institution, a government body or a
+// service. It registers **no land**: no frontier sector, no parcel, no block and no stewardship, so
+// the fixed 16 x 16 area inventory, the plot registry and the assignment records are untouched
+// (tests/world-places.test.js hashes the whole land registry before and after every venue is resolved
+// and entered). Every scenery type a venue places is an existing sealed definition from
+// `content/furniture/*.json` (all `LicenseRef-NemoWorld-Project-Authored`, notice
+// `content/THIRD_PARTY.md`): this adds no asset and reuses none from a third party.
+// ---------------------------------------------------------------------------------------------
+export const VENUE_COLUMNS = 30;
+export const VENUE_ROWS = 22;
+const deepFrozen = (value) => Object.freeze(Array.isArray(value) ? value.map(deepFrozen)
+  : value && typeof value === 'object' ? Object.freeze(Object.fromEntries(Object.entries(value).map(([key, item]) => [key, deepFrozen(item)]))) : value);
+
+/**
+ * One plan per place, in code order. `door` is the doorway tile on the Commons map; `entrance` is the
+ * column the venue's wall opens on, so the arrival is the tile just inside that opening. `paint` is
+ * applied after the wall ring, in order, as `[x, y, width, height, terrain]`; `objects` is
+ * `[sealed type, x, y]`; `places` is `[x, y, name, description, symbol]`.
+ */
+export const PUBLIC_VENUE_PLANS = deepFrozen([
+  {
+    id: 'venue:workshop-annexe', name: 'The Workshop Annexe', symbol: '◆', color: '#cbb49a', groundColor: '#c9a085',
+    purpose: 'A second making floor: a row of workbenches for finishing work, away from the busy Makers’ Workshop.',
+    description: 'A working annexe to the Makers’ Workshop: six workbenches, a long table and a south hall for finishing work. A fictional NemoWorld place.',
+    lore: 'The Workshop filled up first with experiments and then with people, so a plain annexe was built behind it for the quiet, last part of the work.', ambiance: 'Terracotta floor, sawdust, warm tiles and the smell of cut timber.',
+    door: { x: 44, y: 6 }, entrance: 9, base: 'floor', walls: true,
+    paint: [[2, 3, 26, 3, 'plaza'], [2, 6, 26, 2, 'path'], [2, 8, 26, 6, 'rug'], [2, 14, 26, 2, 'plaza'], [2, 16, 26, 1, 'path'], [2, 17, 26, 4, 'rug'], [9, 16, 1, 5, 'path']],
+    objects: [['workbench', 4, 3], ['workbench', 8, 3], ['workbench', 12, 3], ['workbench', 16, 3], ['workbench', 20, 3], ['workbench', 24, 3],
+      ['bench', 6, 4], ['bench', 14, 4], ['bench', 22, 4], ['table', 12, 10], ['table', 17, 10], ['bench', 12, 12], ['bench', 17, 12],
+      ['trellis', 5, 18], ['trellis', 24, 18], ['display', 15, 18], ['bench', 11, 17], ['bench', 19, 17], ['flowers', 7, 19], ['flowers', 22, 19],
+      ['lantern', 2, 3], ['lantern', 27, 3], ['lantern', 2, 18], ['lantern', 27, 18]],
+    places: [[15, 4, 'The Making Floor', 'Six workbenches under the north bays: every bench is a crafting station.', '◆'],
+      [15, 11, 'The Long Table', 'A shared table for comparing approaches, sketches and unfinished work.', '✧'],
+      [9, 19, 'The Annexe Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+  {
+    id: 'venue:amphitheatre', name: 'The Round Amphitheatre', symbol: '▤', color: '#d3bda0', groundColor: '#bdb894',
+    purpose: 'An open bowl of terraced seating for public meetings, readings and announcements.',
+    description: 'A paved stage inside a grass bowl, ringed by two courses of benches and open to the sky. A fictional NemoWorld place.',
+    lore: 'A wide, shallow hollow was left unpaved on purpose: a world that argues in the open needs somewhere for everyone to stand at once.', ambiance: 'Warm stone underfoot, grass on the terraces, and voices that carry.',
+    door: { x: 42, y: 20 }, entrance: 15, base: 'meadow', walls: false,
+    paint: [[9, 5, 13, 13, 'garden'], [11, 7, 9, 9, 'plaza'], [13, 9, 5, 5, 'rug'], [9, 18, 13, 1, 'path'], [15, 16, 1, 6, 'plaza'], [15, 2, 1, 4, 'plaza']],
+    objects: [['bench', 11, 8], ['bench', 11, 10], ['bench', 11, 12], ['bench', 11, 14], ['bench', 19, 8], ['bench', 19, 10], ['bench', 19, 12], ['bench', 19, 14], ['bench', 13, 15], ['bench', 17, 15],
+      ['bench', 9, 6], ['bench', 9, 9], ['bench', 9, 12], ['bench', 9, 15], ['bench', 21, 6], ['bench', 21, 9], ['bench', 21, 12], ['bench', 21, 15], ['bench', 12, 17], ['bench', 18, 17],
+      ['lantern', 11, 7], ['lantern', 19, 7], ['lantern', 11, 15], ['lantern', 19, 15], ['sculpture', 12, 7], ['sculpture', 18, 7],
+      ['flowers', 10, 6], ['flowers', 20, 6], ['flowers', 10, 16], ['flowers', 20, 16], ['shelter', 18, 4]],
+    places: [[15, 11, 'The Stage', 'The paved centre of the bowl: stand here to address the whole ring.', '▤'],
+      [15, 6, 'The Standing Rim', 'The grass terrace above the paved ring, where the whole bowl is visible.', '✿'],
+      [15, 19, 'The South Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+  {
+    id: 'venue:archive', name: 'The Record Archive', symbol: '▥', color: '#c3b19a', groundColor: '#b9a98d',
+    purpose: 'Shelf rows, two reading desks and a display case of reference cards.',
+    description: 'A quiet, rug-floored hall of three shelf rows with two reading desks and a display case. A fictional NemoWorld place.',
+    lore: 'Every note a resident writes down is worth one shelf row somewhere, and this is that row — kept plain, quiet and open to anyone who wants to read.', ambiance: 'Deep shelves, lamps at the corners, and a floor that deadens footsteps.',
+    door: { x: 36, y: 50 }, entrance: 21, base: 'floor', walls: true,
+    paint: [[2, 3, 26, 11, 'rug'], [2, 14, 26, 2, 'path'], [2, 16, 26, 5, 'rug'], [21, 3, 1, 18, 'path']],
+    objects: [['bookshelf', 4, 4], ['bookshelf', 6, 4], ['bookshelf', 8, 4], ['bookshelf', 10, 4], ['bookshelf', 12, 4], ['bookshelf', 14, 4],
+      ['bookshelf', 16, 4], ['bookshelf', 18, 4], ['bookshelf', 20, 4], ['bookshelf', 22, 4], ['bookshelf', 24, 4], ['bookshelf', 26, 4],
+      ['bookshelf', 4, 7], ['bookshelf', 6, 7], ['bookshelf', 8, 7], ['bookshelf', 10, 7], ['bookshelf', 12, 7], ['bookshelf', 14, 7],
+      ['bookshelf', 16, 7], ['bookshelf', 18, 7], ['bookshelf', 20, 7], ['bookshelf', 22, 7], ['bookshelf', 24, 7], ['bookshelf', 26, 7],
+      ['bookshelf', 4, 10], ['bookshelf', 6, 10], ['bookshelf', 8, 10], ['bookshelf', 10, 10], ['bookshelf', 12, 10], ['bookshelf', 14, 10],
+      ['bookshelf', 16, 10], ['bookshelf', 18, 10], ['bookshelf', 20, 10], ['bookshelf', 22, 10], ['bookshelf', 24, 10], ['bookshelf', 26, 10],
+      ['table', 11, 14], ['table', 15, 14], ['bench', 10, 15], ['bench', 12, 15], ['bench', 14, 15], ['bench', 16, 15],
+      ['display', 5, 18], ['display', 25, 18], ['cushion', 7, 19], ['cushion', 9, 19], ['cushion', 25, 19],
+      ['lantern', 3, 3], ['lantern', 26, 3], ['lantern', 3, 19], ['lantern', 26, 19]],
+    places: [[13, 5, 'The Shelf Rows', 'Three aisles of reference shelves, read in place.', '▥'],
+      [11, 19, 'The Reading Desks', 'Two desks beside the stacks for reading a card in place.', '✧'],
+      [21, 19, 'The Archive Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+  {
+    id: 'venue:observatory-annexe', name: 'The Observatory Annexe', symbol: '☆', color: '#b3bccc', groundColor: '#9aa6bb',
+    purpose: 'Two telescopes and a chart table under the observatory ridge.',
+    description: 'An instrument deck with two telescopes above a rug-floored chart room, reached from the ridge above the Commons. A fictional NemoWorld place.',
+    lore: 'The observatory ran out of room for the patient, unglamorous half of the work — measuring, writing and comparing — so a plain annexe was cut into the ridge below it.', ambiance: 'Indigo stone, cold lamplight, and two long lenses pointed outward.',
+    door: { x: 86, y: 36 }, entrance: 6, base: 'floor', walls: true,
+    paint: [[3, 3, 24, 7, 'plaza'], [3, 10, 24, 8, 'rug'], [3, 18, 24, 3, 'plaza'], [6, 10, 1, 11, 'path']],
+    objects: [['telescope', 13, 4], ['telescope', 18, 4], ['display', 8, 4], ['display', 23, 4], ['sculpture', 4, 10],
+      ['table', 12, 12], ['table', 19, 12], ['bench', 11, 13], ['bench', 13, 13], ['bench', 18, 13], ['bench', 20, 13],
+      ['cushion', 4, 16], ['cushion', 25, 16], ['flowers', 16, 16], ['flowers', 17, 16],
+      ['lantern', 3, 3], ['lantern', 26, 3], ['lantern', 3, 19], ['lantern', 26, 19]],
+    places: [[15, 4, 'The Instrument Deck', 'Two telescopes on the open deck: look outward and record what changes.', '☆'],
+      [15, 12, 'The Chart Table', 'Where a reading is written down before it is forgotten.', '✧'],
+      [6, 19, 'The Annexe Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+  {
+    id: 'venue:seed-bank', name: 'The Seed Bank', symbol: '✿', color: '#c8d3a2', groundColor: '#a7b98c',
+    purpose: 'Rows of labelled seed beds and a sorting bench.',
+    description: 'Four rows of low seed beds either side of a central aisle, with a sorting bench and two seed cabinets. A fictional NemoWorld place.',
+    lore: 'Gardeners kept losing which variety had worked, so the beds were gathered into one hall and labelled in the open where anyone can read them.', ambiance: 'Green rows, cold frames, and the smell of dry seed.',
+    door: { x: 66, y: 20 }, entrance: 14, base: 'floor', walls: true,
+    paint: [[3, 3, 24, 14, 'rug'], [3, 3, 24, 1, 'garden'], [3, 17, 24, 4, 'plaza'], [14, 3, 2, 18, 'path']],
+    objects: [['farm', 6, 5], ['farm', 9, 5], ['farm', 12, 5], ['farm', 18, 5], ['farm', 21, 5], ['farm', 24, 5],
+      ['farm', 6, 7], ['farm', 9, 7], ['farm', 12, 7], ['farm', 18, 7], ['farm', 21, 7], ['farm', 24, 7],
+      ['farm', 6, 9], ['farm', 9, 9], ['farm', 12, 9], ['farm', 18, 9], ['farm', 21, 9], ['farm', 24, 9],
+      ['farm', 6, 11], ['farm', 9, 11], ['farm', 12, 11], ['farm', 18, 11], ['farm', 21, 11], ['farm', 24, 11],
+      ['display', 4, 15], ['display', 25, 15], ['trellis', 3, 13], ['trellis', 26, 13], ['table', 20, 18], ['bench', 19, 18], ['bench', 21, 18],
+      ['flowers', 5, 16], ['flowers', 24, 16], ['lantern', 3, 4], ['lantern', 26, 4], ['lantern', 3, 16], ['lantern', 26, 16]],
+    places: [[16, 8, 'The Seed Beds', 'Four rows of labelled seed beds, kept out in the open where they can be read.', '✿'],
+      [20, 19, 'The Sorting Bench', 'Where seed is counted, labelled and handed on.', '✧'],
+      [14, 19, 'The Seed Bank Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+]);
+const venuePlans = new Map(PUBLIC_VENUE_PLANS.map((plan) => [plan.id, plan]));
+export const publicVenueIds = Object.freeze(PUBLIC_VENUE_PLANS.map((plan) => plan.id));
+
+/** The one doorway each place keeps on the Commons map, in the shape the Commons landmark list uses. */
+const venueDoors = PUBLIC_VENUE_PLANS.map((plan) => ({ x: plan.door.x, y: plan.door.y, name: plan.name, description: plan.purpose, symbol: plan.symbol, color: plan.color }));
+
+/**
+ * One place, expanded from its plan. The wall ring is painted first and then opened at the entrance
+ * column, so the doorway is a walkable tile and not a painted-over wall; the arrival is the tile
+ * just inside it, and the way back to the Commons is the same doorway every other shared world uses.
+ */
+function makePublicVenue(id) {
+  const plan = venuePlans.get(id);
+  const columns = VENUE_COLUMNS, rows = VENUE_ROWS;
+  const grid = makeGrid(columns, rows, plan.base);
+  if (plan.walls) {
+    paintGrid(grid, 0, 0, columns, 1, 'wall'); paintGrid(grid, 0, rows - 1, columns, 1, 'wall');
+    paintGrid(grid, 0, 0, 1, rows, 'wall'); paintGrid(grid, columns - 1, 0, 1, rows, 'wall');
+    paintGrid(grid, plan.entrance, rows - 1, 1, 1, 'path');
+  }
+  for (const [x, y, width, height, type] of plan.paint) paintGrid(grid, x, y, width, height, type);
+  const arrival = { x: plan.entrance, y: rows - 2 };
+  return { id, name: plan.name, kind: 'venue', purpose: plan.purpose, columns, rows, start: arrival,
+    terrain: grid, objects: plan.objects.map(([type, x, y]) => ({ type, x, y })),
+    groundColor: plan.groundColor, description: plan.description, lore: plan.lore, ambiance: plan.ambiance,
+    landmarks: plan.places.map(([x, y, name, description, symbol]) => ({ x, y, name, description, symbol, color: plan.color })),
+    portals: [portal(arrival.x, arrival.y, 'Return to the Commons', 'commons')] };
+}
+
 function makeCommons() {
   const columns = 96;
   const rows = 64;
@@ -244,9 +383,15 @@ function makeCommons() {
     { x: 20, y: 44, name: 'Countryside Camp', description: 'An open countryside rest area for roaming agents and human visitors.', symbol: '▲', color: '#c6a371' },
     { x: 63, y: 44, name: 'Reflection Garden', description: 'A peaceful outdoor meditation space beside the southern river.', symbol: '☮', color: '#ad96b6' },
     { x: 84, y: 53, name: 'Home District', description: 'Visit personal gardens and homes created by the inhabitants.', symbol: '⌂', color: '#d1ac8b' },
+    // The five authored public places: each is a doorway on this map with a courtyard of its own
+    // behind it. Joining this list puts each doorway on the site loop below, which paves its square
+    // and lays a road to it from the shared arrival, and the landmark list puts its name on the map.
+    ...venueDoors,
   ];
   const outdoorObjects = Object.entries(regionFacts).map(([id, facts]) => ({ type: 'gateway', region: id, name: facts.name, x: facts.door.x, y: facts.door.y }));
   outdoorObjects.push({ type: 'gateway', name: 'Shared Frontier', x: 19, y: 6 });
+  // A venue doorway is drawn as the same walk-through gateway the region rooms use.
+  outdoorObjects.push(...PUBLIC_VENUE_PLANS.map((plan) => ({ type: 'gateway', name: plan.name, x: plan.door.x, y: plan.door.y })));
   for (const site of sites.slice(6)) {
     paintGrid(grid, site.x - 3, site.y - 3, 7, 7, 'meadow');
     paintGrid(grid, site.x - 2, site.y - 2, 5, 5, 'plaza');
@@ -278,7 +423,7 @@ function makeCommons() {
     if (!['water', 'tree', 'building', 'fountain'].includes(grid[y][x]) && !seen.has(`${x},${y}`)) grid[y][x] = 'tree';
   }
   return { id: 'commons', name: 'The Commons', kind: 'outdoors', columns, rows, start, terrain: grid, landmarks: [...sites, ...Object.values(regionFacts).filter((facts) => !sites.some((site) => site.x === facts.door.x && site.y === facts.door.y)).map((facts) => ({ ...facts.door, name: facts.name, description: facts.description, color: '#abc2b9', symbol: '✧' }))], objects: outdoorObjects,
-    portals: [portal(11, 6, 'Meeting Hall', 'hall'), portal(15, 3, 'Peace Pavilion', 'pavilion'), portal(10, 10, 'Contribution Gallery', 'gallery'), portal(4, 3, 'Meditation Grove', 'meditation'), portal(19, 6, 'Shared Frontier', 'frontier:0:0'), ...Object.entries(regionFacts).map(([id, facts]) => portal(facts.door.x, facts.door.y, facts.name, id)), ...REGIONS.map((region,index) => portal(25, 15+index*2, region.name, `district:${region.id}`))] };
+    portals: [portal(11, 6, 'Meeting Hall', 'hall'), portal(15, 3, 'Peace Pavilion', 'pavilion'), portal(10, 10, 'Contribution Gallery', 'gallery'), portal(4, 3, 'Meditation Grove', 'meditation'), portal(19, 6, 'Shared Frontier', 'frontier:0:0'), ...Object.entries(regionFacts).map(([id, facts]) => portal(facts.door.x, facts.door.y, facts.name, id)), ...REGIONS.map((region,index) => portal(25, 15+index*2, region.name, `district:${region.id}`)), ...PUBLIC_VENUE_PLANS.map((plan) => portal(plan.door.x, plan.door.y, plan.name, plan.id))] };
 }
 
 function makeDistrict(id) {
@@ -587,6 +732,7 @@ export function getWorldDefinition(world = 'commons') {
     if (id === 'commons') definition = makeCommons();
     else if (['hall', 'pavilion', 'gallery', 'meditation'].includes(id)) definition = makeInterior(id);
     else if (Object.hasOwn(regionFacts, id)) definition = makeRegion(id);
+    else if (venuePlans.has(id)) definition = makePublicVenue(id);
     else if (id.startsWith('district:') && REGIONS.some(region => id === `district:${region.id}`)) definition = makeDistrict(id);
     else if (/^country:[A-Z]{3}$/.test(id)) definition = makeCountry(id, descriptor?.name);
     else if (id.startsWith('home:')) definition = makeHome(id);
