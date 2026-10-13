@@ -139,6 +139,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'first-ten-minutes', title: 'One derived next action, a chosen calling, a saved action, a dismissed and resumed guide, and a resumed place', regression: null },
   { id: 'first-play-solo-ambassador', title: 'A new solo operator follows the guide through the Commons, asks a nearby scripted ambassador, and retains that saved meeting', regression: null },
   { id: 'restoration-two-clients', title: 'Two browsers restore one shared garden and the attributed result survives a reload in both', regression: null },
+  { id: 'phone-conversation', title: 'The game conversation panel is compact, preserves drafts, and respects reduced motion on phones', regression: null },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -1735,6 +1736,79 @@ define('consolidated-proposal-history', async () => {
     return 'retired without a replacement; 409 activation refusal; original row retained';
   });
   return 'the UI and server agree that consolidation is history, not an active proposal';
+});
+
+define('phone-conversation', async () => {
+  const owner = await actor('owner');
+  const page = owner.page;
+  const walker = fixtures().characters.walker;
+  const neighbour = fixtures().characters.neighbour;
+  await sendToCommons(fixtures().owner, walker.id);
+
+  await step('enter the game shell as the saved resident', async () => {
+    await openApp(page, ACTORS.owner);
+    await openWorldAs(page, walker.id);
+    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await page.locator('#game-hud').waitFor({ state: 'visible' });
+    return 'game shell loaded';
+  });
+
+  await step('desktop: the conversation panel opens as a compact overlay', async () => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.locator('#game-hud').getByRole('button', { name: 'Chat', exact: true }).click();
+    await page.waitForFunction(() => document.body.dataset.gameDrawer === 'chat', null, { timeout: PAGE_TIMEOUT_MS });
+    const host = page.locator('#game-conversation-host');
+    await host.waitFor({ state: 'visible' });
+    const box = await host.evaluate((node) => ({ width: node.getBoundingClientRect().width, right: node.getBoundingClientRect().right, top: node.getBoundingClientRect().top }));
+    expect(box.width <= 400, 'the desktop conversation panel must be compact', { actual: box.width });
+    expect(box.right <= 1280, 'the desktop panel must stay inside the viewport', { actual: box.right });
+    expect(box.top >= 60, 'the desktop panel must sit below the masthead', { actual: box.top });
+    return `desktop panel ${Math.round(box.width)}px wide at top ${Math.round(box.top)}`;
+  });
+
+  await step('draft, channel and recipient survive a full rerender and keep focus', async () => {
+    const form = page.locator('#world-chat-card form');
+    await form.locator('[name="channel"]').selectOption('private');
+    await form.locator('[name="recipient_id"]').selectOption(neighbour.id);
+    const text = 'Draft that must survive a render';
+    await form.locator('[name="text"]').fill(text);
+    await page.evaluate(() => window.__nemoworld.render());
+    await settle(page);
+    const after = await form.evaluate((node) => ({ channel: node.elements.namedItem('channel')?.value, recipient: node.elements.namedItem('recipient_id')?.value, text: node.elements.namedItem('text')?.value, active: document.activeElement?.name || null }));
+    expect(after.channel === 'private' && after.recipient === neighbour.id && after.text === text, 'draft, channel and recipient must survive rerender', { expected: { channel: 'private', recipient: neighbour.id, text }, actual: after });
+    expect(after.active === 'text', 'focus must return to the textarea after rerender', { expected: 'text', actual: after.active });
+    return 'draft, recipient and focus survived rerender';
+  });
+
+  await step('phone 390x844: panel stays small and leaves the world visible', async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(200);
+    const host = page.locator('#game-conversation-host');
+    await host.waitFor({ state: 'visible' });
+    const box = await host.evaluate((node) => ({ width: node.getBoundingClientRect().width, right: node.getBoundingClientRect().right, bottom: node.getBoundingClientRect().bottom }));
+    expect(box.width <= 340, 'phone panel width must stay compact', { expected: '<=340', actual: box.width });
+    expect(box.right <= 390, 'phone panel must not overflow the right edge', { actual: box.right });
+    expect(box.bottom <= 844, 'phone panel must not overflow the bottom edge', { actual: box.bottom });
+    const world = await page.locator('#world').boundingBox();
+    expect(world && world.width > 100, 'world canvas must remain partly visible beside the panel', { actual: world });
+    return `phone panel ${Math.round(box.width)}px wide, world still ${Math.round(world?.width || 0)}px wide`;
+  });
+
+  await step('reduced motion: panel has no transition', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const transition = await page.evaluate(() => { const host = document.querySelector('#game-conversation-host'); return host ? getComputedStyle(host).transition : ''; });
+    expect(transition === 'none' || !transition || transition.includes('0s'), 'panel must not animate under reduced motion', { actual: transition });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    return 'no transition under reduced motion';
+  });
+
+  await step('closing the panel returns focus to the HUD and clears the drawer', async () => {
+    await page.locator('#game-conversation-host').getByRole('button', { name: 'Close conversation', exact: true }).click();
+    await page.waitForFunction(() => document.body.dataset.gameDrawer === '', null, { timeout: PAGE_TIMEOUT_MS });
+    expect(await page.locator('#game-conversation-host').isVisible() === false, 'panel must hide after close');
+    return 'panel closed';
+  });
 });
 
 define('signout-privacy', async () => {
