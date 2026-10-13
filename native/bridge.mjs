@@ -41,8 +41,8 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
   const localApi = localApiOrigin(api);
   const pending = new Map(), loginSessions = new Map(), loginAttempts = new Map(), players = new Map();
   const csrfToken = randomBytes(24).toString('hex');
-  async function call(path, token, method = 'GET', payload) {
-    const response = await fetcher(new URL('/api/v1' + path, localApi), {method, headers: {'Authorization': `Bearer ${token}`, ...(payload ? {'Content-Type': 'application/json', 'Origin': localApi} : {})}, body: payload ? JSON.stringify(payload) : undefined, signal: AbortSignal.timeout(5000), redirect: 'error'});
+  async function call(path, token, method = 'GET', payload, key) {
+    const response = await fetcher(new URL('/api/v1' + path, localApi), {method, headers: {'Authorization': `Bearer ${token}`, ...(payload ? {'Content-Type': 'application/json', 'Origin': localApi} : {}), ...(key ? {'Idempotency-Key': key} : {})}, body: payload ? JSON.stringify(payload) : undefined, signal: AbortSignal.timeout(5000), redirect: 'error'});
     const body = await response.json();
     if (!response.ok) throw Object.assign(new Error(body.error || body.message || `NemoWorld ${response.status}`), {status: response.status});
     return body;
@@ -160,6 +160,38 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
         const participants = [...new Map(views.flatMap(view => view.participants || []).filter(item => item.id && item.id !== pair.agentId).map(item => [item.id,{id:item.id,name:item.name,kind:item.kind,x:item.x,y:item.y,z:item.z || 0}])).values()];
         const gates = [...new Map(views.flatMap(view => view.frontier?.neighbors || []).map(gate => [gate.direction, gate])).values()];
         return send(200, {world_id: worldId, size: SIZE, blocks, terrain, participants, gates, player: {x: agent.x, y: agent.y, z: agent.z}});
+      }
+      if (url.pathname === '/native/missions' && request.method === 'POST') {
+        // The native client reads the same mission directory and the paired human's own active claim
+        // as the browser. No mission or claim store is copied into Luanti; both read one authority.
+        const {pair} = await current(input.player);
+        const directory = await call('/missions?limit=12', pair.token);
+        return send(200, {
+          tasks: (directory.tasks || []).filter(task => task.status === 'open').map(({id, mission_id, title, status, lease_minutes}) => ({id, mission_id, title, status, lease_minutes})),
+          active_claim: directory.active_claim ? {id:directory.active_claim.id, task_id:directory.active_claim.task_id, task_title:directory.active_claim.task_title, status:directory.active_claim.status, expires_at:directory.active_claim.expires_at} : null,
+        });
+      }
+      if (url.pathname === '/native/claim' && request.method === 'POST') {
+        const {pair} = await current(input.player);
+        if (typeof input.task_id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(input.task_id)) throw Object.assign(new Error('Choose a listed mission task.'), {status: 400});
+        // The key is bound to this player and task, so a bridge or Luanti restart replays the same
+        // lease instead of creating a second claim.
+        const key = `native:${input.player}:claim:${input.task_id}`;
+        const claim = await call('/claims', pair.token, 'POST', {task_id: input.task_id, agent_id: pair.agentId}, key);
+        return send(200, {claim: {id:claim.id, task_id:claim.task_id, status:claim.status, expires_at:claim.expires_at}});
+      }
+      if (url.pathname === '/native/submit' && request.method === 'POST') {
+        const {pair} = await current(input.player);
+        const textField = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 2000;
+        if (typeof input.claim_id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(input.claim_id)
+          || typeof input.artifact !== 'string' || !input.artifact.trim() || input.artifact.length > 16000
+          || !textField(input.method) || !textField(input.limitations) || !textField(input.rights)
+          || !Array.isArray(input.sources) || !input.sources.length || input.sources.length > 10) {
+          throw Object.assign(new Error('Provide a claim, a deliverable, a method, limitations, rights and one to ten sources.'), {status: 400});
+        }
+        const key = `native:${input.player}:submit:${input.claim_id}`;
+        const submission = await call('/submissions', pair.token, 'POST', {claim_id: input.claim_id, artifact: input.artifact.trim(), method: input.method.trim(), limitations: input.limitations.trim(), rights: input.rights.trim(), sources: input.sources}, key);
+        return send(200, {submission: {id:submission.id, status:submission.status}});
       }
       if (url.pathname === '/native/action' && request.method === 'POST') {
         const {pair, agent} = await current(input.player);

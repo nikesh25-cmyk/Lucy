@@ -376,8 +376,12 @@ export class Platform {
     const missions = this.all(`SELECT m.*,o.name AS owner,r.name AS reviewer FROM missions m LEFT JOIN accounts o ON o.id=m.owner_id LEFT JOIN accounts r ON r.id=m.reviewer_id WHERE ${visible} ORDER BY m.created_at DESC,m.id ASC LIMIT ?`, ...args, MISSION_LIMIT);
     const tasks = this.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id WHERE t.mission_id IN (SELECT value FROM json_each(?)) ORDER BY t.id', JSON.stringify(missions.map((mission) => mission.id))).map((task) => ({ ...task, allowed_domains: parse(task.allowed_domains), allowed_actions: ['read-approved-sources', 'submit-evidence'], risk: 'low', lease_minutes: 20 }));
     let active_claim = null;
+    // A runtime sees its own character's lease; an operator session sees its own account's single
+    // active lease. Both read the same claims store.
     if (runtime) {
       active_claim = this.get("SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=? AND c.agent_id=? AND c.status IN ('leased','changes_requested') ORDER BY c.created_at DESC LIMIT 1", actor.account.id, actor.agent.id) || null;
+    } else if (human) {
+      active_claim = this.get("SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=? AND c.status IN ('leased','changes_requested') ORDER BY c.created_at DESC LIMIT 1", actor.account.id) || null;
     }
     return { missions, tasks, total, offset: 0, limit: MISSION_LIMIT, has_more: missions.length < total, active_claim };
   }

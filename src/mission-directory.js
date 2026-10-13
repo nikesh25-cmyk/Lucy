@@ -14,8 +14,12 @@ export function missionDirectory(platform,actor,options){
  const missions=platform.all(`SELECT m.*,o.name AS owner,r.name AS reviewer,(SELECT COUNT(*) FROM tasks t WHERE t.mission_id=m.id) AS task_count FROM missions m LEFT JOIN accounts o ON o.id=m.owner_id LEFT JOIN accounts r ON r.id=m.reviewer_id WHERE ${where} ORDER BY m.created_at DESC,m.id ASC LIMIT ? OFFSET ?`,...args,limit,offset);
  const ids=JSON.stringify(missions.map(m=>m.id));const tasks=platform.all('SELECT t.*,f.submission_id AS origin_submission_id,s.version AS origin_version,s.status AS origin_status FROM tasks t LEFT JOIN task_followups f ON f.task_id=t.id LEFT JOIN submissions s ON s.id=f.submission_id WHERE t.mission_id IN (SELECT value FROM json_each(?)) ORDER BY t.id',ids).map(task=>({...task,allowed_domains:JSON.parse(task.allowed_domains),allowed_actions:['read-approved-sources','submit-evidence'],risk:'low',lease_minutes:20}));
  let active_claim=null;
+ // A runtime sees its own character's lease; an operator session sees its own account's single
+ // active lease (the server allows only one per operator). Both read the same claims store.
  if (actor?.kind==='runtime') {
    active_claim=platform.get("SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=? AND c.agent_id=? AND c.status IN ('leased','changes_requested') ORDER BY c.created_at DESC LIMIT 1",actor.account.id,actor.agent.id)||null;
+ } else if (actor?.kind==='session') {
+   active_claim=platform.get("SELECT c.*,t.title AS task_title FROM claims c JOIN tasks t ON t.id=c.task_id WHERE c.account_id=? AND c.status IN ('leased','changes_requested') ORDER BY c.created_at DESC LIMIT 1",actor.account.id)||null;
  }
  return {missions,tasks,total,offset,limit,has_more:offset+missions.length<total,active_claim};
 }
