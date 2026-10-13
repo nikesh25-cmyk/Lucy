@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NemoWorld Commons set — visual contact sheet</title>
+<style>
+  :root { color-scheme: dark; --bg:#051d18; --panel:#0c3027; --panel2:#12382e; --ink:#f1f0df; --muted:#bccbc0; --gold:#ded6a5; --line:#9fb39538; --danger:#ffc1b5; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:32px 28px 64px; background:var(--bg); color:var(--ink);
+    font:15px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
+  h1 { font-size:clamp(30px,4vw,44px); font-weight:400; letter-spacing:-.02em; margin:.2em 0 .3em; }
+  h2 { font-size:24px; font-weight:400; margin:2.2em 0 .6em; border-bottom:1px solid var(--line); padding-bottom:.3em; }
+  h3 { font-size:16px; margin:1.4em 0 .5em; color:var(--gold); letter-spacing:.04em; text-transform:uppercase; }
+  p { margin:.5em 0; }
+  code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.86em; color:var(--gold); }
+  .eyebrow { color:var(--gold); font-size:12px; letter-spacing:.18em; text-transform:uppercase; margin:0; }
+  .lede { max-width:78ch; color:var(--ink); }
+  .caveats, .evidence { max-width:88ch; padding-left:20px; }
+  .caveats li { margin:.45em 0; }
+  .muted, .caveats .muted { color:var(--muted); }
+  .banner { border:1px solid var(--danger); border-radius:14px; padding:14px 18px; margin:18px 0 6px; background:#2a1512; max-width:100ch; }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:22px; }
+  dl { margin:0; }
+  dl div { display:grid; grid-template-columns:88px 1fr; gap:10px; padding:3px 0; border-top:1px solid var(--line); }
+  dl div:first-child { border-top:0; }
+  dt { color:var(--muted); font-size:12px; }
+  dd { margin:0; font-size:13px; overflow-wrap:anywhere; }
+  .compact div { grid-template-columns:104px 1fr; }
+  .summary, .category { max-width:1500px; }
+  .tally { color:var(--muted); font-size:13px; letter-spacing:.02em; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px; }
+  .card { background:linear-gradient(135deg,#aec8a60b,#acd0ba03); border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px; break-inside:avoid; }
+  .card-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px; }
+  .card-head .id { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px; color:var(--gold); margin:0; }
+  .card-head .label { margin:0; font-size:15px; flex:1 1 100%; }
+  .badge { font-size:11px; letter-spacing:.06em; text-transform:uppercase; border-radius:999px; padding:3px 10px; border:1px solid; }
+  .badge.produced { color:#d1e7d8; background:#a3cdb817; border-color:#a3cdb82f; }
+  .badge.vendored { color:var(--gold); background:#ded6a512; border-color:#ded6a55c; }
+  .badge.placeholder { color:#f1c4b2; background:#edb29b12; border-color:#edb29b40; }
+  .swatch { background:#04231c; border:1px solid var(--line); border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .glyph-note { margin:0; font-size:11px; color:var(--muted); }
+  .missing { background:#2a1512; border:1px solid #c97c6c55; border-radius:12px; padding:10px 12px; font-size:13px; }
+  .rights { border-left:2px solid var(--gold); padding-left:12px; }
+  .rights-head { margin:0 0 4px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); }
+  .rights ul { margin:0; padding-left:18px; }
+  .rights li { font-size:12.5px; color:var(--muted); margin:.3em 0; }
+  .source { margin:0; font-size:11.5px; color:var(--muted); overflow-wrap:anywhere; }
+  .tokens { list-style:none; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:6px 18px; }
+  .tokens li { display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .chip { width:16px; height:16px; border-radius:4px; border:1px solid #f1f0df55; flex:none; }
+  .hex { color:var(--muted); font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:.6em; }
+  th, td { text-align:left; vertical-align:top; padding:9px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--gold); font-weight:500; }
+  #unresolved-list { list-style:none; padding:0; }
+  #unresolved-list > li { border-top:1px solid var(--line); padding:12px 0; max-width:96ch; }
+  .sev { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:var(--danger); margin:0 0 2px; }
+  footer { margin-top:48px; border-top:1px solid var(--line); padding-top:16px; color:var(--muted); font-size:13px; max-width:96ch; }
+  @media print { body { background:#fff; color:#111; } .card, .swatch, .summary { background:#fff; border-color:#ccc; } dt, .muted, .source { color:#444; } h3, code, .card-head .id, th { color:#6b5a20; } }
+</style>
+</head>
+<body>
+<header>
+  <p class="eyebrow">Task 30 · unified asset library · branch task-30-asset-library · 2026-10-13</p>
+  <h1>NemoWorld Commons set — visual contact sheet</h1>
+  <p class="lede">51 selected entries across six categories, generated from
+  <a href="./asset-manifest.json">asset-manifest.json</a>. One coherent family in the project's own units:
+  every produced item is flat-shaded 1 m cube geometry authored in <code>src/voxel-world.js</code>.</p>
+  <div class="banner">
+    <p><strong>This page is a selection and rights record, not an integration and not a render.</strong></p>
+    <ul class="caveats">
+      <li><strong>Nothing here is integrated.</strong> No file under <code>assets/</code> was added, replaced or downloaded; no renderer, server route, CSP rule or stylesheet was changed.</li>
+      <li><strong>No browser check was performed.</strong> No screenshot, GPU render or live page produced this sheet.</li>
+      <li><strong>Each swatch is a box-count glyph, not a picture.</strong> One cube = one measured 1 × 1 × 1 m box from <code>src/voxel-world.js</code>, drawn in the entry's own palette token, capped at 13 with a label. It is not a preview of the object's shape.</li>
+      <li><strong>Four entries are specifications with nothing produced behind them.</strong> Each is drawn as a labelled placeholder that says exactly what is missing and what producing it would need.</li>
+      <li><strong>This file makes no network request.</strong> No external font, no image, no script and no dependency: the markup, the styling and every glyph are inline in this one file.</li>
+    </ul>
+  </div>
+</header>
+<section class="summary">
+  <h2>The family</h2>
+  <p><strong>id nemoworld-commons</strong> · spec 1.0.0-spec · 51 entries ·
+  45 produced · 2 vendored third party · 4 specified, nothing produced</p>
+  <p>One coherent family: original project-authored, flat-shaded cube geometry, plus the two third-party art sets already vendored in this repository that the existing code paths can already address (the CC0 mayor sprite sheets and the ISC Lucide icon set). No third-party 3D mesh pack is selected, and nothing is downloaded, imported or integrated by this task.</p>
+  <div class="cols">
+    <div>
+      <h3>Grid contract, in the project's own units</h3>
+      <dl class="compact">
+        <div><dt>Tile</dt><dd>1 tile = 1 virtual metre. The shared frontier is 16 x 16 areas of 48 x 48 virtual metres, in 8 x 8 parcels of 6 x 6 (docs/VOXEL_WORLD.md, docs/LAND_WORLD.md).</dd></div>
+        <div><dt>Block</dt><dd>Blocks are 1 x 1 x 1 m cubes on integer layers z 0 to 7 (content/README.md stack.z_min/z_max; VOXEL_LIMITS.height = 8).</dd></div>
+        <div><dt>Axes</dt><dd>world X = tile x, world Z = tile y, world Y = block layer z (src/voxel-world.js cubeBatch). A pick keeps horizontal x/y and vertical z.</dd></div>
+        <div><dt>Resident</dt><dd>1.52 m tall, 0.38 m half-width; ground detail ≤ 0.10 m; knee height 0.50 m</dd></div>
+        <div><dt>Classes</dt><dd>occupies its tile at resident height; not walkable; roofs and canopies rise above 1.52 m; <em>flat</em> ground detail at or below 0.5 m inside its own tile; walkable; <em>frame</em> open marker; geometry in the tile-edge bands with cross members above 1.52 m; walkable</dd></div>
+      </dl>
+    </div>
+    <div>
+      <h3>Measured geometry budget</h3>
+      <dl class="compact">
+        <div><dt>Per item</dt><dd>1 to 13 boxes (12 triangles each)</dd></div>
+        <div><dt>Resident</dt><dd>12 boxes = 144 triangles</dd></div>
+        <div><dt>37 × 37 window</dt><dd>2750 boxes on plain land; 8230 boxes in the worst measured case (98760 triangles)</dd></div>
+        <div><dt>Renderer limits</dt><dd>1369 cells, 260 objects, 2048 blocks, 220 participants, 8 layers</dd></div>
+      </dl>
+    </div>
+  </div>
+  <h3>Palette tokens</h3>
+  <ul class="tokens"><li><span class="chip" style="background:#438367"></span><code>commons.canopy.deep</code> <span class="hex">#438367</span></li><li><span class="chip" style="background:#6a9f73"></span><code>commons.canopy.mid</code> <span class="hex">#6a9f73</span></li><li><span class="chip" style="background:#8eb189"></span><code>commons.canopy.high</code> <span class="hex">#8eb189</span></li><li><span class="chip" style="background:#468969"></span><code>commons.leaf</code> <span class="hex">#468969</span></li><li><span class="chip" style="background:#79a86d"></span><code>commons.meadow</code> <span class="hex">#79a86d</span></li><li><span class="chip" style="background:#927052"></span><code>commons.ground.dirt</code> <span class="hex">#927052</span></li><li><span class="chip" style="background:#81664a"></span><code>commons.wood.trunk</code> <span class="hex">#81664a</span></li><li><span class="chip" style="background:#b58c58"></span><code>commons.wood.timber</code> <span class="hex">#b58c58</span></li><li><span class="chip" style="background:#a4b1b0"></span><code>commons.stone</code> <span class="hex">#a4b1b0</span></li><li><span class="chip" style="background:#bd7961"></span><code>commons.roof.terracotta</code> <span class="hex">#bd7961</span></li><li><span class="chip" style="background:#d5c4a1"></span><code>commons.plaster</code> <span class="hex">#d5c4a1</span></li><li><span class="chip" style="background:#f1e9cb"></span><code>commons.cream</code> <span class="hex">#f1e9cb</span></li><li><span class="chip" style="background:#e2ca83"></span><code>commons.gold.lantern</code> <span class="hex">#e2ca83</span></li><li><span class="chip" style="background:#ded6a5"></span><code>commons.gold.ui</code> <span class="hex">#ded6a5</span></li><li><span class="chip" style="background:#324842"></span><code>commons.ink</code> <span class="hex">#324842</span></li><li><span class="chip" style="background:#4b9dad"></span><code>commons.water</code> <span class="hex">#4b9dad</span></li><li><span class="chip" style="background:#e5eeee"></span><code>commons.snow</code> <span class="hex">#e5eeee</span></li><li><span class="chip" style="background:#c88466"></span><code>commons.brick</code> <span class="hex">#c88466</span></li><li><span class="chip" style="background:#d9c692"></span><code>commons.sand</code> <span class="hex">#d9c692</span></li><li><span class="chip" style="background:#d7c49c"></span><code>commons.path</code> <span class="hex">#d7c49c</span></li><li><span class="chip" style="background:#9dd9e0"></span><code>commons.glass</code> <span class="hex">#9dd9e0</span></li><li><span class="chip" style="background:#929e9d"></span><code>commons.rock</code> <span class="hex">#929e9d</span></li><li><span class="chip" style="background:#839489"></span><code>commons.wall</code> <span class="hex">#839489</span></li><li><span class="chip" style="background:#649873"></span><code>commons.cactus</code> <span class="hex">#649873</span></li><li><span class="chip" style="background:#d7905d"></span><code>commons.fruit</code> <span class="hex">#d7905d</span></li><li><span class="chip" style="background:#bfa4a4"></span><code>commons.cushion</code> <span class="hex">#bfa4a4</span></li><li><span class="chip" style="background:#8bafa2"></span><code>commons.mattress</code> <span class="hex">#8bafa2</span></li><li><span class="chip" style="background:#cab573"></span><code>commons.book</code> <span class="hex">#cab573</span></li><li><span class="chip" style="background:#a4b9ab"></span><code>commons.prop</code> <span class="hex">#a4b9ab</span></li><li><span class="chip" style="background:#526f82"></span><code>commons.steel</code> <span class="hex">#526f82</span></li><li><span class="chip" style="background:#78998b"></span><code>commons.portal.post</code> <span class="hex">#78998b</span></li><li><span class="chip" style="background:#e7cf83"></span><code>commons.blossom</code> <span class="hex">#e7cf83</span></li><li><span class="chip" style="background:#d5c16e"></span><code>commons.gold.crop</code> <span class="hex">#d5c16e</span></li><li><span class="chip" style="background:#d4a17b"></span><code>commons.skin</code> <span class="hex">#d4a17b</span></li><li><span class="chip" style="background:#6c9eb6"></span><code>commons.agent.representative</code> <span class="hex">#6c9eb6</span></li><li><span class="chip" style="background:#7bc0c9"></span><code>calling.representative</code> <span class="hex">#7bc0c9</span></li></ul>
+  <p class="muted">The tokens are the colours the family is actually drawn in: the renderer tints in src/voxel-world.js LOCAL_COLORS and its per-builder literals, the sealed block colours in content/blocks/*.json, the seven agent colours and eight calling colours in content/cosmetics/, and the interface tokens from nemo-theme.css (--gold #ded6a5, --ink #f1f0df, --bg #051d18, --panel #12382e). This library introduces no new colour. The two representative tokens stand for a set, not one colour: commons.agent.representative is the first of seven sealed agent colours, calling.representative the first of eight calling colours, commons.blossom one of three flower heads, commons.skin one of four tones.</p>
+  <h3>Why this family and not a licensed mesh pack</h3>
+  <ol class="evidence"><li>The pinned renderer has no model loader. Importing assets/vendor/three-voxel.js exposes exactly 27 symbols (ACESFilmicToneMapping, BoxGeometry, CanvasTexture, Color, DirectionalLight, EdgesGeometry, Fog, Group, HemisphereLight, InstancedMesh, LineBasicMaterial, LineSegments, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, Object3D, PCFShadowMap, PerspectiveCamera, Raycaster, SRGBColorSpace, Scene, Sprite, SpriteMaterial, Vector2, Vector3, WebGLRenderer) with no GLTFLoader, no OBJLoader and no TextureLoader. Measured 2026-10-13; the file is 551,333 bytes with SHA-256 37fe9184bb0c982e1d48e77375fbeb6b2f8a3fdd54b62a5f0cd87499fdcb5e88, the same values assets/vendor/three-source-manifest.json records.</li><li>No licensed pack is a drop-in. Every 3D candidate in docs/research/ASSET_SHORTLIST.json records integration_cost &quot;High&quot; for the same missing-loader reason, and none is grid-aligned: Kenney Nature Kit (CC0, 10.05 MiB, 330 organic low-poly models), Kenney City Kit Suburban (CC0, 2.90 MiB, modern suburban vocabulary), Kenney Furniture Kit (CC0, 4.89 MiB), KayKit Adventurers (CC0, rigged humanoids with skeletal animation) and KayKit Medieval Hexagon (hex tiles on a square grid).</li><li>Re-bundling the renderer was already rejected. docs/VOXEL_WORLD.md records the bundle as pinned and hash-verified; docs/research/ASSET_SHORTLIST.md &quot;What a selection would still require&quot; states that adding a loader means re-bundling and re-hashing, which the engine decision record (docs/VOXEL_ENGINE_REUSE.md) rejected for meshing. That is an engineering decision, and no asset download settles it.</li><li>Per-file terms inside every pack archive are still unread. docs/research/ASSET_SHORTLIST.json unresolved_rights_register says the licence was read from the publisher's own repository file or asset page, but the License.txt inside each archive was not inspected, because that would require a download this task forbids. No pack can be called fully verified today.</li><li>The content layer already answers the same question this way. content/THIRD_PARTY.md records every block, furniture, crop and cosmetic definition as LicenseRef-NemoWorld-Project-Authored with appearance.geometry &quot;cube&quot; or a builder name in src/voxel-world.js, and the 20 appearances as the only third-party art. This library extends that answer rather than contradicting it.</li><li>The two vendored sets work through paths that exist now. Lucide SVGs are served as files and used through &lt;img&gt; plus a CSS filter (server.js:71, app.js:507, nemo-theme.css:11); the CC0 mayor sheets load through the 2D canvas atlas route and are sealed as content/appearances/*.json. Neither needs a new loader, a CSP change or a new dependency.</li></ol>
+</section>
+<main>
+<section class="category" id="cat-terrain">
+  <h2>Terrain <span class="tally">9 Produced</span></h2>
+  <div class="grid"><article class="card" id="terrain.grass-block">
+  <header class="card-head">
+    <p class="id">terrain.grass-block</p>
+    <p class="label">Grass block</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#96bb8d"/><polygon points="3,16 14,22 14,34 3,28" fill="#5e8355"/><polygon points="25,16 14,22 14,34 25,28" fill="#496541"/></svg></div>
+  <dl><div><dt>Category</dt><dd>terrain</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 block column · not walkable</dd></div><div><dt>Scale</dt><dd>1 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>1 box · 12 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to edit…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: content/blocks/grass.json (sealed definition) drawn by src/voxel-world.js:222-231 blocksScene()</p>
+</article>
+<article class="card" id="terrain.stone-block">
+  <header class="card-head">
+    <p class="id">terrain.stone-block</p>
+    <p class="label">Stone block</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#b8c2c1"/><polygon points="3,16 14,22 14,34 3,28" fill="#808a89"/><polygon points="25,16 14,22 14,34 25,28" fill="#626a6a"/></svg></div>
+  <dl><div><dt>Category</dt><dd>terrain</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 block column · not walkable</dd></div><div><dt>Scale</dt><dd>1 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>1 box · 12 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to edit…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: content/blocks/stone.json (sealed definition) drawn by src/voxel-world.js:222-231 blocksScene()</p>
+</article>
+<article class="card" id="terrain.wood-block">
+  <header class="card-head">
+    <p class="id">terrain.wood-block</p>
+    <p class="label">Wood block</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#c5a57d"/><polygon points="3,16 14,22 14,34 3,28" fill="#8d6d45"/><polygon points="25,16 14,22 14,34 25,28" fill="#6d5435"/></svg></div>
+  <dl><div><dt>Category</dt><dd>terrain</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 block column · not walkable</dd></div><div><dt>Scale</dt><dd>1 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>1 box · 12 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to edit…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: content/blocks/wood.json (sealed definition) drawn by src/voxel-world.js:222-231 blocksScene()</p>
+</article>
+<article class="card" id="terrain.glass-block">
+  <header class="card-head">
+    <p class="id">terrain.glass-block</p>
+    <p class="label">Glass block</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#b3e1e7"/><polygon points="3,16 14,22 14,34 3,28" fill="#7aa9af"/><polygon points="25,16 14,22 14,34 25,28" fill="#5e8286"/></svg></div>
+  <dl><div><dt>Category</dt><dd>terrain</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 block column · not walkable</dd></div><div><dt>Scale</dt><dd>1 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>1 box · 12 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to edit…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: content/blocks/glass.json (sealed definition) drawn by src/voxel-world.js:222-231 blocksScene()</p>
+</article>
+<article class="card" id="terrain.brick-block">
+  <header class="card-head">
+    <p class="id">terrain.brick-block</p>
+    <p class="label">Brick block</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#d49f88"/><polygon points="3,16 14,22 14,34 3,28" fill="#9c6750"/><polygon points="25,16 14,22 14,34 25,28" fill="#784f3d"/></svg></div>
+  <dl><div><dt>Category</dt><dd>terrain</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 block column · not walkable</dd></div><div><dt>Scale</dt><dd>1 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>1 box · 12 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to edit…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: content/blocks/brick.json (sealed definition) drawn by src/voxel-world.js:222-231 blocksScene()</p>
+</article>
+<article class="card" id="terrain.sand-block">
+  <header class="card-head">
+    <p class="id">terrain.sand-block</p>
+    <p class="label">Sand block</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#e1d3aa"/><polygon points="3,16 14,22 14,34 3,28" fill="#a99a72"/><polygon points="25,16 14,22 14,34 25,28" fill="#827758"/></svg></div>
+  <dl><div><dt>Category</dt><dd>terrain</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 block column · not walkable</dd></div><div><dt>Scale</dt><dd>1 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>1 box · 12 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to edit…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: content/blocks/sand.json (sealed definition) drawn by src/voxel-world.js:222-231 blocksScene()</p>
+</article>
+<article class="card" id="terrain.path-block">
+  <header class="card-head">
+    <p class="id">terrain.path-block</p>
+    <p class="label">Path block</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#e0d1b2"/><polygon points="3,16 14,22 14,34 3,28" fill="#a8997a"/><polygon points="25,16 14,22 14,34 25,28" fill="#81765e"/></svg></div>
+  <dl><div><dt>Category</dt><dd>terrain</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>flat · 1 x 1 block column · walkable</dd></div><div><dt>Scale</dt><dd>0.09 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>1 box · 12 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to edit…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: content/blocks/path.json (sealed definition) drawn by src/voxel-world.js:222-231 blocksScene()</p>
+</article>
+<article class="card" id="terrain.ground-surface">
+  <header class="card-head">
+    <p class="id">terrain.ground-surface</p>
+    <p class="label">Land ground surface</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="2 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#96bb8d"/><polygon points="3,16 14,22 14,34 3,28" fill="#5e8355"/><polygon points="25,16 14,22 14,34 25,28" fill="#496541"/><polygon points="48,10 59,16 48,22 37,16" fill="#96bb8d"/><polygon points="37,16 48,22 48,34 37,28" fill="#5e8355"/><polygon points="59,16 48,22 48,34 59,28" fill="#496541"/></svg><p class="glyph-note">per 1×1 m cell (2 measured)</p></div>
+  <dl><div><dt>Category</dt><dd>terrain</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>flat · 1 x 1 terrain cell · walkable</dd></div><div><dt>Scale</dt><dd>0.08 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>2 boxes per 1×1 m cell</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:163-186 terrainScene(): a base cube (culled when enclosed) plus a 0.08 m surface slab per cell; the surface colour is the sealed block, palette or ground colour of the cell</p>
+</article>
+<article class="card" id="terrain.water-surface">
+  <header class="card-head">
+    <p class="id">terrain.water-surface</p>
+    <p class="label">Water surface</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#73b3bf"/><polygon points="3,16 14,22 14,34 3,28" fill="#3b7a87"/><polygon points="25,16 14,22 14,34 25,28" fill="#2d5e68"/><polygon points="48,10 59,16 48,22 37,16" fill="#73b3bf"/><polygon points="37,16 48,22 48,34 37,28" fill="#3b7a87"/><polygon points="59,16 48,22 48,34 59,28" fill="#2d5e68"/><polygon points="82,10 93,16 82,22 71,16" fill="#73b3bf"/><polygon points="71,16 82,22 82,34 71,28" fill="#3b7a87"/><polygon points="93,16 82,22 82,34 93,28" fill="#2d5e68"/></svg><p class="glyph-note">per 1×1 m cell (3.26 measured)</p></div>
+  <dl><div><dt>Category</dt><dd>terrain</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 terrain cell · not walkable</dd></div><div><dt>Scale</dt><dd>-0.05 m tall · layers n/a · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3.26 boxes per 1×1 m cell</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:171-174: a slice at -0.095 plus a glint detail on every fourth cell, below the ground surface</p>
+</article></div>
+</section>
+<section class="category" id="cat-architecture">
+  <h2>Buildings and structures <span class="tally">7 Produced · 2 Specified, nothing produced</span></h2>
+  <div class="grid"><article class="card" id="arch.cottage">
+  <header class="card-head">
+    <p class="id">arch.cottage</p>
+    <p class="label">Cottage</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 92" width="164" height="92" role="img" aria-label="8 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#ded1b6"/><polygon points="3,16 14,22 14,34 3,28" fill="#a6997e"/><polygon points="25,16 14,22 14,34 25,28" fill="#807661"/><polygon points="48,10 59,16 48,22 37,16" fill="#ded1b6"/><polygon points="37,16 48,22 48,34 37,28" fill="#a6997e"/><polygon points="59,16 48,22 48,34 59,28" fill="#807661"/><polygon points="82,10 93,16 82,22 71,16" fill="#ded1b6"/><polygon points="71,16 82,22 82,34 71,28" fill="#a6997e"/><polygon points="93,16 82,22 82,34 93,28" fill="#807661"/><polygon points="116,10 127,16 116,22 105,16" fill="#ded1b6"/><polygon points="105,16 116,22 116,34 105,28" fill="#a6997e"/><polygon points="127,16 116,22 116,34 127,28" fill="#807661"/><polygon points="150,10 161,16 150,22 139,16" fill="#ded1b6"/><polygon points="139,16 150,22 150,34 139,28" fill="#a6997e"/><polygon points="161,16 150,22 150,34 161,28" fill="#807661"/><polygon points="14,46 25,52 14,58 3,52" fill="#ded1b6"/><polygon points="3,52 14,58 14,70 3,64" fill="#a6997e"/><polygon points="25,52 14,58 14,70 25,64" fill="#807661"/><polygon points="48,46 59,52 48,58 37,52" fill="#ded1b6"/><polygon points="37,52 48,58 48,70 37,64" fill="#a6997e"/><polygon points="59,52 48,58 48,70 59,64" fill="#807661"/><polygon points="82,46 93,52 82,58 71,52" fill="#ded1b6"/><polygon points="71,52 82,58 82,70 71,64" fill="#a6997e"/><polygon points="93,52 82,58 82,70 93,64" fill="#807661"/></svg></div>
+  <dl><div><dt>Category</dt><dd>architecture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>2.6 m tall · layers 0-2 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>8 boxes · 96 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:107-119 house() cottage body; sealed as content/furniture/cottage.json</p>
+</article>
+<article class="card" id="arch.civic-building">
+  <header class="card-head">
+    <p class="id">arch.civic-building</p>
+    <p class="label">Civic building</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 92" width="164" height="92" role="img" aria-label="8 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#ded1b6"/><polygon points="3,16 14,22 14,34 3,28" fill="#a6997e"/><polygon points="25,16 14,22 14,34 25,28" fill="#807661"/><polygon points="48,10 59,16 48,22 37,16" fill="#ded1b6"/><polygon points="37,16 48,22 48,34 37,28" fill="#a6997e"/><polygon points="59,16 48,22 48,34 59,28" fill="#807661"/><polygon points="82,10 93,16 82,22 71,16" fill="#ded1b6"/><polygon points="71,16 82,22 82,34 71,28" fill="#a6997e"/><polygon points="93,16 82,22 82,34 93,28" fill="#807661"/><polygon points="116,10 127,16 116,22 105,16" fill="#ded1b6"/><polygon points="105,16 116,22 116,34 105,28" fill="#a6997e"/><polygon points="127,16 116,22 116,34 127,28" fill="#807661"/><polygon points="150,10 161,16 150,22 139,16" fill="#ded1b6"/><polygon points="139,16 150,22 150,34 139,28" fill="#a6997e"/><polygon points="161,16 150,22 150,34 161,28" fill="#807661"/><polygon points="14,46 25,52 14,58 3,52" fill="#ded1b6"/><polygon points="3,52 14,58 14,70 3,64" fill="#a6997e"/><polygon points="25,52 14,58 14,70 25,64" fill="#807661"/><polygon points="48,46 59,52 48,58 37,52" fill="#ded1b6"/><polygon points="37,52 48,58 48,70 37,64" fill="#a6997e"/><polygon points="59,52 48,58 48,70 59,64" fill="#807661"/><polygon points="82,46 93,52 82,58 71,52" fill="#ded1b6"/><polygon points="71,52 82,58 82,70 71,64" fill="#a6997e"/><polygon points="93,52 82,58 82,70 93,64" fill="#807661"/></svg></div>
+  <dl><div><dt>Category</dt><dd>architecture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>2.6 m tall · layers 0-2 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>8 boxes · 96 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The sealed definition content/furniture/civic-building.json notes that &quot;house() treats this type as a large 2.5 x 2 building&quot;; the renderer does not implement that. The definition and the draw code disagree today, and this task does not own content/, so it is reported, not fixed.</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:125 routes the civic-building type into house(); house() has no civic branch, so the geometry and every colour are the cottage branch at src/voxel-world.js:114-118</p>
+</article>
+<article class="card" id="arch.shelter">
+  <header class="card-head">
+    <p class="id">arch.shelter</p>
+    <p class="label">Shelter (open pavilion)</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 92" width="164" height="92" role="img" aria-label="7 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9d8872"/><polygon points="3,16 14,22 14,34 3,28" fill="#65503a"/><polygon points="25,16 14,22 14,34 25,28" fill="#4d3d2c"/><polygon points="48,10 59,16 48,22 37,16" fill="#9d8872"/><polygon points="37,16 48,22 48,34 37,28" fill="#65503a"/><polygon points="59,16 48,22 48,34 59,28" fill="#4d3d2c"/><polygon points="82,10 93,16 82,22 71,16" fill="#9d8872"/><polygon points="71,16 82,22 82,34 71,28" fill="#65503a"/><polygon points="93,16 82,22 82,34 93,28" fill="#4d3d2c"/><polygon points="116,10 127,16 116,22 105,16" fill="#9d8872"/><polygon points="105,16 116,22 116,34 105,28" fill="#65503a"/><polygon points="127,16 116,22 116,34 127,28" fill="#4d3d2c"/><polygon points="150,10 161,16 150,22 139,16" fill="#9d8872"/><polygon points="139,16 150,22 150,34 139,28" fill="#65503a"/><polygon points="161,16 150,22 150,34 161,28" fill="#4d3d2c"/><polygon points="14,46 25,52 14,58 3,52" fill="#9d8872"/><polygon points="3,52 14,58 14,70 3,64" fill="#65503a"/><polygon points="25,52 14,58 14,70 25,64" fill="#4d3d2c"/><polygon points="48,46 59,52 48,58 37,52" fill="#9d8872"/><polygon points="37,52 48,58 48,70 37,64" fill="#65503a"/><polygon points="59,52 48,58 48,70 59,64" fill="#4d3d2c"/></svg></div>
+  <dl><div><dt>Category</dt><dd>architecture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>frame · 1 x 1 · walkable</dd></div><div><dt>Scale</dt><dd>2.22 m tall · layers 0-2 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>7 boxes · 84 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:108-112 house() shelter branch: four corner posts and three roof steps</p>
+</article>
+<article class="card" id="arch.portal-frame">
+  <header class="card-head">
+    <p class="id">arch.portal-frame</p>
+    <p class="label">Portal frame</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="4 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#96afa5"/><polygon points="3,16 14,22 14,34 3,28" fill="#5e776c"/><polygon points="25,16 14,22 14,34 25,28" fill="#485c53"/><polygon points="48,10 59,16 48,22 37,16" fill="#96afa5"/><polygon points="37,16 48,22 48,34 37,28" fill="#5e776c"/><polygon points="59,16 48,22 48,34 59,28" fill="#485c53"/><polygon points="82,10 93,16 82,22 71,16" fill="#96afa5"/><polygon points="71,16 82,22 82,34 71,28" fill="#5e776c"/><polygon points="93,16 82,22 82,34 93,28" fill="#485c53"/><polygon points="116,10 127,16 116,22 105,16" fill="#96afa5"/><polygon points="105,16 116,22 116,34 105,28" fill="#5e776c"/><polygon points="127,16 116,22 116,34 127,28" fill="#485c53"/></svg></div>
+  <dl><div><dt>Category</dt><dd>architecture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>frame · 1 x 1 · walkable</dd></div><div><dt>Scale</dt><dd>2.28 m tall · layers 0-2 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>4 boxes · 48 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:188-195: two posts, a gold cross member and a landing-pad decal per portal in plan.portals</p>
+</article>
+<article class="card" id="arch.gate-frame">
+  <header class="card-head">
+    <p class="id">arch.gate-frame</p>
+    <p class="label">Frontier gate frame</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 92" width="164" height="92" role="img" aria-label="6 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9d8872"/><polygon points="3,16 14,22 14,34 3,28" fill="#65503a"/><polygon points="25,16 14,22 14,34 25,28" fill="#4d3d2c"/><polygon points="48,10 59,16 48,22 37,16" fill="#9d8872"/><polygon points="37,16 48,22 48,34 37,28" fill="#65503a"/><polygon points="59,16 48,22 48,34 59,28" fill="#4d3d2c"/><polygon points="82,10 93,16 82,22 71,16" fill="#9d8872"/><polygon points="71,16 82,22 82,34 71,28" fill="#65503a"/><polygon points="93,16 82,22 82,34 93,28" fill="#4d3d2c"/><polygon points="116,10 127,16 116,22 105,16" fill="#9d8872"/><polygon points="105,16 116,22 116,34 105,28" fill="#65503a"/><polygon points="127,16 116,22 116,34 127,28" fill="#4d3d2c"/><polygon points="150,10 161,16 150,22 139,16" fill="#9d8872"/><polygon points="139,16 150,22 150,34 139,28" fill="#65503a"/><polygon points="161,16 150,22 150,34 161,28" fill="#4d3d2c"/><polygon points="14,46 25,52 14,58 3,52" fill="#9d8872"/><polygon points="3,52 14,58 14,70 3,64" fill="#65503a"/><polygon points="25,52 14,58 14,70 25,64" fill="#4d3d2c"/></svg></div>
+  <dl><div><dt>Category</dt><dd>architecture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>frame · 1 x 1 · walkable</dd></div><div><dt>Scale</dt><dd>2.16 m tall · layers 0-2 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>6 boxes · 72 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:196-203: two trunk posts, a gold cross member, a soffit, a keystone and a floor decal per gate in plan.gates</p>
+</article>
+<article class="card" id="arch.wall">
+  <header class="card-head">
+    <p class="id">arch.wall</p>
+    <p class="label">Wall terrain tile</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9eaca3"/><polygon points="3,16 14,22 14,34 3,28" fill="#66736b"/><polygon points="25,16 14,22 14,34 25,28" fill="#4f5952"/><polygon points="48,10 59,16 48,22 37,16" fill="#9eaca3"/><polygon points="37,16 48,22 48,34 37,28" fill="#66736b"/><polygon points="59,16 48,22 48,34 59,28" fill="#4f5952"/><polygon points="82,10 93,16 82,22 71,16" fill="#9eaca3"/><polygon points="71,16 82,22 82,34 71,28" fill="#66736b"/><polygon points="93,16 82,22 82,34 93,28" fill="#4f5952"/></svg><p class="glyph-note">per 1×1 m cell (3 measured)</p></div>
+  <dl><div><dt>Category</dt><dd>architecture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 terrain cell · not walkable</dd></div><div><dt>Scale</dt><dd>1.7 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3 boxes per 1×1 m cell</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:177: a 1 x 1.7 x 1 mass on a wall cell</p>
+</article>
+<article class="card" id="arch.world-building-tile">
+  <header class="card-head">
+    <p class="id">arch.world-building-tile</p>
+    <p class="label">World building terrain tile</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="4 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#ded1b6"/><polygon points="3,16 14,22 14,34 3,28" fill="#a6997e"/><polygon points="25,16 14,22 14,34 25,28" fill="#807661"/><polygon points="48,10 59,16 48,22 37,16" fill="#ded1b6"/><polygon points="37,16 48,22 48,34 37,28" fill="#a6997e"/><polygon points="59,16 48,22 48,34 59,28" fill="#807661"/><polygon points="82,10 93,16 82,22 71,16" fill="#ded1b6"/><polygon points="71,16 82,22 82,34 71,28" fill="#a6997e"/><polygon points="93,16 82,22 82,34 93,28" fill="#807661"/><polygon points="116,10 127,16 116,22 105,16" fill="#ded1b6"/><polygon points="105,16 116,22 116,34 105,28" fill="#a6997e"/><polygon points="127,16 116,22 116,34 127,28" fill="#807661"/></svg><p class="glyph-note">per 1×1 m cell (4 measured)</p></div>
+  <dl><div><dt>Category</dt><dd>architecture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 terrain cell · not walkable</dd></div><div><dt>Scale</dt><dd>1.67 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>4 boxes per 1×1 m cell</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:179-183: a body, a roof slab and a window glow on the +y face when the neighbour is not building</p>
+</article>
+<article class="card" id="arch.civic-hall">
+  <header class="card-head">
+    <p class="id">arch.civic-hall</p>
+    <p class="label">Civic hall silhouette (specified)</p>
+    <span class="badge placeholder">Specified, nothing produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 186 118" width="186" height="118" role="img" aria-label="Not produced">
+    <rect x="1" y="1" width="184" height="116" rx="10" fill="none" stroke="#ffc1b5" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="93" y="52" text-anchor="middle" fill="#ffc1b5" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">NOT PRODUCED</text>
+    <text x="93" y="76" text-anchor="middle" fill="#bccbc0" font-size="11">no geometry, no file, no licence</text>
+    <text x="93" y="94" text-anchor="middle" fill="#bccbc0" font-size="11">(see the explanation below)</text>
+  </svg><p class="glyph-note">nothing produced</p></div>
+  <dl><div><dt>Category</dt><dd>architecture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 2 x 2 · not walkable</dd></div><div><dt>Scale</dt><dd>3.2 m tall · layers 0-3 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>Not produced: no geometry exists, so there is no polycount to report.</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  <p class="missing"><strong>What is missing:</strong> Specified by this library. No geometry exists: src/voxel-world.js house() (src/voxel-world.js:107-119) branches only on &quot;shelter&quot;, so civic-building renders as the cottage branch, and the sealed definition content/furniture/civic-building.json records a 2.5 x 2 civic building the code does not draw. Not drawn. The renderer can only draw it by extending house() in src/voxel-world.js, which this task does not own. No file, no geometry, no licence and no integration exists for this entry.</p>
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>A specification, not an asset. Nothing about it is produced, verified or integrated, and it needs a content/ re-seal and an src/ change before it can exist.</li></ul></div>
+  <p class="source">Source: Specified by this library. No geometry exists: src/voxel-world.js house() (src/voxel-world.js:107-119) branches only on &quot;shelter&quot;, so civic-building renders as the cottage branch, and the sealed definition content/furniture/civic-building.json records a 2.5 x 2 civic building the code does not draw.</p>
+</article>
+<article class="card" id="arch.canopy-arch">
+  <header class="card-head">
+    <p class="id">arch.canopy-arch</p>
+    <p class="label">Garden canopy arch (specified)</p>
+    <span class="badge placeholder">Specified, nothing produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 186 118" width="186" height="118" role="img" aria-label="Not produced">
+    <rect x="1" y="1" width="184" height="116" rx="10" fill="none" stroke="#ffc1b5" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="93" y="52" text-anchor="middle" fill="#ffc1b5" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">NOT PRODUCED</text>
+    <text x="93" y="76" text-anchor="middle" fill="#bccbc0" font-size="11">no geometry, no file, no licence</text>
+    <text x="93" y="94" text-anchor="middle" fill="#bccbc0" font-size="11">(see the explanation below)</text>
+  </svg><p class="glyph-note">nothing produced</p></div>
+  <dl><div><dt>Category</dt><dd>architecture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>frame · 1 x 1 · walkable</dd></div><div><dt>Scale</dt><dd>2.3 m tall · layers 0-2 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>Not produced: no geometry exists, so there is no polycount to report.</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  <p class="missing"><strong>What is missing:</strong> Specified by this library. The frame vocabulary today is gateway, shelter, portal and gate (src/footprints.js:45); there is no overhead arch over a garden path, and veg.trellis (mass) is a flat two-post panel, not a walk-through arch. Not drawn. It would need a branch that keeps the posts in the tile-edge bands and the cross members above 1.52 m. No file, no geometry, no licence and no integration exists for this entry.</p>
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>A specification, not an asset; it is not produced and not integrated.</li></ul></div>
+  <p class="source">Source: Specified by this library. The frame vocabulary today is gateway, shelter, portal and gate (src/footprints.js:45); there is no overhead arch over a garden path, and veg.trellis (mass) is a flat two-post panel, not a walk-through arch.</p>
+</article></div>
+</section>
+<section class="category" id="cat-vegetation">
+  <h2>Vegetation <span class="tally">8 Produced · 1 Specified, nothing produced</span></h2>
+  <div class="grid"><article class="card" id="veg.tree">
+  <header class="card-head">
+    <p class="id">veg.tree</p>
+    <p class="label">Tree</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="4 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9d8872"/><polygon points="3,16 14,22 14,34 3,28" fill="#65503a"/><polygon points="25,16 14,22 14,34 25,28" fill="#4d3d2c"/><polygon points="48,10 59,16 48,22 37,16" fill="#9d8872"/><polygon points="37,16 48,22 48,34 37,28" fill="#65503a"/><polygon points="59,16 48,22 48,34 59,28" fill="#4d3d2c"/><polygon points="82,10 93,16 82,22 71,16" fill="#9d8872"/><polygon points="71,16 82,22 82,34 71,28" fill="#65503a"/><polygon points="93,16 82,22 82,34 93,28" fill="#4d3d2c"/><polygon points="116,10 127,16 116,22 105,16" fill="#9d8872"/><polygon points="105,16 116,22 116,34 105,28" fill="#65503a"/><polygon points="127,16 116,22 116,34 127,28" fill="#4d3d2c"/></svg></div>
+  <dl><div><dt>Category</dt><dd>vegetation</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>3.94 m tall · layers 0-3 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>4 boxes · 48 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:83-105 tree(): a trunk plus three canopy steps, with a per-tile deterministic colour variant; sealed as content/furniture/tree.json</p>
+</article>
+<article class="card" id="veg.fruit-tree">
+  <header class="card-head">
+    <p class="id">veg.fruit-tree</p>
+    <p class="label">Fruit tree</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 92" width="164" height="92" role="img" aria-label="6 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9d8872"/><polygon points="3,16 14,22 14,34 3,28" fill="#65503a"/><polygon points="25,16 14,22 14,34 25,28" fill="#4d3d2c"/><polygon points="48,10 59,16 48,22 37,16" fill="#9d8872"/><polygon points="37,16 48,22 48,34 37,28" fill="#65503a"/><polygon points="59,16 48,22 48,34 59,28" fill="#4d3d2c"/><polygon points="82,10 93,16 82,22 71,16" fill="#9d8872"/><polygon points="71,16 82,22 82,34 71,28" fill="#65503a"/><polygon points="93,16 82,22 82,34 93,28" fill="#4d3d2c"/><polygon points="116,10 127,16 116,22 105,16" fill="#9d8872"/><polygon points="105,16 116,22 116,34 105,28" fill="#65503a"/><polygon points="127,16 116,22 116,34 127,28" fill="#4d3d2c"/><polygon points="150,10 161,16 150,22 139,16" fill="#9d8872"/><polygon points="139,16 150,22 150,34 139,28" fill="#65503a"/><polygon points="161,16 150,22 150,34 161,28" fill="#4d3d2c"/><polygon points="14,46 25,52 14,58 3,52" fill="#9d8872"/><polygon points="3,52 14,58 14,70 3,64" fill="#65503a"/><polygon points="25,52 14,58 14,70 25,64" fill="#4d3d2c"/></svg></div>
+  <dl><div><dt>Category</dt><dd>vegetation</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>3.94 m tall · layers 0-3 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>6 boxes · 72 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:103: the tree builder plus two fruit boxes</p>
+</article>
+<article class="card" id="veg.palm">
+  <header class="card-head">
+    <p class="id">veg.palm</p>
+    <p class="label">Palm</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9d8872"/><polygon points="3,16 14,22 14,34 3,28" fill="#65503a"/><polygon points="25,16 14,22 14,34 25,28" fill="#4d3d2c"/><polygon points="48,10 59,16 48,22 37,16" fill="#9d8872"/><polygon points="37,16 48,22 48,34 37,28" fill="#65503a"/><polygon points="59,16 48,22 48,34 59,28" fill="#4d3d2c"/><polygon points="82,10 93,16 82,22 71,16" fill="#9d8872"/><polygon points="71,16 82,22 82,34 71,28" fill="#65503a"/><polygon points="93,16 82,22 82,34 93,28" fill="#4d3d2c"/></svg></div>
+  <dl><div><dt>Category</dt><dd>vegetation</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>2.69 m tall · layers 0-2 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3 boxes · 36 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:95-97: a 2.3 m trunk and two crossing fronds</p>
+</article>
+<article class="card" id="veg.cactus">
+  <header class="card-head">
+    <p class="id">veg.cactus</p>
+    <p class="label">Cactus</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#86af92"/><polygon points="3,16 14,22 14,34 3,28" fill="#4e775a"/><polygon points="25,16 14,22 14,34 25,28" fill="#3c5b45"/><polygon points="48,10 59,16 48,22 37,16" fill="#86af92"/><polygon points="37,16 48,22 48,34 37,28" fill="#4e775a"/><polygon points="59,16 48,22 48,34 59,28" fill="#3c5b45"/><polygon points="82,10 93,16 82,22 71,16" fill="#86af92"/><polygon points="71,16 82,22 82,34 71,28" fill="#4e775a"/><polygon points="93,16 82,22 82,34 93,28" fill="#3c5b45"/></svg></div>
+  <dl><div><dt>Category</dt><dd>vegetation</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.9 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3 boxes · 36 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:89-93: a body, an arm and an upper arm</p>
+</article>
+<article class="card" id="veg.rock-outcrop">
+  <header class="card-head">
+    <p class="id">veg.rock-outcrop</p>
+    <p class="label">Rock outcrop (sealed id: mountain)</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="2 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#aab3b3"/><polygon points="3,16 14,22 14,34 3,28" fill="#727b7a"/><polygon points="25,16 14,22 14,34 25,28" fill="#585f5e"/><polygon points="48,10 59,16 48,22 37,16" fill="#aab3b3"/><polygon points="37,16 48,22 48,34 37,28" fill="#727b7a"/><polygon points="59,16 48,22 48,34 59,28" fill="#585f5e"/></svg></div>
+  <dl><div><dt>Category</dt><dd>vegetation</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.8 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>2 boxes · 24 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:86-88: a rock mass and a snow cap</p>
+</article>
+<article class="card" id="veg.flowers">
+  <header class="card-head">
+    <p class="id">veg.flowers</p>
+    <p class="label">Flowers</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 92" width="164" height="92" role="img" aria-label="8 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#6fa38a"/><polygon points="3,16 14,22 14,34 3,28" fill="#376b52"/><polygon points="25,16 14,22 14,34 25,28" fill="#2a523f"/><polygon points="48,10 59,16 48,22 37,16" fill="#6fa38a"/><polygon points="37,16 48,22 48,34 37,28" fill="#376b52"/><polygon points="59,16 48,22 48,34 59,28" fill="#2a523f"/><polygon points="82,10 93,16 82,22 71,16" fill="#6fa38a"/><polygon points="71,16 82,22 82,34 71,28" fill="#376b52"/><polygon points="93,16 82,22 82,34 93,28" fill="#2a523f"/><polygon points="116,10 127,16 116,22 105,16" fill="#6fa38a"/><polygon points="105,16 116,22 116,34 105,28" fill="#376b52"/><polygon points="127,16 116,22 116,34 127,28" fill="#2a523f"/><polygon points="150,10 161,16 150,22 139,16" fill="#6fa38a"/><polygon points="139,16 150,22 150,34 139,28" fill="#376b52"/><polygon points="161,16 150,22 150,34 161,28" fill="#2a523f"/><polygon points="14,46 25,52 14,58 3,52" fill="#6fa38a"/><polygon points="3,52 14,58 14,70 3,64" fill="#376b52"/><polygon points="25,52 14,58 14,70 25,64" fill="#2a523f"/><polygon points="48,46 59,52 48,58 37,52" fill="#6fa38a"/><polygon points="37,52 48,58 48,70 37,64" fill="#376b52"/><polygon points="59,52 48,58 48,70 59,64" fill="#2a523f"/><polygon points="82,46 93,52 82,58 71,52" fill="#6fa38a"/><polygon points="71,52 82,58 82,70 71,64" fill="#376b52"/><polygon points="93,52 82,58 82,70 93,64" fill="#2a523f"/></svg></div>
+  <dl><div><dt>Category</dt><dd>vegetation</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>flat · 1 x 1 · walkable</dd></div><div><dt>Scale</dt><dd>0.475 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>8 boxes · 96 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:133-137: four stems and four heads, with the flower colour chosen by tile hash; sealed as content/furniture/flowers.json</p>
+</article>
+<article class="card" id="veg.farm">
+  <header class="card-head">
+    <p class="id">veg.farm</p>
+    <p class="label">Farm plot</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 92" width="164" height="92" role="img" aria-label="9 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#aa8f78"/><polygon points="3,16 14,22 14,34 3,28" fill="#725740"/><polygon points="25,16 14,22 14,34 25,28" fill="#584331"/><polygon points="48,10 59,16 48,22 37,16" fill="#aa8f78"/><polygon points="37,16 48,22 48,34 37,28" fill="#725740"/><polygon points="59,16 48,22 48,34 59,28" fill="#584331"/><polygon points="82,10 93,16 82,22 71,16" fill="#aa8f78"/><polygon points="71,16 82,22 82,34 71,28" fill="#725740"/><polygon points="93,16 82,22 82,34 93,28" fill="#584331"/><polygon points="116,10 127,16 116,22 105,16" fill="#aa8f78"/><polygon points="105,16 116,22 116,34 105,28" fill="#725740"/><polygon points="127,16 116,22 116,34 127,28" fill="#584331"/><polygon points="150,10 161,16 150,22 139,16" fill="#aa8f78"/><polygon points="139,16 150,22 150,34 139,28" fill="#725740"/><polygon points="161,16 150,22 150,34 161,28" fill="#584331"/><polygon points="14,46 25,52 14,58 3,52" fill="#aa8f78"/><polygon points="3,52 14,58 14,70 3,64" fill="#725740"/><polygon points="25,52 14,58 14,70 25,64" fill="#584331"/><polygon points="48,46 59,52 48,58 37,52" fill="#aa8f78"/><polygon points="37,52 48,58 48,70 37,64" fill="#725740"/><polygon points="59,52 48,58 48,70 59,64" fill="#584331"/><polygon points="82,46 93,52 82,58 71,52" fill="#aa8f78"/><polygon points="71,52 82,58 82,70 71,64" fill="#725740"/><polygon points="93,52 82,58 82,70 93,64" fill="#584331"/><polygon points="116,46 127,52 116,58 105,52" fill="#aa8f78"/><polygon points="105,52 116,58 116,70 105,64" fill="#725740"/><polygon points="127,52 116,58 116,70 127,64" fill="#584331"/></svg></div>
+  <dl><div><dt>Category</dt><dd>vegetation</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>flat · 1 x 1 · walkable</dd></div><div><dt>Scale</dt><dd>0.475 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>9 boxes · 108 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:133-137: a dirt bed plus eight wheat plants; sealed as content/furniture/farm.json</p>
+</article>
+<article class="card" id="veg.trellis">
+  <header class="card-head">
+    <p class="id">veg.trellis</p>
+    <p class="label">Trellis</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="5 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#c5a57d"/><polygon points="3,16 14,22 14,34 3,28" fill="#8d6d45"/><polygon points="25,16 14,22 14,34 25,28" fill="#6d5435"/><polygon points="48,10 59,16 48,22 37,16" fill="#c5a57d"/><polygon points="37,16 48,22 48,34 37,28" fill="#8d6d45"/><polygon points="59,16 48,22 48,34 59,28" fill="#6d5435"/><polygon points="82,10 93,16 82,22 71,16" fill="#c5a57d"/><polygon points="71,16 82,22 82,34 71,28" fill="#8d6d45"/><polygon points="93,16 82,22 82,34 93,28" fill="#6d5435"/><polygon points="116,10 127,16 116,22 105,16" fill="#c5a57d"/><polygon points="105,16 116,22 116,34 105,28" fill="#8d6d45"/><polygon points="127,16 116,22 116,34 127,28" fill="#6d5435"/><polygon points="150,10 161,16 150,22 139,16" fill="#c5a57d"/><polygon points="139,16 150,22 150,34 139,28" fill="#8d6d45"/><polygon points="161,16 150,22 150,34 161,28" fill="#6d5435"/></svg></div>
+  <dl><div><dt>Category</dt><dd>vegetation</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.8 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>5 boxes · 60 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:145-147: two posts and three horizontal rails</p>
+</article>
+<article class="card" id="veg.hedge-row">
+  <header class="card-head">
+    <p class="id">veg.hedge-row</p>
+    <p class="label">Garden hedge segment (specified)</p>
+    <span class="badge placeholder">Specified, nothing produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 186 118" width="186" height="118" role="img" aria-label="Not produced">
+    <rect x="1" y="1" width="184" height="116" rx="10" fill="none" stroke="#ffc1b5" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="93" y="52" text-anchor="middle" fill="#ffc1b5" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">NOT PRODUCED</text>
+    <text x="93" y="76" text-anchor="middle" fill="#bccbc0" font-size="11">no geometry, no file, no licence</text>
+    <text x="93" y="94" text-anchor="middle" fill="#bccbc0" font-size="11">(see the explanation below)</text>
+  </svg><p class="glyph-note">nothing produced</p></div>
+  <dl><div><dt>Category</dt><dd>vegetation</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>Not produced: no geometry exists, so there is no polycount to report.</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  <p class="missing"><strong>What is missing:</strong> Specified by this library. The sealed furniture set has 27 entries and none is a hedge: content/furniture/ holds scattered ground detail (flowers), vertical frames (trellis) and trees, so a garden parcel has no low continuous green mass to enclose it. Not drawn. It would need a content/furniture/hedge.json entry, a content/ re-seal and a builder branch. No file, no geometry, no licence and no integration exists for this entry.</p>
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>A specification, not an asset. Adding it requires a content/ re-seal, which is a separate reviewed step this task does not own.</li></ul></div>
+  <p class="source">Source: Specified by this library. The sealed furniture set has 27 entries and none is a hedge: content/furniture/ holds scattered ground detail (flowers), vertical frames (trellis) and trees, so a garden parcel has no low continuous green mass to enclose it.</p>
+</article></div>
+</section>
+<section class="category" id="cat-furniture">
+  <h2>Furniture and props <span class="tally">16 Produced</span></h2>
+  <div class="grid"><article class="card" id="furn.bench">
+  <header class="card-head">
+    <p class="id">furn.bench</p>
+    <p class="label">Bench</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="4 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#c5a57d"/><polygon points="3,16 14,22 14,34 3,28" fill="#8d6d45"/><polygon points="25,16 14,22 14,34 25,28" fill="#6d5435"/><polygon points="48,10 59,16 48,22 37,16" fill="#c5a57d"/><polygon points="37,16 48,22 48,34 37,28" fill="#8d6d45"/><polygon points="59,16 48,22 48,34 59,28" fill="#6d5435"/><polygon points="82,10 93,16 82,22 71,16" fill="#c5a57d"/><polygon points="71,16 82,22 82,34 71,28" fill="#8d6d45"/><polygon points="93,16 82,22 82,34 93,28" fill="#6d5435"/><polygon points="116,10 127,16 116,22 105,16" fill="#c5a57d"/><polygon points="105,16 116,22 116,34 105,28" fill="#8d6d45"/><polygon points="127,16 116,22 116,34 127,28" fill="#6d5435"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>0.865 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>4 boxes · 48 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:129-132: a seat, two legs and a backrest; sealed as content/furniture/bench.json</p>
+</article>
+<article class="card" id="furn.table">
+  <header class="card-head">
+    <p class="id">furn.table</p>
+    <p class="label">Table</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#c5a57d"/><polygon points="3,16 14,22 14,34 3,28" fill="#8d6d45"/><polygon points="25,16 14,22 14,34 25,28" fill="#6d5435"/><polygon points="48,10 59,16 48,22 37,16" fill="#c5a57d"/><polygon points="37,16 48,22 48,34 37,28" fill="#8d6d45"/><polygon points="59,16 48,22 48,34 59,28" fill="#6d5435"/><polygon points="82,10 93,16 82,22 71,16" fill="#c5a57d"/><polygon points="71,16 82,22 82,34 71,28" fill="#8d6d45"/><polygon points="93,16 82,22 82,34 93,28" fill="#6d5435"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>0.67 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3 boxes · 36 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:129-132 table branch: a top and two legs</p>
+</article>
+<article class="card" id="furn.workbench">
+  <header class="card-head">
+    <p class="id">furn.workbench</p>
+    <p class="label">Workbench</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#c5a57d"/><polygon points="3,16 14,22 14,34 3,28" fill="#8d6d45"/><polygon points="25,16 14,22 14,34 25,28" fill="#6d5435"/><polygon points="48,10 59,16 48,22 37,16" fill="#c5a57d"/><polygon points="37,16 48,22 48,34 37,28" fill="#8d6d45"/><polygon points="59,16 48,22 48,34 59,28" fill="#6d5435"/><polygon points="82,10 93,16 82,22 71,16" fill="#c5a57d"/><polygon points="71,16 82,22 82,34 71,28" fill="#8d6d45"/><polygon points="93,16 82,22 82,34 93,28" fill="#6d5435"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>0.67 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3 boxes · 36 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:129-132: the same top-and-legs builder as the table</p>
+</article>
+<article class="card" id="furn.bookshelf">
+  <header class="card-head">
+    <p class="id">furn.bookshelf</p>
+    <p class="label">Bookshelf</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 128" width="164" height="128" role="img" aria-label="13 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9d8872"/><polygon points="3,16 14,22 14,34 3,28" fill="#65503a"/><polygon points="25,16 14,22 14,34 25,28" fill="#4d3d2c"/><polygon points="48,10 59,16 48,22 37,16" fill="#9d8872"/><polygon points="37,16 48,22 48,34 37,28" fill="#65503a"/><polygon points="59,16 48,22 48,34 59,28" fill="#4d3d2c"/><polygon points="82,10 93,16 82,22 71,16" fill="#9d8872"/><polygon points="71,16 82,22 82,34 71,28" fill="#65503a"/><polygon points="93,16 82,22 82,34 93,28" fill="#4d3d2c"/><polygon points="116,10 127,16 116,22 105,16" fill="#9d8872"/><polygon points="105,16 116,22 116,34 105,28" fill="#65503a"/><polygon points="127,16 116,22 116,34 127,28" fill="#4d3d2c"/><polygon points="150,10 161,16 150,22 139,16" fill="#9d8872"/><polygon points="139,16 150,22 150,34 139,28" fill="#65503a"/><polygon points="161,16 150,22 150,34 161,28" fill="#4d3d2c"/><polygon points="14,46 25,52 14,58 3,52" fill="#9d8872"/><polygon points="3,52 14,58 14,70 3,64" fill="#65503a"/><polygon points="25,52 14,58 14,70 25,64" fill="#4d3d2c"/><polygon points="48,46 59,52 48,58 37,52" fill="#9d8872"/><polygon points="37,52 48,58 48,70 37,64" fill="#65503a"/><polygon points="59,52 48,58 48,70 59,64" fill="#4d3d2c"/><polygon points="82,46 93,52 82,58 71,52" fill="#9d8872"/><polygon points="71,52 82,58 82,70 71,64" fill="#65503a"/><polygon points="93,52 82,58 82,70 93,64" fill="#4d3d2c"/><polygon points="116,46 127,52 116,58 105,52" fill="#9d8872"/><polygon points="105,52 116,58 116,70 105,64" fill="#65503a"/><polygon points="127,52 116,58 116,70 127,64" fill="#4d3d2c"/><polygon points="150,46 161,52 150,58 139,52" fill="#9d8872"/><polygon points="139,52 150,58 150,70 139,64" fill="#65503a"/><polygon points="161,52 150,58 150,70 161,64" fill="#4d3d2c"/><polygon points="14,82 25,88 14,94 3,88" fill="#9d8872"/><polygon points="3,88 14,94 14,106 3,100" fill="#65503a"/><polygon points="25,88 14,94 14,106 25,100" fill="#4d3d2c"/><polygon points="48,82 59,88 48,94 37,88" fill="#9d8872"/><polygon points="37,88 48,94 48,106 37,100" fill="#65503a"/><polygon points="59,88 48,94 48,106 59,100" fill="#4d3d2c"/><polygon points="82,82 93,88 82,94 71,88" fill="#9d8872"/><polygon points="71,88 82,94 82,106 71,100" fill="#65503a"/><polygon points="93,88 82,94 82,106 93,100" fill="#4d3d2c"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.6 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>13 boxes · 156 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:142-144: a case and twelve book spines</p>
+</article>
+<article class="card" id="furn.bed">
+  <header class="card-head">
+    <p class="id">furn.bed</p>
+    <p class="label">Bed</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#c5a57d"/><polygon points="3,16 14,22 14,34 3,28" fill="#8d6d45"/><polygon points="25,16 14,22 14,34 25,28" fill="#6d5435"/><polygon points="48,10 59,16 48,22 37,16" fill="#c5a57d"/><polygon points="37,16 48,22 48,34 37,28" fill="#8d6d45"/><polygon points="59,16 48,22 48,34 59,28" fill="#6d5435"/><polygon points="82,10 93,16 82,22 71,16" fill="#c5a57d"/><polygon points="71,16 82,22 82,34 71,28" fill="#8d6d45"/><polygon points="93,16 82,22 82,34 93,28" fill="#6d5435"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>0.59 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3 boxes · 36 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:149: a frame, a mattress and a pillow</p>
+</article>
+<article class="card" id="furn.cushion">
+  <header class="card-head">
+    <p class="id">furn.cushion</p>
+    <p class="label">Cushion</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#cdb8b8"/><polygon points="3,16 14,22 14,34 3,28" fill="#958080"/><polygon points="25,16 14,22 14,34 25,28" fill="#736262"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>flat · 1 x 1 · walkable</dd></div><div><dt>Scale</dt><dd>0.2 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>1 box · 12 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:150: one low box</p>
+</article>
+<article class="card" id="furn.lamp">
+  <header class="card-head">
+    <p class="id">furn.lamp</p>
+    <p class="label">Lamp</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#5f706c"/><polygon points="3,16 14,22 14,34 3,28" fill="#273833"/><polygon points="25,16 14,22 14,34 25,28" fill="#1e2b28"/><polygon points="48,10 59,16 48,22 37,16" fill="#5f706c"/><polygon points="37,16 48,22 48,34 37,28" fill="#273833"/><polygon points="59,16 48,22 48,34 59,28" fill="#1e2b28"/><polygon points="82,10 93,16 82,22 71,16" fill="#5f706c"/><polygon points="71,16 82,22 82,34 71,28" fill="#273833"/><polygon points="93,16 82,22 82,34 93,28" fill="#1e2b28"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>2.045 m tall · layers 0-2 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3 boxes · 36 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:138-139: a post, a glowing head and a cap</p>
+</article>
+<article class="card" id="furn.lantern">
+  <header class="card-head">
+    <p class="id">furn.lantern</p>
+    <p class="label">Lantern</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#5f706c"/><polygon points="3,16 14,22 14,34 3,28" fill="#273833"/><polygon points="25,16 14,22 14,34 25,28" fill="#1e2b28"/><polygon points="48,10 59,16 48,22 37,16" fill="#5f706c"/><polygon points="37,16 48,22 48,34 37,28" fill="#273833"/><polygon points="59,16 48,22 48,34 59,28" fill="#1e2b28"/><polygon points="82,10 93,16 82,22 71,16" fill="#5f706c"/><polygon points="71,16 82,22 82,34 71,28" fill="#273833"/><polygon points="93,16 82,22 82,34 93,28" fill="#1e2b28"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>2.045 m tall · layers 0-2 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3 boxes · 36 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:138-139: the same builder as the lamp</p>
+</article>
+<article class="card" id="furn.fountain">
+  <header class="card-head">
+    <p class="id">furn.fountain</p>
+    <p class="label">Fountain</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="4 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#b8c2c1"/><polygon points="3,16 14,22 14,34 3,28" fill="#808a89"/><polygon points="25,16 14,22 14,34 25,28" fill="#626a6a"/><polygon points="48,10 59,16 48,22 37,16" fill="#b8c2c1"/><polygon points="37,16 48,22 48,34 37,28" fill="#808a89"/><polygon points="59,16 48,22 48,34 59,28" fill="#626a6a"/><polygon points="82,10 93,16 82,22 71,16" fill="#b8c2c1"/><polygon points="71,16 82,22 82,34 71,28" fill="#808a89"/><polygon points="93,16 82,22 82,34 93,28" fill="#626a6a"/><polygon points="116,10 127,16 116,22 105,16" fill="#b8c2c1"/><polygon points="105,16 116,22 116,34 105,28" fill="#808a89"/><polygon points="127,16 116,22 116,34 127,28" fill="#626a6a"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.45 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>4 boxes · 48 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:140-141: a basin, water, a column and an upper basin</p>
+</article>
+<article class="card" id="furn.pond">
+  <header class="card-head">
+    <p class="id">furn.pond</p>
+    <p class="label">Pond</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="2 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#b8c2c1"/><polygon points="3,16 14,22 14,34 3,28" fill="#808a89"/><polygon points="25,16 14,22 14,34 25,28" fill="#626a6a"/><polygon points="48,10 59,16 48,22 37,16" fill="#b8c2c1"/><polygon points="37,16 48,22 48,34 37,28" fill="#808a89"/><polygon points="59,16 48,22 48,34 59,28" fill="#626a6a"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>0.13 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>2 boxes · 24 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The sealed definition content/furniture/pond.json:32 states that src/voxel-world.js furniture() has no pond builder. That note is stale: the branch exists at src/voxel-world.js:128 and a measured pond object draws the water colour #4b9dad, which only that branch uses. Reported, not fixed: content/ is sealed and not owned by this task.</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:128: a stone rim and a water surface</p>
+</article>
+<article class="card" id="furn.sculpture">
+  <header class="card-head">
+    <p class="id">furn.sculpture</p>
+    <p class="label">Sculpture</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="2 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#b8c2c1"/><polygon points="3,16 14,22 14,34 3,28" fill="#808a89"/><polygon points="25,16 14,22 14,34 25,28" fill="#626a6a"/><polygon points="48,10 59,16 48,22 37,16" fill="#b8c2c1"/><polygon points="37,16 48,22 48,34 37,28" fill="#808a89"/><polygon points="59,16 48,22 48,34 59,28" fill="#626a6a"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.15 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>2 boxes · 24 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:152: the generic prop branch (a plinth and a body)</p>
+</article>
+<article class="card" id="furn.display">
+  <header class="card-head">
+    <p class="id">furn.display</p>
+    <p class="label">Display</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="2 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#b8c2c1"/><polygon points="3,16 14,22 14,34 3,28" fill="#808a89"/><polygon points="25,16 14,22 14,34 25,28" fill="#626a6a"/><polygon points="48,10 59,16 48,22 37,16" fill="#b8c2c1"/><polygon points="37,16 48,22 48,34 37,28" fill="#808a89"/><polygon points="59,16 48,22 48,34 59,28" fill="#626a6a"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.15 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>2 boxes · 24 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:152: the generic prop branch with the gold body colour</p>
+</article>
+<article class="card" id="furn.kitchen">
+  <header class="card-head">
+    <p class="id">furn.kitchen</p>
+    <p class="label">Kitchen</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="2 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#b8c2c1"/><polygon points="3,16 14,22 14,34 3,28" fill="#808a89"/><polygon points="25,16 14,22 14,34 25,28" fill="#626a6a"/><polygon points="48,10 59,16 48,22 37,16" fill="#b8c2c1"/><polygon points="37,16 48,22 48,34 37,28" fill="#808a89"/><polygon points="59,16 48,22 48,34 59,28" fill="#626a6a"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.15 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>2 boxes · 24 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:152: the generic prop branch</p>
+</article>
+<article class="card" id="furn.boat">
+  <header class="card-head">
+    <p class="id">furn.boat</p>
+    <p class="label">Boat</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="3 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#c5a57d"/><polygon points="3,16 14,22 14,34 3,28" fill="#8d6d45"/><polygon points="25,16 14,22 14,34 25,28" fill="#6d5435"/><polygon points="48,10 59,16 48,22 37,16" fill="#c5a57d"/><polygon points="37,16 48,22 48,34 37,28" fill="#8d6d45"/><polygon points="59,16 48,22 48,34 59,28" fill="#6d5435"/><polygon points="82,10 93,16 82,22 71,16" fill="#c5a57d"/><polygon points="71,16 82,22 82,34 71,28" fill="#8d6d45"/><polygon points="93,16 82,22 82,34 93,28" fill="#6d5435"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.55 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>3 boxes · 36 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:148: a hull, a mast and a sail</p>
+</article>
+<article class="card" id="furn.telescope">
+  <header class="card-head">
+    <p class="id">furn.telescope</p>
+    <p class="label">Telescope</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="2 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#b8c2c1"/><polygon points="3,16 14,22 14,34 3,28" fill="#808a89"/><polygon points="25,16 14,22 14,34 25,28" fill="#626a6a"/><polygon points="48,10 59,16 48,22 37,16" fill="#b8c2c1"/><polygon points="37,16 48,22 48,34 37,28" fill="#808a89"/><polygon points="59,16 48,22 48,34 59,28" fill="#626a6a"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>mass · 1 x 1 · not walkable</dd></div><div><dt>Scale</dt><dd>1.21 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>2 boxes · 24 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:151: a tripod and a tube</p>
+</article>
+<article class="card" id="furn.path-object">
+  <header class="card-head">
+    <p class="id">furn.path-object</p>
+    <p class="label">Path object</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#e0d1b2"/><polygon points="3,16 14,22 14,34 3,28" fill="#a8997a"/><polygon points="25,16 14,22 14,34 25,28" fill="#81765e"/></svg></div>
+  <dl><div><dt>Category</dt><dd>furniture</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>flat · 1 x 1 · walkable</dd></div><div><dt>Scale</dt><dd>0.08 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>1 box · 12 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:127: the same thin surface the frontier path block draws</p>
+</article></div>
+</section>
+<section class="category" id="cat-characters">
+  <h2>Characters <span class="tally">3 Produced · 1 Vendored third party</span></h2>
+  <div class="grid"><article class="card" id="char.resident-body">
+  <header class="card-head">
+    <p class="id">char.resident-body</p>
+    <p class="label">Resident cube avatar</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 128" width="164" height="128" role="img" aria-label="12 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#e8d69e"/><polygon points="3,16 14,22 14,34 3,28" fill="#b09e66"/><polygon points="25,16 14,22 14,34 25,28" fill="#88794f"/><polygon points="48,10 59,16 48,22 37,16" fill="#e8d69e"/><polygon points="37,16 48,22 48,34 37,28" fill="#b09e66"/><polygon points="59,16 48,22 48,34 59,28" fill="#88794f"/><polygon points="82,10 93,16 82,22 71,16" fill="#e8d69e"/><polygon points="71,16 82,22 82,34 71,28" fill="#b09e66"/><polygon points="93,16 82,22 82,34 93,28" fill="#88794f"/><polygon points="116,10 127,16 116,22 105,16" fill="#e8d69e"/><polygon points="105,16 116,22 116,34 105,28" fill="#b09e66"/><polygon points="127,16 116,22 116,34 127,28" fill="#88794f"/><polygon points="150,10 161,16 150,22 139,16" fill="#e8d69e"/><polygon points="139,16 150,22 150,34 139,28" fill="#b09e66"/><polygon points="161,16 150,22 150,34 161,28" fill="#88794f"/><polygon points="14,46 25,52 14,58 3,52" fill="#e8d69e"/><polygon points="3,52 14,58 14,70 3,64" fill="#b09e66"/><polygon points="25,52 14,58 14,70 25,64" fill="#88794f"/><polygon points="48,46 59,52 48,58 37,52" fill="#e8d69e"/><polygon points="37,52 48,58 48,70 37,64" fill="#b09e66"/><polygon points="59,52 48,58 48,70 59,64" fill="#88794f"/><polygon points="82,46 93,52 82,58 71,52" fill="#e8d69e"/><polygon points="71,52 82,58 82,70 71,64" fill="#b09e66"/><polygon points="93,52 82,58 82,70 93,64" fill="#88794f"/><polygon points="116,46 127,52 116,58 105,52" fill="#e8d69e"/><polygon points="105,52 116,58 116,70 105,64" fill="#b09e66"/><polygon points="127,52 116,58 116,70 127,64" fill="#88794f"/><polygon points="150,46 161,52 150,58 139,52" fill="#e8d69e"/><polygon points="139,52 150,58 150,70 139,64" fill="#b09e66"/><polygon points="161,52 150,58 150,70 161,64" fill="#88794f"/><polygon points="14,82 25,88 14,94 3,88" fill="#e8d69e"/><polygon points="3,88 14,94 14,106 3,100" fill="#b09e66"/><polygon points="25,88 14,94 14,106 25,100" fill="#88794f"/><polygon points="48,82 59,88 48,94 37,88" fill="#e8d69e"/><polygon points="37,88 48,94 48,106 37,100" fill="#b09e66"/><polygon points="59,88 48,94 48,106 59,100" fill="#88794f"/></svg></div>
+  <dl><div><dt>Category</dt><dd>characters</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>none · 1 x 1 (the resident's own tile) · walkable</dd></div><div><dt>Scale</dt><dd>1.52 m tall · layers 0-1 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>12 boxes · 144 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>No rigged or animated third-party character is selected. KayKit Adventurers (CC0) and Kenney Blocky Characters (CC0) are recorded as blocked candidates because the pinned renderer cannot load them.</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:304-331 peopleScene(): a floor decal, two legs, a torso, two arms, two hands, a head, hair and two eyes</p>
+</article>
+<article class="card" id="char.calling-emblem">
+  <header class="card-head">
+    <p class="id">char.calling-emblem</p>
+    <p class="label">Calling emblem</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="5 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#f4eed6"/><polygon points="3,16 14,22 14,34 3,28" fill="#bcb69e"/><polygon points="25,16 14,22 14,34 25,28" fill="#918c7a"/><polygon points="48,10 59,16 48,22 37,16" fill="#f4eed6"/><polygon points="37,16 48,22 48,34 37,28" fill="#bcb69e"/><polygon points="59,16 48,22 48,34 59,28" fill="#918c7a"/><polygon points="82,10 93,16 82,22 71,16" fill="#f4eed6"/><polygon points="71,16 82,22 82,34 71,28" fill="#bcb69e"/><polygon points="93,16 82,22 82,34 93,28" fill="#918c7a"/><polygon points="116,10 127,16 116,22 105,16" fill="#f4eed6"/><polygon points="105,16 116,22 116,34 105,28" fill="#bcb69e"/><polygon points="127,16 116,22 116,34 127,28" fill="#918c7a"/><polygon points="150,10 161,16 150,22 139,16" fill="#f4eed6"/><polygon points="139,16 150,22 150,34 139,28" fill="#bcb69e"/><polygon points="161,16 150,22 150,34 161,28" fill="#918c7a"/></svg></div>
+  <dl><div><dt>Category</dt><dd>characters</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>none · within the resident tile · walkable</dd></div><div><dt>Scale</dt><dd>0.18 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>5 boxes · 60 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:17-23 and 317-327: a coloured plate plus two to four cream pixels per calling, drawn on the torso at 0.82 m</p>
+</article>
+<article class="card" id="char.npc-marker">
+  <header class="card-head">
+    <p class="id">char.npc-marker</p>
+    <p class="label">NPC marker</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="4 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#e8d69e"/><polygon points="3,16 14,22 14,34 3,28" fill="#b09e66"/><polygon points="25,16 14,22 14,34 25,28" fill="#88794f"/><polygon points="48,10 59,16 48,22 37,16" fill="#e8d69e"/><polygon points="37,16 48,22 48,34 37,28" fill="#b09e66"/><polygon points="59,16 48,22 48,34 59,28" fill="#88794f"/><polygon points="82,10 93,16 82,22 71,16" fill="#e8d69e"/><polygon points="71,16 82,22 82,34 71,28" fill="#b09e66"/><polygon points="93,16 82,22 82,34 93,28" fill="#88794f"/><polygon points="116,10 127,16 116,22 105,16" fill="#e8d69e"/><polygon points="105,16 116,22 116,34 105,28" fill="#b09e66"/><polygon points="127,16 116,22 116,34 127,28" fill="#88794f"/></svg></div>
+  <dl><div><dt>Category</dt><dd>characters</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>none · within the resident tile · walkable</dd></div><div><dt>Scale</dt><dd>0.3 m tall · layers 0-0 · tile 1×1 m</dd></div><div><dt>Geometry</dt><dd>4 boxes · 48 triangles</dd></div><div><dt>Modification</dt><dd>permitted (project work; no later permission step is needed to chan…</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: src/voxel-world.js:328: a sash plus three hair pins in gold, only when kind is npc</p>
+</article>
+<article class="card" id="char.mayor-sprite-sheet">
+  <header class="card-head">
+    <p class="id">char.mayor-sprite-sheet</p>
+    <p class="label">Civic mayor sprite sheet (20 appearances)</p>
+    <span class="badge vendored">Vendored third party</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 128" width="164" height="128" role="img" aria-label="13 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9caea5"/><polygon points="3,16 14,22 14,34 3,28" fill="#64766c"/><polygon points="25,16 14,22 14,34 25,28" fill="#4d5b53"/><polygon points="48,10 59,16 48,22 37,16" fill="#9caea5"/><polygon points="37,16 48,22 48,34 37,28" fill="#64766c"/><polygon points="59,16 48,22 48,34 59,28" fill="#4d5b53"/><polygon points="82,10 93,16 82,22 71,16" fill="#9caea5"/><polygon points="71,16 82,22 82,34 71,28" fill="#64766c"/><polygon points="93,16 82,22 82,34 93,28" fill="#4d5b53"/><polygon points="116,10 127,16 116,22 105,16" fill="#9caea5"/><polygon points="105,16 116,22 116,34 105,28" fill="#64766c"/><polygon points="127,16 116,22 116,34 127,28" fill="#4d5b53"/><polygon points="150,10 161,16 150,22 139,16" fill="#9caea5"/><polygon points="139,16 150,22 150,34 139,28" fill="#64766c"/><polygon points="161,16 150,22 150,34 161,28" fill="#4d5b53"/><polygon points="14,46 25,52 14,58 3,52" fill="#9caea5"/><polygon points="3,52 14,58 14,70 3,64" fill="#64766c"/><polygon points="25,52 14,58 14,70 25,64" fill="#4d5b53"/><polygon points="48,46 59,52 48,58 37,52" fill="#9caea5"/><polygon points="37,52 48,58 48,70 37,64" fill="#64766c"/><polygon points="59,52 48,58 48,70 59,64" fill="#4d5b53"/><polygon points="82,46 93,52 82,58 71,52" fill="#9caea5"/><polygon points="71,52 82,58 82,70 71,64" fill="#64766c"/><polygon points="93,52 82,58 82,70 93,64" fill="#4d5b53"/><polygon points="116,46 127,52 116,58 105,52" fill="#9caea5"/><polygon points="105,52 116,58 116,70 105,64" fill="#64766c"/><polygon points="127,52 116,58 116,70 127,64" fill="#4d5b53"/><polygon points="150,46 161,52 150,58 139,52" fill="#9caea5"/><polygon points="139,52 150,58 150,70 139,64" fill="#64766c"/><polygon points="161,52 150,58 150,70 161,64" fill="#4d5b53"/><polygon points="14,82 25,88 14,94 3,88" fill="#9caea5"/><polygon points="3,88 14,94 14,106 3,100" fill="#64766c"/><polygon points="25,88 14,94 14,106 25,100" fill="#4d5b53"/><polygon points="48,82 59,88 48,94 37,88" fill="#9caea5"/><polygon points="37,88 48,94 48,106 37,100" fill="#64766c"/><polygon points="59,88 48,94 48,106 59,100" fill="#4d5b53"/><polygon points="82,82 93,88 82,94 71,88" fill="#9caea5"/><polygon points="71,88 82,94 82,106 71,100" fill="#64766c"/><polygon points="93,88 82,94 82,106 93,100" fill="#4d5b53"/></svg><p class="glyph-note">showing 13 of 40</p></div>
+  <dl><div><dt>Category</dt><dd>characters</dd></div><div><dt>Licence</dt><dd>CC0-1.0 · Pixel-boy / Sparklin Labs</dd></div><div><dt>Footprint</dt><dd>none · the NPC stand tile · walkable</dd></div><div><dt>Scale</dt><dd>n/a m tall · layers n/a · tile n/a</dd></div><div><dt>Geometry</dt><dd>Sprites 4 and 8 are shipped by the pack but excluded from the roster: their sheets carry only an idle row and one walk row and cannot supply four directions. That exclusion is a renderer capability limit, not a licence limit.</dd></div><div><dt>Modification</dt><dd>permitted (CC0 1.0 permits use, modification and redistribution for…</dd></div><div><dt>Download</dt><dd>390,086 bytes retained under assets/mayors/ (67 PNGs plus LICENSE.t…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>Nothing outstanding for the licence itself. The files are already vendored and hashed, and this task adds no new file to assets/.</li></ul></div>
+  <p class="source">Source: assets/mayors/manifest.json: 20 appearances as characters/{n}.png and facesets/{n}.png, pinned commit e8674a03ab4456802f71f848c4df79eccca23f7a, retrieved 2026-10-11; sealed as the 20 content/appearances/*.json entries</p>
+</article></div>
+</section>
+<section class="category" id="cat-ui_icons">
+  <h2>Interface icons <span class="tally">1 Vendored third party · 2 Produced · 1 Specified, nothing produced</span></h2>
+  <div class="grid"><article class="card" id="ui.nav-icon-set">
+  <header class="card-head">
+    <p class="id">ui.nav-icon-set</p>
+    <p class="label">Interface icon set (15 SVGs)</p>
+    <span class="badge vendored">Vendored third party</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 128" width="164" height="128" role="img" aria-label="13 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9caea5"/><polygon points="3,16 14,22 14,34 3,28" fill="#64766c"/><polygon points="25,16 14,22 14,34 25,28" fill="#4d5b53"/><polygon points="48,10 59,16 48,22 37,16" fill="#9caea5"/><polygon points="37,16 48,22 48,34 37,28" fill="#64766c"/><polygon points="59,16 48,22 48,34 59,28" fill="#4d5b53"/><polygon points="82,10 93,16 82,22 71,16" fill="#9caea5"/><polygon points="71,16 82,22 82,34 71,28" fill="#64766c"/><polygon points="93,16 82,22 82,34 93,28" fill="#4d5b53"/><polygon points="116,10 127,16 116,22 105,16" fill="#9caea5"/><polygon points="105,16 116,22 116,34 105,28" fill="#64766c"/><polygon points="127,16 116,22 116,34 127,28" fill="#4d5b53"/><polygon points="150,10 161,16 150,22 139,16" fill="#9caea5"/><polygon points="139,16 150,22 150,34 139,28" fill="#64766c"/><polygon points="161,16 150,22 150,34 161,28" fill="#4d5b53"/><polygon points="14,46 25,52 14,58 3,52" fill="#9caea5"/><polygon points="3,52 14,58 14,70 3,64" fill="#64766c"/><polygon points="25,52 14,58 14,70 25,64" fill="#4d5b53"/><polygon points="48,46 59,52 48,58 37,52" fill="#9caea5"/><polygon points="37,52 48,58 48,70 37,64" fill="#64766c"/><polygon points="59,52 48,58 48,70 59,64" fill="#4d5b53"/><polygon points="82,46 93,52 82,58 71,52" fill="#9caea5"/><polygon points="71,52 82,58 82,70 71,64" fill="#64766c"/><polygon points="93,52 82,58 82,70 93,64" fill="#4d5b53"/><polygon points="116,46 127,52 116,58 105,52" fill="#9caea5"/><polygon points="105,52 116,58 116,70 105,64" fill="#64766c"/><polygon points="127,52 116,58 116,70 127,64" fill="#4d5b53"/><polygon points="150,46 161,52 150,58 139,52" fill="#9caea5"/><polygon points="139,52 150,58 150,70 139,64" fill="#64766c"/><polygon points="161,52 150,58 150,70 161,64" fill="#4d5b53"/><polygon points="14,82 25,88 14,94 3,88" fill="#9caea5"/><polygon points="3,88 14,94 14,106 3,100" fill="#64766c"/><polygon points="25,88 14,94 14,106 25,100" fill="#4d5b53"/><polygon points="48,82 59,88 48,94 37,88" fill="#9caea5"/><polygon points="37,88 48,94 48,106 37,100" fill="#64766c"/><polygon points="59,88 48,94 48,106 59,100" fill="#4d5b53"/><polygon points="82,82 93,88 82,94 71,88" fill="#9caea5"/><polygon points="71,88 82,94 82,106 71,100" fill="#64766c"/><polygon points="93,88 82,94 82,106 93,100" fill="#4d5b53"/></svg><p class="glyph-note">showing 13 of 15</p></div>
+  <dl><div><dt>Category</dt><dd>ui_icons</dd></div><div><dt>Licence</dt><dd>ISC · Lucide Icons and Contributors</dd></div><div><dt>Footprint</dt><dd>none · none · walkable</dd></div><div><dt>Scale</dt><dd>n/a m tall · layers n/a · tile n/a</dd></div><div><dt>Geometry</dt><dd>n/a</dd></div><div><dt>Modification</dt><dd>permitted (ISC permits use, modification and redistribution provide…</dd></div><div><dt>Download</dt><dd>7,131 bytes of SVG served from assets/icons/ (the npm package itsel…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>Any icon added later must be checked for a Feather-derived MIT notice before it is vendored, because the derivation list is per icon.</li></ul></div>
+  <p class="source">Source: assets/icons/*.svg (15 files, 7,131 bytes) with hashes in assets/manifest.json, served by server.js:71 and used through &lt;img&gt; plus a CSS filter (app.js:507, app.js:709, nemo-theme.css:11)</p>
+</article>
+<article class="card" id="ui.brand-mark">
+  <header class="card-head">
+    <p class="id">ui.brand-mark</p>
+    <p class="label">NemoWorld mark</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 164 56" width="164" height="56" role="img" aria-label="1 cube glyphs"><polygon points="14,10 25,16 14,22 3,16" fill="#9caea5"/><polygon points="3,16 14,22 14,34 3,28" fill="#64766c"/><polygon points="25,16 14,22 14,34 25,28" fill="#4d5b53"/></svg></div>
+  <dl><div><dt>Category</dt><dd>ui_icons</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>none · none · walkable</dd></div><div><dt>Scale</dt><dd>n/a m tall · layers n/a · tile n/a</dd></div><div><dt>Geometry</dt><dd>n/a</dd></div><div><dt>Modification</dt><dd>permitted (project work)</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The repository grants no redistribution licence for project work (no root LICENSE; package.json is private with no license field).</li></ul></div>
+  <p class="source">Source: assets/nemoworld-mark.svg (472 bytes), used as the favicon and masthead mark at index.html:8 and index.html:16</p>
+</article>
+<article class="card" id="ui.block-swatch">
+  <header class="card-head">
+    <p class="id">ui.block-swatch</p>
+    <p class="label">Frontier block swatches</p>
+    <span class="badge produced">Produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 186 60" width="186" height="60" role="img" aria-label="published measurement"><text x="4" y="34" fill="#bccbc0" font-size="11">Drawn by the stylesheet; there is no asset …</text></svg></div>
+  <dl><div><dt>Category</dt><dd>ui_icons</dd></div><div><dt>Licence</dt><dd>LicenseRef-NemoWorld-Project-Authored · NemoWorld project contributors</dd></div><div><dt>Footprint</dt><dd>none · none · walkable</dd></div><div><dt>Scale</dt><dd>n/a m tall · layers n/a · tile n/a</dd></div><div><dt>Geometry</dt><dd>Drawn by the stylesheet; there is no asset file, so there is nothing to hash.</dd></div><div><dt>Modification</dt><dd>permitted (project work)</dd></div><div><dt>Download</dt><dd>Not applicable: in-repo project code. Nothing was downloaded, extra…</dd></div></dl>
+  
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>The swatch colours are hand-picked tints and no test asserts them against content/blocks/*.json: the swatch for wood is #a78354 while the block colour the renderer draws is #b58c58. Recorded so an implementer does not assume the swatch is the drawn colour. Fixing it means editing nemo-theme.css, which this task does not own.</li></ul></div>
+  <p class="source">Source: nemo-theme.css:45: one 12 px CSS square per sealed block colour on the frontier hotbar buttons (.block-wood #a78354, .block-stone #84939c, .block-glass #8fc9cf, .block-brick #b66f58, .block-sand #dec98f, .block-grass #69a56b, .block-path #b7a575)</p>
+</article>
+<article class="card" id="ui.asset-library-glyph">
+  <header class="card-head">
+    <p class="id">ui.asset-library-glyph</p>
+    <p class="label">Asset library glyph (specified)</p>
+    <span class="badge placeholder">Specified, nothing produced</span>
+  </header>
+  <div class="swatch"><svg viewBox="0 0 186 118" width="186" height="118" role="img" aria-label="Not produced">
+    <rect x="1" y="1" width="184" height="116" rx="10" fill="none" stroke="#ffc1b5" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="93" y="52" text-anchor="middle" fill="#ffc1b5" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">NOT PRODUCED</text>
+    <text x="93" y="76" text-anchor="middle" fill="#bccbc0" font-size="11">no geometry, no file, no licence</text>
+    <text x="93" y="94" text-anchor="middle" fill="#bccbc0" font-size="11">(see the explanation below)</text>
+  </svg><p class="glyph-note">nothing produced</p></div>
+  <dl><div><dt>Category</dt><dd>ui_icons</dd></div><div><dt>Licence</dt><dd>unresolved</dd></div><div><dt>Footprint</dt><dd>none · none · walkable</dd></div><div><dt>Scale</dt><dd>n/a m tall · layers n/a · tile n/a</dd></div><div><dt>Geometry</dt><dd>Not produced. No file exists.</dd></div><div><dt>Modification</dt><dd>unverified (nothing chosen yet)</dd></div><div><dt>Download</dt><dd>Not applicable: nothing was downloaded.</dd></div></dl>
+  <p class="missing"><strong>What is missing:</strong> Specified by this library. The vendored set has no &quot;library&quot;, &quot;catalogue&quot; or &quot;collection&quot; glyph: the 15 files are the navigation, safety, account and start-path icons only (assets/manifest.json). No world geometry. No file, no geometry, no licence and no integration exists for this entry.</p>
+  <div class="rights"><p class="rights-head">Rights and caveats</p><ul><li>Specification only: the icon, its licence and its attribution are all undecided, and this task adds no UI route.</li></ul></div>
+  <p class="source">Source: Specified by this library. The vendored set has no &quot;library&quot;, &quot;catalogue&quot; or &quot;collection&quot; glyph: the 15 files are the navigation, safety, account and start-path icons only (assets/manifest.json).</p>
+</article></div>
+</section>
+<section id="blocked">
+  <h2>Verified candidates that are not selected</h2>
+  <p class="muted">Carried forward from <code>docs/research/ASSET_SHORTLIST.json</code> so the research is not lost. A verified licence is not a selection: each of these is blocked by the missing-loader decision, by family scope, or by an unresolved right.</p>
+  <table>
+    <thead><tr><th>Id</th><th>Package and version</th><th>Licence as read at the rights holder's own page or file</th><th>Why it is not selected</th><th>Unresolved</th></tr></thead>
+    <tbody><tr>
+  <td><code>kenney.nature-kit</code><br><span class="muted">vegetation</span></td>
+  <td>Kenney Nature Kit v1.0 (2020)</td>
+  <td>CC0 1.0 Universal</td>
+  <td>Not a drop-in: organic low-poly models need a loader the pinned bundle does not have, and the pack is not on the 1 m grid. Held as the strongest CC0 nature pack if a loader decision is ever reversed.</td>
+  <td>Per-file terms inside the archive unread (no download); polycounts unpublished.</td>
+</tr>
+<tr>
+  <td><code>kenney.city-kit-suburban</code><br><span class="muted">architecture</span></td>
+  <td>Kenney City Kit (Suburban) v2.0 (2020)</td>
+  <td>CC0 1.0 Universal</td>
+  <td>The closest licensed shapes to a cottage and a garden, but a modern suburban vocabulary on a non-grid modular kit, and still needs a loader.</td>
+  <td>Archive contents and per-file terms unread.</td>
+</tr>
+<tr>
+  <td><code>kenney.furniture-kit</code><br><span class="muted">furniture</span></td>
+  <td>Kenney Furniture Kit v1.0 (2018)</td>
+  <td>CC0 1.0 Universal</td>
+  <td>A direct counterpart to the 27 sealed furniture entries, but each piece would need a loader, a scale decision and a footprint entry; the family already covers interiors with 16 authored items.</td>
+  <td>Archive contents and per-file terms unread.</td>
+</tr>
+<tr>
+  <td><code>kenney.blocky-characters</code><br><span class="muted">characters</span></td>
+  <td>Kenney Blocky Characters v2.0 (2016)</td>
+  <td>CC0 1.0 Universal</td>
+  <td>The closest published analogue to the existing cube avatar, but it still needs a loader and an animation path, and the pick contract assumes the code-built silhouette.</td>
+  <td>Clip list and formats unstated; archive unread.</td>
+</tr>
+<tr>
+  <td><code>kaykit.adventurers</code><br><span class="muted">characters</span></td>
+  <td>KayKit Character Pack: Adventurers 1.0, FREE tier (5 characters, 25+ accessories)</td>
+  <td>CC0 (the publisher's own LICENSE.txt in the official repository)</td>
+  <td>Rigged, animated humanoids need a glTF/FBX loader, skeletal animation playback and a decision about the existing cube avatars with calling emblems, none of which exists.</td>
+  <td>The paid EXTRA and SOURCE tiers must not be used; per-model polycounts unstated; the free/paid boundary is prose.</td>
+</tr>
+<tr>
+  <td><code>kaykit.forest-nature</code><br><span class="muted">vegetation</span></td>
+  <td>KayKit Forest Nature Pack, FREE tier (100+ models)</td>
+  <td>CC0 (the publisher's product page: &quot;Free for personal and commercial use, no attribution required. (CC0 Licensed)&quot;)</td>
+  <td>Textured models need an image decoder path the bundle does not expose (it exports CanvasTexture but no image loader) plus a material decision against flat MeshLambertMaterial batches.</td>
+  <td>CC0 comes only from the itch product page: this pack has no GitHub licence-file distribution, and the LICENSE.txt inside the free archive was not inspected.</td>
+</tr>
+<tr>
+  <td><code>terasology.chris-volume-1-ost</code><br><span class="muted">ambient_audio</span></td>
+  <td>Terasology module ChrisVolume1OST, module.txt 1.1.0-SNAPSHOT, 8 OGG tracks by Chris Köbke</td>
+  <td>Apache License 2.0 (LICENSE beside the tracks)</td>
+  <td>Outside this family: the brief scopes terrain, buildings, vegetation, furniture, characters and interface icons. Audio is also a new subsystem: there is no AudioContext, &lt;audio&gt; element or src/ audio module anywhere in app.js, server.js or src/.</td>
+  <td>No NOTICE file and no README, so the Apache-2.0 notice obligations for the eight tracks should be confirmed with the project first; track durations and loop points are unknown.</td>
+</tr>
+<tr>
+  <td><code>kenney.rpg-audio</code><br><span class="muted">ambient_audio</span></td>
+  <td>Kenney RPG Audio v1.0 (2014)</td>
+  <td>CC0 1.0 Universal</td>
+  <td>Outside family scope, and it needs the audio subsystem that does not exist yet.</td>
+  <td>The page does not state whether the files are OGG, WAV or MP3, which decides the shipped size; archive unread.</td>
+</tr>
+<tr>
+  <td><code>google.material-symbols</code><br><span class="muted">ui_icons</span></td>
+  <td>google/material-design-icons, master branch</td>
+  <td>Apache License 2.0 for the icons (repository README section License; Apache-2.0 LICENSE at the repository root)</td>
+  <td>A second icon family beside Lucide is a design decision, not a licensing one, and mixing two families in one navigation bar is what the shell avoids. The family already has one icon language.</td>
+  <td>Font builds may carry their own terms; only SVGs should be vendored, and per-icon licence files were not enumerated.</td>
+</tr>
+<tr>
+  <td><code>game-icons.net</code><br><span class="muted">ui_icons</span></td>
+  <td>game-icons.net repository, master branch</td>
+  <td>CC BY 3.0 overall, with per-contributor CC0 exceptions listed in the repository license.txt</td>
+  <td>Fantasy and RPG emblems for callings and objectives would need one contributor entry read per icon before use; the family already has a coherent icon language and no such screen exists yet.</td>
+  <td>The per-contributor CC BY 3.0 / CC0 split must be read icon by icon at selection time.</td>
+</tr>
+<tr>
+  <td><code>quaternius.ultimate-modular-men</code><br><span class="muted">characters</span></td>
+  <td>Quaternius Ultimate Modular Men Pack (11 animated models)</td>
+  <td>Quaternius Asset License (QAL) v1.0, last updated 8/28/2026 - a custom licence, not CC0</td>
+  <td>Blocked by an unresolved licence question, not by engineering.</td>
+  <td>Whether serving the model files from this app to a browser is &quot;redistributing the Assets themselves&quot; under QAL section 3a is ambiguous, and older third-party CC0 claims are superseded. Do not integrate without written clarification.</td>
+</tr>
+<tr>
+  <td><code>terasology.plant-pack</code><br><span class="muted">vegetation</span></td>
+  <td>Terasology module PlantPack, module.txt 1.2.2-SNAPSHOT, 146 PNG block textures</td>
+  <td>No asset-level licence. The module has no LICENSE, COPYING or credits file and no licence field in module.txt; the engine README states project artwork is CC BY 4.0 &quot;unless indicated otherwise - see credits for minor exceptions&quot;, a project-level statement that identifies neither these files nor their authors.</td>
+  <td>Study only. An engine licence does not licence its assets, and this module publishes no asset-level terms.</td>
+  <td>The per-asset licence and attribution list are unresolved. This is the one candidate in the 25-candidate research set flagged license_verified_from_publisher_file: false.</td>
+</tr>
+<tr>
+  <td><code>luanti.minetest-game-media</code><br><span class="muted">vegetation</span></td>
+  <td>minetest_game (Luanti) master; LICENSE.txt 27,103 bytes</td>
+  <td>Media: CC BY-SA 3.0 with per-file exceptions (one item is CC BY 3.0), read from the repository LICENSE.txt. Code: LGPL-2.1-or-later. The engine licence does not cover the media.</td>
+  <td>Licence-clean but a poor fit: 16 px pixel-block art conflicts with the family's flat untextured cubes and with docs/VOXEL_WORLD.md, which records that the world deliberately avoids a Minecraft-like look.</td>
+  <td>The CC BY 3.0 exception list and the per-mod author lists were not enumerated, and share-alike effects on combined project artwork are a legal question, not an engineering one.</td>
+</tr></tbody>
+  </table>
+</section>
+<section id="unresolved">
+  <h2>Unresolved rights and observed inconsistencies</h2>
+  <ul id="unresolved-list"><li id="right-no-root-license">
+  <p class="sev">blocking-for-redistribution · <span class="muted">The whole project-authored family</span></p>
+  <p>The repository has no root LICENSE, COPYING or LICENCE file, and package.json declares &quot;private&quot;: true with no license field, so the project-authored family (49 of the 51 selected entries: every entry except char.mayor-sprite-sheet and ui.nav-icon-set) has no stated redistribution terms. Every such entry is recorded as LicenseRef-NemoWorld-Project-Authored, which is deliberately not MIT and not any bundled dependency licence. This is the same open question docs/CONTENT_DEFINITIONS.md and content/THIRD_PARTY.md already record, and the project owner must answer it before any of this work is distributed outside the repository.</p>
+  <p class="muted">Owner decision. This task cannot resolve it and does not attempt to.</p>
+</li>
+<li id="right-renderer-has-no-loader">
+  <p class="sev">blocks-every-mesh-pack · <span class="muted">All licensed 3D packs</span></p>
+  <p>assets/vendor/three-voxel.js exports 27 symbols with no GLTFLoader, OBJLoader or TextureLoader (measured 2026-10-13). Selecting a mesh pack therefore requires re-bundling the pinned, hash-verified renderer, which the engine decision record rejected for meshing.</p>
+  <p class="muted">Engineering decision recorded in docs/research/ASSET_SHORTLIST.md point 2; not made or pre-empted here.</p>
+</li>
+<li id="right-archive-internal-terms-unread">
+  <p class="sev">open-verification · <span class="muted">Every Kenney and KayKit candidate</span></p>
+  <p>Each licence was read at the publisher's own repository licence file or asset page, but the License.txt inside the distributed archive was not inspected, because that would require the download this task forbids.</p>
+  <p class="muted">Re-read and hash the archive licence at selection time, as assets/mayors/manifest.json already does for the mayor sheets.</p>
+</li>
+<li id="right-kaykit-forest-itch-only">
+  <p class="sev">open-verification · <span class="muted">KayKit Forest Nature Pack</span></p>
+  <p>CC0 is stated on the itch product page only; this pack has no GitHub licence-file distribution and the free/paid boundary is prose, not an itemised file list.</p>
+  <p class="muted">Do not treat the free tier as verified until the archive licence is read.</p>
+</li>
+<li id="right-terasology-plantpack-no-licence">
+  <p class="sev">do-not-integrate · <span class="muted">Terasology PlantPack</span></p>
+  <p>No asset-level licence and no credits file. This is the single candidate in the research set with license_verified_from_publisher_file: false.</p>
+  <p class="muted">Study only.</p>
+</li>
+<li id="right-quaternius-qal-redistribution">
+  <p class="sev">do-not-integrate · <span class="muted">Quaternius Ultimate Modular Men Pack</span></p>
+  <p>QAL v1.0 section 3a forbids redistributing the assets as assets; whether serving the files to a browser is such a redistribution is ambiguous, and older CC0 claims are superseded.</p>
+  <p class="muted">Needs written clarification or a different, clearly licensed pack.</p>
+</li>
+<li id="right-minetest-share-alike">
+  <p class="sev">legal-question · <span class="muted">Luanti minetest_game media</span></p>
+  <p>CC BY-SA 3.0 is verified, but the CC BY 3.0 exception list and the per-mod author lists were not enumerated, and share-alike would attach to modified derivatives of combined project artwork.</p>
+  <p class="muted">Owner legal decision; the pack is also a poor visual fit and is not selected.</p>
+</li>
+<li id="right-chris-volume-notice">
+  <p class="sev">open-verification · <span class="muted">Terasology ChrisVolume1OST</span></p>
+  <p>Apache-2.0 applies, but the module has no NOTICE and no README, so the notice obligations for the eight tracks should be confirmed before shipping.</p>
+  <p class="muted">Confirm with the project if audio is ever adopted.</p>
+</li>
+<li id="right-material-symbols-font-terms">
+  <p class="sev">open-verification · <span class="muted">Google Material Symbols</span></p>
+  <p>The icons are Apache-2.0, but the repository's font builds may carry their own terms.</p>
+  <p class="muted">Vendor SVGs only unless the font is separately checked.</p>
+</li>
+<li id="right-game-icons-per-icon-split">
+  <p class="sev">open-verification · <span class="muted">game-icons.net</span></p>
+  <p>CC BY 3.0 overall with per-contributor CC0 exceptions; each chosen icon's contributor entry must be read before use.</p>
+  <p class="muted">Read icon by icon at selection time.</p>
+</li>
+<li id="right-freesound-rain-account">
+  <p class="sev">open-verification · <span class="muted">Freesound Rain_Ambience (VanEngelen)</span></p>
+  <p>CC0 is stated on the file's own page, but downloading requires an account, so the file was not obtained and the page state was not captured.</p>
+  <p class="muted">Capture the page as evidence at download time if weather audio is adopted.</p>
+</li>
+<li id="right-no-polycounts">
+  <p class="sev">data-gap · <span class="muted">Every licensed 3D pack</span></p>
+  <p>No polycount is published for any 3D pack except the OpenGameArt vegetation pack, and no download size is known for the itch-hosted KayKit and Quaternius packs, because nothing was downloaded.</p>
+  <p class="muted">Recorded as not published / not measured rather than estimated. Only the family's own items carry a measured polycount, recorded in this manifest.</p>
+</li>
+<li id="right-civic-building-definition-disagrees-with-renderer">
+  <p class="sev">observed-inconsistency · <span class="muted">content/furniture/civic-building.json and src/voxel-world.js</span></p>
+  <p>The sealed definition notes that &quot;house() treats this type as a large 2.5 x 2 building&quot;; src/voxel-world.js:107-119 house() branches only on &quot;shelter&quot;, so civic-building draws the cottage branch. Measured 2026-10-13: a civic-building object contributes 8 boxes and the identical material set (wall #d5c4a1, roof #bd7961, door #324842, glass #9dd9e0, chimney #968b79) as a cottage. The definition and the draw code disagree today.</p>
+  <p class="muted">Reported, not fixed: content/ is sealed and re-sealing is a separate reviewed step, and src/voxel-world.js is not owned by this task. arch.civic-hall records what a distinct civic silhouette would need.</p>
+</li>
+<li id="right-pond-note-is-stale">
+  <p class="sev">observed-inconsistency · <span class="muted">content/furniture/pond.json and src/voxel-world.js</span></p>
+  <p>The sealed definition states that src/voxel-world.js furniture() has no pond builder. The branch exists at src/voxel-world.js:128, and a measured pond object draws the water colour #4b9dad, which only that branch uses.</p>
+  <p class="muted">Reported, not fixed: content/ is sealed and not owned by this task.</p>
+</li>
+<li id="right-block-swatch-colours-unasserted">
+  <p class="sev">observed-inconsistency · <span class="muted">ui.block-swatch and the sealed block colours</span></p>
+  <p>The frontier hotbar swatches in nemo-theme.css:45 are hand-picked tints and no test asserts them against content/blocks/*.json: the swatch for wood is #a78354 while the block colour the renderer draws is #b58c58.</p>
+  <p class="muted">Recorded so an implementer does not assume the swatch is the drawn colour. Fixing it means editing nemo-theme.css, which this task does not own.</p>
+</li></ul>
+</section>
+</main>
+<footer>
+  <p>Licence status per entry is on its card; the notice text each entry requires is in <a href="./ATTRIBUTION.md">ATTRIBUTION.md</a>,
+  and the reasoning is in <a href="../ASSET_LIBRARY.md">docs/ASSET_LIBRARY.md</a>.
+  The repository has <strong>no root LICENSE</strong>, so no licence can be inherited from the project itself:
+  49 of the 51 entries are <code>LicenseRef-NemoWorld-Project-Authored</code> and their redistribution terms are unstated.</p>
+  <p>No proprietary or decompiled Minecraft content and no Sword Art Online character, texture, logo or code appears anywhere in this family.</p>
+</footer>
+</body>
+</html>
