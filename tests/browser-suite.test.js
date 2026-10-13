@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SCENARIOS, selectedScenarios, productionDatabaseRefusal } from '../scripts/browser-suite.mjs';
+import { SCENARIOS, selectedScenarios, productionDatabaseRefusal, throttleRefusal } from '../scripts/browser-suite.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const workspace = join(resolve(tmpdir()), 'nemoworld-browser-unit-fixture');
@@ -56,6 +56,14 @@ test('the suite runs its scenarios in order, and a focused run keeps only the na
   assert.deepEqual(selectedScenarios('country-ambassadors,first-person-controls'), ['first-person-controls', 'country-ambassadors']);
   assert.deepEqual(selectedScenarios('not-a-scenario'), []);
   assert.deepEqual(selectedScenarios(''), all);
+});
+
+test('only the server’s own movement-throttle refusal is recognised, so a walk resumes for that alone', () => {
+  assert.equal(throttleRefusal('Move more slowly.'), true);
+  assert.equal(throttleRefusal('Travel more slowly.'), true);
+  for (const other of [undefined, null, '', 'The path is blocked. Choose another route.', 'No known walkable route to that tile.', 'Walk to a doorway before entering.', 'This garden is private.', 'Allow a moment between building actions.']) {
+    assert.equal(throttleRefusal(other), false, `${JSON.stringify(other)} must not be treated as a movement-throttle refusal`);
+  }
 });
 
 test('every queue-review correction has a named browser regression scenario', () => {

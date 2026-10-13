@@ -1125,13 +1125,27 @@ async function enterFrontierAs(page, agentId) {
   await openTab(page, 'Open world');
   const select = page.locator('#view select[name="agent"]');
   if (await select.count()) { await select.selectOption(agentId); await settle(page); await page.waitForTimeout(400); }
-  const entering = page.locator('#view').getByRole('button', { name: 'Enter the frontier', exact: true });
-  if (await entering.count()) {
+  const inFrontier = async () => /Build the frontier/.test((await page.locator('#view').textContent().catch(() => '')) || '');
+  // Entering the frontier walks the resident to a passage and travels through it; either step can be
+  // refused by the server's own movement throttle under load, so the entry is resumed a bounded
+  // number of times rather than left half-finished.
+  const deadline = Date.now() + 100_000;
+  let retries = 0;
+  while (!await inFrontier() && Date.now() < deadline) {
+    const entering = page.locator('#view').getByRole('button', { name: 'Enter the frontier', exact: true });
+    if (!await entering.count()) break;
     await entering.first().click();
-    await page.waitForFunction(() => /Build the frontier/.test(document.querySelector('#view')?.textContent || ''), null, { timeout: STEP_TIMEOUT_MS });
+    await page.waitForFunction(() => /Build the frontier/.test(document.querySelector('#view')?.textContent || ''), null, { timeout: Math.min(45_000, Math.max(2000, deadline - Date.now())) }).catch(() => {});
+    if (await inFrontier()) break;
+    const notice = ((await page.locator('#notice').textContent().catch(() => '')) || '').trim();
+    if (!throttleRefusal(notice)) break;
+    retries += 1;
+    console.log('        walk retry       the server’s own movement throttle refused a step; resuming the walk into the frontier');
+    await page.waitForTimeout(800);
   }
   const view = await page.locator('#view').textContent();
   expect(/Build the frontier/.test(view), 'the frontier panel must be on screen', { expected: 'the frontier panel', actual: view?.slice(0, 200) });
+  if (retries) state.notes.push(`entering the frontier was resumed ${retries} time(s) after the server’s own movement throttle refused a step`);
   return agentId;
 }
 
@@ -1149,6 +1163,48 @@ async function frontierClick(page, locator) {
     if (!/between building actions/i.test(notice)) return notice;
   }
   return notice;
+}
+
+/**
+ * The server's own movement throttle, in the words the interface repeats. Movement and travel are
+ * limited to one action per 120 ms (`src/spaces.js`); a walk driven through the interface paces
+ * itself at 160 ms, but when the server processes two steps back to back — which happens under load
+ * — it refuses the later one with a 429 and the client's walk stops where it stands. Only these
+ * documented refusals are ever resumed, a bounded number of times, and every retry is counted.
+ */
+const MOVEMENT_THROTTLE = /Move more slowly|Travel more slowly/i;
+export const throttleRefusal = (notice) => MOVEMENT_THROTTLE.test(String(notice || ''));
+
+/**
+ * Clicks "Walk to plot" and waits until the resident actually stands inside the plot. A walk stopped
+ * by the documented movement throttle is resumed from where the resident stands, instead of letting
+ * the whole scenario collapse because one step was refused.
+ */
+async function walkIntoPlot(page, agentId, plotId, parcel, { timeout = 100_000 } = {}) {
+  const deadline = Date.now() + timeout;
+  const inside = (position) => Boolean(position) && position.x >= parcel.x && position.x < parcel.x + parcel.width && position.y >= parcel.y && position.y < parcel.y + parcel.height;
+  let retries = 0;
+  for (let attempt = 0; attempt < 5 && Date.now() < deadline; attempt++) {
+    if (attempt > 0) {
+      retries += 1;
+      console.log(`        walk retry       the server’s own movement throttle refused a step; resuming the walk into ${plotId}`);
+      await page.waitForTimeout(800);
+    }
+    await page.locator('#plot-detail').getByRole('button', { name: 'Walk to plot', exact: true }).click();
+    const reached = await waitForCondition(() => (inside(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId)) ? true : null), 'the resident to step into the plot', { timeout: Math.min(60_000, Math.max(2000, deadline - Date.now())) }).catch(() => null);
+    if (reached) {
+      const position = await waitForResidentToSettle(agentId);
+      if (inside(position)) {
+        if (retries) state.notes.push(`the walk into ${plotId} was resumed ${retries} time(s) after the server’s own movement throttle refused a step`);
+        return position;
+      }
+    }
+    const notice = ((await page.locator('#notice').textContent().catch(() => '')) || '').trim();
+    if (!throttleRefusal(notice)) {
+      throw new BrowserSuiteFailure(`the walk into ${plotId} stopped short of the plot`, { expected: `a tile inside ${plotId}`, actual: `${describe(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId))}; the interface said “${notice}”` });
+    }
+  }
+  throw new BrowserSuiteFailure(`the resident never reached ${plotId}`, { expected: `a tile inside ${plotId}`, actual: describe(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId)) });
 }
 
 /** Waits until the resident stops moving, so a click that depends on its tile runs after the walk. */
@@ -1198,10 +1254,9 @@ define('plot-and-blueprints', async () => {
 
   await step('the steward walks into the plot and previews a blueprint without writing', async () => {
     const blocksBefore = count('SELECT COUNT(*) AS n FROM frontier_blocks WHERE world_id=?', worldId);
-    await page.locator('#plot-detail').getByRole('button', { name: 'Walk to plot', exact: true }).click();
-    const position = await waitForResidentToSettle(pathfinder.id);
     const parcel = row('SELECT x,y,width,height FROM land_parcels WHERE id=?', plotId);
     expect(parcel, 'the stewarded plot must exist in the land registry', { actual: describe(parcel) });
+    const position = await walkIntoPlot(page, pathfinder.id, plotId, parcel);
     const readReport = async () => (await page.locator('#blueprint-report').textContent().catch(() => '')) || '';
     await frontierClick(page, page.locator('#view button[data-blueprint-preview]'));
     const first = await waitForCondition(async () => {
@@ -1355,6 +1410,10 @@ define('quest-progression', async () => {
       const stored = row('SELECT world_id,visited_at FROM journey_visits WHERE agent_id=? AND world_id<>?', steward.id, 'commons');
       return stored ? stored : null;
     }, 'the resident to record a visit to a shared place');
+    // "Enter with my resident" travels the resident and the interface re-renders the world when it
+    // arrives. Waiting for the browser to actually show the country venue keeps the tab switch below
+    // from racing that render, which would otherwise put the world back on screen over the board.
+    await waitForClient(owner.page, () => { const id = window.__nemoworld?.worldId?.() || ''; return /^country:/.test(id) && document.querySelector('#view #world') ? id : null; }, null, 'the browser to show the country venue', 20_000);
     await openTab(owner.page, 'Quest chains');
     const receipt = await waitForCondition(async () => {
       const stored = row('SELECT objective_id,source_kind,source_id,points,account_id FROM calling_receipts WHERE agent_id=? AND objective_id LIKE ?', steward.id, `quest:${QUEST_SLUG}.%`);
@@ -1809,6 +1868,24 @@ async function openWorldAs(page, agentId) {
   if (await select.count()) { await select.selectOption(agentId); await settle(page); await page.waitForTimeout(500); }
 }
 
+/**
+ * Points a visitor's browser at a public garden through the world directory and waits until its
+ * event channel is actually open on that world. The stream is verified to be ready *and* bound to
+ * the garden, so a leftover ready stream on another world can never stand in for this subscription.
+ */
+async function outsiderLooksAtPublicGarden(page, ownerName, garden, timeout = 15_000) {
+  await openTab(page, 'Explore worlds');
+  const search = page.locator('#view form').filter({ has: page.locator('[aria-label="World or garden name"]') });
+  await search.locator('[aria-label="World or garden name"]').fill(ownerName);
+  await search.getByRole('button', { name: 'Search gardens', exact: true }).click();
+  await settle(page);
+  const card = page.locator('#view .world-directory-card', { hasText: ownerName }).first();
+  await card.waitFor({ state: 'visible' });
+  await card.getByRole('button', { name: 'Look around', exact: true }).click();
+  await settle(page);
+  return waitForClient(page, (world) => { const s = window.__nemoworld?.stream?.(); return s && s.ready && s.world === world ? s : null; }, garden, 'the outsider to subscribe to the public garden', timeout);
+}
+
 define('shared-presence-two-clients', async () => {
   const owner = await actor('owner');
   const stranger = await actor('stranger');
@@ -1933,16 +2010,7 @@ define('subscription-entitlement-and-revocation', async () => {
     await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'public' });
     await openApp(stranger.page, ACTORS.stranger);
     // Point the visitor at the public garden through the world directory; the world view subscribes to it.
-    await openTab(stranger.page, 'Explore worlds');
-    const search = stranger.page.locator('#view form').filter({ has: stranger.page.locator('[aria-label="World or garden name"]') });
-    await search.locator('[aria-label="World or garden name"]').fill('Walker');
-    await search.getByRole('button', { name: 'Search gardens', exact: true }).click();
-    await settle(stranger.page);
-    const card = stranger.page.locator('#view .world-directory-card', { hasText: 'Walker' }).first();
-    await card.waitFor({ state: 'visible' });
-    await card.getByRole('button', { name: 'Look around', exact: true }).click();
-    await settle(stranger.page);
-    const stream = await waitForClient(stranger.page, (world) => { const s = window.__nemoworld?.stream?.(); return s && s.ready && s.world === world ? s : null; }, garden, 'the outsider to subscribe to the public garden');
+    const stream = await outsiderLooksAtPublicGarden(stranger.page, walker.name, garden);
     expect(stream.world === garden, 'a public garden must stream to a signed-in outsider', { actual: describe(stream) });
     expect(count('SELECT COUNT(*) AS n FROM worlds WHERE id=? AND visibility=?', garden, 'public') === 1, 'the garden must be public in the database', { actual: 'the garden was not public' });
     return `a live subscription on the public garden ${garden}`;
@@ -1961,17 +2029,20 @@ define('subscription-entitlement-and-revocation', async () => {
   });
 
   await step('a session revoked mid-subscription loses its live feed', async () => {
-    // Reopen the public garden so a fresh subscription is open, then revoke the stored session
-    // credential directly. This is the server-side revocation the channel must notice by itself: the
-    // client keeps its stream open and is not the one that closes it.
+    // Reopen the public garden (the step above made it private), then establish a *fresh* subscription
+    // and revoke the stored session credential directly. This is the server-side revocation the
+    // channel must notice by itself: the client keeps its stream open and is not the one that closes
+    // it. A client that was told its access was revoked stops retrying that world, so the subscription
+    // is rebuilt from a reloaded page instead of assuming the visitor's page resubscribes on its own
+    // (or depending on whichever world an earlier scenario left that page showing).
     await apiPatch(fixtures().owner, `/agents/${walker.id}/home`, { visibility: 'public' });
-    await openTab(stranger.page, 'Open world');
-    // Which world the visitor shows is not the point here: the point is that a live subscription exists
-    // when the credential is revoked. Either world is a readable one, so a ready stream is expected.
-    const stream = await waitForClient(stranger.page, () => { const s = window.__nemoworld?.stream?.(); return s && s.ready ? s : null; }, null, 'the visitor to hold a live subscription again');
-    expect(stream.ready, 'the visitor must hold a fresh subscription', { actual: describe(stream) });
+    expect(count('SELECT COUNT(*) AS n FROM worlds WHERE id=? AND visibility=?', garden, 'public') === 1, 'the garden must be public again before the visitor resubscribes', { actual: describe(row('SELECT id,visibility FROM worlds WHERE id=?', garden)) });
+    await stranger.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(stranger.page);
+    const stream = await outsiderLooksAtPublicGarden(stranger.page, walker.name, garden);
+    expect(stream.ready && stream.world === garden, 'the visitor must hold a fresh subscription to the reopened garden', { expected: `a ready stream on ${garden}`, actual: describe(stream) });
     write("UPDATE tokens SET revoked=1 WHERE kind='session' AND account_id=?", state.fixtures.stranger.id);
-    const closed = await waitForClient(stranger.page, () => { const c = window.__nemoworld?.lastClosed?.(); return c && c.reason === 'session_revoked' ? c : null; }, null, 'the revoked session to lose its subscription', 6000);
+    const closed = await waitForClient(stranger.page, () => { const c = window.__nemoworld?.lastClosed?.(); return c && c.reason === 'session_revoked' ? c : null; }, null, 'the revoked session to lose its subscription', 8000);
     expect(closed.reason === 'session_revoked', 'a revoked credential must end the subscription', { expected: 'session_revoked', actual: describe(closed) });
     const live = count("SELECT COUNT(*) AS n FROM tokens t JOIN accounts a ON a.id=t.account_id WHERE a.email=? AND t.kind='session' AND t.revoked=0", ACTORS.stranger.email);
     expect(live === 0, 'the session credential must be revoked in the database', { actual: `live=${live}` });
@@ -2006,18 +2077,37 @@ async function readInteractionTile(page, x, y) {
   }, `the interaction panel to read tile ${x}, ${y}`);
 }
 
-/** Walks the resident to a tile with the documented typed walk form, and waits for the stored step. */
-async function walkResidentTo(page, agentId, x, y) {
+/**
+ * Walks the resident to a tile with the documented typed walk form, and waits for the stored step.
+ * One grid step at a time, and each step re-reads the voxel snapshot, so a long walk is slow — which
+ * is also when the server's own 120 ms movement throttle can refuse a step under load and stop the
+ * client's walk. The suite then resumes the same walk from where the resident stands, a bounded
+ * number of times, counting each retry instead of treating a documented refusal as a failure.
+ */
+async function walkResidentTo(page, agentId, x, y, { timeout = 100_000 } = {}) {
+  const deadline = Date.now() + timeout;
   const form = page.locator('#view .walk-to-tile form');
   await form.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
-  await form.locator('[aria-label="Tile X"]').fill(String(x));
-  await form.locator('[aria-label="Tile Y"]').fill(String(y));
-  await form.getByRole('button', { name: 'Walk to tile', exact: true }).click();
-  // One grid step at a time, and each step re-reads the voxel snapshot, so a long walk is slow.
-  return waitForCondition(async () => {
-    const position = row('SELECT x,y,world_id FROM agents WHERE id=?', agentId);
-    return position && position.x === x && position.y === y ? position : null;
-  }, `the resident to walk to ${x}, ${y}`, { timeout: 180_000 });
+  const atTile = () => { const position = row('SELECT x,y,world_id FROM agents WHERE id=?', agentId); return position && position.x === x && position.y === y ? position : null; };
+  let retries = 0;
+  while (Date.now() < deadline) {
+    await form.locator('[aria-label="Tile X"]').fill(String(x));
+    await form.locator('[aria-label="Tile Y"]').fill(String(y));
+    await form.getByRole('button', { name: 'Walk to tile', exact: true }).click();
+    const arrived = await waitForCondition(atTile, `the resident to walk to ${x}, ${y}`, { timeout: Math.min(60_000, Math.max(2000, deadline - Date.now())) }).catch(() => null);
+    if (arrived) {
+      if (retries) state.notes.push(`the walk to ${x}, ${y} was resumed ${retries} time(s) after the server’s own movement throttle refused a step`);
+      return arrived;
+    }
+    const notice = ((await page.locator('#notice').textContent().catch(() => '')) || '').trim();
+    if (!throttleRefusal(notice)) {
+      throw new BrowserSuiteFailure(`the walk to ${x}, ${y} stopped short`, { expected: `the resident at ${x}, ${y}`, actual: `${describe(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId))}; the interface said “${notice}”` });
+    }
+    retries += 1;
+    console.log(`        walk retry       the server’s own movement throttle refused a step; resuming the walk to ${x}, ${y}`);
+    await page.waitForTimeout(800);
+  }
+  throw new BrowserSuiteFailure(`the resident never reached ${x}, ${y}`, { expected: `the resident at ${x}, ${y}`, actual: describe(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId)) });
 }
 
 /** One documented travel route, waiting out the server's own 120 ms movement throttle. */
