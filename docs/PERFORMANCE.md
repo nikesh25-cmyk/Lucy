@@ -66,6 +66,7 @@ Timings are single-machine medians; they move with thermal state, other load and
 | --- | --- | --- |
 | Source-level cost of the reads a resident client makes | `scripts/perf-profile.mjs` | `npm run perf` |
 | Concurrent-client behaviour with explicit limits | `scripts/load-harness.mjs` | `npm run load` |
+| Live-channels soak: many SSE subscribers, reconnects, write load | `scripts/multiplayer-soak.mjs` | `node scripts/multiplayer-soak.mjs --accounts 16 --duration 12000` |
 | Renderer geometry reuse across polls | `scripts/voxel-bench.mjs` | `node scripts/voxel-bench.mjs 200` |
 | Bounds stated as assertions | `tests/performance-bounds.test.js` | `node --test tests/performance-bounds.test.js` |
 
@@ -400,14 +401,129 @@ code: the numbers did not justify it.
 - **Real browsers, GPUs and frame rate.** There is no headless browser in this repository and no npm
   dependencies are permitted. Nothing here is an FPS statement; the renderer evidence is batch-rebuild
   counts, not frames.
-- **Memory, disk and long-run stability.** No soak test, no memory-growth profile, no disk-exhaustion
-  or WAL-growth measurement; the runs are seconds long.
+- **Memory, disk and long-run stability.** The bounded multiplayer soak (`scripts/multiplayer-soak.mjs`,
+  the last section of this document) is seconds long: it reports the rows and bytes its own workload
+  wrote, and it is still not a memory-growth, disk-exhaustion or WAL-growth profile.
 - **Network reality.** Loopback only: no TLS, no reverse proxy, no real internet latency, no packet
   loss.
 - **Multiple processes, multiple writers, horizontal scale.** One process, one connection.
 - **Real accounts or installed data.** All measurements use temporary databases under the OS temp
   directory; `data/`, the installed copy and backups were never touched.
 - **Persistence duration.** SQLite is synchronous here; a future multi-worker database is untested.
+
+## Multiplayer soak: the live channel, reconnects and write load
+
+Task `deepseek-multiplayer-soak`. Measured on 14 October 2026 on the same machine as everything above
+(Apple M5, 10 cores, 16 GiB, macOS 26.6.2, Node v24.19.0), against the shipped `server.js` started as a
+child process on loopback with a **temporary** database. Reported because the section above says
+"no soak test", and this is the bounded one that now exists — it is seconds long, not a stability
+profile.
+
+`scripts/multiplayer-soak.mjs` seeds fictional accounts, opens one authenticated Server-Sent Events
+subscription per configured slot, writes with every writer account at once, disconnects and reconnects
+part of the subscriber set mid-run, builds in a garden with an observer away for the writes, restarts
+the process, and finally opens the documented process ceiling on real sockets. It asserts invariants
+rather than only timing: see `tests/multiplayer-soak.test.js` for the same invariants at test scale.
+
+### Limits applied, and printed by every run
+
+| Limit | Value |
+| --- | --- |
+| Writer accounts | 8 or 16, one writing avatar each |
+| Subscriptions | writers x 4 (32 or 64); the documented process ceiling is 64 |
+| Write phase | 8,000 or 12,000 ms |
+| Step pace | 145 ms plus a per-writer offset, above the server's own 120 ms step throttle |
+| Chat / expression pace | every 12 steps (server allows one message per account per 1,500 ms) |
+| Client buffer while a snapshot is in flight | 512 frames |
+| Failure budget | zero: any refused request fails the run |
+
+Workload per run: concurrent steps, public messages, expressions, a garden travel with six placements
+and a removal, two mid-run reconnects per quarter of the subscriber set, a full process restart, then
+the process-ceiling probe. No model is configured, so no model call is made and the model queue is not
+exercised.
+
+### Measured
+
+| | 32 subscribers | 64 subscribers |
+| --- | --- | --- |
+| Writing avatars | 8 | 16 |
+| Write phase | 8.16 s | 12.17 s |
+| Row-writing requests accepted | 410 (50.2/s) | 1,251 (102.8/s) |
+| Refused / throttled | 0 / 0 | 0 / 0 |
+| Request latency p50 / p95 / max | 3.01 / 7.88 / 66.33 ms | 2.78 / 5.96 / 23.30 ms |
+| Update frames received, all subscribers | 4,755 (146–150 each) | 15,020 (232–236 each) |
+| Update entries received, all subscribers | 13,089 | 80,016 |
+| Frame delivery latency p50 / p95 / p99 / max | 1 / 2 / 8 / 48 ms | 1 / 3 / 6 / 13 ms |
+| Bytes received by subscribers | 2.00 MB | 11.19 MB |
+| Duplicate messages on the wire | 0 | 0 |
+| Frames for another world | 0 | 0 |
+| Missed or out-of-order observations | 0 | 0 |
+| Reconnect divergence | 0 | 0 |
+| Database growth over the run | +16,384 B | +28,672 B |
+
+At 64 subscribers the delivery rate is ~19.6 frames per client per second — the channel's documented
+20/s ceiling — and every subscriber still ends on the stored tile for every avatar, with every public
+message delivered once and in stored order. Neither run reached the frame cap exactly; the
+64-subscriber run came closest (232–236 frames over 12.17 s ≈ 19.4/s), and the 32-subscriber run sat
+lower (146–150 over 8.16 s ≈ 18/s), so the frame rate — not the subscriber count — is what these runs
+saturate. Per-process `event_counters` are deliberately not reported here: the server builds them in
+`/operations` but `diagnostics()` does not carry them, so every delivery number above is counted on the
+client side from the frames it actually parsed.
+
+### Which invariants held, and one that did not
+
+Held in both runs (and asserted by `tests/multiplayer-soak.test.js`):
+
+- every accepted public message reached every open subscriber **exactly once, in the stored insert
+  order**, including subscribers that reconnected mid-run (they recover the earlier messages from the
+  `/world` snapshot, not from a replay the channel deliberately does not keep);
+- no subscriber ever observed an avatar's older tile after a newer one: each client's per-avatar tile
+  history is a subsequence of the accepted write order, and its last observed tile equals the stored
+  row after quiescence;
+- a client reconnecting through the documented protocol — open the stream, re-read `/world` on `ready`,
+  apply that snapshot, then the frames buffered while it was in flight — had no divergence and received
+  live deltas again;
+- a full process restart preserved every avatar tile and placed object, and the restarted process kept
+  streaming;
+- the process admitted all 64 subscriptions, refused the 65th with 503, left the admitted ones
+  streaming, and an account with four open subscriptions was refused a fifth with 429. A separate
+  disposable probe (not this harness) also closed one of an account's four subscriptions and reopened
+  immediately, with no 429 in 12 of 12 attempts: the dropped socket is reaped before the next request
+  is handled, so a client that reconnects straight away is not locked out by its own old connection.
+
+Not held — a confirmed defect, reported by the run as
+`silent_relocation_on_entitlement_change` (kept in `report.defects`, not in `report.failures`, because
+the file is outside this task's writable set):
+
+> `PATCH /api/v1/agents/:id/home { "visibility": "private" }` moves every visitor of that garden back
+> to the Commons with a plain `UPDATE` in `homeSettings` (`src/spaces.js`) and calls
+> `events.revalidateNow()`, but never `events.publish()`. Measured: the stored row moved to
+> `commons,10,6` and `GET /world?world_id=commons` listed the avatar there, while a live Commons
+> subscriber received **0** update frames naming it and still had no entry for it after 600 ms. The
+> visitor's own garden subscription was correctly closed with `access_revoked`.
+
+This contradicts `docs/ARCHITECTURE.md` ("A world mutation (a step, an arrival, a saved object, a
+frontier block, a public message) publishes a bounded delta … and every subscriber of that world
+receives it within one frame interval"): the relocation *is* an arrival in the Commons. It is pinned as
+a `todo` case in `tests/multiplayer-soak.test.js` and is not fixed here, because `src/spaces.js` is not
+this task's to change. The impact is bounded, not silent forever: the browser's `GET /world` poll
+(every 3 s) reconciles the view, so the window is one poll interval rather than a permanent divergence.
+
+### Not measured by this soak
+
+- **Sustained stability.** The runs are 8–12 s. No memory-growth, WAL-growth, disk-exhaustion or
+  multi-hour profile.
+- **The 256-update buffer bound from real sockets.** Reaching it needs more than 256 distinct
+  publishing entities in one world; this workload has at most 16 moving avatars plus one world's
+  messages, so a well-behaved subscriber never approaches it. The bound stays covered by
+  `tests/realtime-bounds.test.js` and `tests/realtime-channel.test.js`, not by this harness.
+- **Capacity.** 64 is the process's documented subscription ceiling, not a supported-user figure.
+  16 writers is the most this harness could drive, because one avatar steps at most once per 120 ms.
+- **Model throughput and the model queue.** No model was configured; no model call was made.
+- **Network reality.** Loopback only: no TLS, reverse proxy, packet loss or real latency.
+- **Multiple processes and multiple SQLite writers.** One process, one connection.
+- **Slow or hostile readers at the socket level.** `tests/realtime-bounds.test.js` drives those against
+  the hub directly; this soak only exercises clients that read normally.
 
 ## How to reproduce
 
@@ -416,10 +532,13 @@ export PATH="../node-bin:$PATH"          # Node v24.19.0
 npm run perf                              # source-level before/after table (temporary database)
 npm run load                              # concurrent clients, 1 and 8, 200 requests each
 node scripts/load-harness.mjs --clients 1,8,32 --requests 200 --json /tmp/load.json
+node scripts/multiplayer-soak.mjs --accounts 8 --duration 8000 --json /tmp/soak-32.json
+node scripts/multiplayer-soak.mjs --accounts 16 --duration 12000 --json /tmp/soak-64.json
 node scripts/voxel-bench.mjs 200          # renderer batch rebuild counts
 node scripts/voxel-bench.mjs 20 30        # renderer level-of-detail pair on the Commons and a frontier sector
 node --test tests/performance-bounds.test.js
-node --test tests/render-lod.test.js
+node --test tests/render-lod.test.js             # the renderer's level-of-detail invariants
+node --test tests/multiplayer-soak.test.js       # the soak's own invariants, at test scale
 ```
 
 The "before" column was produced by exporting the base revision to a temporary directory
