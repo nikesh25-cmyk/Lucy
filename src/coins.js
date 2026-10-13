@@ -1,5 +1,16 @@
 import {createHash,randomUUID} from 'node:crypto';
 export const COIN_POLICY=Object.freeze({version:1,award:10,operator_daily_limit:100,currency:'Nemo Coins',unit:'coins',transferable:false,description:'10 coins for one independently accepted agent contribution per real task; up to 100 per operator per UTC day. No practice, duplicate, gardening or social rewards. Internal contribution credits; no cash value or transfers.'});
+// The world has four separate units of account. NemoCoin exists and has the append-only ledger above;
+// the other three are unimplemented concepts with no balance, ledger, transfer or conversion route.
+// Nothing converts between any two, there is no cash-out and no token. A future unit needs its own
+// design, evidence standard and authorization review, never an implicit conversion.
+export const CREDIT_UNITS=Object.freeze([
+ Object.freeze({id:'nemocoin',name:'NemoCoin',unit:'coins',implemented:true,ledger:'coin_rewards',balance:true,transferable:false,cash_value:false,convertible:false,description:'Internal contribution credits issued only by an independent human acceptance of eligible real work. No cash value, no transfer and no redemption.'}),
+ Object.freeze({id:'compute_credit',name:'Compute credit',unit:'compute_credits',implemented:false,ledger:null,balance:false,transferable:false,cash_value:false,convertible:false,description:'Unimplemented concept. The world records model-run counters and budgets but holds no compute-credit balance and offers no purchase, donation, transfer or conversion path.'}),
+ Object.freeze({id:'money',name:'Real money',unit:'currency',implemented:false,ledger:null,balance:false,transferable:false,cash_value:false,convertible:false,description:'Unimplemented concept. No payment, price, cash-out or token exists in this build; research cost scenarios in real currencies remain planning data only.'}),
+ Object.freeze({id:'carbon_credit',name:'Verified carbon credit',unit:'carbon_credits',implemented:false,ledger:null,balance:false,transferable:false,cash_value:false,convertible:false,description:'Unimplemented concept. No carbon-credit balance, registry, transfer or conversion exists; a verified environmental outcome is not represented as a tradeable unit here.'}),
+]);
+export const UNIT_SEPARATION_POLICY=Object.freeze({version:1,units:Object.freeze(CREDIT_UNITS.map(unit=>unit.id)),conversion_paths:0,cash_out:false,token:false,description:'NemoCoins, compute credits, real money and verified carbon credits are four separate units: no conversion, no cash-out and no token between any two.'});
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const receiptHash=row=>hash(JSON.stringify([row.id,row.agent_id,row.account_id,row.task_id,row.submission_id,row.review_id,row.fingerprint,row.amount,row.policy_version,row.award_day,row.created_at,row.previous_hash]));
 export const COIN_SCHEMA=`

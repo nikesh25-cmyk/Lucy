@@ -1,4 +1,4 @@
-import {coinMethods,verifyCoinLedger} from './coins.js';
+import {coinMethods,verifyCoinLedger,UNIT_SEPARATION_POLICY} from './coins.js';
 import {missionDirectory} from './mission-directory.js';
 import { createDeliveryPacket } from './delivery-packet.js';
 import { assessmentReason, adoptionDeclaration, ADOPTION_BOUNDARY, citationComparison, requestedChangesReason, storedAdoption, storedRequestedChanges, submissionState } from './review-assessment.js';
@@ -784,7 +784,7 @@ export class Platform {
     // counters are then assembled only after the administrator check above has passed.
     const runtime = typeof live === 'function' ? live() : live;
     const audit_valid = this.verifyAudit(), coin_ledger_valid = verifyCoinLedger(this.db);
-    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts'), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100'), audit_valid, coin_ledger_valid, coin_receipts:this.get('SELECT COUNT(*) AS n FROM coin_rewards').n, audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100'), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100"),
+    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts'), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100'), audit_valid, coin_ledger_valid, coin_receipts:this.get('SELECT COUNT(*) AS n FROM coin_rewards').n, credit_units: UNIT_SEPARATION_POLICY, audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100'), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100"),
       diagnostics: this.diagnostics({ ...runtime, integrity: { audit_chain_valid: audit_valid, coin_ledger_valid } }) };
   }
   // The administrator dashboard. Every number here is read from this process or from the database;
