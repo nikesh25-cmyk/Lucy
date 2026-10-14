@@ -12,6 +12,7 @@ import { QUEST_SCHEMA } from './quests.js';
 import { GUILD_SCHEMA } from './guilds.js';
 import { WORLD_OBJECT_GUARDS } from './placement-policy.js';
 import { TRADE_MARKET_SCHEMA, tradeSchemaPresent, verifyTradeRecords, verifyTradeSchema } from './trade-board.js';
+import { widenWorldContentChecks, worldContentChecksCurrent } from './schema24.js';
 
 export function openDatabase(path) {
   const initialRegistration = process.env.LUCY_INITIAL_REGISTRATION || 'open';
@@ -19,7 +20,7 @@ export function openDatabase(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
   const sourceVersion = db.prepare('PRAGMA user_version').get().user_version;
-  if (sourceVersion > 23) { db.close(); throw new Error('Unsupported database schema version.'); }
+  if (sourceVersion > 24) { db.close(); throw new Error('Unsupported database schema version.'); }
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', consent_at TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS invites(code_hash TEXT PRIMARY KEY, role TEXT NOT NULL, expires_at INTEGER NOT NULL, used_by TEXT);
@@ -80,6 +81,14 @@ export function openDatabase(path) {
     // gains the live-grant path instead of keeping a guard that only knew about stewardship.
     db.exec(PLOT_GRANT_SCHEMA);
     if (!db.prepare('PRAGMA table_info(frontier_blocks)').all().some(column => column.name === 'grant_id')) db.exec('ALTER TABLE frontier_blocks ADD COLUMN grant_id TEXT REFERENCES plot_grants(id)');
+    if (sourceVersion < 24) {
+      // Both objects reference the tables while SQLite reparses schema during ALTER TABLE.
+      // Their definitions below restore them in the same transaction after the copy.
+      db.exec('DROP TRIGGER IF EXISTS calling_receipts_validate_insert; DROP VIEW IF EXISTS calling_source_events; DROP TRIGGER IF EXISTS land_stewardships_validate_insert');
+      widenWorldContentChecks(db);
+      db.exec(LAND_SCHEMA);
+    }
+    if (!worldContentChecksCurrent(db)) throw new Error('Stored world content constraints are incomplete.');
     db.exec('DROP TRIGGER IF EXISTS frontier_blocks_plot_insert');
     db.exec(LAND_BLOCK_GUARDS);
     // The garden and cottage insert guard needs the worlds table, which exists by this point.
@@ -161,7 +170,7 @@ export function openDatabase(path) {
       CREATE INDEX IF NOT EXISTS research_mission_country_goal ON research_leads(mission_id,country_code,goal);
       CREATE INDEX IF NOT EXISTS claims_agent ON claims(agent_id);
       CREATE INDEX IF NOT EXISTS submissions_claim ON submissions(claim_id,status);
-      PRAGMA user_version=23; COMMIT;`);
+      PRAGMA user_version=24; COMMIT;`);
   } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
   if (path !== ':memory:') chmodSync(path, 0o600);
   return db;

@@ -98,7 +98,7 @@ test('quarantine holds availability without rewriting the acceptance, the receip
   // The receipt is not withdrawn and the ledger still verifies; the database still validates.
   assert.equal(verifyCoinLedger(f.platform.db), true);
   assert.equal(f.platform.verifyAudit(), true);
-  assert.equal(validateDatabase(f.database).schema_version, 23);
+  assert.equal(validateDatabase(f.database).schema_version, 24);
   // A held contribution is not offered as approved work, and its packet is refused.
   assert.equal(f.platform.gallery().some((record) => record.id === f.submission.id), false);
   assert.throws(() => f.platform.deliveryPacket({ submission: f.submission.id }), { status: 404 });

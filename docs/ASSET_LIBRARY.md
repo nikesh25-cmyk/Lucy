@@ -287,3 +287,48 @@ image, no script beyond its own markup, and no new dependency. It is generated f
   evidence that any geometry draws correctly in a browser.
 - **The four specifications need a content re-seal**, which is a separate reviewed step: three of them
   would change the sealed content layer, and `content/**` was deliberately not touched here.
+
+## Interface resident art, added 14 October 2026
+
+Task 30 selected the world's asset family and integrated nothing. The resident art added later, on
+branch `task-character-art`, is **outside that family and outside the 3D renderer**: it is two-
+dimensional interface art, drawn by the DOM layers that name a resident, and it changes no geometry,
+no block, no sealed content definition and no renderer.
+
+| Set | Files | Art size | What it is | Author | Licence |
+| --- | --- | --- | --- | --- | --- |
+| `assets/residents/faces/` | 27 | 32 × 32 | Portrait busts, 9 heads in 3 palettes | Buch | `CC0-1.0` |
+| `assets/residents/bodies/` | 10 | 16 × 16 | Transparent-background standing figures | Kenney (kenney.nl) | `CC0-1.0` |
+
+The record is [`assets/residents/manifest.json`](../assets/residents/manifest.json) (per file: source
+pack, source path, SHA-256, bytes, pixel size, and the exact source rectangle for a cropped face) and
+[`assets/residents/NOTICE.md`](../assets/residents/NOTICE.md) (the same record in prose, including the
+two source archives and the retained pack notice). The `faces/` files are **derived**: each is one
+32 × 32 cell of a 328 × 112 sheet, cropped without resampling, and the crop grid plus the source digest
+are recorded so the derivation can be checked. The `bodies/` files are copied byte for byte.
+
+**Why this does not break the family's coherence argument.** That argument is about *geometry the
+renderer draws*: one palette of renderer tints, one 1-tile scale, one box silhouette. Interface art is
+not drawn by the renderer and cannot enter that contract — the same reason the vendored Lucide SVGs and
+the CC0 civic mayor facesets already sit outside it while being governed by their own per-file licence
+records. What the two sets do share with the family is the discipline the manifest keeps: one author and
+one licence per set, a recorded source and notice, a measured pixel size, and a SHA-256 for every file.
+
+**Two honest deviations from the family's "no new colour" rule.** These sets do introduce colours the
+renderer's palette does not own, because third-party portrait art arrives with its own pixels. No colour
+token is added to the content layer or the stylesheet, no interface colour changed, and the frames use
+the interface's own line colour with the resident's stored agent colour. The art direction the interface
+keeps is the one that was already there: pixel art at the world's own 16–32 px scale, drawn with
+`image-rendering:pixelated`, in the existing panel, border and gold-highlight language.
+
+**Non-claims for this addition.**
+
+- It aggregates no third party's rights beyond the two CC0 releases, and the two authors' credit
+  requests are met in `assets/THIRD_PARTY.md` and in the set's own notice.
+- It does not claim that CC0 art is "project authored": the mapping from a resident's stored id to a
+  face and a figure is original project code, recorded in
+  [`docs/handoff/task-character-art.md`](handoff/task-character-art.md); the art is not.
+- The `arch.civic-hall`, `arch.canopy-arch`, `veg.hedge-row` and `ui.asset-library-glyph`
+  specifications above are unchanged and still unproduced. Nothing here answers them.
+- The repository still has no root `LICENSE`. Both sets are CC0 1.0 Universal, so their own terms are
+  recorded and do not depend on that file, but this does not resolve item 1 of `unresolved_rights`.

@@ -2929,7 +2929,7 @@ define('next-passage-cue', async () => {
     const start = position();
     let direction = null, arrived = null;
     for (const candidate of ['Move up', 'Move left', 'Move down', 'Move right']) {
-      await page.locator(`#view button[aria-label="${candidate}"]`).click();
+      await page.locator(`#view .world-bottom button[aria-label="${candidate}"]`).click();
       // Bounded: a blocked direction leaves the resident where it stood, and the next control is tried.
       const step_ = await waitForCondition(() => { const now = position(); return now.x !== start.x || now.y !== start.y ? now : null; },
         `the “${candidate}” control to carry one confirmed step`, { timeout: 3000, interval: 100 }).catch(() => null);
@@ -2950,7 +2950,7 @@ define('next-passage-cue', async () => {
     expect(arrived.x === moved.cue.from.x && arrived.y === moved.cue.from.y, 'the payload’s own `from` tile must be where the resident now stands', { expected: `${start.x},${start.y} + one ${direction} step`, actual: `${moved.cue.from.x},${moved.cue.from.y}` });
     // Out and back: the walk returns the resident to the tile it started from, so no later scenario
     // shares a moved fixture, and the first wording comes back with the first tile.
-    await page.locator(`#view button[aria-label="Move ${OPPOSITE_DIRECTION[direction]}"]`).click();
+    await page.locator(`#view .world-bottom button[aria-label="Move ${OPPOSITE_DIRECTION[direction]}"]`).click();
     const restored = await waitForCondition(async () => {
       const now = position();
       if (now.x !== start.x || now.y !== start.y) return null;
@@ -2971,7 +2971,7 @@ define('next-passage-cue', async () => {
     // the control for a world direction is read from the step this scenario already measured.
     const control = controlFor[cardinalOf(before.cue.x - start.x, before.cue.y - start.y)];
     expect(control, 'the step that finds the doorway must be one the movement controls can carry', { expected: `a control for the step from ${start.x},${start.y} to ${before.cue.x},${before.cue.y}`, actual: describe(controlFor) });
-    await page.locator(`#view button[aria-label="Move ${control}"]`).click();
+    await page.locator(`#view .world-bottom button[aria-label="Move ${control}"]`).click();
     const on = await waitForCondition(() => { const now = position(); return now.x === before.cue.x && now.y === before.cue.y ? now : null; },
       'the resident to stand on the passage tile', { timeout: 5000, interval: 100 });
     const standing = await waitForCondition(async () => {
@@ -2982,7 +2982,7 @@ define('next-passage-cue', async () => {
     }, 'the payload’s own empty route to reach the HUD', { timeout: 10_000 });
     expect(standing.cue.world_id === before.cue.world_id && standing.cue.label === before.cue.label, 'standing on the passage must still name the same passage', { expected: describe({ label: before.cue.label, world_id: before.cue.world_id }), actual: describe({ label: standing.cue.label, world_id: standing.cue.world_id }) });
     expect(standing.line.text === composed(standing.cue), 'the empty route must be shown from the server’s own fields', { expected: composed(standing.cue), actual: standing.line.text });
-    await page.locator(`#view button[aria-label="Move ${OPPOSITE_DIRECTION[control]}"]`).click();
+    await page.locator(`#view .world-bottom button[aria-label="Move ${OPPOSITE_DIRECTION[control]}"]`).click();
     const off = await waitForCondition(async () => {
       const now = position();
       if (now.x !== start.x || now.y !== start.y) return null;

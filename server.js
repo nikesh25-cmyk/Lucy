@@ -79,6 +79,11 @@ for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout',
   files.set(`/assets/icons/${name}.svg`, [`assets/icons/${name}.svg`, 'image/svg+xml']);
 }
 for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22])for(const kind of ['characters','facesets'])files.set(`/assets/mayors/${kind}/${id}.png`,[`assets/mayors/${kind}/${id}.png`,'image/png']);
+// The resident art set: 27 faces and 10 standing figures, staged under assets/residents/ with their
+// own manifest and notice. The list is written out here rather than derived from a request, so an id
+// outside the set has no route at all; tests/resident-art.test.js fetches every path below.
+for(const id of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27])files.set(`/assets/residents/faces/${String(id).padStart(2,'0')}.png`,[`assets/residents/faces/${String(id).padStart(2,'0')}.png`,'image/png']);
+for(const id of [1,2,3,4,5,6,7,8,9,10])files.set(`/assets/residents/bodies/${String(id).padStart(2,'0')}.png`,[`assets/residents/bodies/${String(id).padStart(2,'0')}.png`,'image/png']);
 // The typed content layer is a browser module: src/content.js imports content/index.js, which
 // statically imports every sealed definition file. Serve exactly what the sealed manifest lists.
 files.set('/src/camera-controls.js', ['src/camera-controls.js', 'text/javascript; charset=utf-8']);
@@ -102,6 +107,14 @@ for (const component of ['build-interface', 'inventory-panel', 'interaction-prom
   files.set(`/src/ui/${component}.js`, [`src/ui/${component}.js`, 'text/javascript; charset=utf-8']);
 }
 files.set('/game-mobile.css', ['game-mobile.css', 'text/css; charset=utf-8']);
+// The sampled CC0 audio pool (assets/audio). A fixed, server-owned allowlist — never a URL-derived
+// filesystem path — so only the recorded clips can ever be served. Rights: assets/audio/THIRD_PARTY.md.
+for (const clip of ['ui-click', 'ui-confirm', 'ui-close', 'world-step-grass', 'world-step-stone', 'world-place', 'world-remove', 'world-door-open', 'world-door-close', 'world-chop', 'world-coin', 'music-jingle-1', 'music-jingle-2', 'music-jingle-3']) {
+  files.set(`/assets/audio/${clip}.ogg`, [`assets/audio/${clip}.ogg`, 'audio/ogg']);
+}
+files.set('/assets/audio/manifest.json', ['assets/audio/manifest.json', 'application/json; charset=utf-8']);
+files.set('/assets/audio/THIRD_PARTY.md', ['assets/audio/THIRD_PARTY.md', 'text/plain; charset=utf-8']);
+files.set('/src/ui/audio-bank.js', ['src/ui/audio-bank.js', 'text/javascript; charset=utf-8']);
 // The separate management interface is the same application in workspace presentation, on the same
 // account, world and API; `/manage` is its address and `?mode=workspace` stays the compatible form.
 files.set('/manage', ['index.html', 'text/html; charset=utf-8']);
@@ -525,7 +538,12 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           // A runtime with the contribute scope receives the mission directory inside its own private
           // calling read, so one credential charge covers its calling context and its available work.
           // Only the resident's own read is extended; sessions and other scopes are unchanged.
-          else if(route==='/callings'){value=platform.callings(actor,Object.fromEntries(url.searchParams));if(actor?.kind==='runtime'&&JSON.parse(actor.credential.scopes).includes('contribute'))value.missions=platform.missionList(actor);}
+          else if(route==='/callings'){value=platform.callings(actor,Object.fromEntries(url.searchParams));if(actor?.kind==='runtime'&&JSON.parse(actor.credential.scopes).includes('contribute')){value.missions=platform.missionList(actor);
+            // The guild board rides inside the same private calling read, exactly as the mission
+            // directory does, so a contribute-scoped resident pays one credential charge for its
+            // calling context, its available work and the projects it may join or leave. Only this
+            // resident's own read is extended; a session and every other route are unchanged.
+            value.guilds=platform.guildObservation(actor);}}
           else if(route==='/callings/guilds')value=platform.callingGuilds(Object.fromEntries(url.searchParams));
           else if(route==='/quests')value=platform.quests(actor,Object.fromEntries(url.searchParams));
           else if(route==='/quests/catalog')value=platform.questCatalog(Object.fromEntries(url.searchParams));
@@ -541,7 +559,16 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/mayors/triage') value=platform.mayorTriage(actor);
           else if (route === '/ambassadors') value=platform.ambassadors(actor,Object.fromEntries(url.searchParams));
           else if (route === '/ambassador') value=platform.ambassador(actor,Object.fromEntries(url.searchParams));
-          else if (route === '/world') { value = platform.world(actor, Object.fromEntries(url.searchParams)); value.atmosphere = worldAtmosphere(platform.clock()); }
+          else if (route === '/world') {
+            value = platform.world(actor, Object.fromEntries(url.searchParams));
+            value.atmosphere = worldAtmosphere(platform.clock());
+            // A runtime's own world read carries one derived boolean the shared view withholds: whether
+            // each visible neighbour belongs to a *different* operator than this resident. It is a
+            // boolean rather than an identity, so it reveals only the asking account's own characters,
+            // and it lets a resident-to-resident offer be declined locally instead of being sent to a
+            // route the server must refuse. The server still re-reads both operators and decides.
+            if (actor?.kind === 'runtime') value.participants = platform.differentOperatorView(actor, value.participants);
+          }
           else if (route === '/land') value=platform.land(actor,Object.fromEntries(url.searchParams));
           else if (route === '/land/plot') value=platform.landPlot(actor,Object.fromEntries(url.searchParams));
           else if (route === '/frontier') value=platform.frontierMap(actor,Object.fromEntries(url.searchParams));

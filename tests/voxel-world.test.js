@@ -148,6 +148,20 @@ test('avatars render at their elevation layer and the orbit camera already follo
   scene.destroy();
 });
 
+test('reduced motion reaches character geometry and snaps a confirmed move without an animation loop', () => {
+  const scene = createVoxelScene(), world = getWorldDefinition('commons');
+  const first = { id: 'still-walker', x: 10, y: 6, z: 0, kind: 'human', status: 'active', color: '#397f79' };
+  const next = { ...first, x: 11, emote: 'wave', emote_until: 3000 };
+  scene.update(world, { participants: [first] }, { position: world.start, self: first, time: 1000 });
+  scene.update(world, { participants: [next] }, { position: world.start, self: next, time: 1100, reducedMotion: true });
+  assert.equal(scene.animating, false);
+  const body = new THREE.Raycaster(new THREE.Vector3(11.5, 12, 6.5), new THREE.Vector3(0, -1, 0))
+    .intersectObjects(scene.pickables, false).map(voxelPick).find((pick) => pick?.type === 'participant');
+  assert.equal(body?.participant?.id, next.id, 'the body is on the stored tile, even beneath the portal pick');
+  assert.notEqual(peopleVisualKey([next], next, { time: 1100 }), peopleVisualKey([next], next, { time: 1100, reducedMotion: true }), 'the batch key includes the presentation preference');
+  scene.destroy();
+});
+
 test('participant polls that change no visible field reuse the same character batches', () => {
   const scene = createVoxelScene(), world = getWorldDefinition('commons');
   const self = { id: 'human', name: 'Human', x: 10, y: 6, z: 0, color: '#cb725f', posture: 'standing', kind: 'human', status: 'active', last_seen: '2026-10-11T00:00:00Z' };

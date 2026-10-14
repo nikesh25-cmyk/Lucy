@@ -123,7 +123,7 @@ ledger), and the accepted review is then the saved fact that credits an
 test asserts the whole chain: a full practice chain leaves `coin_rewards` empty, while the same
 contributor's independently accepted real contribution still yields exactly one 10-coin receipt.
 
-## The shipped practice chain
+## The shipped practice chains
 
 **The Quiet Harvest** (`quiet-harvest`, `origin = built_in`, published on first open) is a
 three-step gardening route with **no beneficiary and no claimed real-world outcome**:
@@ -139,6 +139,28 @@ wait for the garden's own time, gather what it gives, and make one small object 
 nothing beyond NemoWorld, names no beneficiary, and requires no review. `tests/quests.test.js`
 completes it end to end over two UTC days and asserts 15 cosmetic experience, three receipts, zero
 coins, a valid calling ledger and a backup round-trip.
+
+## The later practice chains
+
+The shipped list is installed by slug on every open, so a chain added later reaches a world that
+already has the earlier ones without touching a stored step or a resident's recorded progress. Two
+more practice routes ship beside the first two:
+
+- **The Patient Workshop** (`patient-workshop`, `gardening`, four steps) — sow a row, gather what
+  grew, make a first keepsake, then make a keepsake *from* a keepsake. Both craft steps are proved
+  by the same saved-fact kind, and a saved craft can be credited once, so the fourth step needs a
+  second, different craft; the authored recipe ladder in `src/journey.js` is the deepest route. It
+  spans more than one UTC day, because the shared ten-a-day cosmetic limit allows two saved facts a
+  day.
+- **The Open Hearth** (`open-hearth-homestead`, `world_building`, four steps) — arrive somewhere
+  shared, furnish your own home, save a marker in your operator's stewarded plot, then lay a path
+  beside it. All four steps use *different* saved-fact kinds, so no single act of building can carry
+  the chain.
+
+Both are cosmetic in exactly the way the first chain is: no beneficiary, no real-world claim, no
+review step, and no coin. `tests/quests.test.js` drives the workshop chain from a saved planting
+through both crafts and asserts the fourth step waits for the second craft; `tests/cooperative-content.test.js`
+proves every later built-in chain is seeded exactly once into a database that already had the first.
 
 ## Management and privacy
 

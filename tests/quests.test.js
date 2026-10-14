@@ -26,9 +26,9 @@ const researchChain=(f,overrides={})=>f.tx('questAuthor',f.actor('reviewer'),res
 
 test('the shipped practice chain is a cosmetic route with no beneficiary, and a saved source advances exactly one step once',async t=>{
  const f=await fixture(t),agent=f.agent('alice');
- assert.equal(SEED_QUESTS.length,3);assert.equal(QUEST_ROUTE_IDS.length,3);
+ assert.equal(SEED_QUESTS.length,5);assert.equal(QUEST_ROUTE_IDS.length,3);
  const catalog=f.platform.questCatalog();
- assert.equal(catalog.chains.length,3);
+ assert.equal(catalog.chains.length,5);
  const chain=catalog.chains.find(entry=>entry.slug==='quiet-harvest');
  assert.equal(chain.slug,'quiet-harvest');assert.equal(chain.route,'gardening');assert.equal(chain.practice,true);assert.equal(chain.beneficiary,'');
  assert.equal(chain.steps.length,3);assert.deepEqual(chain.steps.map(step=>step.output.source_kind),['crop_plant','crop_harvest','craft']);
@@ -80,11 +80,11 @@ test('the practice chain completes end to end from saved facts only, awarding co
  assert.equal(exported.format,'shared-world-account-v18');
  assert.equal(exported.quests.enrollments.length,1);assert.equal(exported.quests.receipts.length,3);
  const backup=join(f.directory,'quest-backup.sqlite');backupDatabase(f.platform.db,backup);
- assert.equal(validateDatabase(backup).schema_version, 23);
+ assert.equal(validateDatabase(backup).schema_version, 24);
  f.platform.close();const reopened=new Platform(f.database,f.clock);t.after(()=>reopened.close());
  assert.equal(reopened.quests(reopened.authenticate(f.credentials.alice.token),{agent_id:agent.id}).progress[0].complete,true);
  assert.equal(reopened.get('SELECT COUNT(*) AS n FROM calling_receipts').n,3);
- assert.equal(validateDatabase(f.database).schema_version, 23);
+ assert.equal(validateDatabase(f.database).schema_version, 24);
 });
 
 test('progression survives reopen and replay without double-awarding, and an unattributable receipt fails validation',async t=>{
@@ -123,6 +123,59 @@ test('incomplete prerequisites stay locked and a client completion claim is refu
  assert.equal(questReceipts(f),2);
 });
 
+test('the two later practice chains are seeded, cosmetic and advanced only by their own saved facts',async t=>{
+ const f=await fixture(t),agent=f.agent('alice');
+ // The patient workshop: two crops, then two *different* crafts, so the second craft step needs a
+ // keepsake made from the first keepsake.
+ assert.deepEqual(SEED_QUESTS.map(item=>item.slug),['quiet-harvest','shared-frontier-path','commons-trail','patient-workshop','open-hearth-homestead']);
+ const workshop=SEED_QUESTS.find(item=>item.slug==='patient-workshop');
+ assert.equal(workshop.practice,true);assert.equal(workshop.route,'gardening');assert.equal(workshop.beneficiary,'');
+ assert.deepEqual(workshop.steps.map(step=>step.source_kind),['crop_plant','crop_harvest','craft','craft']);
+ assert.deepEqual(workshop.steps.map(step=>step.prerequisite),[null,'sow-the-row','gather-what-grew','first-keepsake']);
+ begin(f,agent,'patient-workshop','join-workshop');
+ assert.deepEqual(steps(f,agent,'patient-workshop').map(step=>step.state),['available','locked','locked','locked']);
+ farm(f,agent,4,6);garden(f,agent,'plant',4,6,'herbs');
+ assert.equal(steps(f,agent,'patient-workshop')[0].state,'complete');
+ assert.equal(steps(f,agent,'patient-workshop')[1].state,'available');
+ // The craft chain is stocked with grown resources; the first craft is a chain step, the second
+ // spends the first craft's output.
+ f.platform.run("INSERT INTO journey_inventory(agent_id,kind,quantity) VALUES(?,'herbs',3) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=3",agent.id);
+ f.platform.run("INSERT INTO journey_inventory(agent_id,kind,quantity) VALUES(?,'fiber',1) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=1",agent.id);
+ f.platform.run("INSERT INTO journey_inventory(agent_id,kind,quantity) VALUES(?,'grain',1) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=1",agent.id);
+ f.advance(25*60000);garden(f,agent,'harvest',4,6,'herbs');
+ assert.equal(steps(f,agent,'patient-workshop')[1].state,'complete');
+ assert.equal(steps(f,agent,'patient-workshop')[2].state,'available');
+ // The shared ten-a-day cosmetic limit holds, so the two craft steps fall on later UTC days.
+ assert.equal(earned(f),10);
+ f.advance(86400000);
+ assert.equal(f.tx('craftItem',f.actor('alice'),{agent_id:agent.id,recipe_id:'sun_thread'}).crafted,'sun_thread');
+ assert.equal(steps(f,agent,'patient-workshop')[2].state,'complete');
+ assert.equal(steps(f,agent,'patient-workshop')[3].state,'available');
+ assert.equal(earned(f),15);
+ assert.equal(questReceipts(f),3);
+ // The fourth step waits for a second, different saved craft.
+ f.platform.run("INSERT INTO journey_inventory(agent_id,kind,quantity) VALUES(?,'grain',1) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=quantity",agent.id);
+ f.advance(86400000);
+ assert.equal(f.tx('craftItem',f.actor('alice'),{agent_id:agent.id,recipe_id:'field_ribbon'}).crafted,'field_ribbon');
+ const finished=board(f,agent);
+ assert.equal(finished.progress.find(item=>item.chain_slug==='patient-workshop').complete,true);
+ assert.deepEqual(steps(f,agent,'patient-workshop').map(step=>step.state),['complete','complete','complete','complete']);
+ assert.equal(questReceipts(f),4);assert.equal(earned(f),20);
+ // The open hearth: four different saved facts, none of them a coin.
+ const hearth=SEED_QUESTS.find(item=>item.slug==='open-hearth-homestead');
+ assert.deepEqual(hearth.steps.map(step=>step.source_kind),['shared_visit','home_furnish','frontier_place','path_place']);
+ assert.equal(new Set(hearth.steps.map(step=>step.source_kind)).size,4);
+ assert.equal(hearth.practice,true);assert.equal(hearth.route,'world_building');assert.equal(hearth.beneficiary,'');
+ assert.deepEqual(hearth.steps.map(step=>step.prerequisite),[null,'arrive-somewhere-shared','make-the-place-answer','mark-your-ground']);
+ // Every shipped practice chain stays cosmetic; only the real evidence chain names a beneficiary.
+ for(const item of SEED_QUESTS.filter(item=>item.practice)){
+  assert.equal(item.beneficiary,'');assert.equal(item.route==='evidence_research',false);
+  assert.equal(item.steps.every(step=>step.requires_review===false),true);
+ }
+ assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,0,'neither new chain may mint a coin');
+ assert.equal(verifyQuestReceipts(f.platform.db),true);assert.equal(verifyQuestStructure(f.platform.db),true);
+});
+
 test('one saved fact is credited once, shared honestly between a calling objective and a quest step',async t=>{
  const f=await fixture(t),agent=f.agent('alice');
  farm(f,agent,4,6);farm(f,agent,8,6);farm(f,agent,9,6);
@@ -156,7 +209,7 @@ test('author permissions, route restrictions and the review boundary are enforce
  assert.throws(()=>f.tx('questManage',f.actor('reviewer'),{chain_id:'quiet-harvest',action:'archive'}),{status:403});
  assert.equal(f.tx('questManage',f.actor('admin'),{chain_id:'quiet-harvest',action:'archive'}).status,'archived');
  assert.equal(f.platform.questCatalog().chains.some(chain=>chain.slug==='quiet-harvest'),false);
- assert.equal(f.platform.questCatalog().chains.length,2);
+ assert.equal(f.platform.questCatalog().chains.length,4);
  assert.equal(f.tx('questManage',f.actor('admin'),{chain_id:'quiet-harvest',action:'publish'}).status,'published');
  // Route restrictions: a real chain must end in acceptance; practice chains stay cosmetic.
  assert.throws(()=>f.tx('questAuthor',f.actor('reviewer'),researchSpec({slug:'bad-route',steps:[{slug:'one',title:'One',instructions:'x',output_name:'x',source_kind:'crop_plant'},{slug:'two',title:'Two',instructions:'x',output_name:'x',source_kind:'research_accepted'}]})),{status:400});

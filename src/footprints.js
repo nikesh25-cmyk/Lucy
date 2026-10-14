@@ -37,6 +37,7 @@ export const SCENERY_CLASSES = Object.freeze({
   cottage: 'mass', 'civic-building': 'mass', tree: 'mass', fruit: 'mass', palm: 'mass', cactus: 'mass', mountain: 'mass',
   pond: 'mass', fountain: 'mass', bench: 'mass', table: 'mass', workbench: 'mass', bookshelf: 'mass', bed: 'mass',
   boat: 'mass', telescope: 'mass', display: 'mass', sculpture: 'mass', kitchen: 'mass', lamp: 'mass', lantern: 'mass', trellis: 'mass',
+  well: 'mass', birdbath: 'mass', sundial: 'mass', millstone: 'mass',
   // Ground detail: low planting, crop beds, cushions and thin floor paths. A resident stands among
   // them, so they stay walkable and are never drawn at body height.
   flowers: 'flat', farm: 'flat', cushion: 'flat', path: 'flat',

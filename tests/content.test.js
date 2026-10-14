@@ -8,7 +8,7 @@ import bundle from '../content/index.js';
 import content, { SCHEMA_VERSION, CONTENT_KINDS, createContent, palette, palettes, color, geometry, crops, recipes,
   cosmetics, appearancesFor, rules, manifest, entry, find, entries, licenses, notices, assets } from '../src/content.js';
 import { parseAction } from '../runtime/agent.js';
-import { FRONTIER_PALETTE, FRONTIER_LIMITS } from '../src/frontier.js';
+import { FRONTIER_PALETTE, FRONTIER_LIMITS, FRONTIER_SCHEMA } from '../src/frontier.js';
 import { JOURNEY_SCHEMA } from '../src/journey.js';
 import { FRONTIER_BLOCK_COLORS } from '../world.js';
 
@@ -39,8 +39,8 @@ test('the content layer, its palettes and every definition declare schema versio
   assert.equal(bundle.notices.schema_version, 1);
   for (const definition of entries()) assert.equal(definition.schema_version, 1, `${definition.kind}:${definition.id} must declare schema version 1`);
   assert.deepEqual(CONTENT_KINDS, ['block', 'furniture', 'crop', 'appearance', 'cosmetic']);
-  assert.deepEqual(manifest().kinds, { appearance: 20, block: 7, cosmetic: 32, crop: 3, furniture: 27 });
-  assert.equal(entries().length, 89);
+  assert.deepEqual(manifest().kinds, { appearance: 20, block: 9, cosmetic: 32, crop: 6, furniture: 31 });
+  assert.equal(entries().length, 98);
   assert.deepEqual(palettes(), ['garden', 'house', 'frontier']);
   for (const kind of CONTENT_KINDS) assert.equal(entries(kind).length, manifest().kinds[kind], `${kind} count must match the sealed manifest`);
 });
@@ -288,6 +288,21 @@ test('the runtime agent resolves its allow-lists from the content layer', () => 
   assert.throws(() => parseAction({ action: 'build_block', type: palette('frontier')[0], x: 1, y: 1, z: rules('block')[0].rules.stack.z_max + 1 }));
 });
 
+test('the frontier block table and grant scope keep no second copy of the sealed block list', () => {
+  const frontier = source('src/frontier.js');
+  // Both places a saved block type is enumerated are generated from content.palette('frontier'), so
+  // a newly sealed block is storable and grantable without a hand-edited list going stale.
+  const lists = [...frontier.matchAll(/CHECK\(type IN \(\$\{blockTypeList\}\)\)|\$\{blockTypeList\}/g)];
+  assert.equal(lists.length, 2, 'the block CHECK clause and the grant scope test must both use blockTypeList');
+  assert.ok(frontier.includes("const blockTypeList = FRONTIER_PALETTE.map((type) => `'${type}'`).join(',');"),
+    'blockTypeList must be derived from the sealed palette');
+  assert.ok(frontier.includes("const FRONTIER_SCHEMA = `") && frontier.includes('${blockTypeList}'), 'the block table must take its type list from blockTypeList');
+  const quoted = FRONTIER_PALETTE.map((type) => `'${type}'`).join(',');
+  assert.equal(FRONTIER_SCHEMA.includes(quoted), true, 'the stored block CHECK must list exactly the sealed palette');
+  for (const type of FRONTIER_PALETTE) assert.equal(FRONTIER_BLOCK_COLORS[type] !== undefined, true, `${type} must keep a pixel-map colour`);
+  assert.deepEqual(Object.keys(FRONTIER_BLOCK_COLORS).sort(), [...FRONTIER_PALETTE].sort(), 'the pixel map and the sealed palette are the same list');
+});
+
 test('the loader rejects unlicensed, unindexed or unresolvable definitions', () => {
   assert.equal(createContent(JSON.parse(JSON.stringify(bundle))).crops().herbs, crops().herbs);
   assert.throws(() => createContent(tampered((copy) => { copy.entries.find((item) => item.id === 'wood' && item.kind === 'block').license.spdx = ''; })), /license\.spdx/);
@@ -316,8 +331,16 @@ test('the resolvers expose the sealed definitions', () => {
   assert.deepEqual(assets('wood', 'block'), []);
   assert.ok(Object.keys(notices()).includes('content/THIRD_PARTY.md'));
   assert.equal(licenses().length, entries().length);
-  assert.equal(rules('crop').length, 3);
-  assert.equal(rules('crop').every((item) => item.rules.max_growing === 20 && item.rules.yield.quantity === 2), true);
+  assert.equal(rules('crop').length, 6);
+  // Every crop declares its own growth, its own yield and the shared garden cap, and the six are
+  // distinct sowings: no two kinds grow for the same time or return the same amount, so a resident
+  // chooses between them rather than between two names for one crop.
+  const cropRules = rules('crop').map((item) => item.rules);
+  assert.equal(cropRules.every((item) => item.max_growing === 20 && item.tile_object === 'farm' && item.tend_saving_ms === 300_000), true);
+  assert.deepEqual(Object.fromEntries(cropRules.map((item) => [item.yield.item, [item.grow_ms, item.yield.quantity]])), {
+    herbs: [1_200_000, 2], fiber: [1_500_000, 2], wood: [1_800_000, 2], blossom: [900_000, 3], grain: [2_400_000, 4], resin: [3_000_000, 1],
+  });
+  assert.equal(new Set(cropRules.map((item) => `${item.grow_ms}:${item.yield.quantity}`)).size, cropRules.length, 'every crop needs its own growth time and yield');
   assert.equal(cosmetics().title.length + cosmetics().avatar.length + cosmetics().craft.length + cosmetics().agent_color.length + cosmetics().skin_tone.length + cosmetics().expression.length,
     manifest().kinds.cosmetic);
   assert.throws(() => cosmetics('banquet'), /unknown cosmetic kind/);

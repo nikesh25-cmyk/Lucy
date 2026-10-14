@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { createApp } from '../server.js';
 import { createInteractionPrompt } from '../src/ui/interaction-prompt.js';
+import content from '../src/content.js';
 import { fixture } from './helpers.js';
 
 async function setup(t) {
@@ -138,7 +139,8 @@ test('a crop patch opens a compact activity overlay and plants through the world
   assert.equal(overlay.suspendsShortcuts, true);
   assert.deepEqual(overlay.dismissKeys, ['Escape']);
   const choice = overlay.controls.find((control) => control.type === 'choice');
-  assert.deepEqual(choice.options.map((option) => option.value), ['plant:herbs', 'plant:fiber', 'plant:wood']);
+  // The plant options are the sealed crops, in their authored order: the overlay invents nothing.
+  assert.deepEqual(choice.options.map((option) => option.value), Object.keys(content.crops()).map((kind) => `plant:${kind}`));
 
   const planted = await prompt.submitOverlay({ choice: 'plant:herbs' });
   assert.equal(planted.ok, true);

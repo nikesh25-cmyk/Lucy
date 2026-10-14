@@ -248,6 +248,43 @@ function facingForResident(resident) {
 }
 async function selectAgent(id) { cancelFirstPlayRead();movementQueue.reset('character-changed');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.callings=null;state.memory=null;state.quests=null;state.guildProjects=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.blueprintReport=null;state.blueprintAnchor=null;state.voxelSelection=null;state.interaction=null;state.interactionRefusal=null;state.moveFeedback=null;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();state.selected = id; state.viewWorld = ''; state.focus = null; state.building = false; setGameMode('play'); localStorage.setItem('selected-agent', id); await loadWorld(); await Promise.all([loadJourney(),loadCommunity(),loadCallings(),loadQuests(),loadGuildProjects(),loadRestoration(),loadFirstPlay()]);const resident=selected();if(resident){state.facing=facingForResident(resident);gameInput.setFacing(state.facing);}render(); }
 function agentMark(agent) { return element('span', agent.symbol || '✦', `avatar-mark ${colors[agent.color] || 'teal'}`); }
+// ---------------------------------------------------------------------------------------------
+// Resident art. Every resident the interface names gets a face and a standing figure from the one
+// staged CC0 set under `assets/residents/` (`manifest.json` records every file's licence, source and
+// SHA-256). Which face is a stable function of the resident's own stored id, so the same resident —
+// and only that resident — shows the same art in the profile, the roster, the civic views, the
+// character picker and the first-play guide. The mapping reads the id and, for a country ambassador,
+// the sealed appearance sprite; it reads no name, operator, capability or other private field, and it
+// makes no request: it is arithmetic on an id this browser already holds. A resident that carries a
+// sealed sprite keeps that sealed CC0 portrait (`/assets/mayors/facesets/`) instead of a set face,
+// so an ambassador's own art is never replaced by a stranger's.
+const RESIDENT_FACE_COUNT = 27, RESIDENT_FIGURE_COUNT = 10;
+const residentIdHash = (value) => { let result = 0; for (const char of String(value ?? '')) result = Math.imul(result ^ char.charCodeAt(0), 16777619); return result >>> 0; };
+const residentArtId = (value, count) => String(residentIdHash(value) % count + 1).padStart(2, '0');
+function residentFacePath(resident) { return Number.isInteger(resident?.sprite) ? `/assets/mayors/facesets/${resident.sprite}.png` : `/assets/residents/faces/${residentArtId(resident?.id, RESIDENT_FACE_COUNT)}.png`; }
+function residentFigurePath(resident) { return `/assets/residents/bodies/${residentArtId(`figure:${resident?.id}`, RESIDENT_FIGURE_COUNT)}.png`; }
+// The alt text names the resident and the role the server published, from the same strict allowlist
+// the nameplates use (`name`, `kind`, relying on the caller's own already-visible text otherwise). A
+// portrait with no name is announced as a portrait rather than as an unlabelled image, and no payload
+// field outside that allowlist can reach it.
+function residentArtAlt(resident, art = 'portrait') {
+  const name = String(resident?.name ?? '').slice(0, 40).trim();
+  const roles = { human: 'human player', agent: 'AI resident', npc: 'resident' };
+  const role = roles[resident?.kind] || 'resident';
+  return `${name || 'Resident'}, ${role} ${art}`;
+}
+function residentFace(resident, size = 'sm') {
+  // A resident with no stored id has no stable appearance, and a face that changed between two polls
+  // would be worse than the coloured emblem it replaces, so the emblem stays the fallback. The five
+  // sealed agent colours tint the frame instead, so a resident's own chosen colour is still visible.
+  if (resident?.id === undefined || resident?.id === null || String(resident.id) === '') return agentMark(resident);
+  const image = element('img', null, `resident-face resident-face-${size}`);
+  image.src = residentFacePath(resident); image.alt = residentArtAlt(resident);
+  image.width = image.height = size === 'lg' ? 64 : 32; image.decoding = 'async';
+  if (colors[resident.color]) image.classList.add(`nm-${colors[resident.color]}`);
+  return image;
+}
+function residentFigure(resident) { const image = element('img', null, 'resident-figure'); image.src = residentFigurePath(resident); image.alt = residentArtAlt(resident, 'appearance'); image.width = image.height = 64; image.decoding = 'async'; return image; }
 function showCredential(value, description, title = 'Your connection credential') {
   $('#credential-title').textContent = title; $('#credential-description').textContent = description; $('#credential-value').textContent = value; $('#credential-dialog').showModal();
 }
@@ -617,7 +654,10 @@ function applyGameShell(){
 /** The touch layer is live only while the world is on screen and no conversation owns it. */
 function syncTouchEnabled(){
   const compact=hasCoarsePointer(window.matchMedia)||window.matchMedia('(max-width: 900px)').matches;
-  const enabled=Boolean(touchControls&&compact&&state.gamePresentation&&state.tab==='world'&&state.gameMode==='play'&&viewedAgent()&&state.gameDrawer!=='chat'&&!state.gameMenuOpen);
+  // On a phone, the build palette and the two purpose lines occupy the pad's vertical space.
+  // Stand the pad down through its module so a held move stops, then restore it on Finish building.
+  const buildingOnPhone=state.building&&window.matchMedia('(max-width: 650px)').matches;
+  const enabled=Boolean(touchControls&&compact&&!buildingOnPhone&&state.gamePresentation&&state.tab==='world'&&state.gameMode==='play'&&viewedAgent()&&state.gameDrawer!=='chat'&&!state.gameMenuOpen);
   touchControls?.setEnabled(enabled);
   document.body.classList.toggle('game-touch-active',enabled);
 }
@@ -626,6 +666,9 @@ window.addEventListener('resize',syncTouchEnabled);
 // drawer, and the same button closes the one it opened.
 function setGameDrawer(drawer){
   state.gameDrawer=state.gameDrawer===drawer?'':drawer;applyGameShell();
+  // One sampled CC0 clip per drawer change. The ambient bed's mute and volume govern it, and it is a
+  // no-op while the sound is off, so the world behaves exactly as before when audio is disabled.
+  gameAudio.playClip(state.gameDrawer?'ui-click':'ui-close',{gain:0.6});
   if(state.gameDrawer==='chat'){const text=$('#world-chat-card [name="text"]');if(text)text.focus({preventScroll:true});}
   else if(state.gameDrawer==='tools')$('.world-aside')?.focus({preventScroll:true});
   else if(state.gameDrawer)$(`#world-${state.gameDrawer}-card`)?.scrollIntoView({block:'nearest'});
@@ -953,7 +996,7 @@ function renderWorld(parent) {
   const aside = element('aside', null, 'world-aside');aside.tabIndex=-1;if(state.gamePresentation)aside.append(button('Close world tools',()=>setGameDrawer(''),'game-drawer-close'));if(agent)aside.append(callingCard());const inspection=element('div');inspection.id='resident-inspection';aside.append(inspection);if(world.kind==='frontier')aside.append(landCard(),frontierCard());else{const frontier=card('Beyond the Commons','OPEN FRONTIER');frontier.append(paragraph('Explore a finite landscape, steward a plot for a purpose and build with human players and agents.'),button('Enter the frontier',()=>enterFrontier()),button('Explore as a visitor',()=>visitWorld('frontier:0:0'),'secondary small'));aside.append(frontier);} const arrival = card(agent ? (agent.kind==='human'?'Your player':'Your agent') : 'Visiting the world', 'HERE & NOW');
   if (state.agents.length) {
     const controls = element('div'); const select = field(controls, 'agent', 'Character', { options: state.agents.map((a) => ({ value: a.id, label: `${a.name} · ${a.status}` })), value: state.selected }); select.addEventListener('change', () => guarded(() => selectAgent(select.value))); arrival.append(controls);
-    if (agent) { const row = element('div', null, 'agent-row'); append(row, agentMark(agent), paragraph(agent.capabilities || 'Ready to explore.')); arrival.append(row); }
+    if (agent) { const row = element('div', null, 'agent-row'); append(row, residentFace(agent), paragraph(agent.capabilities || 'Ready to explore.')); arrival.append(row); }
     else arrival.append(paragraph('You are looking around as a human visitor. Your character remains in its own location.', 'privacy'), button('Return to my character', async () => { state.viewWorld=''; state.focus=null; await loadWorld(); render(); }, 'secondary small'));
     if (agent) arrival.append(actions(...[['standing','Stand'],['sitting','Sit'],['meditating','Meditate']].map(([posture,label]) => button(label,async()=>{const result=await api(`/agents/${agent.id}/posture`,'POST',{posture});Object.assign(agent,result);await loadWorld();renderView();},'secondary small'))));
     if(agent)disclosure(arrival,'Express yourself',(body)=>body.append(actions(...[['wave','Wave'],['bow','Bow'],['cheer','Cheer'],['think','Thinking'],['heart','Appreciate'],['none','Clear']].map(([emote,label])=>button(label,async()=>{const result=await api('/emotes','POST',{agent_id:agent.id,emote});Object.assign(agent,result.agent||result);await loadWorld();paintWorld();},'secondary small')))));
@@ -1590,7 +1633,7 @@ function renderList(parent) {
     if(agent.kind==='npc'){
       const row=element('div',null,'agent-row'),bio=element('div');append(bio,element('strong',agent.name),paragraph(`${agent.title} · ${agent.status==='active'?'resident':'paused'} · ${agent.x}, ${agent.y}`),paragraph(agent.focus),paragraph('Fictional country ambassador. Human moderators decide reports, sanctions and appeals.','privacy'));append(row,guidePortrait(agent),bio,button('Talk to this ambassador',()=>talkAmbassador(agent.id),'secondary small'));people.append(row);continue;
     }
-    const row = element('div', null, 'agent-row'); const bio = element('div'); append(bio, element('strong', agent.name), paragraph(`${(agent.presence || agent.status).replaceAll('_',' ')} · ${agent.posture || 'standing'} · ${agent.x}, ${agent.y} · Operator: ${agent.operator}`), paragraph(`${agent.title||'Resident'} · ${resourceName(agent.avatar||'sprout')}`, 'privacy'), paragraph(`Capabilities: ${agent.capabilities || 'Not provided'}. Limits: ${agent.limitations || 'Not provided'}.`), element('small', `${agent.verified ? 'Has used the agent API' : 'Operator controlled character'} · last activity ${date(agent.last_seen)} · ${agent.accepted_contributions || 0} accepted contributions`)); append(row, agentMark(agent), bio); if (state.account) {if(agent.id!==state.selected)row.append(button('Send direct message',()=>openCharacterConversation(agent),'small'));row.append(button('Report', () => reportPrompt('agent', agent.id), 'secondary small'));} people.append(row); }
+    const row = element('div', null, 'agent-row'); const bio = element('div'); append(bio, element('strong', agent.name), paragraph(`${(agent.presence || agent.status).replaceAll('_',' ')} · ${agent.posture || 'standing'} · ${agent.x}, ${agent.y} · Operator: ${agent.operator}`), paragraph(`${agent.title||'Resident'} · ${resourceName(agent.avatar||'sprout')}`, 'privacy'), paragraph(`Capabilities: ${agent.capabilities || 'Not provided'}. Limits: ${agent.limitations || 'Not provided'}.`), element('small', `${agent.verified ? 'Has used the agent API' : 'Operator controlled character'} · last activity ${date(agent.last_seen)} · ${agent.accepted_contributions || 0} accepted contributions`)); append(row, residentFace(agent), bio); if (state.account) {if(agent.id!==state.selected)row.append(button('Send direct message',()=>openCharacterConversation(agent),'small'));row.append(button('Report', () => reportPrompt('agent', agent.id), 'secondary small'));} people.append(row); }
   append(grid, places, people); parent.append(grid, interactionCard(), chatCard());
 }
 function renderCharacters(parent) {
@@ -1599,7 +1642,7 @@ function renderCharacters(parent) {
   const grid = element('div', null, 'grid'); const current = card('Your characters');
   if (!state.agents.length) current.append(empty('Create your first character to start exploring.'));
   for (const agent of state.agents) {
-    const row = element('div', null, 'record'); const top = element('div', null, 'agent-row'); const bio = element('div'); append(bio, element('h3', agent.name), badge(agent.kind==='human'?'human player':'AI agent'),badge(agent.status, agent.status !== 'active'), paragraph(`${REGIONS.find((region)=>region.id===agent.region_id)?.name||'Commons'}${agent.country?` · ${agent.country}`:''}`,'privacy'),paragraph(agent.capabilities || 'Capabilities not provided.'), paragraph(`Limits: ${agent.limitations || 'Not provided'}`, 'muted')); append(top, agentMark(agent), bio); row.append(top);
+    const row = element('div', null, 'record'); const top = element('div', null, 'agent-row'); const bio = element('div'); append(bio, element('h3', agent.name), badge(agent.kind==='human'?'human player':'AI agent'),badge(agent.status, agent.status !== 'active'), paragraph(`${REGIONS.find((region)=>region.id===agent.region_id)?.name||'Commons'}${agent.country?` · ${agent.country}`:''}`,'privacy'),paragraph(agent.capabilities || 'Capabilities not provided.'), paragraph(`Limits: ${agent.limitations || 'Not provided'}`, 'muted')); append(top, residentFace(agent), bio); row.append(top);
     const controls = actions(button(state.selected === agent.id ? 'Selected' : 'Enter as this character', () => { const tabAtClick=state.tab; return selectAgent(agent.id).then(() => { if(state.tab!==tabAtClick)return; state.tab='world';render(); }); }, 'small'));
     if (!['suspended', 'deleted'].includes(agent.status)) { controls.append(button(agent.status === 'active' ? 'Pause' : 'Resume', () => change('/agents/control', {agent_id:agent.id,status:agent.status === 'active' ? 'paused' : 'active'}, 'Character updated. Pausing revokes its connection credentials.'), 'secondary small')); if (agent.status !== 'revoked') controls.append(button('Revoke access', async () => { if (confirm(`Revoke ${agent.name}’s access and connection credentials?`)) await change('/agents/control',{agent_id:agent.id,status:'revoked'},'Access revoked. You can resume the character when ready.'); }, 'danger small')); }
     row.append(controls);
@@ -2159,7 +2202,7 @@ function requireResident(parent){
   parent.append(empty(state.account?'Choose or create a character to begin its story.':'Sign in to open your character’s private passport.'),button(state.account?'My characters':'Sign in',()=>state.account?openSection('characters'):openAuth('login')));return false;
 }
 function metrics(records){const grid=element('div',null,'progress-grid');for(const[label,value,detail]of records){const node=element('div',null,'progress-card');append(node,paragraph(label,'eyebrow'),element('strong',String(value)),paragraph(detail,'privacy'));grid.append(node);}return grid;}
-function residentContext(parent){if(selected()){const row=element('div',null,'resident-context');append(row,agentMark(selected()),paragraph(`Participating as ${selected().name}`),button('Change character',()=>openSection('characters'),'secondary small'));parent.append(row);}else parent.append(paragraph('Look around freely. Create an agent character to join in.','privacy'));}
+function residentContext(parent){if(selected()){const row=element('div',null,'resident-context');append(row,residentFace(selected()),paragraph(`Participating as ${selected().name}`),button('Change character',()=>openSection('characters'),'secondary small'));parent.append(row);}else parent.append(paragraph('Look around freely. Create an agent character to join in.','privacy'));}
 function communityWrite(path,data,message){return change(path,{...data,agent_id:state.selected},message);}
 function communityCanWrite(){return state.account&&selected()?.status==='active';}
 function memberNames(records){return (records||[]).map(item=>item.name).join(', ')||'No members yet';}
@@ -2210,7 +2253,7 @@ function renderCoins(parent){
 
 function renderPassport(parent){
   parent.append(heading('A story still being written','Your resident’s purpose, discoveries, and private reflections. Titles and keepsake appearances are visible on the character.'));if(!requireResident(parent))return;const journey=state.journey;if(!journey){parent.append(empty('Open this passport again to load its latest progress.'));return;}residentContext(parent);
-  const hero=card(selected().name,'RESIDENT PASSPORT');hero.classList.add('passport-cover');append(hero,agentMark(selected()),badge(journey.profile.title||'Resident'),badge(resourceName(journey.profile.avatar||'sprout')),paragraph(journey.profile.purpose||'Every story can start with a small, useful intention.'),paragraph(journey.profile.bio||'Add a biography below to give this character a sense of direction.','muted'));parent.append(hero);
+  const hero=card(selected().name,'RESIDENT PASSPORT');hero.classList.add('passport-cover');const cover=element('div',null,'passport-portrait');append(cover,residentFigure(selected()),residentFace(selected(),'lg'));append(hero,cover,badge(journey.profile.title||'Resident'),badge(resourceName(journey.profile.avatar||'sprout')),paragraph(journey.profile.purpose||'Every story can start with a small, useful intention.'),paragraph(journey.profile.bio||'Add a biography below to give this character a sense of direction.','muted'));parent.append(hero);
   parent.append(button('Open coin wallet',()=>openSection('coins'),'secondary small'));
   parent.append(metrics([['Reviewed contributions',journey.merit.accepted,'Distinct eligible mission submissions accepted'],['Documented uses',journey.merit.adopted,'Accepted work with recorded adoption'],['Thanks received',journey.goodwill.thanks,'Independent operators who thanked this resident'],['Places discovered',journey.discovery_count??journey.discoveries.length,'Recorded by actual character travel']]));
   const grid=element('div',null,'grid two'),quests=card('Small steps, a growing life','YOUR NEXT CHAPTER');for(const quest of journey.quests){const row=element('div',null,'quest-row');append(row,element('h3',quest.name),badge(quest.complete?'complete':'in progress'),paragraph(`${Math.min(quest.progress, quest.target)} / ${quest.target}`,'privacy'));const progress=element('progress');progress.max=quest.target||1;progress.value=quest.progress;progress.setAttribute('aria-label',quest.name);row.append(progress);quests.append(row);}if(!journey.quests.length)quests.append(empty('New chapters will appear as the world grows.'));const skills=card('Skills & keepsakes','EARNED THROUGH PARTICIPATION');for(const skill of journey.skills)skills.append(paragraph(`${skill.name} · level ${skill.level}`));const badges=actions(...journey.badges.map(item=>badge(item.name)));skills.append(badges);if(!journey.badges.length)skills.append(empty('Your first keepsake is ahead. Explore, grow, or make something.'));skills.append(paragraph('Mission merit reflects eligible, independently reviewed work. Gardening, chat, demo tasks and gratitude do not create mission merit.','privacy'));append(grid,quests,skills);parent.append(grid);
@@ -3546,8 +3589,25 @@ function mountFirstPlayGuide(){
   const tree=firstPlayGuide.view();
   host.replaceChildren();
   const node=renderNode(tree,document);
-  if(node)host.append(node);
+  if(node){host.append(node);decorateFirstPlayEncounter(node);}
   host.inert=state.gameDrawer==='chat';
+}
+// The guide module owns what the encounter card says and renders text nodes only. Its card already
+// carries `data-guide="encounter"`, so the shell adds the one thing a text module cannot: the nearby
+// resident's face, from the same staged set every other layer uses and with the same alt-text rule.
+// Nothing else about the card changes; a guide with no encounter leaves nothing to decorate.
+function decorateFirstPlayEncounter(node){
+  const card=node.querySelector('[data-guide="encounter"]');const encounter=state.firstPlay?.encounter;
+  if(!card||!encounter)return;
+  // A nearby ambassador is offered from the civic roster, so when that roster is already loaded its own
+  // sealed sprite is used and the ambassador keeps the portrait every other view gives it.
+  const guide=encounter.kind==='npc'?state.mayors.find(item=>item.id===encounter.npc_id||item.ambassador?.id===encounter.npc_id):null;
+  const resident={id:encounter.agent_id??encounter.npc_id??'',name:encounter.name,kind:encounter.kind==='npc'?'npc':'agent',sprite:Number.isInteger(guide?.sprite)?guide.sprite:undefined};
+  if(!resident.id)return;
+  card.classList.add('game-guide-encounter-art');
+  const figure=element('div',null,'resident-encounter-art');
+  append(figure,residentFigure(resident),residentFace(resident,'lg'));
+  card.prepend(figure);
 }
 
 // The touch layer (task 37) needs a coarse pointer or a narrow screen. It binds no key event, so the
@@ -3615,7 +3675,7 @@ function renderCharacterOverlay(){
   for(const agent of state.agents){
     const row=element('div',null,'record');const top=element('div',null,'agent-row');const bio=element('div');
     append(bio,element('h3',agent.name),badge(agent.kind==='human'?'human player':'AI resident'),badge(agent.status,agent.status!=='active'),paragraph(`${REGIONS.find(region=>region.id===agent.region_id)?.name||'Commons'} · ${agent.world_id||'commons'}`,'privacy'));
-    append(top,agentMark(agent),bio);row.append(top);
+    append(top,residentFace(agent,'lg'),bio);row.append(top);
     const controls=actions();
     const enter=button('Enter the world',()=>{selectAgent(agent.id).then(()=>{$('#character-dialog').close();});},'small');
     enter.disabled=agent.status!=='active';controls.append(enter);

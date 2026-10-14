@@ -9,15 +9,34 @@ implements recommendation 3 of [the voxel engine reuse decision](VOXEL_ENGINE_RE
 
 | Kind | Entries | Files | Carries |
 | --- | --- | --- | --- |
-| `block` | 7 | `content/blocks/*.json` | `rules.palettes`, `walkable`, `stack` (`requires_solid_below`, `z_min`, `z_max`, `supports_stacking`), `path_only_z0`; `appearance.geometry: "cube"` |
-| `furniture` | 27 | `content/furniture/*.json` | `rules.palettes`, `walkable`, `footprint` (`occupied`/`open`), `rules.geometry` (the builder name implemented in `src/voxel-world.js`) |
-| `crop` | 3 | `content/crops/*.json` | `rules.grow_ms`, `yield` (`item`, `quantity`), `tile_object`, `max_growing`, `tend_saving_ms` |
+| `block` | 9 | `content/blocks/*.json` | `rules.palettes`, `walkable`, `stack` (`requires_solid_below`, `z_min`, `z_max`, `supports_stacking`), `path_only_z0`; `appearance.geometry: "cube"` |
+| `furniture` | 31 | `content/furniture/*.json` | `rules.palettes`, `walkable`, `footprint` (`occupied`/`open`), `rules.geometry` (the builder name implemented in `src/voxel-world.js`) |
+| `crop` | 6 | `content/crops/*.json` | `rules.grow_ms`, `yield` (`item`, `quantity`), `tile_object`, `max_growing`, `tend_saving_ms` |
 | `appearance` | 20 | `content/appearances/*.json` | `rules.roster_roles`, `sprite`, `directions`, `walk_rows`, `action_rows_excluded`; CC0-1.0 art |
 | `cosmetic` | 32 | `content/cosmetics/*.json` | `rules.cosmetic_kind`, `earned_by`, and for crafts `name`/`ingredients`/`output` |
 
-`content/content-manifest.json` indexes all **89** entries (7 + 27 + 3 + 20 + 32) by file, digest,
+`content/content-manifest.json` indexes all **98** entries (9 + 31 + 6 + 20 + 32) by file, digest,
 license and asset. The counts above, the manifest and the drift guards are recomputed and asserted
 by `tests/content.test.js`, so this table cannot silently diverge from the definitions.
+
+The six crops are one family that shares one garden cap and one five-minute tend, and differs in
+everything a resident chooses between: growth time, harvest amount and the care window that decides
+how much a tend is worth. `herbs` (20 min, 2), `fiber` (25 min, 2), `wood` (30 min, 2), `blossom`
+(15 min, 3), `grain` (40 min, 4) and `resin` (50 min, 1). Because the care bands divide each crop's
+own growth, the same elapsed tend time is *bountiful* for a slow crop and merely *careful* for a
+quick one — `tests/journey-content.test.js` asserts exactly that pair.
+
+The frontier palette gained `clay` and `slate`, and the garden palette gained `well`, `birdbath`,
+`sundial` and `millstone` (the last two are also on the cottage palette). No list of block or object
+types is hand-maintained: `src/frontier.js` derives `FRONTIER_PALETTE`, its table `CHECK` clause and
+the plot-grant scope test from `content.palette('frontier')`, `src/placement-policy.js` derives both
+build palettes, and `src/footprints.js` classifies each one. Adding a definition to a palette
+therefore makes it buildable, grantable and storable without a second copy of the list.
+
+Two content files are deliberately **not** touched by an additive change: `content/THIRD_PARTY.md`
+is the shared notice file whose SHA-256 every definition records, so editing it would change all 98
+`license.notice_sha256` values (including the frozen appearance and cosmetic entries); its per-group
+counts are therefore descriptive, and the executable counts are the ones in `tests/content.test.js`.
 
 Support files: `content/palettes.json` (the three authored build palettes in code order — `garden`
 and `house` from `src/spaces.js`, `frontier` from `src/frontier.js`), `content/notices.json` (every
@@ -77,7 +96,7 @@ the same object as `manifest()`:
 {
   "schema_version": 1,
   "generated_by": "scripts/seal-content.mjs",
-  "kinds": { "appearance": 20, "block": 7, "cosmetic": 32, "crop": 3, "furniture": 27 },
+  "kinds": { "appearance": 20, "block": 9, "cosmetic": 32, "crop": 6, "furniture": 31 },
   "entries": [{ "id": "…", "kind": "…", "file": "content/…", "sha256": "…", "license": { "…": "…" }, "assets": [] }],
   "support": [{ "path": "content/palettes.json", "sha256": "…" }, { "path": "content/notices.json", "sha256": "…" }, { "path": "content/index.js", "sha256": "…" }]
 }

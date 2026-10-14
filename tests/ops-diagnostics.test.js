@@ -78,8 +78,8 @@ test('the dashboard counters are read from the world and the process, never esti
   const diagnostics = async () => (await call('/operations', f.credentials.admin.token)).data.diagnostics;
 
   const before = await diagnostics();
-  assert.equal(before.schema.version, 23);
-  assert.deepEqual(before.schema.accepted_versions, Array.from({ length: 23 }, (_, index) => index + 1));
+  assert.equal(before.schema.version, 24);
+  assert.deepEqual(before.schema.accepted_versions, Array.from({ length: 24 }, (_, index) => index + 1));
   assert.equal(before.integrity.quick_check, 'ok');
   assert.equal(before.integrity.audit_chain_valid, true);
   assert.equal(before.integrity.coin_ledger_valid, true);
@@ -101,7 +101,7 @@ test('the dashboard counters are read from the world and the process, never esti
   assert.equal(after.backups.latest.filename, created.data.filename);
   assert.equal(after.backups.latest.bytes, statSync(join(backups, created.data.filename)).size);
   assert.equal(after.recovery.last_backup_at, after.backups.latest.created_at);
-  assert.equal(after.recovery.schema_version, 23);
+  assert.equal(after.recovery.schema_version, 24);
 
   // A run left behind by a dead process is classified by recovery; the dashboard must count it.
   const runId = 'diagnostics-interrupted-run';

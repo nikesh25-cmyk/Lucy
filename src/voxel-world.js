@@ -215,8 +215,8 @@ const renderablePeople = renderableCharacters;
  * re-order the roster, or change curated profile fields therefore reuse every existing batch instead
  * of disposing and rebuilding all avatars every few seconds.
  */
-export function peopleVisualKey(participants, self) {
-  return charactersVisualKey(participants, self);
+export function peopleVisualKey(participants, self, options = {}) {
+  return charactersVisualKey(participants, self, options);
 }
 
 // Fresh names, public profiles and presence belong to current picks even when their geometry is reused.
@@ -274,10 +274,10 @@ export function createVoxelScene() {
         motionTracker.confirm(person);
         if (reducedMotion) motionTracker.reconcile(person.id);
       }
-      const nextPeopleKey = options.rebuildPeople === true ? JSON.stringify([drawnPeople, drawnSelf, now]) : peopleVisualKey(drawnPeople, drawnSelf, { tracker: motionTracker, time: now });
+      const nextPeopleKey = options.rebuildPeople === true ? JSON.stringify([drawnPeople, drawnSelf, now]) : peopleVisualKey(drawnPeople, drawnSelf, { tracker: motionTracker, time: now, reducedMotion });
       if (nextPeopleKey !== peopleKey || !peopleBatch) {
         if (peopleBatch) root.remove(peopleBatch.group); disposeBatch(peopleBatch);
-        peopleBatch = peopleScene(resources, drawnPeople, drawnSelf, { tracker: motionTracker, time: now }); peopleBatch.group.name = 'voxel-characters'; root.add(peopleBatch.group); peopleKey = nextPeopleKey;
+        peopleBatch = peopleScene(resources, drawnPeople, drawnSelf, { tracker: motionTracker, time: now, reducedMotion }); peopleBatch.group.name = 'voxel-characters'; root.add(peopleBatch.group); peopleKey = nextPeopleKey;
       }
       refreshPeoplePicks(peopleBatch, drawnPeople, drawnSelf);
       // Saved blocks rebuild on their own, so placing or moving one block leaves the diorama alone.

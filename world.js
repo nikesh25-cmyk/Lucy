@@ -94,7 +94,7 @@ export const FRONTIER_COORDINATE_LIMIT = 8;
 export const FRONTIER_MIN_COORDINATE = -8;
 export const FRONTIER_MAX_COORDINATE = 7;
 export const FRONTIER_PLOT_SIZE = 6;
-export const FRONTIER_BLOCK_COLORS = Object.freeze({ stone: '#879291', wood: '#b38b60', glass: '#9fcad0', brick: '#bc8876', sand: '#d9c99a', grass: '#91b376', path: '#d3c49c' });
+export const FRONTIER_BLOCK_COLORS = Object.freeze({ stone: '#879291', wood: '#b38b60', glass: '#9fcad0', brick: '#bc8876', sand: '#d9c99a', grass: '#91b376', path: '#d3c49c', clay: '#b47f6b', slate: '#7d8894' });
 export const FRONTIER_DIRECTIONS = Object.freeze({ up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] });
 export function frontierCoordinates(id, { allowLegacy = false } = {}) {
   const match = /^frontier:(-?\d+):(-?\d+)$/.exec(id);
@@ -1141,6 +1141,34 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
         rect(x - 9, y + 1, 18, 11, '#c3a9c5');
         rect(x - 6, y + 4, 12, 2, '#e0c9d8');
         rect(x - 4, y + 7, 8, 3, '#b598ba');
+        break;
+      case 'well':
+        rect(x - 17, y + 9, 34, 8, '#436b5b33');
+        rect(x - 15, y - 4, 30, 17, '#879291');
+        rect(x - 12, y - 1, 24, 11, '#52645d');
+        rect(x - 8, y - 7, 16, 4, '#a4b9ab');
+        rect(x - 2, y - 22, 4, 15, '#665d50');
+        rect(x - 9, y - 25, 18, 4, '#937958');
+        break;
+      case 'birdbath':
+        rect(x - 14, y + 10, 28, 6, '#436b5b33');
+        rect(x - 4, y - 4, 8, 16, '#879291');
+        rect(x - 12, y - 1, 24, 5, '#a4b9ab');
+        rect(x - 16, y - 8, 32, 8, '#a4b9ab');
+        rect(x - 12, y - 6, 24, 4, '#77b5bd');
+        break;
+      case 'sundial':
+        rect(x - 13, y + 10, 26, 6, '#436b5b33');
+        rect(x - 9, y - 5, 18, 17, '#879291');
+        rect(x - 6, y - 2, 12, 4, '#a4b9ab');
+        rect(x - 1, y - 16, 3, 12, '#665d50');
+        break;
+      case 'millstone':
+        rect(x - 17, y + 10, 34, 7, '#436b5b33');
+        rect(x - 15, y - 14, 30, 27, '#879291');
+        rect(x - 12, y - 11, 24, 21, '#a4b9ab');
+        rect(x - 3, y - 3, 6, 6, '#52645d');
+        rect(x - 11, y - 1, 3, 3, '#665d50');
         break;
     }
   };

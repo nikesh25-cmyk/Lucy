@@ -157,25 +157,29 @@ test('the shared-frontier-path chain does not double-advance on replay, restart,
  assert.equal(verifyQuestReceipts(reopened.db),true);
 });
 
-test('a database that already has the shipped quiet-harvest chain receives shared-frontier-path and commons-trail exactly once',async t=>{
+test('a database that already has the shipped quiet-harvest chain receives every later built-in chain exactly once',async t=>{
  const f=await fixture(t);
- // Simulate an older database: remove the new chains and leave the original built-in chain. Steps go
- // first because the guard refuses deleting a chain that still has steps.
- f.platform.run("DELETE FROM quest_steps WHERE chain_id IN (SELECT id FROM quest_chains WHERE slug IN ('shared-frontier-path','commons-trail'))");
- f.platform.run("DELETE FROM quest_chains WHERE slug IN ('shared-frontier-path','commons-trail')");
+ // Simulate an older database: remove every built-in chain the newer seed list added and leave the
+ // original one. The list comes from SEED_QUESTS, so a further chain does not stale this test. Steps
+ // go first because the guard refuses deleting a chain that still has steps.
+ const later=SEED_QUESTS.map(chain=>chain.slug).filter(slug=>slug!=='quiet-harvest');
+ const marks=later.map(()=>'?').join(',');
+ f.platform.run(`DELETE FROM quest_steps WHERE chain_id IN (SELECT id FROM quest_chains WHERE slug IN (${marks}))`,...later);
+ f.platform.run(`DELETE FROM quest_chains WHERE slug IN (${marks})`,...later);
  const before=f.platform.all("SELECT slug FROM quest_chains WHERE origin='built_in' ORDER BY slug").map(r=>r.slug);
  assert.deepEqual(before,['quiet-harvest']);
  // Re-initialising quests must add the new chains and leave enrolments/receipts untouched.
+ const expected=SEED_QUESTS.map(chain=>chain.slug).sort();
  const enrolmentsBefore=f.platform.get('SELECT COUNT(*) AS n FROM quest_enrollments').n;
  const receiptsBefore=f.platform.get('SELECT COUNT(*) AS n FROM calling_receipts').n;
  f.platform.initQuests();
  const after=f.platform.all("SELECT slug FROM quest_chains WHERE origin='built_in' ORDER BY slug").map(r=>r.slug);
- assert.deepEqual(after,['commons-trail','quiet-harvest','shared-frontier-path']);
+ assert.deepEqual(after,expected);
  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM quest_enrollments').n,enrolmentsBefore);
  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM calling_receipts').n,receiptsBefore);
  // Running init again is a no-op.
  f.platform.initQuests();
- assert.deepEqual(f.platform.all("SELECT slug FROM quest_chains WHERE origin='built_in' ORDER BY slug").map(r=>r.slug),['commons-trail','quiet-harvest','shared-frontier-path']);
+ assert.deepEqual(f.platform.all("SELECT slug FROM quest_chains WHERE origin='built_in' ORDER BY slug").map(r=>r.slug),expected);
 });
 
 test('the commons-trail evidence chain ends only in an independent human acceptance and mints no quest coin',async t=>{
@@ -266,7 +270,7 @@ for(const firstOutcome of ['rejected','released','expired'])test(`commons-trail 
  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,1);
  if(firstOutcome==='rejected'){
   f.platform.close();
-  assert.equal(validateDatabase(f.database).schema_version,23);
+  assert.equal(validateDatabase(f.database).schema_version,24);
   const restarted=new Platform(f.database,f.clock);
   t.after(()=>restarted.close());
   const saved=restarted.quests(restarted.authenticate(f.credentials.alice.token),{agent_id:agent.id});
@@ -358,11 +362,11 @@ test('the new cooperative content survives backup, restore and validation',async
  assert.equal(verifyGuildRecords(f.platform.db),true);
  const backup=join(f.directory,'cooperative-content-backup.sqlite');
  backupDatabase(f.platform.db,backup);
- assert.equal(validateDatabase(backup).schema_version,23);
+ assert.equal(validateDatabase(backup).schema_version,24);
  f.platform.close();
  const restored=new Platform(f.database,f.clock);t.after(()=>restored.close());
  assert.equal(restored.quests(restored.authenticate(f.credentials.alice.token),{agent_id:agent.id}).progress.find(p=>p.chain_slug==='shared-frontier-path').complete,true);
  const restoredProject=restored.guildProject(restored.authenticate(f.credentials.alice.token),{id:project.id});
  assert.equal(restoredProject.contributions.find(c=>c.workstream_id==='trace-route').status,'verified');
- assert.equal(validateDatabase(f.database).schema_version,23);
+ assert.equal(validateDatabase(f.database).schema_version,24);
 });

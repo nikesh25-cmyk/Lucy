@@ -6,6 +6,8 @@
  * browser with audio disabled) continues to work normally.
  */
 
+import { createClipBank } from './ui/audio-bank.js';
+
 const STORAGE_KEY = 'nemoworld-audio';
 const DEFAULT_VOLUME = 0.16;
 const PHASES = {
@@ -67,6 +69,7 @@ export function createGameAudio(options = {}) {
   let noise = null;
   let noiseGain = null;
   let running = false;
+  let bank = null;
 
   const available = Boolean(contextFactory(options));
   const audibleGain = () => state.muted ? 0 : state.volume;
@@ -121,6 +124,10 @@ export function createGameAudio(options = {}) {
         noise.connect(noiseGain); noiseGain.connect(master);
       }
       master.connect(context.destination);
+      // Sampled CC0 clips share this context and this master node, so the ambient bed's mute and
+      // volume govern the sound effects too. Construction never fetches; a clip loads on first play.
+      try { bank = createClipBank({ context, destination: master, ...(options.clipFetch ? { fetchImpl: options.clipFetch } : {}) }); }
+      catch { bank = null; }
       drone.start(); shimmer.start(); noise?.start();
       running = true;
       applyPhase(phase, true); setOutput(context.currentTime || 0, true);
@@ -139,7 +146,7 @@ export function createGameAudio(options = {}) {
     running = false;
   }
 
-  function dispose() { stop(); }
+  function dispose() { stop(); bank = null; }
   function setMuted(muted) { state.muted = Boolean(muted); savePreferences(storage, state); setOutput(); return state.muted; }
   function setVolume(volume) { state.volume = clampVolume(volume); savePreferences(storage, state); setOutput(); return state.volume; }
   function toggle() { return setMuted(!state.muted); }
@@ -181,6 +188,10 @@ export function createGameAudio(options = {}) {
     setVolume,
     setPhase: applyPhase,
     createControls,
+    /** Play one sampled CC0 clip (see src/ui/audio-bank.js). Resolves to null while audio is off. */
+    playClip: (name, clipOptions) => (running && bank ? bank.play(name, clipOptions).catch(() => null) : Promise.resolve(null)),
+    /** The clip names this build can play. */
+    clipNames: () => (bank ? bank.clips : []),
     getState: () => ({ available, running, muted: state.muted, volume: state.volume, phase }),
   };
 }
