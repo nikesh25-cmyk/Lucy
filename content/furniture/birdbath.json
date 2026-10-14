@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "id": "birdbath",
+  "kind": "furniture",
+  "label": "Bird bath",
+  "since": "1.0.0",
+  "order": 28,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project code: src/voxel-world.js furniture() block-out routine and the world.js tile case written for this entry",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#a4b9ab",
+    "geometry": "prop",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [
+      "garden",
+      "house"
+    ],
+    "walkable": false,
+    "footprint": "occupied",
+    "geometry": "prop"
+  },
+  "notes": [
+    "A shallow basin on a short stem, for a garden corner or a quiet cottage. It is a solid mass, so it is never placed on the tile a resident must cross.",
+    "The voxel scene draws it through the generic prop branch of src/voxel-world.js furniture(), which is what rules.geometry records; world.js draws the same silhouette on the pixel map.",
+    "A decoration only. The water in it is drawn, not stored: it is not a resource, an ingredient or a coin."
+  ]
+}

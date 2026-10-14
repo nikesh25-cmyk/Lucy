@@ -7,7 +7,7 @@ claim part or all of what is left.
 `src/trade.js`, `src/trade-import.js` and `src/trade-preview.js` are a different, unrelated surface:
 the external Comtrade research layer for **human source review** (`docs/TRADE_EVIDENCE.md`,
 `docs/TRADE_DRAFT_IMPORT.md`, `docs/TRADE_BASELINES.md`). Those documents describe reading published
-trade statistics. This document describes residents exchanging herbs, fiber, wood and crafted
+trade statistics. This document describes residents exchanging grown crops and crafted
 keepsakes with each other, and the two share no table, route or record.
 
 ## What the board is not

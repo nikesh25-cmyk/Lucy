@@ -7,15 +7,87 @@ const readText = (value, label, maximum, optional = false) => {
   if (typeof value !== 'string' || !value.trim() || value.length > maximum) fail(400, `${label} must contain ${optional ? '0' : '1'}–${maximum} characters.`);
   return value.trim();
 };
-// Growth times, decoration recipes, titles and keepsake avatars all come from the sealed
-// content layer. Only the keepsakes a resident starts with are eligible from the outset; the
-// gated ones carry an unlock threshold and are added by cosmeticOptions as they are earned.
+// Growth times, crops, titles and keepsake avatars come from the sealed content layer; the craft
+// recipes start there and are extended by the authored ladder below. Only the keepsakes a resident
+// starts with are eligible from the outset; the gated ones carry an unlock threshold and are added
+// by cosmeticOptions as they are earned.
 const crops = Object.freeze(content.crops());
 // Every number one crop obeys is the sealed definition's own rule, resolved once here: the growth
 // time, the yield the ground returns, the garden's growing cap and the five minutes a tend may save.
 // A harvest amount, a tending saving or a garden limit therefore cannot drift from content/**.
 const cropRules = Object.freeze(Object.fromEntries(content.rules('crop').map((item) => [item.id, item.rules])));
-const recipes = Object.freeze(content.recipes());
+// ---------------------------------------------------------------------------------------------
+// The crafting ladder.
+//
+// The sealed content layer carries the keepsakes a resident can craft from grown resources: one
+// recipe per crafted cosmetic, each with its own licence record and digest. This additive layer adds
+// the *depth* a resident reaches with them — a recipe whose ingredients include a kept craft, so one
+// keepsake is built from another and a chain has more than one step. Nothing here replaces, renames
+// or re-prices a sealed recipe: the published list is the sealed recipes in their sealed order,
+// then these, and every authored recipe is defined in exactly the same shape, so a client cannot
+// tell the two apart.
+//
+// The shape is checked once at load (recipeDefects), so a recipe that spends an ingredient the world
+// cannot produce, that repeats a published id, that spends itself, or that offers no second step
+// cannot ship. `craftItem` still reads one list and still checks, debits and credits it atomically.
+export const RECIPE_LIMITS = Object.freeze({ kinds: 6, quantity: 99, authored: 24 });
+const sealedRecipes = Object.freeze(content.recipes());
+export const RECIPE_EXTENSIONS = Object.freeze([
+  Object.freeze({ id: 'sun_thread', name: 'Sun thread', ingredients: Object.freeze({ herbs: 2, fiber: 1 }), output: 'sun_thread' }),
+  Object.freeze({ id: 'field_ribbon', name: 'Field ribbon', ingredients: Object.freeze({ sun_thread: 1, grain: 1 }), output: 'field_ribbon' }),
+  Object.freeze({ id: 'harvest_garland', name: 'Harvest garland', ingredients: Object.freeze({ field_ribbon: 1, blossom: 3, resin: 1 }), output: 'harvest_garland' }),
+]);
+export const RECIPE_POLICY = Object.freeze({
+  version: 1,
+  sealed: 'the sealed content recipes, published first, in their sealed order',
+  authored: 'the authored extensions after them, each in the same shape, adding chain depth rather than a new price',
+  coins_awarded: 0,
+  ingredients: 'every published recipe spends only resources the world can produce: a sealed crop, a sealed keepsake, or a keepsake an earlier published recipe already makes',
+  reachable: 'the authored list is ordered, so an ingredient is grown or already made before the recipe that spends it, and no chain can cycle or dead-end',
+  description: 'A recipe turns resources a resident grew or made into a keepsake kept on its own shelf. Crafting debits the ingredients and writes the output in one transaction, mints no coin, moves no land and places no world object.',
+});
+/**
+ * The authored layer's own shape, checked once at load. `published` is the set of resources a
+ * resident can actually hold (grown crops and crafted keepsakes), so an ingredient that is neither
+ * grown nor made by an *earlier* recipe is refused, and the ordering that makes an unbuildable or
+ * circular chain impossible is the same ordering the list is read in.
+ */
+export function recipeDefects() {
+  const defects = [];
+  const grown = new Set(Object.keys(crops));
+  const crafted = new Set(sealedRecipes.map((recipe) => recipe.output));
+  const published = new Set([...grown, ...crafted]);
+  if (RECIPE_EXTENSIONS.length > RECIPE_LIMITS.authored) defects.push(`an authored recipe layer holds at most ${RECIPE_LIMITS.authored} recipes`);
+  for (const [index, recipe] of RECIPE_EXTENSIONS.entries()) {
+    const where = `authored recipe ${index + 1}`;
+    if (!recipe || typeof recipe !== 'object' || Array.isArray(recipe)) { defects.push(`${where} must be an object`); continue; }
+    if (typeof recipe.id !== 'string' || !/^[a-z][a-z0-9_]{1,39}$/.test(recipe.id)) defects.push(`${where} needs a lowercase id of 2–40 letters, digits or underscores`);
+    if (typeof recipe.name !== 'string' || !recipe.name.trim()) defects.push(`${where} needs a name`);
+    if (recipe.output !== recipe.id) defects.push(`${where} must output the keepsake it is named for`);
+    if (published.has(recipe.id)) defects.push(`${where} repeats the published id ${recipe.id}`);
+    const entries = Object.entries(recipe.ingredients || {});
+    if (!entries.length || entries.length > RECIPE_LIMITS.kinds) defects.push(`${where} needs one to ${RECIPE_LIMITS.kinds} kinds of ingredient`);
+    for (const [kind, quantity] of entries) {
+      if (!published.has(kind)) defects.push(`${where} spends ${kind}, which is neither grown nor made before it`);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > RECIPE_LIMITS.quantity) defects.push(`${where} needs a whole quantity of one to ${RECIPE_LIMITS.quantity} for ${kind}`);
+    }
+    published.add(recipe.output);
+    crafted.add(recipe.output);
+  }
+  // A layer that only ever spent crops would not be a chain, so the authored list must reach a
+  // second step: at least one recipe spends something that is itself crafted.
+  if (RECIPE_EXTENSIONS.length && !RECIPE_EXTENSIONS.some((recipe) => Object.keys(recipe.ingredients || {}).some((kind) => crafted.has(kind)))) {
+    defects.push('an authored recipe layer must add at least one recipe made from a keepsake');
+  }
+  return defects;
+}
+export const RECIPE_DEFECTS = Object.freeze(recipeDefects());
+if (RECIPE_DEFECTS.length) throw new Error(`journey: ${RECIPE_DEFECTS[0]}`);
+// One published list, sealed recipes first. The authored recipes repeat the sealed shape exactly.
+const recipes = Object.freeze([
+  ...sealedRecipes,
+  ...RECIPE_EXTENSIONS.map((recipe) => ({ id: recipe.id, name: recipe.name, ingredients: { ...recipe.ingredients }, output: recipe.output })),
+]);
 const titles = Object.freeze(content.cosmetics('title'));
 const avatars = Object.freeze(content.cosmetics('avatar').filter((id) => content.entry(id, 'cosmetic').rules.unlock_at_shared_visits === undefined));
 // Bounded per-resident reads. A resident's own history grows for as long as it exists, so every

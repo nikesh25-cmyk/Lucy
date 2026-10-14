@@ -3,10 +3,10 @@
   "generated_by": "scripts/seal-content.mjs",
   "kinds": {
     "appearance": 20,
-    "block": 7,
+    "block": 9,
     "cosmetic": 32,
-    "crop": 3,
-    "furniture": 27
+    "crop": 6,
+    "furniture": 31
   },
   "entries": [
     {
@@ -526,6 +526,22 @@
       "assets": []
     },
     {
+      "id": "clay",
+      "kind": "block",
+      "file": "content/blocks/clay.json",
+      "sha256": "cb474134f4719e6d71659d57d035fbe93271642dfd100cfbd7ea8ffb7ffa1727",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
       "id": "glass",
       "kind": "block",
       "file": "content/blocks/glass.json",
@@ -578,6 +594,22 @@
       "kind": "block",
       "file": "content/blocks/sand.json",
       "sha256": "78eeaa28b64be2f90378139f25f64cc09281dc53b62edfb3e80cea6334ce5042",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js COLORS (voxel material colour) and world.js FRONTIER_BLOCK_COLORS (tile renderer colour)",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "slate",
+      "kind": "block",
+      "file": "content/blocks/slate.json",
+      "sha256": "b9b25565a2971eb59f54f5a4e4b879f2e4758c45f168930d941ec286a59bd61b",
       "license": {
         "spdx": "LicenseRef-NemoWorld-Project-Authored",
         "author": "NemoWorld project contributors",
@@ -1134,6 +1166,22 @@
       "assets": []
     },
     {
+      "id": "blossom",
+      "kind": "crop",
+      "file": "content/crops/blossom.json",
+      "sha256": "252cc1bbd800b9ea0d4510135583cc11958e65d62433c47422c8cefe2bc43f88",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project game data: content/crops/*.json growth times, harvest yields and garden limits resolved by src/journey.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
       "id": "fiber",
       "kind": "crop",
       "file": "content/crops/fiber.json",
@@ -1150,6 +1198,22 @@
       "assets": []
     },
     {
+      "id": "grain",
+      "kind": "crop",
+      "file": "content/crops/grain.json",
+      "sha256": "78f5eebb161785229a222adb12e44b92eb46030b4733704423f94d9b3b688d6a",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project game data: content/crops/*.json growth times, harvest yields and garden limits resolved by src/journey.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
       "id": "herbs",
       "kind": "crop",
       "file": "content/crops/herbs.json",
@@ -1158,6 +1222,22 @@
         "spdx": "LicenseRef-NemoWorld-Project-Authored",
         "author": "NemoWorld project contributors",
         "source": "Original project game data: src/journey.js growth times, harvest yield and garden limits",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "resin",
+      "kind": "crop",
+      "file": "content/crops/resin.json",
+      "sha256": "48d1c0dcf981a3b932c995b74b22f38375ecfb46d38c44014bcc173804702c31",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project game data: content/crops/*.json growth times, harvest yields and garden limits resolved by src/journey.js",
         "commit": null,
         "notice_file": "content/THIRD_PARTY.md",
         "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
@@ -1206,6 +1286,22 @@
         "spdx": "LicenseRef-NemoWorld-Project-Authored",
         "author": "NemoWorld project contributors",
         "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "birdbath",
+      "kind": "furniture",
+      "file": "content/furniture/birdbath.json",
+      "sha256": "982172886b87b9e0fb13bbd3aa4ffdbc8c541a06b10c77f48eb459997b7140e2",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture() block-out routine and the world.js tile case written for this entry",
         "commit": null,
         "notice_file": "content/THIRD_PARTY.md",
         "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
@@ -1454,6 +1550,22 @@
       "assets": []
     },
     {
+      "id": "millstone",
+      "kind": "furniture",
+      "file": "content/furniture/millstone.json",
+      "sha256": "7fbab050440c00fe793da9c123229cfcd5444babea8901863376ff7310704317",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture() block-out routine and the world.js tile case written for this entry",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
       "id": "mountain",
       "kind": "furniture",
       "file": "content/furniture/mountain.json",
@@ -1534,6 +1646,22 @@
       "assets": []
     },
     {
+      "id": "sundial",
+      "kind": "furniture",
+      "file": "content/furniture/sundial.json",
+      "sha256": "48c69c8673a54030ca04a100b311e29c8f3e2f84f8c0da406e246ee996b1cd2b",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture() block-out routine and the world.js tile case written for this entry",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
       "id": "table",
       "kind": "furniture",
       "file": "content/furniture/table.json",
@@ -1598,6 +1726,22 @@
       "assets": []
     },
     {
+      "id": "well",
+      "kind": "furniture",
+      "file": "content/furniture/well.json",
+      "sha256": "c7f5f0caade6c1802c2242594981bd053a36b1fca8ae02cfb7e4ff522e7acbe9",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original project code: src/voxel-world.js furniture() block-out routine and the world.js tile case written for this entry",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
       "id": "workbench",
       "kind": "furniture",
       "file": "content/furniture/workbench.json",
@@ -1617,7 +1761,7 @@
   "support": [
     {
       "path": "content/palettes.json",
-      "sha256": "068b898b4596e86da9fec7c4fdefe2629cc89f6f8b614c0657029e04571d239e"
+      "sha256": "7b7a460de559688accacc4fb52e5ff420a01177bd434e0b691c4a4ccf7b40371"
     },
     {
       "path": "content/notices.json",
@@ -1625,7 +1769,7 @@
     },
     {
       "path": "content/index.js",
-      "sha256": "c3588ee73cdbb74c27424c85ad495292b2aa0c062d00ce6c953a0aab68a40eb3"
+      "sha256": "b4ac55f60cfe05c99579f27a481869c9112d54ede4836ecef454c76923101c85"
     }
   ]
 }
