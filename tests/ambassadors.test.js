@@ -39,7 +39,7 @@ test('exactly one ambassador per catalog entry after the first boot, and again a
   assert.equal(reopened.get('SELECT COUNT(*) AS n FROM ambassador_legacy_map').n, 20);
   assert.equal(reopened.get('SELECT COUNT(*) AS n FROM ambassador_conversations').n, 0);
   assert.equal(reopened.verifyAudit(), true);
-  assert.equal(validateDatabase(f.database).schema_version, 22);
+  assert.equal(validateDatabase(f.database).schema_version, 23);
 });
 
 test('each ambassador holds a stand in its own generated country venue and the finite frontier is untouched', async (t) => {
@@ -215,7 +215,7 @@ test('a v14 database with 20 guides and conversations migrates forward and keeps
   const migrated = platformWithAmbassadors(f.database, f.clock);
   t.after(() => migrated.close());
   const actor = migrated.authenticate(f.credentials.alice.token);
-  assert.equal(migrated.get('PRAGMA user_version').user_version, 22);
+  assert.equal(migrated.get('PRAGMA user_version').user_version, 23);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_ambassadors').n, 248);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_mayors').n, 20);
   // The paused guide handed its paused state to its replacement exactly once.
@@ -230,7 +230,7 @@ test('a v14 database with 20 guides and conversations migrates forward and keeps
   assert.deepEqual(migrated.ambassador(actor, { id: mapped }).legacy_conversations.map((turn) => turn.question), ['Historic v14 question']);
   // Re-running the migration is idempotent: no duplicate rows, no second paused write.
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_ambassadors').n, 248);
-  assert.equal(validateDatabase(f.database).schema_version, 22);
+  assert.equal(validateDatabase(f.database).schema_version, 23);
   assert.equal(migrated.verifyAudit(), true);
 });
 
@@ -244,10 +244,10 @@ test('a migrated database backs up, verifies and restores with every ambassador 
   const root = fileURLToPath(new URL('..', import.meta.url));
   execFileSync(process.execPath, ['scripts/recovery.js', 'backup', f.database, backup], { cwd: root });
   const verified = JSON.parse(execFileSync(process.execPath, ['scripts/recovery.js', 'verify', backup], { cwd: root }).toString());
-  assert.deepEqual(verified, { schema_version: 22, accounts: 5 });
-  assert.equal(validateDatabase(backup).schema_version, 22);
+  assert.deepEqual(verified, { schema_version: 23, accounts: 5 });
+  assert.equal(validateDatabase(backup).schema_version, 23);
   const result = restoreDatabase(backup, restored);
-  assert.equal(result.schema_version, 22);
+  assert.equal(result.schema_version, 23);
   const db = platformWithAmbassadors(restored, f.clock);
   t.after(() => db.close());
   assert.equal(db.get('SELECT COUNT(*) AS n FROM npc_ambassadors').n, 248);

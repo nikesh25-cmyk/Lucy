@@ -14,28 +14,53 @@ const stock = (f, agent, kind, quantity) => f.platform.run('INSERT INTO journey_
 const tables = (platform) => new Set(platform.all("SELECT name FROM sqlite_master WHERE type='table'").map((row) => row.name));
 const version = (platform) => platform.get('PRAGMA user_version').user_version;
 
-test('a schema 22 database gains the board additively, without a version bump', async (t) => {
+test('schema 22 without a board migrates to schema 23 without losing existing records', async (t) => {
+  const f = await fixture(t), alice = f.agent('alice');
+  stock(f, alice, 'herbs', 3);
+  const before = {
+    accounts: f.platform.get('SELECT COUNT(*) AS n FROM accounts').n,
+    agents: f.platform.get('SELECT COUNT(*) AS n FROM agents').n,
+    audit: f.platform.get('SELECT COUNT(*) AS n FROM audit').n,
+  };
+  f.platform.close();
+  // Reconstruct a pre-board schema-22 file from the populated fixture. Removing the empty tables
+  // leaves its accounts, avatars, inventory, land and audit rows intact.
+  const old = new DatabaseSync(f.database);
+  old.exec('PRAGMA foreign_keys=OFF; DROP TABLE trade_claim_units; DROP TABLE trade_claims; DROP TABLE trade_events; DROP TABLE trade_terms; DROP TABLE trade_listings; PRAGMA user_version=22;');
+  old.close();
+  assert.equal(validateDatabase(f.database).schema_version, 22, 'legacy backups remain accepted');
+  const restoredPath = join(f.directory, 'schema-22-restored.sqlite');
+  assert.equal(restoreDatabase(f.database, restoredPath).schema_version, 22, 'a schema-22 backup without trade tables restores');
+  const migrated = new Platform(restoredPath, f.clock);
+  t.after(() => migrated.close());
+  assert.equal(version(migrated), 23);
+  for (const name of ['trade_listings', 'trade_terms', 'trade_claims', 'trade_claim_units', 'trade_events']) assert.equal(tables(migrated).has(name), true, name);
+  assert.equal(validateDatabase(restoredPath).schema_version, 23);
+  assert.deepEqual({ accounts: migrated.get('SELECT COUNT(*) AS n FROM accounts').n, agents: migrated.get('SELECT COUNT(*) AS n FROM agents').n, audit: migrated.get('SELECT COUNT(*) AS n FROM audit').n }, before);
+  assert.equal(migrated.get('SELECT quantity FROM journey_inventory WHERE agent_id=? AND kind=?', alice.id, 'herbs').quantity, 3);
+  const posted = migrated.transaction(() => migrated.tradePost(migrated.authenticate(f.credentials.alice.token), { agent_id: alice.id, items: { herbs: 2 } }, 'migrate-post'));
+  assert.equal(posted.status, 'open');
+  assert.equal(verifyTradeRecords(migrated), true);
+});
+
+test('schema 22 with a populated trade board migrates without changing its ledger', async (t) => {
   const f = await fixture(t), alice = f.agent('alice'), bob = f.agent('bob');
   stock(f, alice, 'herbs', 3);
-  // The database the platform opens is the shipped schema 22: the board is not part of it yet, and
-  // every existing record is already in place.
-  assert.equal(version(f.platform), 22);
-  for (const name of ['trade_listings', 'trade_terms', 'trade_claims', 'trade_claim_units', 'trade_events']) assert.equal(tables(f.platform).has(name), false, name);
+  const listing = f.tx('tradePost', f.actor('alice'), { agent_id: alice.id, items: { herbs: 3 } }, 'pre23-post');
+  const claim = f.tx('tradeClaim', f.actor('bob'), { agent_id: bob.id, listing_id: listing.id, items: { herbs: 1 } }, 'pre23-claim');
+  const records = Object.fromEntries(['trade_listings', 'trade_terms', 'trade_claims', 'trade_claim_units', 'trade_events'].map((name) => [name, f.platform.all(`SELECT * FROM ${name}`)]));
+  f.platform.close();
+  const old = new DatabaseSync(f.database);
+  old.exec('PRAGMA user_version=22');
+  old.close();
   assert.equal(validateDatabase(f.database).schema_version, 22);
-  const before = { accounts: f.platform.get('SELECT COUNT(*) AS n FROM accounts').n, agents: f.platform.get('SELECT COUNT(*) AS n FROM agents').n, audit: f.platform.get('SELECT COUNT(*) AS n FROM audit').n };
-  f.tx('tradePost', f.actor('alice'), { agent_id: alice.id, items: { herbs: 3 } }, 'migrate-post');
-  // Starting the process adds the tables; the version still says 22, and recovery still validates it.
-  ensureTradeMarket(f.platform);
-  for (const name of ['trade_listings', 'trade_terms', 'trade_claims', 'trade_claim_units', 'trade_events']) assert.equal(tables(f.platform).has(name), true, name);
-  assert.equal(version(f.platform), 22, 'the board is additive inside schema 22; no version is claimed here');
-  assert.equal(validateDatabase(f.database).schema_version, 22);
-  assert.deepEqual({ accounts: f.platform.get('SELECT COUNT(*) AS n FROM accounts').n, agents: f.platform.get('SELECT COUNT(*) AS n FROM agents').n, audit: f.platform.get('SELECT COUNT(*) AS n FROM audit').n >= before.audit }, { accounts: before.accounts, agents: before.agents, audit: true });
-  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM journey_crops').n, 0);
-  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n, 0);
-  assert.equal(verifyTradeRecords(f.platform), true);
-  // A database that already carries the board keeps it: opening the layer twice is a no-op.
-  ensureTradeMarket(f.platform);
-  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM trade_listings').n, 1);
+  const migrated = new Platform(f.database, f.clock);
+  t.after(() => migrated.close());
+  assert.equal(version(migrated), 23);
+  for (const [name, rows] of Object.entries(records)) assert.deepEqual(migrated.all(`SELECT * FROM ${name}`), rows, name);
+  assert.equal(migrated.get('SELECT quantity FROM journey_inventory WHERE agent_id=? AND kind=?', bob.id, 'herbs').quantity, 1);
+  assert.equal(migrated.get('SELECT id FROM trade_claims WHERE id=?', claim.id).id, claim.id);
+  assert.equal(validateDatabase(f.database).schema_version, 23);
 });
 
 test('a listed exchange survives close, reopen, backup and restore, and settles on expiry once', async (t) => {
@@ -47,7 +72,7 @@ test('a listed exchange survives close, reopen, backup and restore, and settles 
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const backup = join(directory, 'backup.sqlite');
   backupDatabase(f.platform.db, backup);
-  assert.equal(validateDatabase(backup).schema_version, 22, 'recovery accepts a database that carries the board');
+  assert.equal(validateDatabase(backup).schema_version, 23, 'recovery accepts a database that carries the board');
   // A process restart reads the same listing, terms, claim and ledger back.
   f.platform.close();
   const reopened = new Platform(f.database, f.clock);
@@ -74,7 +99,7 @@ test('a listed exchange survives close, reopen, backup and restore, and settles 
   assert.equal(verifyTradeRecords(reopened), true);
   // The restored copy is the same board, and it still balances.
   const restored = restoreDatabase(backup, join(directory, 'restored.sqlite'));
-  assert.equal(restored.schema_version, 22);
+  assert.equal(restored.schema_version, 23);
   const copy = new Platform(join(directory, 'restored.sqlite'), f.clock);
   t.after(() => copy.close());
   assert.equal(copy.get('SELECT status FROM trade_listings WHERE id=?', listing.id).status, 'open', 'the backup holds the open listing as it was taken');
@@ -110,8 +135,16 @@ test('a board that lost a protection or a row fails the startup check', async (t
   const tampered = new DatabaseSync(f.database);
   tampered.exec('PRAGMA foreign_keys=OFF; DROP TRIGGER trade_terms_no_delete; DELETE FROM trade_terms;');
   tampered.close();
-  const reopened = new Platform(f.database, f.clock);
-  t.after(() => reopened.close());
-  assert.equal(verifyTradeRecords(reopened), false);
-  assert.throws(() => ensureTradeMarket(reopened), /Stored trade board records are invalid/);
+  assert.throws(() => new Platform(f.database, f.clock), /Stored trade board schema is incomplete/);
+  assert.throws(() => validateDatabase(f.database), /trade board schema is incomplete/);
+});
+
+test('a same-named weakened trade trigger cannot pass backup validation', async (t) => {
+  const f = await fixture(t);
+  f.platform.close();
+  const tampered = new DatabaseSync(f.database);
+  tampered.exec('DROP TRIGGER trade_terms_no_delete; CREATE TRIGGER trade_terms_no_delete BEFORE DELETE ON trade_terms BEGIN SELECT 1; END;');
+  tampered.close();
+  assert.throws(() => validateDatabase(f.database), /trade board schema is incomplete/);
+  assert.throws(() => new Platform(f.database, f.clock), /Stored trade board schema is incomplete/);
 });

@@ -11,11 +11,13 @@ import { VOCATION_SCHEMA, MEMORY_SCHEMA } from './vocations.js';
 import { QUEST_SCHEMA } from './quests.js';
 import { GUILD_SCHEMA } from './guilds.js';
 import { WORLD_OBJECT_GUARDS } from './placement-policy.js';
+import { TRADE_MARKET_SCHEMA, tradeSchemaPresent, verifyTradeRecords, verifyTradeSchema } from './trade-board.js';
 
 export function openDatabase(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
-  if (db.prepare('PRAGMA user_version').get().user_version > 22) { db.close(); throw new Error('Unsupported database schema version.'); }
+  const sourceVersion = db.prepare('PRAGMA user_version').get().user_version;
+  if (sourceVersion > 23) { db.close(); throw new Error('Unsupported database schema version.'); }
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', consent_at TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS invites(code_hash TEXT PRIMARY KEY, role TEXT NOT NULL, expires_at INTEGER NOT NULL, used_by TEXT);
@@ -134,6 +136,17 @@ export function openDatabase(path) {
       CREATE TRIGGER IF NOT EXISTS evidence_events_no_update BEFORE UPDATE ON evidence_events BEGIN SELECT RAISE(ABORT,'Evidence events are append-only'); END;
       CREATE TRIGGER IF NOT EXISTS evidence_events_no_delete BEFORE DELETE ON evidence_events BEGIN SELECT RAISE(ABORT,'Evidence events are append-only'); END;
       CREATE TRIGGER IF NOT EXISTS submission_evidence_no_update BEFORE UPDATE ON submission_evidence BEGIN SELECT RAISE(ABORT,'Evidence citations are immutable'); END;`);
+    // Schema 23 makes the trade board a required, validated part of the database. Some schema-22
+    // worlds already carry the board, while others do not. Keep an existing ledger byte-for-byte;
+    // reject partial schema or invalid records before CREATE IF NOT EXISTS can hide damage.
+    const hasTrade = tradeSchemaPresent(db);
+    const hasTradeAudit = Boolean(db.prepare("SELECT 1 FROM audit WHERE event LIKE 'trade.%' LIMIT 1").get());
+    if (hasTrade) {
+      if (!verifyTradeSchema(db)) throw new Error('Stored trade board schema is incomplete.');
+      if (!verifyTradeRecords({ all: (sql, ...args) => db.prepare(sql).all(...args) })) throw new Error('Stored trade board records are invalid.');
+    } else if (sourceVersion >= 23 || hasTradeAudit) throw new Error('Stored trade board schema is incomplete.');
+    db.exec(TRADE_MARKET_SCHEMA);
+    if (!verifyTradeSchema(db)) throw new Error('Stored trade board schema is incomplete.');
     db.exec(`CREATE INDEX IF NOT EXISTS agents_spatial ON agents(world_id,x,y);
       CREATE INDEX IF NOT EXISTS agents_operator ON agents(operator_id);
       CREATE INDEX IF NOT EXISTS tokens_agent ON tokens(agent_id,kind,revoked,expires_at);
@@ -146,7 +159,7 @@ export function openDatabase(path) {
       CREATE INDEX IF NOT EXISTS research_mission_country_goal ON research_leads(mission_id,country_code,goal);
       CREATE INDEX IF NOT EXISTS claims_agent ON claims(agent_id);
       CREATE INDEX IF NOT EXISTS submissions_claim ON submissions(claim_id,status);
-      PRAGMA user_version=22; COMMIT;`);
+      PRAGMA user_version=23; COMMIT;`);
   } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
   if (path !== ':memory:') chmodSync(path, 0o600);
   return db;

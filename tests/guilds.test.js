@@ -218,7 +218,7 @@ test('an organiser role grants no moderator, reviewer or management authority',a
  assert.equal(verify(f,'reviewer',reviewer,project,submitted.contributions[0]).contributions[0].status,'verified');
 });
 
-test('guild project records are checked whole: schema 22 migrates an older database and survives backup and restore',async t=>{
+test('guild project records are checked whole: schema 23 migrates an older database and survives backup and restore',async t=>{
  const f=await fixture(t),alice=f.agent('alice'),bob=f.agent('bob'),reviewer=f.agent('reviewer');
  const project=create(f,'alice',alice);
  participation(f,'bob',bob,project,'join');
@@ -241,7 +241,7 @@ test('guild project records are checked whole: schema 22 migrates an older datab
  assert.doesNotMatch(JSON.stringify(exported.guilds),new RegExp(f.actor('bob').account.id));
  const backup=join(f.directory,'guild-backup.sqlite');
  backupDatabase(f.platform.db,backup);
- assert.equal(validateDatabase(backup).schema_version,22);
+ assert.equal(validateDatabase(backup).schema_version,23);
  // A backup that lost a guild table is refused rather than silently accepted.
  const broken=join(f.directory,'guild-broken.sqlite');
  backupDatabase(f.platform.db,broken);
@@ -261,7 +261,7 @@ test('guild project records are checked whole: schema 22 migrates an older datab
  legacy.close();
  assert.equal(validateDatabase(f.database).schema_version,17);
  const migrated=new Platform(f.database,f.clock);t.after(()=>migrated.close());
- assert.equal(validateDatabase(f.database).schema_version,22);
+ assert.equal(validateDatabase(f.database).schema_version,23);
  assert.equal(migrated.get('SELECT COUNT(*) AS n FROM guild_projects').n,0);
  assert.equal(validateDatabase(f.database).accounts,5);
 });

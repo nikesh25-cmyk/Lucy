@@ -3,7 +3,7 @@ import { Platform } from './platform.js';
 import {
   TRADE_MARKET_LIMITS, TRADE_MARKET_POLICY, TRADE_MARKET_SCHEMA,
   claimCard, creditResources, debitResources, listingCard, listingTerms, normalizeTradeItems,
-  remainingItems, sameTradeItems, tradeText, verifyTradeRecords,
+  remainingItems, sameTradeItems, tradeSchemaPresent, tradeText, verifyTradeRecords, verifyTradeSchema,
 } from './trade-board.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -28,7 +28,14 @@ const ensured = new WeakSet();
 // additive `CREATE TABLE IF NOT EXISTS` block once per database and re-checks the stored ledger once.
 export function ensureTradeMarket(platform) {
   if (ensured.has(platform.db)) return platform;
+  // CREATE IF NOT EXISTS must never silently repair a partly deleted board. A database carrying a
+  // trade audit event also cannot be mistaken for a pre-board schema after its trade tables vanish.
+  if (tradeSchemaPresent(platform.db) && !verifyTradeSchema(platform.db) ||
+      !tradeSchemaPresent(platform.db) && platform.get("SELECT 1 FROM audit WHERE event LIKE 'trade.%' LIMIT 1")) {
+    throw new Error('Stored trade board schema is incomplete.');
+  }
   platform.db.exec(TRADE_MARKET_SCHEMA);
+  if (!verifyTradeSchema(platform.db)) throw new Error('Stored trade board schema is incomplete.');
   if (!verifyTradeRecords(platform)) throw new Error('Stored trade board records are invalid.');
   ensured.add(platform.db);
   return platform;
@@ -48,14 +55,24 @@ function owned(platform, actor, input, mutate = false) {
 function recordEvent(platform, listingId, accountId, action, detail, at) {
   platform.run('INSERT INTO trade_events VALUES(?,?,?,?,?,?)', randomUUID(), listingId, accountId, action, detail, at);
 }
-function claimsOf(platform, listingIds) {
-  if (!listingIds.length) return [new Map(), new Map()];
-  const rows = platform.all(`SELECT * FROM trade_claims WHERE listing_id IN (${listingIds.map(() => '?').join(',')}) ORDER BY claimed_at,id`, ...listingIds);
-  const units = rows.length ? platform.all(`SELECT * FROM trade_claim_units WHERE claim_id IN (${rows.map(() => '?').join(',')}) ORDER BY kind`, ...rows.map((row) => row.id)) : [];
-  const byClaim = new Map(rows.map((row) => [row.id, units.filter((unit) => unit.claim_id === row.id)]));
-  const byListing = new Map(listingIds.map((id) => [id, []]));
-  for (const row of rows) byListing.get(row.listing_id)?.push(row);
-  return [byListing, byClaim];
+function claimUnits(platform, claims) {
+  const byClaim = new Map(claims.map((claim) => [claim.id, []]));
+  if (!claims.length) return byClaim;
+  const rows = platform.all(`SELECT claim_id,kind,quantity FROM trade_claim_units WHERE claim_id IN (${claims.map(() => '?').join(',')}) ORDER BY kind`, ...claims.map((claim) => claim.id));
+  for (const row of rows) byClaim.get(row.claim_id)?.push(row);
+  return byClaim;
+}
+function claimsOf(platform, posted, claimed) {
+  const byListing = new Map(), selected = new Map(claimed.map((claim) => [claim.id, claim]));
+  // Each posted card needs at most ten claimers and a one-row truncation signal. A historic listing
+  // can have hundreds of claimers, so never fetch all of them just to draw one bounded card.
+  for (const listing of posted) {
+    const rows = platform.all('SELECT * FROM trade_claims WHERE listing_id=? ORDER BY claimed_at,id LIMIT ?', listing.id, TRADE_MARKET_LIMITS.claims_per_card + 1);
+    const visible = rows.slice(0, TRADE_MARKET_LIMITS.claims_per_card);
+    byListing.set(listing.id, { rows: visible, truncated: rows.length > visible.length });
+    for (const row of visible) selected.set(row.id, row);
+  }
+  return [byListing, claimUnits(platform, [...selected.values()])];
 }
 // Settle one listing exactly once. The guarded update is the single point of truth: `changes` is 1
 // only for the first caller, so the untaken remainder goes back to the poster exactly once even when
@@ -103,14 +120,16 @@ export const marketMethods = {
       ? this.all('SELECT * FROM trade_claims WHERE claimer_account_id=? AND claimer_agent_id=? ORDER BY claimed_at DESC,id DESC LIMIT ?', actor.account.id, actor.agent.id, TRADE_MARKET_LIMITS.own_limit)
       : this.all('SELECT * FROM trade_claims WHERE claimer_account_id=? ORDER BY claimed_at DESC,id DESC LIMIT ?', actor.account.id, TRADE_MARKET_LIMITS.own_limit);
     const listingIds = [...new Set([...open.map((listing) => listing.id), ...posted.map((listing) => listing.id), ...claimed.map((claim) => claim.listing_id)])];
-    const [claimsByListing, unitsByClaim] = claimsOf(this, listingIds);
+    const [claimsByListing, unitsByClaim] = claimsOf(this, posted, claimed);
     const termsByListing = listingTerms(this, listingIds);
-    const myClaims = new Set(claimed.map((claim) => claim.listing_id));
+    // The last fifty claim receipts are the bounded account-history page, not proof that the
+    // operator never claimed an older still-open listing. Check every open card by its indexed key.
+    const myClaims = new Set(open.filter((listing) => this.get('SELECT 1 FROM trade_claims WHERE listing_id=? AND claimer_account_id=?', listing.id, actor.account.id)).map((listing) => listing.id));
     const board = open.map((listing) => listingCard(this, listing, termsByListing.get(listing.id) || [], { accountId: actor.account.id }, { claimedListingIds: myClaims }));
     const mine = posted.map((listing) => {
-      const rows = claimsByListing.get(listing.id) || [];
-      const cards = rows.slice(0, TRADE_MARKET_LIMITS.claims_per_card).map((claim) => claimCard(this, claim, unitsByClaim.get(claim.id) || []));
-      return listingCard(this, listing, termsByListing.get(listing.id) || [], { accountId: actor.account.id }, { claims: cards, claimsTruncated: rows.length > cards.length });
+      const { rows, truncated } = claimsByListing.get(listing.id) || { rows: [], truncated: false };
+      const cards = rows.map((claim) => claimCard(this, claim, unitsByClaim.get(claim.id) || []));
+      return listingCard(this, listing, termsByListing.get(listing.id) || [], { accountId: actor.account.id }, { claims: cards, claimsTruncated: truncated });
     });
     const taken = claimed.map((claim) => ({
       ...claimCard(this, claim, unitsByClaim.get(claim.id) || []),
@@ -217,6 +236,50 @@ export const marketMethods = {
     if (!settleListing(this, listing, 'cancelled', actor.account.id, this.clock())) fail(409, 'This listing is no longer open.');
     this.audit(actor.account.id, 'trade.cancelled', listing.id);
     return listingCard(this, this.get('SELECT * FROM trade_listings WHERE id=?', listing.id), listingTerms(this, [listing.id]).get(listing.id) || [], { accountId: actor.account.id });
+  },
+  tradeExport(actor, limit = 500) {
+    if (!tradeSchemaPresent(this.db)) return { posted: [], claimed: [], posted_total: 0, claimed_total: 0, truncated: false };
+    ensureTradeMarket(this);
+    const accountId = actor.account.id;
+    const postedTotal = this.get('SELECT COUNT(*) AS n FROM trade_listings WHERE poster_account_id=?', accountId).n;
+    const claimedTotal = this.get('SELECT COUNT(*) AS n FROM trade_claims WHERE claimer_account_id=?', accountId).n;
+    const posted = this.all('SELECT * FROM trade_listings WHERE poster_account_id=? ORDER BY posted_at DESC,id DESC LIMIT ?', accountId, limit);
+    const claimed = this.all('SELECT * FROM trade_claims WHERE claimer_account_id=? ORDER BY claimed_at DESC,id DESC LIMIT ?', accountId, limit);
+    const listingIds = [...new Set([...posted.map((row) => row.id), ...claimed.map((row) => row.listing_id)])];
+    const terms = listingTerms(this, listingIds), units = claimUnits(this, claimed);
+    return {
+      posted: posted.map((row) => listingCard(this, row, terms.get(row.id) || [], { accountId })),
+      claimed: claimed.map((row) => ({ ...claimCard(this, row, units.get(row.id) || []),
+        listing: listingCard(this, this.get('SELECT * FROM trade_listings WHERE id=?', row.listing_id), terms.get(row.listing_id) || [], { accountId }) })),
+      posted_total: postedTotal, claimed_total: claimedTotal,
+      truncated: postedTotal > posted.length || claimedTotal > claimed.length,
+    };
+  },
+  tradeDeleteAccount(actor) {
+    if (!tradeSchemaPresent(this.db)) return;
+    ensureTradeMarket(this);
+    const accountId = actor.account.id, at = this.clock();
+    // Settle before the account's inventory is erased; each remainder is credited once and then
+    // removed with that account's journey. No expired offer can remain publicly claimable.
+    for (const listing of this.all("SELECT * FROM trade_listings WHERE poster_account_id=? AND status='open'", accountId)) {
+      settleListing(this, listing, 'cancelled', accountId, at);
+      this.audit(accountId, 'trade.cancelled', listing.id);
+    }
+    // A post key, claim key and free-text note can all contain user-authored private text. Preserve
+    // the public exchange and its accounting while replacing those fields with unique opaque
+    // tombstones. The exact guards are restored inside the caller's transaction; a failed deletion
+    // rolls the data and the DDL back together.
+    if (!this.get('SELECT 1 FROM trade_listings WHERE poster_account_id=?', accountId) &&
+        !this.get('SELECT 1 FROM trade_claims WHERE claimer_account_id=?', accountId)) return;
+    if (!verifyTradeSchema(this.db)) throw new Error('Stored trade board schema is incomplete.');
+    const listingGuard = this.get("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name='trade_listings_lifecycle'")?.sql;
+    const claimGuard = this.get("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name='trade_claims_no_update'")?.sql;
+    if (!listingGuard || !claimGuard) throw new Error('Stored trade board schema is incomplete.');
+    this.db.exec('DROP TRIGGER trade_listings_lifecycle; DROP TRIGGER trade_claims_no_update');
+    try {
+      this.run("UPDATE trade_listings SET note='[removed]',post_key='removed:'||id WHERE poster_account_id=?", accountId);
+      this.run("UPDATE trade_claims SET claim_key='removed:'||id WHERE claimer_account_id=?", accountId);
+    } finally { this.db.exec(`${listingGuard}; ${claimGuard};`); }
   },
 };
 

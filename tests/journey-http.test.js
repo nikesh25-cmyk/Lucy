@@ -130,9 +130,9 @@ test('a crop ripens on the server clock and one harvest is credited once through
 
   f.advance(1);
   const ripe = await readTile(f, alice, garden);
-  assert.deepEqual(ripe.action.options, [{ action: 'harvest', label: 'Harvest 2 resources', available: true }]);
-  assert.equal(ripe.action.label, 'Harvest 2 resources');
-  assert.match(ripe.hint, /Harvest 2 resources/);
+  assert.deepEqual(ripe.action.options, [{ action: 'harvest', label: 'Harvest 4 resources', available: true }]);
+  assert.equal(ripe.action.label, 'Harvest 4 resources');
+  assert.match(ripe.hint, /Harvest 4 resources/);
 
   // The harvest itself, through the crop patch the panel renders.
   const harvested = await harvestByHand(f, alice, 'journey-harvest-1');

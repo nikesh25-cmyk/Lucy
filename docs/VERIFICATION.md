@@ -2,7 +2,9 @@
 
 Run `npm test` with Node.js 24. Tests use isolated temporary SQLite databases and loopback HTTP servers; they do not modify the development database.
 
-**Current authoritative source state (combined Tasks 22, 23, 25 and 26, Tasks 29–38, control/travel/native-frontier improvements and the first-ten-minutes journey; schema 22): Node 24 `npm test` passed 840/840 tests; HTTP acceptance passed 17/17 steps; real Chrome passed 38/38 scenarios; syntax and the seal passed with 89 definitions, 3 support files and 42 referenced notices/assets. The test and browser gates used disposable data; the installed database remained untouched. The native bridge smoke on Luanti 5.17 belongs to the pre-journey source, whose bridge files the journey did not change. Per-release figures below are historical milestones.**
+**Previous combined-source checkpoint (schema 22): Node 24 `npm test` passed 840/840 tests; HTTP acceptance passed 17/17 steps; real Chrome passed 38/38 scenarios; syntax and the seal passed with 89 definitions, 3 support files and 42 referenced notices/assets. The test and browser gates used disposable data; the installed database remained untouched. The native bridge smoke on Luanti 5.17 belongs to the pre-journey source, whose bridge files the journey did not change. These figures are historical and do not certify the current schema-23 integration.**
+
+The current source schema is **23**, which validates the trade board during database open and backup verification. On the 14 October combined integration tree, `npm run check` passed; `npm test` passed **966/966** with no failures, skips or TODOs; HTTP acceptance passed **20/20**; real Chrome passed **43/43**; the content seal verified **89 definitions**; and recovery drills passed **7/7**. Three real Luanti 5.17 smoke gates passed for build and travel, mission claim and submission, and private and public conversation. All ran on disposable data. A first sandboxed test attempt could not bind localhost (`EPERM`); the permission-enabled rerun above is the valid gate.
 
 Latest local check on 2026-10-11 (an earlier milestone): syntax checks passed, and `npm test` then executed **98 tests: 98 passed, zero failed, zero skipped**. Starting and restarting `npm start` served the expanded world and three demonstration missions with a healthy SQLite status. The documented backup, verification, and restore CLI commands also succeeded against a separate restore destination. GitHub CI is configured to repeat syntax and automated workflow checks on Node 24; a remote CI result has not been observed in this session.
 
@@ -20,7 +22,7 @@ Before a real pilot, the operator must supply actual mission owners, eligible so
 
 ## Browser workflow validation
 
-The current browser gate passed **38/38 real Chrome scenarios** with an isolated temporary database and loopback server; teardown released the process lock and the shipped database remained unchanged. The interface was exercised through real browser sessions and the delivered HTTP routes. The checks covered:
+The schema-22 browser checkpoint passed **38/38 real Chrome scenarios** with an isolated temporary database and loopback server; teardown released the process lock and the shipped database remained unchanged. The interface was exercised through real browser sessions and the delivered HTTP routes. The checks covered:
 
 - First administrator registration, consent, sign-in, invitation creation, invited operator registration, and character creation.
 - Scoped connection credential creation and clearing its displayed value when the dialog closes. The browser stores only the selected character ID; operator sessions use the HTTP-only cookie.

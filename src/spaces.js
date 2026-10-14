@@ -4,8 +4,8 @@ import { frontierMethods, FRONTIER_LIMITS } from './frontier.js';
 import { RESTORATION_PLACEMENT_STEP, RESTORATION_ROLES } from './community.js';
 import { contributionSource, contributionEligibility, cropAt } from './journey.js';
 import { blockLayers, canStep, isGrounded, settle, surfaceAt } from './elevation.js';
-import { sceneryBlocks, solidSceneryAt } from './footprints.js';
-import { escapeColumns, nearestClearTile, planWalk } from './world-walk.js';
+import { sceneryBlocks, solidSceneryAt, solidTileKeys } from './footprints.js';
+import { escapeColumns, nearestClearTile } from './world-walk.js';
 import { GARDEN_PALETTE, HOUSE_PALETTE } from './placement-policy.js';
 import { INTERACTION_DISTANCE } from './camera-controls.js';
 import content from './content.js';
@@ -55,6 +55,59 @@ function trapsResident(platform, worldId, definition, beforeObjects, afterObject
 }
 // `/move` and `/climb` call (actor, input); `/agents/:id/look` and `/agents/:id/climb` call (actor, agent_id, input).
 const actionInput = (args) => args.length > 1 ? { ...args[1], agent_id: args[1]?.agent_id || args[0] } : args[0] || {};
+
+const PASSAGE_ROUTE_LIMIT = Object.freeze({ steps: 512, visited: 4096 });
+/**
+ * Name the nearest passage the resident can actually walk onto. `portals` is already filtered to
+ * worlds that exist; using it also keeps a deleted or unopened destination out of the cue. One
+ * bounded breadth-first search follows the same canStep collision rule as /move, including saved
+ * scenery and every solid block layer, instead of planning separately for every doorway on each
+ * world poll. A frontier has at most the sealed 2,048 stored blocks, read in one indexed query.
+ */
+function nextPassageCue(platform, world, definition, resident, portals, objects) {
+  if (!resident || resident.world_id !== world.id) return null;
+  const from = { x: resident.x, y: resident.y };
+  const targets = new Map();
+  for (const portal of portals) {
+    const tile = { x: portal.x, y: portal.y };
+    if (!walkable(tile, definition)) continue;
+    const gate = world.kind === 'frontier' && ['up', 'down', 'left', 'right'].includes(portal.direction);
+    const option = {
+      kind: gate ? 'gate' : 'portal', label: portal.name || portal.label || 'doorway',
+      x: tile.x, y: tile.y, target_world_id: portal.target_world_id,
+      distance: Math.abs(tile.x - from.x) + Math.abs(tile.y - from.y),
+      ...(gate ? { direction: portal.direction } : {}),
+    };
+    const key = `${tile.x},${tile.y}`;
+    if (!targets.has(key)) targets.set(key, option);
+  }
+  const noRoute = { kind: null, reason: 'No reachable passage from here.', world_id: world.id, ...from };
+  if (!targets.size) return noRoute;
+  const blocks = world.kind === 'frontier'
+    ? platform.all("SELECT x,y,z,type FROM frontier_blocks WHERE world_id=? AND type!='path' LIMIT ?", world.id, FRONTIER_LIMITS.blocks_per_sector + 1)
+    : [];
+  if (blocks.length > FRONTIER_LIMITS.blocks_per_sector) return noRoute;
+  const context = {
+    walkable, definition, layers: blockLayers(blocks),
+    solidTiles: solidTileKeys([...(definition.objects || []), ...objects]),
+  };
+  const queue = [{ x: from.x, y: from.y, z: resident.z, steps: 0 }];
+  const seen = new Set([`${from.x},${from.y}`]);
+  for (let index = 0; index < queue.length && index < PASSAGE_ROUTE_LIMIT.visited; index++) {
+    const current = queue[index], found = targets.get(`${current.x},${current.y}`);
+    if (found) return { ...found, steps: current.steps, world_id: world.id, from };
+    if (current.steps >= PASSAGE_ROUTE_LIMIT.steps) continue;
+    for (const direction of ['up', 'right', 'down', 'left']) {
+      const step = canStep(current, direction, context);
+      if (step.blocked) continue;
+      const key = `${step.position.x},${step.position.y}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      queue.push({ ...step.position, steps: current.steps + 1 });
+    }
+  }
+  return noRoute;
+}
 
 // ---------------------------------------------------------------------------------------------
 // Direct, purposeful world interaction.
@@ -131,7 +184,7 @@ function interactionOptions(platform, fixture, viewer) {
     if (!growing) return Object.entries(content.crops()).map(([kind, growth]) => ({ action: 'plant', kind, label: `Plant ${kind} (${Math.round(growth / 60_000)} minutes)` }));
     const options = [];
     if (crop.tended_at == null) options.push({ action: 'tend', label: 'Tend the crop (saves up to 5 minutes)' });
-    options.push({ action: 'harvest', label: crop.ready ? 'Harvest 2 resources' : 'Harvest when the crop is ready', available: Boolean(crop.ready) });
+    options.push({ action: 'harvest', label: crop.ready ? `Harvest ${crop.yield.quantity} resources` : 'Harvest when the crop is ready', available: Boolean(crop.ready) });
     return options;
   }
   if (fixture.kind === 'crafting_station') return content.recipes().map((recipe) => ({ recipe_id: recipe.id, label: `${recipe.name} — ${Object.entries(recipe.ingredients).map(([kind, quantity]) => `${quantity} ${kind}`).join(' + ')}`, ingredients: { ...recipe.ingredients }, available: missingIngredients(platform, viewer.id, recipe).length === 0 }));
@@ -145,7 +198,8 @@ function interactionActionLabel(fixture, options) {
   if (fixture.kind === 'ambassador_desk') return `Talk to ${fixture.name}`;
   if (fixture.kind === 'crop_patch') {
     if (!options.length || options.some((option) => option.action === 'plant')) return 'Plant a crop';
-    if (options.some((option) => option.action === 'harvest' && option.available)) return 'Harvest 2 resources';
+    const readyHarvest = options.find((option) => option.action === 'harvest' && option.available);
+    if (readyHarvest) return readyHarvest.label;
     if (options.some((option) => option.action === 'tend')) return 'Tend the crop';
     return 'Harvest when the crop is ready';
   }
@@ -430,26 +484,7 @@ export const spaceMethods = {
       ...frontierView, terrain: definition.terrain.slice(camera.y, camera.y + ROWS).map((row) => row.slice(camera.x, camera.x + COLS)), landmarks: definition.landmarks || [],
       bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null, message_scope_agent_id: messageScopeAgentId,
       counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='agent'").n, registered_humans: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='human'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n+this.get('SELECT COUNT(*) AS n FROM npc_ambassadors WHERE world_id=?',id).n, visible_agents: participants.length, hidden_agents: hiddenAgents },
-      // A location and next-passage cue: which passage to walk to next, and how many steps it is. The
-      // nearest passages are tried first so the common case costs a single planned route; a resident
-      // with nothing reachable is told why rather than shown a confident wrong direction.
-      next_passage: (() => {
-        if (!viewerAgent || viewerAgent.world_id !== id) return null;
-        const from = { x: viewerAgent.x, y: viewerAgent.y };
-        const options = [];
-        if (world.kind === 'frontier') for (const gate of frontierGates(world.id)) {
-          if (!this.get('SELECT world_id FROM frontier_sectors WHERE world_id=?', gate.targetWorldId)) continue;
-          options.push({ kind: 'gate', direction: gate.direction, label: `${gate.direction} frontier passage`, x: gate.x, y: gate.y, target_world_id: gate.targetWorldId });
-        }
-        for (const portal of definition.portals || []) options.push({ kind: 'portal', label: portal.name || 'doorway', x: portal.x, y: portal.y, target_world_id: portal.targetWorldId || portal.target_world_id });
-        for (const option of options) option.distance = Math.abs(option.x - from.x) + Math.abs(option.y - from.y);
-        options.sort((a, b) => a.distance - b.distance);
-        for (const option of options) {
-          const route = planWalk(definition, from, { x: option.x, y: option.y }, { maxSteps: 512, maxVisited: 4096 });
-          if (route) return { ...option, steps: route.length, world_id: world.id, from };
-        }
-        return { kind: null, reason: 'No reachable passage from here.', world_id: world.id, x: from.x, y: from.y };
-      })(),
+      next_passage: nextPassageCue(this, world, definition, viewerAgent, portals, objects),
       paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true' };
   },
   /**
@@ -559,14 +594,31 @@ export const spaceMethods = {
     if (!['public', 'private'].includes(visibility)) fail(400, 'Choose public or private visiting.');
     this.run('UPDATE worlds SET name=?,visibility=? WHERE id=?', name, visibility, world.id);
     this.run("UPDATE worlds SET visibility=? WHERE owner_agent_id=? AND kind='house'", visibility, agentId);
+    let returned = [];
     if (visibility === 'private') {
       const start = getWorldDefinition('commons').start;
+      // Capture the old world before the bulk move. The database row is authoritative, and both
+      // the garden/cottage and Commons event subscribers need the same confirmed crossing.
+      returned = this.all("SELECT id,world_id,posture,status FROM agents WHERE world_id IN (?,?) AND id!=? AND status!='deleted'", world.id, `house:${agentId}`, agentId);
       this.run('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE world_id IN (?,?) AND id!=?', 'commons', start.x, start.y, world.id, `house:${agentId}`, agentId);
     }
     this.audit(actor.account.id, 'garden.settings', world.id);
     // Changing a garden to private returns its visitors to the Commons and must also revoke any
-    // subscription that no longer has a right to observe it, so every subscriber is re-checked now.
+    // subscription that no longer has a right to observe it, so every subscriber is re-checked
+    // before a queued departure can flush to a now-unauthorized garden observer.
     this.events?.revalidateNow?.();
+    if (returned.length) {
+      const start = getWorldDefinition('commons').start;
+      const arrivals = [], departures = new Map();
+      for (const resident of returned) {
+        const arrival = { id: resident.id, world_id: 'commons', x: start.x, y: start.y, z: 0, grounded: 1, posture: resident.posture, status: resident.status };
+        arrivals.push(arrival);
+        if (!departures.has(resident.world_id)) departures.set(resident.world_id, []);
+        departures.get(resident.world_id).push(arrival);
+      }
+      for (const [sourceWorld, agents] of departures) this.events?.publish(sourceWorld, { agents });
+      this.events?.publish('commons', { agents: arrivals });
+    }
     return { id: world.id, name, visibility };
   },
   heartbeat(actor, agentId) {

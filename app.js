@@ -2136,13 +2136,18 @@ function renderPassport(parent){
   const journal=card('A quiet page','PRIVATE RESIDENT JOURNAL');const inputs=form(journal,'Save journal entry',values=>change('/journey/journal',{...values,agent_id:state.selected},'Journal entry saved privately.'));field(inputs,'text','A thought, lesson, or next intention',{type:'textarea',max:1500,full:true});for(const entry of journey.journal){const page=element('article',null,'journal-entry');append(page,paragraph(date(entry.created_at),'privacy'),paragraph(entry.text,'artifact'));journal.append(page);}if(!journey.journal.length)journal.append(empty('The first page is yours. Entries are private to this character’s operator.'));parent.append(journal);
 }
 function resourceName(value){return String(value).replaceAll('_',' ');}
+function harvestNotice(result){
+  const gathered=result?.gathered;
+  return gathered?`Harvest gathered: ${gathered.quantity} ${resourceName(gathered.kind)} added to your shelf.`:'Harvest gathered. Open your shelf to see the saved amount.';
+}
 function renderWorkshop(parent){
   parent.append(heading('Grow a little. Make a little.','Tend a real patch of your garden, then turn its resources into keepsakes. There is no currency, purchase, or mission merit exchange.'));if(!requireResident(parent))return;const journey=state.journey;if(!journey){parent.append(empty('Open the workshop again to load your inventory.'));return;}residentContext(parent);
   const storage=card('On your shelf','RESIDENT INVENTORY');const inventory=actions(...journey.inventory.filter(item=>item.quantity>0).map(item=>badge(`${item.quantity} ${resourceName(item.kind)}`)));storage.append(inventory);if(!inventory.children.length)storage.append(empty('An empty shelf is a beginning. Plant a crop patch in your garden to grow resources.'));parent.append(storage);
   const bench=card('The crafting bench','MAKE SOMETHING TO KEEP');const recipes=element('div',null,'grid three');for(const recipe of journey.recipes){const node=card(recipe.name);append(node,paragraph(Object.entries(recipe.ingredients).map(([kind,quantity])=>`${quantity} ${resourceName(kind)}`).join(' + '),'privacy'),paragraph(`Makes ${resourceName(recipe.output)}`,'muted'));const enough=Object.entries(recipe.ingredients).every(([kind,quantity])=>(journey.inventory.find(item=>item.kind===kind)?.quantity||0)>=quantity);const make=button('Craft keepsake',()=>change('/journey/craft',{agent_id:state.selected,recipe_id:recipe.id},'Keepsake crafted. Choose it in your resident passport.'),'small');make.disabled=!enough||selected().status!=='active';node.append(make);if(!enough)node.append(paragraph('Grow the required resources first.','privacy'));recipes.append(node);}bench.append(recipes);parent.append(bench);
   const garden=card('Your growing garden','PLANT · TEND · HARVEST');const here=viewedAgent()?.id===state.selected&&currentWorldId()===`home:${state.selected}`;garden.append(paragraph('Seeds are free. Herbs grow in 20 minutes, fiber in 25, and wood in 30. Tend once to shorten growth, with a minimum of 20 minutes from planting.','muted'));if(!here)garden.append(empty('Bring your character home to plant, tend, or harvest its crop patches.'),button('Go home',()=>travelAgent(`home:${state.selected}`),'small'));
-  const patches=here?(state.world.objects||[]).filter(item=>(item.type||item.kind)==='farm'):[];for(const patch of patches){const crop=journey.crops.find(item=>item.x===patch.x&&item.y===patch.y),node=element('article',null,'crop-patch');node.append(element('h3',`Crop patch · ${patch.x}, ${patch.y}`));if(crop&&!crop.harvested_at){append(node,badge(resourceName(crop.kind)),paragraph(crop.ready?'Ready to harvest':`Ready ${date(crop.ready_at)}`,'privacy'));const controls=actions();if(!crop.tended_at)controls.append(button('Tend patch',()=>change('/journey/garden',{agent_id:state.selected,action:'tend',x:patch.x,y:patch.y},'Patch tended.'),'secondary small'));const harvest=button('Harvest resources',()=>change('/journey/garden',{agent_id:state.selected,action:'harvest',x:patch.x,y:patch.y},'Harvest gathered. Two resources added to your shelf.'),'small');harvest.disabled=!crop.ready;controls.append(harvest);node.append(controls);}else{const inputs=form(node,'Plant crop',values=>change('/journey/garden',{agent_id:state.selected,action:'plant',x:patch.x,y:patch.y,kind:values.kind},'Seeds planted. Return when your crop is ready.'));field(inputs,'kind','Crop',{options:[{value:'herbs',label:'Herbs · 20 minutes'},{value:'fiber',label:'Fiber · 25 minutes'},{value:'wood',label:'Wood · 30 minutes'}],full:true});}garden.append(node);}if(here&&!patches.length)garden.append(empty('Place a Crop patch with the garden build palette, then return here to plant.'),button('Build a crop patch',()=>{state.tab='world';state.building=true;state.buildKind='farm';render();},'small'));garden.append(button('Refresh growth',async()=>{await loadJourney();await loadWorld();renderView();},'secondary small'));parent.append(garden);
+  const patches=here?(state.world.objects||[]).filter(item=>(item.type||item.kind)==='farm'):[];for(const patch of patches){const crop=journey.crops.find(item=>item.x===patch.x&&item.y===patch.y),node=element('article',null,'crop-patch');node.append(element('h3',`Crop patch · ${patch.x}, ${patch.y}`));if(crop&&!crop.harvested_at){append(node,badge(resourceName(crop.kind)),badge(`${resourceName(crop.stage)} · ${crop.care} care`),paragraph(crop.ready?'Ready to harvest':`Ready ${date(crop.ready_at)}`,'privacy'),paragraph(`Expected harvest: ${crop.yield.quantity} ${resourceName(crop.kind)}.`, 'privacy'));const controls=actions();if(!crop.tended_at)controls.append(button('Tend patch',()=>change('/journey/garden',{agent_id:state.selected,action:'tend',x:patch.x,y:patch.y},'Patch tended.'),'secondary small'));const harvest=button('Harvest resources',async()=>{const result=await change('/journey/garden',{agent_id:state.selected,action:'harvest',x:patch.x,y:patch.y});notice(harvestNotice(result));},'small');harvest.disabled=!crop.ready;controls.append(harvest);node.append(controls);}else{if(crop?.seed&&!crop.seed.spent)node.append(paragraph(`Saved ${resourceName(crop.seed.kind)} seed available until ${date(crop.seed.until)}.`, 'privacy'));const inputs=form(node,'Plant crop',values=>change('/journey/garden',{agent_id:state.selected,action:'plant',x:patch.x,y:patch.y,kind:values.kind},'Seeds planted. Return when your crop is ready.'));field(inputs,'kind','Crop',{options:[{value:'herbs',label:'Herbs · 20 minutes'},{value:'fiber',label:'Fiber · 25 minutes'},{value:'wood',label:'Wood · 30 minutes'}],full:true});}garden.append(node);}if(here&&!patches.length)garden.append(empty('Place a Crop patch with the garden build palette, then return here to plant.'),button('Build a crop patch',()=>{state.tab='world';state.building=true;state.buildKind='farm';render();},'small'));garden.append(button('Refresh growth',async()=>{await loadJourney();await loadWorld();renderView();},'secondary small'));parent.append(garden);
   renderOffers(parent);
+  renderTradeBoard(parent);
 }
 // Resource offers: the operator-facing half of the internal-resource economy. A resident offers
 // grown or crafted items to a neighbour of another operator; the recipient's operator accepts or
@@ -2151,7 +2156,7 @@ function renderWorkshop(parent){
 function renderOffers(parent){
   const journey=state.journey;if(!journey)return;
   const node=card('Give what you grew','RESOURCE OFFERS');
-  node.append(paragraph('Offer grown or crafted items to a neighbour — a resident of another operator. An offer moves items only: it is not money, a NemoCoin, or land. The items leave your shelf while the offer stands, only the named recipient’s operator can accept it, and if it expires or you cancel it the items return to you.','privacy'));
+  node.append(paragraph('Offer grown or crafted items to a resident of another operator. Choose someone visible here; their operator may accept later from anywhere. An offer moves items only: it is not money, a NemoCoin, or land. The items leave your shelf while the offer stands, and return if it expires or you cancel it.','privacy'));
   const list=element('div',null,'grid two');node.append(list);
   const filter=element('select');filter.setAttribute('aria-label','Which offers to show');
   for(const [value,label] of [['all','All offers'],['incoming','Offered to me'],['outgoing','I offered']]){const option=element('option',label);option.value=value;filter.append(option);}
@@ -2166,7 +2171,7 @@ function renderOffers(parent){
     field(controls,'quantity','Quantity',{type:'number',min:1,max:99,value:'1'});
     field(controls,'expires_minutes','Expires in minutes',{type:'number',min:1,max:10080,value:'1440'});
     field(controls,'note','Note',{required:false,max:200,full:true,hint:'Optional.'});
-  } else node.append(empty(recipients.length?'Grow or make something on the shelf first.':'Stand in a shared place beside a neighbour — a resident of another operator — to offer to them.'));
+  } else node.append(empty(recipients.length?'Grow or make something on the shelf first.':'Visit a shared place with another operator’s visible resident to make a named offer, or use the Village exchange below.'));
   parent.append(node);
   guarded(()=>loadOffers(list,status,filter.value));
   filter.addEventListener('change',()=>guarded(()=>loadOffers(list,status,filter.value)));
@@ -2189,6 +2194,48 @@ async function loadOffers(list,status,filter='all'){
     list.append(node);
   }
   status.textContent=`${offers.length} offer${offers.length===1?'':'s'} shown.`;
+}
+
+// A small in-world view of the server's resource board. Listing and claiming move only the
+// resident's saved inventory; the server holds the escrow and decides whether an action is allowed.
+function renderTradeBoard(parent){
+  const node=card('Village exchange','SHARED RESOURCE BOARD');
+  node.append(paragraph('Share resources you grew or made with residents of another operator. Posting holds them from your shelf until claimed, withdrawn, or expired. No coins, money, or land change hands.','privacy'));
+  const held=(state.journey?.inventory||[]).filter(item=>item.quantity>0);
+  if(held.length){
+    const inputs=form(node,'Post resources',values=>change('/trade/listings',{agent_id:state.selected,items:{[values.kind]:Number(values.quantity)},note:values.note,expires_minutes:Number(values.expires_minutes)},'Listing posted. The resources are held from your shelf.',true));
+    field(inputs,'kind','Resource',{options:held.map(item=>({value:item.kind,label:`${item.quantity} ${resourceName(item.kind)} on shelf`})),full:true});
+    field(inputs,'quantity','Quantity',{type:'number',min:1,max:99,value:'1'});
+    field(inputs,'expires_minutes','Expires in minutes',{type:'number',min:1,max:10080,value:'1440'});
+    field(inputs,'note','Short note',{required:false,max:200,full:true});
+  }
+  const status=element('p',null,'privacy');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+  const list=element('div',null,'grid two');
+  node.append(actions(button('Refresh board',()=>guarded(()=>loadTradeBoard(list,status)),'secondary small')),status,list);
+  parent.append(node);
+  guarded(()=>loadTradeBoard(list,status));
+}
+async function loadTradeBoard(list,status){
+  const agentId=state.selected;
+  const board=await api(`/trade/listings?agent_id=${encodeURIComponent(agentId)}`);
+  if(!list.isConnected||state.selected!==agentId)return;
+  list.replaceChildren();
+  const formatItems=items=>Object.entries(items||{}).map(([kind,quantity])=>`${quantity} ${resourceName(kind)}`).join(' + ');
+  for(const listing of board.listings||[]){
+    const node=card(`From ${listing.poster.name}`,'AVAILABLE');
+    node.append(paragraph(formatItems(listing.remaining)),paragraph(`Expires ${date(listing.expires_at)}`,'privacy'));
+    if(listing.note)node.append(paragraph(listing.note,'privacy'));
+    if(listing.can_claim)node.append(button('Take available resources',()=>change('/trade/claim',{agent_id:agentId,listing_id:listing.id},'Resources moved to your shelf.',true),'small'));
+    list.append(node);
+  }
+  for(const listing of board.posted||[]){
+    const node=card(`Your listing · ${listing.poster.name}`,listing.status.toUpperCase());
+    node.append(paragraph(`Remaining: ${formatItems(listing.remaining)||'none'}`),paragraph(`Expires ${date(listing.expires_at)}`,'privacy'));
+    if(listing.status==='open')node.append(button('Withdraw listing',()=>change('/trade/cancel',{listing_id:listing.id},'Listing withdrawn; remaining resources returned.'),'secondary small'));
+    list.append(node);
+  }
+  if(!list.children.length)list.append(empty('No resources are listed yet. Grow or make an item to begin.'));
+  status.textContent=`${(board.listings||[]).length} available · ${(board.posted||[]).length} of yours shown.`;
 }
 
 async function boot() {
@@ -3077,7 +3124,7 @@ function interactionMessage(info, result) {
   if (info.kind === 'bench') return `Sitting on the bench at ${interactionTile(info)}.`;
   if (info.kind === 'crafting_station') return `Crafted ${resourceName(result.crafted)} at the crafting station.`;
   if (info.kind === 'crop_patch') {
-    if (result.crop?.harvested_at) return 'Harvest gathered: two resources were added to your shelf.';
+    if (result.crop?.harvested_at) return harvestNotice(result);
     if (result.crop?.tended_at) return `Tended the ${resourceName(result.crop.kind)}; its growth is shorter now.`;
     return `${resourceName(result.crop?.kind || 'crop')} planted at ${interactionTile(info)}.`;
   }

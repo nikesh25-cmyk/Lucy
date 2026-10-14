@@ -12,6 +12,7 @@ import { verifyGuildRecords } from './guilds.js';
 import { REGIONS } from './civic.js';
 import { GARDEN_PALETTE,HOUSE_PALETTE } from './placement-policy.js';
 import { GRANT_SCOPE_LIMITS, grantScopeNarrow, grantScopeValue } from './frontier.js';
+import { tradeSchemaPresent, verifyTradeRecords, verifyTradeSchema } from './trade-board.js';
 
 const countryCatalog=JSON.parse(readFileSync(new URL('../catalog/countries.json',import.meta.url),'utf8')).entries;
 
@@ -153,7 +154,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -322,6 +323,14 @@ export function validateDatabase(path) {
       // a capture past its quota therefore cannot pass a backup, a restore or a startup.
       if (!verifyEvidenceRecords(db)) throw new Error('Database evidence library validation failed.');
     }
+    // The trade board was introduced additively under schema 22. Older schema-22 worlds legitimately
+    // have no trade objects, but any board object or trade audit entry requires the complete, exact
+    // board schema and a balanced ledger before a backup or restore is accepted.
+    if (version >= 23 || tradeSchemaPresent(db) || db.prepare("SELECT 1 FROM audit WHERE event LIKE 'trade.%' LIMIT 1").get()) {
+      if (!verifyTradeSchema(db)) throw new Error('Database trade board schema is incomplete.');
+      const trade = { all: (sql, ...args) => db.prepare(sql).all(...args) };
+      if (!verifyTradeRecords(trade)) throw new Error('Database trade board validation failed.');
+    }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';
     for (const entry of db.prepare('SELECT * FROM audit ORDER BY seq').all()) {
@@ -439,8 +448,8 @@ export function restoreDatabase(source, destination, { lockPath = resolve(dirnam
 // The recovery point and the interruption limits an operator must know. These are the same values
 // the runbook (docs/OPERATIONS.md) states and the failure drills (scripts/ops-rehearsal.mjs) prove.
 export const RECOVERY_LIMITS = Object.freeze({
-  schema_version: 22,
-  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+  schema_version: 23,
+  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
   // A private resident memory record lives entirely in the database, so a process restart keeps it.
   // It holds no credential and it is read within the runtime's existing observation byte budget.
   resident_memory: Object.freeze({ bounded_facts_per_resident: 24, bounded_value_characters: 160, prompt_facts: 10, prompt_bytes: 4096, approval: 'operator-approval', source: 'a verified calling receipt, a finished run that recorded a refusal, an independent review decision, or the operator’s own explicit input' }),

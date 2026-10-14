@@ -4,6 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './helpers.js';
+import { getWorldDefinition } from '../world.js';
 
 // An operator session only has a viewer when it names one of its own residents (src/spaces.js:336).
 const cueOf = (f, owner, worldId) => {
@@ -62,4 +63,58 @@ test('the cue is computed for the resident, and is null for a viewer with no res
   const moved = cueOf(f, 'alice', 'commons');
   assert.ok(moved, 'a resident who has moved still gets a cue');
   assert.notDeepEqual([moved.x, moved.y, moved.steps], [null, null, null], 'the cue stays concrete after moving');
+});
+
+test('a doorway whose destination is no longer registered cannot be named as the next passage', async (t) => {
+  const f = await fixture(t), alice = f.agent('alice');
+  const missing = 'venue:workshop-annexe';
+  const doorway = getWorldDefinition('commons').portals.find((portal) => portal.targetWorldId === missing);
+  assert.ok(doorway);
+  f.platform.run('UPDATE agents SET x=?,y=? WHERE id=?', doorway.x, doorway.y, alice.id);
+  assert.equal(cueOf(f, 'alice', 'commons').target_world_id, missing, 'the open doorway was initially the nearest passage');
+  f.platform.run('DELETE FROM worlds WHERE id=?', missing);
+  const payload = f.platform.world(f.actor('alice'), { world_id: 'commons', agent_id: alice.id });
+  assert.ok(!payload.portals.some((portal) => portal.target_world_id === missing));
+  assert.notEqual(payload.next_passage.target_world_id, missing);
+  if (payload.next_passage.kind !== null) {
+    assert.ok(payload.portals.some((portal) => portal.target_world_id === payload.next_passage.target_world_id),
+      'the suggested destination is one the server still serves');
+  }
+});
+
+test('saved garden scenery can make every passage unreachable without inventing a route', async (t) => {
+  const f = await fixture(t), alice = f.agent('alice'), worldId = `home:${alice.id}`;
+  const center = { x: 10, y: 3 };
+  f.platform.run('UPDATE agents SET world_id=?,x=?,y=?,z=0 WHERE id=?', worldId, center.x, center.y, alice.id);
+  const before = cueOf(f, 'alice', worldId);
+  assert.ok(before && before.kind === 'portal', 'the home has a reachable way out before construction');
+  for (const [index, x, y] of [[0, 10, 2], [1, 11, 3], [2, 10, 4], [3, 9, 3]]) {
+    f.platform.run('INSERT INTO world_objects(id,world_id,type,x,y,created_at) VALUES(?,?,?,?,?,?)',
+      `cue-tree-${index}`, worldId, 'tree', x, y, new Date(f.clock()).toISOString());
+  }
+  const blocked = cueOf(f, 'alice', worldId);
+  assert.equal(blocked.kind, null);
+  assert.equal(blocked.reason, 'No reachable passage from here.');
+  f.platform.run('DELETE FROM world_objects WHERE id=?', 'cue-tree-0');
+  const reopened = cueOf(f, 'alice', worldId);
+  assert.equal(reopened.kind, 'portal', 'removing one obstruction restores a server-walkable route');
+});
+
+test('the frontier cue follows saved block layers as the movement rule does', async (t) => {
+  const f = await fixture(t), alice = f.agent('alice'), worldId = 'frontier:0:0';
+  const plotId = 'plot:0:0:5:5';
+  f.tx('landAssign', f.actor('alice'), { plot_id: plotId, purpose: 'A bounded route fixture' });
+  f.platform.run('UPDATE agents SET world_id=?,x=32,y=32,z=0 WHERE id=?', worldId, alice.id);
+  assert.ok(cueOf(f, 'alice', worldId)?.kind, 'a passage is reachable before the blocks are placed');
+  const owner = f.actor('alice').account.id;
+  for (const [index, x, y] of [[0, 32, 31], [1, 33, 32], [2, 32, 33], [3, 31, 32]]) {
+    f.platform.run('INSERT INTO frontier_blocks(id,world_id,x,y,z,type,creator_agent_id,creator_account_id,created_at,plot_id) VALUES(?,?,?,?,?,?,?,?,?,?)',
+      `cue-block-${index}`, worldId, x, y, 0, 'stone', alice.id, owner, new Date(f.clock()).toISOString(), plotId);
+  }
+  const blocked = cueOf(f, 'alice', worldId);
+  assert.equal(blocked.kind, null, 'a passage cannot be reached through saved stone blocks');
+  assert.equal(blocked.reason, 'No reachable passage from here.');
+  f.platform.run('DELETE FROM frontier_blocks WHERE id=?', 'cue-block-0');
+  const reopened = cueOf(f, 'alice', worldId);
+  assert.ok(['portal', 'gate'].includes(reopened.kind), 'a reopened path gives a real passage again');
 });

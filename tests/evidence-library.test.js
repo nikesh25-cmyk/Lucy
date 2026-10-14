@@ -101,7 +101,7 @@ test('a contributor supplied SHA-256 cannot create captured evidence, including 
   const oldDeclaration = f.platform.registerCapture({ url: upgradeUrl, sha256: retainedSha, retrieved_at: '2026-10-12', origin: 'curator' });
   assert.throws(() => f.platform.registerCapture(retainedInput(upgradeUrl, series)), /cannot be silently upgraded/i);
   assert.deepEqual(f.platform.get('SELECT * FROM evidence_captures WHERE id=?', oldDeclaration.id), oldDeclaration, 'the old hash-only row is not rewritten');
-  assert.equal(validateDatabase(f.database).schema_version, 22);
+  assert.equal(validateDatabase(f.database).schema_version, 23);
 });
 
 test('legacy schema-22 hash-only citation rows stay intact but read as unverified after restart', async (t) => {
@@ -119,7 +119,7 @@ test('legacy schema-22 hash-only citation rows stay intact but read as unverifie
   f.platform.run('INSERT INTO submission_evidence(submission_id,source_number,capture_id,url,locator,cited_date,state,created_at) VALUES(?,?,?,?,?,?,?,?)',
     submission.id, original.source_number, declared.id, original.url, original.locator, original.cited_date, 'captured', original.created_at);
   const historic = f.platform.get('SELECT * FROM submission_evidence WHERE submission_id=?', submission.id);
-  assert.equal(validateDatabase(f.database).schema_version, 22, 'legacy storage remains valid');
+  assert.equal(validateDatabase(f.database).schema_version, 23, 'legacy storage remains valid');
   assert.equal(f.platform.submissionEvidence(submission.id)[0].state, 'missing');
   assert.equal(f.platform.submissionEvidence(submission.id)[0].capture.verification, 'declared-hash-only');
   const workbench = f.platform.reviewWorkbench(f.actor('reviewer'), { submission: submission.id }).citations[0];
@@ -263,24 +263,24 @@ test('the storage layer refuses an edited capture, a rewritten source identity a
   assert.throws(() => f.platform.run('INSERT INTO evidence_captures(id,source_id,source_key,url,sha256,retrieved_at,created_at) VALUES(?,?,?,?,?,?,?)', 'x', capture.source_id, capture.source_key, capture.url, 'not-a-hash', '2026-10-12', new Date().toISOString()), /invalid/);
 });
 
-test('a schema 21 database migrates forward to 22 and survives backup and restore', async (t) => {
+test('a schema 21 database migrates forward to 23 and survives backup and restore', async (t) => {
   const f = await fixture(t);
   const { platform } = f;
-  assert.equal(validateDatabase(f.database).schema_version, 22);
+  assert.equal(validateDatabase(f.database).schema_version, 23);
   platform.db.exec('PRAGMA foreign_keys=OFF; DROP TABLE submission_evidence; DROP TABLE evidence_events; DROP TABLE evidence_captures; DROP TABLE evidence_sources; PRAGMA user_version=21');
   assert.equal(validateDatabase(f.database).schema_version, 21);
   platform.close();
   const migrated = new Platform(f.database);
   t.after(() => migrated.close());
-  assert.equal(migrated.get('PRAGMA user_version').user_version, 22);
-  assert.equal(validateDatabase(f.database).schema_version, 22);
+  assert.equal(migrated.get('PRAGMA user_version').user_version, 23);
+  assert.equal(validateDatabase(f.database).schema_version, 23);
   assert.equal(migrated.verifyAudit(), true);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM evidence_captures').n, 222);
   const backup = `${f.directory}/evidence-backup.sqlite`;
   backupDatabase(migrated.db, backup);
   const restored = restoreDatabase(backup, `${f.directory}/evidence-restored.sqlite`);
-  assert.equal(restored.schema_version, 22);
-  assert.equal(validateDatabase(`${f.directory}/evidence-restored.sqlite`).schema_version, 22);
+  assert.equal(restored.schema_version, 23);
+  assert.equal(validateDatabase(`${f.directory}/evidence-restored.sqlite`).schema_version, 23);
 });
 
 test('a tampered evidence library fails full validation', async (t) => {

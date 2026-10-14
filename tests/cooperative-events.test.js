@@ -374,7 +374,7 @@ test('finishing every step writes the garden once, and it survives a restart wit
   assert.equal(f.platform.get('SELECT role FROM accounts WHERE id=?', f.actor('alice').account.id).role, roles);
   assert.deepEqual(f.platform.all('SELECT agent_id,calling_id,selected_at FROM resident_callings ORDER BY agent_id'), callingsBefore);
   assert.equal(f.platform.verifyAudit(), true);
-  assert.equal(validateDatabase(f.database).schema_version, 22);
+  assert.equal(validateDatabase(f.database).schema_version, 23);
   // A real restart keeps the restored garden and its recorded outcome.
   f.platform.close();
   const restarted = new Platform(f.database, f.clock);

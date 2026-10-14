@@ -62,7 +62,7 @@ Expected output: one JSON line, `{"path":"…/world-<stamp>.sqlite"}`, exit code
 What to check:
 - The command refuses with `The world server or another recovery operation is running. Stop it before recovery.` when the server is up. Stop the server and retry; do not delete `server.lock` by hand.
 - The file mode is `0600`: `ls -l data/backups`.
-- `node scripts/recovery.js verify <backup>` prints `{"schema_version":22,"accounts":N}` for a backup made by this build.
+- `node scripts/recovery.js verify <backup>` prints `{"schema_version":23,"accounts":N}` for a backup made by this build.
 
 Failure path: a backup that fails validation is deleted by `backupDatabase` and the error is raised.
 No partial file is left behind, and the live database is never touched.
@@ -86,7 +86,7 @@ node scripts/recovery.js restore data/backups/world-<stamp>.sqlite data/world.sq
 Expected output of step 3:
 
 ```json
-{"path":"…/data/world.sqlite","preserved_original":"…/data/world.sqlite.before-restore-<time>-<uuid>/original.sqlite","schema_version":22,"accounts":N}
+{"path":"…/data/world.sqlite","preserved_original":"…/data/world.sqlite.before-restore-<time>-<uuid>/original.sqlite","schema_version":23,"accounts":N}
 ```
 
 What to check:
@@ -117,9 +117,9 @@ node scripts/ops-rehearsal.mjs --drill migration-rehearsal
 
 What to check:
 - Before: `verify` reports the *old* schema version.
-- After opening the restored copy: `verify` reports **22**, and the drill confirms that the account,
+- After opening the restored copy: `verify` reports **23**, and the drill confirms that the account,
   agent, world-object, land, coin, quest and audit counts are exactly what they were before.
-- The drill checks that recreated guild tables begin empty. Schema-22 `Platform` startup separately
+- The drill checks that recreated guild tables begin empty. Schema-23 `Platform` startup separately
   seeds the evidence library from its retained catalog; those source and capture tables are populated
   after startup, without inventing user submissions, reviews or rewards.
 - The audit chain and the coin ledger still verify.
@@ -129,7 +129,7 @@ start again. The migration runs inside one transaction (`BEGIN IMMEDIATE … COM
 migration leaves the old version in place rather than a half-migrated database.
 
 Task 27 originally added diagnostics and drills while the schema was version 18. Subsequent integrated
-work added versions 19–22; this runbook now describes the schema-22 build.
+work added versions 19–23; this runbook now describes the schema-23 build.
 
 ## 5. Interrupted workers
 
@@ -309,7 +309,7 @@ opens the installed world, an installed account or a model weight.
 | --- | --- |
 | `recovery-point` | A backup is taken, the world is mutated, and the restore brings back exactly the world/land/coin/quest/guild records of the backup moment while the post-backup write is correctly lost. |
 | `corrupt-backup` | A garbage file, a damaged file, an empty file and a foreign-but-valid database are all refused by validation and by restore, and the live world stays byte-identical. |
-| `migration-rehearsal` | A disposable fixture is labelled schema 17 after its guild tables are removed; it is validated, backed up, restored, and opened by the schema-22 build. The drill checks selected account, world, land, coin, quest and audit counts, empty recreated guild tables, and audit and coin validation. |
+| `migration-rehearsal` | A disposable fixture is labelled schema 17 after its guild tables are removed; it is validated, backed up, restored, and opened by the schema-23 build. The drill checks selected account, world, land, coin, quest and audit counts, empty recreated guild tables, and audit and coin validation. |
 | `interrupted-worker` | Two SIGKILL interruptions (after a confirmed action, and inside a model call) are classified, their credentials revoked, their RSVP recorded exactly once, and each resumed explicitly. |
 | `model-queue-saturation` | The queue bound refuses overflowing work at its own boundary and inside the shipped server, where the refused request falls back to published rules and the refusal is counted. |
 | `storage-limit` | A write refused for lack of space rolls back, leaves nothing behind, keeps the world valid and is accepted again once space returns; an unwritable backup destination fails closed with no partial file. |

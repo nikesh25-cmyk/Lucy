@@ -1,4 +1,5 @@
 import content from './content.js';
+import { DatabaseSync } from 'node:sqlite';
 
 // ---------------------------------------------------------------------------------------------
 // The trade board: the one bounded, coin-free marketplace of grown and crafted goods.
@@ -152,6 +153,30 @@ export const TRADE_MARKET_SCHEMA = `
   CREATE TRIGGER IF NOT EXISTS trade_events_no_delete BEFORE DELETE ON trade_events BEGIN SELECT RAISE(ABORT,'Trade board events are append-only'); END;
 `;
 
+// Schema 22 databases written before the board have no trade objects. From schema 23 the board is
+// required. Once any trade object exists,
+// every table, index and trigger must be the one this release authored. Checking SQL as well as names
+// prevents a same-named, weakened trigger from making a backup appear sound.
+let expectedSchema;
+function canonicalTradeSchema() {
+  if (expectedSchema) return expectedSchema;
+  const reference = new DatabaseSync(':memory:');
+  try {
+    reference.exec(TRADE_MARKET_SCHEMA);
+    expectedSchema = new Map(reference.prepare("SELECT type,name,sql FROM sqlite_schema WHERE name LIKE 'trade_%' AND sql IS NOT NULL").all()
+      .map((row) => [row.name, `${row.type}\n${row.sql}`]));
+    return expectedSchema;
+  } finally { reference.close(); }
+}
+export function tradeSchemaPresent(db) {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_schema WHERE name LIKE 'trade_%' LIMIT 1").get());
+}
+export function verifyTradeSchema(db) {
+  const expected = canonicalTradeSchema();
+  const actual = db.prepare("SELECT type,name,sql FROM sqlite_schema WHERE name LIKE 'trade_%' AND sql IS NOT NULL").all();
+  return actual.length === expected.size && actual.every((row) => expected.get(row.name) === `${row.type}\n${row.sql}`);
+}
+
 /** Every kind a resident can actually grow or craft. A coin, money or an invented kind is not one. */
 export function tradeKinds() {
   return new Set([...Object.keys(crops), ...recipes.map((recipe) => recipe.output)]);
@@ -229,8 +254,8 @@ export function claimCard(platform, claim, units) {
 
 /**
  * Re-check every stored trade record against the rules that wrote it. `recovery.js` owns the schema
- * 22 checks and is outside this module's ownership, so the board carries its own fail-closed pass and
- * runs it at startup: a claimed unit that no term can account for, a term that disagrees with its
+ * 23 checks call this pass during opening, backup and restore: a claimed unit that no term can
+ * account for, a term that disagrees with its
  * listing's items, a returned amount the poster was never owed, or a listing that settled on an
  * incomplete item list all refuse the start instead of serving a ledger that cannot balance.
  */
@@ -245,6 +270,7 @@ export function verifyTradeRecords(platform) {
     try { const parsed = JSON.parse(value); return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null; } catch { return null; }
   };
   const byListing = new Map(), byClaim = new Map(claims.map((claim) => [claim.id, claim]));
+  const claimCounts = new Map(), claimsByListing = new Map(), claimIdsWithUnits = new Set(), claimItems = new Map(), eventCounts = new Map();
   for (const term of terms) {
     if (!allowed.has(term.kind) || !Number.isInteger(term.offered) || term.offered < 1 || term.offered > TRADE_MARKET_LIMITS.quantity_max || term.taken < 0 || term.taken > term.offered) return false;
     if (!byListing.has(term.listing_id)) byListing.set(term.listing_id, []);
@@ -257,30 +283,52 @@ export function verifyTradeRecords(platform) {
     if (!(byListing.get(claim.listing_id) || []).some((term) => term.kind === unit.kind && term.offered >= unit.quantity)) return false;
     const key = `${claim.listing_id}|${unit.kind}`;
     claimed.set(key, (claimed.get(key) || 0) + unit.quantity);
+    claimIdsWithUnits.add(claim.id);
+    if (!claimItems.has(claim.id)) claimItems.set(claim.id, {});
+    claimItems.get(claim.id)[unit.kind] = unit.quantity;
   }
   for (const claim of claims) {
     const listing = listings.get(claim.listing_id);
-    if (!listing || listing.poster_agent_id === claim.claimer_agent_id || listing.poster_account_id === claim.claimer_account_id) return false;
-    if (!units.some((unit) => unit.claim_id === claim.id)) return false;
+    if (!listing || listing.poster_agent_id === claim.claimer_agent_id || listing.poster_account_id === claim.claimer_account_id ||
+        !Number.isInteger(claim.claimed_at) || claim.claimed_at < listing.posted_at || claim.claimed_at >= listing.expires_at ||
+        typeof claim.claim_key !== 'string' || claim.claim_key.length < 1 || claim.claim_key.length > 100) return false;
+    if (!claimIdsWithUnits.has(claim.id)) return false;
+    claimCounts.set(claim.listing_id, (claimCounts.get(claim.listing_id) || 0) + 1);
+    if (!claimsByListing.has(claim.listing_id)) claimsByListing.set(claim.listing_id, []);
+    claimsByListing.get(claim.listing_id).push(claim);
   }
-  const settlementEvents = new Map();
   for (const event of events) {
     const listing = listings.get(event.listing_id);
     if (!listing || !['posted', 'claimed', 'filled', 'cancelled', 'expired'].includes(event.action) || !Number.isInteger(event.created_at) || event.created_at < 0 || event.detail.length > 200) return false;
     if (event.action === 'expired') { if (event.account_id !== null) return false; }
     else if (event.account_id === null) return false;
-    if (['filled', 'cancelled', 'expired'].includes(event.action)) settlementEvents.set(listing.id, (settlementEvents.get(listing.id) || 0) + 1);
+    if (!eventCounts.has(listing.id)) eventCounts.set(listing.id, { posted: null, claimed: new Map(), settled: null });
+    const count = eventCounts.get(listing.id);
+    if (event.action === 'posted') { if (count.posted) return false; count.posted = event; }
+    else if (event.action === 'claimed') {
+      if (count.claimed.has(event.account_id)) return false;
+      count.claimed.set(event.account_id, event);
+    } else { if (count.settled) return false; count.settled = event; }
   }
   for (const listing of listings.values()) {
     const own = byListing.get(listing.id) || [], items = numbers(listing.items), returned = numbers(listing.returned);
     if (!items || !returned || !TRADE_LISTING_STATUSES.includes(listing.status)) return false;
+    if (typeof listing.note !== 'string' || listing.note.length > TRADE_MARKET_LIMITS.note_max ||
+        typeof listing.post_key !== 'string' || listing.post_key.length < 1 || listing.post_key.length > 100 ||
+        !Number.isInteger(listing.posted_at) || listing.posted_at < 0 ||
+        !Number.isInteger(listing.expires_at) || listing.expires_at - listing.posted_at < TRADE_MARKET_LIMITS.expires_minutes_min * 60_000 ||
+        listing.expires_at - listing.posted_at > TRADE_MARKET_LIMITS.expires_minutes_max * 60_000) return false;
     const kinds = Object.keys(items);
     if (!kinds.length || kinds.length > TRADE_MARKET_LIMITS.kinds_max || kinds.length !== own.length) return false;
     if ((listing.status === 'open') !== (listing.settled_at === null)) return false;
-    const ownEvents = events.filter((event) => event.listing_id === listing.id);
-    if (ownEvents.filter((event) => event.action === 'posted').length !== 1 || ownEvents.filter((event) => event.action === 'claimed').length !== claims.filter((claim) => claim.listing_id === listing.id).length) return false;
-    const settled = settlementEvents.get(listing.id) || 0;
-    if (listing.status === 'open' ? settled !== 0 : settled !== 1) return false;
+    const counts = eventCounts.get(listing.id);
+    if (!counts?.posted || counts.posted.account_id !== listing.poster_account_id || counts.posted.created_at !== listing.posted_at || counts.posted.detail !== '' ||
+        counts.claimed.size !== (claimCounts.get(listing.id) || 0)) return false;
+    if (listing.status === 'open' ? counts.settled !== null : !counts.settled || counts.settled.action !== listing.status || counts.settled.created_at !== listing.settled_at || !numbers(counts.settled.detail) || !sameTradeItems(numbers(counts.settled.detail), returned)) return false;
+    for (const claim of claimsByListing.get(listing.id) || []) {
+      const event = counts.claimed.get(claim.claimer_account_id);
+      if (!event || event.created_at !== claim.claimed_at || !sameTradeItems(numbers(event.detail), claimItems.get(claim.id))) return false;
+    }
     for (const kind of kinds) {
       const term = own.find((entry) => entry.kind === kind);
       if (!term || items[kind] !== term.offered || term.taken !== (claimed.get(`${listing.id}|${kind}`) || 0)) return false;

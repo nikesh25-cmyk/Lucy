@@ -183,13 +183,9 @@ test('the soak client holds the documented limits, not a test-only override', ()
   assert.deepEqual({ client_buffer_frames: SOAK_LIMITS.client_buffer_frames, process_subscription_ceiling: SOAK_LIMITS.process_subscription_ceiling }, { client_buffer_frames: 512, process_subscription_ceiling: 64 });
 });
 
-test('a forced relocation publishes no delta yet, so the destination world never learns of it', { todo: true }, async (t) => {
-  // A confirmed defect in `src/spaces.js` `homeSettings`, reported by `scripts/multiplayer-soak.mjs`
-  // as `silent_relocation_on_entitlement_change`. Making a garden private moves its visitors back to
-  // the Commons with a plain UPDATE and calls `revalidateNow()` but never `events.publish()`, so the
-  // destination world's subscribers never receive the arrival that docs/ARCHITECTURE.md promises.
-  // This case encodes the correct expectation; flip `todo` off once the owner of `src/spaces.js`
-  // publishes the relocation delta as `travel` already does.
+test('making a garden private publishes a visitor departure and Commons arrival', async (t) => {
+  // A forced relocation is still a world crossing: the owner-authorized garden subscriber drops the
+  // visitor and the Commons subscriber adds it at the stored tile. Revocation is covered separately.
   const { f, base } = await serve(t);
   const accounts = accountsOf(f);
   const owner = accounts[0], visitor = accounts[1];
@@ -197,22 +193,27 @@ test('a forced relocation publishes no delta yet, so the destination world never
 
   // The witness subscribes before the visitor leaves, so it really holds the departure and can be
   // asked whether it ever learns of the return.
-  const witness = createSoakClient({ base, token: owner.token, worldId: 'commons', name: 'witness' });
+  const witness = createSoakClient({ base, token: owner.token, worldId: 'commons', name: 'commons-witness' });
+  const gardenWitness = createSoakClient({ base, token: owner.token, worldId: garden, name: 'garden-witness' });
   assert.ok(await witness.connect(), 'the Commons witness must subscribe');
+  assert.ok(await gardenWitness.connect(), 'the garden owner must be able to subscribe');
   assert.ok(witness.state().residents.has(visitor.agent.id), 'the visitor must be in the Commons snapshot before it leaves');
   const entered = await post(base, `/agents/${visitor.agent.id}/travel`, { world_id: garden }, visitor.token);
   assert.equal(entered.status, 200, 'the visitor must be able to enter the public garden');
   // A departure is published to the world that was left, so this is what removes it from the view.
   await settle(() => !witness.state().residents.has(visitor.agent.id), 'the witness to see the visitor leave the Commons');
+  await settle(() => gardenWitness.state().residents.has(visitor.agent.id), 'the garden witness to see the visitor arrive');
 
   const changed = await post(base, `/agents/${owner.agent.id}/home`, { visibility: 'private' }, owner.token, 'PATCH');
   assert.equal(changed.status, 200, 'the owner must be able to make the garden private');
   const relocated = f.platform.get('SELECT world_id,x,y FROM agents WHERE id=?', visitor.agent.id);
   assert.equal(relocated.world_id, 'commons', 'the stored row must have been moved to the Commons');
 
-  await sleep(400);
+  await settle(() => witness.state().residents.has(visitor.agent.id), 'the Commons witness to see the relocated visitor arrive');
+  await settle(() => !gardenWitness.state().residents.has(visitor.agent.id), 'the garden witness to see the visitor depart');
   const arrived = witness.state().residents.get(visitor.agent.id);
   assert.ok(arrived, 'the Commons subscriber must receive the relocated resident\u2019s arrival');
   assert.deepEqual({ x: arrived.x, y: arrived.y }, { x: relocated.x, y: relocated.y }, 'the arrival must carry the stored tile');
   await witness.close();
+  await gardenWitness.close();
 });

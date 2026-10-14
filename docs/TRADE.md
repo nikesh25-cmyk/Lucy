@@ -178,15 +178,11 @@ BASE=http://127.0.0.1:3000/api/v1
 
 ## Migration and rollback
 
-- **Forward.** Additive only. `ensureTradeMarket(platform)` runs `TRADE_MARKET_SCHEMA`
-  (`CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` / `CREATE TRIGGER IF NOT EXISTS`) once
-  per process when the server starts, and `createApp` calls it before the listener is up. The tables
-  join the shipped **schema 22**; `PRAGMA user_version` is **not** changed, `src/database.js` and
-  `src/recovery.js` are untouched, and a database without the board simply gains it on the next start
-  with every existing account, agent, world, inventory row and coin receipt intact. The integration
-  route for a future schema 23 owner is one line — move `db.exec(TRADE_MARKET_SCHEMA)` into
-  `src/database.js`'s migration block, bump `user_version` and teach `validateDatabase` the same
-  checks `verifyTradeRecords` already performs.
+- **Forward.** Schema **23** makes the five trade tables, their indexes and triggers required. A
+  schema-22 database with no board gains them additively; one with an existing board keeps its rows.
+  Before migration, startup checks any existing board's exact structure and balance, then creates
+  missing tables inside the migration transaction. Backup and restore validation checks the exact
+  structure and balanced ledger at schema 23. Stop the server and verify a backup before upgrading.
 - **Rollback.** Stop the server, preserve the current database, and restore a verified pre-change
   backup with its matching code. Dropping the five `trade_*` tables would discard provenance for any
   live listing and strand the units it escrowed on nothing; if a rollback must drop them, first
@@ -195,24 +191,18 @@ BASE=http://127.0.0.1:3000/api/v1
 
 ## Residual limits
 
-- The board has **no player-facing interface** in this slice. `app.js`, `index.html` and the stylesheets
-  belong to other owners, so the four routes are documented and exercised over HTTP only.
-- **Two one-line integrations are left for the owners of `src/platform.js`.** (1) An account export
-  (`exportAccount`) does not yet carry a `trade` section, so an operator's listings and claims are not
-  in `GET /export`; the board's four read shapes are the current way to read them back. (2) Account
-  deletion already removes the operator's journey records (including `journey_inventory`) and marks the
-  residents deleted, but it does not withdraw that operator's open listings. The board therefore
-  refuses to credit a release back to a deleted resident — the listing still settles and records what
-  was released, and no shelf row is written for an account that asked to be removed — and the pending
-  escrow of a deleted poster is settled by its expiry. Adding `deleteListings(actor)` to
-  `deleteAccount` beside `deleteOffers(actor)` would settle them at once instead.
+- The workshop now shows a small resource board for posting, claiming and withdrawing. Its post form
+  offers one held resource kind at a time; the API still accepts bounded multi-kind listings. The
+  interface does not show every historic claim or expose matching, bids or purchases.
+- `GET /export` includes bounded posted and claimed trade history with total and truncation counts.
+  Account deletion immediately settles the account's open listings and removes its authored notes
+  and idempotency keys; older private backups still retain the data captured before deletion.
 - The escrow of an abandoned listing is held until the board is read or the process ticks. Nothing is
   lost, and an expired listing still cannot be claimed, but a process that never ticks and is never
   asked leaves the units held.
-- Recovery (`src/recovery.js`) validates schema 22's own structures and does not know these five
-  tables, so the module carries `verifyTradeRecords` and runs it at start. A backup taken by
-  `backupDatabase` is validated for everything schema 22 covers; the board's balance is re-checked
-  when the restored database is served.
+- Recovery checks the board structure and ledger before accepting a schema-23 backup or restore.
+  Historical schema-22 databases remain acceptable: an absent board is valid only if no trade audit
+  history exists, and a present board must validate before the upgrade.
 - A listing is one posting side to many claimers and no further: there are no bundles, no reservations,
   no offers in return, no matching and no account-level trade history beyond the bounded reads above.
 - Same-operator exchange is refused by design. A reviewer who wants a sibling resident to take part

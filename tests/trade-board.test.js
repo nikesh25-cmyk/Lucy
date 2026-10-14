@@ -4,6 +4,7 @@ import { Platform } from '../src/platform.js';
 import { fixture } from './helpers.js';
 import { ensureTradeMarket, marketMethods } from '../src/trade-market.js';
 import { TRADE_MARKET_LIMITS, TRADE_MARKET_POLICY, verifyTradeRecords } from '../src/trade-board.js';
+import { validateDatabase } from '../src/recovery.js';
 
 // The board, exercised through the platform the same way the garden and the offer layer are: the
 // shipped `journey_inventory` shelf is the only place items live, and every assertion below is about
@@ -137,29 +138,41 @@ test('the board refuses to serve a stored ledger it cannot balance', async (t) =
   f.platform.run('INSERT INTO trade_claims VALUES(?,?,?,?,?,?)', 'tampered-claim', listing.id, reviewer.id, f.actor('reviewer').account.id, 'tampered-key', 0);
   f.platform.run('INSERT INTO trade_claim_units VALUES(?,?,?)', 'tampered-claim', 'herbs', 5);
   assert.equal(verifyTradeRecords(f.platform), false);
-  // A restart re-checks the stored ledger, so the start refuses instead of serving it.
+  // Schema 23 checks the ledger during database opening, so it cannot be served after restart.
   f.platform.close();
-  const reopened = new Platform(f.database, f.clock);
-  t.after(() => reopened.close());
-  assert.throws(() => ensureTradeMarket(reopened), /invalid/);
+  assert.throws(() => new Platform(f.database, f.clock), /Stored trade board records are invalid/);
+  assert.throws(() => validateDatabase(f.database), /trade board validation failed/);
 });
 
-test('a listing whose poster deleted its account releases its escrow to nobody', async (t) => {
-  const f = await fixture(t), alice = f.agent('alice');
+test('account deletion settles open offers immediately and erases authored listing notes', async (t) => {
+  const f = await fixture(t), alice = f.agent('alice'), bob = f.agent('bob');
   boarded(f);
   stock(f, alice, 'herbs', 2);
-  const listing = f.tx('tradePost', f.actor('alice'), { agent_id: alice.id, items: { herbs: 2 }, expires_minutes: 60 }, 'deleted-post');
-  assert.deepEqual(shelf(f, alice), {});
-  // The shipped account deletion gives up that operator's records, including every shelf row.
+  stock(f, bob, 'fiber', 2);
+  const listing = f.tx('tradePost', f.actor('alice'), { agent_id: alice.id, items: { herbs: 2 }, note: 'My private trade note', expires_minutes: 60 }, 'deleted-post');
+  const other = f.tx('tradePost', f.actor('bob'), { agent_id: bob.id, items: { fiber: 2 } }, 'other-post');
+  const claim = f.tx('tradeClaim', f.actor('alice'), { agent_id: alice.id, listing_id: other.id, items: { fiber: 1 } }, 'private-claim-key');
+  assert.deepEqual(shelf(f, alice), { fiber: 1 });
+  const exported = f.tx('exportAccount', f.actor('alice'));
+  assert.equal(exported.trade.posted_total, 1);
+  assert.equal(exported.trade.claimed_total, 1);
+  assert.equal(exported.trade.claimed[0].id, claim.id);
+  assert.equal(exported.trade.posted[0].note, 'My private trade note');
+  assert.equal(f.tx('exportAccount', f.actor('bob')).trade.claimed_total, 0, 'another account exports only its own claims');
+  // The operator gives up the remaining escrow and erases their authored note in one transaction.
   f.tx('deleteAccount', f.actor('alice'));
   assert.deepEqual(shelf(f, alice), {});
   f.advance(61 * 60_000);
-  assert.equal(f.tx('tradeExpire'), 1);
-  const settled = f.platform.get('SELECT status,returned FROM trade_listings WHERE id=?', listing.id);
-  assert.equal(settled.status, 'expired');
+  assert.equal(f.tx('tradeExpire'), 0);
+  const settled = f.platform.get('SELECT status,returned,note,post_key FROM trade_listings WHERE id=?', listing.id);
+  assert.equal(settled.status, 'cancelled');
+  assert.equal(settled.note, '[removed]');
+  assert.equal(settled.post_key, `removed:${listing.id}`);
+  assert.equal(f.platform.get('SELECT claim_key FROM trade_claims WHERE id=?', claim.id).claim_key, `removed:${claim.id}`);
   assert.deepEqual(JSON.parse(settled.returned), { herbs: 2 }, 'the release is still recorded on the listing');
   assert.deepEqual(shelf(f, alice), {}, 'and no shelf row is written back for the removed account');
   assert.equal(verifyTradeRecords(f.platform), true);
+  assert.equal(validateDatabase(f.database).schema_version, 23);
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n, 0);
 });
 
