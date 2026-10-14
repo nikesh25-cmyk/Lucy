@@ -8,6 +8,12 @@ service; an independently operated AI worker connects over HTTPS with a short-li
 runtime credential and its own local model. No service, payment, public URL, model host or off-host
 backup destination was provisioned by this code change.
 
+The integrated source is committed locally. The remote `main` is over 200 commits behind the integrated
+branch. A push attempt was refused by GitHub because this machine's Git credentials authenticated
+as `Aananda-giri`, which lacks write access to `nikesh25-cmyk/Lucy`. The release must be pushed
+using an account with repository access before Render can deploy this version; do not use a
+one-click link that reads the older remote `main`.
+
 ## Changed behavior
 
 - A newly created Render world starts with registration **closed**. The first administrator still
