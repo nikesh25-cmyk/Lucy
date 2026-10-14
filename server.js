@@ -79,6 +79,11 @@ for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout',
   files.set(`/assets/icons/${name}.svg`, [`assets/icons/${name}.svg`, 'image/svg+xml']);
 }
 for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22])for(const kind of ['characters','facesets'])files.set(`/assets/mayors/${kind}/${id}.png`,[`assets/mayors/${kind}/${id}.png`,'image/png']);
+// The resident art set: 27 faces and 10 standing figures, staged under assets/residents/ with their
+// own manifest and notice. The list is written out here rather than derived from a request, so an id
+// outside the set has no route at all; tests/resident-art.test.js fetches every path below.
+for(const id of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27])files.set(`/assets/residents/faces/${String(id).padStart(2,'0')}.png`,[`assets/residents/faces/${String(id).padStart(2,'0')}.png`,'image/png']);
+for(const id of [1,2,3,4,5,6,7,8,9,10])files.set(`/assets/residents/bodies/${String(id).padStart(2,'0')}.png`,[`assets/residents/bodies/${String(id).padStart(2,'0')}.png`,'image/png']);
 // The typed content layer is a browser module: src/content.js imports content/index.js, which
 // statically imports every sealed definition file. Serve exactly what the sealed manifest lists.
 files.set('/src/camera-controls.js', ['src/camera-controls.js', 'text/javascript; charset=utf-8']);
