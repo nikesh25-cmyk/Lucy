@@ -91,7 +91,7 @@ Schema upgrades are applied at startup. Keep databases and backups private.
 
 ## Publish a login site
 
-The [hosting guide](docs/DEPLOYMENT.md) and `render.yaml` prepare a Render web service with HTTPS, a persistent disk, and a private code protecting first administrator registration. [Open the Render deployment setup](https://render.com/deploy?repo=https://github.com/nikesh25-cmyk/Lucy), connect your repository, and review the provider's charges before approving it. Choose and review a compatible paid instance and disk during setup; this file does not select a plan or authorize a resize. Render supplies the actual login URL after deployment; this setup link is not a running site.
+The [public-launch plan](docs/PUBLIC_LAUNCH.md), [hosting guide](docs/DEPLOYMENT.md) and `render.yaml` prepare a fresh Render world with HTTPS, a persistent disk, invitation-only initial enrollment and an independent scoped AI worker. [Open the Render deployment setup](https://render.com/deploy?repo=https://github.com/nikesh25-cmyk/Lucy), connect your repository, and review the provider's charges before approving it. The Blueprint selects the paid `1c-2g` pilot instance and a 1 GB disk; syncing it may create a billable service or resize an existing one. Render supplies the login URL after deployment; this setup link is not a running site.
 
 The same application supports another host through `LUCY_PUBLIC_ORIGIN`, `LUCY_BIND_HOST`, `LUCY_DATABASE`, and `LUCY_SETUP_CODE`. Use one instance with persistent storage. No default administrator password is included.
 

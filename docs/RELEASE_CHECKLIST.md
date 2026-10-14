@@ -29,19 +29,22 @@ Run in this order; stop at the first failure.
 
 | # | Gate | Command | Expected result |
 | --- | --- | --- | --- |
-| G1 | Syntax gate | `npm run check` | exit code 0; every shipped module parses (92 files at integration). |
-| G2 | Unit and integration suite | `npm test` | at least `tests 989`, `pass 989`, `fail 0`, `skipped 0`, `cancelled 0`. Record an intentional count change in the handoff. |
+| G1 | Syntax gate | `npm run check` | exit code 0; every shipped module parses (93 files at this release). |
+| G2 | Unit and integration suite | `npm test` | at least `tests 993`, `pass 993`, `fail 0`, `skipped 0`, `cancelled 0`. Record an intentional count change in the handoff. |
 | G3 | HTTP acceptance, end to end | `npm run e2e` | `SUMMARY  20 steps passed, 0 failed` and `result  PASS`. The harness serves its own temporary database. |
 | G4 | Browser acceptance | `npm run browser` | `SUMMARY  45 passed, 0 failed`, `result  PASS`, and `shipped database untouched`. **Do not release on a run below 45/45.** |
 | G5 | Content seal | `node scripts/seal-content.mjs --check` | `Verified: 89 definitions (20 appearance, 7 block, 32 cosmetic, 3 crop, 27 furniture); 3 support files; 42 referenced notices and assets.` and exit code 0. |
-| G6 | Recovery and failure drills | `node scripts/ops-rehearsal.mjs` | one `PASS` line per drill — `recovery-point`, `corrupt-backup`, `migration-rehearsal`, `interrupted-worker`, `model-queue-saturation`, `storage-limit`, `diagnostics-redaction` — and exit code 0, on a disposable workspace only. |
+| G6 | Recovery and failure drills | `node scripts/ops-rehearsal.mjs` | one `PASS` line per drill — `recovery-point`, `corrupt-backup`, `migration-rehearsal`, `interrupted-worker`, `model-queue-saturation`, `storage-limit`, `diagnostics-redaction`, `safety-and-pause` — and exit code 0, on a disposable workspace only. |
 | G7 | Capacity evidence probe | `npm run capacity` | prints the hardware, fixture, read percentiles and failures, **movement/building write** and **event-subscriber** figures, browser result and model-queue bound. Re-run on the combined tree before using the figures for planning; Wave D's schema-22 result is historical evidence, **not** a capacity guarantee. |
 | G8 | Runtime database integrity | `node --test tests/startup-integrity.test.js` | Real server startup refuses corrupt, foreign and newer databases before writes/listening; a valid existing world starts with its audited records preserved. The runtime check holds the process lock. |
 | G9 | Schema agreement | `node scripts/recovery.js verify <database>` | `{"schema_version":23,"accounts":N}` — the same version this build writes, and a non-zero account count on a live world. |
 | G10 | Archive privacy | `tar -tzf <archive>.tgz \| grep -E '(^\|/)(data\|\.runtime\|backups\|test-results)/\|\.sqlite\|\.env$'` | no output (nothing matched). If anything matches: **do not publish**. |
-| G11 | Published-surface sanity | open `https://<origin>/api/v1/health` and `https://<origin>/api/v1/bootstrap` | `health` returns `status: "ok"` with aggregate counters only; `bootstrap` returns `setup_required: false` after the administrator exists, and **never** the setup code; `/api/v1/operations` returns `401`/`403` to anyone but an administrator. |
+| G11 | Published-surface sanity | open `https://<origin>/api/v1/health` and `https://<origin>/api/v1/bootstrap` | `health` returns `status: "ok"` with aggregate counters only; `bootstrap` returns `setup_required: false` and `registration.mode: "closed"` after the administrator exists, and **never** the setup code; `/api/v1/operations` returns `401`/`403` to anyone but an administrator. |
+| G12 | Independent encrypted recovery | stop the service; run `backup-encrypted`, `verify-encrypted`, securely transfer the `.nemoenc` file to independent storage and `restore-encrypted` into a disposable second installation | a named operator records the verified off-host artifact, separately held key, recovery point and successful restore. A local encrypted-file test alone does not pass this gate. |
+| G13 | Independent AI worker | issue a short-lived `read`, `move`, `chat` token to one AI character; run `npm run agent` from the separate model machine against the hosted HTTPS origin; revoke it and retry | one saved, attributed conversation or action is visible to its operator; after revocation the next action is refused. No token, model key or prompt enters the web Blueprint, logs or screenshots. |
 
-G1–G6 are the release-blocking gates. G7 is evidence. G8–G11 are the deployment checks.
+G1–G6 are the code release-blocking gates. G7 is capacity evidence. G8–G13 are the deployment checks;
+G11–G13 cannot pass before a real hosted service, backup destination and worker host exist.
 
 Recommended: run G1–G6 on the exact commit you deploy, and record the command, the exit code and the
 tail of the output next to the release. An untested release is not a release.

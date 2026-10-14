@@ -14,6 +14,8 @@ import { WORLD_OBJECT_GUARDS } from './placement-policy.js';
 import { TRADE_MARKET_SCHEMA, tradeSchemaPresent, verifyTradeRecords, verifyTradeSchema } from './trade-board.js';
 
 export function openDatabase(path) {
+  const initialRegistration = process.env.LUCY_INITIAL_REGISTRATION || 'open';
+  if (!['open', 'closed'].includes(initialRegistration)) throw new Error('LUCY_INITIAL_REGISTRATION must be open or closed.');
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
   const sourceVersion = db.prepare('PRAGMA user_version').get().user_version;
@@ -42,7 +44,7 @@ export function openDatabase(path) {
     CREATE TABLE IF NOT EXISTS worlds(id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, owner_agent_id TEXT REFERENCES agents(id), visibility TEXT NOT NULL DEFAULT 'public', width INTEGER NOT NULL, height INTEGER NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS world_objects(id TEXT PRIMARY KEY, world_id TEXT NOT NULL REFERENCES worlds(id), type TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, created_at TEXT NOT NULL, UNIQUE(world_id,x,y));`);
   try {
-    db.exec("INSERT OR IGNORE INTO settings VALUES('registration','open')");
+    db.prepare("INSERT OR IGNORE INTO settings(key,value) VALUES('registration',?)").run(initialRegistration);
     if (!db.prepare('PRAGMA table_info(agents)').all().some((c) => c.name === 'world_id')) db.exec("ALTER TABLE agents ADD COLUMN world_id TEXT NOT NULL DEFAULT 'commons'");
     if (!db.prepare('PRAGMA table_info(messages)').all().some((c) => c.name === 'world_id')) db.exec("ALTER TABLE messages ADD COLUMN world_id TEXT NOT NULL DEFAULT 'commons'");
     if (!db.prepare('PRAGMA table_info(agents)').all().some((c) => c.name === 'posture')) db.exec("ALTER TABLE agents ADD COLUMN posture TEXT NOT NULL DEFAULT 'standing'");

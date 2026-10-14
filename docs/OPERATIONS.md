@@ -73,37 +73,39 @@ Backups live beside the database (`data/backups` locally, `/var/data/backups` on
 blueprint). **They contain credential hashes, contact addresses and private data.** Keep the directory
 private, and encrypt before you move one off the host — see below. Never commit, publish or attach one.
 
-### Is the backup encrypted? No — stated plainly
+### Encrypted off-install export
 
-**The shipped backup is not encrypted.** `backupDatabase` writes one `VACUUM INTO` copy, and
-`VACUUM INTO` produces an ordinary, unencrypted SQLite file. Measured on this tip (14 October 2026): a
-backup taken to a location outside the installation began with the bytes `SQLite format 3\0`, and a
-distinctive plaintext marker planted in the database was readable inside the copy with an ordinary
-`grep`. Anyone who holds the backup file can read every credential hash, contact address, private
-message and journal entry in it.
+The original `backup` and admin-console backup remain **plaintext SQLite**. Use the separate CLI
+`backup-encrypted` when exporting a copy off the host. It validates a `VACUUM INTO` snapshot, encrypts
+that snapshot with AES-256-GCM under a random 32-byte key, writes the `.nemoenc` output as `0600`, and
+removes the local plaintext staging file on success or ordinary failure. The header and ciphertext are
+authenticated; a wrong key or changed bytes refuse restore before changing the target database.
 
-So the brief's "**encrypted off-install backup**" **cannot be satisfied by the shipped tool alone
-today**. What this build does and does not provide:
+```sh
+# Generate the key once, OUTSIDE the checkout and away from the database disk.
+node scripts/recovery.js keygen /private/off-host/backup.nemo-key
+# Stop the server first. Never supply the key bytes as a command-line argument.
+node scripts/recovery.js backup-encrypted /var/data/world.sqlite /private/export/world-<stamp>.nemoenc /private/off-host/backup.nemo-key
+node scripts/recovery.js verify-encrypted /private/export/world-<stamp>.nemoenc /private/off-host/backup.nemo-key
+# Transfer only the verified .nemoenc artifact to a separate operator-controlled location.
+```
 
-| Requirement | Met by the shipped tool? |
-| --- | --- |
-| A consistent, verified copy of the live database | **Yes** — `VACUUM INTO` inside a read transaction, validated before it is kept |
-| A copy written to a location outside the installation | **Yes** — pass any destination path; the file is `0600` and no partial file is left on failure |
-| A copy that is encrypted at rest | **No** — the copy is plaintext SQLite; encryption must be added outside this tool |
+Keep the key **separately** from the encrypted archive and retain old keys for old archives. A lost key
+makes its archive unrecoverable. A host administrator with access to both key and database can still
+read the world. `backup-encrypted` stages plaintext in the database directory while SQLite writes it;
+a hard crash could leave that owner-only temporary file behind. Check for `.world.sqlite.encrypted-stage-*`
+after a crash and remove it only after confirming the server and recovery process have stopped.
+The repo does not yet schedule export, transfer it off-host, rotate keys, or monitor backup age. Those
+operator steps must be in place and a restore rehearsed before unrestricted enrollment.
 
-Until encryption is added, treat a backup exactly as you treat the live database: `0600`, a private
-directory, never committed or attached. To satisfy "encrypted off-install" today, choose one of:
+```sh
+# In maintenance, with the server stopped, verify then restore from the encrypted copy.
+node scripts/recovery.js verify-encrypted /private/export/world-<stamp>.nemoenc /private/off-host/backup.nemo-key
+node scripts/recovery.js restore-encrypted /private/export/world-<stamp>.nemoenc /var/data/world.sqlite /private/off-host/backup.nemo-key
+```
 
-- write the backup to a provider-managed encrypted volume, **and** keep the only off-host artefact
-  encrypted; or
-- encrypt the copy yourself before it leaves the host — for example
-  `age -r <recipient> world-<stamp>.sqlite > world-<stamp>.sqlite.age`, or
-  `gpg --encrypt --recipient <key> world-<stamp>.sqlite`, or an encrypted disk image — keep only the
-  encrypted artefact off-install, and delete the plaintext copy; restore by decrypting to a private
-  path first.
-
-Neither option is wired into this repository, and neither was rehearsed here beyond the plaintext
-backup and restore below.
+The existing `restore` command still accepts plaintext `.sqlite` backups. Both restore paths preserve
+the previous database and its WAL in a private directory before replacing it.
 
 ## 3. Restore
 
@@ -393,8 +395,11 @@ on a disposable workspace only; 76 of 76 individual checks passed:
 | `storage-limit` | PASS | 8/8 | 657 ms |
 | `diagnostics-redaction` | PASS | 6/6 | 529 ms |
 
-**What these drills do not cover, said plainly.** The brief for this measurement asked that pause,
-revocation, moderation/appeal and incident recovery be exercised *if the drills cover them*:
+**The preceding table is the historical schema-22 measurement.** The schema-23 release adds
+`safety-and-pause`: it independently suspends a resident, verifies its runtime was revoked, has a
+different moderator decide an appeal, restarts a paused database, verifies ordinary writes remain
+refused, then unpauses and records a successful action. Run the current gate for its actual result.
+For the historical seven-drill run, the coverage was:
 
 - **Revocation — covered.** `interrupted-worker` proves an orphaned runtime credential is revoked and
   that a resumed run mints a fresh one; `diagnostics-redaction` proves the administrator surface is
@@ -419,10 +424,9 @@ revocation, moderation/appeal and incident recovery be exercised *if the drills 
   is not tamper-proof against a root user.
 - The recovery point is only as good as the newest backup. Schedule backups off-installation and test a
   restore periodically; an untested backup is a guess.
-- **A backup is plaintext.** The shipped tool does not encrypt it (see §2). Until an operator adds
-  encryption outside this tool, an off-install backup that is not itself encrypted exposes every
-  credential hash, contact address and private message it holds. "Encrypted off-install backup" is
-  therefore an operator step, not a shipped guarantee.
+- **Admin-console backups are plaintext.** The CLI's encrypted export exists (see §2), but an
+  operator must schedule it, transfer the verified artifact off-host, hold the key separately, and
+  rehearse a restore. Until that happens, encrypted off-install recovery is not an operational guarantee.
 - `action_dispatched_unconfirmed` and `unknown` interruptions cannot be resolved automatically. A human
   must inspect the world.
 - Drills run on one machine with a local model stub. They measure the recovery and bounding behaviour,

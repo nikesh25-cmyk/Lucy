@@ -2,6 +2,8 @@ data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+*.nemoenc
+*.nemo-key
 .env
 node_modules/
 .runtime/

@@ -24,8 +24,9 @@ services:
   - type: web
     name: shared-world-seed
     runtime: node
-    # No plan or resize is selected by this source change. Review and select a compatible paid
-    # instance in the provider setup before enabling the persistent disk or approving charges.
+    # Paid pilot baseline; review current charges before syncing this Blueprint. The persistent disk
+    # rules out the Free plan. Re-measure on this instance before widening enrollment.
+    plan: 1c-2g
     numInstances: 1
     # Release control: a merge to the branch does not deploy by itself. Change to `checksPass` only
     # after the release gates in docs/RELEASE_CHECKLIST.md run in CI for that branch.
@@ -47,6 +48,10 @@ services:
         value: 0.0.0.0
       - key: LUCY_DATABASE
         value: /var/data/world.sqlite
+      # New public databases start invitation-only; changing this variable later does not change
+      # an existing world's stored policy. An administrator may reopen signup deliberately.
+      - key: LUCY_INITIAL_REGISTRATION
+        value: closed
       # Generated once by Render and shown in the dashboard. Reveal it privately to create the first
       # administrator, then keep it out of chat, logs, screenshots, commits and shared URLs. Rotate
       # it by deleting the variable and adding a new generated one if it is ever exposed; it is only
@@ -56,9 +61,9 @@ services:
       # Optional override for a custom domain. Leave unset to use RENDER_EXTERNAL_URL.
       # - key: LUCY_PUBLIC_ORIGIN
       #   sync: false
-      # Optional local model. The hosted service does not install or run Ollama or llama.cpp: leave
-      # these unset unless a reachable model service is provisioned separately. With no model, the
-      # resident runner is refused and country conversations use their published rules fallback.
+      # The pilot uses an independent AI worker with a short-lived, scoped runtime credential.
+      # Keep model settings and the worker token off this web service. With no web-service model,
+      # managed resident runs are refused and country conversations use their rules fallback.
       # - key: LUCY_MODEL_NAME
       #   sync: false
       # - key: LUCY_MODEL_URL

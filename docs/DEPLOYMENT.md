@@ -2,7 +2,7 @@
 
 The repository contains a Render Blueprint in `render.yaml`. It runs one Node 24 web service with a persistent disk for accounts, characters, gardens, conversations, evidence, and backups. Render terminates HTTPS and supplies `RENDER_EXTERNAL_URL`; the server uses that origin for Host checks, browser writes, and secure cookies.
 
-This file prepares deployment. A live login URL exists after the hosting provider creates the service. It requires your Render account, repository access, and approval of Render's current charges. The Blueprint specifies a **1 GB persistent disk** and leaves the instance plan to your setup decision. Choose a compatible paid plan and inspect the provider’s current price before approving; applying this source must not automatically resize an existing service. No hosting account or payment is created by the code.
+This file prepares deployment. A live login URL exists after the hosting provider creates the service. It requires your Render account, repository access, and approval of Render's current charges. The Blueprint selects the paid **`1c-2g`** pilot baseline (1 CPU, 2 GB RAM) with a **1 GB persistent disk**. Inspect the provider’s current price and the exact Blueprint preview before approving; syncing it against an existing service could change that service's plan. No hosting account or payment is created by the code.
 
 ## Create the service and its administrator
 
@@ -10,11 +10,23 @@ This file prepares deployment. A live login URL exists after the hosting provide
 2. Review the service, paid instance, and disk, then approve deployment. Keep one instance: this application uses one SQLite database on the attached disk.
 3. Wait for the service to become healthy. The service dashboard shows its real public URL; open that URL to reach the world and login screen.
 4. In the service's environment settings, reveal the generated `LUCY_SETUP_CODE` privately. Use it in the **first administrator setup** form with your own email and password. Keep this code out of chat, logs, screenshots, commits, and shared URLs.
-5. Once the administrator exists, public member signup is open by default. Members can create one human player and manage up to five AI characters. Use Administration to close or reopen member signup. Create single-use invitations when assigning reviewer or moderator access, or admitting a member while public signup is closed.
+5. On the Render Blueprint, public member signup starts **closed** through `LUCY_INITIAL_REGISTRATION=closed`. Members can create one human player and manage up to five AI characters. Use Administration to reopen signup deliberately. Create single-use invitations when assigning reviewer or moderator access, or admitting a member while public signup is closed. A local fresh world without that setting retains the usual open default.
 
 The server refuses to start an empty public database without the private setup code. A visitor cannot become administrator without that code. Public signup always creates a member; a supplied invalid invitation fails even when member signup is open. Account role input cannot grant administrator, reviewer or moderator access. The first administrator rule does not reopen after account suspension or deletion.
 
 The repository does not contain default administrator credentials. Your chosen password is hashed in the database. `GET /api/v1/bootstrap` reports whether setup is required and never returns the setup code.
+
+## Independent AI worker
+
+The selected pilot runs live AI residents **outside** the Render web service. The operator creates an
+AI character, issues a short-lived credential through **Characters → Connect an independent AI
+agent**, and runs `npm run agent` on a separate machine with a local Ollama or llama.cpp model. Set
+`WORLD_URL` to the hosted HTTPS origin and keep `WORLD_AGENT_TOKEN` only in that worker's private
+environment. Start with `read`, `move` and `chat` scopes; add `build` or `contribute` for supervised
+work only. Stop or revoke the worker before its credential expires; verify a revoked worker's next
+action is refused. The world remains available if that worker is offline. The web Blueprint does not
+contain the worker's token or model settings. See [public launch](PUBLIC_LAUNCH.md) and
+[bounded AI residents](RUNTIME.md).
 
 ## Configuration
 
@@ -25,6 +37,7 @@ The repository does not contain default administrator credentials. Your chosen p
 | `LUCY_BIND_HOST` | Set to `0.0.0.0` behind the hosting proxy. Local development defaults to `127.0.0.1`. |
 | `PORT` | Listening port supplied by Render. |
 | `LUCY_DATABASE` | `/var/data/world.sqlite` in the Blueprint. Put the database on the persistent disk. |
+| `LUCY_INITIAL_REGISTRATION` | `closed` in the Blueprint. Sets only a **new** database's initial enrollment policy; changing it later never overwrites the stored administrator setting. |
 | `LUCY_SETUP_CODE` | Private 24–256 character code protecting first administrator registration. Generated by the Blueprint. |
 | `LUCY_MODEL_NAME` | Optional local Ollama model name. Hosted deployment does not install or run Ollama automatically. |
 | `LUCY_MODEL_URL` | Optional model endpoint. Defaults to `http://127.0.0.1:11434`; must be a loopback HTTP URL, and a non-loopback endpoint is refused. |
@@ -37,11 +50,11 @@ Ordinary application routes accept only the configured public Host. Internal loo
 
 ## Release control and shutdown
 
-The Blueprint sets `autoDeployTrigger: 'off'`: merging to the branch does not deploy by itself, and releases follow the release checklist. Change it to `checksPass` only once those checks run in CI for that branch. On `SIGTERM`, `maxShutdownDelaySeconds: 60` gives the process time to stop accepting connections, end event streams, abort worker runs and release its world lock before the host escalates to `SIGKILL`. Before a release serves traffic, `preDeployCommand` runs `node scripts/recovery.js verify` against an existing `/var/data/world.sqlite`, so a corrupt, foreign or newer-than-this-build database fails the deploy closed; a first deploy with no database is skipped, and the check takes no lock and writes nothing, so it is safe while the previous instance is still draining.
+The Blueprint sets `autoDeployTrigger: 'off'`: merging to the branch does not deploy by itself, and releases follow the release checklist. Change it to `checksPass` only once those checks run in CI for that branch. On `SIGTERM`, `maxShutdownDelaySeconds: 60` gives the process time to stop accepting connections, end event streams, abort worker runs and release its world lock before the host escalates to `SIGKILL`. There is **no** `preDeployCommand` for the database: Render's pre-deploy environment cannot access this service's persistent disk. The server validates the real database under its process lock before listening. Independently verify and back up the disk in a maintenance session before approving an upgrade.
 
 ## Persistence and recovery
 
-Backups created in Operations live beside the database under `/var/data/backups`. They include credential hashes and private data; keep them private and download an encrypted copy to storage you control. A persistent disk preserves data across service restarts and deployments, but independent copies protect against disk or account loss.
+Backups created in Operations live beside the database under `/var/data/backups`. They include credential hashes and private data and remain plaintext. The CLI now has `backup-encrypted`, `verify-encrypted`, and `restore-encrypted` for a separate, authenticated `.nemoenc` archive; see `docs/OPERATIONS.md` §2. Keep its 32-byte key separate from the archive. Schedule and test the off-host transfer before opening unrestricted enrollment. A persistent disk preserves data across service restarts and deployments, but independent copies protect against disk or account loss.
 
 Use `node scripts/recovery.js verify BACKUP` to validate a backup. To restore, stop the application process and run `node scripts/recovery.js restore BACKUP /var/data/world.sqlite` in a maintenance session. Recovery refuses an active server lock, preserves the original database and WAL, validates the backup, and replaces the database atomically. Start the service again after restoring. Version 1 backups migrate to the current schema at startup.
 

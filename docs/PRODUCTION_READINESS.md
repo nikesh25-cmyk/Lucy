@@ -34,7 +34,7 @@ be reviewed before approving it.
 | Property | Value | Why |
 | --- | --- | --- |
 | `type` / `runtime` | `web` / `node` | one HTTP process serving `/api/v1` and the static interface |
-| `plan` | omitted | select and approve a compatible paid instance during setup; the integration does not authorize a resize |
+| `plan` | `1c-2g` | explicit 1-CPU, 2-GB paid pilot baseline; review the current price and any change to an existing service before Blueprint sync |
 | `numInstances` | `1` | the world is one process over one SQLite file in WAL mode. Render also refuses to scale a service that has an attached disk |
 | `autoDeployTrigger` | `off` | a merge does not deploy by itself; releases follow `docs/RELEASE_CHECKLIST.md`. Change to `checksPass` only once the gates run in CI for that branch |
 | `buildCommand` | `npm run check` | the syntax gate as the build. The application has **no runtime dependencies**, so no `npm install` is needed to serve it |
@@ -43,7 +43,7 @@ be reviewed before approving it.
 | `maxShutdownDelaySeconds` | `60` | the process ends event streams, aborts worker runs and releases its lock on `SIGTERM` (`server.js:670-678`); 60 s leaves room before the host escalates to `SIGKILL` |
 | Runtime integrity gate | `server.js` after acquiring `server.lock`, before `new Platform()` or listening | Existing databases are validated before migration/seeding. Missing databases follow first-start setup. Render build/pre-deploy compute cannot access persistent disks; see [Render disk documentation](https://render.com/docs/disks). |
 | `disk` | `shared-world-data`, `/var/data`, 1 GB | the database, its WAL and `backups/` must survive restarts and deploys. Size is a ceiling, not a quota |
-| `envVars` | see §3 | `NODE_VERSION`, `LUCY_BIND_HOST`, `LUCY_DATABASE`, generated `LUCY_SETUP_CODE`, plus commented optional overrides |
+| `envVars` | see §3 | `NODE_VERSION`, `LUCY_BIND_HOST`, `LUCY_DATABASE`, `LUCY_INITIAL_REGISTRATION=closed`, generated `LUCY_SETUP_CODE`, plus commented optional overrides |
 
 Render supplies `PORT` and `RENDER_EXTERNAL_URL`. The server accepts `RENDER_EXTERNAL_URL` as its
 canonical HTTPS origin when `LUCY_PUBLIC_ORIGIN` is unset (`src/hosting.js:6`), which is why the
@@ -64,6 +64,7 @@ settings. `.env.example` is the template and contains only placeholders.
 | `LUCY_BIND_HOST` | optional | `0.0.0.0` when an origin is set, otherwise `127.0.0.1`. Binding `0.0.0.0` **without** an origin throws and refuses to start | `src/hosting.js:15-17` |
 | `PORT` | optional | `3000` locally; hosts usually inject it | `server.js:679` |
 | `LUCY_DATABASE` | optional | `data/world.sqlite` beside the source | `server.js:665` |
+| `LUCY_INITIAL_REGISTRATION` | optional | `open`; only a new database uses this default, while the Render pilot sets `closed` | `src/database.js` |
 | `LUCY_SETUP_CODE` | required once, before the first public start of an empty database | a public server over an empty database **refuses to start**; 24–256 characters | `src/hosting.js:18-20`, `server.js:325`, `src/platform.js:107-109` |
 | `LUCY_MODEL_NAME` | optional | no model configured: resident runs are refused with `409`, country conversations answer from published rules with `mode: "rules"` | `server.js:318`, `:541`, `:642` |
 | `LUCY_MODEL_URL` | optional | `http://127.0.0.1:11434`; must be loopback HTTP | `runtime/model.js:39-45` |
@@ -84,8 +85,8 @@ Corrected here (files this task owns):
    no longer appears in Render's published plan list; the current form is an explicit compute id. The
    Blueprint now states the plan deliberately, with the price-review warning kept. If an account already
    runs a Starter instance and you do **not** want to resize it, delete the `plan` line instead: Render
-   retains an existing service's plan when the field is omitted. **This change makes `docs/DEPLOYMENT.md`
-   and `README.md` stale — see item 7.**
+   retains an existing service's plan when the field is omitted. `docs/DEPLOYMENT.md` and `README.md`
+   now state the selected pilot plan and the required price review.
 2. **`render.yaml` — added `autoDeployTrigger: 'off'`.** Render's `autoDeploy` field is deprecated in
    favour of `autoDeployTrigger`. Disabling auto-deploy is what makes the release checklist meaningful.
 3. **`render.yaml` — added `maxShutdownDelaySeconds`, comments and the optional
@@ -331,14 +332,13 @@ backup, `.env`, token or setup code. Never enable a second instance against the 
 ## 11. Limits of this package
 
 - The Blueprint has **not** been applied to a provider. Its syntax follows Render's published Blueprint
-  specification (fields `plan`, `autoDeployTrigger`, `maxShutdownDelaySeconds`, `preDeployCommand`,
+  specification (fields `plan`, `autoDeployTrigger`, `maxShutdownDelaySeconds`,
   `disk`, `envVars` with `generateValue`/`sync`), but only a Render account can validate it end to end,
   and doing so would create a paid service — the operator's decision.
 - The capacity numbers are one machine, one fixture and bounded concurrency (`PERFORMANCE.md`,
-  `docs/handoff/task-28-production-readiness.md`).
-- The browser acceptance gate is **flaky** on this base (14/16, 15/16 and 16/16 in three full runs,
-  with different scenarios failing) and belongs to the browser-suite owner; see §7 of the release
-  checklist and the handoff for the raw evidence.
+  `docs/handoff/integration-2026-10-14-master-wave.md`). The 32-reader p95 exceeds 3.6 seconds.
+- The historical 14/16, 15/16 and 16/16 browser runs remain documented, while the combined
+  schema-23 build passed 45/45 once. This does not establish a production reliability target.
 - The threat model is a code review, not an audit, and its residual-risk list is part of the assessment.
 
 ## Integration correction — 13 October 2026
@@ -347,4 +347,4 @@ The proposed pre-deploy check silently skipped the service database because [Ren
 
 ## Integration clarification — 13 October 2026
 
-The historical plan recommendation above is not an approved hosting change. The current Blueprint omits `plan`; deployment remains off. Choose a compatible instance and review its charges explicitly during provider setup. No purchase, deployment or resize was performed.
+The historical plan recommendation above was not an approved hosting change at the time. For the fresh public-world release candidate, the current Blueprint selects `plan: 1c-2g` and keeps automatic deployment off. Review the exact provider charges and Blueprint preview before syncing it. No purchase, deployment or resize was performed by this source edit.

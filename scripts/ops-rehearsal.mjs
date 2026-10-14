@@ -446,6 +446,40 @@ async function drillDiagnosticsRedaction(directory) {
   }
 }
 
+// ---- Drill: independent moderation, appeal, revoked runtime and a durable platform pause --------
+async function drillSafetyAndPause(directory) {
+  const checks = [];
+  const seeded = await seedDisposableWorld(directory);
+  let { platform } = seeded;
+  const tx = (method, ...args) => platform.transaction(() => platform[method](...args));
+  const actor = (name) => platform.authenticate(seeded.accounts[name].token);
+  for (const name of ['moderatorA', 'moderatorB']) {
+    const invite = tx('invite', actor('admin'), { role: 'moderator' });
+    seeded.accounts[name] = await platform.register({ name: `Rehearsal ${name}`, email: `${name}@rehearsal.invalid`, password: PASSWORD, consent: true, invite: invite.code });
+  }
+  const runtime = tx('runtime', actor('bob'), seeded.ids.bobAgent, { scopes: ['read', 'chat'], minutes: 5, max_calls: 10 });
+  const report = tx('report', actor('alice'), { target_type: 'agent', target_id: seeded.ids.bobAgent, reason: 'A disposable safety report for the drill.' });
+  check(checks, 'the owner and reporter cannot decide the report', Boolean(refused(() => tx('moderate', actor('bob'), { report_id: report.id, action: 'suspend', reason: 'No self-moderation.' }))) && Boolean(refused(() => tx('moderate', actor('alice'), { report_id: report.id, action: 'suspend', reason: 'No reporter decision.' }))));
+  tx('moderate', actor('moderatorA'), { report_id: report.id, action: 'suspend', reason: 'Rehearsal suspension by an independent operator.' });
+  check(checks, 'independent suspension revoked the resident runtime', platform.get('SELECT status FROM agents WHERE id=?', seeded.ids.bobAgent).status === 'suspended' && Boolean(refused(() => platform.authenticate(runtime.token))));
+  const appeal = tx('appeal', actor('bob'), { report_id: report.id, reason: 'Request an independent rehearsal appeal.' });
+  check(checks, 'the first moderator cannot decide the appeal', Boolean(refused(() => tx('decideAppeal', actor('moderatorA'), { appeal_id: appeal.id, decision: 'overturned', reason: 'Not my own case.' }))));
+  tx('decideAppeal', actor('moderatorB'), { appeal_id: appeal.id, decision: 'overturned', reason: 'A second independent operator checked the case.' });
+  check(checks, 'the appeal overturns the report but requires an explicit resident resume', platform.get('SELECT status FROM reports WHERE id=?', report.id).status === 'overturned' && platform.get('SELECT status FROM agents WHERE id=?', seeded.ids.bobAgent).status === 'paused');
+  tx('agentControl', actor('bob'), seeded.ids.bobAgent, 'active');
+  tx('pause', actor('admin'), true);
+  check(checks, 'a paused world refuses an ordinary message', Boolean(refused(() => tx('message', actor('alice'), { agent_id: seeded.ids.aliceAgent, text: 'This must not be saved while paused.' }))) && platform.get("SELECT COUNT(*) AS n FROM messages WHERE text='This must not be saved while paused.'").n === 0);
+  platform.close();
+  platform = new Platform(seeded.database);
+  try {
+    check(checks, 'pause and safety decisions survive a real database reopen', platform.get("SELECT value FROM settings WHERE key='paused'").value === 'true' && platform.get('SELECT status FROM reports WHERE id=?', report.id).status === 'overturned' && platform.get('SELECT status FROM appeals WHERE id=?', appeal.id).status === 'overturned' && Boolean(refused(() => tx('message', actor('alice'), { agent_id: seeded.ids.aliceAgent, text: 'Still paused after restart.' }))));
+    tx('pause', actor('admin'), false);
+    const delivered = tx('message', actor('alice'), { agent_id: seeded.ids.aliceAgent, text: 'The world resumed after the drill.' });
+    check(checks, 'unpause restores ordinary action and the audit chain remains valid', Boolean(delivered.id) && platform.verifyAudit() && validateDatabase(seeded.database).schema_version === 23);
+  } finally { platform.close(); }
+  return { ok: allPassed(checks), checks, detail: 'An independent suspension and appeal, runtime revocation, durable pause and explicit recovery were exercised on a disposable world.' };
+}
+
 const DRILLS = [
   ['recovery-point', drillRecoveryPoint],
   ['corrupt-backup', drillCorruptBackup],
@@ -454,6 +488,7 @@ const DRILLS = [
   ['model-queue-saturation', drillModelQueueSaturation],
   ['storage-limit', drillStorageLimit],
   ['diagnostics-redaction', drillDiagnosticsRedaction],
+  ['safety-and-pause', drillSafetyAndPause],
 ];
 
 export async function runOpsRehearsal({ workspace, keep = false, only = null } = {}) {

@@ -30,9 +30,25 @@ test('every operational failure drill passed on a disposable installation', () =
   const failed = report.drills.filter((entry) => !entry.ok).map((entry) => `${entry.id}: ${entry.checks.filter((check) => !check.ok).map((check) => check.name).join('; ') || entry.detail}`);
   assert.equal(failed.length, 0, failed.join('\n'));
   assert.equal(report.ok, true);
-  assert.deepEqual(report.drills.map((entry) => entry.id), ['recovery-point', 'corrupt-backup', 'migration-rehearsal', 'interrupted-worker', 'model-queue-saturation', 'storage-limit', 'diagnostics-redaction']);
+  assert.deepEqual(report.drills.map((entry) => entry.id), ['recovery-point', 'corrupt-backup', 'migration-rehearsal', 'interrupted-worker', 'model-queue-saturation', 'storage-limit', 'diagnostics-redaction', 'safety-and-pause']);
   for (const entry of report.drills) assert.ok(entry.checks.length >= 4, `${entry.id} made too few assertions`);
   assert.ok(existsSync(report.report_path));
+});
+
+test('safety and pause drill leaves a recovered, independently decided world', () => {
+  const entry = drill('safety-and-pause');
+  assert.equal(entry.ok, true);
+  const database = join(workspace, 'safety-and-pause', 'world.sqlite');
+  assert.equal(validateDatabase(database).schema_version, 23);
+  const db = new DatabaseSync(database, { readOnly: true });
+  try {
+    assert.equal(db.prepare("SELECT value FROM settings WHERE key='paused'").get().value, 'false');
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM reports WHERE status='overturned'").get().n, 1);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM appeals WHERE status='overturned'").get().n, 1);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM audit WHERE event='platform.paused'").get().n, 1);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM audit WHERE event='platform.resumed'").get().n, 1);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM messages WHERE text='The world resumed after the drill.'").get().n, 1);
+  } finally { db.close(); }
 });
 
 test('the restored world keeps its world, land, coin, quest and guild records at schema 23', () => {
