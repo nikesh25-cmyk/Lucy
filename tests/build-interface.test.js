@@ -43,7 +43,7 @@ test('the hotbar palette is exactly the server-published frontier palette, never
   assert.equal(palette.maximum_z, world.frontier.limits.maximum_z);
   const model = hotbarModel({ world, pick: tile(32, 32) });
   assert.deepEqual(model.entries.map((entry) => entry.type), world.frontier.palette);
-  assert.deepEqual(model.entries.map((entry) => entry.key), ['1', '2', '3', '4', '5', '6', '7']);
+  assert.deepEqual(model.entries.map((entry) => entry.key), world.frontier.palette.map((_, index) => String(index + 1)), 'one number key per sealed block, in palette order');
   assert.equal(model.entries.every((entry) => entry.label), true);
   assert.ok(alice);
 });

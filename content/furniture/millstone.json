@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "id": "millstone",
+  "kind": "furniture",
+  "label": "Millstone",
+  "since": "1.0.0",
+  "order": 30,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project code: src/voxel-world.js furniture() block-out routine and the world.js tile case written for this entry",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#879291",
+    "geometry": "prop",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [
+      "garden",
+      "house"
+    ],
+    "walkable": false,
+    "footprint": "occupied",
+    "geometry": "prop"
+  },
+  "notes": [
+    "A round grinding stone on a stone seat, for a working corner of a garden or a cottage floor.",
+    "It is a solid mass in src/footprints.js, so it is walked around rather than through. It grinds nothing: the craft recipes in src/journey.js read only saved shelf resources, and this object holds none.",
+    "The voxel scene draws it through the generic prop branch of src/voxel-world.js furniture(); world.js draws the same silhouette on the pixel map."
+  ]
+}

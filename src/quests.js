@@ -69,8 +69,10 @@ export const QUEST_SCHEMA=`
  CREATE TRIGGER IF NOT EXISTS quest_chains_identity_immutable BEFORE UPDATE ON quest_chains WHEN NEW.id!=OLD.id OR NEW.slug!=OLD.slug OR NEW.route!=OLD.route OR NEW.origin!=OLD.origin OR NEW.practice!=OLD.practice OR COALESCE(NEW.author_account_id,'')!=COALESCE(OLD.author_account_id,'') BEGIN SELECT RAISE(ABORT,'A quest chain keeps its identity, route and practice scope'); END;
  CREATE TRIGGER IF NOT EXISTS quest_steps_immutable BEFORE UPDATE ON quest_steps BEGIN SELECT RAISE(ABORT,'Published quest steps are not rewritten; author a new chain instead'); END;
  CREATE TRIGGER IF NOT EXISTS quest_chains_keep_steps BEFORE DELETE ON quest_chains WHEN EXISTS(SELECT 1 FROM quest_steps WHERE chain_id=OLD.id) BEGIN SELECT RAISE(ABORT,'A quest chain with steps is archived, never deleted'); END;`;
-// The shipped practice chain. It is deliberately cosmetic: two growth cycles and one craft, no
-// beneficiary, no real-world claim, and no way to award anything but the existing cosmetic experience.
+// The shipped practice chains. Each is deliberately cosmetic: saved growth, gathering, crafting and
+// building facts, no beneficiary, no real-world claim, and no way to award anything but the existing
+// cosmetic experience. They are installed by slug, so a chain added here reaches a world that already
+// has the others without touching a stored step or a resident's recorded progress.
 export const SEED_QUESTS=Object.freeze([Object.freeze({
  slug:'quiet-harvest',title:'The Quiet Harvest',route:'gardening',practice:true,beneficiary:'',
  summary:'A three-step practice of patience: sow a crop in your own garden, tend it and gather it, then turn the harvest into one keepsake.',
@@ -97,6 +99,32 @@ export const SEED_QUESTS=Object.freeze([Object.freeze({
  steps:Object.freeze([
   Object.freeze({slug:'claim-a-task',title:'Claim a scoped real task',instructions:'Claim an open real mission task that has an independent reviewer assigned.',output_name:'A leased claim on a real task',source_kind:'research_claim',requires_review:false,target:1,prerequisite:null}),
   Object.freeze({slug:'submit-and-accept',title:'Wait for independent acceptance',instructions:'Submit sourced work and wait for a different, authorized operator to accept it.',output_name:'An accepted review receipt from another human',source_kind:'research_accepted',requires_review:true,target:1,prerequisite:'claim-a-task'}),
+ ]),
+}),Object.freeze({
+ // The deeper crafting ladder: two harvests and two crafts, so a resident who wants the second step
+ // must actually make something from something they already made. Both craft steps are proved by the
+ // same saved-fact kind, and a saved craft can be credited once, so the chain cannot be walked by
+ // repeating one craft: the second step needs a different kept keepsake.
+ slug:'patient-workshop',title:'The Patient Workshop',route:'gardening',practice:true,beneficiary:'',
+ summary:'A four-step practice of making: sow a patch, gather it, craft one keepsake from the harvest, then craft a second keepsake that spends the first.',
+ narrative:'This chain is about the second step. Anyone can gather and anyone can craft once; the workshop asks what happens when a keepsake becomes an ingredient. Begin again with a single patch of turned soil in your own garden — one row, and the seed costs nothing. Wait for it, tend it if you like, and gather what the ground actually returns. Take that harvest to the crafting station and make something small and complete: a crown, a whistle, a banner, a lantern. Then read the recipes again. Some of them spend a keepsake you already hold, and those are the ones this chain is for: make a second thing out of the first, so the shelf carries something that could not exist without the thing beside it. Every step is a saved act the server records and checks, and nothing in this chain is promised to anyone outside NemoWorld. The second craft may fall on another day: a resident earns at most two saved facts a day, and that limit is not a punishment — it is the reason a workshop is patient.',
+ steps:Object.freeze([
+  Object.freeze({slug:'sow-the-row',title:'Sow a row',instructions:'Place a crop patch in your own garden with the garden build palette, stand in your garden and plant one crop on that exact tile. Blossom is the quickest sowing and resin the slowest; any kind counts.',output_name:'One planted crop in your own garden',source_kind:'crop_plant',requires_review:false,target:1,prerequisite:null}),
+  Object.freeze({slug:'gather-what-grew',title:'Gather what grew',instructions:'Return while the crop is still growing and tend it once if you like, then harvest it after the server reports it ready. The growth time is checked on the server, and the amount you receive is the kind’s own sealed yield raised by the care the crop earned.',output_name:'A harvest the server confirmed as mature',source_kind:'crop_harvest',requires_review:false,target:1,prerequisite:'sow-the-row'}),
+  Object.freeze({slug:'first-keepsake',title:'Make a first keepsake',instructions:'Take the harvest to the crafting station and craft any recipe you can afford. The ingredients are checked and debited in one transaction, and the keepsake is kept on your own shelf.',output_name:'A first crafted keepsake',source_kind:'craft',requires_review:false,target:1,prerequisite:'gather-what-grew'}),
+  Object.freeze({slug:'keepsake-from-a-keepsake',title:'Make a keepsake from a keepsake',instructions:'Read the recipe list for one whose ingredients include something you have already made — the sun thread, the field ribbon and the harvest garland chain is the deepest one — and craft it. A saved craft can be credited once, so this step needs a second, different craft.',output_name:'A second crafted keepsake made from the first',source_kind:'craft',requires_review:false,target:1,prerequisite:'first-keepsake'}),
+ ]),
+}),Object.freeze({
+ // The welcoming chain: arrive somewhere shared with your own character, then make your own place and
+ // mark the ground beside it. Four different saved facts, so no single activity can walk it.
+ slug:'open-hearth-homestead',title:'The Open Hearth',route:'world_building',practice:true,beneficiary:'',
+ summary:'A four-step practice of arriving and settling: visit a shared place you have not seen, furnish your own home, save a marker in your plot, then lay a path beside it.',
+ narrative:'This chain is about the ground you keep and the ground you share. Start by travelling: walk into one of the shared places you have not seen and let the visit be recorded as your own, because looking at a map is not arriving. Then come home. Place one allowed object in your own garden or cottage — a bench where a visitor could sit, a light where they could see — so the place answers to someone. Take the marker out to the frontier afterwards and build one permitted block inside the plot your operator stewards, on ground that is yours to build on and clear of the passages everyone uses. Finally lay a level path stone beside it, so the mark is a way through rather than an obstacle. Every step is a saved act with its own kind, so no single act of building can carry the chain: arriving, furnishing, marking and paving are four different facts, and a resident earns at most two of them as experience on any one day.',
+ steps:Object.freeze([
+  Object.freeze({slug:'arrive-somewhere-shared',title:'Arrive somewhere shared',instructions:'Walk into a shared place you have not previously visited and let the visit be recorded. Looking at its map or its directory entry does not count.',output_name:'A recorded visit to a shared place',source_kind:'shared_visit',requires_review:false,target:1,prerequisite:null}),
+  Object.freeze({slug:'make-the-place-answer',title:'Make your place answer',instructions:'Place one allowed object from the garden or cottage palette in your own home world. Everything on that palette is a decoration or a fixture; nothing you place here is a resource, a recipe or a coin.',output_name:'A saved object in your own garden or cottage',source_kind:'home_furnish',requires_review:false,target:1,prerequisite:'arrive-somewhere-shared'}),
+  Object.freeze({slug:'mark-your-ground',title:'Mark your ground',instructions:'Walk to the plot your operator stewards on the frontier and place one permitted block inside it. Keep shared passages and other residents clear, and remember that a path block belongs on the ground only.',output_name:'A saved frontier block inside your operator’s plot',source_kind:'frontier_place',requires_review:false,target:1,prerequisite:'make-the-place-answer'}),
+  Object.freeze({slug:'lay-the-way-through',title:'Lay the way through',instructions:'Place one ground path block inside the same stewarded plot, where a walker could actually stand. A path is a saved placement the server checks; it opens no land and costs no coin.',output_name:'A saved ground path inside a stewarded plot',source_kind:'path_place',requires_review:false,target:1,prerequisite:'mark-your-ground'}),
  ]),
 })]);
 

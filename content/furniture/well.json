@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "well",
+  "kind": "furniture",
+  "label": "Drawing well",
+  "since": "1.0.0",
+  "order": 27,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project code: src/voxel-world.js furniture() block-out routine and the world.js tile case written for this entry",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#879291",
+    "geometry": "prop",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [
+      "garden"
+    ],
+    "walkable": false,
+    "footprint": "occupied",
+    "geometry": "prop"
+  },
+  "notes": [
+    "A capped stone well beside a garden path. It stands on its own tile: the sealed garden palette refuses a placement on an occupied tile, and it is a solid mass in src/footprints.js, so a resident walks around it.",
+    "The voxel scene draws it through the generic prop branch of src/voxel-world.js furniture(), which is what rules.geometry records; world.js draws the same silhouette on the pixel map.",
+    "A decoration only. It yields no water resource, carries no recipe and costs nothing to place."
+  ]
+}

@@ -16,7 +16,11 @@
       "lantern",
       "sculpture",
       "trellis",
-      "cushion"
+      "cushion",
+      "well",
+      "birdbath",
+      "sundial",
+      "millstone"
     ],
     "house": [
       "bookshelf",
@@ -25,7 +29,9 @@
       "sculpture",
       "cushion",
       "bench",
-      "flowers"
+      "flowers",
+      "birdbath",
+      "millstone"
     ],
     "frontier": [
       "stone",
@@ -34,7 +40,9 @@
       "brick",
       "sand",
       "grass",
-      "path"
+      "path",
+      "clay",
+      "slate"
     ]
   },
   "sources": {
