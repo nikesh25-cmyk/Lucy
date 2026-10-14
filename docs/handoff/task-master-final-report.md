@@ -125,7 +125,9 @@ re-run it.
 
 Run on code tip `3494a2b`, tree clean, on the target machine with the user's own installed
 NemoWorld live on `127.0.0.1:3000` (which is part of the background load: **load average 3.40 / 4.04 /
-4.62 before the run and 4.21 / 4.40 / 4.75 after it**).
+4.62 before the run and 4.21 / 4.40 / 4.75 after it**). Two documentation-only commits follow
+`3494a2b`; they add no code and no test, and the operations rehearsal below was re-run after them, on
+`0530c0a`.
 
 | Command | Result | Notes |
 | --- | --- | --- |
@@ -134,6 +136,7 @@ NemoWorld live on `127.0.0.1:3000` (which is part of the background load: **load
 | `npm run e2e` | **17 steps passed, 0 failed** | real HTTP against a child server on a temporary database; the shipped server served every step end to end, including the restart-persistence step (`2 objects, 2 pledges and 4 remaining guide steps, byte-for-byte`) |
 | `npm run browser` | **45 scenarios, 45 passed, 0 failed** | real Chrome 155; the multiplayer scenarios hold two browsable contexts on one server |
 | `node scripts/seal-content.mjs --check` | **Verified: 89 definitions** (20 appearance, 7 block, 32 cosmetic, 3 crop, 27 furniture), 3 support files, 42 referenced notices and assets | |
+| `node scripts/ops-rehearsal.mjs` | **7/7 drills passed** | `recovery-point`, `corrupt-backup`, `migration-rehearsal`, `interrupted-worker`, `model-queue-saturation`, `storage-limit`, `diagnostics-redaction`; run on `0530c0a` |
 | real Luanti smoke | **NOT RUN — unavailable** | needs `LUANTI_BIN`; no Luanti binary exists on this machine and the pinned archive was not downloaded. The pinned artifact is `luanti_5.17.0_macos12.3_arm64.zip`, SHA-256 `0ba118b537d3cc6fd07cd2268fef25e515fc6d87c27ad69b476144a8e28dba3c`. The delivered native smoke is reported as unverified *here*; it was verified by its own author. |
 
 The same run produced the pictures this report cites:
@@ -270,7 +273,9 @@ traffic, soak, TLS or multi-process behaviour was measured.
    marker and grepping it back. The brief's "encrypted off-install backup" cannot be met by the
    shipped tool alone.
 4. **Moderation/appeal recovery and platform-pause recovery are unmeasured.** The operations
-   rehearsal passed **7/7 drills, 76/76 checks**, but those two drills were not among them.
+   rehearsal passed **7/7 drills** on the final tip (recovery point, corrupt backup, migration
+   rehearsal, interrupted worker, model-queue saturation, storage limit, diagnostics redaction), but
+   those two drills were not among them.
 5. **The next-passage cue's reason branch is pinned by reading, not exercised**, and the HUD has
    roughly 15 px of headroom before a wrapped line meets the tool host.
 6. **The browser suite is load-sensitive** and one unexplained `interaction-ambassador-desk` failure
