@@ -126,6 +126,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'interaction-hint-and-distance', title: 'The interaction hint, its one-tile requirement and an out-of-range refusal', regression: null },
   { id: 'game-hud-interaction-prompt-and-aim', title: 'The game HUD exposes a usable interaction prompt and matching aim guidance', regression: null },
   { id: 'next-passage-cue', title: 'The HUD names the next passage the server sends, and nothing when there is none', regression: null },
+  { id: 'hud-visible-while-building', title: 'The HUD next-action band stays readable while the frontier build tools are open', regression: null },
   { id: 'interaction-saved-world-changes', title: 'A planted crop patch and a bench posture survive a reload', regression: null },
   { id: 'interaction-door-and-crafting', title: 'A doorway travels to another world and a crafting station crafts once per click', regression: null },
   { id: 'interaction-ambassador-desk', title: 'A country ambassador desk answers through the existing conversation action', regression: null },
@@ -2996,6 +2997,173 @@ define('next-passage-cue', async () => {
   });
 
   return 'the HUD named the passage the payload sent for the resident, followed a confirmed step, withheld the cue on a paused world, and showed nothing for a viewer with no resident';
+});
+
+/**
+ * The HUD's bottom band and the frontier build tools both own the bottom of the stage. The tools
+ * were anchored *onto* the band: at 1440x900 the host measured 252-796px against a band at
+ * 705-882px, so `document.elementFromPoint` at the centre of each next-action line returned the
+ * placement panel rather than the line. The band is 177px tall with the passage line and 138px
+ * without it, so the objective was already covered before the passage line was added, and the 39px
+ * that line added took the cue with it. The tools are now anchored 15px above the band's top edge.
+ *
+ * The check is a hit test, not a z-index comparison: each line must have a non-zero box inside the
+ * viewport, and the topmost element at the centre of that box must be the line itself (or a
+ * descendant). `.game-hud` is deliberately `pointer-events:none` so the world keeps its drag and its
+ * clicks — only the quickbar inside it takes the pointer — so hit testing skips the band entirely.
+ * Each line is therefore given back its own pointer events for the measurement and the inline style
+ * is removed again immediately: that is the same mechanism `.game-quickbar` already relies on, it
+ * changes no layout and no paint order, and if anything really does cover the line the hit test
+ * still returns the covering element. The tools may cover the world; they may not cover the HUD.
+ */
+define('hud-visible-while-building', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const wanderer = fixtures().characters.wanderer;
+  const world = 'frontier:0:0';
+
+  /** The two boxes whose relationship is the defect: the tool host and the HUD's bottom band. */
+  const boxes = (target) => target.evaluate(() => {
+    const rect = (node) => {
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return { top: Math.round(box.top), bottom: Math.round(box.bottom), left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width), height: Math.round(box.height) };
+    };
+    return {
+      host: rect(document.querySelector('#game-build-host')),
+      band: rect(document.querySelector('.game-hud-bottom')),
+      stage: rect(document.querySelector('.world-panel')),
+    };
+  });
+
+  /**
+   * How one line reads where it is actually drawn: its box, its text, and whether the topmost
+   * element at the centre of that box is the line itself.
+   */
+  const readable = (target, selector) => target.evaluate((query) => {
+    const describeNode = (element) => (element ? `${element.tagName}${element.id ? `#${element.id}` : ''}${element.className ? `.${String(element.className).trim().split(/\s+/).join('.')}` : ''}` : 'nothing');
+    const node = document.querySelector(query);
+    if (!node || node.hidden) return { rendered: false, reason: 'the line is absent or hidden' };
+    const box = node.getBoundingClientRect();
+    if (!(box.width > 0 && box.height > 0)) return { rendered: true, reason: 'the line has no box', box: { width: box.width, height: box.height } };
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return { rendered: true, reason: `the centre of the line is outside the ${innerWidth}x${innerHeight} viewport` };
+    // `.game-hud` is pointer-transparent, so hit testing cannot see the band. Giving the line its own
+    // pointer events for this one measurement makes the test ask the occlusion question directly.
+    const inline = node.style.pointerEvents;
+    let hit = null;
+    node.style.pointerEvents = 'auto';
+    try { hit = document.elementFromPoint(x, y); } finally { node.style.pointerEvents = inline; }
+    return {
+      rendered: true, text: (node.textContent || '').trim(),
+      box: { top: Math.round(box.top), bottom: Math.round(box.bottom), left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width), height: Math.round(box.height) },
+      hit: describeNode(hit), unobscured: Boolean(hit && (hit === node || node.contains(hit))),
+    };
+  }, selector);
+
+  /** Whether two boxes share any area at all. */
+  const intersect = (a, b) => Boolean(a && b && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom);
+
+  await step('a frontier resident opens build mode with its next action and its passage on screen', async () => {
+    write('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE id=?', world, 24, 24, wanderer.id);
+    await openGame(page, ACTORS.admin);
+    await enterWorldAs(page, wanderer.id, wanderer.name);
+    await page.waitForFunction(() => {
+      const objective = document.querySelector('#game-next-action');
+      const passage = document.querySelector('#game-next-passage');
+      return Boolean(objective && !objective.hidden && (objective.textContent || '').trim() && passage && !passage.hidden && (passage.textContent || '').trim());
+    }, null, { timeout: PAGE_TIMEOUT_MS });
+    await page.locator('#game-build-button').click();
+    await page.waitForFunction(() => document.body.classList.contains('game-building'), null, { timeout: PAGE_TIMEOUT_MS });
+    await page.locator('#game-build-host').waitFor({ state: 'visible' });
+    await page.waitForTimeout(400);
+    const measured = await boxes(page);
+    expect(measured.host && measured.host.height > 0, 'the frontier build tools must be open on screen', { actual: describe(measured.host) });
+    expect(measured.band && measured.band.height > 0, 'the HUD bottom band must be on screen with the tools open', { actual: describe(measured.band) });
+    return `host ${measured.host.top}-${measured.host.bottom} px, band ${measured.band.top}-${measured.band.bottom} px (${measured.band.height} px tall)`;
+  });
+
+  await step('both next-action lines stay readable with the build tools open', async () => {
+    const objective = await readable(page, '#game-next-action');
+    const passage = await readable(page, '#game-next-passage');
+    expect(objective.rendered && !objective.reason, 'the objective line must be drawn where it can be read', { actual: describe(objective) });
+    expect(passage.rendered && !passage.reason, 'the passage line must be drawn where it can be read', { actual: describe(passage) });
+    for (const [name, line] of [['objective', objective], ['passage', passage]]) {
+      expect(line.unobscured, `the ${name} line must not be covered by the build tools`, { expected: `the topmost element at the centre of “${line.text}” is that line`, actual: `${line.hit} is on top at ${describe(line.box)}` });
+    }
+    const measured = await boxes(page);
+    expect(!intersect(measured.host, measured.band), 'the build tools must not overlap the HUD bottom band at all', { expected: `a host box clear of the band at ${describe(measured.band)}`, actual: describe(measured.host) });
+    state.notes.push(`build tools and HUD band at 1440x900: host ${measured.host.top}-${measured.host.bottom}, band ${measured.band.top}-${measured.band.bottom}; objective “${objective.text}” ${describe(objective.box)}, passage “${passage.text}” ${describe(passage.box)}`);
+    return `host ends at ${measured.host.bottom}px, band starts at ${measured.band.top}px; “${objective.text}” and “${passage.text}” both unobscured`;
+  });
+
+  await step('the tools still work and nothing in the band became unreachable', async () => {
+    // Every control inside the host that moved: on screen, and still the element that receives the
+    // pointer at its own centre. The palette itself is disabled until a tile is pointed at (its
+    // availability is the world payload's, not this scenario's), so reach is what is asserted here.
+    const controls = await page.evaluate(() => [...document.querySelectorAll('#game-build-host button, #game-build-host input')].map((node) => {
+      const box = node.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+      return {
+        label: node.getAttribute('aria-label') || (node.textContent || '').trim(),
+        inside: box.top >= 0 && box.bottom <= innerHeight && box.left >= 0 && box.right <= innerWidth,
+        own: Boolean(hit && (hit === node || node.contains(hit))),
+      };
+    }));
+    expect(controls.length >= 8, 'the build tools must still render their palette, their target fields and their confirm control', { actual: describe(controls.map((control) => control.label)) });
+    expect(controls.every((control) => control.inside), 'no build control may be pushed outside the viewport', { actual: describe(controls.filter((control) => !control.inside)) });
+    expect(controls.every((control) => control.own), 'no build control may be covered by the HUD band it was moved away from', { actual: describe(controls.filter((control) => !control.own)) });
+    // And the tool is live, not merely painted: its own target fields still take a real pointer
+    // interaction, which the browser only allows while the field is the topmost element at its centre.
+    const targetX = page.locator('#game-build-host input[aria-label="Target tile X"]');
+    const targetY = page.locator('#game-build-host input[aria-label="Target tile Y"]');
+    await targetX.fill('24');
+    await targetY.fill('24');
+    expect(await targetX.inputValue() === '24' && await targetY.inputValue() === '24', 'the build tools must still accept a real pointer interaction where they now sit', { expected: '24, 24 typed into the tool’s own target fields', actual: describe([await targetX.inputValue(), await targetY.inputValue()]) });
+    // The band's own interactive controls keep their clicks: the pointer over the quickbar still lands
+    // in the band, never in the build tools.
+    const quickbar = await page.evaluate(() => {
+      const row = document.querySelector('#game-hud .game-quickbar');
+      return [...row.querySelectorAll('button')].map((button) => {
+        const box = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return { label: (button.textContent || '').trim(), reachable: Boolean(hit && row.contains(hit)), hit: hit ? `${hit.tagName}.${String(hit.className).trim()}` : 'nothing' };
+      });
+    });
+    expect(quickbar.length === 5, 'the game HUD keeps its five world actions', { actual: describe(quickbar) });
+    expect(quickbar.every((control) => control.reachable), 'no quickbar control may be hidden behind the build tools', { expected: 'the pointer over every quickbar control lands in the band', actual: describe(quickbar) });
+    // The tools must stay inside the stage they are anchored to, so nothing is pushed out of reach.
+    const measured = await boxes(page);
+    expect(measured.host.top >= measured.stage.top && measured.host.bottom <= measured.stage.bottom, 'the build tools must stay inside the world stage', { expected: `inside ${describe(measured.stage)}`, actual: describe(measured.host) });
+    const objective = await readable(page, '#game-next-action');
+    const passage = await readable(page, '#game-next-passage');
+    expect(objective.unobscured && passage.unobscured, 'the next action must stay readable after the tool redraws its panel', { expected: 'both lines unobscured', actual: describe({ objective, passage }) });
+    return `${controls.length} build controls each inside the viewport and taking their own click; the tool answered a click; ${quickbar.length} quickbar controls still reachable; host inside ${measured.stage.top}-${measured.stage.bottom}`;
+  });
+
+  await step('the same holds at the 390px phone width the suite already covers', async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    try {
+      await page.waitForTimeout(500);
+      const measured = await boxes(page);
+      expect(measured.host && measured.host.height > 0, 'the build tools must still be open at phone width', { actual: describe(measured.host) });
+      const objective = await readable(page, '#game-next-action');
+      const passage = await readable(page, '#game-next-passage');
+      for (const [name, line] of [['objective', objective], ['passage', passage]]) {
+        expect(line.rendered && !line.reason, `the ${name} line must be drawn at phone width`, { actual: describe(line) });
+        expect(line.unobscured, `the ${name} line must not be covered by the build tools at phone width`, { expected: `the topmost element at the centre of “${line.text}” is that line`, actual: `${line.hit} is on top at ${describe(line.box)}` });
+      }
+      expect(!intersect(measured.host, measured.band), 'the build tools must not overlap the HUD band at phone width either', { expected: `a host box clear of the band at ${describe(measured.band)}`, actual: describe(measured.host) });
+      state.notes.push(`build tools and HUD band at 390x844: host ${measured.host.top}-${measured.host.bottom}, band ${measured.band.top}-${measured.band.bottom}`);
+      return `390x844: host ${measured.host.top}-${measured.host.bottom} px, band ${measured.band.top}-${measured.band.bottom} px, both lines readable`;
+    } finally {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.waitForTimeout(300);
+    }
+  });
+
+  await sendToCommons(fixtures().admin, wanderer.id);
+  return 'the frontier build tools stayed off the HUD band at desktop and phone width; the objective and passage lines were hit-testable, the palette still answered a click, and every quickbar control kept its own click';
 });
 
 define('interaction-saved-world-changes', async () => {
