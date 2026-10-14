@@ -5375,6 +5375,10 @@ define('signed-in-game-play', async () => {
   await step('the human quickbar remains tappable on a phone', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     try {
+      await page.locator('.nm-touch-floating').waitFor({ state: 'visible' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await settle(page);
+      await page.locator('#game-hud').waitFor({ state: 'visible' });
       await page.waitForFunction(() => document.querySelector('.sidebar')?.getBoundingClientRect().right <= 2, null, { timeout: 2000 });
       const controls = await page.locator('#game-hud .game-quickbar button').evaluateAll((buttons) => buttons.map((button) => {
         const box = button.getBoundingClientRect();
@@ -5387,8 +5391,22 @@ define('signed-in-game-play', async () => {
         'every phone quickbar action must fit the screen with a tappable height', { actual: describe(controls) });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
         'the signed-in game must fit a 390px phone without sideways scrolling');
+      const pad = page.locator('.nm-touch-floating');
+      await pad.waitFor({ state: 'visible' });
+      const targets = await pad.locator('button').evaluateAll((buttons) => buttons.map((button) => {
+        const box = button.getBoundingClientRect();
+        return { label: button.getAttribute('aria-label'), disabled: button.disabled, x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height) };
+      }));
+      expect(targets.length === 10 && targets.every((target) => target.x >= 0 && target.right <= 390 && target.y >= 60 && target.bottom <= 844 && target.width >= 44 && target.height >= 44),
+        'every phone movement, camera and action target must be visible and tappable', { actual: describe(targets) });
+      const yawBefore = row('SELECT yaw FROM agents WHERE id=?', player.id).yaw;
+      await pad.getByRole('button', { name: 'Turn the camera left' }).click();
+      const yawAfter = await waitForCondition(() => {
+        const saved = row('SELECT yaw FROM agents WHERE id=?', player.id).yaw;
+        return saved !== yawBefore ? saved : null;
+      }, 'the visible phone camera control to save a new facing');
       await page.screenshot({ path: join(RESULTS, 'signed-in-game-play', 'mobile-play.png') });
-      return `five quickbar actions fit a 390px phone, each at least 40px tall`;
+      return `five quickbar actions and ten touch targets fit a 390px phone; the Look button saved yaw ${yawBefore.toFixed(2)} → ${yawAfter.toFixed(2)}`;
     } finally {
       await page.setViewportSize({ width: 1440, height: 900 });
     }

@@ -615,7 +615,11 @@ function applyGameShell(){
   syncTouchEnabled();
 }
 /** The touch layer is live only while the world is on screen and no conversation owns it. */
-function syncTouchEnabled(){touchControls?.setEnabled(Boolean(state.gamePresentation&&state.tab==='world'&&state.gameDrawer!=='chat'));}
+function syncTouchEnabled(){
+  const compact=hasCoarsePointer(window.matchMedia)||window.matchMedia('(max-width: 900px)').matches;
+  touchControls?.setEnabled(Boolean(compact&&state.gamePresentation&&state.tab==='world'&&state.gameMode==='play'&&viewedAgent()&&state.gameDrawer!=='chat'&&!state.gameMenuOpen));
+}
+window.addEventListener('resize',syncTouchEnabled);
 // One drawer at a time. `state.gameDrawer` holds a single value, so opening Chat closes the tools
 // drawer, and the same button closes the one it opened.
 function setGameDrawer(drawer){
@@ -3551,11 +3555,12 @@ function mountFirstPlayGuide(){
 function mountTouchControls(map,canvas,world,agent){
   touchControls?.destroy();touchControls=null;
   if(typeof window==='undefined'||typeof window.matchMedia!=='function')return;
-  if(!hasCoarsePointer(window.matchMedia)&&!window.matchMedia('(max-width: 900px)').matches)return;
   touchControls=createTouchControls({
-    document,mount:map,surface:canvas,
+    // The 3D renderer already owns the canvas pointer gesture; attaching a second drag listener
+    // turned one finger movement twice. The pixel fallback uses this module's drag surface.
+    document,mount:map,surface:state.graphics==='voxel'?null:canvas,
     input:{
-      walk:(direction)=>controlStep(direction),
+      walk:(direction)=>guarded(()=>controlStep(direction)),
       look:({yaw,pitch})=>queueLook(state.facing.yaw+yaw,state.facing.pitch+pitch),
       interact:()=>guarded(()=>usePickedFixture()),
       build:()=>document.querySelector('#game-build-button')?.click(),
@@ -3567,6 +3572,9 @@ function mountTouchControls(map,canvas,world,agent){
     status:()=>!agent?'Observing. Drag the world to look; the Look buttons turn it one step at a time.':state.world.paused?'The world is paused. Movement and interaction are refused by the server.':state.building?'Building. Choose a block and tap the ground to place it.':'Press a direction to walk one tile, and hold it to keep walking. Drag the world to look.',
     reducedMotion:()=>prefersReducedMotion(window.matchMedia),
   });
+  // The game panel clips overflow. Keep the pad inside the viewport instead of letting its
+  // default in-flow position fall below the full-height canvas.
+  touchControls.root.classList.add('nm-touch-floating');
   // The freshly mounted layer takes the same on/off state the shell would give it, so a rebuild while
   // a conversation is open does not briefly re-arm a pad the conversation just stood down.
   syncTouchEnabled();
