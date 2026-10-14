@@ -620,6 +620,9 @@ function syncTouchEnabled(){touchControls?.setEnabled(Boolean(state.gamePresenta
 // drawer, and the same button closes the one it opened.
 function setGameDrawer(drawer){
   state.gameDrawer=state.gameDrawer===drawer?'':drawer;applyGameShell();
+  // One sampled CC0 clip per drawer change. The ambient bed's mute and volume govern it, and it is a
+  // no-op while the sound is off, so the world behaves exactly as before when audio is disabled.
+  gameAudio.playClip(state.gameDrawer?'ui-click':'ui-close',{gain:0.6});
   if(state.gameDrawer==='chat'){const text=$('#world-chat-card [name="text"]');if(text)text.focus({preventScroll:true});}
   else if(state.gameDrawer==='tools')$('.world-aside')?.focus({preventScroll:true});
   else if(state.gameDrawer)$(`#world-${state.gameDrawer}-card`)?.scrollIntoView({block:'nearest'});

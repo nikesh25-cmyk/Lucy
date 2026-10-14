@@ -1,0 +1,105 @@
+{
+  "licence": "CC0-1.0",
+  "author": "Kenney (kenney.nl)",
+  "notice": "CC0 1.0 Universal — public domain dedication. Sourced from Kenney CC0 packs by scripts/fetch-asset-pool.mjs.",
+  "files": [
+    {
+      "name": "ui-click",
+      "path": "audio/ui-click.ogg",
+      "bytes": 4983,
+      "sha256": "59175ac17cd49a68dd736285738441287636112a84a6f7ce0d89921bda5a5360",
+      "source": "kenney-kenney-ui-audio/Audio/click1.ogg"
+    },
+    {
+      "name": "ui-confirm",
+      "path": "audio/ui-confirm.ogg",
+      "bytes": 8968,
+      "sha256": "063564703b6094d70718a3e787a55cc9141611e4ecd6b6637f8828f79b4a8c3a",
+      "source": "kenney-kenney-interface-sounds/Audio/confirmation_001.ogg"
+    },
+    {
+      "name": "ui-close",
+      "path": "audio/ui-close.ogg",
+      "bytes": 9915,
+      "sha256": "44af8249b933e0fd35ec957a638bb1a0b01f85b53fbe9674bf77bd3ca3168ef4",
+      "source": "kenney-kenney-interface-sounds/Audio/close_001.ogg"
+    },
+    {
+      "name": "world-step-grass",
+      "path": "audio/world-step-grass.ogg",
+      "bytes": 8290,
+      "sha256": "9d49497777405d78d7cf7f2888e28277f3a23192300cfd1d79d54876b20f479f",
+      "source": "kenney-kenney-impact-sounds/Audio/footstep_grass_000.ogg"
+    },
+    {
+      "name": "world-step-stone",
+      "path": "audio/world-step-stone.ogg",
+      "bytes": 5808,
+      "sha256": "d7267e183067757c92c169de2a379abea592cfca6b39bb2e8feea15221ad79fe",
+      "source": "kenney-kenney-impact-sounds/Audio/footstep_concrete_000.ogg"
+    },
+    {
+      "name": "world-place",
+      "path": "audio/world-place.ogg",
+      "bytes": 5859,
+      "sha256": "692ee3a6f1821402ca649ff735bee9591dc4846c8098fc7d6a90fd15fa57c1af",
+      "source": "kenney-kenney-interface-sounds/Audio/drop_001.ogg"
+    },
+    {
+      "name": "world-remove",
+      "path": "audio/world-remove.ogg",
+      "bytes": 16508,
+      "sha256": "ddb93a3671233f95da0e0b10367f082f7eb42fa6caaddcf776410aa8833c747d",
+      "source": "kenney-kenney-rpg-audio/Audio/cloth1.ogg"
+    },
+    {
+      "name": "world-door-open",
+      "path": "audio/world-door-open.ogg",
+      "bytes": 22848,
+      "sha256": "4ab93bab96522d8eb109ff96dc57cb6765deb02448fe14c10472084be5bb2a0b",
+      "source": "kenney-kenney-rpg-audio/Audio/doorOpen_1.ogg"
+    },
+    {
+      "name": "world-door-close",
+      "path": "audio/world-door-close.ogg",
+      "bytes": 18564,
+      "sha256": "834d29c60a8a8bfb50b158cdb6b7dfa8f02812a408a1ee9703d038dfab0b1aeb",
+      "source": "kenney-kenney-rpg-audio/Audio/doorClose_1.ogg"
+    },
+    {
+      "name": "world-chop",
+      "path": "audio/world-chop.ogg",
+      "bytes": 9370,
+      "sha256": "d00c2b3c9fff07e376145c8c8c45c90e5084ec192f6ce0387db233f7b86f1486",
+      "source": "kenney-kenney-rpg-audio/Audio/chop.ogg"
+    },
+    {
+      "name": "world-coin",
+      "path": "audio/world-coin.ogg",
+      "bytes": 4848,
+      "sha256": "d21d0f0b782445db579d11e2506b24cd1ac9d664ee33aeaf807761aa7b6fd710",
+      "source": "kenney-kenney-interface-sounds/Audio/bong_001.ogg"
+    },
+    {
+      "name": "music-jingle-1",
+      "path": "audio/music-jingle-1.ogg",
+      "bytes": 11681,
+      "sha256": "ddca9df332d7cdab525bbbe62ca26e9d61aa64bfa626d9516d5c53eb91c45322",
+      "source": "kenney-kenney-music-jingles/Audio/Hit jingles/jingles_HIT01.ogg"
+    },
+    {
+      "name": "music-jingle-2",
+      "path": "audio/music-jingle-2.ogg",
+      "bytes": 11424,
+      "sha256": "7c20cd8d6b98e583822e1f58abc596900a07ba75ca690ec599efe5ea58981211",
+      "source": "kenney-kenney-music-jingles/Audio/Hit jingles/jingles_HIT04.ogg"
+    },
+    {
+      "name": "music-jingle-3",
+      "path": "audio/music-jingle-3.ogg",
+      "bytes": 11854,
+      "sha256": "a793813952205365f72f45d96d82195b8c3a6fbcc57b338b60c6fc0fc6f7db35",
+      "source": "kenney-kenney-music-jingles/Audio/Hit jingles/jingles_HIT06.ogg"
+    }
+  ]
+}

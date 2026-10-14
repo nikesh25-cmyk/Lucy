@@ -1,0 +1,4 @@
+# The raw archives and the unpacked tree are large and fully reproducible from manifest.json.
+files/
+extracted/
+index.json

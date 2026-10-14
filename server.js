@@ -102,6 +102,14 @@ for (const component of ['build-interface', 'inventory-panel', 'interaction-prom
   files.set(`/src/ui/${component}.js`, [`src/ui/${component}.js`, 'text/javascript; charset=utf-8']);
 }
 files.set('/game-mobile.css', ['game-mobile.css', 'text/css; charset=utf-8']);
+// The sampled CC0 audio pool (assets/audio). A fixed, server-owned allowlist — never a URL-derived
+// filesystem path — so only the recorded clips can ever be served. Rights: assets/audio/THIRD_PARTY.md.
+for (const clip of ['ui-click', 'ui-confirm', 'ui-close', 'world-step-grass', 'world-step-stone', 'world-place', 'world-remove', 'world-door-open', 'world-door-close', 'world-chop', 'world-coin', 'music-jingle-1', 'music-jingle-2', 'music-jingle-3']) {
+  files.set(`/assets/audio/${clip}.ogg`, [`assets/audio/${clip}.ogg`, 'audio/ogg']);
+}
+files.set('/assets/audio/manifest.json', ['assets/audio/manifest.json', 'application/json; charset=utf-8']);
+files.set('/assets/audio/THIRD_PARTY.md', ['assets/audio/THIRD_PARTY.md', 'text/plain; charset=utf-8']);
+files.set('/src/ui/audio-bank.js', ['src/ui/audio-bank.js', 'text/javascript; charset=utf-8']);
 // The separate management interface is the same application in workspace presentation, on the same
 // account, world and API; `/manage` is its address and `?mode=workspace` stays the compatible form.
 files.set('/manage', ['index.html', 'text/html; charset=utf-8']);
