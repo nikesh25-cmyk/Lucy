@@ -245,3 +245,33 @@ body.game-world #game-conversation-host #world-chat-card form>button{min-height:
 /* On a phone the control band already reaches the d-pad, so the feedback line lifts above the d-pad
    instead of into it. Measured: the pad's top edge sits 110 px + its own height above the bottom. */
 @media(max-width:650px){body.game-world .game-feedback{bottom:196px;padding:5px 11px;font-size:.56rem!important}}
+
+/* ------------------------------------------------------------------------------------------------
+   Resident art. `app.js` gives every resident it names one face and one standing figure from the
+   staged CC0 set under `assets/residents/`, so the profile, the roster, the civic and ambassador
+   views, the character picker and the first-play guide all show the same resident the same way.
+
+   Two rules the sizes below keep, both visible in a browser at 1x:
+     whole multiples   the face art is 32 x 32 and the figure art is 16 x 16, so a face is drawn at
+                       32 px and 64 px (1x, 2x) and a figure at 64 px (4x), never at a fractional
+                       scale that `image-rendering:pixelated` would have to stretch unevenly;
+     border outside    `box-sizing:content-box` keeps the 1 px frame outside that exact size, so the
+                       art is never scaled down to 30 px by a border it did not ask for.
+   The frame carries the resident's own stored agent colour when the server published one of the five
+   sealed colours (`app.js` adds one `nm-<colour>` class for a value that palette knows), and a neutral
+   forest line otherwise, so the portrait reads on both the light workspace and the dark game shell.
+   ------------------------------------------------------------------------------------------------ */
+.resident-face{display:block;flex-shrink:0;box-sizing:content-box;width:32px;height:32px;image-rendering:pixelated;background:#0d2a23;border:1px solid var(--agent-color,#6f8f7d73);border-radius:10px}
+.resident-face-lg{width:64px;height:64px;border-radius:16px}
+.resident-figure{display:block;flex-shrink:0;box-sizing:content-box;width:64px;height:64px;image-rendering:pixelated;background:#0d2a23bd;border:1px solid #6f8f7d73;border-radius:16px}
+/* The five sealed agent colours, as the frame tint only: the same five `style.css` already draws for
+   `.avatar-mark`, and no value outside this list has a class, so nothing a payload carries can become
+   an arbitrary style. */
+.resident-face.nm-blue{--agent-color:#3d5875}
+.resident-face.nm-purple{--agent-color:#8c6ab1}
+.resident-face.nm-coral{--agent-color:#cb725f}
+.resident-face.nm-teal{--agent-color:#397f79}
+.resident-face.nm-gold{--agent-color:#aa7845}
+.passport-portrait{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.resident-encounter-art{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+@media(max-width:650px){.resident-face-lg{width:32px;height:32px;border-radius:10px}.resident-figure{width:48px;height:48px;border-radius:12px}.passport-portrait{gap:9px}}
