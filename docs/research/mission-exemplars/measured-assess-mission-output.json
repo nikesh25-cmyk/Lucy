@@ -1,0 +1,719 @@
+{
+  "note": "A snapshot of one run of assessMission over these exemplars with the seeded research_leads corpus as the comparison set. It is not a CI assertion: tests/mission-exemplars.test.js is the live check. This file is kept so the handoff can quote untruncated output.",
+  "module_version": 1,
+  "corpus_rows": 1015,
+  "generated_by": "node script run against the seeded corpus in a temporary database (no live installation)",
+  "reports": {
+    "ex-nepal-tea-production-figure": {
+      "file": "ex-nepal-tea-production-figure.exemplar.json",
+      "report": {
+        "kind": "mission_quality_assessment",
+        "version": 1,
+        "advisory": true,
+        "scope": "task",
+        "fictional": false,
+        "subject": {
+          "id": "ex-nepal-tea-production-figure-task",
+          "title": "Pin where Nepali tea production and harvested area are published",
+          "area": "Agriculture",
+          "owner": {
+            "id": "owner-slot-unassigned",
+            "name": "Mission owner — unassigned: no human owner has been named for this proposal"
+          },
+          "reviewer": {
+            "id": "reviewer-slot-unassigned",
+            "name": "Independent reviewer — unassigned: no human reviewer has been named for this proposal"
+          },
+          "contributor": null,
+          "beneficiary": "Nepali tea producer groups and the municipal or national bodies that would read the resulting briefing; no producer group, cooperative, municipality, exporter or buyer has been selected, consented or contacted as a beneficiary"
+        },
+        "completeness": {
+          "required_fields": [
+            "title",
+            "area",
+            "owner",
+            "beneficiary",
+            "question",
+            "evidence_criteria",
+            "limits",
+            "rights",
+            "sources",
+            "source_date",
+            "source_version",
+            "reviewer",
+            "reviewer_independence",
+            "source_hosts"
+          ],
+          "satisfied": [
+            "title",
+            "area",
+            "owner",
+            "beneficiary",
+            "question",
+            "evidence_criteria",
+            "limits",
+            "rights",
+            "sources",
+            "source_date",
+            "source_version",
+            "source_hosts",
+            "reviewer",
+            "reviewer_independence"
+          ],
+          "missing": [],
+          "complete": true,
+          "note": "Complete means only that each required field is present and usable. It is not an approval, a priority, a readiness decision or a promise that a reviewer will accept the proposal."
+        },
+        "missing": [],
+        "signals": [],
+        "duplicates": {
+          "threshold": 0.6,
+          "basis": "Dice coefficient over normalised token sets (NFKC, case-folded, punctuation removed, stopwords dropped), weighted by inverse document frequency so shared boilerplate counts for little and a distinguishing subject counts for much",
+          "considered": 1015,
+          "above_threshold": 0,
+          "returned": 0,
+          "matches": []
+        },
+        "review": {
+          "records_supplied": 0,
+          "accepted_records": 0,
+          "checked": false,
+          "measures": {
+            "reviewer_shares": [],
+            "reviewer_pool": {
+              "distinct_reviewers": 0,
+              "accepted_records": 0
+            }
+          },
+          "thresholds": {
+            "reviewer_share": 0.8,
+            "contributor_acceptances": 3,
+            "reviewer_pool_size": 2,
+            "reviewer_pool_records": 10
+          },
+          "note": "No accepted review records were supplied, so no collusion measure could be computed. That is not a clean bill of health: it means the corpus was not read."
+        },
+        "ladder": {
+          "stages": [
+            "research lead",
+            "owner-approved mission",
+            "claimed task",
+            "versioned submission",
+            "independent acceptance",
+            "owner adoption declaration",
+            "externally evidenced implementation",
+            "measured outcome"
+          ],
+          "reached": "owner-approved mission / claimed task (proposed)",
+          "blocked": [
+            {
+              "stage": "externally evidenced implementation",
+              "blocked_on": "a consenting beneficiary",
+              "note": "No external implementation evidence exists in this build. A mission owner’s recorded adoption declaration is a declaration by that owner, not proof that the work was implemented or that any institution acted."
+            },
+            {
+              "stage": "measured outcome",
+              "blocked_on": "a consenting beneficiary",
+              "note": "No outcome is measured here. An outcome needs a real beneficiary who has consented to be measured, which this build does not have."
+            }
+          ],
+          "note": "A signal here says nothing about any stage after this one. The seeded country proposals are proposals, not studies; no real pilot or beneficiary is selected; a mission owner’s recorded adoption declaration is a declaration, not implementation; and external implementation and a measured outcome both wait on a consenting beneficiary."
+        },
+        "thresholds": {
+          "duplicate_similarity": 0.6,
+          "duplicate_matches_reported": 5,
+          "question_minimum_words": 4,
+          "question_restates_goal": 0.8,
+          "reviewer_share": 0.8,
+          "contributor_acceptances": 3,
+          "reviewer_pool_size": 2,
+          "reviewer_pool_records": 10
+        },
+        "authority": {
+          "level": "advisory",
+          "changes_status": false,
+          "awards_or_withholds_coins": false,
+          "approves_or_rejects": false,
+          "writes_storage": false,
+          "note": "This module returns data. It cannot change a status, approve or reject a contribution, award or withhold a coin, or write to storage, because it has no writer and no store to write to.",
+          "coin_decision": "Nothing here mints, holds or removes a contribution coin. The coin decision stays with the shipped independent-acceptance predicate in src/coins.js, which this module neither calls nor restates.",
+          "units": "Nothing here touches NemoCoins, compute credits, real money or verified carbon credits, and it proposes no conversion between them."
+        },
+        "boundaries": {
+          "what_this_is": "A read of one proposed mission or task and the records supplied with it. It is not an approval, a priority ranking, a review decision or a certification.",
+          "what_it_is_not": "It does not fetch a source, open a stored capture, verify a claim, judge a question’s importance, or decide whether a proposal should be worked on. Only humans do those.",
+          "records": "Anything derived from review records is derived only from the records supplied in this call. An empty set of records produces no collusion signal at all, which is not the same as a clean bill of health.",
+          "false_positive_path": "Any signal may be dismissed by a named independent human who records why. A dismissal is a declaration, not a finding by this module, and dismissing a signal changes no status, record, coin or score.",
+          "corpus": "The seeded country proposals are proposals, not studies. No pilot, beneficiary, buyer, partnership or external outcome is selected or implied by them, by this module or by its output."
+        },
+        "severed_units": {
+          "coins": false,
+          "compute_credits": false,
+          "money": false,
+          "carbon_credits": false,
+          "note": "This module neither reads nor writes any unit of account and proposes no conversion between any two."
+        }
+      },
+      "closest_corpus_neighbours": [
+        {
+          "id": "NP-2-destination",
+          "title": "Nepal: Scope the product, value chain and destination · SDG 2",
+          "score": 0.1671,
+          "plain_score": 0.365,
+          "threshold": 0,
+          "basis": "Dice coefficient over normalised token sets, weighted by inverse document frequency",
+          "shared_tokens": 71,
+          "distinguishing": {
+            "in_proposal": [
+              "pin",
+              "close",
+              "pack",
+              "corridor",
+              "either",
+              "reading"
+            ],
+            "in_existing": [
+              "np",
+              "left",
+              "remain",
+              "blended",
+              "activation",
+              "selects"
+            ]
+          },
+          "advisory": true
+        },
+        {
+          "id": "SO-2-destination",
+          "title": "Somalia: Scope the product, value chain and destination · SDG 2",
+          "score": 0.1607,
+          "plain_score": 0.3608,
+          "threshold": 0,
+          "basis": "Dice coefficient over normalised token sets, weighted by inverse document frequency",
+          "shared_tokens": 70,
+          "distinguishing": {
+            "in_proposal": [
+              "pin",
+              "close",
+              "pack",
+              "corridor",
+              "either",
+              "reading"
+            ],
+            "in_existing": [
+              "somalia",
+              "left",
+              "remain",
+              "blended",
+              "activation",
+              "selects"
+            ]
+          },
+          "advisory": true
+        },
+        {
+          "id": "GN-2-destination",
+          "title": "Guinea: Scope the product, value chain and destination · SDG 2",
+          "score": 0.1603,
+          "plain_score": 0.3599,
+          "threshold": 0,
+          "basis": "Dice coefficient over normalised token sets, weighted by inverse document frequency",
+          "shared_tokens": 70,
+          "distinguishing": {
+            "in_proposal": [
+              "pin",
+              "close",
+              "pack",
+              "corridor",
+              "either",
+              "reading"
+            ],
+            "in_existing": [
+              "gn",
+              "guinea",
+              "left",
+              "remain",
+              "blended",
+              "activation"
+            ]
+          },
+          "advisory": true
+        }
+      ]
+    },
+    "ex-retained-trade-capture-reproduction": {
+      "file": "ex-retained-trade-capture-reproduction.exemplar.json",
+      "report": {
+        "kind": "mission_quality_assessment",
+        "version": 1,
+        "advisory": true,
+        "scope": "task",
+        "fictional": false,
+        "subject": {
+          "id": "ex-retained-trade-capture-reproduction-task",
+          "title": "Reproduce the retained trade captures field by field",
+          "area": "Governance",
+          "owner": {
+            "id": "owner-slot-unassigned",
+            "name": "Mission owner — unassigned: no human owner has been named for this proposal"
+          },
+          "reviewer": {
+            "id": "reviewer-slot-unassigned",
+            "name": "Independent reviewer — unassigned: no human reviewer has been named for this proposal"
+          },
+          "contributor": null,
+          "beneficiary": "The evidence review path of this build: the independent reviewer and the mission owner who read a retained capture against the version it pins; no reviewer, operator, provider or institution has been selected, consented or contacted as a beneficiary"
+        },
+        "completeness": {
+          "required_fields": [
+            "title",
+            "area",
+            "owner",
+            "beneficiary",
+            "question",
+            "evidence_criteria",
+            "limits",
+            "rights",
+            "sources",
+            "source_date",
+            "source_version",
+            "reviewer",
+            "reviewer_independence",
+            "source_hosts"
+          ],
+          "satisfied": [
+            "title",
+            "area",
+            "owner",
+            "beneficiary",
+            "question",
+            "evidence_criteria",
+            "limits",
+            "rights",
+            "sources",
+            "source_date",
+            "source_version",
+            "source_hosts",
+            "reviewer",
+            "reviewer_independence"
+          ],
+          "missing": [],
+          "complete": true,
+          "note": "Complete means only that each required field is present and usable. It is not an approval, a priority, a readiness decision or a promise that a reviewer will accept the proposal."
+        },
+        "missing": [],
+        "signals": [],
+        "duplicates": {
+          "threshold": 0.6,
+          "basis": "Dice coefficient over normalised token sets (NFKC, case-folded, punctuation removed, stopwords dropped), weighted by inverse document frequency so shared boilerplate counts for little and a distinguishing subject counts for much",
+          "considered": 1015,
+          "above_threshold": 0,
+          "returned": 0,
+          "matches": []
+        },
+        "review": {
+          "records_supplied": 0,
+          "accepted_records": 0,
+          "checked": false,
+          "measures": {
+            "reviewer_shares": [],
+            "reviewer_pool": {
+              "distinct_reviewers": 0,
+              "accepted_records": 0
+            }
+          },
+          "thresholds": {
+            "reviewer_share": 0.8,
+            "contributor_acceptances": 3,
+            "reviewer_pool_size": 2,
+            "reviewer_pool_records": 10
+          },
+          "note": "No accepted review records were supplied, so no collusion measure could be computed. That is not a clean bill of health: it means the corpus was not read."
+        },
+        "ladder": {
+          "stages": [
+            "research lead",
+            "owner-approved mission",
+            "claimed task",
+            "versioned submission",
+            "independent acceptance",
+            "owner adoption declaration",
+            "externally evidenced implementation",
+            "measured outcome"
+          ],
+          "reached": "owner-approved mission / claimed task (proposed)",
+          "blocked": [
+            {
+              "stage": "externally evidenced implementation",
+              "blocked_on": "a consenting beneficiary",
+              "note": "No external implementation evidence exists in this build. A mission owner’s recorded adoption declaration is a declaration by that owner, not proof that the work was implemented or that any institution acted."
+            },
+            {
+              "stage": "measured outcome",
+              "blocked_on": "a consenting beneficiary",
+              "note": "No outcome is measured here. An outcome needs a real beneficiary who has consented to be measured, which this build does not have."
+            }
+          ],
+          "note": "A signal here says nothing about any stage after this one. The seeded country proposals are proposals, not studies; no real pilot or beneficiary is selected; a mission owner’s recorded adoption declaration is a declaration, not implementation; and external implementation and a measured outcome both wait on a consenting beneficiary."
+        },
+        "thresholds": {
+          "duplicate_similarity": 0.6,
+          "duplicate_matches_reported": 5,
+          "question_minimum_words": 4,
+          "question_restates_goal": 0.8,
+          "reviewer_share": 0.8,
+          "contributor_acceptances": 3,
+          "reviewer_pool_size": 2,
+          "reviewer_pool_records": 10
+        },
+        "authority": {
+          "level": "advisory",
+          "changes_status": false,
+          "awards_or_withholds_coins": false,
+          "approves_or_rejects": false,
+          "writes_storage": false,
+          "note": "This module returns data. It cannot change a status, approve or reject a contribution, award or withhold a coin, or write to storage, because it has no writer and no store to write to.",
+          "coin_decision": "Nothing here mints, holds or removes a contribution coin. The coin decision stays with the shipped independent-acceptance predicate in src/coins.js, which this module neither calls nor restates.",
+          "units": "Nothing here touches NemoCoins, compute credits, real money or verified carbon credits, and it proposes no conversion between them."
+        },
+        "boundaries": {
+          "what_this_is": "A read of one proposed mission or task and the records supplied with it. It is not an approval, a priority ranking, a review decision or a certification.",
+          "what_it_is_not": "It does not fetch a source, open a stored capture, verify a claim, judge a question’s importance, or decide whether a proposal should be worked on. Only humans do those.",
+          "records": "Anything derived from review records is derived only from the records supplied in this call. An empty set of records produces no collusion signal at all, which is not the same as a clean bill of health.",
+          "false_positive_path": "Any signal may be dismissed by a named independent human who records why. A dismissal is a declaration, not a finding by this module, and dismissing a signal changes no status, record, coin or score.",
+          "corpus": "The seeded country proposals are proposals, not studies. No pilot, beneficiary, buyer, partnership or external outcome is selected or implied by them, by this module or by its output."
+        },
+        "severed_units": {
+          "coins": false,
+          "compute_credits": false,
+          "money": false,
+          "carbon_credits": false,
+          "note": "This module neither reads nor writes any unit of account and proposes no conversion between any two."
+        }
+      },
+      "closest_corpus_neighbours": [
+        {
+          "id": "SO-17-interventions",
+          "title": "Somalia: Compare practical interventions · SDG 17",
+          "score": 0.0793,
+          "plain_score": 0.1942,
+          "threshold": 0,
+          "basis": "Dice coefficient over normalised token sets, weighted by inverse document frequency",
+          "shared_tokens": 37,
+          "distinguishing": {
+            "in_proposal": [
+              "produce",
+              "reproduction",
+              "ten",
+              "captures",
+              "run",
+              "query"
+            ],
+            "in_existing": [
+              "somalia",
+              "documented",
+              "actors",
+              "uncertainties",
+              "intervention",
+              "compared"
+            ]
+          },
+          "advisory": true
+        },
+        {
+          "id": "AF-17-interventions",
+          "title": "Afghanistan: Compare practical interventions · SDG 17",
+          "score": 0.0791,
+          "plain_score": 0.1937,
+          "threshold": 0,
+          "basis": "Dice coefficient over normalised token sets, weighted by inverse document frequency",
+          "shared_tokens": 37,
+          "distinguishing": {
+            "in_proposal": [
+              "produce",
+              "reproduction",
+              "ten",
+              "captures",
+              "run",
+              "query"
+            ],
+            "in_existing": [
+              "afghanistan",
+              "af",
+              "documented",
+              "actors",
+              "uncertainties",
+              "intervention"
+            ]
+          },
+          "advisory": true
+        },
+        {
+          "id": "AO-17-interventions",
+          "title": "Angola: Compare practical interventions · SDG 17",
+          "score": 0.0791,
+          "plain_score": 0.1937,
+          "threshold": 0,
+          "basis": "Dice coefficient over normalised token sets, weighted by inverse document frequency",
+          "shared_tokens": 37,
+          "distinguishing": {
+            "in_proposal": [
+              "produce",
+              "reproduction",
+              "ten",
+              "captures",
+              "run",
+              "query"
+            ],
+            "in_existing": [
+              "angola",
+              "ao",
+              "documented",
+              "actors",
+              "uncertainties",
+              "intervention"
+            ]
+          },
+          "advisory": true
+        }
+      ]
+    },
+    "ex-sids-count-reconciliation": {
+      "file": "ex-sids-count-reconciliation.exemplar.json",
+      "report": {
+        "kind": "mission_quality_assessment",
+        "version": 1,
+        "advisory": true,
+        "scope": "task",
+        "fictional": false,
+        "subject": {
+          "id": "ex-sids-count-reconciliation-task",
+          "title": "Reconcile the two retained small island developing States lists",
+          "area": "Development",
+          "owner": {
+            "id": "owner-slot-unassigned",
+            "name": "Mission owner — unassigned: no human owner has been named for this proposal"
+          },
+          "reviewer": {
+            "id": "reviewer-slot-unassigned",
+            "name": "Independent reviewer — unassigned: no human reviewer has been named for this proposal"
+          },
+          "contributor": null,
+          "beneficiary": "The contributors and reviewers of this build's country research baselines that quote an LDC, LLDC or SIDS group count; no reader, contributor, institution or government has been selected, consented or contacted as a beneficiary"
+        },
+        "completeness": {
+          "required_fields": [
+            "title",
+            "area",
+            "owner",
+            "beneficiary",
+            "question",
+            "evidence_criteria",
+            "limits",
+            "rights",
+            "sources",
+            "source_date",
+            "source_version",
+            "reviewer",
+            "reviewer_independence",
+            "source_hosts"
+          ],
+          "satisfied": [
+            "title",
+            "area",
+            "owner",
+            "beneficiary",
+            "question",
+            "evidence_criteria",
+            "limits",
+            "rights",
+            "sources",
+            "source_date",
+            "source_version",
+            "source_hosts",
+            "reviewer",
+            "reviewer_independence"
+          ],
+          "missing": [],
+          "complete": true,
+          "note": "Complete means only that each required field is present and usable. It is not an approval, a priority, a readiness decision or a promise that a reviewer will accept the proposal."
+        },
+        "missing": [],
+        "signals": [],
+        "duplicates": {
+          "threshold": 0.6,
+          "basis": "Dice coefficient over normalised token sets (NFKC, case-folded, punctuation removed, stopwords dropped), weighted by inverse document frequency so shared boilerplate counts for little and a distinguishing subject counts for much",
+          "considered": 1015,
+          "above_threshold": 0,
+          "returned": 0,
+          "matches": []
+        },
+        "review": {
+          "records_supplied": 0,
+          "accepted_records": 0,
+          "checked": false,
+          "measures": {
+            "reviewer_shares": [],
+            "reviewer_pool": {
+              "distinct_reviewers": 0,
+              "accepted_records": 0
+            }
+          },
+          "thresholds": {
+            "reviewer_share": 0.8,
+            "contributor_acceptances": 3,
+            "reviewer_pool_size": 2,
+            "reviewer_pool_records": 10
+          },
+          "note": "No accepted review records were supplied, so no collusion measure could be computed. That is not a clean bill of health: it means the corpus was not read."
+        },
+        "ladder": {
+          "stages": [
+            "research lead",
+            "owner-approved mission",
+            "claimed task",
+            "versioned submission",
+            "independent acceptance",
+            "owner adoption declaration",
+            "externally evidenced implementation",
+            "measured outcome"
+          ],
+          "reached": "owner-approved mission / claimed task (proposed)",
+          "blocked": [
+            {
+              "stage": "externally evidenced implementation",
+              "blocked_on": "a consenting beneficiary",
+              "note": "No external implementation evidence exists in this build. A mission owner’s recorded adoption declaration is a declaration by that owner, not proof that the work was implemented or that any institution acted."
+            },
+            {
+              "stage": "measured outcome",
+              "blocked_on": "a consenting beneficiary",
+              "note": "No outcome is measured here. An outcome needs a real beneficiary who has consented to be measured, which this build does not have."
+            }
+          ],
+          "note": "A signal here says nothing about any stage after this one. The seeded country proposals are proposals, not studies; no real pilot or beneficiary is selected; a mission owner’s recorded adoption declaration is a declaration, not implementation; and external implementation and a measured outcome both wait on a consenting beneficiary."
+        },
+        "thresholds": {
+          "duplicate_similarity": 0.6,
+          "duplicate_matches_reported": 5,
+          "question_minimum_words": 4,
+          "question_restates_goal": 0.8,
+          "reviewer_share": 0.8,
+          "contributor_acceptances": 3,
+          "reviewer_pool_size": 2,
+          "reviewer_pool_records": 10
+        },
+        "authority": {
+          "level": "advisory",
+          "changes_status": false,
+          "awards_or_withholds_coins": false,
+          "approves_or_rejects": false,
+          "writes_storage": false,
+          "note": "This module returns data. It cannot change a status, approve or reject a contribution, award or withhold a coin, or write to storage, because it has no writer and no store to write to.",
+          "coin_decision": "Nothing here mints, holds or removes a contribution coin. The coin decision stays with the shipped independent-acceptance predicate in src/coins.js, which this module neither calls nor restates.",
+          "units": "Nothing here touches NemoCoins, compute credits, real money or verified carbon credits, and it proposes no conversion between them."
+        },
+        "boundaries": {
+          "what_this_is": "A read of one proposed mission or task and the records supplied with it. It is not an approval, a priority ranking, a review decision or a certification.",
+          "what_it_is_not": "It does not fetch a source, open a stored capture, verify a claim, judge a question’s importance, or decide whether a proposal should be worked on. Only humans do those.",
+          "records": "Anything derived from review records is derived only from the records supplied in this call. An empty set of records produces no collusion signal at all, which is not the same as a clean bill of health.",
+          "false_positive_path": "Any signal may be dismissed by a named independent human who records why. A dismissal is a declaration, not a finding by this module, and dismissing a signal changes no status, record, coin or score.",
+          "corpus": "The seeded country proposals are proposals, not studies. No pilot, beneficiary, buyer, partnership or external outcome is selected or implied by them, by this module or by its output."
+        },
+        "severed_units": {
+          "coins": false,
+          "compute_credits": false,
+          "money": false,
+          "carbon_credits": false,
+          "note": "This module neither reads nor writes any unit of account and proposes no conversion between any two."
+        }
+      },
+      "closest_corpus_neighbours": [
+        {
+          "id": "SO-17-interventions",
+          "title": "Somalia: Compare practical interventions · SDG 17",
+          "score": 0.0989,
+          "plain_score": 0.2135,
+          "threshold": 0,
+          "basis": "Dice coefficient over normalised token sets, weighted by inverse document frequency",
+          "shared_tokens": 38,
+          "distinguishing": {
+            "in_proposal": [
+              "produce",
+              "reconciliation",
+              "counts",
+              "states",
+              "developed",
+              "landlocked"
+            ],
+            "in_existing": [
+              "somalia",
+              "documented",
+              "actors",
+              "uncertainties",
+              "intervention",
+              "compared"
+            ]
+          },
+          "advisory": true
+        },
+        {
+          "id": "GN-17-interventions",
+          "title": "Guinea: Compare practical interventions · SDG 17",
+          "score": 0.0987,
+          "plain_score": 0.2129,
+          "threshold": 0,
+          "basis": "Dice coefficient over normalised token sets, weighted by inverse document frequency",
+          "shared_tokens": 38,
+          "distinguishing": {
+            "in_proposal": [
+              "produce",
+              "reconciliation",
+              "counts",
+              "states",
+              "developed",
+              "landlocked"
+            ],
+            "in_existing": [
+              "gn",
+              "guinea",
+              "documented",
+              "actors",
+              "uncertainties",
+              "intervention"
+            ]
+          },
+          "advisory": true
+        },
+        {
+          "id": "SD-17-interventions",
+          "title": "Sudan: Compare practical interventions · SDG 17",
+          "score": 0.0987,
+          "plain_score": 0.2129,
+          "threshold": 0,
+          "basis": "Dice coefficient over normalised token sets, weighted by inverse document frequency",
+          "shared_tokens": 38,
+          "distinguishing": {
+            "in_proposal": [
+              "produce",
+              "reconciliation",
+              "counts",
+              "states",
+              "developed",
+              "landlocked"
+            ],
+            "in_existing": [
+              "sd",
+              "sudan",
+              "documented",
+              "actors",
+              "uncertainties",
+              "intervention"
+            ]
+          },
+          "advisory": true
+        }
+      ]
+    }
+  }
+}
