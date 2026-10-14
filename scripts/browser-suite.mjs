@@ -137,6 +137,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
   { id: 'reviewer-workbench', title: 'A reviewer assesses each criterion, compares source versions, requests changes and the mission owner records an adoption', regression: null },
   { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
+  { id: 'mission-quality-advisory-signals', title: 'A reviewer reads the advisory mission-quality signals beside the review surface, checks one off for this session only, and the flags block nothing', regression: null },
   { id: 'live-observation-readonly', title: 'An anonymous observer sees public activity and can neither build nor control a resident', regression: null },
   { id: 'game-shell-entry-and-continue', title: 'Play, Observe and Continue enter the world, and the shell keeps one overlay, one HUD and one drawer', regression: null },
   { id: 'selection-does-not-clobber-navigation', title: 'A section opened while a character selection is still loading is not replaced by the world view', regression: 'character selection race (83b9505)' },
@@ -4125,6 +4126,147 @@ define('reviewer-workbench', async () => {
   });
 
   return `one reviewer assessed both versions criterion by criterion, compared ${first.id} against a newer capture, requested “${requested}” and accepted the correction; the mission owner recorded one adoption with its evidence`;
+});
+
+// ---------------------------------------------------------------------------------------------
+// Scenario — the advisory mission-quality signals beside the reviewer's own surface
+// ---------------------------------------------------------------------------------------------
+
+define('mission-quality-advisory-signals', async () => {
+  const admin = await actor('admin');
+  const reviewer = await actor('reviewer');
+  // This scenario's own operator and resident. The shared fictional contributor reaches the shipped
+  // 100-coin daily operator limit by the time this scenario runs in the full suite, and the receipt
+  // assertion below needs an operator whose own UTC day is still fresh.
+  const ticket = await ensureAccount(fixtures().admin, { email: 'quality-contributor@browser.test', password: PASSWORD, name: 'Browser quality contributor' });
+  const resident = await apiExpect(ticket, 'POST', '/agents', { kind: 'agent', name: 'Quality resident', color: '#5d7bb1', symbol: '✎', capabilities: 'Reads approved sources and prepares cited briefs', limitations: 'No external tools and no real-world claims' });
+  // The stored research proposal supplies the text, so the near-duplicate measure has a real
+  // neighbour to score against. The mission keeps its own known defects — no recorded source
+  // register and no stated limits — and it is created and opened with them present.
+  const lead = row("SELECT * FROM research_leads WHERE id='NP-2-baseline'");
+  expect(lead && lead.title && lead.instructions, 'the stored research proposal must be readable', { actual: describe(lead) });
+  const TITLE = lead.title;
+  const DISMISSAL_NOTE = 'Checked against the stored research proposal: this fixture deliberately reuses that proposal’s text, so the match is expected and names no duplicate work.';
+  const mission = await apiExpect(fixtures().admin, 'POST', '/missions', {
+    title: TITLE, area: 'Agriculture', summary: lead.instructions.slice(0, 2000),
+    beneficiary: 'Acceptance community', owner_id: state.fixtures.owner.id, reviewer_id: state.fixtures.reviewer.id, rubric: lead.rubric,
+  });
+  const task = await apiExpect(fixtures().admin, 'POST', '/tasks', {
+    mission_id: mission.id, title: 'Record one source (quality)', instructions: lead.instructions.slice(0, 2000),
+    rights: 'Public material with attribution.', allowed_domains: ['example.org'],
+  });
+  await apiExpect(fixtures().admin, 'POST', '/missions/status', { mission_id: mission.id, status: 'open' });
+  // The store's own fingerprint, so "a dismissal writes nothing" is checked against every table and
+  // the audit chain rather than one counter.
+  const storeCounts = () => ['missions', 'tasks', 'claims', 'submissions', 'reviews', 'reports', 'adoptions', 'coin_rewards', 'audit'].map((table) => `${table}:${count(`SELECT COUNT(*) AS n FROM ${table}`)}`).join('|');
+  const openQuality = async (page) => {
+    const card = page.locator('#view .card', { hasText: TITLE }).first();
+    await card.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const summary = card.locator('summary', { hasText: 'Mission quality signals' }).first();
+    await summary.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    if (!await summary.evaluate((node) => node.closest('details')?.open === true)) await summary.click();
+    await card.getByRole('button', { name: 'Load advisory signals', exact: true }).click();
+    await waitForCondition(async () => ((await card.locator('.mission-quality-panel').textContent().catch(() => '')) || '').includes('near_duplicate') ? true : null, 'the advisory signals to render');
+    return card;
+  };
+  let assessment = null, submission = null, score = null, threshold = null;
+
+  await step('the flagged proposal is created and opened, and its assessment is read over the API', async () => {
+    const refused = await apiGet(`/quality?task=${encodeURIComponent(task.id)}`, { token: state.fixtures.stranger.token });
+    expect(refused.status === 403, 'a member who is not a reviewer must be refused', { expected: 'HTTP 403', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    assessment = await apiExpect(state.fixtures.reviewer, 'GET', `/quality?task=${encodeURIComponent(task.id)}`, undefined, [200]);
+    expect(assessment.advisory === true && assessment.authority.level === 'advisory' && assessment.authority.changes_status === false, 'the assessment must carry the module’s own advisory authority statement', { actual: describe(assessment.authority) });
+    const missing = assessment.missing.map((entry) => entry.field);
+    expect(missing.includes('limits') && missing.includes('sources'), 'the proposal’s two known defects must be reported by field name', { actual: describe(missing) });
+    const duplicate = assessment.signals.find((signal) => signal.code === 'near_duplicate');
+    expect(duplicate && duplicate.advisory === true, 'the stored research proposal must be reported as one advisory signal', { actual: describe(assessment.signals.map((signal) => signal.code)) });
+    threshold = assessment.duplicates.threshold;
+    score = assessment.duplicates.matches[0].score;
+    expect(assessment.duplicates.matches[0].id === lead.id && score >= threshold, 'the closest match must name the stored proposal at or above the threshold', { expected: `≥ ${threshold}`, actual: describe(assessment.duplicates.matches[0]) });
+    expect(assessment.thresholds.duplicate_similarity === threshold, 'the threshold that was actually used must be returned', { actual: describe(assessment.thresholds.duplicate_similarity) });
+    expect(row('SELECT status FROM missions WHERE id=?', mission.id).status === 'open', 'a flagged mission must still be created, given a task and opened', { actual: describe(row('SELECT status FROM missions WHERE id=?', mission.id)) });
+    return `mission ${mission.id} created and opened with ${missing.length} unusable field(s); the closest stored proposal scores ${score} at the ${threshold} threshold`;
+  });
+
+  await step('a contributor submits a cited version against that task', async () => {
+    const claim = await apiExpect(ticket, 'POST', '/claims', { task_id: task.id, agent_id: resident.id }, [201], { headers: { 'Idempotency-Key': 'browser-quality-claim' } });
+    // The submitted text is unique to this scenario: the shipped coin predicate refuses a receipt for
+    // identical normalised work, and the shared fixture artifact has already earned one elsewhere.
+    submission = await apiExpect(ticket, 'POST', '/submissions', { ...EVIDENCE, artifact: 'A quality-signal fixture contribution whose exact wording belongs to this scenario alone.', claim_id: claim.id }, [201], { headers: { 'Idempotency-Key': 'browser-quality-submit' } });
+    expect(submission.status === 'pending_review', 'the version must wait for review', { actual: describe(submission.status) });
+    return `submission ${submission.id} is pending review with the advisory signals unchanged`;
+  });
+
+  await step('the reviewer reads the advisory signals and their score beside the review surface', async () => {
+    await openApp(reviewer.page, ACTORS.reviewer);
+    await openTab(reviewer.page, 'Review');
+    const card = await openQuality(reviewer.page);
+    const panel = card.locator('.mission-quality-panel');
+    const text = (await panel.textContent()) || '';
+    expect(text.includes('near_duplicate'), 'the signal code must be shown verbatim', { actual: text.replace(/\s+/g, ' ').slice(0, 500) });
+    expect(text.includes(String(score)), 'the score that was computed must be shown', { expected: String(score), actual: text.replace(/\s+/g, ' ').slice(0, 700) });
+    expect(text.includes(String(threshold)), 'the threshold that was used must be shown', { expected: String(threshold), actual: text.replace(/\s+/g, ' ').slice(0, 700) });
+    expect(/Advisory only\./.test(text) && /blocks creating, activating, claiming, submitting, reviewing or adopting this work/.test(text), 'the panel must say in words what it does not do', { actual: text.replace(/\s+/g, ' ').slice(0, 500) });
+    expect(text.includes('limits') && text.includes('sources'), 'the unusable required fields must be named', { actual: text.replace(/\s+/g, ' ').slice(0, 700) });
+    expect(text.includes(assessment.authority.coin_decision.slice(0, 60)), 'the coin decision must stay where the module says it stays', { actual: 'the coin statement was missing from the panel' });
+    // No verdict and no blocking control is presented: the only control is the read, and no severity is
+    // styled as a warning. This reviewer is one of the people the signal names, so the module will not
+    // let them check it off, and the interface repeats the module’s own reason rather than offering a
+    // control that could never work.
+    const labels = await panel.locator('button').allTextContents();
+    expect(labels.length === 1 && labels[0].trim() === 'Refresh advisory signals', 'the panel must offer no verdict or blocking control', { actual: describe(labels) });
+    expect(await panel.locator('.badge.warning').count() === 0, 'no severity may be presented as a warning verdict', { actual: 'a warning badge was rendered' });
+    expect(/An independent human must dismiss a signal/.test(text) && /the named reviewer is one of the parties the signal concerns/.test(text), 'the named reviewer must be told, in the module’s own words, why this check is not theirs', { actual: text.replace(/\s+/g, ' ').slice(-500) });
+    return `the panel showed the code, the score ${score} and the threshold ${threshold}; the only control is a refresh, and the named reviewer is told why the check is not theirs`;
+  });
+
+  await step('an independent administrator checks the signal off for this session only, and it is stored nowhere', async () => {
+    await openApp(admin.page, ACTORS.admin);
+    await openTab(admin.page, 'Review');
+    const card = await openQuality(admin.page);
+    const panel = card.locator('.mission-quality-panel');
+    const before = storeCounts();
+    const form = panel.locator('form').filter({ hasText: 'Checked — not a problem' }).first();
+    await form.locator('[name="note"]').fill(DISMISSAL_NOTE);
+    await form.getByRole('button', { name: 'Checked — not a problem', exact: true }).click();
+    await waitForCondition(async () => ((await panel.textContent().catch(() => '')) || '').includes(DISMISSAL_NOTE) ? true : null, 'the dismissal to be shown beside the signal');
+    const text = (await panel.textContent()) || '';
+    expect(text.includes(ACTORS.admin.name), 'the declaration must name the human who made it', { actual: text.replace(/\s+/g, ' ').slice(-400) });
+    expect(/Kept in this browser session only/.test(text) && /Nothing was written/.test(text), 'the panel must state the honest scope of a dismissal', { actual: text.replace(/\s+/g, ' ').slice(-600) });
+    // It was not recorded anywhere: no row, no audit entry and no dismissal table to record it in.
+    expect(storeCounts() === before, 'a dismissal must write nothing at all', { expected: before, actual: storeCounts() });
+    expect(count("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND lower(name) LIKE '%dismiss%'") === 0, 'no dismissal table exists, which is why the check cannot be recorded', { actual: 'a dismissal table appeared' });
+    expect(validateDatabase(state.database).schema_version === 22, 'the declared schema must be unchanged', { actual: describe(validateDatabase(state.database).schema_version) });
+    // Reloading forgets it, because nothing was stored.
+    await admin.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(admin.page);
+    await openTab(admin.page, 'Review');
+    const reopened = await openQuality(admin.page);
+    const after = (await reopened.locator('.mission-quality-panel').textContent()) || '';
+    expect(after.includes(DISMISSAL_NOTE) === false, 'the dismissal must not survive a reload, because nothing was stored', { actual: 'the dismissal text was still shown after the reload' });
+    expect(await reopened.getByRole('button', { name: 'Checked — not a problem', exact: true }).count() === 1, 'the control must be offered again after the reload', { actual: 'the dismissal control was not offered again' });
+    return `the dismissal was displayed, wrote nothing (${before.split('|').length} tables and the audit chain unchanged), and did not survive a reload`;
+  });
+
+  await step('the reviewer records an ordinary acceptance, so the flags blocked nothing', async () => {
+    await openTab(reviewer.page, 'Review');
+    const card = reviewer.page.locator('#view .card', { hasText: TITLE }).first();
+    const form = card.locator('form').filter({ hasText: 'Record review' }).first();
+    await form.locator('select[name="decision"]').selectOption('accepted');
+    await form.locator('[name="reason"]').fill('The cited source and its location are recorded, and the advisory signals were read and changed nothing here.');
+    await form.getByRole('button', { name: 'Record review', exact: true }).click();
+    const stored = await waitForCondition(async () => row('SELECT * FROM reviews WHERE submission_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1', submission.id) || null, 'the acceptance to be stored');
+    expect(stored.decision === 'accepted' && stored.reviewer_id === state.fixtures.reviewer.id, 'the acceptance must be stored against the flagged version', { actual: describe(stored) });
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards WHERE submission_id=?', submission.id) === 1, 'exactly one receipt must be issued', { actual: `${count('SELECT COUNT(*) AS n FROM coin_rewards WHERE submission_id=?', submission.id)} receipts` });
+    expect(scalar('SELECT amount FROM coin_rewards WHERE submission_id=?', submission.id) === 10, 'the receipt must be the shipped fixed ten-coin award', { actual: describe(scalar('SELECT amount FROM coin_rewards WHERE submission_id=?', submission.id)) });
+    // The whole create, activate, submit and review sequence left the reading identical: the flags are
+    // a reading of the proposal, not a state that anything acts on.
+    const after = await apiExpect(state.fixtures.reviewer, 'GET', `/quality?task=${encodeURIComponent(task.id)}`, undefined, [200]);
+    expect(JSON.stringify(after) === JSON.stringify(assessment), 'the assessment must be byte-identical after the flow', { actual: 'the assessment changed during the flow' });
+    return `accepted by ${stored.reviewer_id} for one 10-coin receipt; the assessment is byte-identical before and after`;
+  });
+
+  return `one flagged mission was created, opened, submitted against and accepted; a reviewer read the advisory signals with the score ${score}, and an independent administrator checked one off for the session only without writing anything, which a reload forgot`;
 });
 
 // ---------------------------------------------------------------------------------------------

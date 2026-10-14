@@ -19,6 +19,7 @@ import {parseTradeSubmissionDraft} from './src/trade-import.js';
 import {tradeUrl,tradePairUrls} from './src/trade.js';
 import {parseResearchFailure} from './src/research-failure.js';
 import { ASSESSMENT_RESULTS } from './src/review-assessment.js';
+import { dismissSignal } from './src/mission-quality.js';
 import { clearOperatorState } from './src/browser-session.js';
 import { normalizeDecisionBrief, serializeDecisionBrief, decisionBriefText } from './src/decision-brief.js';
 import { draw, landmarkAt, start, landmarks, getWorldDefinition, walkable, drawMiniMap } from './world.js';
@@ -172,7 +173,7 @@ function notice(message, error = false) { const node = error && $('#auth-dialog'
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- gameAudio.stop();spectator?.close();spectator=null;firstPlayGuide.reset();cancelFirstPlayRead();movementQueue.reset('session-ended');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.evidenceLibrary=null;clearOperatorState(state);state.workbenches=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}try{localStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ gameAudio.stop();spectator?.close();spectator=null;firstPlayGuide.reset();cancelFirstPlayRead();movementQueue.reset('session-ended');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.evidenceLibrary=null;clearOperatorState(state);state.workbenches=null;state.quality=null;state.qualityDismissals=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}try{localStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -1666,6 +1667,79 @@ function workbenchView(view){
   node.append(paragraph([view.boundaries.acceptance,view.boundaries.adoption].join(' '),'privacy'));
   return node;
 }
+// The advisory mission-quality signals, shown beside the reviewer's own surface. They gate nothing:
+// they do not block creating, activating, claiming, submitting, reviewing or adopting this work, and
+// they do not influence the coin decision, which stays with the shipped independent-acceptance
+// predicate in src/coins.js. The module that computes them is pure and writes nothing, and this panel
+// adds no verdict of its own: it renders the codes, the plain-language detail and the measure exactly
+// as the server returned them. Because that module is pure, a "Checked — not a problem" below is a
+// declaration kept in this browser session only. Nothing is recorded anywhere, and the panel says so.
+function qualityMeasureView(measure){
+  const list=element('dl',null,'quality-measure');
+  for(const [key,value] of Object.entries(measure||{}))list.append(element('dt',key.replaceAll('_',' ')),element('dd',typeof value==='string'?value:JSON.stringify(value)));
+  return list;
+}
+// Ask the module itself whether this human may check this signal off, rather than restating its rule
+// in the interface: the call is pure, so it either allocates a declaration that is discarded here or
+// refuses with the module's own words. Whichever way it answers, nothing is stored.
+function qualityDismissalRefusal(signal){
+  try{dismissSignal(signal,{reviewer:{id:state.account.id,name:state.account.name},note:'Checked, and this signal is not a problem.'});return '';}
+  catch(error){return error.message||'This signal cannot be checked off by this account.';}
+}
+function qualitySignalView(signal,index,taskId,rerender){
+  const node=element('section',null,'quality-signal');
+  node.append(element('h4',signal.code),badge(`${signal.severity} · advisory`),paragraph(signal.detail,'privacy'),paragraph('Measure, exactly as computed','eyebrow'),qualityMeasureView(signal.measure));
+  const dismissal=(state.qualityDismissals||{})[`${taskId}:${index}`];
+  if(dismissal){
+    node.append(paragraph(`Checked by ${dismissal.dismissal.reviewed_by} at ${date(dismissal.dismissal.at)}: ${dismissal.dismissal.note}`,'privacy'),paragraph('Kept in this browser session only. Nothing was written: no record, no status, no score and no coin changed, and this check disappears when the page is reloaded or you sign out.','privacy'));
+    return node;
+  }
+  // A human the signal itself names cannot check it off: the module keeps a dismissal for an
+  // independent human, and the interface says so in the module's own words instead of offering a
+  // control that could never work. Either way nothing is recorded.
+  const refusal=qualityDismissalRefusal(signal);
+  if(refusal){node.append(paragraph(refusal,'privacy'),paragraph('Being named by a signal is not a defect of the proposal. Nothing is written either way: this platform keeps no record of a dismissal, so none is implied here.','privacy'));return node;}
+  const inputs=form(node,'Checked — not a problem',async(data)=>{
+    const dismissed=dismissSignal(signal,{reviewer:{id:state.account.id,name:state.account.name},note:data.note});
+    state.qualityDismissals??={};state.qualityDismissals[`${taskId}:${index}`]=dismissed;rerender();
+  });
+  field(inputs,'note','What you checked, and why this signal is not a problem',{type:'textarea',max:500,full:true,hint:'Your own declaration. It is kept in this session, it is not stored, and it changes no status, record, score or coin.'});
+  return node;
+}
+function missionQualityView(report,submission,rerender){
+  const node=element('section',null,'mission-quality');
+  node.append(paragraph('Advisory only. Nothing below blocks creating, activating, claiming, submitting, reviewing or adopting this work, and nothing below influences the coin decision.','eyebrow'));
+  node.append(paragraph(report.authority.note,'privacy'),paragraph(report.authority.coin_decision,'privacy'));
+  const satisfied=report.completeness.satisfied||[],required=report.completeness.required_fields||[];
+  node.append(element('h4','Required fields'),paragraph(`${satisfied.length} of ${required.length} required fields are present and usable. ${report.completeness.note}`,'privacy'));
+  if(report.missing.length){
+    const list=element('ul');
+    for(const entry of report.missing)list.append(element('li',`${entry.field} — ${entry.reason} (${entry.requirement})`));
+    node.append(list);
+  }
+  if(report.signals.length){
+    node.append(element('h4',`Advisory signals (${report.signals.length})`));
+    report.signals.forEach((signal,index)=>node.append(qualitySignalView(signal,index,submission.task_id,rerender)));
+  }else node.append(element('h4','Advisory signals'),paragraph('No advisory signal was raised for this proposal. That decides nothing: it is not an approval, a priority, a readiness decision or a promise that a reviewer will accept it.','privacy'));
+  const duplicates=report.duplicates;
+  node.append(element('h4','Textual closeness to stored proposals'),paragraph(`${duplicates.considered} stored proposals were compared at the ${duplicates.threshold} threshold; ${duplicates.above_threshold} read as textually close, and ${duplicates.returned} are shown. ${duplicates.basis}. A match is a signal for a human, never a rejection.`,'privacy'));
+  for(const match of duplicates.matches)node.append(paragraph(`${match.id} · ${match.title||'untitled'} · score ${match.score} · plain score ${match.plain_score} · shared tokens ${match.shared_tokens} · distinguishing here: ${match.distinguishing.in_proposal.join(', ')||'none'} · distinguishing there: ${match.distinguishing.in_existing.join(', ')||'none'}`,'privacy'));
+  const thresholds=Object.entries(report.thresholds||{});
+  if(thresholds.length)node.append(element('h4','Thresholds used'),qualityMeasureView(Object.fromEntries(thresholds)));
+  node.append(paragraph(report.review.note,'privacy'),paragraph(report.boundaries.what_it_is_not,'privacy'),paragraph(report.boundaries.false_positive_path,'privacy'),paragraph(report.ladder.note,'privacy'));
+  return node;
+}
+function missionQualitySignals(node,submission){
+  if(!isReviewer())return;
+  const taskId=submission.task_id,panel=element('div',null,'mission-quality-panel');
+  const load=async()=>{const report=await api(`/quality?task=${encodeURIComponent(taskId)}`);state.quality??={};state.quality[taskId]=report;if(panel.isConnected)renderPanel();};
+  const renderPanel=()=>{
+    const report=(state.quality||{})[taskId];panel.replaceChildren();
+    if(!report){panel.append(paragraph('Read the advisory quality signals the platform computes for this mission and its task: which required fields are absent or unusable, which quality patterns are worth a look, and which stored research proposals this text is close to, with the score that was computed. Everything shown is advisory. It decides nothing, it blocks nothing, and reading it writes nothing.','privacy'),button('Load advisory signals',load,'secondary small'));return;}
+    panel.append(missionQualityView(report,submission,renderPanel),button('Refresh advisory signals',load,'secondary small'));
+  };
+  disclosure(node,'Mission quality signals — advisory only',(body)=>{body.append(panel);renderPanel();});
+}
 function workbenchAndReviewForm(node,submission){
   const panel=element('div');
   // The workbench is an aid, so it loads on demand; the decision form below is always offered, which
@@ -1677,6 +1751,9 @@ function workbenchAndReviewForm(node,submission){
     panel.append(workbenchView(view),paragraph('Your decision is recorded against this exact version only, and the contributor sees every assessment note and each requested change.','privacy'),button('Refresh reviewer workbench',reload,'secondary small'));
   };
   const details=disclosure(node,'Reviewer workbench — criteria, source versions and roles',(body)=>{body.append(panel);renderPanel();});
+  // The advisory quality signals sit beside the workbench: the same audience, the same read-only
+  // discipline, and nothing decided by them.
+  missionQualitySignals(node,submission);
   // A loaded workbench stays open across an unrelated render. Reopening it fetches current source
   // versions again; the initial programmatic open is skipped to avoid a second identical request.
   let initialOpen=Boolean((state.workbenches||{})[submission.id]);
@@ -1976,7 +2053,7 @@ async function loadCommunity() {
   state.community=await api(`/community?${query}`);
 }
 async function loadJourney(){state.journey=state.account&&selected()?await api(`/journey?agent_id=${encodeURIComponent(state.selected)}`):null;}
-async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='review'){state.workbenches=null;state.evidenceLibrary=null;}if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;state.gameDrawer='';state.gameMenuOpen=false;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds(),loadMemory()]);if(tab==='quests')await loadQuests();if(tab==='restoration')await loadRestoration();if(tab==='guilds')await loadGuildProjects();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});if(!document.body.classList.contains('game-world'))title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
+async function openSection(tab){if(tab!=='world')walkVersion++;if(tab==='review'){state.workbenches=null;state.evidenceLibrary=null;state.quality=null;}if(tab==='explore')await loadFrontier();if(tab==='civic'&&!state.ambassadorPage)await loadAmbassadors();const changed=state.tab!==tab;state.tab=tab;state.gameDrawer='';state.gameMenuOpen=false;$('#notice').hidden=true;if(tab==='countries'&&!state.countryAtlas){try{if(!state.countryAtlasPromise)state.countryAtlasPromise=fetch('/assets/atlas/countries.json',{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Atlas unavailable');return response.json();}).then(validateCountryAtlas);state.countryAtlas=await state.countryAtlasPromise;}catch{state.countryAtlasPromise=null;state.countryAtlasUnavailable=true;}}if(tab==='community')await loadCommunity();if(tab==='callings')await Promise.all([loadCallings(),loadGuilds(),loadMemory()]);if(tab==='quests')await loadQuests();if(tab==='restoration')await loadRestoration();if(tab==='guilds')await loadGuildProjects();if(['coins','passport','workshop'].includes(tab))await loadJourney();renderTabs();renderView();if(changed){$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');const title=$('#view h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});if(!document.body.classList.contains('game-world'))title.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}}
 async function navigateSection(tab){const same=state.tab===tab;await openSection(tab);$('#toggle-navigation').setAttribute('aria-expanded','false');$('.sidebar').classList.remove('navigation-open');if(same&&matchMedia('(max-width:1050px)').matches)$('#toggle-navigation').focus();}
 $('#toggle-navigation').addEventListener('click',()=>{const open=$('#toggle-navigation').getAttribute('aria-expanded')!=='true';$('#toggle-navigation').setAttribute('aria-expanded',String(open));$('.sidebar').classList.toggle('navigation-open',open);});
 $('#game-menu-button').addEventListener('click',toggleGameMenu);

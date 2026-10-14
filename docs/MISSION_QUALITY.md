@@ -263,6 +263,44 @@ signal was advisory when it was returned and this module never decides anything:
   adoption declaration are kept: no schema change, and the record reads back in plain language. The
   UI slice is described in `docs/handoff/task-c-mission-quality.md`.
 
+## The wired reviewer path
+
+The module is now reachable from the shipped application, read-only and advisory throughout. The
+route, its audience, the interface panel and the tests are described in
+`docs/handoff/task-c-quality-wiring.md`; the summary is:
+
+- **`GET /quality?task=<id>` and `GET /quality?mission=<id>`** (`reviewer`/`admin` session only) return
+  this module's assessment, verbatim and unwrapped. The proposal is assembled from the stored
+  `missions`, `tasks` and the `research_leads` row that produced either; the comparison corpus is
+  every stored research lead **except** the one that produced the work, so a proposal is never
+  reported as a duplicate of the entry it came from.
+- **Two inputs are deliberately not supplied by the route**, and each for a stated reason. No review
+  records: the collusion measures would need the whole review history inside a reviewer-visible
+  response, so `review.checked` is `false` and the report says plainly that no collusion measure was
+  computed. No `known_hosts`: the evidence library holds only hosts captured through the curator
+  path, and the shipped submission path registers a new host rather than refusing it, so passing that
+  list would raise `source_host_unknown` on the strength of the library's sparseness and not on any
+  rule the platform applies. The three source rules mirrored from `approvedEvidenceUrl`, `createTask`
+  and `submit` are unaffected and still reported.
+- **The interface shows the signals beside the reviewer workbench**, each with its code, severity,
+  plain-language detail and measure as returned, and no verdict or blocking control. `app.js` imports
+  this same module, so the ranking rule and the dismissal rule are not restated in the interface.
+- **A dismissal is a declaration in the browser session and is stored nowhere.** The interface calls
+  `dismissSignal` directly, which is pure, so the check-off is displayed for the rest of the session
+  and disappears on a reload or a sign-out. There is no dismissals table and the schema stays at 22.
+  This is a real limitation, not a design preference: recording a dismissal needs the additive schema
+  change specified in the wiring handoff.
+- **A signal is never dismissed by a human it names.** `dismissSignal` refuses a reviewer who is one
+  of the signal's `subjects` (**403**), and every signal about a proposal names the proposal's own
+  reviewer. The assigned reviewer therefore reads the module's own refusal in place of the control,
+  and an independent reviewer or administrator — one who is not the proposal's owner, reviewer or
+  contributor — is the human who can check a signal off. The interface says this in the module's
+  words rather than offering a control that could never work.
+
+Nothing in this path gates anything: a flagged mission is still created, activated, claimed,
+submitted, reviewed and adopted, and the coin decision is untouched. Both the HTTP suite and the
+browser suite assert exactly that.
+
 ## What this module deliberately does not do
 
 - **No authority.** It changes no status, approves or rejects no contribution, awards or withholds no
@@ -310,3 +348,18 @@ signal was advisory when it was returned and this module never decides anything:
 - the mirrored area list still accepted by the real `createMission`, and an unlisted area still
   refused;
 - the duplicate threshold re-measured on the shipped corpus.
+
+`tests/mission-quality-http.test.js` (6 tests) covers the shipped route: the assessment of a task
+with a known defect, with its `missing` field names, signal codes and measures; a proposal built from
+a research lead, whose source register is read from that lead, whose own lead is excluded from the
+corpus, and whose framework-only sources are signalled; a near-duplicate with the score, the plain
+score, the threshold and the distinguishing tokens; the refusal of an anonymous caller, a member, a
+moderator and an unknown identifier; a reading that leaves every table, the settings and the audit
+chain unchanged; and a flagged proposal that is still created, activated, claimed, submitted, reviewed
+and adopted normally, with its assessment byte-identical before and after.
+
+`scripts/browser-suite.mjs` adds the `mission-quality-advisory-signals` scenario (45 in the registry):
+a reviewer reads the signals with their score beside the review surface and sees no verdict and no
+blocking control, an independent administrator checks one off and the browser asserts that nothing —
+no row, no audit entry, no dismissal table — was written and that a reload forgets it, and the
+reviewer then records an ordinary acceptance that the flags did not touch.

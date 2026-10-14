@@ -59,6 +59,9 @@ const files = new Map([
   ['/src/research-failure.js', ['src/research-failure.js', 'text/javascript; charset=utf-8']],
   ['/src/delivery-packet.js', ['src/delivery-packet.js', 'text/javascript; charset=utf-8']],
   ['/src/review-assessment.js', ['src/review-assessment.js', 'text/javascript; charset=utf-8']],
+  // The browser imports the same pure mission-quality reader the /quality route uses, so one module
+  // computes the advisory signals and the interface only renders them.
+  ['/src/mission-quality.js', ['src/mission-quality.js', 'text/javascript; charset=utf-8']],
   ['/src/browser-session.js', ['src/browser-session.js', 'text/javascript; charset=utf-8']],
   ['/src/game-audio.js', ['src/game-audio.js', 'text/javascript; charset=utf-8']],
   ['/src/decision-brief.js', ['src/decision-brief.js', 'text/javascript; charset=utf-8']],
@@ -149,7 +152,7 @@ const writes = new Map([
   // records that a source is withdrawn. Both fail closed on an unapproved host, a bad hash or a quota.
   ['/evidence/capture', ['evidenceCapture', null]], ['/evidence/withdraw', ['evidenceWithdraw', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/events', '/interact', '/memory', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -545,6 +548,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/evidence') value = platform.evidenceLibrary(actor, Object.fromEntries(url.searchParams));
           else if (route === '/evidence/draft') value = platform.draftEvidence(actor, Object.fromEntries(url.searchParams));
           else if (route === '/review/workbench') value = platform.reviewWorkbench(actor, Object.fromEntries(url.searchParams));
+          // The advisory mission-quality reading. It decides nothing and writes nothing: the shipped
+          // mission-quality module has no writer, so a read of this route cannot change a state.
+          else if (route === '/quality') value = platform.missionQuality(actor, Object.fromEntries(url.searchParams));
           else if (route === '/missions') value = platform.missionList(actor,Object.fromEntries(url.searchParams));
           else if (route === '/gallery') value = platform.gallery();
           else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));
