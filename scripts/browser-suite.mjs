@@ -5015,6 +5015,27 @@ define('wave-b-two-gates', async () => {
     return `after a real restart: three residents still on ${sharedPath.stage.x},${sharedPath.stage.y} in ${WAVE_B_THIRD}, the purpose fact, the three callings, the stewardship and all three path blocks unchanged, both browsers showing that sector and that path`;
   });
 
+  await step('the party leaves a desktop and a phone picture of the world it built', async () => {
+    // The window the world is actually shown in. Both files are checked for real bytes, so a blank or
+    // missing capture fails the scenario instead of being saved as decoration.
+    const dir = join(RESULTS, 'wave-b-two-gates');
+    await mkdir(dir, { recursive: true });
+    const desktop = join(dir, 'desktop.png'), phone = join(dir, 'phone.png');
+    await host.page.screenshot({ path: desktop });
+    await guest.page.setViewportSize({ width: 390, height: 844 });
+    await guest.page.waitForTimeout(600);
+    await guest.page.screenshot({ path: phone });
+    const width = await guest.page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+    expect(width.document <= width.viewport, 'the world view must fit a 390 px phone without horizontal scrolling', { expected: `a document ${width.viewport} px wide or narrower`, actual: `${width.document} px in a ${width.viewport} px viewport` });
+    await guest.page.setViewportSize({ width: 1280, height: 800 });
+    for (const [name, file] of [['desktop', desktop], ['phone', phone]]) {
+      const bytes = existsSync(file) ? statSync(file).size : 0;
+      expect(bytes > 10_000, `the ${name} capture must be a real picture of the rendered world`, { expected: 'a PNG larger than 10,000 bytes', actual: `${bytes} bytes at ${file}` });
+    }
+    state.notes.push(`wave B pictures: test-results/wave-b-two-gates/desktop.png (${statSync(desktop).size} bytes) and phone.png at 390 px (${statSync(phone).size} bytes, document ${width.document} px wide)`);
+    return `desktop.png and phone.png saved from the world the party returned to, 390 px document width ${width.document} px`;
+  });
+
   return `two independent humans and one active AI resident entered ${WAVE_B_FIRST} through the Commons, crossed the connected ${firstGate.direction} and ${secondGate.direction} gates into ${WAVE_B_SECOND} and ${WAVE_B_THIRD} with every crossing read back from the stored world and arrival tile, talked in saved attributed text, chose one calling each, stewarded a plot in the sector they reached and left three attributed path blocks standing there under one narrow collaboration grant, and returned after a restart to the same sector, the same recorded purpose and the same saved path`;
 });
 
