@@ -939,7 +939,7 @@ function renderWorld(parent) {
   if(state.graphics==='voxel'){const reticle=element('p',null,'world-reticle');reticle.id='world-reticle';reticle.tabIndex=0;reticle.setAttribute('role','status');reticle.setAttribute('aria-live','polite');reticle.setAttribute('aria-label','Aim line: where the camera looks, what the last pick targets, and which keys walk or turn');reticle.textContent=reticleText({firstPerson:Boolean(agent&&state.firstPerson),facing:state.facing,position,fixture:state.interaction?.fixture||null});map.append(reticle);}
   const lower = element('div', null, 'world-bottom'); const journey = element('div'); const place = worldLandmarks().find((p) => p.x === position.x && p.y === position.y);
   append(journey, paragraph(agent ? `${agent.name} · ${place?.name || world.name}` : `Visiting ${world.name}`, 'eyebrow'), paragraph(place?.description || world.description || (world.kind === 'home' ? 'A personal garden, built and cared for by its agent.' : 'Explore the paths, gathering spaces, and entrances.')), element('small', `${agent ? 'Character' : 'View'} position ${position.x}, ${position.y} · ${agent ? 'Arrow keys / WASD to roam' : 'Arrow keys / WASD to look around'}`));
-  const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => controlStep(direction)); item.setAttribute('aria-label', `${agent ? (state.lookMode ? 'Turn' : 'Move') : 'Look'} ${direction}`); item.disabled = Boolean(agent && (agent.status !== 'active' || state.world.paused)); movement.append(item); } movement.append(viewToggles(agent));
+  const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => controlStep(direction)); item.setAttribute('aria-label', `${agent ? (state.lookMode ? 'Turn' : 'Move') : 'Look'} ${direction}`); item.disabled = Boolean(state.world.paused); movement.append(item); } movement.append(viewToggles(agent));
   journey.append(element('div',null,'nearby-portals'));
   if (agent) journey.append(walkToTileForm(agent, world));
   append(lower, journey, movement);map.append(lower);if(state.graphics==='voxel')map.append(actions(button('Look left',()=>queueLook(state.facing.yaw+.35,state.facing.pitch),'secondary small'),button('Look right',()=>queueLook(state.facing.yaw-.35,state.facing.pitch),'secondary small'),button('Zoom in',()=>voxelView?.zoom(-3),'secondary small'),button('Zoom out',()=>voxelView?.zoom(3),'secondary small'),button('Reset camera',()=>{queueLook(.78,state.firstPerson?0:.68);voxelView?.setOrbit({distance:24});},'secondary small')));if(world.kind==='frontier'&&!state.gamePresentation)map.append(frontierHotbar());if(state.graphicsUnavailable)map.append(paragraph('3D graphics are unavailable in this browser. The interactive pixel map remains available.','privacy'));
@@ -975,6 +975,23 @@ function nextActionLine(){
   const title=state.quests?.next_action?.title;
   return typeof title==='string'&&title.trim()?title:null;
 }
+// H4's second line: the passage this resident can actually walk to next, with the length of the
+// server's own planned route. Every word is the server's (`label`, `steps`); when the server reached
+// no passage it names its own reason, and when it sent no cue at all — a viewer with no resident in
+// this world returns `null` — there is no line. A paused world can take no step, so the cue is
+// withheld there rather than inviting a walk the server would refuse. The client never shortens the
+// server's answer: a resident standing on the passage is told the empty route it planned (`0 steps`)
+// rather than having the cue dropped because a count reached zero.
+function nextPassageLine(){
+  if(!state.world||state.world.paused)return null;
+  const cue=state.world.next_passage;
+  if(!cue||typeof cue!=='object')return null;
+  if(cue.kind===null)return typeof cue.reason==='string'&&cue.reason.trim()?cue.reason.trim():null;
+  if(cue.kind!=='gate'&&cue.kind!=='portal')return null;
+  const label=typeof cue.label==='string'?cue.label.trim():'';
+  if(!label||!Number.isInteger(cue.steps)||cue.steps<0)return null;
+  return `${label} · ${cue.steps} step${cue.steps===1?'':'s'}`;
+}
 function gameHud(world,agent,position){
   const hud=element('div',null,'game-hud');hud.id='game-hud';
   const top=element('div',null,'game-hud-top'),place=element('div',null,'game-place');
@@ -991,6 +1008,10 @@ function gameHud(world,agent,position){
   // invented. Its wording is the server's own title.
   const next=nextActionLine();
   if(next){const line=element('p',next,'game-next');line.id='game-next-action';bottom.append(line);}
+  // The same H4 slot carries the passage line, one line under the objective, under the same rule: no
+  // cue from the server means no element and therefore nothing invented to walk to.
+  const passage=nextPassageLine();
+  if(passage){const line=element('p',passage,'game-next');line.id='game-next-passage';bottom.append(line);}
   // H5 and the control hint print the keys that actually act: Enter, Space or I. `E` turns the camera.
   const hint=element('p',controlHint({playing:Boolean(agent&&state.gameMode!=='observe'),mode:state.firstPerson?'first-person':'third-person'}),'game-control-hint');hint.id='game-control-hint';
   const actionsRow=element('div',null,'game-quickbar');actionsRow.setAttribute('role','group');actionsRow.setAttribute('aria-label','World actions');
@@ -3358,12 +3379,30 @@ function syncGameHud(){
   const line=$('#game-next-action');const next=nextActionLine();
   if(line)line.textContent=next||'';
   if(line)line.hidden=!next;
+  syncNextPassageLine();
   const status=$('#game-observer-status');
   if(status&&spectator&&state.gameMode==='observe'){const refusal=spectator.lastRefusal();if(refusal){status.setAttribute('role','alert');status.textContent=`${refusal.message} ${refusal.next_step||''}`.trim();}else{status.setAttribute('role','status');status.textContent=spectator.status().detail;}}
   syncMoveFeedback();
   syncTravelPanel();
   touchControls?.refresh();
   mountFirstPlayGuide();
+}
+
+/**
+ * Keep H4's own passage line current in place, on the same refresh the rest of the HUD uses: the
+ * world poll and the render after a confirmed step. The text is written only when it changed, so a
+ * repeat read of the same cue costs one comparison; a cue that appears after the first paint (the
+ * world was paused, then resumed) is added before the control hint, and one the server stopped
+ * sending is blanked and hidden rather than left claiming a passage.
+ */
+function syncNextPassageLine(){
+  const bottom=$('.game-hud-bottom');if(!bottom)return;
+  const existing=$('#game-next-passage'),text=nextPassageLine();
+  if(!text){if(existing){existing.textContent='';existing.hidden=true;}return;}
+  if(existing){existing.hidden=false;if(existing.textContent!==text)existing.textContent=text;return;}
+  const line=element('p',text,'game-next');line.id='game-next-passage';
+  const hint=$('#game-control-hint');
+  if(hint&&hint.parentNode===bottom)bottom.insertBefore(line,hint);else bottom.append(line);
 }
 
 /** Mount the guide from the last `first-play` read. A workspace shell or a missing host clears it. */

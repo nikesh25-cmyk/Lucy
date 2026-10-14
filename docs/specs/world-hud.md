@@ -2,6 +2,11 @@
 
 **Target, not implemented. No browser check was performed by this task.**
 
+**Added by the Wave B passage task:** H4's second line — the next passage the server names for the
+resident, with its planned route length — is built and browser-verified
+(`app.js:979-988,1007-1008,3306-3314`; [task-b-next-passage-hud.md](../handoff/task-b-next-passage-hud.md)).
+Everything else on this page remains a target.
+
 The world is the primary surface. In game presentation the canvas fills the shell and the toolbar,
 calling HUD and world-bottom copy are hidden by CSS (`game-theme.css:20-23`), while the HUD is an
 overlay with `pointer-events:none` everywhere except the quickbar (`game-theme.css:34,47`). The HUD is
@@ -29,9 +34,9 @@ refresh (`updateCallingHUD()`, `app.js:1926-1931,1642`).
 │  ┌────────────────────────┐                                                  │
 │  │ ↑ ← ↓ →  [First person]│  movement + view toggles (world-bottom)          │
 │  └────────────────────────┘  ┌───────────────────────────────────────────┐    │
-│                              │ WALKING TO THE GARDEN GATE · Builder      │    │  ← H4 (target)
-│                              │ Spend two blocks on the shared path        │    │
-│                              └───────────────────────────────────────────┘    │
+│                              │ WALKING TO THE GARDEN GATE · Builder      │    │  ← H4 (built);
+│                              │ Meeting Hall · 23 steps                   │    │    title +
+│                              └───────────────────────────────────────────┘    │    passage
 │  ┌────────┬──────────┬────────┬────────┬────────┐                            │
 │  │Interact│  Build   │  Chat  │ Places │  More  │   ← .game-quickbar          │
 │  └────────┴──────────┴────────┴────────┴────────┘                            │
@@ -51,7 +56,7 @@ Existing anchors the build must reuse: `.game-hud`, `.game-hud-top`, `.game-plac
 | **H1** | World name + pause state | `.game-kicker` (`WORLD PAUSED` / `LOOKING AROUND` / `LIVE WORLD`) then `world.name` (`app.js:753`) | `GET /world` → `paused`, `world.name` (`docs/API.md:100`) |
 | **H2** | Tile position | `Tile x, y` (`#game-coordinates`, `app.js:752`) | the participant's `x`/`y` in `GET /world`; the visitor's camera focus when observing |
 | **H3** | Residents here | count + " residents here" (`#game-population`, `app.js:754`) | `counts.world_agents`, falling back to `population`, then the visible roster (`docs/API.md:102`) |
-| **H4** | **One next action** | *Not visible in the game shell today*: `callingHUD()` is appended at `app.js:720` but `.calling-hud` is hidden by `game-theme.css:23`; `updateCallingHUD()` already fills it from `state.callings` (`app.js:1926-1931`) | `GET /callings` → `current_objective.title`, and `GET /quests` → `next_action` (`app.js:1948`, `docs/API.md:430`) |
+| **H4** | **One next action** | **Built** (§"Rules for H4" below). Two lines in `.game-hud-bottom`, both in the theme's `.game-next` pill: the objective as `#game-next-action` (`app.js:1004`) and the passage under it as `#game-next-passage` (`app.js:1007-1008`, painted in place by `syncNextPassageLine()`, `app.js:3306-3314`). The shipped `.calling-hud` stays hidden by `game-theme.css:23` | `GET /callings` → `current_objective.title`, and `GET /quests` → `next_action` (`app.js:964-971`, `docs/API.md:430`); the passage line is `GET /world` → `next_passage` (`src/spaces.js:406-422`) |
 | **H5** | Aim / target line | `#game-target`: the fixture read on the picked or aimed tile plus the key that uses it (`app.js:769,2216`) | `GET /interact` → `fixture.label`, `hint`, `next_step` (`docs/API.md:261-268`) |
 
 **H5 must print the key that actually works.** The shipped control hint and target line say
@@ -62,14 +67,31 @@ key (`src/camera-controls.js:23`) and the interaction keys are `Enter`, `Space` 
 wireframe below shows the shipped wording on purpose, so the difference is visible. Fixing
 `docs/GAME_INTERFACE.md:10` belongs to whoever builds this spec; it is not edited here.
 
-Rules for H4, which is the only indicator that changes wording:
+Rules for H4, which is the only indicator that changes wording. H4 is the two-line card the wireframe
+draws; the objective is its title and the passage is the line under it:
 
-- It shows **one line**, never a list. If the resident has the current calling objective, that title is
-  used; otherwise the first quest `next_action.title`; otherwise the line disappears entirely.
-- It never shows a count, a percentage or an animation. The cosmetic `today.earned / today.limit`
-  progress element stays inside the calling card in the `More` drawer, because a number that changes
-  while you play is a dashboard element, not a world element.
-- The text is the server's title (or a plain rendering of it), not a slogan written in the client.
+- The **objective line** shows **one line**, never a list. If the resident has the current calling
+  objective, that title is used; otherwise the first quest `next_action.title`; otherwise the line
+  disappears entirely.
+- The **passage line** names the passage the server says this resident can walk to next, and how long
+  its planned route is — `"north frontier passage · 23 steps"`, or the doorway's own label. It uses the
+  payload's `label` and `steps` and nothing else: no direction, distance or count is derived in the
+  client. It is not a dashboard element, because it is a *destination* the server computed, not a
+  progress total.
+- The passage line is **absent** when `next_passage` is `null` — a viewer with no resident in the world
+  gets `null` from `GET /world` and is shown nothing at all, not an empty hint. When the cue is present
+  but names no reachable passage (`kind: null`) the line shows the server's own `reason`. A paused
+  world takes no step, so the line is withheld there rather than inviting a walk the server refuses;
+  the payload still carries the cue, so withholding it is the HUD's own honest choice.
+- Neither line shows a percentage, a bar or an animation. The cosmetic `today.earned / today.limit`
+  progress element stays inside the calling card in the `More` drawer, because a progress total that
+  changes while you play is a dashboard element, not a world element.
+- The text is the server's own wording (or a plain rendering of it), not a slogan written in the
+  client. Both lines are plain text nodes — no `innerHTML` — are not focusable, are
+  `pointer-events:none` with the rest of `.game-hud`, and are **not** live regions: the step count
+  changes as the resident walks and the three-second world poll re-reads it, so an `aria-live` line
+  would interrupt a screen reader. The tile-level aim line (H5's `#world-reticle`) is the live region
+  on this surface.
 
 ## The five actions
 
@@ -114,14 +136,22 @@ Every item is available elsewhere; none belongs over the world.
 | Play clock, session timer, "online friends", unread badge, distance travelled | nowhere | **the server does not store them**, so they cannot be shown (§8.1 of the main spec) |
 | Newcomer step list | `Start here`, and the compact card on the home page and Guide (`app.js:710,1455`) | a permanent progress panel is a dashboard by another name |
 
+**"Distance travelled" is not the passage line.** The excluded item above is a *cumulative trip total*,
+which the server does not store. H4's passage line shows the length of one planned route to one named
+destination, which `GET /world` computes and sends as `next_passage.steps` (`src/spaces.js:418-419`).
+It is a destination, not a running total, and it is dropped the moment the server stops naming a
+passage.
+
 ## States the HUD must render honestly
 
 | State | HUD consequence | Source |
 |---|---|---|
-| World paused | kicker reads `WORLD PAUSED`; movement and interaction are refused by the server | `world.paused` (`app.js:753`) |
+| World paused | kicker reads `WORLD PAUSED`; movement and interaction are refused by the server; the H4 passage line is withheld, because no step can be taken | `world.paused` (`app.js:753`, and `nextPassageLine()`, `app.js:980`) |
 | Observing (no acting resident) | kicker reads `LOOKING AROUND`; Interact disabled; hint becomes the visitor pan hint (`app.js:756`) | `viewedAgent()` returns null (`app.js:149`) |
 | Nothing to continue as, no character | HUD renders for the visitor; the entry screen handles the decision | `app.js:149,462` |
 | Fixture out of reach | Interact is enabled (the server owns the decision) and the refusal names the distance and the next step | `app.js:2336-2345`; `docs/API.md:278` |
+| No reachable passage from the resident's tile | the H4 passage line shows the server's own `reason` (`"No reachable passage from here."`), never an empty or invented direction | `next_passage.kind === null` (`src/spaces.js:421`) |
+| No resident in this world (visitor, or observing) | the H4 passage line is absent; `GET /world` returns `next_passage: null` | `src/spaces.js:407` (`tests/passage-cue.test.js`) |
 | 3D unavailable | the pixel map replaces the canvas, H1–H5 and the quickbar are unchanged | `app.js:718-719,727` |
 | Small screen | the residents-here chip and minimap shrink or hide; the quickbar becomes full-width with five equal controls | `game-theme.css:88-89` |
 
@@ -137,3 +167,9 @@ Every item is available elsewhere; none belongs over the world.
 | Reach the panel drawers | `Chat` and `More`; Escape closes the drawer and returns focus to `#game-hud button` (`app.js:1493`) |
 | Frontier block choice | digits 1–7 choose the block type (`app.js:860-867`); placing it is a click on the aimed tile, and the text path is the frontier card's `Apply block at coordinates` form with `Block X` / `Block Y` / `Block height` (`app.js:904-909`) |
 | Aim-line detail | the aim line is a focusable `role="status"` element with an `aria-live` name (`app.js:721`) |
+
+**The passage line is informational.** It is a plain paragraph, not a control: nothing about it is
+actionable, so it needs no keyboard path of its own, and it holds no state a text alternative would
+have to repeat. Walking towards the passage is the shipped walk path (W/A/S/D, arrows, or the HUD's
+own movement controls); the doorway it names is also listed with its coordinates in the world drawer's
+`Places & entrances` list, which is the keyboard route to that same destination.

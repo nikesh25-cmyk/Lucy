@@ -159,8 +159,15 @@ body.game-world .game-overlay-host .interaction-overlay .interaction-overlay-not
 body.game-world .game-overlay-host .interaction-overlay .interaction-overlay-refusal{color:var(--danger)}
 
 /* The pointer-first build tools. They appear only while build mode is on, and the palette comes
-   from the world payload, never from a literal in this stylesheet. */
-body.game-world .game-build-host{position:absolute;z-index:11;bottom:104px;left:50%;transform:translateX(-50%);display:none;width:max-content;max-width:min(880px,calc(100vw - 60px));pointer-events:auto}
+   from the world payload, never from a literal in this stylesheet.
+   The host is anchored to the *top* of the HUD's bottom band, never onto it: the band is bottom
+   anchored at 18px and measured 177px tall (objective line, passage line, control hint, quickbar),
+   so the top of the band sits 195px above the bottom edge of the stage. The band grew by 39px from
+   138px when the passage line joined the objective, which is what first put the tools over the next
+   action; at 1440×900 the host measured 252–796px and covered both lines. 210px is 18 + 177 + a
+   15px gap, and it keeps the ladder in this stylesheet intact: the HUD stays the lowest layer
+   (z-index 9) and the build tools stay above it (z-index 11) without lying on top of it. */
+body.game-world .game-build-host{position:absolute;z-index:11;bottom:210px;left:50%;transform:translateX(-50%);display:none;width:max-content;max-width:min(880px,calc(100vw - 60px));pointer-events:auto}
 body.game-world.game-building .game-build-host{display:block}
 body.game-world .game-build-host .ui-hotbar{border:1px solid #d8daad70;border-radius:14px;background:#092a24eb;padding:8px;box-shadow:0 12px 32px #04161188}
 body.game-world .game-build-host .game-hotbar-palette{display:flex;gap:6px;flex-wrap:wrap}
@@ -195,7 +202,13 @@ body.game-world .world-aside .ui-inventory h2,body.game-world .world-aside .ui-h
   body.game-world .game-overlay-host{bottom:112px}
   body.game-world .game-observer{left:10px;bottom:150px;max-width:calc(100vw - 20px)}
   body.game-world .game-observer-controls{right:10px;bottom:196px;max-width:calc(100vw - 20px)}
-  body.game-world .game-build-host{bottom:150px;max-width:calc(100vw - 20px)}
+  /* The same rule at phone width, on the band's own phone geometry: the band sits at 10px and
+     measured 165px tall at 390x844, and 178px in the full acceptance run where the control hint
+     wraps to a second line, so its top is 188px above the stage bottom and the tools sit 15px above
+     that. This is deliberately the tightest of the three rules: at 390x844 the tools (573px) and the
+     band (up to 178px) already fill 776px of the 784px stage, so the host's own top lands 8px below
+     the masthead and there is no room left to spend. */
+  body.game-world .game-build-host{bottom:203px;max-width:calc(100vw - 20px)}
 }
 @media(prefers-reduced-motion:reduce){body.game-world .game-prompt-host,body.game-world .game-overlay-host{transition:none}}
 

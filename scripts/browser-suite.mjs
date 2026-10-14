@@ -17,16 +17,17 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { arch, cpus, loadavg, platform, release, tmpdir, totalmem } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer as createTcpServer } from 'node:net';
 import { request as httpRequest } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
+import { cameraWalkDirection, facingLabel } from '../src/camera-controls.js';
 import { RESTORATION_PLAN } from '../src/community.js';
 import { validateDatabase } from '../src/recovery.js';
 import { planWalk } from '../src/world-walk.js';
-import { getWorldDefinition } from '../world.js';
+import { frontierGates, getWorldDefinition } from '../world.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const RESULTS = join(ROOT, 'test-results');
@@ -111,6 +112,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'private-draft-isolation', title: 'Private draft isolation between operators', regression: 'queue review correction 2' },
   { id: 'refresh-and-focus-restoration', title: 'Refresh returns to the right form and restores focus', regression: 'queue review correction 3' },
   { id: 'first-person-controls', title: 'First-person movement, drag-look and the aim line', regression: null },
+  { id: 'movement-latency', title: 'Local input to confirmed step: timed in the page, reported and not gated', regression: null },
   { id: 'country-ambassadors', title: 'Country ambassadors: directory, profile, conversation, mismatch', regression: null },
   { id: 'plot-and-blueprints', title: 'Plot assignment and blueprint preview, apply and remove', regression: null },
   { id: 'character-switch-clears-preview', title: 'Selecting another character clears the old blueprint preview', regression: 'queue review correction 1' },
@@ -123,12 +125,15 @@ export const SCENARIOS = Object.freeze([
   { id: 'subscription-entitlement-and-revocation', title: 'A private world and a revoked session both lose their live feed', regression: null },
   { id: 'interaction-hint-and-distance', title: 'The interaction hint, its one-tile requirement and an out-of-range refusal', regression: null },
   { id: 'game-hud-interaction-prompt-and-aim', title: 'The game HUD exposes a usable interaction prompt and matching aim guidance', regression: null },
+  { id: 'next-passage-cue', title: 'The HUD names the next passage the server sends, and nothing when there is none', regression: null },
+  { id: 'hud-visible-while-building', title: 'The HUD next-action band stays readable while the frontier build tools are open', regression: null },
   { id: 'interaction-saved-world-changes', title: 'A planted crop patch and a bench posture survive a reload', regression: null },
   { id: 'interaction-door-and-crafting', title: 'A doorway travels to another world and a crafting station crafts once per click', regression: null },
   { id: 'interaction-ambassador-desk', title: 'A country ambassador desk answers through the existing conversation action', regression: null },
   { id: 'interaction-state-refusals', title: 'Paused, revoked, wrong-owner and observer refusals keep the server authoritative', regression: null },
   { id: 'consolidated-proposal-history', title: 'Retired research templates remain readable but cannot become missions', regression: 'batch 02 integration correction' },
   { id: 'shared-build-and-restart', title: 'Two humans and an AI runtime build together, exchange items and keep progress after restart', regression: 'shared integration' },
+  { id: 'wave-b-two-gates', title: 'Two humans and an active AI cross two connected frontier gates, talk in the sector they reached, and return to it after a restart', regression: 'wave B acceptance' },
   { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
   { id: 'reviewer-workbench', title: 'A reviewer assesses each criterion, compares source versions, requests changes and the mission owner records an adoption', regression: null },
   { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
@@ -360,6 +365,11 @@ const ACTORS = {
   // The reviewer-workbench scenarios keep all four roles on different accounts: the administrator
   // proposes and later adopts, this operator contributes, and the reviewer is the fourth person.
   contributor: { email: 'contributor@browser.test', password: PASSWORD, name: 'Browser contributor' },
+  // The Wave B crossing scenario creates its own two operators and their three residents, so the two
+  // humans that cross the frontier gates share no account, character or fixture with any other
+  // scenario, and no shared resident is left standing in another sector when it ends.
+  'wave-b-host': { email: 'wave-b-host@browser.test', password: PASSWORD, name: 'Wave B host' },
+  'wave-b-guest': { email: 'wave-b-guest@browser.test', password: PASSWORD, name: 'Wave B guest' },
 };
 
 /**
@@ -1087,6 +1097,380 @@ define('first-person-controls', async () => {
     return `moved ${before.x},${before.y} → ${after.x},${after.y}; the accessible aim line names the new tile`;
   });
   return 'first person drove real movement and a real drag-look, with the aim line kept in step';
+});
+
+// ---------------------------------------------------------------------------------------------
+// Scenario — the local input-to-confirmed-step latency instrument
+//
+// The suite already measures cross-client propagation (see `shared-presence-two-clients`): a click
+// reaching the *other* browser's view. This scenario measures the interval the movement work is
+// judged against instead: one local movement input to the interface naming the tile the server
+// stored, for a run of consecutive single-tile steps. It is an instrument, not a performance gate.
+// It asserts only what is deterministic — that every step was confirmed by the interface and by the
+// server — and reports the figures in a note, so two runs can be compared without a slow run
+// failing the suite.
+//
+// Environment, stated plainly: loopback HTTP, headless Chrome, one server process, one SQLite
+// writer, no network, and no other client on the resident being measured. The figure is a lower
+// bound for a supported user on a real device over a real network, and claims nothing about that.
+// ---------------------------------------------------------------------------------------------
+
+/** Consecutive single-tile steps measured inside one page-side loop. */
+const MOVEMENT_LATENCY_SAMPLES = 24;
+/**
+ * A generous sanity bound, not a performance target. A step the interface never confirms means the
+ * instrument lost a step, so it fails here rather than reporting a stall as latency. It is far above
+ * every figure this suite has measured (a p95 of tens of milliseconds on an idle machine), because a
+ * bound that a loaded machine can trip would make the suite flaky rather than informative.
+ */
+const MOVEMENT_LATENCY_CONFIRM_TIMEOUT_MS = 15_000;
+/**
+ * The shipped client holds motion requests 160 ms apart after the press it belongs to, and the
+ * server refuses a second step inside 120 ms. Inputs are therefore spaced from the previous
+ * request's own send time, not from the previous press: on the press's clock alone the client's hold
+ * can push a request late and leave the next one inside the server's refusal window. The margin on
+ * top is for the server's own processing jitter, which a loaded machine turns into a variable delay
+ * between two requests that left the page well apart. Without this spacing the reported figure would
+ * measure the client's own pacing, and the per-step dispatch time is reported so a reader can see
+ * the pacing held.
+ */
+const MOVEMENT_LATENCY_PACE_MS = 400;
+/**
+ * How many inputs one step may take. Only a press the server's own throttle refused is re-issued,
+ * and each such refusal is reported; a step that is never confirmed still fails the scenario.
+ */
+const MOVEMENT_LATENCY_INPUT_ATTEMPTS = 3;
+/**
+ * The measured route is a loop: this many single-tile steps out, the same number back, so the run
+ * ends on the tile it started from and the instrument leaves the shared world as it found it.
+ */
+const MOVEMENT_LATENCY_ROUTE_STEPS = MOVEMENT_LATENCY_SAMPLES / 2;
+/** The cardinal step that undoes another one, for the return leg of the loop. */
+const OPPOSITE_DIRECTION = Object.freeze({ up: 'down', down: 'up', left: 'right', right: 'left' });
+
+/** The machine this run measured on, read at run time so the note names hardware instead of assuming it. */
+function measurementHardware() {
+  const model = cpus()[0]?.model || 'an unknown processor';
+  return `${model}, ${cpus().length} cores, ${Math.round(totalmem() / 1024 ** 3)} GB, ${platform()} ${arch()} kernel ${release()}`;
+}
+
+/** The value `fraction` of the way through an ascending copy of `values`. */
+function percentile(values, fraction) {
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(fraction * sorted.length) - 1))];
+}
+
+/** Landmarks, portals and four long offsets: targets worth planning a Commons route to. */
+function latencyRouteTargets(definition, start) {
+  const targets = [];
+  const add = (x, y) => {
+    if (Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < definition.columns && y < definition.rows) targets.push({ x, y });
+  };
+  for (const landmark of definition.landmarks || []) add(landmark.x, landmark.y);
+  for (const portal of definition.portals || []) add(portal.x, portal.y);
+  for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32], [24, 24], [-24, 24], [24, -24], [-24, -24]]) add(start.x + dx, start.y + dy);
+  return targets;
+}
+
+/** One short readable form of a planned route, e.g. `8×E 4×S`, for the note. */
+function compactRoute(route) {
+  const letters = { up: 'N', right: 'E', down: 'S', left: 'W' };
+  const runs = [];
+  for (const direction of route) {
+    const letter = letters[direction];
+    const last = runs[runs.length - 1];
+    if (last && last.letter === letter) last.count += 1;
+    else runs.push({ letter, count: 1 });
+  }
+  return runs.map((run) => `${run.count}×${run.letter}`).join(' ');
+}
+
+define('movement-latency', async () => {
+  const owner = await actor('owner');
+  const page = owner.page;
+  const walker = fixtures().characters.walker;
+  const CARDINAL_STEPS = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
+  const CONTROL_DIRECTIONS = ['up', 'left', 'down', 'right'];
+  const tileName = (tile) => (tile ? `${tile.x},${tile.y}` : 'no tile named');
+  // The Commons is where this instrument measures: an authored world a resident walks without a
+  // plot of its own, and the one with long walkable routes out of the arrival plaza.
+  await sendToCommons(fixtures().owner, walker.id);
+
+  let plan = null;
+  await step('the resident enters the Commons in first person with a planned walkable route', async () => {
+    await openApp(page, ACTORS.owner);
+    await openTab(page, 'Open world');
+    await page.locator('#view select[name="agent"]').selectOption(walker.id);
+    await settle(page);
+    await page.waitForTimeout(400);
+    // This operator's browser keeps its last camera choice, so first person is pressed only when it
+    // is not already on: the instrument needs the first-person aim line, not a camera toggle.
+    const firstPerson = page.locator('#view button[aria-label="First person camera that follows your resident"]');
+    if (await firstPerson.getAttribute('aria-pressed') !== 'true') await firstPerson.click();
+    await page.waitForFunction(() => (document.querySelector('#world-reticle')?.textContent || '').startsWith('First person'), null, { timeout: PAGE_TIMEOUT_MS });
+    const resident = row('SELECT id,world_id,x,y,yaw,status FROM agents WHERE id=?', walker.id);
+    expect(resident?.status === 'active', 'the measured resident must be an active stored resident', { expected: 'an active resident row', actual: describe(resident) });
+    expect(resident.world_id === 'commons', 'the instrument must measure in the Commons, where the long routes are', { expected: 'commons', actual: describe(resident.world_id) });
+    const aim = (await page.locator('#world-reticle').textContent())?.trim() || '';
+    expect(aim.includes(`at ${resident.x}, ${resident.y}`), 'the aim line must name the resident’s stored tile before the first input', { expected: `at ${resident.x}, ${resident.y}`, actual: describe(aim.slice(0, 140)) });
+    // A first-person control walks the way the client's own facing points, so a planned cardinal
+    // route is translated through the same stored yaw the client read at selection. The client's
+    // own facing label is checked against that yaw first, because the label is what the interface
+    // says and the translation is only sound while the two agree.
+    const yaw = Number.isFinite(resident.yaw) ? resident.yaw : Math.PI / 4;
+    expect(aim.includes(`facing ${facingLabel(yaw)}`), 'the aim line and the stored yaw must name the same facing', { expected: `facing ${facingLabel(yaw)}`, actual: describe(aim.slice(0, 140)) });
+    const controlForCardinal = new Map();
+    for (const control of CONTROL_DIRECTIONS) {
+      const cardinal = cameraWalkDirection(control, yaw);
+      if (!controlForCardinal.has(cardinal)) controlForCardinal.set(cardinal, control);
+    }
+    const definition = getWorldDefinition(resident.world_id);
+    const objects = rows('SELECT type,x,y FROM world_objects WHERE world_id=?', resident.world_id);
+    let outbound = null;
+    for (const target of latencyRouteTargets(definition, resident)) {
+      const candidate = planWalk(definition, { x: resident.x, y: resident.y }, target, { objects });
+      if (!candidate || candidate.length < MOVEMENT_LATENCY_ROUTE_STEPS) continue;
+      // A facing exactly on a diagonal resolves two controls to one cardinal step, leaving one
+      // cardinal unreachable; a route that never needs it is still a valid route.
+      if (!candidate.every((direction) => controlForCardinal.has(direction))) continue;
+      if (!outbound || candidate.length > outbound.length) outbound = candidate;
+    }
+    expect(outbound, `a planned route of at least ${MOVEMENT_LATENCY_ROUTE_STEPS} walkable single-tile steps must exist where the resident stands`, { expected: `${MOVEMENT_LATENCY_ROUTE_STEPS} planned steps from ${resident.x},${resident.y}`, actual: describe({ world: resident.world_id, planned: latencyRouteTargets(definition, resident).length, facing: facingLabel(yaw) }) });
+    // Out and back: the measured run ends on the tile it started from. Walking a resident 24 tiles
+    // away and leaving it there would change what every later scenario shares — the server's
+    // observation window is only 20 × 14 tiles, so a resident parked outside it is invisible to the
+    // other browser — and an instrument must not edit the fixture it measures in.
+    const leg = outbound.slice(0, MOVEMENT_LATENCY_ROUTE_STEPS);
+    const measured = [...leg, ...[...leg].reverse().map((direction) => OPPOSITE_DIRECTION[direction])];
+    let cursor = { x: resident.x, y: resident.y };
+    const stepTiles = measured.map((cardinal) => {
+      const [dx, dy] = CARDINAL_STEPS[cardinal];
+      cursor = { x: cursor.x + dx, y: cursor.y + dy };
+      return { control: controlForCardinal.get(cardinal), cardinal, tile: { ...cursor } };
+    });
+    plan = { worldId: resident.world_id, worldName: definition.name, startTile: { x: resident.x, y: resident.y }, cardinals: measured, stepTiles };
+    return `${definition.name} from ${tileName(plan.startTile)}: ${leg.length} steps out and ${leg.length} back (${compactRoute(measured)}), returning to the starting tile`;
+  });
+
+  let measured = null;
+  // Every movement request the page actually issued, seen from this side of the connection. It is
+  // evidence, not timing: one press must become exactly one `POST …/move`, and a step that was never
+  // confirmed has to say whether the input reached the wire at all.
+  const issuedMoves = [];
+  const recordIssuedMove = (request) => { if (/\/move(\?|$)/.test(request.url())) issuedMoves.push(request.url().replace(/^https?:\/\/[^/]+/, '')); };
+  page.on('request', recordIssuedMove);
+  await step(`the in-page loop times ${MOVEMENT_LATENCY_SAMPLES} consecutive confirmed steps`, async () => {
+    // The whole loop runs inside one page.evaluate, so no Node ↔ browser round trip sits inside a
+    // measured interval. The input is the shipped movement control this suite already drives — or,
+    // when the workspace has rendered that control disabled, the walk key, which reaches the same
+    // intent through the one keydown handler — and the confirmation is the accessible aim line
+    // naming the tile the server stored, not an optimistic paint, which this path does not have.
+    measured = await page.evaluate(async (input) => {
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const now = () => performance.now();
+      const POSITION = /· at (\d+), (\d+)(?:, layer (\d+))?/;
+      const readLine = () => document.querySelector('#world-reticle')?.textContent || '';
+      const readTile = () => {
+        const match = POSITION.exec(readLine());
+        return match ? { x: Number(match[1]), y: Number(match[2]) } : null;
+      };
+      // The newest completed `POST …/move` resource entry says how much of each interval was the
+      // request leaving the page, how much was the server answering, and how much was the interface
+      // after that. Nothing is patched to get it; it is already timed by the browser.
+      try { performance.clearResourceTimings(); performance.setResourceTimingBufferSize(1000); } catch { /* a diagnostic, not the measurement */ }
+      const moveEntry = (since) => {
+        let newest = null;
+        for (const entry of performance.getEntriesByType('resource')) {
+          if (!entry.name.includes('/move') || entry.startTime < since) continue;
+          if (!newest || entry.startTime > newest.startTime) newest = entry;
+        }
+        return newest;
+      };
+      // Every request the page made since a press, so a step that was never confirmed says whether
+      // the input left the page at all and, if it did, which endpoint carried it.
+      const requestsSince = (since) => performance.getEntriesByType('resource')
+        .filter((entry) => entry.startTime >= since)
+        .map((entry) => ({ path: entry.name.replace(/^https?:\/\/[^/]+/, ''), ms: Number((entry.startTime - since).toFixed(1)) }));
+      // The aim line is rewritten by the same paint that applies the server's tile, so the microtask
+      // that follows the mutation is the earliest moment the interface names that tile.
+      const waitForTile = (wanted, timeoutMs, since) => new Promise((resolve) => {
+        let settled = false, timer = null, observer = null;
+        const settle = (result) => {
+          if (settled) return;
+          settled = true;
+          observer?.disconnect();
+          if (timer !== null) clearInterval(timer);
+          resolve(result);
+        };
+        const check = () => {
+          const tile = readTile();
+          if (tile && tile.x === wanted.x && tile.y === wanted.y) { settle({ tile, at: now() }); return; }
+          // The server's own movement throttle answers in milliseconds, so a refused input is settled
+          // at once instead of being waited out as though it were a slow step.
+          if (moveEntry(since)?.responseStatus === 429) { settle({ tile, at: now(), refused: true }); return; }
+          if (now() - since >= timeoutMs) settle({ tile, at: now(), timedOut: true });
+        };
+        observer = new MutationObserver(check);
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+        timer = setInterval(check, 5);
+        check();
+      });
+      // An independent read of the server's own record for this step, taken after the interface was
+      // timed, so the report never has to take the interface's word for the tile.
+      const auditTile = async (tile) => {
+        // No camera hint: the server centres an authenticated read on the resident being read, and a
+        // hint would move the 20 × 14 observation window off the very resident this is asking about.
+        const query = new URLSearchParams({ view: 'voxel', world_id: input.worldId, agent_id: input.agentId });
+        const body = await fetch(`/api/v1/world?${query}`, { credentials: 'same-origin' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+        const found = [...(body?.participants || []), ...(body?.agents || [])].find((item) => item?.id === input.agentId) || null;
+        return found ? { x: found.x, y: found.y } : null;
+      };
+
+      const samples = [];
+      // Presses the server's own movement throttle refused before a step was measured. They are
+      // reported rather than hidden: a refusal means that input never became a step.
+      const refusedPresses = [];
+      // Paced from the previous request's own send time, not from the previous press. The shipped
+      // client holds motion requests 160 ms apart after the press, so pacing from the press can let
+      // the client's own hold compress two sends closer than the server's 120 ms refusal window.
+      let lastSentAt = -Infinity;
+      for (let index = 0; index < input.steps.length; index++) {
+        const planned = input.steps[index];
+        let sample = null;
+        for (let attempt = 0; attempt < input.maxAttempts && !sample; attempt += 1) {
+          const idle = input.paceMs - (now() - lastSentAt);
+          if (idle > 0) await sleep(idle);
+          const button = document.querySelector(`#view button[aria-label="Move ${planned.control}"]`);
+          if (!button) return { error: `no movement control labelled “Move ${planned.control}” was reachable`, samples, refusedPresses };
+          const before = readTile();
+          // The control's own state as the press finds it: a disabled control silently refuses
+          // `click()`, and more than one match would mean the press reached a control the interface
+          // had replaced rather than the live one.
+          const controlAtPress = {
+            disabled: Boolean(button.disabled), connected: Boolean(button.isConnected),
+            matches: document.querySelectorAll(`#view button[aria-label="Move ${planned.control}"]`).length,
+          };
+          // The identity a queued move carries: a press the page accepted and then dropped would show
+          // here as a changed selection or world between the press and the wait.
+          const contextAtPress = { selected: window.__nemoworld?.selected?.() ?? null, worldId: window.__nemoworld?.worldId?.() ?? null };
+          // One input, reported by name. The movement control is the shipped control this suite
+          // already drives, but the workspace briefly renders its own controls disabled while its
+          // three-second viewport poll swaps the agent list, and a disabled control refuses `click()`
+          // without a word. The walk key reaches the same movement intent through the one keydown
+          // handler, so it carries the input instead and the sample says so.
+          const press = () => {
+            let dispatched = false;
+            const recordClick = () => { dispatched = true; };
+            button.addEventListener('click', recordClick, { capture: true });
+            button.click();
+            button.removeEventListener('click', recordClick, { capture: true });
+            if (dispatched) return 'control';
+            const key = { up: 'w', left: 'a', down: 's', right: 'd' }[planned.control];
+            document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+            return `key ${key}`;
+          };
+          const t0 = now();
+          const inputMedium = press();
+          const confirmation = await waitForTile(planned.tile, input.confirmTimeoutMs, t0);
+          const entry = moveEntry(t0);
+          lastSentAt = entry ? entry.requestStart : t0;
+          if ((confirmation.refused || confirmation.timedOut) && entry?.responseStatus === 429 && attempt < input.maxAttempts - 1) {
+            // The server's own throttle refused the step, exactly as the suite treats it elsewhere.
+            // This input never became a step, so it is not a sample: the next attempt is timed afresh.
+            refusedPresses.push({ index, attempt, control: planned.control });
+            continue;
+          }
+          // What the client itself holds and what the server says, both read after the interval was
+          // timed: when a step is not confirmed these are what say whether the step was refused,
+          // landed elsewhere, or simply never left the page.
+          const clientTile = (() => {
+            const held = window.__nemoworld?.world?.()?.participants?.find((item) => item?.id === input.agentId);
+            return held ? { x: held.x, y: held.y, yaw: held.yaw } : null;
+          })();
+          sample = {
+            index, control: planned.control, cardinal: planned.cardinal, wanted: planned.tile, before, attempt,
+            confirmed: confirmation.tile || null, timedOut: Boolean(confirmation.timedOut), ms: confirmation.at - t0,
+            dispatchMs: entry ? entry.requestStart - t0 : null,
+            responseMs: entry ? entry.responseEnd - t0 : null,
+            status: entry?.responseStatus ?? null,
+            inputMedium,
+            controlAtPress,
+            context: { atPress: contextAtPress, atResult: { selected: window.__nemoworld?.selected?.() ?? null, worldId: window.__nemoworld?.worldId?.() ?? null } },
+            client: clientTile, audit: await auditTile(planned.tile), aim: readLine().slice(0, 240),
+            // Only kept for a step that was not confirmed: it is the difference between an input the
+            // page never sent and one it sent to an endpoint other than the movement route.
+            requests: confirmation.timedOut ? requestsSince(t0) : null,
+            controlDisabled: confirmation.timedOut ? Boolean(document.querySelector(`#view button[aria-label="Move ${planned.control}"]`)?.disabled) : null,
+          };
+        }
+        samples.push(sample);
+        // A lost step, or a server that disagrees about the tile, ends the run where it happened:
+        // carrying on would only report a latency for a walk that had stopped being real.
+        const named = sample.confirmed && sample.confirmed.x === planned.tile.x && sample.confirmed.y === planned.tile.y;
+        const audited = !sample.audit || (sample.audit.x === planned.tile.x && sample.audit.y === planned.tile.y);
+        if (sample.timedOut || !named || !audited) break;
+      }
+      return { samples, refusedPresses };
+    }, {
+      steps: plan.stepTiles, paceMs: MOVEMENT_LATENCY_PACE_MS, confirmTimeoutMs: MOVEMENT_LATENCY_CONFIRM_TIMEOUT_MS,
+      maxAttempts: MOVEMENT_LATENCY_INPUT_ATTEMPTS,
+      worldId: plan.worldId, agentId: walker.id,
+    });
+
+    expect(!measured.error, 'the measurement loop must reach every planned movement control', { actual: describe(measured.error) });
+    for (const [index, sample] of measured.samples.entries()) {
+      expect(!sample.timedOut, `step ${index} must be confirmed inside the ${MOVEMENT_LATENCY_CONFIRM_TIMEOUT_MS} ms sanity bound`, { expected: tileName(sample.wanted), actual: tileName(sample.confirmed), detail: describe({ input: sample.inputMedium, control: sample.control, cardinal: sample.cardinal, from: tileName(sample.before), clientHeld: describe(sample.client), serverHeld: describe(sample.audit), aimLine: sample.aim, controlAtPress: describe(sample.controlAtPress), controlAtTimeout: sample.controlDisabled, context: describe(sample.context), requestsSincePress: describe(sample.requests), moveTiming: describe({ dispatchMs: sample.dispatchMs, responseMs: sample.responseMs }), movementRequestsIssued: `${issuedMoves.length} for ${index + 1} presses` }) });
+      expect(sample.confirmed && sample.confirmed.x === sample.wanted.x && sample.confirmed.y === sample.wanted.y, `step ${index} must make the interface name the planned tile`, { expected: tileName(sample.wanted), actual: tileName(sample.confirmed) });
+      expect(sample.audit && sample.audit.x === sample.wanted.x && sample.audit.y === sample.wanted.y, `step ${index} must be confirmed by the server itself, not only by the interface`, { expected: tileName(sample.wanted), actual: describe(sample.audit) });
+      const named = index === 0 ? plan.startTile : measured.samples[index - 1].confirmed;
+      expect(sample.before && sample.before.x === named.x && sample.before.y === named.y, `step ${index} must start from the tile the interface last named`, { expected: tileName(named), actual: tileName(sample.before) });
+      const advanced = Math.abs(sample.wanted.x - sample.before.x) + Math.abs(sample.wanted.y - sample.before.y);
+      expect(advanced === 1, `step ${index} must advance exactly one tile: no step lost, no refusal`, { expected: `one tile from ${tileName(sample.before)}`, actual: tileName(sample.wanted) });
+    }
+    expect(measured.samples.length === MOVEMENT_LATENCY_SAMPLES, `all ${MOVEMENT_LATENCY_SAMPLES} planned steps must be measured`, { expected: MOVEMENT_LATENCY_SAMPLES, actual: measured.samples.length });
+
+    const durations = measured.samples.map((sample) => sample.ms);
+    const statistics = { count: durations.length, min: Math.min(...durations), median: median(durations), p95: percentile(durations, 0.95), max: Math.max(...durations) };
+    const finite = (key) => measured.samples.map((sample) => sample[key]).filter((value) => Number.isFinite(value));
+    const dispatch = finite('dispatchMs');
+    const response = finite('responseMs');
+    // How much of each interval came after the server's own answer: the read of the stored world
+    // that the interface paints from. The live feed can deliver that tile too, so this split is
+    // reported as a median and is allowed to be small or negative for a single step.
+    const afterwards = measured.samples.filter((sample) => Number.isFinite(sample.responseMs)).map((sample) => sample.ms - sample.responseMs);
+    const round = (value) => Number(value.toFixed(2));
+    const hardware = measurementHardware();
+    // Which input carried the samples, and how often the workspace had disabled its own movement
+    // control at the moment of the press. Both are reported because the interval is the same either
+    // way and a reader deserves to know the input was not always the same control.
+    const byControl = measured.samples.filter((sample) => sample.inputMedium === 'control').length;
+    const disabledControls = measured.samples.filter((sample) => sample.controlAtPress?.disabled).length;
+    state.notes.push([
+      `input → confirmed step, timed in the page: ${plan.worldName}, ${MOVEMENT_LATENCY_ROUTE_STEPS} steps out from ${tileName(plan.startTile)} and the same back (${compactRoute(plan.cardinals)})`,
+      `min ${round(statistics.min)} ms · median ${round(statistics.median)} ms · p95 ${round(statistics.p95)} ms · max ${round(statistics.max)} ms · n=${statistics.count}`,
+      `split: input → request left the page median ${dispatch.length ? round(median(dispatch)) : 'n/a'} ms · input → POST /move answered median ${response.length ? round(median(response)) : 'n/a'} ms · that answer → the aim line median ${afterwards.length ? round(median(afterwards)) : 'n/a'} ms · no earlier optimistic paint exists on this path: the first tile the interface can name is the server’s`,
+      `inputs: ${byControl} of ${statistics.count} carried by the movement control and ${statistics.count - byControl} by the walk key, which is the same handler and the same view-relative step; the workspace’s own control was disabled at the press in ${disabledControls} of them · the server’s own movement throttle refused ${measured.refusedPresses.length} press${measured.refusedPresses.length === 1 ? '' : 'es'}, each re-issued and never counted as a step`,
+      `measured on ${hardware}, load average ${loadavg().map((value) => value.toFixed(1)).join('/')} at the end of the run; loopback HTTP, headless Chrome, one server process, one SQLite writer, no network, no other client on this resident — a lower bound on the network it crosses, and not a supported-user or real-device latency claim`,
+    ].join(' · '));
+    return `n=${statistics.count} · min ${round(statistics.min)} ms · median ${round(statistics.median)} ms · p95 ${round(statistics.p95)} ms · max ${round(statistics.max)} ms · ${plan.worldName} ${compactRoute(plan.cardinals)} from ${tileName(plan.startTile)}`;
+  });
+  page.off('request', recordIssuedMove);
+
+  await step('the resident stands on the tile it started from and the server agrees', async () => {
+    const stored = row('SELECT world_id,x,y,status FROM agents WHERE id=?', walker.id);
+    const last = measured.samples[measured.samples.length - 1].confirmed;
+    expect(stored.world_id === plan.worldId && stored.x === last.x && stored.y === last.y, 'the stored resident must stand on the last tile the interface named', { expected: describe({ world_id: plan.worldId, x: last.x, y: last.y }), actual: describe(stored) });
+    expect(stored.x === plan.startTile.x && stored.y === plan.startTile.y, 'the measured loop must leave the resident on its starting tile, so no later scenario shares a moved fixture', { expected: tileName(plan.startTile), actual: `${stored.x},${stored.y}` });
+    expect(stored.status === 'active', 'the measured walk must not have changed the resident’s own state', { expected: 'active', actual: describe(stored.status) });
+    // Exactly one movement request per press: the measured presses plus the ones the server's own
+    // movement throttle refused and the instrument re-issued. Nothing dropped, nothing doubled.
+    const expectedMoves = measured.samples.length + measured.refusedPresses.length;
+    const issued = await waitForCondition(() => issuedMoves.length >= expectedMoves ? issuedMoves.length : null, 'the movement requests for the measured steps to appear on the connection', { timeout: 2000, interval: 20 });
+    expect(issued === expectedMoves, 'every press must have carried exactly one movement request, so no input was dropped and none was doubled', { expected: expectedMoves, actual: describe({ issued, samples: measured.samples.length, reIssuedAfterThrottle: measured.refusedPresses.length, paths: [...new Set(issuedMoves)] }) });
+    return `agents row back at ${stored.x},${stored.y} in ${stored.world_id} after ${measured.samples.length} confirmed steps, each carried by one movement request`;
+  });
+
+  return `the ${MOVEMENT_LATENCY_SAMPLES}-step input → confirmed-step instrument reported min/median/p95/max in the notes; every step was confirmed by the interface and by the server`;
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -2456,6 +2840,368 @@ define('game-hud-interaction-prompt-and-aim', async () => {
   return 'the real game HUD, interaction control and aim line stayed synchronized after reading a usable doorway';
 });
 
+/**
+ * The HUD's next-passage line, the visible half of the server's `next_passage` field. The scenario
+ * re-composes the line from the payload the client is holding, so a client-invented label, direction,
+ * distance or count fails here, and it checks the five states the line must tell apart: a resident
+ * with a passage, that same resident after a confirmed step, a resident standing on the passage the
+ * server planned an empty route to, a paused world (the payload still carries a cue, so withholding it
+ * is the HUD's own honest choice), and a viewer with no resident at all (the server sends `null` and
+ * the HUD must show nothing rather than an empty or invented hint).
+ */
+define('next-passage-cue', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const wanderer = fixtures().characters.wanderer;
+  // A browser with no resident in this world. The server answers such a viewer with `next_passage:
+  // null` (pinned by tests/passage-cue.test.js), and the HUD must not turn that into a hint.
+  const observer = await context('next-passage-cue-observer');
+
+  /** The cue exactly as this client holds the server's payload. */
+  const payloadCue = (target) => target.evaluate(() => window.__nemoworld?.world?.()?.next_passage ?? null);
+  /** The rendered line: its text, and whether it is actually shown. */
+  const hudLine = (target) => target.evaluate(() => {
+    const node = document.querySelector('#game-next-passage');
+    if (!node) return { exists: false, text: '', hidden: false, visible: false, live: null };
+    const style = getComputedStyle(node), box = node.getBoundingClientRect();
+    return {
+      exists: true, text: (node.textContent || '').trim(), hidden: Boolean(node.hidden),
+      visible: style.display !== 'none' && style.visibility !== 'hidden' && !node.hidden && box.height > 0 && box.width > 0,
+      // The cue must not be a live region: the step count changes as the resident walks and the world
+      // poll re-reads it every three seconds, so announcing it would interrupt a screen reader.
+      live: node.getAttribute('aria-live'),
+    };
+  });
+  /** The line the HUD claims to compose, re-made from the server's own two fields. */
+  const composed = (cue) => `${cue.label} · ${cue.steps} step${cue.steps === 1 ? '' : 's'}`;
+  /** The revealed cue: the payload's own field paired with the visible line, or null while they disagree. */
+  const revealed = async (target) => {
+    const cue = await payloadCue(target), line = await hudLine(target);
+    return cue && cue.kind && line.visible ? { cue, line } : null;
+  };
+  const position = () => row('SELECT x,y FROM agents WHERE id=?', wanderer.id);
+  /** The world cardinal one grid step produces on this world's axes. */
+  const cardinalOf = (dx, dy) => (dy === -1 ? 'up' : dy === 1 ? 'down' : dx === 1 ? 'right' : 'left');
+  /** The four cardinals clockwise, used to read the whole control map from one measured step. */
+  const CARDINAL_CYCLE = { up: 'right', right: 'down', down: 'left', left: 'up' };
+  /**
+   * Which movement control carries which world direction. It is read from the first confirmed step
+   * this scenario measures rather than assumed: a control's direction is relative to the camera in
+   * first person, and the mapping preserves this cycle, so one measured step names all four.
+   */
+  const controlFor = {};
+
+  await step('the HUD names the passage the server sends for this resident', async () => {
+    await sendToCommons(fixtures().admin, wanderer.id);
+    await openApp(page, ACTORS.admin);
+    await openWorldAs(page, wanderer.id);
+    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await page.locator('#game-hud').waitFor({ state: 'visible' });
+    const first = await waitForCondition(() => revealed(page), 'the HUD to show the passage the server sends for its own resident');
+    const expected = composed(first.cue);
+    expect(first.line.text === expected, 'the HUD must compose the cue from the server’s own label and planned route length', { expected, actual: first.line.text });
+    expect(first.line.live === null, 'the cue must not be a live region the world poll re-announces', { expected: 'no aria-live attribute', actual: describe(first.line.live) });
+    // The named tile must be a passage this payload really exposes, not a decorative point.
+    const exposed = await page.evaluate(({ x, y }) => {
+      const view = window.__nemoworld.world();
+      return {
+        portal: (view.portals || []).some((item) => item.x === x && item.y === y),
+        gate: ((view.frontier && view.frontier.gates) || []).some((item) => item.x === x && item.y === y),
+        world: view.world && view.world.name,
+      };
+    }, { x: first.cue.x, y: first.cue.y });
+    expect(exposed.portal || exposed.gate || first.cue.kind === 'portal', 'the named passage must be one the payload itself exposes', { actual: describe({ kind: first.cue.kind, x: first.cue.x, y: first.cue.y, exposed }) });
+    // It describes the resident's own world, and the HUD is showing that same world.
+    const shown = await page.evaluate(() => ({ id: window.__nemoworld?.worldId?.() || '', name: document.querySelector('.game-place strong')?.textContent?.trim() || '' }));
+    expect(first.cue.world_id === shown.id, 'the cue must describe the world the resident stands in', { expected: shown.id, actual: first.cue.world_id });
+    expect(shown.name && shown.name === exposed.world, 'the HUD must be showing that same world', { expected: exposed.world, actual: shown.name });
+    state.notes.push(`next-passage cue: “${first.line.text}” composed from the payload’s own ${first.cue.kind} ${first.cue.label} at ${first.cue.x},${first.cue.y} in ${first.cue.world_id} (${first.cue.distance} tiles, ${first.cue.steps} planned steps)`);
+    return `HUD “${first.line.text}” from the payload’s own ${first.cue.label} at ${first.cue.x},${first.cue.y} in ${first.cue.world_id}`;
+  });
+
+  await step('a confirmed step re-reads the cue instead of freezing the first wording', async () => {
+    const before = await revealed(page);
+    const start = position();
+    let direction = null, arrived = null;
+    for (const candidate of ['Move up', 'Move left', 'Move down', 'Move right']) {
+      await page.locator(`#view button[aria-label="${candidate}"]`).click();
+      // Bounded: a blocked direction leaves the resident where it stood, and the next control is tried.
+      const step_ = await waitForCondition(() => { const now = position(); return now.x !== start.x || now.y !== start.y ? now : null; },
+        `the “${candidate}” control to carry one confirmed step`, { timeout: 3000, interval: 100 }).catch(() => null);
+      if (step_) { direction = candidate.replace('Move ', ''); arrived = step_; break; }
+    }
+    expect(direction, 'one of the four movement controls must carry a confirmed step out of the arrival tile', { expected: 'one tile of movement', actual: `${start.x},${start.y} blocked in all four directions` });
+    let control = direction, cardinal = cardinalOf(arrived.x - start.x, arrived.y - start.y);
+    for (let index = 0; index < 4; index += 1) { controlFor[cardinal] = control; control = CARDINAL_CYCLE[control]; cardinal = CARDINAL_CYCLE[cardinal]; }
+    const moved = await waitForCondition(async () => {
+      const cue = await payloadCue(page);
+      if (!cue || !cue.kind) return null;
+      if (cue.label === before.cue.label && cue.steps === before.cue.steps) return null;
+      const line = await hudLine(page);
+      return line.visible ? { cue, line } : null;
+    }, 'the client to read a new cue after the step');
+    expect(moved.line.text === composed(moved.cue), 'after the step the HUD must follow the new payload line for line', { expected: composed(moved.cue), actual: moved.line.text });
+    expect(moved.line.text !== before.line.text, 'the cue must be recomputed from where the resident stands, not a fixed string', { expected: `a line other than “${before.line.text}”`, actual: moved.line.text });
+    expect(arrived.x === moved.cue.from.x && arrived.y === moved.cue.from.y, 'the payload’s own `from` tile must be where the resident now stands', { expected: `${start.x},${start.y} + one ${direction} step`, actual: `${moved.cue.from.x},${moved.cue.from.y}` });
+    // Out and back: the walk returns the resident to the tile it started from, so no later scenario
+    // shares a moved fixture, and the first wording comes back with the first tile.
+    await page.locator(`#view button[aria-label="Move ${OPPOSITE_DIRECTION[direction]}"]`).click();
+    const restored = await waitForCondition(async () => {
+      const now = position();
+      if (now.x !== start.x || now.y !== start.y) return null;
+      const line = await hudLine(page);
+      return line.visible && line.text === before.line.text ? line : null;
+    }, 'the resident to walk back to its starting tile and the cue to return to its first wording');
+    state.notes.push(`next-passage cue after one ${direction} step: “${before.line.text}” → “${moved.line.text}” → “${restored.text}” back on ${start.x},${start.y}`);
+    return `${start.x},${start.y} → ${arrived.x},${arrived.y} and back: “${before.line.text}” → “${moved.line.text}” → “${restored.text}”`;
+  });
+
+  await step('a resident standing on the passage is told the empty route, not nothing', async () => {
+    // The arrival tile is one step from the doorway the server names, so standing on that tile makes
+    // the server's own planned route empty. The HUD shows the server's answer for that state instead
+    // of dropping a cue it was sent, and it stops being empty the moment the resident steps off.
+    const before = await revealed(page);
+    const start = position();
+    // Walking on, then back off: the door tile is one cardinal step from the resident's own tile, and
+    // the control for a world direction is read from the step this scenario already measured.
+    const control = controlFor[cardinalOf(before.cue.x - start.x, before.cue.y - start.y)];
+    expect(control, 'the step that finds the doorway must be one the movement controls can carry', { expected: `a control for the step from ${start.x},${start.y} to ${before.cue.x},${before.cue.y}`, actual: describe(controlFor) });
+    await page.locator(`#view button[aria-label="Move ${control}"]`).click();
+    const on = await waitForCondition(() => { const now = position(); return now.x === before.cue.x && now.y === before.cue.y ? now : null; },
+      'the resident to stand on the passage tile', { timeout: 5000, interval: 100 });
+    const standing = await waitForCondition(async () => {
+      const cue = await payloadCue(page);
+      if (!cue || cue.steps !== 0) return null;
+      const line = await hudLine(page);
+      return line.visible ? { cue, line } : null;
+    }, 'the payload’s own empty route to reach the HUD', { timeout: 10_000 });
+    expect(standing.cue.world_id === before.cue.world_id && standing.cue.label === before.cue.label, 'standing on the passage must still name the same passage', { expected: describe({ label: before.cue.label, world_id: before.cue.world_id }), actual: describe({ label: standing.cue.label, world_id: standing.cue.world_id }) });
+    expect(standing.line.text === composed(standing.cue), 'the empty route must be shown from the server’s own fields', { expected: composed(standing.cue), actual: standing.line.text });
+    await page.locator(`#view button[aria-label="Move ${OPPOSITE_DIRECTION[control]}"]`).click();
+    const off = await waitForCondition(async () => {
+      const now = position();
+      if (now.x !== start.x || now.y !== start.y) return null;
+      const line = await hudLine(page);
+      return line.visible && line.text === before.line.text ? line : null;
+    }, 'the resident to step off the passage and the cue to count steps again', { timeout: 5000 });
+    state.notes.push(`next-passage cue standing on the passage: “${standing.line.text}” on ${on.x},${on.y}, back to “${off.text}” on ${start.x},${start.y}`);
+    return `on the ${before.cue.label} tile ${on.x},${on.y}: “${standing.line.text}”, back to “${off.text}”`;
+  });
+
+  await step('a paused world shows no passage, and resuming brings the same cue back', async () => {
+    const before = await revealed(page);
+    await apiExpect(fixtures().admin, 'POST', '/operations/pause', { paused: true });
+    let withheld = null;
+    try {
+      withheld = await waitForCondition(async () => {
+        const line = await hudLine(page);
+        return !line.visible && line.text === '' ? line : null;
+      }, 'the HUD to withhold the passage while the world is paused');
+      // The payload that hid the line still carries a cue, so the HUD made an honest choice on a
+      // paused world rather than the server sending nothing.
+      const held = await page.evaluate(() => ({ paused: Boolean(window.__nemoworld.world().paused), cue: window.__nemoworld.world().next_passage }));
+      expect(held.paused === true && held.cue && held.cue.kind, 'the hidden line must be the HUD’s own decision on a paused world the server still describes', { expected: 'a paused payload that still carries a cue', actual: describe({ paused: held.paused, kind: held.cue && held.cue.kind }) });
+    } finally {
+      // The platform pause is a shared setting: it is resumed even when an assertion above failed.
+      await apiExpect(fixtures().admin, 'POST', '/operations/pause', { paused: false });
+    }
+    const resumed = await waitForCondition(async () => { const line = await hudLine(page); return line.visible && line.text === before.line.text ? line : null; }, 'the cue to return when the world resumes');
+    expect(!(await page.evaluate(() => Boolean(window.__nemoworld.world().paused))), 'the platform must be running again', { actual: 'the world is still paused' });
+    state.notes.push(`next-passage cue while paused: “${before.line.text}” withheld (line ${withheld.exists ? 'present but hidden and empty' : 'absent'}) with the payload still carrying the ${before.cue.kind} ${before.cue.label}, and restored on resume`);
+    return `paused: “${before.line.text}” withheld, then “${resumed.text}” restored after the resume`;
+  });
+
+  await step('a viewer with no resident is shown no passage at all', async () => {
+    const observerPage = observer.page;
+    await observerPage.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(observerPage);
+    await observerPage.locator('#hero-actions').getByRole('button', { name: /Observe/i }).first().click();
+    await settle(observerPage);
+    await observerPage.locator('#game-hud').waitFor({ state: 'visible' });
+    // `next_passage` is a field of the payload, so a missing payload and a null field are told apart.
+    const observed = await observerPage.evaluate(() => {
+      const view = window.__nemoworld?.world?.();
+      return { payload: Boolean(view), cue: view && 'next_passage' in view ? view.next_passage : 'absent', world: window.__nemoworld?.worldId?.() || '' };
+    });
+    expect(observed.payload, 'the observing browser must hold a world payload', { actual: 'no payload' });
+    expect(observed.cue === null, 'a viewer without a resident must be sent no cue at all', { expected: 'null', actual: describe(observed.cue) });
+    const line = await hudLine(observerPage);
+    expect(!line.visible && line.text === '', 'the HUD must show nothing rather than an empty or invented hint', { expected: 'no visible passage line', actual: describe(line) });
+    state.notes.push(`next-passage cue for a viewer with no resident: payload ${describe(observed.cue)}, the line ${line.exists ? 'present but hidden and empty' : 'absent'}`);
+    return `observing ${observed.world} with next_passage=${describe(observed.cue)} and no passage line rendered`;
+  });
+
+  return 'the HUD named the passage the payload sent for the resident, followed a confirmed step, withheld the cue on a paused world, and showed nothing for a viewer with no resident';
+});
+
+/**
+ * The HUD's bottom band and the frontier build tools both own the bottom of the stage. The tools
+ * were anchored *onto* the band: at 1440x900 the host measured 252-796px against a band at
+ * 705-882px, so `document.elementFromPoint` at the centre of each next-action line returned the
+ * placement panel rather than the line. The band is 177px tall with the passage line and 138px
+ * without it, so the objective was already covered before the passage line was added, and the 39px
+ * that line added took the cue with it. The tools are now anchored 15px above the band's top edge.
+ *
+ * The check is a hit test, not a z-index comparison: each line must have a non-zero box inside the
+ * viewport, and the topmost element at the centre of that box must be the line itself (or a
+ * descendant). `.game-hud` is deliberately `pointer-events:none` so the world keeps its drag and its
+ * clicks — only the quickbar inside it takes the pointer — so hit testing skips the band entirely.
+ * Each line is therefore given back its own pointer events for the measurement and the inline style
+ * is removed again immediately: that is the same mechanism `.game-quickbar` already relies on, it
+ * changes no layout and no paint order, and if anything really does cover the line the hit test
+ * still returns the covering element. The tools may cover the world; they may not cover the HUD.
+ */
+define('hud-visible-while-building', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const wanderer = fixtures().characters.wanderer;
+  const world = 'frontier:0:0';
+
+  /** The two boxes whose relationship is the defect: the tool host and the HUD's bottom band. */
+  const boxes = (target) => target.evaluate(() => {
+    const rect = (node) => {
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return { top: Math.round(box.top), bottom: Math.round(box.bottom), left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width), height: Math.round(box.height) };
+    };
+    return {
+      host: rect(document.querySelector('#game-build-host')),
+      band: rect(document.querySelector('.game-hud-bottom')),
+      stage: rect(document.querySelector('.world-panel')),
+    };
+  });
+
+  /**
+   * How one line reads where it is actually drawn: its box, its text, and whether the topmost
+   * element at the centre of that box is the line itself.
+   */
+  const readable = (target, selector) => target.evaluate((query) => {
+    const describeNode = (element) => (element ? `${element.tagName}${element.id ? `#${element.id}` : ''}${element.className ? `.${String(element.className).trim().split(/\s+/).join('.')}` : ''}` : 'nothing');
+    const node = document.querySelector(query);
+    if (!node || node.hidden) return { rendered: false, reason: 'the line is absent or hidden' };
+    const box = node.getBoundingClientRect();
+    if (!(box.width > 0 && box.height > 0)) return { rendered: true, reason: 'the line has no box', box: { width: box.width, height: box.height } };
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return { rendered: true, reason: `the centre of the line is outside the ${innerWidth}x${innerHeight} viewport` };
+    // `.game-hud` is pointer-transparent, so hit testing cannot see the band. Giving the line its own
+    // pointer events for this one measurement makes the test ask the occlusion question directly.
+    const inline = node.style.pointerEvents;
+    let hit = null;
+    node.style.pointerEvents = 'auto';
+    try { hit = document.elementFromPoint(x, y); } finally { node.style.pointerEvents = inline; }
+    return {
+      rendered: true, text: (node.textContent || '').trim(),
+      box: { top: Math.round(box.top), bottom: Math.round(box.bottom), left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width), height: Math.round(box.height) },
+      hit: describeNode(hit), unobscured: Boolean(hit && (hit === node || node.contains(hit))),
+    };
+  }, selector);
+
+  /** Whether two boxes share any area at all. */
+  const intersect = (a, b) => Boolean(a && b && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom);
+
+  await step('a frontier resident opens build mode with its next action and its passage on screen', async () => {
+    write('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE id=?', world, 24, 24, wanderer.id);
+    await openGame(page, ACTORS.admin);
+    await enterWorldAs(page, wanderer.id, wanderer.name);
+    await page.waitForFunction(() => {
+      const objective = document.querySelector('#game-next-action');
+      const passage = document.querySelector('#game-next-passage');
+      return Boolean(objective && !objective.hidden && (objective.textContent || '').trim() && passage && !passage.hidden && (passage.textContent || '').trim());
+    }, null, { timeout: PAGE_TIMEOUT_MS });
+    await page.locator('#game-build-button').click();
+    await page.waitForFunction(() => document.body.classList.contains('game-building'), null, { timeout: PAGE_TIMEOUT_MS });
+    await page.locator('#game-build-host').waitFor({ state: 'visible' });
+    await page.waitForTimeout(400);
+    const measured = await boxes(page);
+    expect(measured.host && measured.host.height > 0, 'the frontier build tools must be open on screen', { actual: describe(measured.host) });
+    expect(measured.band && measured.band.height > 0, 'the HUD bottom band must be on screen with the tools open', { actual: describe(measured.band) });
+    return `host ${measured.host.top}-${measured.host.bottom} px, band ${measured.band.top}-${measured.band.bottom} px (${measured.band.height} px tall)`;
+  });
+
+  await step('both next-action lines stay readable with the build tools open', async () => {
+    const objective = await readable(page, '#game-next-action');
+    const passage = await readable(page, '#game-next-passage');
+    expect(objective.rendered && !objective.reason, 'the objective line must be drawn where it can be read', { actual: describe(objective) });
+    expect(passage.rendered && !passage.reason, 'the passage line must be drawn where it can be read', { actual: describe(passage) });
+    for (const [name, line] of [['objective', objective], ['passage', passage]]) {
+      expect(line.unobscured, `the ${name} line must not be covered by the build tools`, { expected: `the topmost element at the centre of “${line.text}” is that line`, actual: `${line.hit} is on top at ${describe(line.box)}` });
+    }
+    const measured = await boxes(page);
+    expect(!intersect(measured.host, measured.band), 'the build tools must not overlap the HUD bottom band at all', { expected: `a host box clear of the band at ${describe(measured.band)}`, actual: describe(measured.host) });
+    state.notes.push(`build tools and HUD band at 1440x900: host ${measured.host.top}-${measured.host.bottom}, band ${measured.band.top}-${measured.band.bottom}; objective “${objective.text}” ${describe(objective.box)}, passage “${passage.text}” ${describe(passage.box)}`);
+    return `host ends at ${measured.host.bottom}px, band starts at ${measured.band.top}px; “${objective.text}” and “${passage.text}” both unobscured`;
+  });
+
+  await step('the tools still work and nothing in the band became unreachable', async () => {
+    // Every control inside the host that moved: on screen, and still the element that receives the
+    // pointer at its own centre. The palette itself is disabled until a tile is pointed at (its
+    // availability is the world payload's, not this scenario's), so reach is what is asserted here.
+    const controls = await page.evaluate(() => [...document.querySelectorAll('#game-build-host button, #game-build-host input')].map((node) => {
+      const box = node.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+      return {
+        label: node.getAttribute('aria-label') || (node.textContent || '').trim(),
+        inside: box.top >= 0 && box.bottom <= innerHeight && box.left >= 0 && box.right <= innerWidth,
+        own: Boolean(hit && (hit === node || node.contains(hit))),
+      };
+    }));
+    expect(controls.length >= 8, 'the build tools must still render their palette, their target fields and their confirm control', { actual: describe(controls.map((control) => control.label)) });
+    expect(controls.every((control) => control.inside), 'no build control may be pushed outside the viewport', { actual: describe(controls.filter((control) => !control.inside)) });
+    expect(controls.every((control) => control.own), 'no build control may be covered by the HUD band it was moved away from', { actual: describe(controls.filter((control) => !control.own)) });
+    // And the tool is live, not merely painted: its own target fields still take a real pointer
+    // interaction, which the browser only allows while the field is the topmost element at its centre.
+    const targetX = page.locator('#game-build-host input[aria-label="Target tile X"]');
+    const targetY = page.locator('#game-build-host input[aria-label="Target tile Y"]');
+    await targetX.fill('24');
+    await targetY.fill('24');
+    expect(await targetX.inputValue() === '24' && await targetY.inputValue() === '24', 'the build tools must still accept a real pointer interaction where they now sit', { expected: '24, 24 typed into the tool’s own target fields', actual: describe([await targetX.inputValue(), await targetY.inputValue()]) });
+    // The band's own interactive controls keep their clicks: the pointer over the quickbar still lands
+    // in the band, never in the build tools.
+    const quickbar = await page.evaluate(() => {
+      const row = document.querySelector('#game-hud .game-quickbar');
+      return [...row.querySelectorAll('button')].map((button) => {
+        const box = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return { label: (button.textContent || '').trim(), reachable: Boolean(hit && row.contains(hit)), hit: hit ? `${hit.tagName}.${String(hit.className).trim()}` : 'nothing' };
+      });
+    });
+    expect(quickbar.length === 5, 'the game HUD keeps its five world actions', { actual: describe(quickbar) });
+    expect(quickbar.every((control) => control.reachable), 'no quickbar control may be hidden behind the build tools', { expected: 'the pointer over every quickbar control lands in the band', actual: describe(quickbar) });
+    // The tools must stay inside the stage they are anchored to, so nothing is pushed out of reach.
+    const measured = await boxes(page);
+    expect(measured.host.top >= measured.stage.top && measured.host.bottom <= measured.stage.bottom, 'the build tools must stay inside the world stage', { expected: `inside ${describe(measured.stage)}`, actual: describe(measured.host) });
+    const objective = await readable(page, '#game-next-action');
+    const passage = await readable(page, '#game-next-passage');
+    expect(objective.unobscured && passage.unobscured, 'the next action must stay readable after the tool redraws its panel', { expected: 'both lines unobscured', actual: describe({ objective, passage }) });
+    return `${controls.length} build controls each inside the viewport and taking their own click; the tool answered a click; ${quickbar.length} quickbar controls still reachable; host inside ${measured.stage.top}-${measured.stage.bottom}`;
+  });
+
+  await step('the same holds at the 390px phone width the suite already covers', async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    try {
+      await page.waitForTimeout(500);
+      const measured = await boxes(page);
+      expect(measured.host && measured.host.height > 0, 'the build tools must still be open at phone width', { actual: describe(measured.host) });
+      const objective = await readable(page, '#game-next-action');
+      const passage = await readable(page, '#game-next-passage');
+      for (const [name, line] of [['objective', objective], ['passage', passage]]) {
+        expect(line.rendered && !line.reason, `the ${name} line must be drawn at phone width`, { actual: describe(line) });
+        expect(line.unobscured, `the ${name} line must not be covered by the build tools at phone width`, { expected: `the topmost element at the centre of “${line.text}” is that line`, actual: `${line.hit} is on top at ${describe(line.box)}` });
+      }
+      expect(!intersect(measured.host, measured.band), 'the build tools must not overlap the HUD band at phone width either', { expected: `a host box clear of the band at ${describe(measured.band)}`, actual: describe(measured.host) });
+      state.notes.push(`build tools and HUD band at 390x844: host ${measured.host.top}-${measured.host.bottom}, band ${measured.band.top}-${measured.band.bottom}`);
+      return `390x844: host ${measured.host.top}-${measured.host.bottom} px, band ${measured.band.top}-${measured.band.bottom} px, both lines readable`;
+    } finally {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.waitForTimeout(300);
+    }
+  });
+
+  await sendToCommons(fixtures().admin, wanderer.id);
+  return 'the frontier build tools stayed off the HUD band at desktop and phone width; the objective and passage lines were hit-testable, the palette still answered a click, and every quickbar control kept its own click';
+});
+
 define('interaction-saved-world-changes', async () => {
   const admin = await actor('admin');
   const page = admin.page;
@@ -2853,6 +3599,21 @@ async function selectResident(page, agentId, name) {
   });
   await settle(page);
   return shown;
+}
+
+/**
+ * Selects one resident and then waits for that control's own trailing render. "Enter as this
+ * character" ends by opening the world view (`app.js`: `selectAgent(id).then(() => {state.tab='world';
+ * render();})`), and that render lands after the selection is already visible — so a section opened in
+ * between is silently overwritten by it. Callers that need another section afterwards use this.
+ */
+async function selectResidentAndSettle(page, agentId, name) {
+  const before = await page.evaluate(() => window.__nemoworld?.selected?.() || '');
+  await selectResident(page, agentId, name);
+  if (before === agentId) return { selected: agentId };
+  await waitForCondition(async () => (await page.evaluate(() => document.querySelector('#toggle-navigation')?.textContent || '')) === 'Menu · Open world' ? true : null, 'the character switch to land on the world view');
+  await settle(page);
+  return { selected: agentId };
 }
 
 /**
@@ -3628,6 +4389,357 @@ define('shared-build-and-restart', async () => {
     return '403 for cached guest session after revocation; three attributed blocks remain';
   });
   return 'two humans and a scoped AI runtime built together, exchanged one item, and reloaded their saved progress after a real server restart';
+});
+
+// ---------------------------------------------------------------------------------------------
+// Wave B — two connected frontier gates, crossed by two independent humans and one active AI
+//
+// Wave B's acceptance sentence is only partly unproved on this tip. `shared-build-and-restart` already
+// drives two humans and one scoped AI runtime building, exchanging an item and surviving a restart;
+// `restoration-two-clients` and `cooperative-restoration-two-operators` drive a shared world change;
+// `first-ten-minutes` covers choosing a calling. None of them crosses a frontier gate. This scenario
+// covers that one thing and re-proves none of the others: three residents in one seeded sector, the
+// two connected gates that leave it, and the server's own stored answer for every crossing.
+//
+// Each claim is read back from the temporary SQLite database or from the server's own payload: the
+// stored `world_id`, the stored arrival tile, the `messages` rows with their sender, operator,
+// channel, world, recipients and text, and the `resident_memory` purpose row across a real process
+// restart. The two humans belong to operators this scenario creates for itself, so no shared fixture
+// is moved, and each human walks into the frontier through the Commons' own passage in its browser.
+// ---------------------------------------------------------------------------------------------
+
+/** The seeded 3 × 3 frontier a two-gate path crosses, and the Commons passage into the first sector. */
+const WAVE_B_FIRST = 'frontier:0:0';
+const WAVE_B_SECOND = 'frontier:0:-1';
+const WAVE_B_THIRD = 'frontier:1:-1';
+const COMMONS_FRONTIER_PASSAGE = { x: 19, y: 6 };
+/**
+ * The order the client's four movement controls sit in around the compass. A movement control is
+ * camera-relative in first person and absolute in the orbiting view, but a camera rotation preserves
+ * this cycle, so one measured step names all four.
+ */
+const CONTROL_CYCLE = Object.freeze({ up: 'right', right: 'down', down: 'left', left: 'up' });
+const WAVE_B_HUMAN_LINE = 'The east passage answers back onto the field we came from; the new path holds.';
+const WAVE_B_AI_LINE = 'Both passages are open and I am standing on the second gate.';
+const WAVE_B_PURPOSE = 'Cross both frontier passages and keep the shared path open.';
+
+/** One gate of a sector, by the direction a resident crosses it in. */
+const waveBGate = (worldId, direction) => frontierGates(worldId).find((gate) => gate.direction === direction) || null;
+/**
+ * Where a crossing lands. `travel()` places the resident on the gate the entered sector answers the
+ * sector it left with, so this is the tile a crossing must store — not the sector's own plaza start
+ * and not whatever tile the movement happened to reach.
+ */
+const waveBArrival = (worldId, fromWorldId) => frontierGates(worldId).find((gate) => gate.targetWorldId === fromWorldId) || null;
+/** The world cardinal one stored step produced. */
+const stepCardinal = (from, to) => (to.y < from.y ? 'up' : to.y > from.y ? 'down' : to.x > from.x ? 'right' : 'left');
+/** The stored row a resident's movement is judged by — never the interface's own opinion of it. */
+const residentAt = (agentId) => row('SELECT world_id,x,y,status FROM agents WHERE id=?', agentId);
+
+/**
+ * One press of a movement control, confirmed by the database rather than by the interface looking
+ * busy: `arrived` reads the stored row. Only the server's own movement-throttle refusal is resumed, a
+ * bounded number of times, and every resume is reported — a documented refusal is never a failure.
+ */
+async function pressMoveUntil(page, agentId, control, arrived, label, { attempts = 4, timeout = 8000 } = {}) {
+  const button = page.locator(`#view button[aria-label="Move ${control}"]`);
+  await button.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+  let notice = '';
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await button.click();
+    const reached = await waitForCondition(arrived, label, { timeout, interval: 80 }).catch(() => null);
+    if (reached) return reached;
+    notice = ((await page.locator('#notice').textContent().catch(() => '')) || '').trim();
+    if (!throttleRefusal(notice)) break;
+    console.log(`        walk retry       the server’s own movement throttle refused a step; pressing “Move ${control}” again for ${label}`);
+    await page.waitForTimeout(500);
+  }
+  throw new BrowserSuiteFailure(`the “Move ${control}” control did not carry the step`, { expected: label, actual: `${describe(residentAt(agentId))}; the interface said “${notice}”` });
+}
+
+/**
+ * Which movement control carries which world direction, measured instead of assumed, because a
+ * movement control is camera-relative whenever this browser is in first person. One confirmed step
+ * names its own control, the control cycle names the other three, and a second measured control then
+ * checks the derived map. Both measured steps are undone immediately, so the resident starts and
+ * ends on the tile this found it standing on.
+ */
+async function learnMovementControls(page, agentId) {
+  const start = residentAt(agentId);
+  const stepped = () => { const now = residentAt(agentId); return now.x !== start.x || now.y !== start.y ? now : null; };
+  const backOn = () => { const now = residentAt(agentId); return now.x === start.x && now.y === start.y ? true : null; };
+  const press = (control, arrived, label) => pressMoveUntil(page, agentId, control, arrived, label);
+  let measuredControl = null, measuredDirection = null;
+  for (const candidate of ['up', 'right', 'down', 'left']) {
+    const after = await press(candidate, stepped, `the “Move ${candidate}” control to carry one confirmed step from ${start.x},${start.y}`).catch(() => null);
+    if (!after) continue;
+    measuredControl = candidate;
+    measuredDirection = stepCardinal(start, after);
+    break;
+  }
+  expect(measuredDirection, 'one movement control must carry a confirmed step out of the tile this resident was found on', { expected: `one tile of movement from ${start.x},${start.y}`, actual: `${describe(residentAt(agentId))} was refused in all four directions` });
+  const controlFor = {};
+  let control = measuredControl, direction = measuredDirection;
+  for (let index = 0; index < 4; index += 1) { controlFor[direction] = control; control = CONTROL_CYCLE[control]; direction = CONTROL_CYCLE[direction]; }
+  await press(controlFor[OPPOSITE_DIRECTION[measuredDirection]], backOn, `the resident to step back to ${start.x},${start.y}`);
+  // The map is about to decide which way a crossing goes, so it is checked before it is used: a second
+  // control is measured and has to agree with the direction the first measurement gave it.
+  const probe = Object.keys(controlFor).find((item) => item !== measuredDirection);
+  const after = await press(controlFor[probe], stepped, `the “Move ${controlFor[probe]}” control to carry one confirmed step for the map check`);
+  expect(stepCardinal(start, after) === probe, 'the derived control map must hold for a second measured control', { expected: `“Move ${controlFor[probe]}” to move the resident ${probe}`, actual: `${stepCardinal(start, after)} to ${after.x},${after.y}` });
+  await press(controlFor[OPPOSITE_DIRECTION[probe]], backOn, `the resident to step back to ${start.x},${start.y}`);
+  return controlFor;
+}
+
+/**
+ * One frontier crossing, driven from the exact gate tile with a movement control and confirmed by the
+ * database. `src/spaces.js` crosses only when the resident stands on the gate tile itself *and* the
+ * neighbour is opened, so that tile is asserted first, and the arrival is asserted against the gate
+ * the entered sector answers with.
+ */
+async function browserCrossGate(page, agentId, controlFor, fromWorldId, gate, who) {
+  const arrival = waveBArrival(gate.targetWorldId, fromWorldId);
+  expect(arrival, `${gate.targetWorldId} must answer ${fromWorldId} with a gate of its own`, { expected: `a gate in ${gate.targetWorldId} that leads back to ${fromWorldId}`, actual: describe(frontierGates(gate.targetWorldId)) });
+  const standing = residentAt(agentId);
+  expect(standing.world_id === fromWorldId && standing.x === gate.x && standing.y === gate.y, `${who} must stand on the exact ${gate.direction} gate tile before crossing`, { expected: `${gate.x},${gate.y} in ${fromWorldId}`, actual: describe(standing) });
+  const crossed = await pressMoveUntil(page, agentId, controlFor[gate.direction], () => { const now = residentAt(agentId); return now.world_id === gate.targetWorldId ? now : null; }, `${who} to cross the ${gate.direction} gate into ${gate.targetWorldId}`);
+  expect(crossed.x === arrival.x && crossed.y === arrival.y, `${who} must arrive on the tile ${gate.targetWorldId} answers the crossing with`, { expected: `${arrival.x},${arrival.y} (its ${arrival.direction} gate)`, actual: describe(crossed) });
+  return crossed;
+}
+
+/** One documented movement step with a runtime credential, paced past the server's own 120 ms throttle. */
+async function runtimeStep(ticket, agentId, direction, { attempts = 4, paceMs = 140 } = {}) {
+  let last = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await sleep(paceMs);
+    const response = await api(ticket, 'POST', '/move', { agent_id: agentId, direction });
+    if (response.status === 200) return response.body;
+    last = `HTTP ${response.status} ${response.raw}`;
+    if (response.status !== 429) break;
+  }
+  throw new BrowserSuiteFailure(`the resident’s ${direction} step was refused`, { expected: 'HTTP 200 from POST /move', actual: last });
+}
+
+/** The shipped planner's own route out of the world it stands in, walked one documented step at a time. */
+async function runtimeWalk(ticket, agentId, worldId, target, who) {
+  const from = residentAt(agentId);
+  expect(from.world_id === worldId, `${who} must stand in ${worldId} before this walk`, { expected: worldId, actual: describe(from) });
+  const route = planWalk(getWorldDefinition(worldId), { x: from.x, y: from.y }, target, { objects: rows('SELECT type,x,y FROM world_objects WHERE world_id=?', worldId), maxSteps: 256, maxVisited: 16_384 });
+  expect(route, `${who} must have a walkable route from ${from.x},${from.y} to ${target.x},${target.y}`, { expected: `a planned route from ${from.x},${from.y} to ${target.x},${target.y}`, actual: `no route through ${worldId}` });
+  for (const direction of route) await runtimeStep(ticket, agentId, direction);
+  const arrived = residentAt(agentId);
+  expect(arrived.world_id === worldId && arrived.x === target.x && arrived.y === target.y, `${who} must finish the walk on the tile the planner aimed at`, { expected: `${target.x},${target.y} in ${worldId}`, actual: describe(arrived) });
+  return { steps: route.length, arrived };
+}
+
+/** One gate crossing by a runtime credential: the same server rule, driven over the documented route. */
+async function runtimeCrossGate(ticket, agentId, direction, fromWorldId, gate, who) {
+  const arrival = waveBArrival(gate.targetWorldId, fromWorldId);
+  expect(arrival, `${gate.targetWorldId} must answer ${fromWorldId} with a gate of its own`, { expected: `a gate in ${gate.targetWorldId} that leads back to ${fromWorldId}`, actual: describe(frontierGates(gate.targetWorldId)) });
+  const standing = residentAt(agentId);
+  expect(standing.world_id === fromWorldId && standing.x === gate.x && standing.y === gate.y, `${who} must stand on the exact ${direction} gate tile before crossing`, { expected: `${gate.x},${gate.y} in ${fromWorldId}`, actual: describe(standing) });
+  await runtimeStep(ticket, agentId, direction);
+  const crossed = residentAt(agentId);
+  expect(crossed.world_id === gate.targetWorldId, `${who} must cross the ${direction} gate into ${gate.targetWorldId}`, { expected: gate.targetWorldId, actual: describe(crossed) });
+  expect(crossed.x === arrival.x && crossed.y === arrival.y, `${who} must arrive on the tile ${gate.targetWorldId} answers the crossing with`, { expected: `${arrival.x},${arrival.y} (its ${arrival.direction} gate)`, actual: describe(crossed) });
+  return crossed;
+}
+
+define('wave-b-two-gates', async () => {
+  const host = await actor('wave-b-host'), guest = await actor('wave-b-guest');
+  // Two operators this scenario owns end to end: one human avatar each, plus the AI resident that
+  // carries the saved purpose. No other scenario reads any of the three.
+  const hostTicket = await ensureAccount(fixtures().admin, ACTORS['wave-b-host']);
+  const guestTicket = await ensureAccount(fixtures().admin, ACTORS['wave-b-guest']);
+  const resident = (ticket, body) => apiExpect(ticket, 'POST', '/agents', { color: '#397f79', symbol: '✦', capabilities: 'Walks the shared frontier in the browser acceptance run', limitations: 'No external tools and no real-world claims', ...body });
+  const crosserOne = await resident(hostTicket, { kind: 'human', name: 'Crosser one', symbol: '◆' });
+  const crosserTwo = await resident(guestTicket, { kind: 'human', name: 'Crosser two', symbol: '▲' });
+  const crosserAide = await resident(hostTicket, { kind: 'agent', name: 'Crosser aide' });
+  const firstGate = waveBGate(WAVE_B_FIRST, 'up'), secondGate = waveBGate(WAVE_B_SECOND, 'right');
+  const firstAnswer = waveBArrival(WAVE_B_SECOND, WAVE_B_FIRST), secondAnswer = waveBArrival(WAVE_B_THIRD, WAVE_B_SECOND);
+  let runtime = null, purpose = null, hostControls = null, guestControls = null;
+
+  await step('two new humans and one AI resident walk out of the Commons into the same frontier sector', async () => {
+    const created = rows('SELECT id,kind,world_id,x,y FROM agents WHERE id IN (?,?,?)', crosserOne.id, crosserTwo.id, crosserAide.id);
+    expect(created.length === 3 && created.every((item) => item.world_id === 'commons'), 'a newly created resident starts in the Commons', { expected: 'three residents in commons', actual: describe(created) });
+    // Both humans walk the Commons passage and travel through it, each in its own browser.
+    for (const [page, account, human] of [[host.page, ACTORS['wave-b-host'], crosserOne], [guest.page, ACTORS['wave-b-guest'], crosserTwo]]) {
+      await openApp(page, account);
+      await selectResidentAndSettle(page, human.id, human.name);
+      await enterFrontierAs(page, human.id);
+    }
+    // The AI resident walks the same passage with its own runtime credential, which it keeps for the
+    // rest of the scenario: that credential is what makes every later AI claim the AI's own action.
+    runtime = await apiExpect(hostTicket, 'POST', '/runtime/start', { agent_id: crosserAide.id, minutes: 20, max_calls: 500, scopes: ['read', 'move', 'chat'] });
+    await runtimeWalk(runtime, crosserAide.id, 'commons', COMMONS_FRONTIER_PASSAGE, 'the AI resident');
+    await travelTo(runtime, crosserAide.id, WAVE_B_FIRST);
+
+    for (const [who, human] of [['Crosser one', crosserOne], ['Crosser two', crosserTwo], ['Crosser aide', crosserAide]]) {
+      const stored = residentAt(human.id);
+      expect(stored.world_id === WAVE_B_FIRST, `${who} must stand in ${WAVE_B_FIRST}`, { expected: WAVE_B_FIRST, actual: describe(stored) });
+      expect(stored.x === 24 && stored.y === 24, `${who} must arrive on the sector's own start tile`, { expected: '24,24', actual: describe(stored) });
+      expect(stored.status === 'active', `${who} must still be an active resident`, { expected: 'active', actual: describe(stored.status) });
+    }
+    // The server wrote down who entered which world, so the arrival is the server's own record of a
+    // travel and not merely a position that happens to look right.
+    const entries = rows("SELECT actor,record_id FROM audit WHERE event='world.entered' ORDER BY seq");
+    expect(entries.filter((entry) => entry.actor === hostTicket.account.id && entry.record_id === WAVE_B_FIRST).length >= 2, 'the host operator must have both its human entry and its AI entry in the audit trail', { expected: `two ${WAVE_B_FIRST} entries for ${hostTicket.account.id}`, actual: describe(entries) });
+    expect(entries.some((entry) => entry.actor === guestTicket.account.id && entry.record_id === WAVE_B_FIRST), 'the guest operator must have its own entry in the audit trail', { expected: `${WAVE_B_FIRST} for ${guestTicket.account.id}`, actual: describe(entries) });
+    // Both browsers hold a freshly read server payload for that one sector, with the party in it.
+    for (const [page, human] of [[host.page, crosserOne], [guest.page, crosserTwo]]) {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await settle(page);
+      await openWorldAs(page, human.id);
+    }
+    for (const page of [host.page, guest.page]) await waitForClient(page, (world) => {
+      const view = window.__nemoworld?.world?.();
+      if (view?.world?.id !== world) return null;
+      const kinds = view.participants.map((item) => item.kind);
+      return kinds.filter((kind) => kind === 'human').length === 2 && kinds.includes('agent') ? true : null;
+    }, WAVE_B_FIRST, 'both browsers to show two humans and one AI resident in the same frontier sector', 15_000);
+    state.notes.push(`wave B entry: ${crosserOne.name} and ${crosserTwo.name} (two operators) and the AI resident ${crosserAide.name} walked the Commons passage at ${COMMONS_FRONTIER_PASSAGE.x},${COMMONS_FRONTIER_PASSAGE.y} into ${WAVE_B_FIRST}, arriving on 24,24 with one audit entry per operator`);
+    return `three residents in ${WAVE_B_FIRST} at 24,24 (two human entries and one AI entry in the audit trail), visible from both browsers`;
+  });
+
+  await step('the operator records the AI resident’s chosen purpose and the resident reads it back', async () => {
+    await selectResidentAndSettle(host.page, crosserAide.id, crosserAide.name);
+    await openSectionNamed(host.page, 'Callings & guilds');
+    const recorder = host.page.locator('#view form').filter({ has: host.page.getByRole('button', { name: 'Record a memory fact from your own input', exact: true }) });
+    await recorder.locator('[name="kind"]').selectOption('purpose');
+    await recorder.locator('[name="attribute"]').selectOption('intent');
+    await recorder.locator('[name="value"]').fill(WAVE_B_PURPOSE);
+    await recorder.getByRole('button', { name: 'Record a memory fact from your own input', exact: true }).click();
+    const stored = await waitForCondition(async () => row("SELECT * FROM resident_memory WHERE agent_id=? AND kind='purpose' AND state='active'", crosserAide.id), 'the recorded purpose to be stored');
+    expect(stored.value === WAVE_B_PURPOSE && stored.attribute === 'intent' && stored.origin === 'operator' && stored.source_kind === 'human' && stored.decided_by === hostTicket.account.id, 'the stored purpose must be this operator’s own recorded fact about its own resident', { expected: `${WAVE_B_PURPOSE} · purpose/intent · operator · human`, actual: describe({ value: stored.value, attribute: stored.attribute, origin: stored.origin, source: stored.source_kind, decided_by: stored.decided_by }) });
+    purpose = stored;
+    const own = await apiRequest('/memory', { token: runtime.token });
+    expect(own.status === 200 && own.body.facts.some((fact) => fact.value === WAVE_B_PURPOSE), 'the AI resident must read its own approved purpose through its runtime credential', { expected: 'the recorded purpose in the resident’s own memory read', actual: `HTTP ${own.status} ${describe(own.body?.facts?.map((fact) => fact.value))}` });
+    // Back to the human that crosses the gates; this control ends on the world view by itself.
+    await selectResidentAndSettle(host.page, crosserOne.id, crosserOne.name);
+    return `resident_memory ${stored.id} recorded by ${hostTicket.account.id} as purpose/intent, read back by the resident itself`;
+  });
+
+  await step('the host walks to the north gate and crosses it into the second sector', async () => {
+    hostControls = await learnMovementControls(host.page, crosserOne.id);
+    const walked = await walkResidentTo(host.page, crosserOne.id, firstGate.x, firstGate.y);
+    expect(walked.world_id === WAVE_B_FIRST, 'the walk to the gate must stay in the sector it started in', { expected: WAVE_B_FIRST, actual: describe(walked) });
+    const crossed = await browserCrossGate(host.page, crosserOne.id, hostControls, WAVE_B_FIRST, firstGate, 'Crosser one');
+    await browserShows(host.page, WAVE_B_SECOND);
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered' AND record_id=? AND actor=?", WAVE_B_SECOND, hostTicket.account.id) === 1, 'the crossing must be the server’s own recorded entry of the new sector, exactly once', { actual: describe(rows("SELECT record_id FROM audit WHERE actor=? AND event='world.entered'", hostTicket.account.id)) });
+    state.notes.push(`wave B gate 1 (browser): Crosser one walked to the up gate ${firstGate.x},${firstGate.y} in ${WAVE_B_FIRST} and crossed into ${WAVE_B_SECOND}, arriving on ${crossed.x},${crossed.y} — the tile that sector answers the crossing with`);
+    return `${WAVE_B_FIRST} ${firstGate.x},${firstGate.y} → ${WAVE_B_SECOND} ${crossed.x},${crossed.y}; one world.entered audit row`;
+  });
+
+  await step('the guest crosses the same gate from the same tile', async () => {
+    guestControls = await learnMovementControls(guest.page, crosserTwo.id);
+    const walked = await walkResidentTo(guest.page, crosserTwo.id, firstGate.x, firstGate.y);
+    expect(walked.world_id === WAVE_B_FIRST, 'the guest’s walk to the gate must stay in the sector it started in', { expected: WAVE_B_FIRST, actual: describe(walked) });
+    const crossed = await browserCrossGate(guest.page, crosserTwo.id, guestControls, WAVE_B_FIRST, firstGate, 'Crosser two');
+    await browserShows(guest.page, WAVE_B_SECOND);
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered' AND record_id=? AND actor=?", WAVE_B_SECOND, guestTicket.account.id) === 1, 'the guest’s crossing must be its own recorded entry of the new sector', { actual: describe(rows("SELECT record_id FROM audit WHERE actor=? AND event='world.entered'", guestTicket.account.id)) });
+    return `${WAVE_B_FIRST} ${firstGate.x},${firstGate.y} → ${WAVE_B_SECOND} ${crossed.x},${crossed.y}, recorded against the second operator`;
+  });
+
+  await step('the AI resident crosses the same pair of gates with its runtime credential, both ways', async () => {
+    await runtimeWalk(runtime, crosserAide.id, WAVE_B_FIRST, { x: firstGate.x, y: firstGate.y }, 'the AI resident');
+    const forward = await runtimeCrossGate(runtime, crosserAide.id, 'up', WAVE_B_FIRST, firstGate, 'the AI resident');
+    const back = await runtimeCrossGate(runtime, crosserAide.id, 'down', WAVE_B_SECOND, firstAnswer, 'the AI resident');
+    expect(back.world_id === WAVE_B_FIRST && back.x === firstGate.x && back.y === firstGate.y, 'the two gates must be one connected passage: crossing back lands on the exact tile the resident left', { expected: `${firstGate.x},${firstGate.y} in ${WAVE_B_FIRST}`, actual: describe(back) });
+    const again = await runtimeCrossGate(runtime, crosserAide.id, 'up', WAVE_B_FIRST, firstGate, 'the AI resident');
+    expect(again.x === forward.x && again.y === forward.y, 'a repeated crossing must store the same arrival tile, so the landing is the server’s rule and not an accident', { expected: `${forward.x},${forward.y}`, actual: `${again.x},${again.y}` });
+    const spent = scalar("SELECT MAX(used_calls) FROM tokens WHERE account_id=? AND agent_id=? AND kind='runtime'", hostTicket.account.id, crosserAide.id);
+    expect(spent >= 30, 'the AI resident’s steps must be charged to its own runtime credential, not to a human session', { expected: 'at least 30 charged calls', actual: describe(spent) });
+    state.notes.push(`wave B gate 1 (runtime): the AI resident crossed ${WAVE_B_FIRST} → ${WAVE_B_SECOND} (arriving ${forward.x},${forward.y}), back to ${WAVE_B_FIRST} ${back.x},${back.y}, and forward again to ${WAVE_B_SECOND} ${again.x},${again.y} — the same landing every time, on ${spent} charged runtime calls`);
+    return `the AI resident crossed the connected pair three times through its own credential (${forward.x},${forward.y} · back to ${back.x},${back.y} · again to ${again.x},${again.y})`;
+  });
+
+  await step('the host crosses the second gate into the third sector', async () => {
+    const walked = await walkResidentTo(host.page, crosserOne.id, secondGate.x, secondGate.y);
+    expect(walked.world_id === WAVE_B_SECOND, 'the walk to the second gate must happen in the sector the first crossing reached', { expected: WAVE_B_SECOND, actual: describe(walked) });
+    const crossed = await browserCrossGate(host.page, crosserOne.id, hostControls, WAVE_B_SECOND, secondGate, 'Crosser one');
+    await browserShows(host.page, WAVE_B_THIRD);
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered' AND record_id=? AND actor=?", WAVE_B_THIRD, hostTicket.account.id) === 1, 'the second crossing must be its own recorded entry of the third sector', { actual: describe(rows("SELECT record_id FROM audit WHERE actor=? AND event='world.entered'", hostTicket.account.id)) });
+    state.notes.push(`wave B gate 2 (browser): Crosser one walked to the right gate ${secondGate.x},${secondGate.y} in ${WAVE_B_SECOND} and crossed into ${WAVE_B_THIRD}, arriving on ${crossed.x},${crossed.y}`);
+    return `${WAVE_B_SECOND} ${secondGate.x},${secondGate.y} → ${WAVE_B_THIRD} ${crossed.x},${crossed.y} after a ${walked.x},${walked.y} walk across the sector`;
+  });
+
+  await step('the guest crosses the second gate as well', async () => {
+    const walked = await walkResidentTo(guest.page, crosserTwo.id, secondGate.x, secondGate.y);
+    expect(walked.world_id === WAVE_B_SECOND, 'the guest’s walk to the second gate must happen in the second sector', { expected: WAVE_B_SECOND, actual: describe(walked) });
+    const crossed = await browserCrossGate(guest.page, crosserTwo.id, guestControls, WAVE_B_SECOND, secondGate, 'Crosser two');
+    await browserShows(guest.page, WAVE_B_THIRD);
+    return `${WAVE_B_SECOND} ${secondGate.x},${secondGate.y} → ${WAVE_B_THIRD} ${crossed.x},${crossed.y}: both humans reached the third sector on foot`;
+  });
+
+  await step('the AI resident crosses the second gate with the same credential', async () => {
+    await runtimeWalk(runtime, crosserAide.id, WAVE_B_SECOND, { x: secondGate.x, y: secondGate.y }, 'the AI resident');
+    const crossed = await runtimeCrossGate(runtime, crosserAide.id, 'right', WAVE_B_SECOND, secondGate, 'the AI resident');
+    return `the AI resident crossed ${WAVE_B_SECOND} → ${WAVE_B_THIRD} and stands on ${crossed.x},${crossed.y}, the tile that sector answers the crossing with`;
+  });
+
+  await step('the crossing partners talk in the sector they crossed into, and a third party cannot read it', async () => {
+    // The guest's own browser sends the first line through the conversation card of the world its
+    // resident now stands in, so the stored world is the sector the crossing reached.
+    const form = guest.page.locator('#world-chat-card form');
+    await form.locator('[name="channel"]').selectOption('private');
+    await form.locator('[name="recipient_id"]').selectOption(crosserOne.id);
+    await form.locator('[name="text"]').fill(WAVE_B_HUMAN_LINE);
+    await form.getByRole('button', { name: 'Send message', exact: true }).click();
+    const humanRow = await waitForCondition(async () => row('SELECT * FROM messages WHERE text=?', WAVE_B_HUMAN_LINE), 'the guest’s saved line');
+    expect(humanRow.agent_id === crosserTwo.id && humanRow.account_id === guestTicket.account.id, 'the saved line must be attributed to the resident and the operator that wrote it', { expected: `agent ${crosserTwo.id} of ${guestTicket.account.id}`, actual: describe({ agent: humanRow.agent_id, account: humanRow.account_id }) });
+    expect(humanRow.channel === 'private' && humanRow.world_id === WAVE_B_THIRD && humanRow.status === 'visible', 'the saved line must belong to the sector the party crossed into', { expected: `private in ${WAVE_B_THIRD}`, actual: describe({ channel: humanRow.channel, world: humanRow.world_id, status: humanRow.status }) });
+    expect(JSON.stringify(JSON.parse(humanRow.recipients).sort()) === JSON.stringify([crosserOne.id, crosserTwo.id].sort()), 'the private line must name exactly its two crossing partners as recipients', { expected: describe([crosserOne.id, crosserTwo.id].sort()), actual: describe(humanRow.recipients) });
+    // The AI resident answers through the credential it crossed with, so its line is its own.
+    await apiExpect(runtime, 'POST', '/messages', { agent_id: crosserAide.id, channel: 'private', recipient_id: crosserOne.id, text: WAVE_B_AI_LINE }, [200]);
+    const aiRow = await waitForCondition(async () => row('SELECT * FROM messages WHERE text=?', WAVE_B_AI_LINE), 'the AI resident’s saved line');
+    expect(aiRow.agent_id === crosserAide.id && aiRow.account_id === hostTicket.account.id && aiRow.world_id === WAVE_B_THIRD && aiRow.channel === 'private', 'the AI line must be attributed to the AI resident in the sector it crossed into', { expected: `agent ${crosserAide.id} in ${WAVE_B_THIRD}`, actual: describe({ agent: aiRow.agent_id, account: aiRow.account_id, world: aiRow.world_id, channel: aiRow.channel }) });
+    // The recipient reads both lines from its own browser and the server's own payload.
+    await host.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(host.page);
+    await openWorldAs(host.page, crosserOne.id);
+    await waitForClient(host.page, (lines) => {
+      const held = (window.__nemoworld?.world?.()?.messages || []).map((message) => message.text);
+      return lines.every((line) => held.includes(line)) ? true : null;
+    }, [WAVE_B_HUMAN_LINE, WAVE_B_AI_LINE], 'the recipient’s own browser to read both saved lines', 20_000);
+    // A third operator that was never addressed reads the same sector and sees neither line.
+    const outsider = await apiRequest(`/world?world_id=${encodeURIComponent(WAVE_B_THIRD)}`, { token: fixtures().stranger.token });
+    expect(outsider.status === 200, 'a third operator must still be able to read the public sector', { expected: 'HTTP 200', actual: `HTTP ${outsider.status} ${outsider.raw}` });
+    const seen = (outsider.body.messages || []).map((message) => message.text);
+    expect(!seen.includes(WAVE_B_HUMAN_LINE) && !seen.includes(WAVE_B_AI_LINE), 'a third operator must read neither line of the private thread in that sector', { expected: 'neither saved line', actual: describe(seen) });
+    const dbThread = rows('SELECT agent_id,account_id,channel,world_id FROM messages WHERE world_id=? ORDER BY created_at', WAVE_B_THIRD);
+    expect(dbThread.length === 2 && dbThread.every((item) => item.channel === 'private' && item.world_id === WAVE_B_THIRD), 'both saved lines must be stored private in that sector', { actual: describe(dbThread) });
+    state.notes.push(`wave B conversation: two private messages stored in ${WAVE_B_THIRD} (one from the human guest, one from the AI resident), read by the addressed operator and withheld from ${ACTORS.stranger.email} reading the same sector`);
+    return `messages ${humanRow.id} (${crosserTwo.name}) and ${aiRow.id} (${crosserAide.name}) saved private in ${WAVE_B_THIRD}, readable by the recipient and withheld from a third operator`;
+  });
+
+  await step('the party leaves and returns: a real restart keeps the same sector and the same purpose', async () => {
+    const place = () => Object.fromEntries([crosserOne, crosserTwo, crosserAide].map((human) => [human.id, residentAt(human.id)]));
+    const before = place();
+    const purposeBefore = row('SELECT * FROM resident_memory WHERE id=?', purpose.id);
+    await stopServer();
+    await startServer();
+    expect(describe(place()) === describe(before), 'a restart against the same database must not move any of the three residents', { expected: describe(before), actual: describe(place()) });
+    for (const [who, human] of [['Crosser one', crosserOne], ['Crosser two', crosserTwo], ['Crosser aide', crosserAide]]) {
+      const stored = residentAt(human.id);
+      expect(stored.world_id === WAVE_B_THIRD, `${who} must still stand in the sector it crossed into`, { expected: WAVE_B_THIRD, actual: describe(stored) });
+      expect(stored.x === secondAnswer.x && stored.y === secondAnswer.y, `${who} must still stand on the tile the crossing left it on`, { expected: `${secondAnswer.x},${secondAnswer.y}`, actual: `${stored.x},${stored.y}` });
+    }
+    const purposeAfter = row('SELECT * FROM resident_memory WHERE id=?', purpose.id);
+    expect(describe(purposeAfter) === describe(purposeBefore), 'the purpose-bearing record the resident crossed for must be unchanged by the restart', { expected: describe(purposeBefore), actual: describe(purposeAfter) });
+    const own = await apiRequest('/memory', { token: runtime.token });
+    expect(own.status === 200 && own.body.facts.some((fact) => fact.value === WAVE_B_PURPOSE), 'the AI resident must still read its own purpose through the same credential after the restart', { expected: WAVE_B_PURPOSE, actual: `HTTP ${own.status} ${describe(own.body?.error || own.body?.facts?.map((fact) => fact.value))}` });
+    for (const [page, account, human] of [[host.page, ACTORS['wave-b-host'], crosserOne], [guest.page, ACTORS['wave-b-guest'], crosserTwo]]) {
+      await openApp(page, account);
+      await openWorldAs(page, human.id);
+      await browserShows(page, WAVE_B_THIRD);
+    }
+    const kept = rows('SELECT agent_id,text FROM messages WHERE world_id=? ORDER BY created_at', WAVE_B_THIRD);
+    expect(kept.length === 2, 'the sector’s saved conversation must still be there after the restart', { expected: 'both saved lines', actual: describe(kept) });
+    state.notes.push(`wave B restart: ${WAVE_B_THIRD} ${secondAnswer.x},${secondAnswer.y} held by all three residents, resident_memory ${purpose.id} byte-for-byte unchanged, both saved lines still addressable, both browsers back in the same sector`);
+    return `after a real restart: three residents still on ${secondAnswer.x},${secondAnswer.y} in ${WAVE_B_THIRD}, the purpose fact and both saved lines unchanged, both browsers showing that sector`;
+  });
+
+  return `two independent humans and one active AI resident entered ${WAVE_B_FIRST} through the Commons, crossed the connected ${firstGate.direction} and ${secondGate.direction} gates into ${WAVE_B_SECOND} and ${WAVE_B_THIRD} with every crossing read back from the stored world and arrival tile, talked in saved attributed text, and returned after a restart to the same sector and the same recorded purpose`;
 });
 
 define('hero-introduction-film',async()=>{
