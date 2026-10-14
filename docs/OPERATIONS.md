@@ -283,7 +283,7 @@ How that is enforced on each path:
 
 | Path | Protection |
 | --- | --- |
-| `src/recovery.js` diagnostics | The payload is assembled from named counters and never from stored rows. It is then passed through `redactDiagnostics()`, which replaces any field whose *name* looks like a secret and any *value* shaped like a 64-character hex token, a `salt:key` password digest or an email address. |
+| `src/recovery.js` diagnostics | The payload is assembled from named counters and never from stored rows. It is then passed through `redactDiagnostics()`, which drops a field whose *name* looks like a secret, drops a field whose **final word** names narrative content (message, text, journal, artifact, prompt, conversation, excerpt, transcript, body, content, question, answer or passage) while that field carries text or a structure, and replaces any *value* shaped like a 64-character hex token, a `salt:key` password digest or an email address. The final-word rule is what lets a counter that merely mentions one of those names (`records.ambassador_conversations`) still publish its number. |
 | HTTP error log | `server.js` logs only `error.code`/`error.name` for an unhandled error; the client receives a generic `Server error.` for any 500. No request body, header, token or message text is logged. |
 | Worker logs | `runtime/agent.js` and `runtime/research-worker.js` print only counters and a generic stop reason. |
 | Account listings | `GET /api/v1/operations` returns account `id`, `name`, `role`, `status` and `created_at` — never the stored email or password. |

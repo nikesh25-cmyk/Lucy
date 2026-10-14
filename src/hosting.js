@@ -1,6 +1,17 @@
 import { createHash } from 'node:crypto';
 const reject = (message) => { throw Object.assign(new Error(message), { status: 403 }); };
 const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+// A socket address that is the local machine: the whole 127.0.0.0/8 range, IPv6 `::1`, and the
+// IPv4-mapped forms a dual-stack listener reports. Anything else — including an address the runtime
+// did not report — is not loopback.
+const loopbackPeer = (request) => {
+  const raw = request.socket?.remoteAddress;
+  if (typeof raw !== 'string') return false;
+  const address = raw.startsWith('::ffff:') ? raw.slice(7) : raw;
+  if (address === '::1') return true;
+  const octets = address.split('.');
+  return octets.length === 4 && octets[0] === '127' && octets.every((octet) => /^\d{1,3}$/.test(octet) && Number(octet) <= 255);
+};
 
 export function hostingConfiguration(environment = process.env) {
   const value = environment.LUCY_PUBLIC_ORIGIN || environment.RENDER_EXTERNAL_URL || '';
@@ -27,7 +38,10 @@ export function validateRequestOrigin(request, server, hosting) {
   try { host = new URL(`http://${rawHost}`); } catch { reject('A valid Host header is required.'); }
   if (host.username || host.password || host.pathname !== '/' || host.search || host.hash) reject('A valid Host header is required.');
   const local = loopbackHosts.has(host.hostname) && Number(host.port || 80) === server.address()?.port;
-  const internalHealth = request.method === 'GET' && new URL(request.url, 'http://localhost').pathname === '/api/v1/health' && local;
+  // The one exception to the public-host rule is the loopback health probe. It is decided by the
+  // socket that connected, never by the Host header, because that header is client-supplied: a
+  // caller that cannot reach this server over loopback gets no exception, whatever Host it names.
+  const internalHealth = request.method === 'GET' && new URL(request.url, 'http://localhost').pathname === '/api/v1/health' && local && loopbackPeer(request);
   let expectedOrigin;
   if (hosting.publicOrigin) {
     if (host.host !== hosting.publicHost && !internalHealth) reject('Host does not match the configured public origin.');

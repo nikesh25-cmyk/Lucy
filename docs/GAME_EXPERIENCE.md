@@ -362,6 +362,7 @@ Honest list. Each item names who would have to add it; none of it is added by th
 
 | Surface | Owner | How this spec relates to it |
 |---|---|---|
+| The five authored public places | `task-deepseek-content-places` (`world.js` `PUBLIC_VENUE_PLANS`) | The Commons map already names each place and draws its doorway, and the doorway interaction read names what is behind it. No HUD element is added: the places appear exactly where the existing shared rooms do. See §9.1. |
 | Competence pathways per calling | Task 22 (`docs/PATHWAYS.md` on branch `task-22-competence-pathways`) | The calling card and the management mode link to it. The HUD's single next-action line shows the calling objective or quest step the server returns; it does not show pathway tiers. |
 | Cooperative world restoration events | Task 23 (`restoration` navigation entry on branch `task-23-cooperative-events`) | Backlog-only. It is a world section, not a HUD indicator and not a newcomer step. |
 | Versioned evidence library | Task 25 (branch `task-25-evidence-library`) | Lives behind `/manage` with the review surfaces. The newcomer path never opens it. |
@@ -372,6 +373,27 @@ The four task-22/23/25/26 surfaces are **absent** from the base commit of this b
 their own branches. Tasks 27 and 28 are present in this base in the form of `renderOperations` and
 `docs/OPERATIONS.md`. The spec records all of them as surfaces the management mode must **host**, and
 states plainly that it does not design any of them.
+
+### 9.1 The five authored public places
+
+Five purposeful public places were added *inside* the existing world registry: The Workshop Annexe,
+The Round Amphitheatre, The Record Archive, The Observatory Annexe and The Seed Bank. Each is a
+fictional NemoWorld place — not a real-world institution, service or authority — with one doorway on
+the Commons map, a court of its own behind it and a stated purpose.
+
+- **How a newcomer finds one.** It is a landmark on the Commons map, exactly like the Orchard or the
+  Harbor: the map draws its pennant and its doorway, and the landmark list in the world read names it.
+- **How a newcomer enters one.** By walking. The doorway tile is walkable and clear, the map already
+  roads to it from the Welcome Plaza, and `POST /agents/:id/travel` admits the resident only from that
+  tile (a street elsewhere on the Commons is refused with 409, the same rule every shared room uses).
+  The doorway interaction read also offers it as a door, so the control path is the one already built
+  for doors (§5.2, task 17).
+- **What is unchanged.** No HUD indicator, drawer, panel or keyboard path is added. The five places
+  register no land: no frontier area, parcel, block or stewardship changes, and the fixed 16 × 16
+  inventory, the plot registry and the assignment records are untouched (`tests/world-places.test.js`
+  hashes the registry before and after entering all five). The places are not part of the thirty
+  authored shared worlds the directory pages, so the directory keeps its thirty entries and its
+  garden pagination is unaffected.
 
 ## 10. What exists today vs what this requires
 

@@ -60,12 +60,18 @@ export function verifyEvidenceRecords(db){
   const captures=db.prepare('SELECT c.*,c.rowid AS seq FROM evidence_captures c').all();
   if(captures.length>EVIDENCE_LIMITS.max_captures)return false;
   const sequence=new Map(),captureById=new Map(),perSource=new Map();
+  let retainedBytes=0;
   for(const capture of captures){
     const source=sourceById.get(capture.source_id);
     if(!source||capture.source_key!==source.source_key)return false;
+    // What a capture is stored under must be the identity it names: the same address rules the source
+    // is held to, and the same key a citation is resolved by. A capture re-pointed at another host,
+    // path or port — while keeping the source it claims — fails here.
+    let captureUrl;try{captureUrl=new URL(capture.url);}catch{return false;}
+    if(!['http:','https:'].includes(captureUrl.protocol)||captureUrl.username||captureUrl.password||captureUrl.port||evidenceSourceKey(capture.url)!==capture.source_key)return false;
     if(!/^[a-f0-9]{64}$/.test(capture.sha256)||!Number.isInteger(capture.bytes)||capture.bytes<0)return false;
     if(![0,1].includes(capture.retained))return false;
-    if(capture.retained===1){if(capture.bytes<=0||!/^catalog\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(capture.retained_path))return false;}
+    if(capture.retained===1){if(capture.bytes<=0||!/^catalog\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(capture.retained_path))return false;retainedBytes+=capture.bytes;}
     else if(capture.retained_path!=='')return false;
     if(!['catalog','submission','curator'].includes(capture.origin)||!EVIDENCE_KINDS.includes(capture.evidence_kind))return false;
     if(!evidenceStamp(capture.retrieved_at)||!evidenceDate(capture.declared_date)||!isoTime(capture.created_at))return false;
@@ -75,7 +81,23 @@ export function verifyEvidenceRecords(db){
     perSource.set(capture.source_id,(perSource.get(capture.source_id)||0)+1);
   }
   if([...perSource.values()].some((count)=>count>EVIDENCE_LIMITS.max_captures_per_source))return false;
-  for(const event of db.prepare('SELECT * FROM evidence_events').all())if(!sourceById.has(event.source_id)||!['withdrawn','restored'].includes(event.kind)||typeof event.detail!=='string'||event.detail.length>300||!isoTime(event.created_at))return false;
+  // Retained bytes are the quota a capture write is held to, so the stored total is re-checked too:
+  // a backup carrying more retained bytes than the library allows is refused, not opened.
+  if(retainedBytes>EVIDENCE_LIMITS.max_retained_bytes)return false;
+  const withdrawals=new Map();
+  for(const event of db.prepare('SELECT * FROM evidence_events').all()){
+    if(!sourceById.has(event.source_id)||!['withdrawn','restored'].includes(event.kind)||typeof event.detail!=='string'||event.detail.length<1||event.detail.length>300||!isoTime(event.created_at))return false;
+    const tally=withdrawals.get(event.source_id)||{withdrawn:0,restored:0};
+    tally[event.kind]=tally[event.kind]+1;withdrawals.set(event.source_id,tally);
+  }
+  // The event history and the status it explains must still agree. A withdrawal is its own
+  // append-only event carrying the reason, and a fresh capture is the restore that answers it, so a
+  // source marked withdrawn without that event — or restored more often than it was withdrawn — is
+  // refused. Every source's count is therefore one while it is withdrawn and zero while it is active.
+  for(const source of sources){
+    const tally=withdrawals.get(source.id)||{withdrawn:0,restored:0};
+    if(tally.restored>tally.withdrawn||tally.withdrawn-tally.restored!==(source.status==='withdrawn'?1:0))return false;
+  }
   for(const cite of db.prepare('SELECT * FROM submission_evidence').all()){
     if(!Number.isInteger(cite.source_number)||cite.source_number<1||cite.source_number>EVIDENCE_LIMITS.per_artifact_evidence)return false;
     if(!['captured','missing'].includes(cite.state)||!isoTime(cite.created_at))return false;
@@ -484,10 +506,17 @@ export function backupInventory(directory, { limit = 5 } = {}) {
 }
 
 // The diagnostics payload is built from named counters and never from stored rows. This pass is the
-// second line of defence: a field name that names a secret is dropped, and a value that looks like a
+// second line of defence: a field name that names a secret is dropped, a field whose final word names
+// narrative content while it carries text or a structure is dropped, and a value that looks like a
 // token, a stored password digest, an email address or a private artifact reference is replaced.
 // It is the reason the drill can plant a secret and grep the produced output for it.
 const SECRET_FIELD = /(?:password|pass_hash|secret|token|credential|hash|salt|email|contact|authorization|cookie|private)/i;
+// What docs/OPERATIONS.md §10 forbids in a diagnostics response: a private message or journal text,
+// a private artifact, or a raw prompt or conversation. These rules read the field's final word, so a
+// counter that merely mentions one of them (`records.ambassador_conversations`) still publishes its
+// number; only text or a structure under such a name is dropped.
+const CONTENT_FIELD = /(?:^|_)(?:messages?|texts?|journals?|artifacts?|prompts?|conversations?|excerpts?|transcripts?|body|bodies|contents?|questions?|answers?|passages?)$/i;
+const textOrStructure = (item) => typeof item === 'string' || (item !== null && typeof item === 'object');
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 const PASSWORD_DIGEST = /\b[0-9a-f]{16,}:[0-9a-f]{64,}\b/gi;
 const LONG_HEX = /\b[0-9a-f]{40,}\b/gi;
@@ -497,7 +526,7 @@ export function redactDiagnostics(value, depth = 0) {
   if (Array.isArray(value)) return value.slice(0, 200).map((item) => redactDiagnostics(item, depth + 1));
   if (value && typeof value === 'object') {
     const output = {};
-    for (const [key, item] of Object.entries(value)) output[key] = SECRET_FIELD.test(key) ? '[redacted-field]' : redactDiagnostics(item, depth + 1);
+    for (const [key, item] of Object.entries(value)) output[key] = SECRET_FIELD.test(key) || (CONTENT_FIELD.test(key) && textOrStructure(item)) ? '[redacted-field]' : redactDiagnostics(item, depth + 1);
     return output;
   }
   return typeof value === 'string' ? redactText(value) : value;

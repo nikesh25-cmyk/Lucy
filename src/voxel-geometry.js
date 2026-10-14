@@ -52,17 +52,109 @@ export function orbitCamera(position, value = {}) {
     y: height + Math.sin(orbit.pitch) * orbit.distance, z: z + Math.cos(orbit.yaw) * horizontal }, orbit };
 }
 
+/** The authored world's own tile bounds, read once for the anchor and the window. */
+const worldBounds = (definition) => ({
+  columns: clamp(Math.floor(finite(definition?.columns ?? definition?.width, 20)), 1, 4096),
+  rows: clamp(Math.floor(finite(definition?.rows ?? definition?.height, 14)), 1, 4096),
+});
+
+/** The tile the followed resident stands on, clamped inside the authored world. */
+export function voxelAnchor(definition, position) {
+  const { columns, rows } = worldBounds(definition);
+  return { x: clamp(Math.floor(finite(position?.x, definition?.start?.x ?? 0)), 0, columns - 1),
+    y: clamp(Math.floor(finite(position?.y, definition?.start?.y ?? 0)), 0, rows - 1) };
+}
+
 export function voxelWindow(definition, position) {
-  const columns = clamp(Math.floor(finite(definition?.columns ?? definition?.width, 20)), 1, 4096);
-  const rows = clamp(Math.floor(finite(definition?.rows ?? definition?.height, 14)), 1, 4096);
-  const x = clamp(Math.floor(finite(position?.x, definition?.start?.x ?? 0)), 0, columns - 1);
-  const y = clamp(Math.floor(finite(position?.y, definition?.start?.y ?? 0)), 0, rows - 1);
+  const { columns, rows } = worldBounds(definition), { x, y } = voxelAnchor(definition, position);
   return { x: Math.max(0, x - VOXEL_LIMITS.radius), y: Math.max(0, y - VOXEL_LIMITS.radius),
     right: Math.min(columns, x + VOXEL_LIMITS.radius + 1), bottom: Math.min(rows, y + VOXEL_LIMITS.radius + 1), columns, rows };
 }
 
 export const inVoxelWindow = (item, window) => Number.isInteger(item?.x) && Number.isInteger(item?.y) &&
   item.x >= window.x && item.x < window.right && item.y >= window.y && item.y < window.bottom;
+
+/**
+ * Level of detail: how far from the followed resident the drawn ground is still read at full detail.
+ *
+ * The window is one square of terrain around that resident, and only the tiles close to them are
+ * examined closely. Beyond `detail_radius` a tile keeps every instance that decides *what it is* —
+ * its surface, its obstacle, its pick, its building, its saved blocks — and loses the instances that
+ * only decide *how its ground reads*: the mottling and seedling decals, the leaf litter and understory
+ * tufts, and the water glints, shore breaks and marginal reeds. Every dropped box is unpicked, and the
+ * occupancy classes in src/footprints.js are untouched, so a coarse tile is still drawn as exactly the
+ * tile the server refuses or allows.
+ *
+ * The radius is the whole purpose of the rule: the decorative cost is bounded by the area inside it,
+ * so it does not grow when the window grows. That is what keeps a full 37 x 37 viewport inside the
+ * renderer's instance budget (tests/render-lod.test.js) instead of paying for decoration across all
+ * 1,369 cells. The radius is authoring, not a bound: `VOXEL_LIMITS` is unchanged, and 12 tiles is
+ * where the phase's own depth cue starts (src/scene/sky.js derives `near` as `distance * .5 + 4`),
+ * so the fine reading ends where the fog begins and a decal 3-30 cm tall is under a pixel.
+ */
+export const LOD_LIMITS = Object.freeze({ detail_radius: 12 });
+
+/**
+ * The static diorama's instance ceiling for one viewport, stated as an assertion instead of a hope.
+ *
+ * It is a *measured* ceiling with stated headroom, which is what makes it a regression guard: a pass
+ * that starts drawing per-cell geometry, or a decoration pass that stops respecting
+ * `LOD_LIMITS.detail_radius`, breaks this number in `tests/render-lod.test.js` rather than costing a
+ * frame on a phone. Each term is named because each has its own owner:
+ *
+ *   instances            world geometry — terrain, water, buildings, scenery, navigation, the sky and
+ *                        the decorative ground reading — measured at the largest viewport the server
+ *                        can request (a frontier sector's 37 x 37 window, 1,369 cells) with no saved
+ *                        blocks: 3,228 before this task, 2,367 after the detail rule. Stated at 3,600,
+ *                        which is that maximum plus ~11% headroom for authored content growth.
+ *   participant_instances residents at `VOXEL_LIMITS.participants`, each at the 22 boxes the
+ *                        worst-case body draws (a ring, legs, arms, torso, head, headwear, eyes, an
+ *                        emblem badge with its glyph and the NPC marker with its fins).
+ *   block_instances      saved block columns at `VOXEL_LIMITS.blocks`, one instance per stored layer.
+ *   draw_calls           one mesh per colour and material style, the same 130 `tests/render-scene.test.js`
+ *                        bounds from the other side.
+ */
+export const DIORAMA_BUDGET = Object.freeze({
+  instances: 3600, participant_instances: 4840, block_instances: 2048, draw_calls: 130,
+});
+
+/**
+ * The detail tier of one tile: its Chebyshev distance from the followed resident. `fine` tiles are
+ * drawn exactly as they have always been; `coarse` tiles keep what the tile *is* and lose the reading
+ * of its ground. An anchor that is not a tile, or a radius that is not a number, leaves every tile
+ * `fine`, so a caller without a viewer can never lose detail by accident; `Infinity` is the documented
+ * "no level of detail" the benchmark and tests use to reproduce the pre-LOD build.
+ */
+export function detailTier(x, y, anchor, radius = LOD_LIMITS.detail_radius) {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(anchor?.x) || !Number.isInteger(anchor?.y)) return 'fine';
+  const reach = typeof radius === 'number' && !Number.isNaN(radius) ? Math.max(0, radius) : LOD_LIMITS.detail_radius;
+  return Math.max(Math.abs(x - anchor.x), Math.abs(y - anchor.y)) > reach ? 'coarse' : 'fine';
+}
+
+/** True when a tile is read at full detail. The predicate form of `detailTier`, for a hot loop. */
+export const inDetail = (x, y, anchor, radius) => detailTier(x, y, anchor, radius) === 'fine';
+
+/**
+ * `prefers-reduced-motion`, read through an injected matchMedia so it can be tested. The same helper
+ * and the same fallback as src/ui/touch-controls.js: an absent or throwing matcher means the visitor
+ * stated no preference, never that they asked for motion.
+ */
+export function prefersReducedMotion(match) {
+  if (typeof match !== 'function') return false;
+  try { return Boolean(match('(prefers-reduced-motion: reduce)')?.matches); } catch { return false; }
+}
+
+/**
+ * The reduced-motion preference of one renderer: an injected boolean or matcher, or the browser's own
+ * `prefers-reduced-motion` query. An injected value always wins, so a test — or a host that has already
+ * resolved the preference — never depends on the environment it runs in.
+ */
+export function reducedMotionPreference(value) {
+  if (typeof value === 'function') return Boolean(value());
+  if (typeof value === 'boolean') return value;
+  const match = globalThis.matchMedia;
+  return prefersReducedMotion(typeof match === 'function' ? match.bind(globalThis) : undefined);
+}
 
 /** Address a physical 6 × 6 plot without inferring ownership, availability, or permissions. */
 export function voxelParcelAddress(worldId, position) {
@@ -130,8 +222,14 @@ export function cellOccludedBelow(definition, snapshot, plan, x, y) {
   return true;
 }
 
-export function voxelPlan(definition, snapshot = {}, position = definition?.start) {
-  const window = voxelWindow(definition, position), cells = [];
+/**
+ * The resolved viewport: the window, the tile the followed resident stands on (`anchor`), the detail
+ * radius the scene passes read (`detailRadius`), and the bounded cells, objects, portals, gates,
+ * blocks and participants for that viewport. Passing `Infinity` as `detailRadius` builds the pre-LOD
+ * plan, which is how the benchmark and the tests produce their "before" column.
+ */
+export function voxelPlan(definition, snapshot = {}, position = definition?.start, detailRadius = LOD_LIMITS.detail_radius) {
+  const window = voxelWindow(definition, position), anchor = voxelAnchor(definition, position), cells = [];
   const parcels = voxelParcels(definition, snapshot, window), byParcel = new Map(parcels.map(parcel => [parcel.id, parcel]));
   const sourceCamera = snapshot.camera || { x: 0, y: 0 };
   for (let y = window.y; y < window.bottom; y++) for (let x = window.x; x < window.right; x++) {
@@ -163,7 +261,7 @@ export function voxelPlan(definition, snapshot = {}, position = definition?.star
     seenPeople.add(item.id); participants.push(item);
     if (participants.length === VOXEL_LIMITS.participants) break;
   }
-  return { window, cells, objects, portals, gates, blocks, participants, parcels };
+  return { window, anchor, detailRadius, cells, objects, portals, gates, blocks, participants, parcels };
 }
 
 /** Convert an actual Raycaster intersection, preserving server coordinates and cube face. */

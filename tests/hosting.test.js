@@ -3,7 +3,7 @@ import { request as httpRequest } from 'node:http';
 import assert from 'node:assert/strict';
 import { Platform } from '../src/platform.js';
 import { createApp } from '../server.js';
-import { hostingConfiguration, createAuthenticationLimiter } from '../src/hosting.js';
+import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from '../src/hosting.js';
 
 const ORIGIN = 'https://world.example.test';
 const CODE = 'private-test-setup-code-2026-abcdef';
@@ -113,4 +113,28 @@ test('authentication limits allow distinct proxy users and bound account attempt
   const local = createAuthenticationLimiter();
   for (let index = 0; index < 15; index++) local.begin('localhost')();
   assert.throws(() => local.begin('localhost'), { status: 429 });
+});
+
+test('the loopback health exception requires a loopback peer, not only a loopback Host header', () => {
+  const server = { address: () => ({ port: 8443 }) };
+  const hosting = { publicOrigin: ORIGIN, publicHost: 'world.example.test' };
+  const sent = (host, { path = '/api/v1/health', method = 'GET', remoteAddress, headers = {} } = {}) => ({ method, url: path, headers: { host, ...headers }, socket: { remoteAddress } });
+  // The exception stands in for the public-host rule, so it is decided by the socket that connected.
+  // A client-supplied Host header never substitutes for the peer: a caller that cannot reach the
+  // server over loopback is refused, whatever Host it names.
+  for (const host of ['127.0.0.1:8443', 'localhost:8443', '[::1]:8443']) {
+    assert.throws(() => validateRequestOrigin(sent(host, { remoteAddress: '203.0.113.7' }), server, hosting), { status: 403 });
+    assert.throws(() => validateRequestOrigin(sent(host, { remoteAddress: '10.0.0.5' }), server, hosting), { status: 403 });
+  }
+  // A socket that reports no peer address is not trusted either.
+  assert.throws(() => validateRequestOrigin(sent('127.0.0.1:8443', { remoteAddress: undefined }), server, hosting), { status: 403 });
+  // The loopback probe the exception exists for, and every IPv4-mapped form of it, still works.
+  for (const remoteAddress of ['127.0.0.1', '127.0.0.2', '::1', '::ffff:127.0.0.1']) {
+    assert.doesNotThrow(() => validateRequestOrigin(sent('127.0.0.1:8443', { remoteAddress }), server, hosting));
+  }
+  // The exception never widens the path or the method: every other route still needs the public host.
+  assert.throws(() => validateRequestOrigin(sent('127.0.0.1:8443', { path: '/api/v1/world', remoteAddress: '127.0.0.1' }), server, hosting), { status: 403 });
+  assert.throws(() => validateRequestOrigin(sent('127.0.0.1:8443', { path: '/api/v1/health', method: 'POST', remoteAddress: '127.0.0.1', headers: { origin: ORIGIN } }), server, hosting), { status: 403 });
+  // A caller presenting the configured public host is unaffected from any peer.
+  assert.doesNotThrow(() => validateRequestOrigin(sent('world.example.test', { path: '/api/v1/world', remoteAddress: '203.0.113.7' }), server, hosting));
 });

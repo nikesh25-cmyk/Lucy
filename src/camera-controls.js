@@ -241,3 +241,192 @@ export function controlHint({ playing = true, mode = DEFAULT_CAMERA_MODE } = {})
   return normalizeCameraMode(mode) === 'first-person' ? CONTROL_HINTS.firstPerson : CONTROL_HINTS.playing;
 }
 export function targetHint(fixture) { return fixture ? `${fixture.label} · ${INTERACTION_KEY_LABEL} to interact` : 'Aim at a place or object to interact'; }
+
+// ---------------------------------------------------------------------------------------------
+// Presentation interpolation. The drawn avatar glides between two consecutive *confirmed* tiles and
+// never leaves the segment between them, so the display can never claim a tile the server did not
+// store. A step of one tile or less is tweened; a longer jump (a travel, a teleport, a world change)
+// or a viewer who asked for reduced motion snaps straight to the stored tile. A refused step is
+// reconciled: `reconcile(id)` drops the tween and the avatar is drawn at its stored tile again.
+//
+// This is presentation only. Nothing here reads or writes a server position; the confirmed record it
+// holds is exactly the value the server returned, and the caller owns every write.
+// ---------------------------------------------------------------------------------------------
+
+/** The longest glide between two confirmed tiles: the server steps every 120 ms. */
+export const DISPLAY_TWEEN_MS = 180;
+/** A confirmed change farther than this many tiles snaps instead of gliding: only a real step tweens. */
+export const TWEEN_SNAP_DISTANCE = 1;
+
+const vector = (value) => ({ x: Number.isFinite(value?.x) ? value.x : 0, y: Number.isFinite(value?.y) ? value.y : 0, z: Number.isFinite(value?.z) ? value.z : 0 });
+const sameTile = (a, b) => a.x === b.x && a.y === b.y && a.z === b.z;
+
+/**
+ * Where the interpolation currently draws a record: the eased point on the segment from the tile the
+ * avatar was drawn at (`from`) to the newest confirmed tile (`confirmed`). `t` is clamped to [0, 1],
+ * so the result is exactly `confirmed` once the tween has elapsed and never overshoots it.
+ */
+export function displayCoords(record, now) {
+  if (!record) return null;
+  const confirmed = vector(record.confirmed);
+  const duration = Number.isFinite(record.duration) ? record.duration : 0;
+  const progress = duration > 0 ? Math.min(1, Math.max(0, (now - record.at) / duration)) : 1;
+  if (progress >= 1) return { ...confirmed };
+  const from = vector(record.from);
+  const eased = progress * progress * (3 - 2 * progress);
+  return {
+    x: from.x + (confirmed.x - from.x) * eased,
+    y: from.y + (confirmed.y - from.y) * eased,
+    z: from.z + (confirmed.z - from.z) * eased,
+  };
+}
+
+/**
+ * One owner for the drawn-avatar interpolation of every participant on screen.
+ *
+ *   confirm(item)        remember one server-confirmed position; returns the stored record
+ *   display(id, at)      the interpolated point right now, or null for an unknown id
+ *   record(item, at)     `item` with x/y/z replaced by the interpolated point (the renderer's input)
+ *   reconcile(id)        snap one avatar back to its stored tile; true when a record existed
+ *   settling(at)         whether any glide is still running
+ *   clear()              forget every record (a world or session change)
+ *
+ * `reducedMotion()` is read on every confirm, so a viewer who asked for no motion always receives the
+ * stored tile immediately and the drawn avatar can never lag behind it.
+ */
+export function createPresenceTracker({
+  now = () => Date.now(),
+  duration = DISPLAY_TWEEN_MS,
+  snapDistance = TWEEN_SNAP_DISTANCE,
+  reducedMotion = () => false,
+} = {}) {
+  if (typeof now !== 'function') throw new TypeError('createPresenceTracker needs a clock.');
+  if (typeof reducedMotion !== 'function') throw new TypeError('createPresenceTracker needs a reducedMotion predicate.');
+  const glide = Number.isFinite(duration) && duration > 0 ? duration : 0;
+  const reach = Number.isFinite(snapDistance) && snapDistance >= 0 ? snapDistance : TWEEN_SNAP_DISTANCE;
+  const records = new Map();
+
+  function confirm(item) {
+    if (!item || typeof item.id !== 'string' || !Number.isFinite(item.x) || !Number.isFinite(item.y)) return null;
+    const target = vector(item);
+    const world = item.world_id ?? item.world ?? null;
+    const at = now();
+    const record = records.get(item.id);
+    if (!record) {
+      const fresh = { confirmed: target, from: { ...target }, at, duration: 0, world };
+      records.set(item.id, fresh);
+      return fresh;
+    }
+    if (record.world === world && sameTile(record.confirmed, target)) return record;
+    const distance = Math.abs(record.confirmed.x - target.x) + Math.abs(record.confirmed.y - target.y);
+    const tween = glide > 0 && !reducedMotion() && record.world === world && distance <= reach;
+    const next = tween
+      ? { confirmed: target, from: displayCoords(record, at), at, duration: glide, world }
+      : { confirmed: target, from: { ...target }, at, duration: 0, world };
+    records.set(item.id, next);
+    return next;
+  }
+
+  function get(id) { return records.get(id) || null; }
+  function display(id, at = now()) { return displayCoords(records.get(id), at); }
+  function record(item, at = now()) { const point = display(item?.id, at); return point ? { ...item, ...point } : item; }
+
+  function reconcile(id) {
+    const record = records.get(id);
+    if (!record) return false;
+    records.set(id, { ...record, from: { ...record.confirmed }, at: now(), duration: 0 });
+    return true;
+  }
+
+  function settling(at = now()) {
+    for (const record of records.values()) if (record.duration > 0 && record.at + record.duration > at) return true;
+    return false;
+  }
+  function tweening(id, at = now()) { const record = records.get(id); return Boolean(record && record.duration > 0 && record.at + record.duration > at); }
+
+  return Object.freeze({
+    confirm, get, display, record, reconcile, settling, tweening,
+    clear() { records.clear(); },
+    entries() { return [...records.entries()]; },
+    get size() { return records.size; },
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Travel affordance. One place lists the entrances the server published for the world on screen, so
+// a route is discoverable (it is named with its own label and its distance) and reversible (the
+// portal back to the shared Commons, or to the resident's own home, is marked and sorted first). It
+// reads only `GET /world`'s `portals`; it never invents a destination.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The entrances from a position, closest first but with the way back ahead of the rest. A route is
+ * `{ id, label, target, x, y, distance, back, portal }`; `back` is true for the portal whose target
+ * is the shared Commons or the caller's own home world, which is what makes the route reversible.
+ */
+export function travelRoutes(portals = [], from = {}, { limit = 3, commons = 'commons', home = null } = {}) {
+  const here = vector(from);
+  const routes = [];
+  for (const portal of Array.isArray(portals) ? portals : []) {
+    const target = portal?.target_world_id || portal?.targetWorldId;
+    if (typeof target !== 'string' || !target || !Number.isInteger(portal?.x) || !Number.isInteger(portal?.y)) continue;
+    const distance = Math.abs(portal.x - here.x) + Math.abs(portal.y - here.y);
+    routes.push({
+      id: String(portal.id || `${portal.x},${portal.y}`),
+      label: String(portal.label || portal.name || 'Entrance'),
+      target,
+      x: portal.x,
+      y: portal.y,
+      distance,
+      back: target === commons || (typeof home === 'string' && target === home),
+      portal,
+    });
+  }
+  routes.sort((a, b) => Number(b.back) - Number(a.back) || a.distance - b.distance || a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
+  return Number.isFinite(limit) && limit >= 0 ? routes.slice(0, limit) : routes;
+}
+
+/** The plain-text role of a route, so a HUD button can name what it is without a second source. */
+export function routeHint(route) {
+  if (!route) return '';
+  const tiles = `${route.distance} tile${route.distance === 1 ? '' : 's'}`;
+  return route.back ? `${route.label} at ${route.x}, ${route.y} · the way back · ${tiles} away` : `${route.label} at ${route.x}, ${route.y} · ${tiles} away`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Movement feedback. Every input outcome — the accepted step, the refused step and the reconcile
+// after a refusal — has one wording, produced here from the server's own result, so the HUD can never
+// describe a step the server did not take. `tone` is what the stylesheet colours.
+// ---------------------------------------------------------------------------------------------
+
+const tileAt = (point, fallback = 'the saved tile') => point && Number.isFinite(point.x) && Number.isFinite(point.y) ? `${Math.floor(point.x)}, ${Math.floor(point.y)}` : fallback;
+
+/**
+ * The readable result of one movement attempt.
+ *   outcome 'step'     — the server stored a new tile: `Stepped up to 10, 5.`
+ *   outcome 'blocked'  — the server refused the step and kept the stored tile
+ *   outcome 'restored' — a failed request, reconciled to the stored tile, naming the server's message
+ *   outcome 'travel'   — an arrival, carrying the caller's own sentence
+ */
+export function moveFeedback({ outcome = 'step', direction = '', from = null, to = null, cause = '', message = '' } = {}) {
+  if (outcome === 'blocked') {
+    const blocked = `The way ${direction} is blocked${cause ? ` by ${cause}` : ''}. Restored to ${tileAt(from)} — choose another direction.`;
+    return { tone: 'refused', text: blocked };
+  }
+  if (outcome === 'restored') {
+    const reason = String(message || '').trim();
+    return { tone: 'restored', text: `${reason ? `${reason} ` : ''}Restored to ${tileAt(from)}.` };
+  }
+  if (outcome === 'travel') return { tone: 'travel', text: String(message || 'Arrived.') };
+  return { tone: 'step', text: `Stepped ${direction} to ${tileAt(to)}.` };
+}
+
+/** The readable cause of a refused step, from the terrain and scenery the caller can name. */
+export function blockedCause({ terrain = '', scenery = false, outside = false } = {}) {
+  if (outside) return 'the edge of the world';
+  if (scenery) return 'a solid object';
+  const named = { water: 'water', tree: 'a tree', building: 'a building', wall: 'a wall', fountain: 'the fountain' };
+  const type = typeof terrain === 'string' ? terrain.trim() : '';
+  if (!type) return '';
+  return named[type] || `the ${type.replaceAll('_', ' ')}`;
+}
