@@ -1,8 +1,206 @@
 # World performance and measured capacity
 
+## Wave D — measured capacity and recovery on this tip (14 October 2026)
+
+Measured on **14 October 2026**, branch `integration/deepseek-master-2026-10-14`, commit
+`7eb03e08d6d8`, schema **22**, with the machine quiet: **load average 1.78 before and 3.07 after** the
+capacity run, 2.12 / 2.59 around the browser gate, 2.42 / 4.78 around the end-to-end gate, and 3.14 at
+the start of the operations rehearsal. Every number below was produced by a command in this repository
+on that tip. **This section supersedes the Task 14 and Task 28 records further down**, which describe
+earlier tips and are kept as history, not as current numbers.
+
+### The honesty contract, first
+
+- **A stored-record fixture is not a concurrent-player benchmark.** The read harness fills a
+  *temporary* database with **10,001 stored agents** (10,000 synthetic plus the fixture's own
+  resident) stacked in the Commons with one home each, **2,000 stored visits** and **2,000 stored
+  claims**. That is a *stored-data* fixture: it says how a read behaves when the database is large, and
+  nothing about how many people or AI residents can use the world at once.
+- **No production capacity is established by this document.** Where a limit was found it is reported as
+  "under this hardware, this concurrency, this workload".
+- **Reads, writes, the model queue and event subscribers are four separate measurements** and are never
+  added together. None of them is a frame-rate, GPU, network or real-device measurement.
+- **No model was configured and no model call was made.** The server's own `/health` reported
+  `model_configured=false, model_queue=null` on both the read harness and the write fixture. The
+  model-queue figures are the queue's own bound with a **50 ms stub inference**, never a model's
+  throughput.
+- **Compute credits are declarative only.** `src/coins.js` freezes four units of account; of them only
+  NemoCoin is implemented (`ledger: 'coin_rewards'`, `balance: true`). `compute_credit` is
+  `implemented: false` with no ledger, no balance, no transfer and no conversion, and
+  `UNIT_SEPARATION_POLICY` states `conversion_paths: 0, cash_out: false, token: false`. Nothing in these
+  measurements spends, mints or converts a compute credit; the concept has no store to spend, and this
+  document does not count one.
+
+### Hardware and environment
+
+| | |
+| --- | --- |
+| Machine | Apple M5 (`Mac17,3`), 10 logical CPUs, 16 GiB memory |
+| OS | macOS 26.6.2 (build 25G83), Darwin kernel 25.6.0, internal SSD |
+| Runtime | Node v24.19.0 (`node:sqlite`, `node:http`) |
+| Process model | one HTTP process, one SQLite writer in WAL mode, loopback only |
+| Load average | 1.78 / 3.07 (capacity run), 2.12 / 2.59 (browser gate); this suite is load-sensitive, so the load is stated with every figure |
+
+### Fixtures and concurrency (stated with every table)
+
+| Measurement | Fixture | Concurrency | Offered work |
+| --- | --- | --- | --- |
+| HTTP reads | 10,001 stored agents stacked in the Commons, one home each, 2,000 visits, 2,000 claims | **1, 8, 32** client workers | 200 GET requests per level |
+| Movement / building writes | 8 movers + 1 builder in its own garden, 80 buildable tiles, 8 subscriber accounts | **1, 8** client workers | 40 paced moves per client + 3,000 unpaced saves per level |
+| Event subscribers | 8 authenticated Server-Sent Events subscriptions on the Commons (2 accounts × the 4-per-account bound) | **8 held open** | one frame per published delta |
+| Browser clients | each suite its own temporary installation; 4 scenarios per suite | **1 and 2 suites** (≤2 and ≤4 pages) | 4 and 8 scenarios |
+| Model queue | no real model; a 50 ms stub inference | **12 simultaneous requests**, maxWaiting 8 | 12 requests |
+
+### Instruments and commands
+
+| Question | Instrument | Command |
+| --- | --- | --- |
+| Reads at bounded concurrency | `scripts/load-harness.mjs` (invoked unmodified) | part of `npm run capacity` |
+| Writes and event subscribers at bounded concurrency | `scripts/capacity-experiment.mjs` (the section added this wave) | part of `npm run capacity` |
+| Browser clients at bounded concurrency | `scripts/browser-suite.mjs` (invoked unmodified) | part of `npm run capacity` |
+| The bounded model queue | the shipped `boundedModel` + the shipped server drill | part of `npm run capacity` |
+| Recovery and failure drills | `scripts/ops-rehearsal.mjs` | `node scripts/ops-rehearsal.mjs --keep` |
+
+### 1. HTTP read capacity — bounded client concurrency
+
+The read mix is the client's own repeating GET set: crowded viewport, garden directory, resident
+passport, contribution history, health. Every request is a GET against the shipped `server.js` on a
+temporary database; 200 attempts per level, a 5,000 ms request deadline and a **0 % failure budget**.
+
+| Concurrency | Attempts | ok | timeouts | HTTP errors | Throughput | p50 | p90 | p95 | p99 | max |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 200 | 200 | 0 | 0 | **50.78 req/s** | 9.43 ms | 60.19 ms | 60.77 ms | 63.90 ms | 77.18 ms |
+| 8 | 200 | 200 | 0 | 0 | **51.82 req/s** | 137.53 ms | 252.38 ms | 274.93 ms | 360.39 ms | 561.44 ms |
+| 32 | 200 | 200 | 0 | 0 | **53.02 req/s** | 274.58 ms | 932.33 ms | 3583.25 ms | 3687.01 ms | 3770.80 ms |
+
+Payload: median **41,446 B** per response, largest **247,895 B** (the crowded viewport, which the client
+polls every 3 seconds). Per path at concurrency 1: crowded viewport p50 60.19 ms / p95 63.90 ms
+(247,895 B), garden directory p50 23.44 ms / p95 25.01 ms (9,804 B), resident passport p50 9.43 ms /
+p95 10.44 ms (41,446 B), contribution history p50 3.53 ms / p95 4.01 ms (68,605 B), health p50 0.28 ms.
+**No failure-budget breach occurred up to concurrency 32.**
+
+### 2. Movement and building writes — bounded client concurrency
+
+Two writes the resident client actually sends, against the shipped routes on a temporary database:
+`POST /api/v1/move` (a confirmed step — one resident per client, paced above the server's own throttle)
+and `POST /api/v1/agents/:id/build` (a saved garden object, idempotent, **unpaced** so its throughput is
+what the server serves rather than what the harness offered). No reads are mixed into these rows.
+
+| Clients | Movement (paced) | Movement p50 / p95 | Building (unpaced) | Building p50 / p95 | Failures / timeouts |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 40 steps, **7.68 steps/s** | 3.1 ms / 3.9 ms | 3,000 saves, **2,487.67 saves/s** | 0.4 ms / 0.5 ms | 0 / 0 |
+| 8 | 320 steps, **62.01 steps/s** | 2.5 ms / 4.5 ms | 3,000 saves, **3,645.28 saves/s** | 1.7 ms / 3.9 ms | 0 / 0 |
+
+Every response was 200 (movement) or 201 (building); there were no HTTP errors, no timeouts and no
+socket errors. The building rate is the single SQLite writer's own ceiling on this fixture.
+
+**The application's own per-resident bound, measured rather than assumed:** twelve **unpaced** steps
+issued back to back on one resident produced **1 accepted and 11 refused `429` in 9.2 ms** — the
+server's 120 ms per-agent movement throttle. That is a deliberate application bound, not a capacity
+failure, and it is why the paced movement row above is paced.
+
+### 3. Event-feed subscribers
+
+Eight authenticated clients held `GET /api/v1/events?world_id=commons` Server-Sent Events
+subscriptions open while the writes above flowed, and each received frame was timed against the
+server's own send clock (`frame.t`).
+
+| Subscribers opened | Frames received | Frames/client | Rate | Delivery p50 / p95 / p99 / max | Frame-rate bound |
+| --- | --- | --- | --- | --- | --- |
+| **8 / 8** (status 200) | 680 | 85 each | 6.85 frames/client/s | 0 ms / 1 ms / 1 ms / 2 ms | 20 fps (not reached) |
+
+The channel's per-account bound (4 subscriptions) is real: an earlier run that opened eight
+subscriptions on one account was refused, four opening and four getting `429`. That run was discarded
+and the fixture now gives each group of four viewers its own account.
+
+### 4. Browser clients — real Chrome at bounded concurrency
+
+`scripts/browser-suite.mjs` driven at at most two concurrent suites, each with its own temporary
+installation and at most two browser pages. This is not a supported-user count; it is the cost of one
+suite and whether two suites on one machine interfere.
+
+| Concurrent suites | Pages bound | Scenarios | Wall clock | Result |
+| --- | --- | --- | --- | --- |
+| 1 | ≤ 2 | 4 | **28.7 s** | all passed |
+| 2 | ≤ 4 | 8 | **30.7 s** | all passed |
+
+Two suites did not double the wall clock (28.7 s → 30.7 s), which is why the number of browser clients
+cannot be read from these rows. The full 45-scenario acceptance gate, run separately on the same tip at
+load 2.12 / 2.59, passed **45 / 45 in 304 s**. Two of its scenarios report the interface's own timing:
+
+- `movement-latency` — input → confirmed step, timed in the page: **min 5.3 ms, median 12.3 ms, p95
+  18.9 ms, max 19.1 ms, n = 24**, of which input → `POST /move` answered was median 4.3 ms.
+- `shared-presence-two-clients` — a move was visible in the **other** browser in 492 ms, with channel
+  frame delivery 0 ms.
+
+### 5. Model-queue capacity (its own bound and refusals)
+
+No real model is configured, so this is the shipped queue's bound with a **50 ms stub** and the shipped
+server's own drill — never model throughput.
+
+| Attempts | Admitted | Refused as saturated | Failed | Peak waiting | Peak active | Queue-wait p50 / p95 / max | Serialized rate | Bound |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 12 | 9 | 3 | 0 | 8 of 8 | 1 | 202.1 ms / 403.3 ms / 403.3 ms | 19.8 inferences/s | held |
+
+The shipped server's own `model-queue-saturation` drill passed in 685 ms. The read and write fixtures
+both reported `model_configured=false, model_queue=null`, confirming that no model work was mixed into
+those rows.
+
+### What was not measured
+
+- **Real model throughput.** No model is configured; no model call was made, in either the read or the
+  write fixture. The queue figures are a stub's bound.
+- **Soak, memory growth, disk exhaustion, WAL growth.** Every run is seconds long.
+- **Network reality.** Loopback only: no TLS, no reverse proxy, no real internet latency, no packet
+  loss.
+- **Multiple processes, multiple writers, horizontal scale.** One process, one connection.
+- **The crowded-viewport read at a stored size other than 10,001 agents.** The fixture is fixed, and a
+  read that is fast on 10,001 rows is not evidence for 1,000,000.
+- **Real accounts or installed data.** Every measurement uses a temporary workspace; `data/`,
+  `outputs/Lucy`, backups and model weights were never opened for writing (the experiment re-checks
+  this and reported the installed world untouched).
+
+### The candid limit, and the change it justifies
+
+**The bottleneck is the read path inside the single Node process, and the numbers confirm it rather than
+assume it.** Completion throughput sat at **50.78 / 51.82 / 53.02 req/s** and did not improve from 1 to
+32 simultaneous clients while latency climbed to a 3,583 ms p95 — the signature of one synchronous
+SQLite read path serving every request, not of a client limit. Within the read mix the crowded
+`GET /world` (247,895 B, p50 60.19 ms at concurrency 1) dominates: 40 of the 200 requests are that read,
+and 40 × ~60 ms is most of the 3.9 s the level takes.
+
+**The single SQLite *writer* is not the constraint for these writes.** Eight clients saved garden
+objects at **3,645/s** with a 3.9 ms p95, and movement was bounded by the application's own 120 ms
+per-resident throttle, not by the database. So the "one writer" half of the usual assumption is
+**refuted** on this evidence; the "one process serving one read at a time" half is **confirmed**.
+
+**The next architectural change this observation justifies is therefore inside the process and on the
+read path, not a redistribution of it.** Bound the crowded-viewport read — the remaining
+`COUNT(*) OVER ()` window function and the N+1 `mayors()` read named in the Task 14 record below — and
+re-measure it against this crowded fixture (the earlier attempt at the window function was withdrawn
+because it was validated on a fixture too small to expose the plan; that lesson stands). Only if a
+single process still saturates after the read path is bounded does a second reader, a second process or
+a multi-writer database become the justified next step. **No distributed design is proposed here,
+because these numbers do not yet require one.**
+
+### Reproduce
+
+```sh
+export PATH="../node-bin:$PATH"                       # Node v24.19.0
+npm run capacity                                      # reads + writes + subscribers + browser + model queue
+node scripts/capacity-experiment.mjs --json /tmp/capacity.json
+node scripts/ops-rehearsal.mjs --keep                 # recovery and failure drills, disposable workspace
+```
+
+---
+
+## Earlier records (historical — not the current numbers)
+
 Task 14. Measured on 13 October 2026, branch `task-14-performance`, schema **18** (unchanged), base
 `task-13-newcomer-journey`. Every number below was produced by a script in this repository; every
-"before" number comes from an unmodified copy of the base revision on the same machine.
+"before" number comes from an unmodified copy of the base revision on the same machine. **Kept as
+history: it describes a different tip on a different day, and the Wave D section above is the current
+record.**
 
 ## The honesty contract, first
 
