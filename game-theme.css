@@ -86,6 +86,16 @@ body.game-world .world-panel>.minimap-card{position:absolute;z-index:8;top:18px;
 body.game-world .world-panel>.minimap-card canvas{display:block;width:100%;height:100%;border:0;border-radius:8px;cursor:crosshair}
 body.game-world .world-panel>.minimap-card p{display:none}
 body.game-world .world-bottom{position:absolute;z-index:8;left:20px;bottom:18px;width:auto;margin:0;padding:0;background:none;border:0;pointer-events:none}
+/* On compact play screens the floating pad replaces these legacy arrow controls. Showing both
+   placed two sets of movement buttons on top of one another and obscured the world. */
+body.game-world.game-touch-active .world-bottom{display:none}
+/* On a phone the guide already states the next action and the aim line states the target. Keep
+   the lower band to its five actions so the touch pad never sits on top of duplicate HUD text. */
+@media(max-width:650px){
+  body.game-world.game-touch-active .game-hud-bottom .game-next,
+  body.game-world.game-touch-active .game-hud-bottom .game-control-hint,
+  body.game-world.game-touch-active .game-target{display:none}
+}
 body.game-world .world-bottom>div:first-child{display:none}
 body.game-world .world-bottom .movement{position:relative;display:grid;grid-template-columns:repeat(3,43px);gap:5px;margin:0;pointer-events:auto}
 body.game-world .movement>button{min-width:43px;min-height:43px;padding:0;background:#0a2b25de;color:#f6f0d8;border:1px solid #d2d8ac75;border-radius:11px;box-shadow:0 6px 20px #051a1466}

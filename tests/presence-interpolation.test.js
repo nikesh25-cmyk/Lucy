@@ -116,6 +116,6 @@ test('an unknown participant is passed through untouched and the tracker forgets
 test('the shell wires the tracker and switches the touch layer through its own control', () => {
   assert.match(app, /createPresenceTracker\(\{\s*now: \(\) => performance\.now\(\)/, 'app.js owns the tracker with its own clock');
   assert.match(app, /prefersReducedMotion\(globalThis\.matchMedia\)/, 'and reads the reduced-motion preference');
-  assert.match(app, /function syncTouchEnabled\(\)\{touchControls\?\.setEnabled\(/, 'the touch layer is switched off through setEnabled, not a stylesheet');
+  assert.match(app, /function syncTouchEnabled\(\)\{[\s\S]*?touchControls\?\.setEnabled\(enabled\);/, 'the touch layer is switched off through setEnabled, not a stylesheet');
   assert.doesNotMatch(theme, /nm-touch/, 'the main stylesheet carries no touch rule, so the layer is styled in one place only');
 });

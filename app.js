@@ -617,7 +617,9 @@ function applyGameShell(){
 /** The touch layer is live only while the world is on screen and no conversation owns it. */
 function syncTouchEnabled(){
   const compact=hasCoarsePointer(window.matchMedia)||window.matchMedia('(max-width: 900px)').matches;
-  touchControls?.setEnabled(Boolean(compact&&state.gamePresentation&&state.tab==='world'&&state.gameMode==='play'&&viewedAgent()&&state.gameDrawer!=='chat'&&!state.gameMenuOpen));
+  const enabled=Boolean(touchControls&&compact&&state.gamePresentation&&state.tab==='world'&&state.gameMode==='play'&&viewedAgent()&&state.gameDrawer!=='chat'&&!state.gameMenuOpen);
+  touchControls?.setEnabled(enabled);
+  document.body.classList.toggle('game-touch-active',enabled);
 }
 window.addEventListener('resize',syncTouchEnabled);
 // One drawer at a time. `state.gameDrawer` holds a single value, so opening Chat closes the tools

@@ -5393,20 +5393,41 @@ define('signed-in-game-play', async () => {
         'the signed-in game must fit a 390px phone without sideways scrolling');
       const pad = page.locator('.nm-touch-floating');
       await pad.waitFor({ state: 'visible' });
+      expect(await page.locator('.world-bottom').isVisible() === false,
+        'the compact touch pad must replace, not overlap, the legacy arrow controls');
       const targets = await pad.locator('button').evaluateAll((buttons) => buttons.map((button) => {
         const box = button.getBoundingClientRect();
-        return { label: button.getAttribute('aria-label'), disabled: button.disabled, x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height) };
+        const atCenter = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return { label: button.getAttribute('aria-label'), disabled: button.disabled, x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable: button === atCenter || button.contains(atCenter) };
       }));
       expect(targets.length === 10 && targets.every((target) => target.x >= 0 && target.right <= 390 && target.y >= 60 && target.bottom <= 844 && target.width >= 44 && target.height >= 44),
         'every phone movement, camera and action target must be visible and tappable', { actual: describe(targets) });
+      expect(targets.every((target) => target.reachable), 'no guide, map control or HUD may cover a phone touch target', { actual: describe(targets.filter((target) => !target.reachable)) });
+      const bands = await page.evaluate(() => ({ touch: document.querySelector('.nm-touch-floating').getBoundingClientRect().bottom, hud: document.querySelector('.game-hud-bottom').getBoundingClientRect().top }));
+      expect(bands.touch < bands.hud, 'the phone touch controls must end above the five-action HUD', { actual: describe(bands) });
+      state.notes.push(`phone play layout: ${describe(await page.evaluate(() => {
+        const box = (selector) => { const node = document.querySelector(selector); if (!node) return null; const r = node.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height), overflow: getComputedStyle(node).overflow }; };
+        return { guide: box('.game-guide'), guideNext: box('.game-guide-next'), guideOther: box('.game-guide-card:not(.game-guide-next)'), touch: box('.nm-touch-floating'), hud: box('.game-hud-bottom') };
+      }))}`);
       const yawBefore = row('SELECT yaw FROM agents WHERE id=?', player.id).yaw;
       await pad.getByRole('button', { name: 'Turn the camera left' }).click();
       const yawAfter = await waitForCondition(() => {
         const saved = row('SELECT yaw FROM agents WHERE id=?', player.id).yaw;
         return saved !== yawBefore ? saved : null;
       }, 'the visible phone camera control to save a new facing');
+      const tileBefore = row('SELECT x,y FROM agents WHERE id=?', player.id);
+      let touchStep = null;
+      for (const direction of ['up', 'left', 'down', 'right']) {
+        await pad.getByRole('button', { name: `Move ${direction}` }).click();
+        touchStep = await waitForCondition(() => {
+          const saved = row('SELECT x,y FROM agents WHERE id=?', player.id);
+          return Math.abs(saved.x - tileBefore.x) + Math.abs(saved.y - tileBefore.y) === 1 ? saved : null;
+        }, `a visible phone ${direction} step to be stored`, { timeout: 700, interval: 100 }).catch(() => null);
+        if (touchStep) break;
+      }
+      expect(touchStep, 'one of the four visible phone movement buttons must save exactly one tile', { actual: describe(row('SELECT x,y FROM agents WHERE id=?', player.id)) });
       await page.screenshot({ path: join(RESULTS, 'signed-in-game-play', 'mobile-play.png') });
-      return `five quickbar actions and ten touch targets fit a 390px phone; the Look button saved yaw ${yawBefore.toFixed(2)} → ${yawAfter.toFixed(2)}`;
+      return `five quickbar actions and ten touch targets fit a 390px phone; Look saved yaw ${yawBefore.toFixed(2)} → ${yawAfter.toFixed(2)}, and Move saved ${tileBefore.x},${tileBefore.y} → ${touchStep.x},${touchStep.y}`;
     } finally {
       await page.setViewportSize({ width: 1440, height: 900 });
     }
