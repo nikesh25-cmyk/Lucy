@@ -139,6 +139,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
   { id: 'live-observation-readonly', title: 'An anonymous observer sees public activity and can neither build nor control a resident', regression: null },
   { id: 'game-shell-entry-and-continue', title: 'Play, Observe and Continue enter the world, and the shell keeps one overlay, one HUD and one drawer', regression: null },
+  { id: 'selection-does-not-clobber-navigation', title: 'A section opened while a character selection is still loading is not replaced by the world view', regression: 'character selection race (83b9505)' },
   { id: 'management-interface-and-roles', title: '/manage hosts the governance surfaces, and only a privileged role sees the entry', regression: null },
   { id: 'private-memory-and-journal-boundaries', title: 'A private memory and a private journal are refused to another operator and to a sibling character', regression: null },
   { id: 'first-ten-minutes', title: 'One derived next action, a chosen calling, a saved action, a dismissed and resumed guide, and a resumed place', regression: null },
@@ -5204,6 +5205,131 @@ define('game-shell-entry-and-continue', async () => {
   });
 
   return 'Play, Observe and Continue are the entry door, the HUD carries five actions, and the character overlay creates a stored resident';
+});
+
+/**
+ * Everything the page says about which section is on screen and what the client state holds, in one
+ * read: the menu section, the marked current section, the rendered heading, whether the world view is
+ * the mounted one, the calling story the opened section rendered, the resident the world payload was
+ * read for, and whether the selection control still reports itself busy. The suite already reads this
+ * surface in other scenarios; gathering it once keeps this scenario's failure evidence complete.
+ */
+const pageSectionFacts = (page) => page.evaluate(() => {
+  const world = window.__nemoworld?.world?.() || null;
+  return {
+    section: (document.querySelector('#toggle-navigation')?.textContent || '').replace(/^Menu · /, ''),
+    current: document.querySelector('#navigation button[aria-current="page"]')?.getAttribute('aria-label') || null,
+    heading: (document.querySelector('#view h2')?.textContent || '').trim(),
+    worldView: Boolean(document.querySelector('#view #world-overview')),
+    story: (document.querySelector('#view .calling-story')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200),
+    selected: window.__nemoworld?.selected?.() || null,
+    viewer: world?.viewer_agent_id ?? null,
+    loadedWorldId: world?.world?.id ?? null,
+    controlBusy: window.__selectionRaceControl ? window.__selectionRaceControl.hasAttribute('aria-busy') : null,
+  };
+});
+
+// "Enter as this character" awaits the resident's own world read and then opens the world view. A
+// section the operator opens while that read is in flight must win. This scenario widens the await
+// deterministically — the world read is held open with a route until the scenario releases it — rather
+// than racing it, and pins both halves: the opened section survives, and the plain click still enters.
+define('selection-does-not-clobber-navigation', async () => {
+  const operator = await context('selection-race-operator');
+  const page = operator.page;
+  const unchangedAgent = fixtures().characters.wanderer;
+  const racingAgent = fixtures().characters.pathfinder;
+  let releaseHeldRead = () => {};
+
+  /** The one "Enter as this character" control in that character's own row on My characters. */
+  const enterControl = async (agent) => {
+    await openSectionNamed(page, 'My characters');
+    const record = page.locator('#view .record', { hasText: agent.name }).first();
+    await record.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const control = record.getByRole('button', { name: 'Enter as this character', exact: true });
+    const count = await control.count();
+    expect(count === 1, `“Enter as this character” must be offered for ${agent.name}`, { expected: 'one control', actual: `${count} controls` });
+    return control;
+  };
+
+  const storedWorld = (agent) => row('SELECT world_id FROM agents WHERE id=?', agent.id).world_id;
+
+  try {
+    await step('with nothing else opened, entering as a character still lands in that character’s world', async () => {
+      await openApp(page, ACTORS.admin);
+      const control = await enterControl(unchangedAgent);
+      const expectedWorld = storedWorld(unchangedAgent);
+      await control.click();
+      // The world tab is set only by this control's own trailing render, so a world section with the
+      // resident's payload is the control having run its intended path with no other navigation.
+      const shown = await waitForCondition(async () => {
+        const facts = await pageSectionFacts(page);
+        return facts.section === 'Open world' && facts.worldView && facts.selected === unchangedAgent.id && facts.viewer === unchangedAgent.id ? facts : null;
+      }, `entering as ${unchangedAgent.name} to open its world`, { timeout: 30_000 });
+      expect(shown.current === 'Open world', 'the navigation must mark the world as the current section', { expected: 'Open world', actual: describe(shown.current) });
+      expect(shown.loadedWorldId === expectedWorld, 'the world view must carry that character’s own world', { expected: expectedWorld, actual: describe({ loaded: shown.loadedWorldId, viewer: shown.viewer }) });
+      return `${unchangedAgent.name} entered ${expectedWorld} and the world view is the mounted one`;
+    });
+
+    await step('a section opened while the character’s world read is still in flight survives the selection', async () => {
+      const control = await enterControl(racingAgent);
+      const expectedWorld = storedWorld(racingAgent);
+      // The section the operator opens carries the selected resident's calling payload, so the same
+      // read is taken here over the API: the rendered card has to name this calling, not just a name
+      // that happened to be on screen.
+      const calling = (await apiExpect(fixtures().admin, 'GET', `/callings?agent_id=${racingAgent.id}`)).calling.name;
+      // Hold open the exact read this control awaits, and nothing else: a later read for the same
+      // resident passes straight through rather than queueing behind the held one.
+      let arrived = false;
+      let letGo = () => {};
+      const held = new Promise((resolve) => { letGo = resolve; });
+      releaseHeldRead = () => { letGo(); };
+      await page.route((url) => url.pathname === '/api/v1/world' && url.searchParams.get('agent_id') === racingAgent.id, async (route) => {
+        if (arrived) return route.continue();
+        arrived = true;
+        await held;
+        await route.continue();
+      });
+      await control.click();
+      await waitForCondition(() => arrived ? true : null, `the world read ${racingAgent.name}’s selection awaits`, { timeout: 15_000, interval: 25 });
+      // The control is busy for the whole handler and clears that mark in a `finally` after the
+      // handler's trailing render, so this node is the page's own statement that the selection has
+      // not finished yet — and later, that it has, render included.
+      await waitForCondition(() => page.evaluate((name) => {
+        const record = [...document.querySelectorAll('#view .record')].find((node) => (node.textContent || '').includes(name));
+        const button = record?.querySelector('button[aria-busy="true"]');
+        if (button) window.__selectionRaceControl = button;
+        return Boolean(button);
+      }, racingAgent.name), 'the selection control to report itself busy while its read is held', { timeout: 5_000, interval: 25 });
+      // The await is provably open here: open a different section inside it.
+      await openSectionNamed(page, 'Callings & guilds');
+      const opened = await pageSectionFacts(page);
+      expect(opened.section === 'Callings & guilds' && opened.current === 'Callings & guilds' && /Every resident has a calling/.test(opened.heading),
+        'the operator must be able to open another section while the selection is still running',
+        { expected: 'the Callings & guilds section and its heading', actual: describe({ section: opened.section, current: opened.current, heading: opened.heading }) });
+      expect(opened.controlBusy === true, 'the selection must still be running when the other section is opened', { expected: 'the control still busy', actual: describe({ controlBusy: opened.controlBusy, selected: opened.selected }) });
+      expect(opened.story.includes(racingAgent.name) && opened.story.includes(calling), 'the opened section must already carry the selected resident’s own calling payload', { expected: `${racingAgent.name} and the calling ${calling}`, actual: describe(opened.story) });
+      releaseHeldRead();
+      const settled = await waitForCondition(async () => {
+        const facts = await pageSectionFacts(page);
+        return facts.controlBusy === false && facts.viewer === racingAgent.id ? facts : null;
+      }, `the selection of ${racingAgent.name} to finish after the delayed world read`, { timeout: 30_000, interval: 100 });
+      expect(settled.section === 'Callings & guilds' && settled.current === 'Callings & guilds',
+        'the section the operator opened must still be the visible one when the selection finishes',
+        { expected: 'Callings & guilds still current', actual: describe({ section: settled.section, current: settled.current, heading: settled.heading }) });
+      expect(/Every resident has a calling/.test(settled.heading), 'the opened section’s own heading must still be rendered', { expected: 'Every resident has a calling', actual: describe(settled.heading) });
+      expect(!settled.worldView, 'the world view must not have replaced the opened section', { expected: 'no world view mounted', actual: describe({ worldView: settled.worldView, heading: settled.heading }) });
+      expect(settled.selected === racingAgent.id, 'the selection itself must still have landed', { expected: racingAgent.id, actual: describe(settled.selected) });
+      expect(settled.loadedWorldId === expectedWorld, 'the delayed world read must be the payload the page holds', { expected: `${expectedWorld} read for ${racingAgent.id}`, actual: describe({ loaded: settled.loadedWorldId, viewer: settled.viewer }) });
+      return `the ${racingAgent.name} world read was held open, Callings & guilds was opened inside it, and the section was still mounted when the selection finished`;
+    });
+
+    return 'a section opened during a character selection stays; with nothing opened the same control still enters the world';
+  } finally {
+    // The held read is released and the interception removed with the scenario even when a step
+    // fails, so no later scenario can inherit either one.
+    releaseHeldRead();
+    await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {});
+  }
 });
 
 // The management interface: one role-gated entry out of the newcomer's path, and the same governance
