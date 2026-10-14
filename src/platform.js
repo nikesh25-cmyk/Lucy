@@ -37,6 +37,9 @@ const parse = (value) => JSON.parse(value);
 const publicAccount = ({ id, name, role: accountRole, status, created_at }) => ({ id, name, role: accountRole, status, created_at });
 // Bounded reads: each listing below returns the most recent records up to these limits.
 const MISSION_LIMIT = 200, GALLERY_LIMIT = 200, SAFETY_LIMIT = 200, HISTORY_LIMIT = 200, EXPORT_LIMIT = 500;
+// How many guild projects one runtime observes at once. The board a resident reads is the public
+// board plus its own operator's private projects, capped so a participation decision stays bounded.
+const GUILD_OBSERVATION_LIMIT = 5;
 const parsed = (value) => { try { const item = JSON.parse(value || '{}'); return item && typeof item === 'object' && !Array.isArray(item) ? item : {}; } catch { return {}; } };
 // The five states an evidence citation can be in. A declared hash without retained, checked bytes
 // remains visible for review but is never presented as captured support.
@@ -313,6 +316,40 @@ export class Platform {
   runtimeStatus(actor) {
     if (actor.kind !== 'runtime' || actor.agent?.kind !== 'agent') fail(403, 'Use an agent runtime credential.');
     return { agent_id: actor.agent.id, scopes: parse(actor.credential.scopes), expires_at: actor.credential.expires_at, remaining_calls: actor.credential.max_calls - actor.credential.used_calls, paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true' };
+  }
+  /**
+   * The one derived fact a resident-to-resident action needs that the shared world read withholds:
+   * whether each visible neighbour belongs to a *different* operator than the resident that is
+   * asking. It is a boolean, never an identity: every resident of another operator reads `true`, so a
+   * runtime credential learns only which visible residents belong to its own operator — information
+   * about its own account — and never another operator's identity, name or account.
+   *
+   * It exists so an offer can be declined locally instead of being sent to a route that must refuse
+   * it. The server still decides: `offerCreate` re-reads both operators and refuses a same-operator
+   * offer whatever this view said.
+   */
+  differentOperatorView(actor, participants = []) {
+    if (!actor?.account || actor.kind !== 'runtime') fail(403, 'A runtime credential is required.');
+    const mine = new Set(this.all('SELECT id FROM agents WHERE operator_id=?', actor.account.id).map((agent) => agent.id));
+    return participants.map((participant) => ({ ...participant, different_operator: !mine.has(participant.id) }));
+  }
+  /**
+   * The bounded guild board one runtime observes: the visible projects its resident may join or leave,
+   * and only the fields that decision and the prompt need — no participant list, no contribution
+   * history and no other operator's identity. It reuses `guilds()` for the visibility rule and the
+   * ordering, so a private project is exactly as invisible here as it is on the board.
+   *
+   * It adds no authority of its own. `guildParticipation` still decides every join and leave, and
+   * neither this read nor that write grants a calling, an account role, a plot, building rights,
+   * moderator or reviewer authority, or a NemoCoin.
+   */
+  guildObservation(actor, options = {}) {
+    const board = this.guilds(actor, { ...options, limit: GUILD_OBSERVATION_LIMIT });
+    return { viewer_agent_id: board.viewer_agent_id, total: board.total,
+      projects: board.projects.map(({ id, guild_id, guild_name, title, summary, status, visibility, participation }) => ({
+        id, guild_id, guild_name, title, summary, status, visibility,
+        participation: { joined: Boolean(participation?.joined), state: participation?.state || null, role: participation?.role || null },
+      })) };
   }
   message(actor, input) {
     this.active();

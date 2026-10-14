@@ -533,7 +533,12 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           // A runtime with the contribute scope receives the mission directory inside its own private
           // calling read, so one credential charge covers its calling context and its available work.
           // Only the resident's own read is extended; sessions and other scopes are unchanged.
-          else if(route==='/callings'){value=platform.callings(actor,Object.fromEntries(url.searchParams));if(actor?.kind==='runtime'&&JSON.parse(actor.credential.scopes).includes('contribute'))value.missions=platform.missionList(actor);}
+          else if(route==='/callings'){value=platform.callings(actor,Object.fromEntries(url.searchParams));if(actor?.kind==='runtime'&&JSON.parse(actor.credential.scopes).includes('contribute')){value.missions=platform.missionList(actor);
+            // The guild board rides inside the same private calling read, exactly as the mission
+            // directory does, so a contribute-scoped resident pays one credential charge for its
+            // calling context, its available work and the projects it may join or leave. Only this
+            // resident's own read is extended; a session and every other route are unchanged.
+            value.guilds=platform.guildObservation(actor);}}
           else if(route==='/callings/guilds')value=platform.callingGuilds(Object.fromEntries(url.searchParams));
           else if(route==='/quests')value=platform.quests(actor,Object.fromEntries(url.searchParams));
           else if(route==='/quests/catalog')value=platform.questCatalog(Object.fromEntries(url.searchParams));
@@ -549,7 +554,16 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/mayors/triage') value=platform.mayorTriage(actor);
           else if (route === '/ambassadors') value=platform.ambassadors(actor,Object.fromEntries(url.searchParams));
           else if (route === '/ambassador') value=platform.ambassador(actor,Object.fromEntries(url.searchParams));
-          else if (route === '/world') { value = platform.world(actor, Object.fromEntries(url.searchParams)); value.atmosphere = worldAtmosphere(platform.clock()); }
+          else if (route === '/world') {
+            value = platform.world(actor, Object.fromEntries(url.searchParams));
+            value.atmosphere = worldAtmosphere(platform.clock());
+            // A runtime's own world read carries one derived boolean the shared view withholds: whether
+            // each visible neighbour belongs to a *different* operator than this resident. It is a
+            // boolean rather than an identity, so it reveals only the asking account's own characters,
+            // and it lets a resident-to-resident offer be declined locally instead of being sent to a
+            // route the server must refuse. The server still re-reads both operators and decides.
+            if (actor?.kind === 'runtime') value.participants = platform.differentOperatorView(actor, value.participants);
+          }
           else if (route === '/land') value=platform.land(actor,Object.fromEntries(url.searchParams));
           else if (route === '/land/plot') value=platform.landPlot(actor,Object.fromEntries(url.searchParams));
           else if (route === '/frontier') value=platform.frontierMap(actor,Object.fromEntries(url.searchParams));
