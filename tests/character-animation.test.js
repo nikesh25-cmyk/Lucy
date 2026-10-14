@@ -1,19 +1,23 @@
-// Task 32 — the character animation state machine and the remote-movement interpolation.
+// Task 32's animation state machine and remote-movement interpolation, raised: a confirmed-state
+// pose vocabulary, staged expression frames, and the reduced-motion contract.
 //
 // The rules under test are the confirmed-position rules: an avatar is drawn on the segment between
 // the last two *confirmed* tiles, never ahead of the newest one; a refused move reconciles to the
 // stored tile; a jump snaps instead of gliding; and no pose implies an action the server did not
-// confirm. The last test drives a real Platform fixture: real steps, a real refusal and a real
-// stored expression.
+// confirm. `prefers-reduced-motion` is the fifth rule: the drawn tile is the confirmed one and the
+// pose is a still frame. The last test drives a real Platform fixture: real steps, a real refusal and
+// a really stored expression.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getWorldDefinition, walkable } from '../world.js';
 import { fixture } from './helpers.js';
 import {
-  createMotionTracker, characterState, characterPose, confirmedExpression, confirmedFacing, facingStep,
-  MOTION_LIMITS, MOTION_TWEEN_MS, WALK_FRAMES, EXPRESSION_MS, EXPRESSIONS, STANCES, SEATED_LIFT, WALK_SWING,
+  createMotionTracker, characterState, characterPose, confirmedExpression, confirmedFacing, facingStep, facingFrame,
+  expressionFrameAt,
+  MOTION_LIMITS, MOTION_TWEEN_MS, WALK_FRAMES, WALK_BOB, WALK_SWAY, EXPRESSION_MS, EXPRESSIONS, STANCES, SEATED_LIFT,
+  WALK_SWING, EXPRESSION_FRAMES, EXPRESSION_FRAME_AT, EXPRESSION_ACTION_FRAME, LEANING_EXPRESSIONS,
 } from '../src/character-animation.js';
-import { paintCharacter } from '../src/characters.js';
+import { paintCharacter, characterBoxes } from '../src/characters.js';
 
 const resident = (changes = {}) => ({ id: 'resident-1', kind: 'agent', x: 10, y: 6, z: 0, posture: 'standing', ...changes });
 
@@ -67,10 +71,11 @@ test('the walk cycle is the quantised progress between the two confirmed tiles, 
   tracker.confirm(resident());
   advance(500);
   tracker.confirm(resident({ y: 7 }));
-  const phases = [];
+  const states = [];
   for (let offset = 0; offset <= MOTION_TWEEN_MS; offset += 1) {
-    phases.push(characterState(resident({ y: 7 }), { tracker, time: at() + offset }).phase);
+    states.push(characterState(resident({ y: 7 }), { tracker, time: at() + offset }));
   }
+  const phases = states.map((state) => state.phase);
   assert.deepEqual([...new Set(phases)].sort(), [0, 1, 2, 3], `exactly the ${WALK_FRAMES} sealed walk frames appear`);
   assert.equal(phases[0], 0); assert.equal(phases.at(-1), 0, 'a settled avatar is not mid-stride');
   // The facing is the direction of the confirmed step: grid y+1 is `down`, grid y-1 is `up`.
@@ -133,10 +138,17 @@ test('a second confirmed step starts from where the avatar is drawn, and a repea
   assert.deepEqual(next.to.x, 12);
 });
 
-test('an expression animates only inside the stored window it was given', () => {
+test('an expression plays four staged frames inside the stored window it was given', () => {
   const window = { emote: 'wave', emote_until: 20_000 };
-  assert.equal(confirmedExpression(window, 10_000).frame, 0, 'the raised frame holds the first half');
-  assert.equal(confirmedExpression(window, 15_001).frame, 1, 'and settles for the second half');
+  const frameAt = (time) => confirmedExpression(window, time)?.frame;
+  assert.deepEqual([0, 900, 1_000, 5_400, 5_500, 7_700, 7_800, 9_999].map((elapsed) => frameAt(10_000 + elapsed)),
+    [0, 0, 1, 1, 2, 2, 3, 3], 'the authored frame boundaries are the only boundaries');
+  assert.deepEqual(EXPRESSION_FRAME_AT, [0, 0.1, 0.55, 0.78]);
+  assert.equal(EXPRESSION_FRAMES, 4);
+  assert.equal(EXPRESSION_ACTION_FRAME, 1);
+  for (const [progress, expected] of [[0, 0], [0.099, 0], [0.1, 1], [0.549, 1], [0.55, 2], [0.779, 2], [0.78, 3], [1, 3], [2, 3]])
+    assert.equal(expressionFrameAt(progress), expected, `${progress} is frame ${expected}`);
+  for (const missing of [NaN, undefined, null, 'x']) assert.equal(expressionFrameAt(missing), 0);
   assert.equal(confirmedExpression(window, 20_000), null, 'the window is closed at its own expiry');
   assert.equal(confirmedExpression(window, 99_999), null);
   for (const refused of [{ emote: 'none', emote_until: 20_000 }, { emote: 'wave', emote_until: 'later' },
@@ -156,21 +168,78 @@ test('an expression animates only inside the stored window it was given', () => 
   assert.deepEqual(EXPRESSIONS, ['wave', 'bow', 'cheer', 'think', 'heart']);
 });
 
+test('reduced motion snaps: the confirmed tile is drawn and no pose has a frame to animate', () => {
+  const { tracker, at, advance } = clocked();
+  tracker.confirm(resident());
+  advance(500); tracker.confirm(resident({ x: 11 }));
+  advance(MOTION_TWEEN_MS / 2);
+  // Without the preference the body is drawn mid-segment, on a walk frame.
+  const gliding = characterState(resident({ x: 11 }), { tracker, time: at() });
+  assert.equal(gliding.state, 'walking');
+  assert.ok(gliding.position.x > 10 && gliding.position.x < 11);
+  // With it, the drawn position is the *confirmed* tile and the pose is at rest.
+  const snapped = characterState(resident({ x: 11 }), { tracker, time: at(), reducedMotion: true });
+  assert.deepEqual(snapped.position, { x: 11, y: 6, z: 0 });
+  assert.deepEqual(snapped.position, snapped.confirmed, 'the drawn tile is the stored tile');
+  assert.equal(snapped.state, 'idle'); assert.equal(snapped.walking, false); assert.equal(snapped.phase, 0); assert.equal(snapped.t, 1);
+  assert.equal(snapped.reducedMotion, true);
+  // A stored expression still counts, but it holds one still frame for the whole window.
+  const item = resident({ emote: 'cheer', emote_until: at() + EXPRESSION_MS });
+  const frames = [0, EXPRESSION_MS / 4, EXPRESSION_MS / 2, EXPRESSION_MS * 0.9].map((offset) => characterState(item, { tracker, time: at() + offset, reducedMotion: true }));
+  assert.deepEqual(frames.map((state) => state.state), ['interacting', 'interacting', 'interacting', 'interacting']);
+  assert.deepEqual(frames.map((state) => state.expressionFrame), [EXPRESSION_ACTION_FRAME, EXPRESSION_ACTION_FRAME, EXPRESSION_ACTION_FRAME, EXPRESSION_ACTION_FRAME]);
+  const poses = frames.map((state) => characterPose(state));
+  assert.equal(new Set(poses.map((pose) => JSON.stringify(pose))).size, 1, 'the reduced-motion pose never moves');
+  assert.equal(poses[0].swing, 0); assert.equal(poses[0].sway, 0);
+  // The drawn boxes are identical at every sampled instant of the stored window.
+  const drawn = [0, EXPRESSION_MS / 3, EXPRESSION_MS / 2, EXPRESSION_MS * 0.95]
+    .map((offset) => JSON.stringify(characterBoxes(item, null, { tracker, time: at() + offset, reducedMotion: true })));
+  assert.equal(new Set(drawn).size, 1, 'reduced motion draws one still body');
+  // A seated stance keeps its exact drop under the preference too, and the walk never runs.
+  const seated = characterState(resident({ posture: 'meditating' }), { tracker, time: at(), reducedMotion: true });
+  assert.equal(seated.state, 'seated');
+  assert.equal(characterPose(seated).lift, -SEATED_LIFT);
+  assert.equal(characterState(resident({ y: 7 }), { tracker, time: at(), reducedMotion: true }).position.y, 7);
+});
+
 test('every pose is a bounded function of the confirmed state', () => {
   const tracker = createMotionTracker({ clock: () => 1_000 });
   tracker.confirm(resident());
   const idle = characterPose(characterState(resident(), { tracker, time: 1_000 }));
-  assert.deepEqual({ ...idle }, { state: 'idle', phase: 0, seated: false, lift: 0, legDepth: 0.4, swing: 0, arm: { left: 'down', right: 'down' }, lean: 0 });
-  const seated = characterPose(characterState(resident({ posture: 'sitting' }), { tracker, time: 1_000 }));
-  assert.equal(seated.seated, true); assert.equal(seated.lift, -SEATED_LIFT); assert.equal(seated.legDepth, 0.25);
-  assert.equal(seated.swing, 0, 'a seated resident is never mid-stride');
-  const arms = { wave: { left: 'down', right: 'up' }, cheer: { left: 'up', right: 'up' }, think: { left: 'down', right: 'head' }, heart: { left: 'forward', right: 'forward' }, bow: { left: 'down', right: 'down' } };
-  for (const [action, expected] of Object.entries(arms)) {
-    const raised = characterPose(characterState(resident({ emote: action, emote_until: 20_000 }), { tracker, time: 1_000 }));
-    const settled = characterPose(characterState(resident({ emote: action, emote_until: 20_000 }), { tracker, time: 19_000 }));
-    assert.deepEqual({ ...raised.arm }, expected, `${action} raises the right arm`);
-    assert.equal(raised.lean, action === 'bow' ? 1 : 0, `${action} leans only for a bow`);
-    assert.deepEqual({ ...settled.arm }, { left: 'down', right: 'down' }, `${action} settles inside its window`);
+  assert.deepEqual({ ...idle }, {
+    state: 'idle', stance: 'standing', phase: 0, seated: false, lift: 0, legDepth: 0.62, legForward: 0, legAcross: 0,
+    footForward: 0.05, footAcross: 0, swing: 0, sway: 0, arm: { left: 'down', right: 'down' }, lean: 0,
+  });
+  // The two stored seated stances are two different poses, both dropped by exactly SEATED_LIFT.
+  const sitting = characterPose(characterState(resident({ posture: 'sitting' }), { tracker, time: 1_000 }));
+  const meditating = characterPose(characterState(resident({ posture: 'meditating' }), { tracker, time: 1_000 }));
+  assert.equal(sitting.seated, true); assert.equal(sitting.lift, -SEATED_LIFT);
+  assert.equal(meditating.seated, true); assert.equal(meditating.lift, -SEATED_LIFT);
+  assert.equal(sitting.swing, 0, 'a seated resident is never mid-stride');
+  assert.notDeepEqual({ ...sitting }, { ...meditating }, 'sitting and meditating are not one pose twice');
+  assert.ok(sitting.legDepth !== meditating.legDepth && sitting.footForward !== meditating.footForward);
+  for (const pose of Object.values({ sitting, meditating })) for (const [key, value] of Object.entries(pose)) {
+    if (typeof value === 'number') assert.ok(Number.isFinite(value), `${key} is a finite number`);
+  }
+  // Every staged expression frame is a finite, bounded pose, and the arm pairs are authored poses.
+  for (const action of EXPRESSIONS) {
+    const seen = [];
+    for (const offset of [0, 1_500, 5_500, 8_000]) {
+      const state = characterState(resident({ emote: action, emote_until: 20_000 }), { tracker, time: 10_000 + offset });
+      const pose = characterPose(state);
+      seen.push(pose);
+      assert.equal(state.expressionFrame, offset === 0 ? 0 : offset === 1_500 ? 1 : offset === 5_500 ? 2 : 3, `${action} at +${offset} ms`);
+      for (const [key, value] of Object.entries(pose)) if (typeof value === 'number') assert.ok(Number.isFinite(value) && (key !== 'lift' || value <= 0), `${action}.${key} is bounded`);
+      assert.ok(['down', 'rise', 'up', 'head', 'out', 'forward', 'point', 'lap', 'clasp'].includes(pose.arm.left), `${action} names an authored left arm pose`);
+      assert.ok(['down', 'rise', 'up', 'head', 'out', 'forward', 'point', 'lap', 'clasp'].includes(pose.arm.right), `${action} names an authored right arm pose`);
+      assert.ok(pose.lean >= 0 && pose.lean <= 1, `${action} leans within its own bound`);
+    }
+    assert.equal(new Set(seen.map((pose) => JSON.stringify(pose))).size, EXPRESSION_FRAMES, `${action} plays ${EXPRESSION_FRAMES} different poses`);
+  }
+  assert.deepEqual([...LEANING_EXPRESSIONS].sort(), ['bow', 'think'], 'the two expressions that lean are named, not implied');
+  for (const action of EXPRESSIONS) {
+    const leaning = [0, 1_500, 5_500, 8_000].some((offset) => characterPose(characterState(resident({ emote: action, emote_until: 20_000 }), { tracker, time: 10_000 + offset })).lean > 0);
+    assert.equal(leaning, LEANING_EXPRESSIONS.includes(action), `${action} leans iff it is named as leaning`);
   }
   // The stride swings the legs along the confirmed direction of travel, and the arms the other way.
   let clock = 5_000;
@@ -182,6 +251,8 @@ test('every pose is a bounded function of the confirmed state', () => {
   assert.deepEqual(frames.map((frame) => frame.state), ['walking', 'walking', 'walking', 'walking']);
   assert.deepEqual(frames.map((frame) => frame.phase), [0, 1, 2, 3]);
   assert.deepEqual(frames.map((frame) => frame.swing), [1, 0, -1, 0], 'the sealed four-frame swing cycle');
+  assert.deepEqual(frames.map((frame) => frame.sway), [0, WALK_SWAY, 0, -WALK_SWAY], 'and the body rocks with it');
+  assert.deepEqual(frames.map((frame) => frame.lift), [0, -WALK_BOB, 0, -WALK_BOB], 'and dips, never rises');
   assert.equal(WALK_SWING, 0.09);
   // The drawn geometry moves with the stride and stays inside the participant's own tile.
   const list = [];
@@ -192,9 +263,9 @@ test('every pose is a bounded function of the confirmed state', () => {
   assert.equal(list.length, resting.length, 'a stride never adds or removes a body box');
   for (const [index, cube] of list.entries()) {
     // The drawn body may sit anywhere on the segment between the two confirmed tiles, plus a limb
-    // offset; it never walks off the confirmed segment.
-    assert.ok(cube.x >= 10.5 - 0.32 && cube.x <= 11.5 + 0.32, `${cube.x} stays on the confirmed segment`);
-    assert.ok(Math.abs(cube.y - 6.5) <= 0.32, `${cube.y} stays on the confirmed segment`);
+    // offset; it never walks off the confirmed segment, and it never leaves the tile it is drawn on.
+    assert.ok(cube.x >= 10.5 - 0.5 && cube.x <= 11.5 + 0.5, `${cube.x} stays on the confirmed segment`);
+    assert.ok(Math.abs(cube.y - 6.5) <= 0.5, `${cube.y} stays on the confirmed segment`);
     assert.ok(cube.height >= 0);
     assert.deepEqual(cube.pick, resting[index].pick, 'a stride never moves a pick off the confirmed tile');
     assert.equal(cube.pick.x, 11); assert.equal(cube.pick.y, 6);
@@ -220,6 +291,16 @@ test('the facing is the confirmed step, else the stored yaw, else a safe default
   assert.equal(confirmedFacing({ yaw: 0 }, { from: { x: 5, y: 5 }, to: { x: 6, y: 5 } }), 'right');
   assert.equal(confirmedFacing({ yaw: Math.PI }, { from: { x: 5, y: 5 }, to: { x: 5, y: 5 } }), 'down', 'a zero step falls back to the yaw');
   assert.deepEqual(Object.keys(facingStep('nowhere')), ['x', 'y']);
+  // The body frame is a rotation: a quarter turn maps across to the other ground axis.
+  const down = facingFrame('down'), right = facingFrame('right');
+  assert.deepEqual([down.forward.x, down.forward.y, down.across.x, down.across.y, down.swap], [0, 1, 1, 0, false]);
+  assert.deepEqual([right.forward.x, right.forward.y, right.across.x, right.across.y, right.swap], [1, 0, 0, -1, true]);
+  for (const facing of ['down', 'up', 'left', 'right']) {
+    const frame = facingFrame(facing);
+    const dot = frame.forward.x * frame.across.x + frame.forward.y * frame.across.y;
+    assert.ok(Math.abs(dot) < 1e-12, `${facing} keeps the two axes perpendicular`);
+    assert.equal(Math.abs(frame.forward.x) + Math.abs(frame.across.x), 1, `${facing} keeps unit axes`);
+  }
 });
 
 test('the tracked set stays inside the renderer participant bound', () => {
@@ -259,9 +340,15 @@ test('a real confirmed move, a real refusal and a real stored expression drive t
   assert.deepEqual(tracker.confirm(stored), { changed: true, snapped: false });
   const half = tracker.position(agent.id, f.clock() + MOTION_TWEEN_MS / 2);
   assert.ok(half.x > start.x && half.x < step.x, 'the drawn position is between the two confirmed tiles');
-  assert.equal(characterState(stored, { tracker, time: f.clock() + MOTION_TWEEN_MS / 2 }).state, 'walking');
+  const midway = characterState(stored, { tracker, time: f.clock() + MOTION_TWEEN_MS / 2 });
+  assert.equal(midway.state, 'walking');
+  assert.equal(midway.facing, 'right', 'the facing is the direction of the confirmed step');
   assert.deepEqual([tracker.position(agent.id, f.clock() + MOTION_TWEEN_MS).x], [step.x], 'and it lands exactly on the newest confirmed tile');
   assert.equal(characterState(stored, { tracker, time: f.clock() + MOTION_TWEEN_MS }).state, 'idle');
+  // The reduced-motion draw of the very same step snaps to the stored tile instead of gliding.
+  const snapped = characterState(stored, { tracker, time: f.clock() + MOTION_TWEEN_MS / 2, reducedMotion: true });
+  assert.deepEqual([snapped.position.x, snapped.position.y], [step.x, step.y]);
+  assert.equal(snapped.state, 'idle');
   // A refused move leaves the stored tile alone and reconciles the display to it. The server refuses
   // a second step inside its 120 ms throttle, which is the refusal path the application reconciles.
   f.advance(200);
@@ -278,15 +365,19 @@ test('a real confirmed move, a real refusal and a real stored expression drive t
   tracker.reconcile(agent.id);
   assert.deepEqual([tracker.position(agent.id).x, tracker.position(agent.id).t], [after.x, 1]);
   assert.equal(characterState(after, { tracker, time: f.clock() }).state, 'idle');
-  // A real stored expression animates for its stored window and no longer.
+  // A real stored expression plays its four staged frames and no more.
   f.advance(200);
   const emoted = f.tx('emote', f.actor('alice'), { agent_id: agent.id, emote: 'cheer' });
-  const waving = participant();
-  assert.equal(waving.emote, 'cheer'); assert.equal(waving.emote_until, emoted.emote_until);
-  const acting = characterState(waving, { tracker, time: f.clock() });
+  const cheering = participant();
+  assert.equal(cheering.emote, 'cheer'); assert.equal(cheering.emote_until, emoted.emote_until);
+  const acting = characterState(cheering, { tracker, time: f.clock() });
   assert.equal(acting.state, 'interacting'); assert.equal(acting.action, 'cheer');
-  assert.deepEqual({ ...characterPose(acting).arm }, { left: 'up', right: 'up' });
-  assert.equal(characterState(waving, { tracker, time: emoted.emote_until }).state, 'idle', 'the stored window is the only window drawn');
+  assert.deepEqual({ ...characterPose(acting).arm }, { left: 'rise', right: 'rise' }, 'the anticipation frame');
+  const acted = characterState(cheering, { tracker, time: f.clock() + EXPRESSION_MS * 0.3 });
+  assert.equal(acted.expressionFrame, 1);
+  assert.deepEqual({ ...characterPose(acted).arm }, { left: 'up', right: 'up' }, 'the action frame');
+  assert.ok(characterPose(acted).lift < 0, 'and the body dips as it cheers');
+  assert.equal(characterState(cheering, { tracker, time: emoted.emote_until }).state, 'idle', 'the stored window is the only window drawn');
   // A stored seated stance survives the poll as a seated pose.
   f.advance(200);
   f.tx('posture', f.actor('alice'), agent.id, { posture: 'sitting' });
