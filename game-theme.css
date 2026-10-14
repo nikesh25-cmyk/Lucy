@@ -288,3 +288,12 @@ body.game-world #game-conversation-host #world-chat-card form>button{min-height:
 .passport-portrait{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .resident-encounter-art{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 @media(max-width:650px){.resident-face-lg{width:32px;height:32px;border-radius:10px}.resident-figure{width:48px;height:48px;border-radius:12px}.passport-portrait{gap:9px}}
+
+/* Living world AI guild roster */
+#living-world-card .living-roster{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+#living-world-card .agent-row{display:flex;align-items:center;gap:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.06)}
+#living-world-card .living-badge{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.3)}
+#living-world-card .living-agent-info{display:flex;flex-direction:column;flex-grow:1;min-width:0}
+#living-world-card .living-agent-info strong{font-size:0.85rem;color:#f3f4df}
+#living-world-card .living-agent-info small{font-size:0.7rem;color:#a8bba8}
+

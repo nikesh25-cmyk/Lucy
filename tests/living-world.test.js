@@ -138,4 +138,67 @@ test('HTTP GET /api/v1/living-world/status returns public living world state', a
   assert.ok(['dawn', 'day', 'dusk', 'night'].includes(data.phase));
 });
 
+test('living world residents enroll in practice quests and advance callings through autonomous gardening and crafting', async () => {
+  const platform = new Platform(':memory:');
+  try {
+    ensureLivingWorld(platform, { bootstrap: true });
+
+    // Verify quest enrollments
+    const enrollments = platform.all("SELECT * FROM quest_enrollments WHERE agent_id LIKE 'lw-%'");
+    assert.ok(enrollments.length >= 4, 'Living world agents enrolled in practice quests');
+
+    // Farm plot exists for Aria
+    const farmTile = platform.get("SELECT * FROM world_objects WHERE world_id='home:lw-aria' AND type='farm'");
+    assert.ok(farmTile, 'Farm tile exists in Aria garden');
+
+    // First tick plants crop
+    let tick = livingWorldTick(platform, { bootstrap: true });
+    assert.equal(tick.cultivated, 1, 'Crop planted by cultivator');
+
+    // Advance platform clock past growth duration (e.g. 5 seconds)
+    const originalClock = platform.clock;
+    let simulatedTime = originalClock.call(platform) + 5000;
+    platform.clock = () => simulatedTime;
+
+    // Second tick harvests crop and crafts
+    tick = livingWorldTick(platform, { bootstrap: true });
+    assert.equal(tick.harvested, 1, 'Mature crop harvested by cultivator');
+    assert.ok(tick.crafted >= 1, 'Keepsake crafted by artisan');
+
+    // Verify calling receipts awarded
+    const receipts = platform.all("SELECT * FROM calling_receipts WHERE agent_id IN ('lw-aria', 'lw-kael')");
+    assert.ok(receipts.length >= 1, 'Calling receipts awarded for autonomous vocation actions');
+  } finally {
+    platform.close();
+  }
+});
+
+test('living world residents greet nearby human players in Commons with emotes', async () => {
+  const platform = new Platform(':memory:');
+  try {
+    const human = await platform.register({
+      name: 'Wandering Player',
+      email: 'wanderer@example.org',
+      password: 'wanderer-password-2026',
+      consent: true,
+    });
+    // Create an active human agent standing at (20, 20) in commons (close to Theron at (20, 18))
+    platform.run(
+      "INSERT INTO agents(id,operator_id,name,color,symbol,capabilities,limitations,x,y,z,world_id,grounded,posture,status,created_at,last_seen,verified,kind,region_id,country) VALUES('h-agent-1',?,'Wandering Player','#333333','★','Player','None',20,20,0,'commons',1,'standing','active',?,?,'1','human','commons','NemoWorld')",
+      human.account.id, new Date(platform.clock()).toISOString(), platform.clock()
+    );
+
+    ensureLivingWorld(platform);
+
+    const tick = livingWorldTick(platform);
+    assert.ok(tick.emoted >= 1, 'Resident emoted in reaction to nearby human');
+
+    const resident = platform.get("SELECT * FROM agents WHERE id='lw-theron'");
+    assert.equal(resident.emote, 'wave', 'Theron waved to nearby player');
+  } finally {
+    platform.close();
+  }
+});
+
+
 

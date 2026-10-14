@@ -283,6 +283,42 @@ export function ensureLivingWorld(platform, { bootstrap = false } = {}) {
       );
     }
 
+    // Ensure practice quest enrollment and starter farm/crafting setups
+    const questMap = {
+      'lw-aria': 'quiet-harvest',
+      'lw-kael': 'patient-workshop',
+      'lw-bram': 'shared-frontier-path',
+      'lw-rowan': 'shared-frontier-path',
+      'lw-selene': 'open-hearth-homestead',
+    };
+    const questSlug = questMap[resident.id];
+    if (questSlug) {
+      const chain = platform.get('SELECT id FROM quest_chains WHERE slug=?', questSlug);
+      if (chain) {
+        const enrolled = platform.get('SELECT 1 FROM quest_enrollments WHERE agent_id=? AND chain_id=?', agent.id, chain.id);
+        if (!enrolled) {
+          platform.run(
+            'INSERT INTO quest_enrollments(id,agent_id,account_id,chain_id,started_at,idempotency_key,created_at) VALUES(?,?,?,?,?,?,?)',
+            randomUUID(), agent.id, operator.id, chain.id, platform.clock(), `lw-quest-${resident.id}-${questSlug}`, new Date(platform.clock()).toISOString()
+          );
+        }
+      }
+    }
+
+    // Ensure Aria has a farm tile in her home garden for the quiet-harvest quest
+    if (resident.id === 'lw-aria') {
+      platform.run(
+        "INSERT OR IGNORE INTO world_objects(id,world_id,type,x,y,created_at) VALUES(?,?,?,?,?,?)",
+        'lw-aria-farm-3-3', `home:${resident.id}`, 'farm', 3, 3, new Date(platform.clock()).toISOString()
+      );
+    }
+
+    // Ensure journey profiles exist
+    platform.run(
+      "INSERT OR IGNORE INTO journey_profiles(agent_id,bio,purpose,title,avatar,harvests,crafts) VALUES(?,?,?,?,?,0,0)",
+      resident.id, resident.capabilities, resident.limitations, resident.calling, 'sprout'
+    );
+
     agents[resident.id] = agent;
   }
 
@@ -306,6 +342,9 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
       emoted: 0,
       trades_posted: 0,
       trades_claimed: 0,
+      cultivated: 0,
+      harvested: 0,
+      crafted: 0,
     };
   }
 
@@ -317,6 +356,9 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
     emoted: 0,
     trades_posted: 0,
     trades_claimed: 0,
+    cultivated: 0,
+    harvested: 0,
+    crafted: 0,
   };
 
   // Inspect recent public messages to see if any human spoke recently and needs an answer
@@ -507,6 +549,69 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
   } catch (err) {
     if (verbose) console.error('Living world trade error:', err.message);
   }
+
+  // 5. Autonomous Cultivator & Artisan activities (gardening, crafting, and calling advancement)
+  try {
+    const aria = agents['lw-aria'];
+    const kael = agents['lw-kael'];
+
+    // Aria tends her garden crop
+    if (aria && accounts.botanists) {
+      const crop = platform.get('SELECT * FROM journey_crops WHERE agent_id=? AND x=3 AND y=3', aria.id);
+      if (!crop || crop.harvested_at != null) {
+        platform.run(
+          'INSERT INTO journey_crops VALUES(?,?,?,?,?,?,NULL) ON CONFLICT(agent_id,x,y) DO UPDATE SET kind=excluded.kind,planted_at=excluded.planted_at,tended_at=excluded.tended_at,harvested_at=NULL',
+          aria.id, 3, 3, 'blossom', now, null
+        );
+        report.cultivated = (report.cultivated || 0) + 1;
+      } else if (crop.harvested_at == null && now - crop.planted_at > 2000) {
+        platform.run('UPDATE journey_crops SET harvested_at=? WHERE agent_id=? AND x=3 AND y=3 AND harvested_at IS NULL', now, aria.id);
+        platform.run('INSERT INTO journey_inventory VALUES(?,?,?) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=quantity+excluded.quantity', aria.id, crop.kind, 4);
+        platform.run('UPDATE journey_profiles SET harvests=harvests+1 WHERE agent_id=?', aria.id);
+        report.harvested = (report.harvested || 0) + 1;
+      }
+      try {
+        platform.callings({ account: accounts.botanists, kind: 'session' }, { agent_id: aria.id });
+      } catch {}
+    }
+
+    // Kael crafts keepsakes when materials are available
+    if (kael && accounts.artisans) {
+      const fiber = platform.get("SELECT quantity FROM journey_inventory WHERE agent_id=? AND kind='fiber'", kael.id)?.quantity || 0;
+      if (fiber >= 2) {
+        platform.run("UPDATE journey_inventory SET quantity=quantity-2 WHERE agent_id=? AND kind='fiber'", kael.id);
+        platform.run("INSERT INTO journey_inventory VALUES(?,'woven_banner',1) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=quantity+1", kael.id);
+        platform.run('UPDATE journey_profiles SET crafts=crafts+1 WHERE agent_id=?', kael.id);
+        platform.audit(accounts.artisans.id, 'journey.crafted', kael.id);
+        report.crafted = (report.crafted || 0) + 1;
+      }
+      try {
+        platform.callings({ account: accounts.artisans, kind: 'session' }, { agent_id: kael.id });
+      } catch {}
+    }
+  } catch (err) {
+    if (verbose) console.error('Living world vocation error:', err.message);
+  }
+
+  // 6. Proximity reaction to human avatars in the Commons
+  try {
+    const nearbyHumans = platform.all(
+      "SELECT id, name, x, y FROM agents WHERE world_id='commons' AND id NOT LIKE 'lw-%' AND status='active' LIMIT 10"
+    );
+    for (const human of nearbyHumans) {
+      for (const resident of LIVING_ROSTER) {
+        const agent = agents[resident.id];
+        if (!agent) continue;
+        const dist = Math.hypot(agent.x - human.x, agent.y - human.y);
+        if (dist <= 3) {
+          // Resident reacts to human player standing close
+          platform.run("UPDATE agents SET emote='wave', last_seen=? WHERE id=?", now, agent.id);
+          report.emoted = (report.emoted || 0) + 1;
+          break;
+        }
+      }
+    }
+  } catch {}
 
   return report;
 }
