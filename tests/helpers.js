@@ -14,10 +14,13 @@ export const evidence = (claim, changes = {}) => ({
   ...changes,
 });
 
-export async function fixture(t) {
+export async function fixture(t, { startAt } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'seed-test-'));
   const database = join(directory, 'platform.sqlite');
-  let currentTime = Date.now();
+  // Defaults to the wall clock, exactly as before. A test whose assertions depend on which UTC day a
+  // saved row lands in passes `startAt`, so its own clock no longer depends on when the suite happens
+  // to run (the cultivator daily-cap test advances across a day boundary otherwise).
+  let currentTime = startAt ?? Date.now();
   const platform = new Platform(database, () => currentTime);
   t.after(async () => {
     try { platform.close(); } catch { /* A restart test may already have closed it. */ }

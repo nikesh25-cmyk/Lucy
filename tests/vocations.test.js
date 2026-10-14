@@ -50,7 +50,7 @@ test('builder experience requires saved permitted placement, deduplicates retrie
 });
 
 test('cultivator credits actual planting and server-checked harvest, capped per objective and day',async t=>{
- const f=await fixture(t),agent=f.agent('alice');select(f,agent,'cultivator');furnish(f,agent,4,6,'farm');
+ const startAt=(()=>{const d=new Date();d.setUTCHours(12,0,0,0);return d.getTime();})();const f=await fixture(t,{startAt}),agent=f.agent('alice');select(f,agent,'cultivator');furnish(f,agent,4,6,'farm');
  const input={agent_id:agent.id,x:4,y:6};f.tx('gardenAction',f.actor('alice'),{...input,action:'plant',kind:'herbs'});assert.equal(read(f,agent).experience.available,5);
  assert.throws(()=>f.tx('gardenAction',f.actor('alice'),{...input,action:'harvest',ready_at:0}),{status:409});assert.equal(read(f,agent).experience.available,5);
  f.advance(20*60000);f.tx('gardenAction',f.actor('alice'),{...input,action:'harvest'});assert.equal(read(f,agent).experience.available,10);assert.equal(read(f,agent).today.objectives.every(o=>o.complete),true);
