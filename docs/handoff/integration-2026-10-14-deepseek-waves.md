@@ -23,6 +23,14 @@ This integration starts from `integration/nemoworld-completed` at `5b2b147`, the
 
 The first full unit-suite attempt ran inside a sandbox that refused `127.0.0.1` listeners; its server-test failures are an environment result, not a product regression. The permission-enabled rerun above is the valid gate. All acceptance databases and engine worlds were temporary. No installed account, coin receipt, land plot, model weight or production backup was used as test data.
 
+## Late fix and local installation
+
+DeepSeek later committed `83b9505`, a character-selection navigation guard. It was cherry-picked onto the combined source as `094a52b`. On that commit, `npm run check`, the browser-suite unit checks (7/7), and the focused real-Chrome `game-shell-entry-and-continue` scenario (1/1) passed. The full 966-test, 20-step e2e, and 43-scenario Chrome results above were run on the preceding combined commit `d864f33`; the late fix changes one line of browser navigation only.
+
+The installed `outputs/Lucy` now serves `094a52b` at `http://127.0.0.1:3000/`. All 944 installed tracked files match its source manifest. Before upgrading the installed database from schema 22 to 23, the server was stopped and a verified backup was saved at `outputs/Lucy/data/backups/pre-schema23-d864f33.sqlite`. A copy of that backup migrated successfully to schema 23; accounts, agents, land, blocks, inventory, crops, coin rewards, messages and resident memory matched the stopped original byte for byte at the row level. After installation, the API and page responded 200, database verification reported schema 23 and one saved account, and those protected rows still matched the backup.
+
+An additional DeepSeek Chrome regression for delayed character selection was still uncommitted in its separate worktree at this handoff. It was not copied into the installed build.
+
 ## Limits
 
 This is a finite, tile-based shared world with an optional native Luanti projection. The Luanti bridge shares authoritative NemoWorld rows; it is not a standalone MMO backend. The five places are authored environments, with some services still represented mainly by scenery. The render change reduces some distant instances; it is not a proven frame-rate improvement. The trade ledger remains a single-process SQLite workload, and a long-lived installation still needs measured retention and capacity planning. No real-world pilot, institutional adoption, commercial land sale or live hosted release is implied by these gates.
