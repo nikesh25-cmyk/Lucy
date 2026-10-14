@@ -571,7 +571,7 @@ Conflicting declared dates and units are **kept visible**, never normalised away
 
 Each library version view includes `verification`: `retained-bytes-hash-checked` or `declared-hash-only`. The first verifies the stored bytes matched the recorded hash when registered; it does not authenticate publication by the named source or certify the factual claim. Historic hash-only links keep their stored `capture_id` and metadata for audit, but every current evidence view reports `missing`. The immutable schema-22 record cannot be silently upgraded in place to retained bytes for the same hash; that requires an explicit audited migration or a new reviewed citation to a separately retained version.
 
-**Retention and quota.** The library holds at most **2 048** sources and **8 192** captures, at most **8** versions of any one source, and **96 MiB** of bytes retained under `catalog/`. When a new capture would exceed a quota the oldest version **not cited by any submission** is evicted; a version that any submission cites is **never** evicted, so an over-quota capture that has only cited candidates left fails closed with a clear error (never a partial record, never a deleted citation). The schema-22 validation re-checks every stored source, capture, event and citation on a backup, a restore and a startup.
+**Retention and quota.** The library holds at most **2 048** sources and **8 192** captures, at most **8** versions of any one source, and **96 MiB** of bytes retained under `catalog/`. When a new capture would exceed a quota the oldest version **not cited by any submission** is evicted; a version that any submission cites is **never** evicted, so an over-quota capture that has only cited candidates left fails closed with a clear error (never a partial record, never a deleted citation). The evidence tables were introduced in schema 22; the current schema-23 validation re-checks every stored source, capture, event and citation on a backup, a restore and a startup.
 
 
 ## Reviewer workbench and adoption tracking
@@ -622,6 +622,25 @@ So the four roles stay distinct: the **proposer** (the mission owner who propose
 ```
 
 The comparison **never edits either version** and never invents one: a later capture only changes the state a reviewer reads, and a `missing`, `stale`, `replaced` or `withdrawn` citation is a documented reason a reviewer may refuse acceptance. It is a human judgment, not an automatic block.
+
+## Advisory mission-quality signals
+
+See [mission quality and abuse signals](MISSION_QUALITY.md) for the measures, their thresholds and what they cannot do, and [the wiring handoff](handoff/task-c-quality-wiring.md) for this slice.
+
+| Request | Access | Purpose |
+| --- | --- | --- |
+| `GET /quality?task=<id>` | `reviewer`/`admin` session | The advisory assessment of one **task** proposal, assembled from the stored records. |
+| `GET /quality?mission=<id>` | `reviewer`/`admin` session | The same reading for a **mission** proposal. Exactly one of `task` or `mission` is required. |
+
+The audience is the reviewer workbench's: an operator session holding the `reviewer` or `admin` role. There is no public form of this route. An anonymous caller is refused **401**, a member, moderator or any other role **403**, an unknown identifier **404**, and a call naming neither **400**. `POST /quality` is refused **405** with `Allow: GET`.
+
+**What it reads.** The proposal is assembled from records the platform already holds, never from request parameters: the `missions` row, its `tasks` row when a task is named, and the `research_leads` row linked to either, which carries the source register the shipped research path recorded. The comparison corpus is every stored `research_leads` row except the one that produced this work, so a proposal is never reported as textually close to the entry it came from. No review records are read: the collusion measures would require the whole review history inside a reviewer-visible response, which would disclose other contributors' records, so `review.checked` is `false` and the module's own note says no collusion measure was computed. The evidence library's host list is also not supplied, so `source_host_unknown` is never raised here; the library holds only hosts captured through the curator path, and the submission path registers a new host instead of refusing it.
+
+**What it returns.** The `assessMission` result, verbatim and unwrapped: `kind`, `version`, `advisory`, `scope`, `fictional`, `subject`, `completeness`, `missing`, `signals`, `duplicates` (with `score`, `plain_score`, `threshold`, shared tokens and the distinguishing tokens), `review`, `ladder`, `thresholds`, `authority`, `boundaries` and `severed_units`. Every signal carries its `code`, `severity`, plain-language `detail`, `advisory: true` and the `measure` it was computed from. Nothing in the response is a verdict, a status, a score of the work or a reward.
+
+**It writes nothing and it gates nothing.** The route calls one pure function; `src/mission-quality.js` has no writer and no store. Reading it changes no table, no status, no coin and no audit entry, and a mission, task, claim, submission, review or adoption behaves exactly as it does without it. The coin decision stays with the shipped independent-acceptance predicate in `src/coins.js`, which this module neither calls nor restates.
+
+**The client panel.** `app.js` renders these signals beside the reviewer workbench, on the review card for a pending version, behind a disclosure that loads them on demand. Each signal shows its code, its severity word, the module's plain-language detail and its measure, as returned. The panel adds no colour verdict and no blocking control: the only controls are a refresh and, where the module accepts the reader as independent, **"Checked — not a problem"**. That control calls the same pure `dismissSignal`, so the check-off is a declaration kept in the browser session and is stored nowhere — there is no dismissals table, the schema stays at **22**, and reloading or signing out forgets it. The module refuses a dismissal by a human the signal itself names (**403**), so the mission's own reviewer is shown the module's own reason instead of a control; an independent reviewer or administrator, who is not one of the proposal's parties, can check a signal off.
 
 ## Interface addresses
 

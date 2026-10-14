@@ -27,7 +27,7 @@ import { cameraWalkDirection, facingLabel } from '../src/camera-controls.js';
 import { RESTORATION_PLAN } from '../src/community.js';
 import { validateDatabase } from '../src/recovery.js';
 import { planWalk } from '../src/world-walk.js';
-import { frontierGates, getWorldDefinition } from '../world.js';
+import { frontierGates, getWorldDefinition, walkable } from '../world.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const RESULTS = join(ROOT, 'test-results');
@@ -133,12 +133,14 @@ export const SCENARIOS = Object.freeze([
   { id: 'interaction-state-refusals', title: 'Paused, revoked, wrong-owner and observer refusals keep the server authoritative', regression: null },
   { id: 'consolidated-proposal-history', title: 'Retired research templates remain readable but cannot become missions', regression: 'batch 02 integration correction' },
   { id: 'shared-build-and-restart', title: 'Two humans and an AI runtime build together, exchange items and keep progress after restart', regression: 'shared integration' },
-  { id: 'wave-b-two-gates', title: 'Two humans and an active AI cross two connected frontier gates, talk in the sector they reached, and return to it after a restart', regression: 'wave B acceptance' },
+  { id: 'wave-b-two-gates', title: 'Two humans and an active AI cross two connected frontier gates, choose their callings, raise one shared saved path in the sector they reached, and return to it after a restart', regression: 'wave B acceptance' },
   { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
   { id: 'reviewer-workbench', title: 'A reviewer assesses each criterion, compares source versions, requests changes and the mission owner records an adoption', regression: null },
   { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
+  { id: 'mission-quality-advisory-signals', title: 'A reviewer reads the advisory mission-quality signals beside the review surface, checks one off for this session only, and the flags block nothing', regression: null },
   { id: 'live-observation-readonly', title: 'An anonymous observer sees public activity and can neither build nor control a resident', regression: null },
   { id: 'game-shell-entry-and-continue', title: 'Play, Observe and Continue enter the world, and the shell keeps one overlay, one HUD and one drawer', regression: null },
+  { id: 'selection-does-not-clobber-navigation', title: 'A section opened while a character selection is still loading is not replaced by the world view', regression: 'character selection race (83b9505)' },
   { id: 'management-interface-and-roles', title: '/manage hosts the governance surfaces, and only a privileged role sees the entry', regression: null },
   { id: 'private-memory-and-journal-boundaries', title: 'A private memory and a private journal are refused to another operator and to a sibling character', regression: null },
   { id: 'first-ten-minutes', title: 'One derived next action, a chosen calling, a saved action, a dismissed and resumed guide, and a resumed place', regression: null },
@@ -367,7 +369,9 @@ const ACTORS = {
   contributor: { email: 'contributor@browser.test', password: PASSWORD, name: 'Browser contributor' },
   // The Wave B crossing scenario creates its own two operators and their three residents, so the two
   // humans that cross the frontier gates share no account, character or fixture with any other
-  // scenario, and no shared resident is left standing in another sector when it ends.
+  // scenario, and no shared resident is left standing in another sector when it ends. It also
+  // stewards a plot of its own in that sector, exactly as `shared-build-and-restart` does with the
+  // central sector, because an operator may steward one plot and both scenarios need their own.
   'wave-b-host': { email: 'wave-b-host@browser.test', password: PASSWORD, name: 'Wave B host' },
   'wave-b-guest': { email: 'wave-b-guest@browser.test', password: PASSWORD, name: 'Wave B guest' },
 };
@@ -4170,6 +4174,148 @@ define('reviewer-workbench', async () => {
 });
 
 // ---------------------------------------------------------------------------------------------
+// Scenario — the advisory mission-quality signals beside the reviewer's own surface
+// ---------------------------------------------------------------------------------------------
+
+define('mission-quality-advisory-signals', async () => {
+  const admin = await actor('admin');
+  const reviewer = await actor('reviewer');
+  // This scenario's own operator and resident. The shared fictional contributor reaches the shipped
+  // 100-coin daily operator limit by the time this scenario runs in the full suite, and the receipt
+  // assertion below needs an operator whose own UTC day is still fresh.
+  const ticket = await ensureAccount(fixtures().admin, { email: 'quality-contributor@browser.test', password: PASSWORD, name: 'Browser quality contributor' });
+  const resident = await apiExpect(ticket, 'POST', '/agents', { kind: 'agent', name: 'Quality resident', color: '#5d7bb1', symbol: '✎', capabilities: 'Reads approved sources and prepares cited briefs', limitations: 'No external tools and no real-world claims' });
+  // The stored research proposal supplies the text, so the near-duplicate measure has a real
+  // neighbour to score against. The mission keeps its own known defects — no recorded source
+  // register and no stated limits — and it is created and opened with them present.
+  const lead = row("SELECT * FROM research_leads WHERE id='NP-2-baseline'");
+  expect(lead && lead.title && lead.instructions, 'the stored research proposal must be readable', { actual: describe(lead) });
+  const TITLE = lead.title;
+  const DISMISSAL_NOTE = 'Checked against the stored research proposal: this fixture deliberately reuses that proposal’s text, so the match is expected and names no duplicate work.';
+  const mission = await apiExpect(fixtures().admin, 'POST', '/missions', {
+    title: TITLE, area: 'Agriculture', summary: lead.instructions.slice(0, 2000),
+    beneficiary: 'Acceptance community', owner_id: state.fixtures.owner.id, reviewer_id: state.fixtures.reviewer.id, rubric: lead.rubric,
+  });
+  const task = await apiExpect(fixtures().admin, 'POST', '/tasks', {
+    mission_id: mission.id, title: 'Record one source (quality)', instructions: lead.instructions.slice(0, 2000),
+    rights: 'Public material with attribution.', allowed_domains: ['example.org'],
+  });
+  await apiExpect(fixtures().admin, 'POST', '/missions/status', { mission_id: mission.id, status: 'open' });
+  // The store's own fingerprint, so "a dismissal writes nothing" is checked against every table and
+  // the audit chain rather than one counter.
+  const storeCounts = () => ['missions', 'tasks', 'claims', 'submissions', 'reviews', 'reports', 'adoptions', 'coin_rewards', 'audit'].map((table) => `${table}:${count(`SELECT COUNT(*) AS n FROM ${table}`)}`).join('|');
+  const openQuality = async (page) => {
+    const card = page.locator('#view .card', { hasText: TITLE }).first();
+    await card.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const summary = card.locator('summary', { hasText: 'Mission quality signals' }).first();
+    await summary.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    if (!await summary.evaluate((node) => node.closest('details')?.open === true)) await summary.click();
+    await card.getByRole('button', { name: 'Load advisory signals', exact: true }).click();
+    await waitForCondition(async () => ((await card.locator('.mission-quality-panel').textContent().catch(() => '')) || '').includes('near_duplicate') ? true : null, 'the advisory signals to render');
+    return card;
+  };
+  let assessment = null, submission = null, score = null, threshold = null;
+
+  await step('the flagged proposal is created and opened, and its assessment is read over the API', async () => {
+    const refused = await apiGet(`/quality?task=${encodeURIComponent(task.id)}`, { token: state.fixtures.stranger.token });
+    expect(refused.status === 403, 'a member who is not a reviewer must be refused', { expected: 'HTTP 403', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    assessment = await apiExpect(state.fixtures.reviewer, 'GET', `/quality?task=${encodeURIComponent(task.id)}`, undefined, [200]);
+    expect(assessment.advisory === true && assessment.authority.level === 'advisory' && assessment.authority.changes_status === false, 'the assessment must carry the module’s own advisory authority statement', { actual: describe(assessment.authority) });
+    const missing = assessment.missing.map((entry) => entry.field);
+    expect(missing.includes('limits') && missing.includes('sources'), 'the proposal’s two known defects must be reported by field name', { actual: describe(missing) });
+    const duplicate = assessment.signals.find((signal) => signal.code === 'near_duplicate');
+    expect(duplicate && duplicate.advisory === true, 'the stored research proposal must be reported as one advisory signal', { actual: describe(assessment.signals.map((signal) => signal.code)) });
+    threshold = assessment.duplicates.threshold;
+    score = assessment.duplicates.matches[0].score;
+    expect(assessment.duplicates.matches[0].id === lead.id && score >= threshold, 'the closest match must name the stored proposal at or above the threshold', { expected: `≥ ${threshold}`, actual: describe(assessment.duplicates.matches[0]) });
+    expect(assessment.thresholds.duplicate_similarity === threshold, 'the threshold that was actually used must be returned', { actual: describe(assessment.thresholds.duplicate_similarity) });
+    expect(row('SELECT status FROM missions WHERE id=?', mission.id).status === 'open', 'a flagged mission must still be created, given a task and opened', { actual: describe(row('SELECT status FROM missions WHERE id=?', mission.id)) });
+    return `mission ${mission.id} created and opened with ${missing.length} unusable field(s); the closest stored proposal scores ${score} at the ${threshold} threshold`;
+  });
+
+  await step('a contributor submits a cited version against that task', async () => {
+    const claim = await apiExpect(ticket, 'POST', '/claims', { task_id: task.id, agent_id: resident.id }, [201], { headers: { 'Idempotency-Key': 'browser-quality-claim' } });
+    // The submitted text is unique to this scenario: the shipped coin predicate refuses a receipt for
+    // identical normalised work, and the shared fixture artifact has already earned one elsewhere.
+    submission = await apiExpect(ticket, 'POST', '/submissions', { ...EVIDENCE, artifact: 'A quality-signal fixture contribution whose exact wording belongs to this scenario alone.', claim_id: claim.id }, [201], { headers: { 'Idempotency-Key': 'browser-quality-submit' } });
+    expect(submission.status === 'pending_review', 'the version must wait for review', { actual: describe(submission.status) });
+    return `submission ${submission.id} is pending review with the advisory signals unchanged`;
+  });
+
+  await step('the reviewer reads the advisory signals and their score beside the review surface', async () => {
+    await openApp(reviewer.page, ACTORS.reviewer);
+    await openTab(reviewer.page, 'Review');
+    const card = await openQuality(reviewer.page);
+    const panel = card.locator('.mission-quality-panel');
+    const text = (await panel.textContent()) || '';
+    expect(text.includes('near_duplicate'), 'the signal code must be shown verbatim', { actual: text.replace(/\s+/g, ' ').slice(0, 500) });
+    expect(text.includes(String(score)), 'the score that was computed must be shown', { expected: String(score), actual: text.replace(/\s+/g, ' ').slice(0, 700) });
+    expect(text.includes(String(threshold)), 'the threshold that was used must be shown', { expected: String(threshold), actual: text.replace(/\s+/g, ' ').slice(0, 700) });
+    expect(/Advisory only\./.test(text) && /blocks creating, activating, claiming, submitting, reviewing or adopting this work/.test(text), 'the panel must say in words what it does not do', { actual: text.replace(/\s+/g, ' ').slice(0, 500) });
+    expect(text.includes('limits') && text.includes('sources'), 'the unusable required fields must be named', { actual: text.replace(/\s+/g, ' ').slice(0, 700) });
+    expect(text.includes(assessment.authority.coin_decision.slice(0, 60)), 'the coin decision must stay where the module says it stays', { actual: 'the coin statement was missing from the panel' });
+    // No verdict and no blocking control is presented: the only control is the read, and no severity is
+    // styled as a warning. This reviewer is one of the people the signal names, so the module will not
+    // let them check it off, and the interface repeats the module’s own reason rather than offering a
+    // control that could never work.
+    const labels = await panel.locator('button').allTextContents();
+    expect(labels.length === 1 && labels[0].trim() === 'Refresh advisory signals', 'the panel must offer no verdict or blocking control', { actual: describe(labels) });
+    expect(await panel.locator('.badge.warning').count() === 0, 'no severity may be presented as a warning verdict', { actual: 'a warning badge was rendered' });
+    expect(/An independent human must dismiss a signal/.test(text) && /the named reviewer is one of the parties the signal concerns/.test(text), 'the named reviewer must be told, in the module’s own words, why this check is not theirs', { actual: text.replace(/\s+/g, ' ').slice(-500) });
+    return `the panel showed the code, the score ${score} and the threshold ${threshold}; the only control is a refresh, and the named reviewer is told why the check is not theirs`;
+  });
+
+  await step('an independent administrator checks the signal off for this session only, and it is stored nowhere', async () => {
+    await openApp(admin.page, ACTORS.admin);
+    await openTab(admin.page, 'Review');
+    const card = await openQuality(admin.page);
+    const panel = card.locator('.mission-quality-panel');
+    const before = storeCounts();
+    const schemaBefore = validateDatabase(state.database).schema_version;
+    const form = panel.locator('form').filter({ hasText: 'Checked — not a problem' }).first();
+    await form.locator('[name="note"]').fill(DISMISSAL_NOTE);
+    await form.getByRole('button', { name: 'Checked — not a problem', exact: true }).click();
+    await waitForCondition(async () => ((await panel.textContent().catch(() => '')) || '').includes(DISMISSAL_NOTE) ? true : null, 'the dismissal to be shown beside the signal');
+    const text = (await panel.textContent()) || '';
+    expect(text.includes(ACTORS.admin.name), 'the declaration must name the human who made it', { actual: text.replace(/\s+/g, ' ').slice(-400) });
+    expect(/Kept in this browser session only/.test(text) && /Nothing was written/.test(text), 'the panel must state the honest scope of a dismissal', { actual: text.replace(/\s+/g, ' ').slice(-600) });
+    // It was not recorded anywhere: no row, no audit entry and no dismissal table to record it in.
+    expect(storeCounts() === before, 'a dismissal must write nothing at all', { expected: before, actual: storeCounts() });
+    expect(count("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND lower(name) LIKE '%dismiss%'") === 0, 'no dismissal table exists, which is why the check cannot be recorded', { actual: 'a dismissal table appeared' });
+    expect(validateDatabase(state.database).schema_version === schemaBefore, 'a dismissal must leave the database schema unchanged', { expected: schemaBefore, actual: describe(validateDatabase(state.database).schema_version) });
+    // Reloading forgets it, because nothing was stored.
+    await admin.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(admin.page);
+    await openTab(admin.page, 'Review');
+    const reopened = await openQuality(admin.page);
+    const after = (await reopened.locator('.mission-quality-panel').textContent()) || '';
+    expect(after.includes(DISMISSAL_NOTE) === false, 'the dismissal must not survive a reload, because nothing was stored', { actual: 'the dismissal text was still shown after the reload' });
+    expect(await reopened.getByRole('button', { name: 'Checked — not a problem', exact: true }).count() === 1, 'the control must be offered again after the reload', { actual: 'the dismissal control was not offered again' });
+    return `the dismissal was displayed, wrote nothing (${before.split('|').length} tables and the audit chain unchanged), and did not survive a reload`;
+  });
+
+  await step('the reviewer records an ordinary acceptance, so the flags blocked nothing', async () => {
+    await openTab(reviewer.page, 'Review');
+    const card = reviewer.page.locator('#view .card', { hasText: TITLE }).first();
+    const form = card.locator('form').filter({ hasText: 'Record review' }).first();
+    await form.locator('select[name="decision"]').selectOption('accepted');
+    await form.locator('[name="reason"]').fill('The cited source and its location are recorded, and the advisory signals were read and changed nothing here.');
+    await form.getByRole('button', { name: 'Record review', exact: true }).click();
+    const stored = await waitForCondition(async () => row('SELECT * FROM reviews WHERE submission_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1', submission.id) || null, 'the acceptance to be stored');
+    expect(stored.decision === 'accepted' && stored.reviewer_id === state.fixtures.reviewer.id, 'the acceptance must be stored against the flagged version', { actual: describe(stored) });
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards WHERE submission_id=?', submission.id) === 1, 'exactly one receipt must be issued', { actual: `${count('SELECT COUNT(*) AS n FROM coin_rewards WHERE submission_id=?', submission.id)} receipts` });
+    expect(scalar('SELECT amount FROM coin_rewards WHERE submission_id=?', submission.id) === 10, 'the receipt must be the shipped fixed ten-coin award', { actual: describe(scalar('SELECT amount FROM coin_rewards WHERE submission_id=?', submission.id)) });
+    // The whole create, activate, submit and review sequence left the reading identical: the flags are
+    // a reading of the proposal, not a state that anything acts on.
+    const after = await apiExpect(state.fixtures.reviewer, 'GET', `/quality?task=${encodeURIComponent(task.id)}`, undefined, [200]);
+    expect(JSON.stringify(after) === JSON.stringify(assessment), 'the assessment must be byte-identical after the flow', { actual: 'the assessment changed during the flow' });
+    return `accepted by ${stored.reviewer_id} for one 10-coin receipt; the assessment is byte-identical before and after`;
+  });
+
+  return `one flagged mission was created, opened, submitted against and accepted; a reviewer read the advisory signals with the score ${score}, and an independent administrator checked one off for the session only without writing anything, which a reload forgot`;
+});
+
+// ---------------------------------------------------------------------------------------------
 // Scenario 24 — the four states, self-adoption and the quarantine hold
 // ---------------------------------------------------------------------------------------------
 
@@ -4397,15 +4543,22 @@ define('shared-build-and-restart', async () => {
 // Wave B's acceptance sentence is only partly unproved on this tip. `shared-build-and-restart` already
 // drives two humans and one scoped AI runtime building, exchanging an item and surviving a restart;
 // `restoration-two-clients` and `cooperative-restoration-two-operators` drive a shared world change;
-// `first-ten-minutes` covers choosing a calling. None of them crosses a frontier gate. This scenario
-// covers that one thing and re-proves none of the others: three residents in one seeded sector, the
-// two connected gates that leave it, and the server's own stored answer for every crossing.
+// `first-ten-minutes` covers choosing a calling. None of them crosses a frontier gate, and none of
+// them carries one party through its whole acceptance sentence. This scenario covers the combination
+// and re-proves none of the others: three residents in one seeded sector, the two connected gates
+// that leave it, the server's own stored answer for every crossing, one calling chosen per resident,
+// one cooperative saved world change in the sector the party crossed into, and a real restart.
 //
 // Each claim is read back from the temporary SQLite database or from the server's own payload: the
 // stored `world_id`, the stored arrival tile, the `messages` rows with their sender, operator,
-// channel, world, recipients and text, and the `resident_memory` purpose row across a real process
-// restart. The two humans belong to operators this scenario creates for itself, so no shared fixture
-// is moved, and each human walks into the frontier through the Commons' own passage in its browser.
+// channel, world, recipients and text, the `resident_callings` and `calling_receipts` rows, the
+// `frontier_blocks` rows with their creator, operator, plot and grant, and the `resident_memory`
+// purpose row across a real process restart. The two humans belong to operators this scenario creates
+// for itself, so no shared fixture is moved, and each human walks into the frontier through the
+// Commons' own passage in its browser. The build site is *found* rather than assumed: the seeded
+// frontier reserves the crossroads plots and every water or dense-habitat plot, so the scenario asks
+// the shipped land registry for an assignable plot near the tile the last crossing landed on, and the
+// whole search writes nothing.
 // ---------------------------------------------------------------------------------------------
 
 /** The seeded 3 × 3 frontier a two-gate path crosses, and the Commons passage into the first sector. */
@@ -4422,6 +4575,55 @@ const CONTROL_CYCLE = Object.freeze({ up: 'right', right: 'down', down: 'left', 
 const WAVE_B_HUMAN_LINE = 'The east passage answers back onto the field we came from; the new path holds.';
 const WAVE_B_AI_LINE = 'Both passages are open and I am standing on the second gate.';
 const WAVE_B_PURPOSE = 'Cross both frontier passages and keep the shared path open.';
+/**
+ * The calling each of the three crossing residents chooses. The host's human picks the Builder, whose
+ * own objective is a saved frontier block; the guest's human picks the Cultivator; and the AI resident
+ * is given the Steward, whose `path_place` objective is a saved ground path inside its operator's own
+ * plot — so the one world change this party makes is the work its callings actually describe.
+ */
+const WAVE_B_CALLINGS = Object.freeze({ host: 'builder', guest: 'cultivator', aide: 'steward' });
+
+/**
+ * Where the crossing party raises its shared path: one assignable plot in the sector the last crossing
+ * reached, the walkable tile in it nearest that arrival (the staging tile), and the three walkable
+ * tiles nearest the staging tile (the blocks). This is a **read** of the shipped land registry, the
+ * published world definition and the saved blocks: it writes nothing, it moves no resident, and it
+ * never invents a parcel. The seeded frontier reserves the crossroads plots and any water or
+ * dense-habitat plot, so the plot is discovered from `GET /land` rather than assumed to be free.
+ */
+async function waveBPathSite(ticket, worldId, arrival) {
+  const definition = getWorldDefinition(worldId);
+  const plots = [];
+  for (let offset = 0; ; offset += 50) {
+    const page = await apiRequest(`/land?world_id=${encodeURIComponent(worldId)}&status=available&limit=50&offset=${offset}`, { token: ticket.token });
+    if (page.status !== 200 || !Array.isArray(page.body?.plots)) {
+      throw new BrowserSuiteFailure(`the land registry must describe ${worldId}`, { expected: 'HTTP 200 with an available-plot page', actual: `HTTP ${page.status} ${page.raw}` });
+    }
+    plots.push(...page.body.plots);
+    if (!page.body.has_more) break;
+  }
+  expect(plots.length, `${worldId} must offer at least one assignable plot`, { expected: 'an available plot near the crossing', actual: `${plots.length} available plots` });
+  const saved = new Set(rows('SELECT x,y FROM frontier_blocks WHERE world_id=? AND z=0', worldId).map((block) => `${block.x},${block.y}`));
+  const free = (x, y) => walkable({ x, y }, definition) && !saved.has(`${x},${y}`);
+  let site = null;
+  for (const plot of plots) {
+    for (let y = plot.y; y < plot.y + plot.height; y += 1) for (let x = plot.x; x < plot.x + plot.width; x += 1) {
+      if (!free(x, y)) continue;
+      const reach = Math.abs(x - arrival.x) + Math.abs(y - arrival.y);
+      if (!site || reach < site.reach) site = { reach, plot, stage: { x, y } };
+    }
+  }
+  expect(site, `${worldId} must hold an assignable plot with a walkable tile`, { expected: 'a walkable tile inside an available plot', actual: `${plots.length} available plots, none walkable` });
+  const cells = [];
+  for (let y = site.plot.y; y < site.plot.y + site.plot.height; y += 1) for (let x = site.plot.x; x < site.plot.x + site.plot.width; x += 1) {
+    if (!free(x, y) || (x === site.stage.x && y === site.stage.y)) continue;
+    cells.push({ x, y, from: Math.abs(x - site.stage.x) + Math.abs(y - site.stage.y) });
+  }
+  cells.sort((a, b) => a.from - b.from || a.y - b.y || a.x - b.x);
+  const blocks = cells.slice(0, 3);
+  expect(blocks.length === 3 && blocks.every((cell) => cell.from <= 6), `the plot ${site.plot.id} must hold three tiles the crossing party can reach on foot`, { expected: 'three walkable tiles within six steps of the staging tile', actual: describe({ plot: site.plot.id, stage: site.stage, cells }) });
+  return { plot_id: site.plot.id, stage: site.stage, blocks: blocks.map(({ x, y }) => ({ x, y })), reach: site.reach };
+}
 
 /** One gate of a sector, by the direction a resident crosses it in. */
 const waveBGate = (worldId, direction) => frontierGates(worldId).find((gate) => gate.direction === direction) || null;
@@ -4507,6 +4709,25 @@ async function browserCrossGate(page, agentId, controlFor, fromWorldId, gate, wh
   return crossed;
 }
 
+/**
+ * One path block through the shipped build panel — the same palette and coordinate form a player uses.
+ * The stored row, not the interface, decides whether it worked, and the panel's own refusal is carried
+ * into the failure message so a refused build is never reported as a missing write.
+ */
+async function waveBPlacePathThroughUi(page, worldId, cell) {
+  await page.locator('.frontier-hotbar').getByRole('button', { name: /^\d+ path$/ }).click();
+  const form = page.locator('#view form').filter({ has: page.getByRole('button', { name: 'Apply block at coordinates', exact: true }) });
+  await form.locator('[name="x"]').fill(String(cell.x));
+  await form.locator('[name="y"]').fill(String(cell.y));
+  await form.locator('[name="z"]').fill('0');
+  const notice = await frontierClick(page, form.getByRole('button', { name: 'Apply block at coordinates', exact: true }));
+  const saved = await waitForCondition(async () => row('SELECT id,type,creator_agent_id FROM frontier_blocks WHERE world_id=? AND x=? AND y=? AND z=0', worldId, cell.x, cell.y) || null, `the block at ${cell.x}, ${cell.y} to be saved by the build panel`).catch(() => null);
+  if (!saved) {
+    throw new BrowserSuiteFailure(`the build panel never saved the block at ${cell.x}, ${cell.y}`, { expected: `a frontier_blocks row at ${cell.x},${cell.y} in ${worldId}`, actual: `the interface said “${notice}”` });
+  }
+  return saved;
+}
+
 /** One documented movement step with a runtime credential, paced past the server's own 120 ms throttle. */
 async function runtimeStep(ticket, agentId, direction, { attempts = 4, paceMs = 140 } = {}) {
   let last = null;
@@ -4556,8 +4777,9 @@ define('wave-b-two-gates', async () => {
   const crosserTwo = await resident(guestTicket, { kind: 'human', name: 'Crosser two', symbol: '▲' });
   const crosserAide = await resident(hostTicket, { kind: 'agent', name: 'Crosser aide' });
   const firstGate = waveBGate(WAVE_B_FIRST, 'up'), secondGate = waveBGate(WAVE_B_SECOND, 'right');
-  const firstAnswer = waveBArrival(WAVE_B_SECOND, WAVE_B_FIRST), secondAnswer = waveBArrival(WAVE_B_THIRD, WAVE_B_SECOND);
-  let runtime = null, purpose = null, hostControls = null, guestControls = null;
+  const firstAnswer = waveBArrival(WAVE_B_SECOND, WAVE_B_FIRST);
+  let runtime = null, purpose = null, hostControls = null, guestControls = null, sharedPath = null, hostGrantId = null;
+  const coinsBefore = count('SELECT COUNT(*) AS n FROM coin_rewards');
 
   await step('two new humans and one AI resident walk out of the Commons into the same frontier sector', async () => {
     const created = rows('SELECT id,kind,world_id,x,y FROM agents WHERE id IN (?,?,?)', crosserOne.id, crosserTwo.id, crosserAide.id);
@@ -4570,7 +4792,7 @@ define('wave-b-two-gates', async () => {
     }
     // The AI resident walks the same passage with its own runtime credential, which it keeps for the
     // rest of the scenario: that credential is what makes every later AI claim the AI's own action.
-    runtime = await apiExpect(hostTicket, 'POST', '/runtime/start', { agent_id: crosserAide.id, minutes: 20, max_calls: 500, scopes: ['read', 'move', 'chat'] });
+    runtime = await apiExpect(hostTicket, 'POST', '/runtime/start', { agent_id: crosserAide.id, minutes: 20, max_calls: 500, scopes: ['read', 'move', 'chat', 'build'] });
     await runtimeWalk(runtime, crosserAide.id, 'commons', COMMONS_FRONTIER_PASSAGE, 'the AI resident');
     await travelTo(runtime, crosserAide.id, WAVE_B_FIRST);
 
@@ -4712,34 +4934,153 @@ define('wave-b-two-gates', async () => {
     return `messages ${humanRow.id} (${crosserTwo.name}) and ${aiRow.id} (${crosserAide.name}) saved private in ${WAVE_B_THIRD}, readable by the recipient and withheld from a third operator`;
   });
 
-  await step('the party leaves and returns: a real restart keeps the same sector and the same purpose', async () => {
+  await step('each of the three residents chooses a calling, and the choice is a stored row', async () => {
+    // The host's human chooses through the shipped calling card. The guest's human and the AI resident
+    // are chosen by their own operators over the documented route: a calling is an operator's decision
+    // for its own resident, never something a runtime credential picks for itself.
+    await selectResidentAndSettle(host.page, crosserOne.id, crosserOne.name);
+    await openSectionNamed(host.page, 'Callings & guilds');
+    const card = host.page.locator(`#view .calling-choice[data-calling="${WAVE_B_CALLINGS.host}"]`);
+    await card.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await card.getByRole('button', { name: /^Become/ }).click();
+    await waitForCondition(async () => row('SELECT calling_id FROM resident_callings WHERE agent_id=?', crosserOne.id)?.calling_id === WAVE_B_CALLINGS.host ? true : null, 'Crosser one’s chosen calling to be stored');
+    await apiExpect(guestTicket, 'POST', '/callings/select', { agent_id: crosserTwo.id, calling_id: WAVE_B_CALLINGS.guest });
+    await apiExpect(hostTicket, 'POST', '/callings/select', { agent_id: crosserAide.id, calling_id: WAVE_B_CALLINGS.aide });
+    const chosen = rows('SELECT agent_id,calling_id FROM resident_callings WHERE agent_id IN (?,?,?)', crosserOne.id, crosserTwo.id, crosserAide.id);
+    expect(chosen.length === 3, 'each of the three residents must hold one stored calling', { expected: 'three resident_callings rows', actual: describe(chosen) });
+    const byAgent = Object.fromEntries(chosen.map((entry) => [entry.agent_id, entry.calling_id]));
+    expect(byAgent[crosserOne.id] === WAVE_B_CALLINGS.host && byAgent[crosserTwo.id] === WAVE_B_CALLINGS.guest && byAgent[crosserAide.id] === WAVE_B_CALLINGS.aide, 'every stored calling must be the one its own operator chose', { expected: describe(WAVE_B_CALLINGS), actual: describe(byAgent) });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='calling.selected' AND record_id IN (?,?,?)", crosserOne.id, crosserTwo.id, crosserAide.id) === 3, 'each choice must be the server’s own recorded event', { expected: 'three calling.selected rows', actual: describe(rows("SELECT record_id FROM audit WHERE event='calling.selected'")) });
+    // The AI resident reads its own calling back through the credential it crossed with, not through a
+    // human session: the calling is stored server-side and is not a claim the client makes.
+    const own = await apiRequest(`/callings?agent_id=${encodeURIComponent(crosserAide.id)}`, { token: runtime.token });
+    expect(own.status === 200 && own.body.calling.id === WAVE_B_CALLINGS.aide, 'the AI resident must read its own calling through its runtime credential', { expected: `HTTP 200 with the ${WAVE_B_CALLINGS.aide} calling`, actual: `HTTP ${own.status} ${describe(own.body?.calling?.id || own.body?.error)}` });
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards') === coinsBefore, 'choosing a calling must mint no coin', { actual: 'the coin ledger changed' });
+    state.notes.push(`wave B callings: ${crosserOne.name} chose ${WAVE_B_CALLINGS.host} through the calling card, ${crosserTwo.name} chose ${WAVE_B_CALLINGS.guest} and the AI resident ${crosserAide.name} chose ${WAVE_B_CALLINGS.aide} through the documented route; the AI resident read its own calling back on its runtime credential`);
+    return `three stored callings (${WAVE_B_CALLINGS.host} · ${WAVE_B_CALLINGS.guest} · ${WAVE_B_CALLINGS.aide}), three calling.selected audit rows and no coin`;
+  });
+
+  await step('the party stewards one plot in the sector it crossed into and leaves one shared path standing', async () => {
+    const arrival = waveBArrival(WAVE_B_THIRD, WAVE_B_SECOND);
+    // Where to build is found, not assumed: the seeded frontier reserves the crossroads plots and any
+    // water or dense-habitat plot, so the site comes from the shipped land registry and the published
+    // world definition, and this search writes nothing at all.
+    sharedPath = await waveBPathSite(hostTicket, WAVE_B_THIRD, arrival);
+    await apiExpect(hostTicket, 'POST', '/land/assign', { plot_id: sharedPath.plot_id, purpose: 'The crossing party’s shared path', description: 'A disposable acceptance fixture: three residents that crossed two connected frontier gates lay one path in the sector they reached.' });
+    const stewardship = await waitForCondition(async () => row('SELECT * FROM land_stewardships WHERE plot_id=?', sharedPath.plot_id) || null, 'the host’s stewardship to be stored');
+    expect(stewardship.account_id === hostTicket.account.id, 'the plot must be stewarded by the operator that assigned it', { expected: hostTicket.account.id, actual: describe(stewardship) });
+    // One narrow grant: this guest, this plot, path blocks on one layer of placement, for an hour.
+    const grant = await apiExpect(hostTicket, 'POST', '/frontier/grant', { plot_id: sharedPath.plot_id, guest_agent_id: crosserTwo.id, purpose: 'Lay one path block with us', duration_minutes: 60, block_types: ['path'], layers: [0], actions: ['place'], max_blocks: 1 });
+    hostGrantId = grant.grant.id;
+    const stored = row('SELECT * FROM plot_grants WHERE id=?', hostGrantId);
+    expect(stored.status === 'active' && stored.guest_account_id === guestTicket.account.id && stored.guest_agent_id === crosserTwo.id, 'the grant must be the narrow live collaboration access that was asked for', { expected: `an active path grant for ${crosserTwo.id}`, actual: describe({ status: stored.status, guest_account: stored.guest_account_id, guest_agent: stored.guest_agent_id, scope: stored.scope }) });
+    expect(count('SELECT COUNT(*) AS n FROM frontier_blocks WHERE world_id=?', WAVE_B_THIRD) === 0, `${WAVE_B_THIRD} must hold no saved block before the party builds`, { actual: `${count('SELECT COUNT(*) AS n FROM frontier_blocks WHERE world_id=?', WAVE_B_THIRD)} blocks already saved` });
+    // The party walks to the same staging tile, each in its own client or credential, one grid route at
+    // a time. Building is only allowed within six tiles, so the walk is what makes the build possible.
+    await openWorldAs(host.page, crosserOne.id);
+    await walkResidentTo(host.page, crosserOne.id, sharedPath.stage.x, sharedPath.stage.y);
+    await walkResidentTo(guest.page, crosserTwo.id, sharedPath.stage.x, sharedPath.stage.y);
+    await runtimeWalk(runtime, crosserAide.id, WAVE_B_THIRD, sharedPath.stage, 'the AI resident');
+    for (const [who, human] of [['Crosser one', crosserOne], ['Crosser two', crosserTwo], ['Crosser aide', crosserAide]]) {
+      const standing = residentAt(human.id);
+      expect(standing.world_id === WAVE_B_THIRD && standing.x === sharedPath.stage.x && standing.y === sharedPath.stage.y, `${who} must stand on the staging tile before the shared build`, { expected: `${sharedPath.stage.x},${sharedPath.stage.y} in ${WAVE_B_THIRD}`, actual: describe(standing) });
+    }
+    // The host human builds through the interface. The guest's contribution is the same documented
+    // build route carrying the guest's own session, and the AI resident builds on the runtime credential
+    // it crossed with. Three writes, three actors, two operators, one saved path.
+    await waveBPlacePathThroughUi(host.page, WAVE_B_THIRD, sharedPath.blocks[0]);
+    await apiExpect(guestTicket, 'POST', '/frontier/build', { agent_id: crosserTwo.id, world_id: WAVE_B_THIRD, x: sharedPath.blocks[1].x, y: sharedPath.blocks[1].y, z: 0, type: 'path' });
+    await sleep(250);
+    await apiExpect(runtime, 'POST', '/frontier/build', { world_id: WAVE_B_THIRD, x: sharedPath.blocks[2].x, y: sharedPath.blocks[2].y, z: 0, type: 'path' });
+    const built = rows('SELECT x,y,z,type,creator_agent_id,creator_account_id,plot_id,grant_id FROM frontier_blocks WHERE world_id=? ORDER BY y,x', WAVE_B_THIRD);
+    expect(built.length === 3, 'the party must leave exactly three saved blocks', { expected: 'three frontier_blocks rows', actual: describe(built) });
+    expect(built.every((block) => block.type === 'path' && block.z === 0 && block.plot_id === sharedPath.plot_id), 'every saved block must be the path the party planned, inside the plot it stewarded', { expected: `three path blocks in ${sharedPath.plot_id}`, actual: describe(built) });
+    expect(new Set(built.map((block) => block.creator_agent_id)).size === 3, 'each resident must be attributed for its own block', { expected: 'three distinct builder residents', actual: describe(built.map((block) => block.creator_agent_id)) });
+    expect(new Set(built.map((block) => block.creator_account_id)).size === 2, 'the two humans must be attributed to two operators, and the AI resident to its own', { expected: 'two operator accounts', actual: describe(built.map((block) => block.creator_account_id)) });
+    expect(built.find((block) => block.creator_agent_id === crosserTwo.id).grant_id === hostGrantId, 'the guest block must name the live collaboration grant that allowed it', { actual: describe(built.find((block) => block.creator_agent_id === crosserTwo.id)) });
+    for (const [page, who] of [[host.page, 'the host'], [guest.page, 'the guest']]) {
+      await waitForClient(page, (plot) => {
+        const blocks = window.__nemoworld?.world?.()?.blocks || [];
+        return blocks.filter((block) => block.plot_id === plot).length === 3 ? true : null;
+      }, sharedPath.plot_id, `${who} browser to receive all three saved path blocks`, 20_000);
+    }
+    // The two callings whose own objectives describe this work must recognise the saved actions, and
+    // neither a calling receipt nor a shared build is a coin: the ledger is compared, not assumed.
+    const builder = await apiExpect(hostTicket, 'GET', `/callings?agent_id=${encodeURIComponent(crosserOne.id)}`);
+    expect(builder.receipts.some((receipt) => receipt.objective_id === `${WAVE_B_CALLINGS.host}.frontier_place`), 'the builder’s own saved placement must be recognised by its chosen calling', { expected: `a ${WAVE_B_CALLINGS.host}.frontier_place receipt`, actual: describe(builder.receipts.map((receipt) => receipt.objective_id)) });
+    const steward = await apiExpect(hostTicket, 'GET', `/callings?agent_id=${encodeURIComponent(crosserAide.id)}`);
+    expect(steward.receipts.some((receipt) => receipt.objective_id === `${WAVE_B_CALLINGS.aide}.path_place`), 'the steward resident’s own saved path must be recognised by its chosen calling', { expected: `a ${WAVE_B_CALLINGS.aide}.path_place receipt`, actual: describe(steward.receipts.map((receipt) => receipt.objective_id)) });
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards') === coinsBefore, 'one shared saved path must mint no coin', { actual: 'the coin ledger changed' });
+    state.notes.push(`wave B world change: ${sharedPath.plot_id} stewarded by the host for a stated purpose, three path blocks saved at ${sharedPath.blocks.map((block) => `${block.x},${block.y}`).join(' · ')} by three residents from two operators (the guest block under grant ${hostGrantId}), visible in both browsers, recognised by the ${WAVE_B_CALLINGS.host} and ${WAVE_B_CALLINGS.aide} callings, no coin minted`);
+    return `three attributed path blocks saved in ${sharedPath.plot_id} (${sharedPath.blocks.map((block) => `${block.x},${block.y}`).join(' · ')}), staged from ${sharedPath.stage.x},${sharedPath.stage.y} after a ${sharedPath.reach}-step walk, one of them under grant ${hostGrantId}`;
+  });
+
+  await step('the party leaves and returns: a real restart keeps the same sector, purpose and shared path', async () => {
     const place = () => Object.fromEntries([crosserOne, crosserTwo, crosserAide].map((human) => [human.id, residentAt(human.id)]));
     const before = place();
     const purposeBefore = row('SELECT * FROM resident_memory WHERE id=?', purpose.id);
+    const pathBefore = rows('SELECT x,y,z,type,creator_agent_id,creator_account_id,plot_id,grant_id FROM frontier_blocks WHERE world_id=? ORDER BY y,x', WAVE_B_THIRD);
+    const callingsBefore = rows('SELECT agent_id,calling_id,selected_at FROM resident_callings WHERE agent_id IN (?,?,?) ORDER BY agent_id', crosserOne.id, crosserTwo.id, crosserAide.id);
+    const landBefore = row('SELECT plot_id,account_id,purpose,assigned_at FROM land_stewardships WHERE plot_id=?', sharedPath.plot_id);
+    expect(pathBefore.length === 3 && callingsBefore.length === 3 && landBefore, 'the world change, the callings and the stewardship must all exist before the restart', { expected: 'three blocks, three callings, one stewardship', actual: describe({ blocks: pathBefore.length, callings: callingsBefore.length, land: Boolean(landBefore) }) });
     await stopServer();
     await startServer();
     expect(describe(place()) === describe(before), 'a restart against the same database must not move any of the three residents', { expected: describe(before), actual: describe(place()) });
     for (const [who, human] of [['Crosser one', crosserOne], ['Crosser two', crosserTwo], ['Crosser aide', crosserAide]]) {
       const stored = residentAt(human.id);
       expect(stored.world_id === WAVE_B_THIRD, `${who} must still stand in the sector it crossed into`, { expected: WAVE_B_THIRD, actual: describe(stored) });
-      expect(stored.x === secondAnswer.x && stored.y === secondAnswer.y, `${who} must still stand on the tile the crossing left it on`, { expected: `${secondAnswer.x},${secondAnswer.y}`, actual: `${stored.x},${stored.y}` });
+      expect(stored.x === sharedPath.stage.x && stored.y === sharedPath.stage.y, `${who} must still stand on the staging tile it walked to`, { expected: `${sharedPath.stage.x},${sharedPath.stage.y}`, actual: `${stored.x},${stored.y}` });
     }
     const purposeAfter = row('SELECT * FROM resident_memory WHERE id=?', purpose.id);
     expect(describe(purposeAfter) === describe(purposeBefore), 'the purpose-bearing record the resident crossed for must be unchanged by the restart', { expected: describe(purposeBefore), actual: describe(purposeAfter) });
     const own = await apiRequest('/memory', { token: runtime.token });
     expect(own.status === 200 && own.body.facts.some((fact) => fact.value === WAVE_B_PURPOSE), 'the AI resident must still read its own purpose through the same credential after the restart', { expected: WAVE_B_PURPOSE, actual: `HTTP ${own.status} ${describe(own.body?.error || own.body?.facts?.map((fact) => fact.value))}` });
+    // The shared path, the callings that recognised it and the stewardship that allowed it are read
+    // back from storage after the restart: a restart must not rewrite, duplicate or lose any of them.
+    const pathAfter = rows('SELECT x,y,z,type,creator_agent_id,creator_account_id,plot_id,grant_id FROM frontier_blocks WHERE world_id=? ORDER BY y,x', WAVE_B_THIRD);
+    expect(describe(pathAfter) === describe(pathBefore), 'the three saved path blocks must survive the restart byte-for-byte', { expected: describe(pathBefore), actual: describe(pathAfter) });
+    const callingsAfter = rows('SELECT agent_id,calling_id,selected_at FROM resident_callings WHERE agent_id IN (?,?,?) ORDER BY agent_id', crosserOne.id, crosserTwo.id, crosserAide.id);
+    expect(describe(callingsAfter) === describe(callingsBefore), 'the three chosen callings must survive the restart unchanged', { expected: describe(callingsBefore), actual: describe(callingsAfter) });
+    const landAfter = row('SELECT plot_id,account_id,purpose,assigned_at FROM land_stewardships WHERE plot_id=?', sharedPath.plot_id);
+    expect(describe(landAfter) === describe(landBefore), 'the plot’s stewardship must survive the restart unchanged', { expected: describe(landBefore), actual: describe(landAfter) });
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards') === coinsBefore, 'the restart must mint nothing', { actual: 'the coin ledger changed' });
     for (const [page, account, human] of [[host.page, ACTORS['wave-b-host'], crosserOne], [guest.page, ACTORS['wave-b-guest'], crosserTwo]]) {
       await openApp(page, account);
       await openWorldAs(page, human.id);
       await browserShows(page, WAVE_B_THIRD);
+      await waitForClient(page, (plot) => {
+        const blocks = window.__nemoworld?.world?.()?.blocks || [];
+        return blocks.filter((block) => block.plot_id === plot).length === 3 ? true : null;
+      }, sharedPath.plot_id, 'the restarted browser to reload the shared path it built', 20_000);
     }
     const kept = rows('SELECT agent_id,text FROM messages WHERE world_id=? ORDER BY created_at', WAVE_B_THIRD);
     expect(kept.length === 2, 'the sector’s saved conversation must still be there after the restart', { expected: 'both saved lines', actual: describe(kept) });
-    state.notes.push(`wave B restart: ${WAVE_B_THIRD} ${secondAnswer.x},${secondAnswer.y} held by all three residents, resident_memory ${purpose.id} byte-for-byte unchanged, both saved lines still addressable, both browsers back in the same sector`);
-    return `after a real restart: three residents still on ${secondAnswer.x},${secondAnswer.y} in ${WAVE_B_THIRD}, the purpose fact and both saved lines unchanged, both browsers showing that sector`;
+    state.notes.push(`wave B restart: ${WAVE_B_THIRD} ${sharedPath.stage.x},${sharedPath.stage.y} held by all three residents, resident_memory ${purpose.id} and ${sharedPath.plot_id} (three path blocks, ${hostGrantId}) byte-for-byte unchanged, both saved lines still addressable, both browsers back in the same sector with the path they built`);
+    return `after a real restart: three residents still on ${sharedPath.stage.x},${sharedPath.stage.y} in ${WAVE_B_THIRD}, the purpose fact, the three callings, the stewardship and all three path blocks unchanged, both browsers showing that sector and that path`;
   });
 
-  return `two independent humans and one active AI resident entered ${WAVE_B_FIRST} through the Commons, crossed the connected ${firstGate.direction} and ${secondGate.direction} gates into ${WAVE_B_SECOND} and ${WAVE_B_THIRD} with every crossing read back from the stored world and arrival tile, talked in saved attributed text, and returned after a restart to the same sector and the same recorded purpose`;
+  await step('the party leaves a desktop and a phone picture of the world it built', async () => {
+    // The window the world is actually shown in. Both files are checked for real bytes, so a blank or
+    // missing capture fails the scenario instead of being saved as decoration.
+    const dir = join(RESULTS, 'wave-b-two-gates');
+    await mkdir(dir, { recursive: true });
+    const desktop = join(dir, 'desktop.png'), phone = join(dir, 'phone.png');
+    await host.page.screenshot({ path: desktop });
+    await guest.page.setViewportSize({ width: 390, height: 844 });
+    await guest.page.waitForTimeout(600);
+    await guest.page.screenshot({ path: phone });
+    const width = await guest.page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+    expect(width.document <= width.viewport, 'the world view must fit a 390 px phone without horizontal scrolling', { expected: `a document ${width.viewport} px wide or narrower`, actual: `${width.document} px in a ${width.viewport} px viewport` });
+    await guest.page.setViewportSize({ width: 1280, height: 800 });
+    for (const [name, file] of [['desktop', desktop], ['phone', phone]]) {
+      const bytes = existsSync(file) ? statSync(file).size : 0;
+      expect(bytes > 10_000, `the ${name} capture must be a real picture of the rendered world`, { expected: 'a PNG larger than 10,000 bytes', actual: `${bytes} bytes at ${file}` });
+    }
+    state.notes.push(`wave B pictures: test-results/wave-b-two-gates/desktop.png (${statSync(desktop).size} bytes) and phone.png at 390 px (${statSync(phone).size} bytes, document ${width.document} px wide)`);
+    return `desktop.png and phone.png saved from the world the party returned to, 390 px document width ${width.document} px`;
+  });
+
+  return `two independent humans and one active AI resident entered ${WAVE_B_FIRST} through the Commons, crossed the connected ${firstGate.direction} and ${secondGate.direction} gates into ${WAVE_B_SECOND} and ${WAVE_B_THIRD} with every crossing read back from the stored world and arrival tile, talked in saved attributed text, chose one calling each, stewarded a plot in the sector they reached and left three attributed path blocks standing there under one narrow collaboration grant, and returned after a restart to the same sector, the same recorded purpose and the same saved path`;
 });
 
 define('hero-introduction-film',async()=>{
@@ -5247,6 +5588,131 @@ define('game-shell-entry-and-continue', async () => {
   });
 
   return 'Play, Observe and Continue are the entry door, the HUD carries five actions, and the character overlay creates a stored resident';
+});
+
+/**
+ * Everything the page says about which section is on screen and what the client state holds, in one
+ * read: the menu section, the marked current section, the rendered heading, whether the world view is
+ * the mounted one, the calling story the opened section rendered, the resident the world payload was
+ * read for, and whether the selection control still reports itself busy. The suite already reads this
+ * surface in other scenarios; gathering it once keeps this scenario's failure evidence complete.
+ */
+const pageSectionFacts = (page) => page.evaluate(() => {
+  const world = window.__nemoworld?.world?.() || null;
+  return {
+    section: (document.querySelector('#toggle-navigation')?.textContent || '').replace(/^Menu · /, ''),
+    current: document.querySelector('#navigation button[aria-current="page"]')?.getAttribute('aria-label') || null,
+    heading: (document.querySelector('#view h2')?.textContent || '').trim(),
+    worldView: Boolean(document.querySelector('#view #world-overview')),
+    story: (document.querySelector('#view .calling-story')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200),
+    selected: window.__nemoworld?.selected?.() || null,
+    viewer: world?.viewer_agent_id ?? null,
+    loadedWorldId: world?.world?.id ?? null,
+    controlBusy: window.__selectionRaceControl ? window.__selectionRaceControl.hasAttribute('aria-busy') : null,
+  };
+});
+
+// "Enter as this character" awaits the resident's own world read and then opens the world view. A
+// section the operator opens while that read is in flight must win. This scenario widens the await
+// deterministically — the world read is held open with a route until the scenario releases it — rather
+// than racing it, and pins both halves: the opened section survives, and the plain click still enters.
+define('selection-does-not-clobber-navigation', async () => {
+  const operator = await context('selection-race-operator');
+  const page = operator.page;
+  const unchangedAgent = fixtures().characters.wanderer;
+  const racingAgent = fixtures().characters.pathfinder;
+  let releaseHeldRead = () => {};
+
+  /** The one "Enter as this character" control in that character's own row on My characters. */
+  const enterControl = async (agent) => {
+    await openSectionNamed(page, 'My characters');
+    const record = page.locator('#view .record', { hasText: agent.name }).first();
+    await record.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const control = record.getByRole('button', { name: 'Enter as this character', exact: true });
+    const count = await control.count();
+    expect(count === 1, `“Enter as this character” must be offered for ${agent.name}`, { expected: 'one control', actual: `${count} controls` });
+    return control;
+  };
+
+  const storedWorld = (agent) => row('SELECT world_id FROM agents WHERE id=?', agent.id).world_id;
+
+  try {
+    await step('with nothing else opened, entering as a character still lands in that character’s world', async () => {
+      await openApp(page, ACTORS.admin);
+      const control = await enterControl(unchangedAgent);
+      const expectedWorld = storedWorld(unchangedAgent);
+      await control.click();
+      // The world tab is set only by this control's own trailing render, so a world section with the
+      // resident's payload is the control having run its intended path with no other navigation.
+      const shown = await waitForCondition(async () => {
+        const facts = await pageSectionFacts(page);
+        return facts.section === 'Open world' && facts.worldView && facts.selected === unchangedAgent.id && facts.viewer === unchangedAgent.id ? facts : null;
+      }, `entering as ${unchangedAgent.name} to open its world`, { timeout: 30_000 });
+      expect(shown.current === 'Open world', 'the navigation must mark the world as the current section', { expected: 'Open world', actual: describe(shown.current) });
+      expect(shown.loadedWorldId === expectedWorld, 'the world view must carry that character’s own world', { expected: expectedWorld, actual: describe({ loaded: shown.loadedWorldId, viewer: shown.viewer }) });
+      return `${unchangedAgent.name} entered ${expectedWorld} and the world view is the mounted one`;
+    });
+
+    await step('a section opened while the character’s world read is still in flight survives the selection', async () => {
+      const control = await enterControl(racingAgent);
+      const expectedWorld = storedWorld(racingAgent);
+      // The section the operator opens carries the selected resident's calling payload, so the same
+      // read is taken here over the API: the rendered card has to name this calling, not just a name
+      // that happened to be on screen.
+      const calling = (await apiExpect(fixtures().admin, 'GET', `/callings?agent_id=${racingAgent.id}`)).calling.name;
+      // Hold open the exact read this control awaits, and nothing else: a later read for the same
+      // resident passes straight through rather than queueing behind the held one.
+      let arrived = false;
+      let letGo = () => {};
+      const held = new Promise((resolve) => { letGo = resolve; });
+      releaseHeldRead = () => { letGo(); };
+      await page.route((url) => url.pathname === '/api/v1/world' && url.searchParams.get('agent_id') === racingAgent.id, async (route) => {
+        if (arrived) return route.continue();
+        arrived = true;
+        await held;
+        await route.continue();
+      });
+      await control.click();
+      await waitForCondition(() => arrived ? true : null, `the world read ${racingAgent.name}’s selection awaits`, { timeout: 15_000, interval: 25 });
+      // The control is busy for the whole handler and clears that mark in a `finally` after the
+      // handler's trailing render, so this node is the page's own statement that the selection has
+      // not finished yet — and later, that it has, render included.
+      await waitForCondition(() => page.evaluate((name) => {
+        const record = [...document.querySelectorAll('#view .record')].find((node) => (node.textContent || '').includes(name));
+        const button = record?.querySelector('button[aria-busy="true"]');
+        if (button) window.__selectionRaceControl = button;
+        return Boolean(button);
+      }, racingAgent.name), 'the selection control to report itself busy while its read is held', { timeout: 5_000, interval: 25 });
+      // The await is provably open here: open a different section inside it.
+      await openSectionNamed(page, 'Callings & guilds');
+      const opened = await pageSectionFacts(page);
+      expect(opened.section === 'Callings & guilds' && opened.current === 'Callings & guilds' && /Every resident has a calling/.test(opened.heading),
+        'the operator must be able to open another section while the selection is still running',
+        { expected: 'the Callings & guilds section and its heading', actual: describe({ section: opened.section, current: opened.current, heading: opened.heading }) });
+      expect(opened.controlBusy === true, 'the selection must still be running when the other section is opened', { expected: 'the control still busy', actual: describe({ controlBusy: opened.controlBusy, selected: opened.selected }) });
+      expect(opened.story.includes(racingAgent.name) && opened.story.includes(calling), 'the opened section must already carry the selected resident’s own calling payload', { expected: `${racingAgent.name} and the calling ${calling}`, actual: describe(opened.story) });
+      releaseHeldRead();
+      const settled = await waitForCondition(async () => {
+        const facts = await pageSectionFacts(page);
+        return facts.controlBusy === false && facts.viewer === racingAgent.id ? facts : null;
+      }, `the selection of ${racingAgent.name} to finish after the delayed world read`, { timeout: 30_000, interval: 100 });
+      expect(settled.section === 'Callings & guilds' && settled.current === 'Callings & guilds',
+        'the section the operator opened must still be the visible one when the selection finishes',
+        { expected: 'Callings & guilds still current', actual: describe({ section: settled.section, current: settled.current, heading: settled.heading }) });
+      expect(/Every resident has a calling/.test(settled.heading), 'the opened section’s own heading must still be rendered', { expected: 'Every resident has a calling', actual: describe(settled.heading) });
+      expect(!settled.worldView, 'the world view must not have replaced the opened section', { expected: 'no world view mounted', actual: describe({ worldView: settled.worldView, heading: settled.heading }) });
+      expect(settled.selected === racingAgent.id, 'the selection itself must still have landed', { expected: racingAgent.id, actual: describe(settled.selected) });
+      expect(settled.loadedWorldId === expectedWorld, 'the delayed world read must be the payload the page holds', { expected: `${expectedWorld} read for ${racingAgent.id}`, actual: describe({ loaded: settled.loadedWorldId, viewer: settled.viewer }) });
+      return `the ${racingAgent.name} world read was held open, Callings & guilds was opened inside it, and the section was still mounted when the selection finished`;
+    });
+
+    return 'a section opened during a character selection stays; with nothing opened the same control still enters the world';
+  } finally {
+    // The held read is released and the interception removed with the scenario even when a step
+    // fails, so no later scenario can inherit either one.
+    releaseHeldRead();
+    await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {});
+  }
 });
 
 // The management interface: one role-gated entry out of the newcomer's path, and the same governance

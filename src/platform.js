@@ -3,6 +3,7 @@ import {missionDirectory} from './mission-directory.js';
 import { createDeliveryPacket } from './delivery-packet.js';
 import { assessmentReason, adoptionDeclaration, ADOPTION_BOUNDARY, citationComparison, requestedChangesReason, storedAdoption, storedRequestedChanges, submissionState } from './review-assessment.js';
 import { draftMethods } from './drafts.js';
+import { assessMission } from './mission-quality.js';
 import { BRIEF_MARKER, normalizeDecisionBrief, serializeDecisionBrief, storedDecisionBrief } from './decision-brief.js';
 import { randomBytes, randomUUID, createHash, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
@@ -706,6 +707,52 @@ export class Platform {
         evidence: 'States are read from the stored citations and the library. Hash-only records remain unverified; a later retained capture changes the state shown, never the version the contribution cited.',
       },
     };
+  }
+  // ---- Mission quality signals ------------------------------------------------------------------
+  // One read-only, advisory reading of a proposed mission or task. The proposal is assembled from the
+  // records this platform already holds — the mission, its task, and the research lead that produced
+  // either, which carries the source register the shipped research path recorded — and handed to the
+  // pure reader in src/mission-quality.js. That module's assessment is returned exactly as it computed
+  // it: every signal, every measure and every threshold. Nothing is decided here and nothing is
+  // written: no status, no record, no coin and no audit entry. The signals gate nothing — creating,
+  // activating, claiming, submitting, reviewing and adopting all behave as they did — and the coin
+  // decision stays with the shipped independent-acceptance predicate in src/coins.js.
+  //
+  // The audience is the review workbench's: an operator session holding the reviewer or administrator
+  // role. The collusion measures are deliberately not computed: they would need the whole review
+  // history read into a reviewer-visible response, which would disclose other contributors' review
+  // records. The module's own report says plainly that no review records were supplied.
+  missionQuality(actor, options = {}) {
+    role(actor, ['admin', 'reviewer']); this.active();
+    const taskId = typeof options.task === 'string' ? options.task.trim() : '';
+    const missionId = typeof options.mission === 'string' ? options.mission.trim() : '';
+    if (!taskId && !missionId) fail(400, 'Name a task or a mission to read.');
+    const task = taskId ? this.get('SELECT * FROM tasks WHERE id=?', taskId) : null;
+    if (taskId && !task) fail(404, 'Task not found.');
+    const mission = this.get('SELECT * FROM missions WHERE id=?', task ? task.mission_id : missionId);
+    if (!mission) fail(404, 'Mission not found.');
+    // The lead that produced this mission or task, when one did. A mission created by hand has none,
+    // and then no source register exists for this module to read.
+    const lead = this.get('SELECT * FROM research_leads WHERE (task_id=? OR mission_id=?) ORDER BY created_at DESC,id DESC LIMIT 1', task?.id || '', mission.id) || null;
+    const listFrom = (value) => { try { const list = JSON.parse(value || '[]'); return Array.isArray(list) ? list : []; } catch { return []; } };
+    const proposal = {
+      id: task ? task.id : mission.id,
+      mission: {
+        id: mission.id, title: mission.title, area: mission.area, summary: mission.summary,
+        owner_id: mission.owner_id, beneficiary: mission.beneficiary, reviewer_id: mission.reviewer_id,
+        rubric: mission.rubric, demo: Boolean(mission.demo),
+      },
+      ...(task ? { task: { id: task.id, title: task.title, instructions: task.instructions, rights: task.rights, allowed_domains: listFrom(task.allowed_domains) } } : {}),
+      sources: lead ? listFrom(lead.source_urls) : [],
+    };
+    // Everything the proposal is compared against: the stored research leads, minus the one that
+    // produced this work, so a proposal is never reported as a near-duplicate of the entry it came
+    // from. The evidence library's host list is deliberately not supplied: it holds only the hosts
+    // that have been captured through the curator path, and the submission path registers a new host
+    // rather than refusing it, so passing it would report a host as unknown on the strength of the
+    // library's sparseness and not on any rule the shipped path applies.
+    const existing = this.all('SELECT id,title,instructions,rubric FROM research_leads WHERE (task_id IS NULL OR task_id<>?) AND (mission_id IS NULL OR mission_id<>?) ORDER BY id', task?.id || '', mission.id);
+    return assessMission(proposal, { existing });
   }
   report(actor, input) {
     if (!['message', 'submission', 'agent'].includes(input.target_type)) fail(400, 'Invalid report target.');

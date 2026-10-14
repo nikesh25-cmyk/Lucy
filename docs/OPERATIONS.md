@@ -71,7 +71,39 @@ No partial file is left behind, and the live database is never touched.
 
 Backups live beside the database (`data/backups` locally, `/var/data/backups` on the Render
 blueprint). **They contain credential hashes, contact addresses and private data.** Keep the directory
-private and copy an encrypted archive to storage you control. Never commit, publish or attach one.
+private, and encrypt before you move one off the host — see below. Never commit, publish or attach one.
+
+### Is the backup encrypted? No — stated plainly
+
+**The shipped backup is not encrypted.** `backupDatabase` writes one `VACUUM INTO` copy, and
+`VACUUM INTO` produces an ordinary, unencrypted SQLite file. Measured on this tip (14 October 2026): a
+backup taken to a location outside the installation began with the bytes `SQLite format 3\0`, and a
+distinctive plaintext marker planted in the database was readable inside the copy with an ordinary
+`grep`. Anyone who holds the backup file can read every credential hash, contact address, private
+message and journal entry in it.
+
+So the brief's "**encrypted off-install backup**" **cannot be satisfied by the shipped tool alone
+today**. What this build does and does not provide:
+
+| Requirement | Met by the shipped tool? |
+| --- | --- |
+| A consistent, verified copy of the live database | **Yes** — `VACUUM INTO` inside a read transaction, validated before it is kept |
+| A copy written to a location outside the installation | **Yes** — pass any destination path; the file is `0600` and no partial file is left on failure |
+| A copy that is encrypted at rest | **No** — the copy is plaintext SQLite; encryption must be added outside this tool |
+
+Until encryption is added, treat a backup exactly as you treat the live database: `0600`, a private
+directory, never committed or attached. To satisfy "encrypted off-install" today, choose one of:
+
+- write the backup to a provider-managed encrypted volume, **and** keep the only off-host artefact
+  encrypted; or
+- encrypt the copy yourself before it leaves the host — for example
+  `age -r <recipient> world-<stamp>.sqlite > world-<stamp>.sqlite.age`, or
+  `gpg --encrypt --recipient <key> world-<stamp>.sqlite`, or an encrypted disk image — keep only the
+  encrypted artefact off-install, and delete the plaintext copy; restore by decrypting to a private
+  path first.
+
+Neither option is wired into this repository, and neither was rehearsed here beyond the plaintext
+backup and restore below.
 
 ## 3. Restore
 
@@ -100,6 +132,36 @@ Failure and rollback paths:
 - **Restore refuses because the server is running.** Stop the server. Never delete `server.lock` while a server is alive.
 - **The restored world is wrong (wrong backup, wrong moment).** Re-run the restore with a different verified backup. The pre-restore bytes are still in the `…before-restore-…` directory if you need to inspect them.
 - **The original database was corrupt.** That is the reason for restoring. The corrupt original and its WAL are still copied aside first, so a forensic check remains possible.
+
+### Off-install backup and restore, rehearsed on this tip (14 October 2026)
+
+The drills in §11 restore inside a workspace on the same host. The recovery that matters most in an
+incident is backing up **to a location outside the installation** and restoring from it, so it was
+rehearsed separately, on a disposable database that never touched `outputs/Lucy`:
+
+```sh
+INSTALL=$(mktemp -d)                                   # a disposable installation holding world.sqlite
+OFFSITE=$(mktemp -d)                                   # the off-install backup destination
+node scripts/recovery.js backup  "$INSTALL/world.sqlite" "$OFFSITE/backup.sqlite"
+node scripts/recovery.js verify  "$OFFSITE/backup.sqlite"
+# …one record is written after the backup, then the world is rolled back…
+node scripts/recovery.js restore "$OFFSITE/backup.sqlite" "$INSTALL/world.sqlite"
+```
+
+Measured result:
+
+| Step | Result |
+| --- | --- |
+| Backup written off-install | `{"path":"…/backup.sqlite"}`, mode `0600`, 8,392,704 bytes |
+| Backup verifies | `{"schema_version":22,"accounts":2}` |
+| Is the copy encrypted? | **No** — the header is `SQLite format 3\0` and the planted plaintext marker was readable inside the file |
+| One record written after the backup | messages 1 → 2 |
+| Restore | `{"schema_version":22,"accounts":2,"preserved_original":"…world.sqlite.before-restore-<time>-<uuid>/original.sqlite"}` |
+| After the restore | the post-backup record is gone (messages back to 1); every pre-backup account, resident and message is present |
+| Pre-restore bytes preserved | `world.sqlite.before-restore-<time>-<uuid>/original.sqlite` exists beside the restored database |
+
+An off-install backup and a restore from it both work on this tip. The one part of the brief they do
+**not** satisfy is `encrypted`, for the reason stated in §2.
 
 ## 4. Schema-migration rehearsal
 
@@ -315,6 +377,39 @@ opens the installed world, an installed account or a model weight.
 | `storage-limit` | A write refused for lack of space rolls back, leaves nothing behind, keeps the world valid and is accepted again once space returns; an unwritable backup destination fails closed with no partial file. |
 | `diagnostics-redaction` | The administrator diagnostics payload exists, is refused to anonymous and non-administrator callers, and carries no planted secret. |
 
+### Measured on this tip (14 October 2026)
+
+`node scripts/ops-rehearsal.mjs --keep` on branch `integration/deepseek-master-2026-10-14`, commit
+`7eb03e08d6d8`, schema 22, load average 3.14 at the start. **7/7 drills passed, exit code 0, 9.5 s**,
+on a disposable workspace only; 76 of 76 individual checks passed:
+
+| Drill | Result | Checks | Duration |
+| --- | --- | --- | --- |
+| `recovery-point` | PASS | 9/9 | 922 ms |
+| `corrupt-backup` | PASS | 11/11 | 871 ms |
+| `migration-rehearsal` | PASS | 9/9 | 1,015 ms |
+| `interrupted-worker` | PASS | 24/24 | 4,824 ms |
+| `model-queue-saturation` | PASS | 9/9 | 576 ms |
+| `storage-limit` | PASS | 8/8 | 657 ms |
+| `diagnostics-redaction` | PASS | 6/6 | 529 ms |
+
+**What these drills do not cover, said plainly.** The brief for this measurement asked that pause,
+revocation, moderation/appeal and incident recovery be exercised *if the drills cover them*:
+
+- **Revocation — covered.** `interrupted-worker` proves an orphaned runtime credential is revoked and
+  that a resumed run mints a fresh one; `diagnostics-redaction` proves the administrator surface is
+  refused to anonymous and non-administrator callers, and `subscription-entitlement-and-revocation`
+  (browser suite) proves a revoked session loses its live feed.
+- **Platform pause — covered only indirectly.** No drill pauses the platform. A paused world is
+  exercised only as a refusal inside the browser suite (`interaction-state-refusals`), not as a
+  recovery drill.
+- **Moderation and appeal — not covered.** No drill in `ops-rehearsal.mjs` files a report, moderates a
+  case, or decides an appeal. That path is exercised only by the shipped test suite; it was **not**
+  measured or rehearsed here, and nothing in this run should be read as covering it.
+- **Incident recovery — covered.** `recovery-point`, `corrupt-backup`, `migration-rehearsal` and
+  `storage-limit` cover the recovery point, a refused restore that leaves the live world byte-identical,
+  an additive migration from schema 17, and a storage failure that rolls back and stays writable.
+
 ## 12. Limitations and residual risks
 
 - The dashboard is a health surface, not a monitoring system. Counters are process-lifetime and reset
@@ -324,6 +419,10 @@ opens the installed world, an installed account or a model weight.
   is not tamper-proof against a root user.
 - The recovery point is only as good as the newest backup. Schedule backups off-installation and test a
   restore periodically; an untested backup is a guess.
+- **A backup is plaintext.** The shipped tool does not encrypt it (see §2). Until an operator adds
+  encryption outside this tool, an off-install backup that is not itself encrypted exposes every
+  credential hash, contact address and private message it holds. "Encrypted off-install backup" is
+  therefore an operator step, not a shipped guarantee.
 - `action_dispatched_unconfirmed` and `unknown` interruptions cannot be resolved automatically. A human
   must inspect the world.
 - Drills run on one machine with a local model stub. They measure the recovery and bounding behaviour,

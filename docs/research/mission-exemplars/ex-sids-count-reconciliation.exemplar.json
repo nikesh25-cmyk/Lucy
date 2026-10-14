@@ -1,0 +1,135 @@
+{
+  "schema": "nemoworld.mission-exemplar/v1",
+  "id": "ex-sids-count-reconciliation",
+  "title": "Reconcile the two retained small island developing States lists",
+  "status": "proposal — not activated, no task claimed, no contribution submitted, no review recorded, no outreach sent",
+  "mission": {
+    "id": "ex-sids-count-reconciliation",
+    "title": "Reconcile the two retained small island developing States lists",
+    "area": "Development",
+    "summary": "Compare the group counts and the membership that each publisher states for the least developed, landlocked developing and small island developing groups, entry by entry, and record the entries the two versions disagree about.",
+    "owner": {
+      "id": "owner-slot-unassigned",
+      "name": "Mission owner — unassigned: no human owner has been named for this proposal"
+    },
+    "beneficiary": "The contributors and reviewers of this build's country research baselines that quote an LDC, LLDC or SIDS group count; no reader, contributor, institution or government has been selected, consented or contacted as a beneficiary",
+    "reviewer": {
+      "id": "reviewer-slot-unassigned",
+      "name": "Independent reviewer — unassigned: no human reviewer has been named for this proposal"
+    },
+    "rubric": "Each count in the reconciliation table quotes the sentence or list cell it comes from, with that page's exact URL, the date that version was read, and the capture it is pinned to. The two publishers' composition statements are quoted as each publisher writes them and are never merged into one sentence. Every entry in the disagreement list names the country or area, the publisher it appears with, and the exact flag cell, list entry or linked page it rests on. A count that cannot be located in the version cited is recorded as not located rather than inferred from the other publisher. The table reports the definitional difference the two publishers state and names no winner."
+  },
+  "task": {
+    "id": "ex-sids-count-reconciliation-task",
+    "mission_id": "ex-sids-count-reconciliation",
+    "title": "Produce the entry-level reconciliation table",
+    "instructions": "Read the two retained versions rather than a summary of them. Quote each publisher's count sentence and its own composition statement, then list every country or area whose membership differs between the two versions, with the publisher it appears under, the exact cell or list entry it rests on, and the linked page that carries the membership if one is named. Outputs: the quoted statements with their locations and dates; the disagreement list; a not-located register for any count or membership the cited versions do not state; and a short note on what a statistical grouping does not decide.",
+    "rights": "Each page is cited and paraphrased with attribution, pinned to the version read, and each publisher's reuse terms are inspected before anything is reproduced. Short sentences are quoted; no full table, list, image, logo or page is reproduced. The retained captures stay in this repository and are cited by URL, date and checksum rather than re-published.",
+    "allowed_domains": [
+      "www.un.org",
+      "unstats.un.org"
+    ]
+  },
+  "question": "Which named countries or areas appear on only one of the two retained versions of the small island developing States group, and what does each publisher's own composition statement say about the entries the two versions disagree about?",
+  "limits": "Reconciling the two versions establishes a definitional difference between two publishers; it does not establish that either publisher is wrong. The publishers' own statements are consistent with each other: UNSD answers that there is no common UN-wide definition of the landlocked developing and small island developing groups and that their composition was set at the beginning of the SDG reporting period, while UN-OHRLLS states its own counts. Both versions are snapshots and do not track later graduation or membership changes. The mission cannot establish UN membership, recognition, sovereignty or any legal status, and it asserts nothing about whether a country or area is or is not a small island developing State outside the cited versions. It establishes nothing about programme access, eligibility, funding or preference for any group member, and no measured outcome. No consenting beneficiary has been selected, so external implementation evidence and any measured outcome are blocked on that dependency; a mission owner's recorded adoption declaration is a declaration, not implementation, and this mission sends no message to any body or publisher.",
+  "rights": "Both cited pages are quoted only in short attributed extracts and are pinned to the version read, with each publisher's reuse terms inspected before reproduction; no full table, list, image, logo or page is reproduced. The retained captures stay in this repository and are cited by URL, date and checksum.",
+  "sources": [
+    {
+      "url": "https://www.un.org/ohrlls/",
+      "location": "Front page, in the panel that opens \"Serving 92 vulnerable member states.\", the sentence that introduces the three groups: \"The 44 Least Developed Countries, 32 Landlocked Developing Countries and 39 Small Island Developing States have their own special challenges.\" — each number is an anchor link to that group's own page",
+      "date": "2026-10-12",
+      "version": "sha256:699a352b0d161499e067d7113fa53ab74405d767437c69f8c39a00e7bda8196d (UN-OHRLLS capture retained in docs/research/un-register-sources.json, retrieved 2026-10-12T17:17:20.109Z, HTML body text, 3699 characters)",
+      "publisher": "UN-OHRLLS (UN Office of the High Representative for the LDCs, LLDCs and SIDS)",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, 61047 bytes, sha256 004755e93702625b662d973cce04615a29b805c7147daddecf7c4cc7a0c39011; the same three counts appear, so the retained counts are current as of this re-check. The bytes fetched on 2026-10-14 were not retained, so the pinned version remains the 2026-10-12 capture."
+    },
+    {
+      "url": "https://unstats.un.org/unsd/methodology/m49/",
+      "location": "Questions & Answers section, the answer to how the composition of the LDC, LLDC and SIDS groups was decided",
+      "date": "2026-10-14",
+      "version": "sha256:4d5cabcb10ad9ef184553b5e64c0a34ba8deeb20dab2e02cd0be3599b93bb01d (response body read on 2026-10-14, 2051368 bytes; the bytes were not retained, so the version this contribution would pin is identified by this checksum and the date it was read)",
+      "publisher": "United Nations Statistics Division (UNSD), M49 standard",
+      "checked": "Read on 2026-10-14. The answer was located in the page text; the page is large and client-formatted, so the reading is a plain HTTPS fetch and no byte capture is retained."
+    },
+    {
+      "url": "https://unstats.un.org/unsd/methodology/m49/overview/",
+      "location": "The retained snapshot's per-row ldc / lldc / sids flag columns and its recorded counts (catalog/countries.json, metadata.counts: 44 LDC, 32 LLDC, 53 SIDS across 248 entries)",
+      "date": "2026-10-11",
+      "version": "sha256:f72c6ed8c0146e5277dc1c1a7840bd04cac9fb67e1527ddcf83e6b6a457248b2 (M49 snapshot retained in catalog/countries.json, retrieved 2026-10-11, 248 entries)",
+      "publisher": "United Nations Statistics Division (UNSD), M49 standard",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, 1721575 bytes, sha256 b9048114f6e7f2abda83bf03d4263c9d7cd1bd7230e3d0461025ee7839a7a1fb. The flag columns are present in the table but carry no English legend in a plain-text extraction, so what each column means has to be established from the publisher rather than assumed."
+    }
+  ],
+  "reviewer_independence": {
+    "reviewer_distinct_from_owner": true,
+    "reviewer_distinct_from_contributor": true,
+    "note": "Both roles are unassigned slots here, so no person holds two roles. The independence rule still has to be satisfied by name when the roles are filled: the reviewer must be a different human from the owner and from any contributor."
+  },
+  "evidence_criteria": "The mission's evidence criteria are the mission rubric field ('rubric'), which is the field the shipped createMission stores and the field the quality module reads.",
+  "blocked_dependency": {
+    "blocked_on": "a consenting beneficiary",
+    "blocked_stages": [
+      "externally evidenced implementation",
+      "measured outcome"
+    ],
+    "statement": "No consenting beneficiary has been selected for this mission. External implementation evidence and any measured outcome are blocked on that dependency: nothing here names a beneficiary that has consented to be measured, and no outreach of any kind has been made. A mission owner's recorded adoption declaration is a declaration, not implementation, and no part of this build has external implementation evidence.",
+    "adoption_declaration_is_not_implementation": true,
+    "outreach": "none"
+  },
+  "assignment": {
+    "named_owner": false,
+    "named_reviewer": false,
+    "named_contributor": false,
+    "note": "The owner and the reviewer are declared role slots, not people. The quality module reports them as present because the field carries a role label; the label itself says that no human has been named, and the module's output carries that wording through. A named human owner, a named independent reviewer and a named beneficiary are prerequisites before this proposal leaves proposed: a proposal that names nobody real cannot be activated, and this exemplar does not pretend otherwise."
+  },
+  "activation_check": {
+    "note": "The shipped createMission/createTask path caps the strings it stores. These are the measured lengths of this exemplar's own text, so a human can see whether it could be created as written.",
+    "title_characters": 63,
+    "title_cap": 100,
+    "summary_characters": 225,
+    "beneficiary_characters": 227,
+    "rubric_characters": 680,
+    "task_rights_characters": 354,
+    "instructions_characters": 596,
+    "limits_characters": 1163,
+    "prose_cap": 2000,
+    "rubric_plus_limits_characters": 1843,
+    "mapping_at_activation": "The module's question field is carried in the task instructions and its limits field with the mission rubric. Rubric plus limits is 1843 characters, inside the shipped 2000-character rubric column, so nothing in this exemplar has to be shortened to create it. The quality module reads the task's rights field when a task is present, which is why the rights text is carried on the task as well as at the top level.",
+    "still_required_before_creation": "A named human owner account, a named independent reviewer account, and a beneficiary that a human has named. The role slots in this file satisfy the module's field check; they are not people."
+  },
+  "known_at_authoring": {
+    "note": "Recorded so that a reviewer can see the question is answerable and where its two halves sit. Neither quotation is accepted evidence: nobody has reviewed them, no reviewer has assessed them, and the mission's deliverable is the entry-level table rather than these two statements.",
+    "statements": [
+      {
+        "publisher": "UN-OHRLLS",
+        "url": "https://www.un.org/ohrlls/",
+        "read_on": "2026-10-14",
+        "quote": "The 44 Least Developed Countries, 32 Landlocked Developing Countries and 39 Small Island Developing States have their own special challenges."
+      },
+      {
+        "publisher": "UNSD",
+        "url": "https://unstats.un.org/unsd/methodology/m49/",
+        "read_on": "2026-10-14",
+        "quote": "The group of Least Developed Countries (LDC) are defined through a formal process by the Department of Economic and Social Affairs' Economic Analysis and Policy Division. There is no common UN wide definition of the countries and areas which are considered Land Locked Developing Countries (LLDCs) or Small Island Developing States (SIDS). Instead the current composition of countries and areas in LLDCs and SIDS groups were set at the beginning of the Sustainable Development Goals reporting period based on various definitions available at the time."
+      }
+    ]
+  },
+  "evidence_gaps": [
+    "The membership behind the count of 39 was not located. The UN-OHRLLS small island developing States page read on 2026-10-14 is narrative and carries no member list in its readable text, so the list the count rests on is still to be found rather than assumed.",
+    "The M49 overview table's flag columns carry no English legend in a plain-text extraction, so which column is the sids flag has to be taken from the publisher's own statements or from the retained snapshot's recorded metadata rather than guessed from the table.",
+    "Neither publisher's page carries a version number or an edition, so the version a contribution pins is the captured bytes, identified by their SHA-256 and the date they were read.",
+    "No retained capture exists for the two pages read on 2026-10-14 (the M49 methodology page and the two re-checks). A contribution would have to capture them through the shipped evidence path before citing them as pinned versions."
+  ],
+  "not_established": [
+    "No finding that either publisher's count is wrong: the two publishers state different things because UNSD states that no common definition exists, not because one of them made an arithmetic error.",
+    "No statement about UN membership, recognition, sovereignty or the legal status of any country or area, and no reclassification of any entry outside the two cited versions.",
+    "No statement about programme access, eligibility, funding, trade preference or graduation for any group member.",
+    "No external implementation and no measured outcome: blocked on a consenting beneficiary.",
+    "No authorisation to contact either publisher, and no message sent."
+  ],
+  "verification": {
+    "authored_on": "2026-10-14",
+    "method": "Plain HTTPS reads of the cited pages plus the retained captures already in this repository; the quality module (src/mission-quality.js) was run over this exemplar with the seeded 1015-proposal corpus as the comparison set.",
+    "reviewed_by": "Nobody. This is a proposal; no human reviewer has accepted it and no reviewer has assessed its sources.",
+    "not_claimed": "Reading a page establishes that the text was there on the date read and that the bytes are the ones identified by the recorded checksum. It does not establish that the text is current outside that date, complete, or binding on anyone."
+  }
+}

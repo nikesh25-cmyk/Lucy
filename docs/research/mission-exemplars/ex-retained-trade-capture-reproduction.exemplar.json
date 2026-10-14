@@ -1,0 +1,189 @@
+{
+  "schema": "nemoworld.mission-exemplar/v1",
+  "id": "ex-retained-trade-capture-reproduction",
+  "title": "Reproduce the retained trade captures field by field",
+  "status": "proposal — not activated, no task claimed, no contribution submitted, no review recorded, no outreach sent",
+  "mission": {
+    "id": "ex-retained-trade-capture-reproduction",
+    "title": "Reproduce the retained trade captures field by field",
+    "area": "Governance",
+    "summary": "Re-run the provider query recorded behind each retained country-pack trade capture and record, for every capture, whether the pinned row comes back, which provider fields are unchanged, and what the response says when it does not come back.",
+    "owner": {
+      "id": "owner-slot-unassigned",
+      "name": "Mission owner — unassigned: no human owner has been named for this proposal"
+    },
+    "beneficiary": "The evidence review path of this build: the independent reviewer and the mission owner who read a retained capture against the version it pins; no reviewer, operator, provider or institution has been selected, consented or contacted as a beneficiary",
+    "reviewer": {
+      "id": "reviewer-slot-unassigned",
+      "name": "Independent reviewer — unassigned: no human reviewer has been named for this proposal"
+    },
+    "rubric": "For every capture the deliverable records the recorded query URL, the pinned checksum, the date of the check, the HTTP status, the row count, and a field-by-field comparison of thirteen provider fields (primaryValue, fobvalue, cifvalue, netWgt, isAggregate, isReported, isOriginalClassification, legacyEstimationFlag, refYear, reporterCode, partnerCode, cmdCode, flowCode). A difference is classified as unchanged, as a field the provider varies per request and names, or as a substantive change; whichever it is, the record says which field changed and prints both values. A refusal, an empty response or an unparseable body is recorded as it happened, with the status and the body's own error text. No value is repaired, estimated or copied from a neighbouring row, and a capture that cannot be reproduced keeps its pinned version and is reported as not reproduced rather than as wrong."
+  },
+  "task": {
+    "id": "ex-retained-trade-capture-reproduction-task",
+    "mission_id": "ex-retained-trade-capture-reproduction",
+    "title": "Produce the reproduction table for the ten retained trade captures",
+    "instructions": "Re-run each recorded query URL against the provider's public preview endpoint and record the check as the rubric requires. Pace the requests: the endpoint refuses bursts, and a refusal is recorded with its status rather than retried until it succeeds silently. Read the retained capture file for each query so the comparison is against the bytes this repository actually holds. Outputs: the reproduction table; the field differences with both values; the record of any refusal, empty preview or unparseable body; and a statement of what a reproduction does and does not establish about the pinned figure.",
+    "rights": "The retained captures stay in this repository and are cited by URL, date and checksum rather than re-published. The provider's public preview endpoint is read under the terms the provider publishes for it; the mission asserts no reuse licence beyond that and no relationship with the provider. Nothing is re-published in bulk and no credential, key or paid access is used.",
+    "allowed_domains": [
+      "comtradeapi.un.org"
+    ]
+  },
+  "question": "Which of the ten retained country-pack trade captures still reproduce from the provider query recorded behind it, and where a response differs, which provider field explains the difference?",
+  "limits": "A reproduction establishes only that the provider's public preview answered the recorded query with the same row on the date of the check. It does not establish that the retained figure is correct, complete, final or comparable across years, and the preview is a bounded subset rather than the series. Byte equality is not the test: the body carries a per-request timing field, so the comparison is field by field over the provider's own recorded fields. The endpoint rate-limits: a burst of ten requests on 2026-10-14 returned HTTP 429 for five of them and all ten answered once the requests were spaced out, so a refusal is recorded rather than retried until it passes. A zero-row preview is an evidence gap, not zero trade. Historical trade does not establish current buyer demand, supplier capacity, shipment eligibility, price or financing. No consenting beneficiary has been selected, so external implementation evidence and any measured outcome are blocked on that dependency; a recorded adoption declaration is a declaration, not implementation, and this mission contacts nobody.",
+  "rights": "The retained captures stay in this repository and are cited by URL, date and checksum; the provider's public preview endpoint is read under the terms the provider publishes for it. No bulk re-publication, no credential or key, and no reuse licence asserted beyond the provider's own terms.",
+  "sources": [
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS",
+      "location": "The public annual-preview endpoint every recorded query addresses. The response shape the comparison reads is the top-level elapsedTime, count, data[] and error fields, with the provider row at data[0].",
+      "date": "2026-10-12",
+      "version": "unversioned public endpoint, annual frequency (freqCode A), HS classification, no key; pinned here by the ten recorded query URLs and by each capture's SHA-256 below, as first recorded in docs/research/country-packs/sources/trade/comtrade-preview-manifest.json on 2026-10-12",
+      "publisher": "UN Comtrade public annual preview API (United Nations Statistics Division)",
+      "checked": "Queried 2026-10-14 as the endpoint for all ten checks below; responses observed with HTTP 200 and the shape above, plus HTTP 429 under a request burst. No byte capture of the endpoint description itself is retained."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2022&partnerCode=276&cmdCode=090111&flowCode=X",
+      "location": "data[0]: Ethiopia (231) exports HS 090111 to Germany (276), 2022. Retained as ET-coffee-to-DE-2022-X-90756ca9c4fadc09.json",
+      "date": "2026-10-12",
+      "version": "sha256:90756ca9c4fadc09858502f8c9f76e671090546bd30365c7085a093771f5b881",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2023&partnerCode=276&cmdCode=090111&flowCode=X",
+      "location": "data[0]: Ethiopia (231) exports HS 090111 to Germany (276), 2023. Retained as ET-coffee-to-DE-2023-X-35029db0b7290403.json",
+      "date": "2026-10-12",
+      "version": "sha256:35029db0b7290403cdc411166af0da403460a3648ec2368de69c4915a1bc3c47",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2023&partnerCode=0&cmdCode=0901&flowCode=X",
+      "location": "data[0]: Ethiopia (231) exports HS 0901 to the World, 2023. Retained as ET-coffee-world-2023-X-8e263fc3317d0370.json",
+      "date": "2026-10-12",
+      "version": "sha256:8e263fc3317d0370e3adfdb9386144a7d7ccfea7b7f7a00eae4f2899c0b5f25e",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=231&period=2023&partnerCode=0&cmdCode=1207&flowCode=X",
+      "location": "data[0]: Ethiopia (231) exports HS 1207 to the World, 2023. Retained as ET-oilseeds-world-2023-X-3f942592fbe3ea8b.json",
+      "date": "2026-10-12",
+      "version": "sha256:3f942592fbe3ea8b228f2d3697ddf1627d9e4af501b1eaadfdba30425e94faf4",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2023&partnerCode=0&cmdCode=071410&flowCode=X",
+      "location": "data[0]: Cambodia (116) exports HS 071410 to the World, 2023. Retained as KH-cassava-world-2023-X-6c6aef87e0abb4cc.json",
+      "date": "2026-10-12",
+      "version": "sha256:6c6aef87e0abb4cc14c468941a2903540ad5bf43c8dde76bc549a3cfd7ce391a",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2022&partnerCode=156&cmdCode=100630&flowCode=X",
+      "location": "data[0]: Cambodia (116) exports HS 100630 to China (156), 2022; the one retained row the provider marks isReported true. Retained as KH-rice-to-CN-2022-X-16468b30ed8771c1.json",
+      "date": "2026-10-12",
+      "version": "sha256:16468b30ed8771c1f79dc0ee178d05bd9590b63c1801bb6ef2505a95e213f432",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2023&partnerCode=156&cmdCode=100630&flowCode=X",
+      "location": "data[0]: Cambodia (116) exports HS 100630 to China (156), 2023; the provider marks this row isAggregate true and isReported false. Retained as KH-rice-to-CN-2023-X-51b5d10e9eb3b742.json",
+      "date": "2026-10-12",
+      "version": "sha256:51b5d10e9eb3b742d4a779432e56def7bc44b6cdc323a168d13264326fca48f7",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=116&period=2023&partnerCode=0&cmdCode=100630&flowCode=X",
+      "location": "data[0]: Cambodia (116) exports HS 100630 to the World, 2023. Retained as KH-rice-to-world-2023-X-f1699005cb419153.json",
+      "date": "2026-10-12",
+      "version": "sha256:f1699005cb41915395cbf4b7675bd266969bbc913e35409d4fbed25af23c17bd",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=686&period=2023&partnerCode=0&cmdCode=0803&flowCode=X",
+      "location": "data[0]: Senegal (686) exports HS 0803 to the World, 2023. Retained as SN-banana-world-2023-X-b7aeb14941e0616d.json",
+      "date": "2026-10-12",
+      "version": "sha256:b7aeb14941e0616d6c2f47d058eba184aea024c4886ccf08d75d0641bae97437",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    },
+    {
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=686&period=2023&partnerCode=0&cmdCode=0303&flowCode=X",
+      "location": "data[0]: Senegal (686) exports HS 0303 to the World, 2023. Retained as SN-fish-world-2023-X-1452ce6add6f4ed0.json",
+      "date": "2026-10-12",
+      "version": "sha256:1452ce6add6f4ed00fcb4942da6b47f0fa69a2f54f95a28c7db93eb05372c3a6",
+      "publisher": "UN Comtrade public annual preview API",
+      "checked": "Re-fetched 2026-10-14: HTTP 200, one row, all thirteen compared fields identical to the retained capture; body checksum differs only because of the per-request elapsedTime field. See recheck_summary."
+    }
+  ],
+  "reviewer_independence": {
+    "reviewer_distinct_from_owner": true,
+    "reviewer_distinct_from_contributor": true,
+    "note": "Both roles are unassigned slots here, so no person holds two roles. Whoever is named to the reviewer slot must be a different human from the owner and from any contributor, and whoever checks a reproduction of the provider's response is not the party whose pinned capture is being checked."
+  },
+  "evidence_criteria": "The mission's evidence criteria are the mission rubric field ('rubric'), which is the field the shipped createMission stores and the field the quality module reads.",
+  "blocked_dependency": {
+    "blocked_on": "a consenting beneficiary",
+    "blocked_stages": [
+      "externally evidenced implementation",
+      "measured outcome"
+    ],
+    "statement": "No consenting beneficiary has been selected for this mission. External implementation evidence and any measured outcome are blocked on that dependency: nothing here names a beneficiary that has consented to be measured, and no outreach of any kind has been made. A mission owner's recorded adoption declaration is a declaration, not implementation, and no part of this build has external implementation evidence.",
+    "adoption_declaration_is_not_implementation": true,
+    "outreach": "none"
+  },
+  "assignment": {
+    "named_owner": false,
+    "named_reviewer": false,
+    "named_contributor": false,
+    "note": "The owner and the reviewer are declared role slots, not people. The quality module reports them as present because the field carries a role label; the label itself says that no human has been named, and the module's output carries that wording through. A named human owner, a named independent reviewer and a named beneficiary are prerequisites before this proposal leaves proposed."
+  },
+  "activation_check": {
+    "note": "The shipped createMission/createTask path caps the strings it stores. These are the measured lengths of this exemplar's own text, so a human can see whether it could be created as written.",
+    "title_characters": 52,
+    "title_cap": 100,
+    "summary_characters": 240,
+    "beneficiary_characters": 249,
+    "rubric_characters": 888,
+    "task_rights_characters": 372,
+    "instructions_characters": 604,
+    "limits_characters": 1087,
+    "prose_cap": 2000,
+    "rubric_plus_limits_characters": 1975,
+    "mapping_at_activation": "The module's question field is carried in the task instructions and its limits field with the mission rubric. Rubric plus limits is 1975 characters, inside the shipped 2000-character rubric column, so nothing in this exemplar has to be shortened to create it. The quality module reads the task's rights field when a task is present, which is why the rights text is carried on the task as well as at the top level. The limits text was shortened once during authoring to fit that column rather than being left over-length.",
+    "still_required_before_creation": "A named human owner account, a named independent reviewer account, and a beneficiary that a human has named. The role slots in this file satisfy the module's field check; they are not people."
+  },
+  "recheck_summary": {
+    "checked_on": "2026-10-14",
+    "method": "Every recorded query URL in docs/research/country-packs/sources/trade/comtrade-preview-manifest.json was re-requested with a plain HTTPS read and compared field by field with the retained capture file in docs/research/country-packs/sources/trade/.",
+    "result": "All ten retained captures answered with HTTP 200 and one row. All thirteen compared provider fields were identical to the retained capture for every one of the ten.",
+    "body_difference": "Every response body hash differed from the pinned checksum. The parsed provider row (data[0]) was equal in all ten cases, and the only differences were the top-level elapsedTime value, which the provider changes on every request, and a trailing newline the retaining writer added. This is why the criterion is field equality over the provider's own recorded fields and not byte equality.",
+    "refusals": "A burst of ten requests returned HTTP 429 for five of them; each of those five answered HTTP 200 when retried after a pause. The refusal is recorded here as an observed property of the endpoint, not as a failed capture.",
+    "status_of_this_run": "A pilot observation made while authoring this exemplar. It is not accepted evidence: no reviewer has assessed it, no contribution has been submitted, and no checksum of the 2026-10-14 responses was retained. The mission's deliverable is the reviewed table."
+  },
+  "evidence_gaps": [
+    "Ten recorded queries returned a zero-row preview on 2026-10-12 and remain gaps, not zeros: Bangladesh HS 5303 (2023), HS 100630 (2023) and HS 030617 (2022 and 2023); Nepal HS 0902 to India (2022 and 2023), HS 0902 to the World (2023) and HS 0908 to the World (2023); India-from-Nepal HS 0902 mirror (2023); Senegal HS 080390 to Germany (2023). Three were re-run on 2026-10-14 (Nepal HS 0902 to the World, Bangladesh HS 100630 to the World, Senegal HS 080390 to Germany) and each still returned count 0 with HTTP 200. Their query URLs and recorded dates are in the manifest; none has a retained byte capture, so none is cited here as a pinned version.",
+    "No checksum of the 2026-10-14 responses was retained, so the pilot re-check in recheck_summary cannot be pinned. A reviewed reproduction run must retain each response body and its checksum through the shipped evidence path.",
+    "The endpoint publishes no version number for the preview; the version a contribution pins is the captured response bytes, identified by their checksum and the date they were read.",
+    "The provider's own documentation of the preview subset's coverage was not read for this exemplar, so why particular reporters answer and others do not is unresolved."
+  ],
+  "not_established": [
+    "No finding that any retained trade figure is correct, complete or final; reproduction is a check of the response, not of the statistic.",
+    "No comparison across countries, years or products, and no unit value, price, growth rate or market conclusion of any kind.",
+    "No buyer, demand, supplier capacity, shipment eligibility or financing claim.",
+    "No external implementation and no measured outcome: blocked on a consenting beneficiary.",
+    "No message of any kind sent to the provider, and no relationship with the provider asserted."
+  ],
+  "verification": {
+    "authored_on": "2026-10-14",
+    "method": "Plain HTTPS requests to the provider's public preview endpoint, compared against the retained captures and the manifest already in this repository; the quality module (src/mission-quality.js) was run over this exemplar with the seeded 1015-proposal corpus as the comparison set.",
+    "reviewed_by": "Nobody. This is a proposal; no human reviewer has accepted it and no reviewer has assessed its sources or this pilot run.",
+    "not_claimed": "A response that reproduces establishes that the endpoint answered this query with this row on this date. It establishes nothing about the statistic's meaning, and nothing about the provider beyond the published terms of the preview."
+  }
+}

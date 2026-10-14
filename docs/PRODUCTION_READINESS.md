@@ -193,6 +193,17 @@ the binding constraint is the single Node process and the single SQLite writer, 
 Run-to-run variance is real: an earlier invocation of the same command on the same machine measured
 57.55 / 47.80 / 43.65 req/s.
 
+**Re-measured 14 October 2026** at commit `7eb03e08d6d8` — same machine, same unmodified
+`scripts/load-harness.mjs` and the same 10,001-agent fixture, load average 1.78 / 3.07: reads measured
+**50.78 / 51.82 / 53.02 req/s** at 1 / 8 / 32 clients with p95 60.77 / 274.93 / **3,583.25** ms. The
+shape is identical and the difference from the table above is the machine's background load, not the
+code: nothing in the read path changed between the two runs. That re-run also added the writes and
+event-subscriber measurements (**3,645.28 saves/s at p95 3.9 ms**; 8 held SSE subscriptions), which
+the table above does not contain. **`docs/PERFORMANCE.md` is the current measured record**; this
+section is the Task-28 run it supersedes, kept because the experiment command and the browser-client
+cost table below are still the ones this package ships. Neither run establishes a number of supported
+simultaneous users, and neither measured hostile traffic.
+
 Browser clients (`scripts/browser-suite.mjs`, real Chrome, real interface, real records, each suite on
 its own temporary database; default scenario subset `accounts-and-switching`, `country-ambassadors`,
 `first-person-controls`, `shared-presence-two-clients`):
