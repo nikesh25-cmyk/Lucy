@@ -1,11 +1,12 @@
-// Task 32 — the character module. These tests drive `src/characters.js` with the *real* payload
-// shapes the server returns (`src/spaces.js#world`), with a confirmed-move sequence and with a
-// refused move, and assert the module's own output geometry, positions, labels and batch key.
+// Task 32's character module, raised: one appearance system, a body that is authored in its own
+// frame, a drawn cosmetic vocabulary, and a geometry bound that holds for every authored combination.
 //
-// The module is not wired into the renderer or the shell (parallel tasks own those), so nothing here
-// claims a visible game change. What it proves is the contract the integration owner calls: one body
-// construction for every kind, a stable visual key, bounded labels, and geometry a real Three.js
-// raycaster resolves back to the confirmed tile.
+// These tests drive `src/characters.js` with the *real* payload shapes the server returns
+// (`src/spaces.js#world`), with a confirmed-move sequence and with a refused move, and assert the
+// module's own output geometry, positions, labels and batch key. Where a claim is "the drawn body
+// never leaves its tile", the test enumerates every combination the sealed content layer can produce
+// — three kinds, eight callings, eleven equipped decorations, three stances and every staged frame —
+// and measures the real boxes rather than restating the numbers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../assets/vendor/three-voxel.js';
@@ -13,12 +14,14 @@ import { VOXEL_LIMITS } from '../src/voxel-geometry.js';
 import { CALLINGS } from '../src/vocations.js';
 import content from '../src/content.js';
 import { fixture } from './helpers.js';
+import { RESIDENT_HEIGHT } from '../src/footprints.js';
 import {
   appearanceFor, spriteAppearance, charactersScene, charactersVisualKey, characterNameplate, characterNameplates,
-  renderableCharacters, animatedCharacters, nameplateTier, paintCharacter, SEALED_EXPRESSIONS,
-  CHARACTER_LIMITS, NAMEPLATE_LIMITS, BODY, ARM_POSES, CHARACTER_BODY_BOXES,
+  renderableCharacters, animatedCharacters, nameplateTier, paintCharacter, characterBoxes, decorationFor, silhouetteFor,
+  SEALED_EXPRESSIONS, CALLING_SILHOUETTES, DECORATIONS, SILHOUETTE_IDS, CHARACTER_LIMITS, CHARACTER_PART_BOXES,
+  CHARACTER_BODY_BOXES, CHARACTER_TILE_HALF, NAMEPLATE_LIMITS, BODY, ARM_POSES,
 } from '../src/characters.js';
-import { createMotionTracker, confirmedExpression, EXPRESSIONS } from '../src/character-animation.js';
+import { createMotionTracker, confirmedExpression, characterState, characterPose, EXPRESSIONS, EXPRESSION_FRAMES, EXPRESSION_ACTION_FRAME, MOTION_TWEEN_MS, SEATED_LIFT } from '../src/character-animation.js';
 
 /** The renderer's own cube batch, reimplemented as a recording double with the same contract. */
 function recordingBatch() {
@@ -34,8 +37,11 @@ function recordingBatch() {
   };
 }
 const top = (cubes) => cubes.reduce((highest, cube) => Math.max(highest, cube.height + cube.depth / 2), -Infinity);
-const at = (cubes, color) => cubes.filter((cube) => cube.color === color);
-const bodyCubes = (cubes) => cubes.filter((cube) => !cube.pick || cube.pick.type === 'participant');
+const floor = (cubes) => cubes.reduce((lowest, cube) => Math.min(lowest, cube.height - cube.depth / 2), Infinity);
+/** How far the drawn boxes reach from the centre of the tile they are drawn on, in each ground axis. */
+const reach = (cubes) => cubes.reduce((widest, cube) => ({
+  x: Math.max(widest.x, Math.abs(cube.x) + cube.width / 2), z: Math.max(widest.z, Math.abs(cube.z) + cube.length / 2),
+}), { x: 0, z: 0 });
 
 /** A real world snapshot from a real Platform fixture, so the payload shape is the server's own. */
 async function realWorld(t) {
@@ -64,19 +70,57 @@ test('one appearance system: humans, AI residents and country ambassadors share 
   assert.deepEqual(records.map((record) => record.clearance), [CHARACTER_LIMITS.clearance, CHARACTER_LIMITS.clearance]);
   assert.equal(CHARACTER_LIMITS.height, 1.52, 'the drawn resident height is the shared footprint constant');
   assert.equal(CHARACTER_LIMITS.clearance, 0.38);
-  // A body with no calling and no marker is exactly the twelve measured boxes the renderer draws.
+  // A body with no calling, no decoration and no marker is exactly the measured box list.
   const plain = recordingBatch(), marked = recordingBatch(), dressed = recordingBatch();
   charactersScene(plain, [{ id: 'plain-agent', name: 'Plain', kind: 'agent', x: 4, y: 4, z: 0 }], null, {});
   charactersScene(dressed, [human], human, {});
   charactersScene(marked, [ambassador], null, {});
-  assert.equal(plain.finish().cubes, CHARACTER_BODY_BOXES, 'a plain resident body is twelve measured boxes');
-  assert.equal(CHARACTER_BODY_BOXES, 12);
-  assert.equal(dressed.finish().cubes, 12 + 3, 'an explicit calling adds only its original emblem badge');
-  assert.equal(marked.finish().cubes, 12 + 3 + 4, 'an ambassador adds only the NPC marker to that same body');
-  assert.ok(Math.abs(top(plain.cubes) - 1.38) < 1e-9, 'the standing head top is the measured 1.38 m');
+  assert.equal(plain.finish().cubes, CHARACTER_BODY_BOXES, 'a plain resident body is the measured box list');
+  assert.equal(CHARACTER_BODY_BOXES, 15);
+  // An explicit calling adds exactly its emblem badge, its two-pixel glyph and its silhouette accent;
+  // the equipped decoration adds its own two boxes and nothing else.
+  assert.equal(dressed.finish().cubes, CHARACTER_BODY_BOXES
+    + CHARACTER_PART_BOXES.emblem + CHARACTER_PART_BOXES.silhouette + CHARACTER_PART_BOXES.decoration);
+  assert.equal(appearanceFor(human).silhouette, CALLING_SILHOUETTES.explorer);
+  assert.equal(appearanceFor(human).decoration, DECORATIONS.sprout, 'the fixture resident keeps its default keepsake');
+  // An ambassador adds the NPC marker (which *is* its authored silhouette) and nothing else.
+  assert.equal(marked.finish().cubes, CHARACTER_BODY_BOXES + CHARACTER_PART_BOXES.emblem + CHARACTER_PART_BOXES.marker);
+  assert.equal(appearanceFor(ambassador).silhouette, null, 'the marker is an NPC body’s authored silhouette');
+  assert.equal(appearanceFor(ambassador).decoration, null, 'an NPC holds no account-bound keepsake');
+  assert.ok(Math.abs(top(plain.cubes) - CHARACTER_LIMITS.head) < 1e-9, 'the standing head top is the measured 1.38 m');
   assert.ok(Math.abs(top(marked.cubes) - 1.515) < 1e-9, 'the NPC marker sits above the head, as the shipped renderer draws it');
   // Both bodies are built from the same boxes, in the same order, with only the listed additions.
   assert.deepEqual(plain.cubes.slice(0, 3).map((cube) => cube.width), marked.cubes.slice(0, 3).map((cube) => cube.width));
+});
+
+test('the drawn body is authored in its own frame and turns with the confirmed facing', () => {
+  const base = { id: 'turn', kind: 'agent', x: 5, y: 6, z: 0 };
+  // No stored yaw is the neutral facing (`up`); the four cardinals are the stored yaw quantised.
+  const at = (yaw) => characterBoxes(yaw === undefined ? base : { ...base, yaw }, null, { time: 0 });
+  const down = at(undefined), right = at(-Math.PI / 2), up = at(0), left = at(Math.PI / 2);
+  // The face, the hair and the emblem all sit at a positive forward offset in the body's own frame:
+  // facing down draws them at +z and facing up draws them at -z.
+  const forwardOf = (boxes) => boxes.reduce((widest, box) => Math.abs(box.z) > Math.abs(widest.z) ? box : widest, boxes[0]);
+  assert.ok(forwardOf(down).z > 0, 'facing down draws the face at +z');
+  assert.ok(forwardOf(up).z < 0, 'facing up draws the face at -z');
+  assert.equal(down.length, up.length);
+  for (const [index, box] of down.entries()) {
+    // Up is a point reflection of down through the tile centre, and right is a quarter turn of it.
+    const mirrored = up[index];
+    assert.ok(Math.abs(box.x + mirrored.x) < 1e-9 && Math.abs(box.z + mirrored.z) < 1e-9, `box ${index} mirrors through the tile centre`);
+    const turned = right[index];
+    assert.ok(Math.abs(box.width - turned.length) < 1e-9 && Math.abs(box.length - turned.width) < 1e-9, `box ${index} swaps its ground extents`);
+    assert.ok(Math.abs(box.z - turned.x) < 1e-9 && Math.abs(box.x + turned.z) < 1e-9, `box ${index} turns a quarter to the right`);
+  }
+  assert.equal(left.length, down.length);
+  // The ring is the one part that never turns: it is the tile, not the body.
+  assert.deepEqual(down[0], left[0]);
+  assert.equal(down[0].width, BODY.ring.width);
+  // The width and depth of every box stay inside the same tile in all four facings.
+  for (const boxes of [down, up, left, right]) {
+    const drawn = reach(boxes);
+    assert.ok(drawn.x <= CHARACTER_TILE_HALF && drawn.z <= CHARACTER_TILE_HALF, `facing keeps ${JSON.stringify(drawn)} inside the tile`);
+  }
 });
 
 test('the appearance layer reads the sealed definitions and re-seals nothing', () => {
@@ -104,6 +148,27 @@ test('the appearance layer reads the sealed definitions and re-seals nothing', (
   for (const unsupported of ['__proto__', 'administrator', '', null, 7]) {
     assert.equal(appearanceFor({ id: 'x', kind: 'human', calling: { id: unsupported } }).emblem, null, `no emblem for ${String(unsupported)}`);
   }
+  // Every sealed calling carries exactly one authored silhouette, and none can be addressed by another name.
+  assert.deepEqual([...SILHOUETTE_IDS].sort(), [...CALLINGS.map((calling) => calling.id)].sort(), 'one silhouette per sealed calling');
+  for (const calling of CALLINGS) {
+    const silhouette = silhouetteFor({ calling: { id: calling.id } });
+    assert.ok(silhouette, `${calling.id} has a silhouette`);
+    assert.equal(silhouette.parts.length, CHARACTER_PART_BOXES.silhouette, `${calling.id} spends the whole silhouette allowance`);
+  }
+  for (const unsupported of ['__proto__', 'administrator', '', null, 7]) assert.equal(silhouetteFor({ calling: { id: unsupported } }), null);
+  // The drawn decorations are exactly the sealed keepsakes plus the crafted decoration outputs.
+  const drawn = Object.keys(DECORATIONS).sort();
+  const sealed = [...content.cosmetics('avatar'), ...content.recipes().map((recipe) => recipe.output)].sort();
+  assert.deepEqual(drawn, sealed, 'the drawn cosmetic vocabulary is the sealed one');
+  const keepsakes = ['flower', 'leaf', 'sprout', 'star', 'explorer_banner'];
+  const crafted = ['flower_crown', 'herbal_wreath', 'garden_lantern', 'reed_whistle', 'woven_banner', 'festival_banner'];
+  assert.deepEqual(sealed, [...keepsakes, ...crafted].sort());
+  for (const id of drawn) {
+    assert.equal(decorationFor({ avatar: id }).parts.length, CHARACTER_PART_BOXES.decoration, `${id} spends the whole decoration allowance`);
+    assert.equal(decorationFor({ avatar: id }).color, DECORATIONS[id].color);
+  }
+  for (const unsupported of ['__proto__', 'hat', '', null, 7]) assert.equal(decorationFor({ avatar: unsupported }), null, `no decoration for ${String(unsupported)}`);
+  assert.equal(decorationFor({ avatar: 'star' }).color, content.color('star', 'cosmetic') || DECORATIONS.star.color);
   // The sealed sprite family resolves by the stored number and refuses anything else.
   const sheets = content.appearancesFor('civic-mayor');
   assert.equal(sheets.length, 20);
@@ -118,6 +183,120 @@ test('the appearance layer reads the sealed definitions and re-seals nothing', (
   assert.equal(spriteAppearance(999), null);
   assert.equal(spriteAppearance('16'), null, 'a string is not a stored sprite number');
   function colorsOf(id) { return content.color(id, 'cosmetic'); }
+});
+
+test('every authored combination stays inside its own tile, above the floor and inside the box budget', () => {
+  const callings = [undefined, ...SILHOUETTE_IDS], decorations = [undefined, ...Object.keys(DECORATIONS)];
+  const stances = ['standing', 'sitting', 'meditating'], emotes = [null, ...EXPRESSIONS];
+  let checked = 0, widest = { x: 0, z: 0 }, highest = -Infinity, lowest = Infinity;
+  const clock = 1_000, tracker = createMotionTracker({ clock: () => clock });
+  const walker = { id: 'walker', kind: 'agent', x: 4, y: 4, z: 0 };
+  tracker.confirm(walker); tracker.confirm({ ...walker, x: 5 });
+  for (const kind of ['human', 'agent', 'npc']) for (const calling of callings) for (const avatar of decorations) for (const stance of stances) {
+    const item = { id: 'walk', kind, x: 5, y: 4, z: 0, posture: stance, calling: calling ? { id: calling } : undefined, avatar };
+    for (const emote of emotes) for (const [offset, until] of emote ? [[0, 11_000], [1_500, 11_000], [5_500, 11_000], [8_000, 11_000]] : [[500, 0]]) {
+      const payload = emote ? { ...item, emote, emote_until: until } : item;
+      const boxes = characterBoxes(payload, null, { tracker, time: clock + offset });
+      const label = `${kind}/${calling}/${avatar}/${stance}/${emote}@${offset}`;
+      assert.ok(boxes.length <= CHARACTER_LIMITS.boxes, `${label} draws ${boxes.length} boxes`);
+      assert.ok(boxes.length >= CHARACTER_BODY_BOXES, `${label} keeps its whole body`);
+      const drawn = reach(boxes);
+      widest = { x: Math.max(widest.x, drawn.x), z: Math.max(widest.z, drawn.z) };
+      highest = Math.max(highest, boxes.reduce((value, box) => Math.max(value, box.height + box.depth / 2), -Infinity));
+      lowest = Math.min(lowest, boxes.reduce((value, box) => Math.min(value, box.height - box.depth / 2), Infinity));
+      for (const box of boxes) {
+        assert.ok(box.width > 0 && box.depth > 0 && box.length > 0, `${label} draws a real box`);
+        assert.ok(Math.abs(box.x) + box.width / 2 <= CHARACTER_TILE_HALF + 1e-9, `${label}: x ${box.x} leaves the tile`);
+        assert.ok(Math.abs(box.z) + box.length / 2 <= CHARACTER_TILE_HALF + 1e-9, `${label}: z ${box.z} leaves the tile`);
+        assert.ok(box.height - box.depth / 2 >= 0, `${label} stands on the floor`);
+        assert.ok(box.height + box.depth / 2 <= RESIDENT_HEIGHT + 1e-9, `${label} stays under the resident height`);
+      }
+      checked++;
+    }
+  }
+  // The sweep has to reach a real combination, or it proves nothing.
+  assert.equal(checked, 3 * 9 * 12 * 3 * 6 * 4 - 3 * 9 * 12 * 3 * 1 * 3);
+  assert.ok(checked > 20_000, `the sweep measures ${checked} drawn poses`);
+  assert.ok(widest.x > 0.4 && widest.z > 0.4, `the sweep reaches a wide pose (${JSON.stringify(widest)})`);
+  assert.equal(lowest, BODY.ring.height - BODY.ring.depth / 2, 'nothing is drawn below the ring it stands in');
+  assert.ok(highest > 1.5 && highest <= RESIDENT_HEIGHT, `the tallest drawn pose is ${highest} m`);
+});
+
+test('no pose draws a body taller than its own head, and every stance is a bounded function of confirmed state', () => {
+  const clock = 2_000, tracker = createMotionTracker({ clock: () => clock });
+  const walker = { id: 'walker', kind: 'agent', x: 4, y: 4, z: 0 };
+  tracker.confirm(walker); tracker.confirm({ ...walker, x: 5 });
+  // A body with no calling and no decoration is exactly the measured body: it is never taller than
+  // its own head, whatever it is doing, and the tallest draw is the neutral standing pose.
+  const idle = characterBoxes(walker, null, { tracker, time: clock + 1_000 });
+  const standing = top(idle);
+  assert.ok(Math.abs(standing - CHARACTER_LIMITS.head) < 1e-9, 'the neutral standing body is the head height');
+  for (const item of [
+    ...['wave', 'bow', 'cheer', 'think', 'heart'].flatMap((emote) => [[0, emote], [1_500, emote], [5_500, emote], [8_000, emote]]
+      .map(([offset, name]) => ({ ...walker, emote: name, emote_until: 12_000, offset }))),
+    ...['sitting', 'meditating'].map((posture) => ({ ...walker, posture, offset: 0 })),
+    ...Array.from({ length: MOTION_TWEEN_MS + 1 }, (_, offset) => ({ ...walker, offset })),
+  ]) {
+    const boxes = characterBoxes(item, null, { tracker, time: clock + item.offset });
+    assert.ok(top(boxes) <= standing + 1e-9, `a pose at +${item.offset} ms reaches ${top(boxes)} m`);
+    assert.ok(floor(boxes) >= 0, 'and stands on the floor');
+  }
+  // A seated stance lowers the whole upper body by exactly the shipped amount, for every body.
+  for (const avatar of [undefined, ...Object.keys(DECORATIONS)]) for (const calling of [undefined, 'steward']) {
+    const item = { ...walker, avatar, calling: calling ? { id: calling } : undefined };
+    const upright = top(characterBoxes({ ...item, y: 4 }, null, { tracker, time: 0 }));
+    for (const posture of ['sitting', 'meditating']) {
+      const seated = top(characterBoxes({ ...item, posture, y: 4 }, null, { tracker, time: 0 }));
+      assert.ok(Math.abs((upright - seated) - SEATED_LIFT) < 1e-9, `${posture}/${avatar} drops by exactly ${SEATED_LIFT} m`);
+    }
+    // `sitting` and `meditating` are two different drawn poses, not one number twice.
+    assert.notDeepEqual(characterBoxes({ ...item, posture: 'sitting', y: 4 }, null, { tracker, time: 0 }),
+      characterBoxes({ ...item, posture: 'meditating', y: 4 }, null, { tracker, time: 0 }));
+  }
+  // The pose reads the confirmed state and nothing else: a profile, presence or operator change is
+  // not a pose change, while a stance, an expression window or a walk frame is.
+  const base = { ...walker, y: 4, name: 'Aster', last_seen: '2026-10-13T09:00:00Z', operator: 'alice', status: 'active' };
+  const pose = (item, time = clock) => JSON.stringify(characterBoxes(item, null, { tracker, time }));
+  assert.equal(pose({ ...base, name: 'Renamed', last_seen: 'later', operator: 'bob', status: 'away' }), pose(base));
+  assert.notEqual(pose({ ...base, posture: 'sitting' }), pose(base));
+  assert.notEqual(pose({ ...base, emote: 'wave', emote_until: 12_000 }), pose(base));
+  assert.notEqual(pose({ ...base, x: 5 }, clock + MOTION_TWEEN_MS / 2), pose(base, clock));
+  // ...and every pose is the same draw for the same confirmed input, twice.
+  for (const item of [{ ...base, posture: 'meditating' }, { ...base, emote: 'cheer', emote_until: 12_000 }]) {
+    assert.equal(pose(item), pose(item));
+  }
+});
+
+test('every sealed expression renders its whole staged sequence', () => {
+  const clock = 3_000, item = { id: 'actor', kind: 'agent', x: 7, y: 2, z: 0 };
+  const idle = characterBoxes({ ...item, emote: 'none', emote_until: 0 }, null, { time: clock });
+  for (const emote of EXPRESSIONS) {
+    // The four staged offsets are the boundaries of the authored frame table.
+    const offsets = [0, 1_500, 5_500, 8_000];
+    const payload = (offset) => ({ ...item, emote, emote_until: clock + 10_000 });
+    const states = offsets.map((offset) => characterState(payload(), { time: clock + offset }));
+    assert.deepEqual(states.map((state) => state.expressionFrame), [0, 1, 2, 3], `${emote} plays all ${EXPRESSION_FRAMES} staged frames`);
+    assert.deepEqual(states.map((state) => state.state), ['interacting', 'interacting', 'interacting', 'interacting']);
+    assert.deepEqual(states.map((state) => state.action), [emote, emote, emote, emote]);
+    const drawn = offsets.map((offset) => characterBoxes(payload(), null, { time: clock + offset }));
+    for (const [index, boxes] of drawn.entries()) {
+      assert.equal(boxes.length, CHARACTER_BODY_BOXES, `${emote} frame ${index} only ever draws one body`);
+      assert.ok(top(boxes) <= CHARACTER_LIMITS.head + 1e-9 && floor(boxes) >= 0, `${emote} frame ${index} stays inside the body`);
+    }
+    // The action frame is the legible one, the sequence ends at the neutral body, and the four
+    // staged frames are four different poses rather than one pose drawn four times.
+    assert.notDeepEqual(drawn[0], drawn[1], `${emote} anticipates before it acts`);
+    assert.notDeepEqual(drawn[1], drawn[2], `${emote} settles inside its window`);
+    assert.notDeepEqual(drawn[2], drawn[3], `${emote} returns to rest at the end of its window`);
+    assert.deepEqual(drawn[3], idle, `${emote} ends at the neutral body`);
+    assert.equal(new Set(drawn.map((boxes) => JSON.stringify(boxes))).size, EXPRESSION_FRAMES, `${emote} grows the drawn vocabulary to ${EXPRESSION_FRAMES} poses`);
+  }
+  // Nothing animates outside the stored window, and a malformed window draws the neutral body.
+  for (const refused of [{ emote: 'wave' }, { emote: 'wave', emote_until: 'later' }, { emote: 'dance', emote_until: clock + 10_000 }, { emote: 'wave', emote_until: clock }]) {
+    assert.equal(confirmedExpression({ ...item, ...refused }, clock), null);
+    assert.equal(characterState({ ...item, ...refused }, { time: clock }).state, 'idle');
+    assert.deepEqual(characterBoxes({ ...item, ...refused }, null, { time: clock }), idle);
+  }
 });
 
 test('nameplates are bounded, readable and read only the public allowlist', async (t) => {
@@ -163,6 +342,7 @@ test('a nameplate never leaks a field outside the public allowlist', () => {
     messages: [{ channel: 'private', text: 'the harvest price is 400 coins' }],
     journal: 'Private reflection I never shared.',
     focus: 'Source-based research guidance for Nepal.',
+    avatar: 'star', title: 'Resident',
   };
   const plate = characterNameplate(privatePayload, { position: privatePayload });
   const rendered = JSON.stringify(plate);
@@ -215,14 +395,18 @@ test('the visual key tracks every drawn field and ignores every volatile one', a
     ['calling', [{ ...human, calling: { id: 'builder' } }, ambassador]],
     ['expression', [{ ...human, emote: 'wave', emote_until: time + 10_000 }, ambassador]],
     ['sprite', [human, { ...ambassador, sprite: 7 }]],
+    // The equipped decoration is drawn now, so it is a visible field rather than a curated profile.
+    ['decoration', [{ ...human, avatar: 'star' }, ambassador]],
   ];
   for (const [label, people] of changes) assert.notEqual(charactersVisualKey(people, human, { time }), base, `${label} is a visible change`);
   assert.notEqual(charactersVisualKey([human, ambassador], ambassador, { time }), base, 'the playing character is a visible change');
-  // The expression window is a drawn field: it arrives, holds one frame, and settles inside it.
+  // The expression window is a drawn field: it arrives, plays its four staged frames inside the
+  // window, and settles back to the neutral body when the window closes.
   const acted = charactersVisualKey([{ ...human, emote: 'wave', emote_until: time + 10_000 }, ambassador], human, { time });
-  assert.equal(acted, charactersVisualKey([{ ...human, emote: 'wave', emote_until: time + 10_000 }, ambassador], human, { time: time + 4_000 }), 'the raised frame holds');
-  assert.notEqual(acted, charactersVisualKey([{ ...human, emote: 'wave', emote_until: time + 10_000 }, ambassador], human, { time: time + 6_000 }), 'the settled frame is a change');
-  assert.equal(charactersVisualKey([{ ...human, emote: 'wave', emote_until: time + 10_000 }, ambassador], human, { time: time + 10_000 }), base, 'and the key returns to rest when the window closes');
+  assert.equal(acted, charactersVisualKey([{ ...human, emote: 'wave', emote_until: time + 10_000 }, ambassador], human, { time: time + 500 }), 'the action frame holds');
+  assert.notEqual(acted, charactersVisualKey([{ ...human, emote: 'wave', emote_until: time + 10_000 }, ambassador], human, { time: time + 4_000 }), 'the held frame is a change');
+  assert.notEqual(acted, charactersVisualKey([{ ...human, emote: 'wave', emote_until: time + 10_000 }, ambassador], human, { time: time + 9_000 }), 'and the rest frame is another');
+  assert.equal(charactersVisualKey([{ ...human, emote: 'wave', emote_until: time + 10_000 }, ambassador], human, { time: time + 10_000 }), base, 'the key returns to rest when the window closes');
   // With a motion tracker the drawn tile, not the stored one, is the keyed value.
   let clock = 500;
   const tracker = createMotionTracker({ clock: () => clock });
@@ -232,9 +416,11 @@ test('the visual key tracks every drawn field and ignores every volatile one', a
   const settled = charactersVisualKey([{ ...human, x: 11 }, ambassador], human, { tracker, time: clock + 180 });
   assert.notEqual(moving, settled, 'a walk frame and a settled pose are different drawn states');
   assert.equal(settled, charactersVisualKey([{ ...human, x: 11 }, ambassador], human, { tracker, time: clock + 5_000 }), 'the settled pose is stable');
+  // `reducedMotion` is a drawn difference too: it is keyed, so a caller can never reuse the wrong batch.
+  assert.notEqual(charactersVisualKey([{ ...human, x: 11 }, ambassador], human, { tracker, time: clock + 90, reducedMotion: true }), moving);
 });
 
-test('the character batch is a drop-in for the renderer scene builder', async (t) => {
+test('a single body is a drop-in for the renderer scene builder', async (t) => {
   const { commons, venue, agent } = await realWorld(t);
   const human = commons.participants.find((item) => item.id === agent.id);
   const ambassador = venue.participants.find((item) => item.kind === 'npc');
@@ -262,8 +448,10 @@ test('the character batch is a drop-in for the renderer scene builder', async (t
   const crowd = Array.from({ length: VOXEL_LIMITS.participants + 20 }, (_, index) => ({ id: `c${index}`, kind: 'agent', x: index % 48, y: Math.floor(index / 48) }));
   const crowdBatch = recordingBatch();
   charactersScene(crowdBatch, crowd, null, {});
-  assert.equal(crowdBatch.cubes.length / 12, VOXEL_LIMITS.participants);
+  assert.equal(crowdBatch.cubes.length / CHARACTER_BODY_BOXES, VOXEL_LIMITS.participants);
   assert.equal(animatedCharacters(crowd, crowd[0]).size, CHARACTER_LIMITS.animated, 'only the nearest walkers animate');
+  // The module's own per-participant ceiling is the one the renderer's budget already pays for.
+  assert.equal(CHARACTER_LIMITS.boxes, 22);
 });
 
 test('the drawn body resolves through a real Three.js raycaster to the confirmed tile', async (t) => {
@@ -304,25 +492,45 @@ test('the drawn body resolves through a real Three.js raycaster to the confirmed
 test('a seated stance lowers the body by exactly the shipped amount and keeps every limb below the head', async (t) => {
   const { commons, agent } = await realWorld(t);
   const human = commons.participants.find((item) => item.id === agent.id);
-  const standing = recordingBatch(), seated = recordingBatch(), cheering = recordingBatch();
-  charactersScene(standing, [human], human, {});
-  paintCharacter(seated, { ...human, posture: 'sitting', z: 0 }, human, {});
-  paintCharacter(cheering, { ...human, emote: 'cheer', emote_until: 50_000_000_000_000 }, human, {});
-  assert.ok(Math.abs(top(seated.cubes) - (top(standing.cubes) - .26)) < 1e-9, 'the seated top drops by 0.26 m');
+  // The fixture's own stored expression window is cleared, so the seated drop is measured on the
+  // one variable under test rather than against a dip the stored expression already applied.
+  const idle = { ...human, emote: 'none', emote_until: 0 };
+  const standing = recordingBatch(), sitting = recordingBatch(), meditating = recordingBatch(), cheering = recordingBatch();
+  charactersScene(standing, [idle], idle, {});
+  paintCharacter(sitting, { ...idle, posture: 'sitting', z: 0 }, idle, {});
+  paintCharacter(meditating, { ...idle, posture: 'meditating', z: 0 }, idle, {});
+  paintCharacter(cheering, { ...idle, emote: 'cheer', emote_until: 50_000_000_000_000 }, idle, {});
+  assert.ok(top(standing.cubes) <= RESIDENT_HEIGHT, 'the standing body stays under the resident height');
+  assert.ok(Math.abs(top(standing.cubes) - (top(sitting.cubes) + SEATED_LIFT)) < 1e-9, 'the seated top drops by 0.26 m');
+  assert.ok(Math.abs(top(standing.cubes) - (top(meditating.cubes) + SEATED_LIFT)) < 1e-9, 'so does the meditating top');
   assert.ok(top(cheering.cubes) <= top(standing.cubes), 'a raised arm never reaches above the drawn head');
-  assert.equal(seated.cubes.length, standing.cubes.length, 'a pose never resizes the body box count');
+  assert.equal(sitting.cubes.length, standing.cubes.length, 'a pose never resizes the body box count');
+  assert.ok(floor(sitting.cubes) >= 0, 'and never draws a hand through the floor');
   // The arm poses are bounded: no pose lifts a hand above the head top.
   for (const [name, pose] of Object.entries(ARM_POSES)) {
-    assert.ok(pose.height + pose.depth / 2 <= top(standing.cubes), `${name} stays below the drawn head`);
-    assert.ok(pose.hand + BODY.hand.depth / 2 <= top(standing.cubes), `${name} keeps its hand below the drawn head`);
+    assert.ok(pose.height + pose.depth / 2 <= CHARACTER_LIMITS.head + 1e-9, `${name} stays below the drawn head`);
+    assert.ok(pose.hand + BODY.hand.depth / 2 <= CHARACTER_LIMITS.head + 1e-9, `${name} keeps its hand below the drawn head`);
+    assert.ok(pose.hand - BODY.hand.depth / 2 >= -SEATED_LIFT - 1e-9, `${name} keeps its hand above the floor when seated`);
+    assert.ok(BODY.arm.across - pose.inward + BODY.arm.width / 2 <= CHARACTER_TILE_HALF + 1e-9, `${name} keeps its arm inside the tile`);
   }
+  assert.ok(Math.abs(ARM_POSES.up.height + ARM_POSES.up.depth / 2 - CHARACTER_LIMITS.head) < 1e-9, 'the highest arm pose touches the head and stops');
 });
 
 test('the sealed expression vocabulary is exactly what the animation may name', () => {
   assert.deepEqual(SEALED_EXPRESSIONS, ['wave', 'bow', 'cheer', 'think', 'heart', 'none']);
   assert.deepEqual(SEALED_EXPRESSIONS.filter((id) => id !== 'none'), [...EXPRESSIONS], 'the animation names the sealed set and nothing more');
+  assert.equal(EXPRESSION_FRAMES, 4);
+  assert.equal(EXPRESSION_ACTION_FRAME, 1);
   for (const unknown of ['farm', 'sleep', '__proto__', '']) {
     assert.equal(confirmedExpression({ emote: unknown, emote_until: 10_000 }, 1), null, `${JSON.stringify(unknown)} is not a drawable expression`);
   }
   assert.equal(confirmedExpression({ emote: 'wave', emote_until: 10_000 }, 9_999)?.action, 'wave');
+  // Every staged pose an expression can name is a real arm pose the body builder knows.
+  const named = new Set();
+  for (const emote of EXPRESSIONS) for (let frame = 0; frame < EXPRESSION_FRAMES; frame += 1) {
+    const arm = characterPose(characterState({ id: 'a', kind: 'agent', emote, emote_until: 10_000 }, { time: 10_000 - 10_000 + [0, 1_500, 5_500, 8_000][frame] })).arm;
+    named.add(arm.left); named.add(arm.right);
+  }
+  for (const pose of named) assert.ok(Object.hasOwn(ARM_POSES, pose), `${pose} is an authored arm pose`);
+  assert.ok(named.size >= 5, `the staged expressions name ${named.size} distinct arm poses`);
 });

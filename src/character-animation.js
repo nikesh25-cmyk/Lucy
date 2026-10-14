@@ -12,6 +12,14 @@
 //     tile, and a jump (more than one tile, more than one elevation layer, or another world) snaps
 //     instead of gliding, so a teleport is never drawn as a walk across unconfirmed tiles.
 //
+// **The animation vocabulary is the *pose* vocabulary.** `src/platform.js` seals exactly five stored
+// `emote` values plus `none`, so no module on this side of the API can add a sixth name. What this
+// module grows instead is the number of authored poses behind each confirmed value: every stored
+// expression now plays four staged frames inside its own ten-second window — an anticipation, the
+// action, the held action and the rest — and every stance and stride frame is a named pose. There is
+// still no free-running clock: a pose is a pure, bounded function of the stored stance, the stored
+// expression window, the quantised interpolation progress and the `reducedMotion` flag.
+//
 // This module has no dependency on the database, the DOM or the renderer, so the browser, the
 // server and the tests import the same rules.
 
@@ -33,6 +41,16 @@ export const FACINGS = Object.freeze(['down', 'up', 'left', 'right']);
 export const SEATED_LIFT = 0.26;
 /** A leg swings this far along the direction of the confirmed step, at the peak walk frame. */
 export const WALK_SWING = 0.09;
+/** A stride also dips and rocks the body: the amplitude of the walk's bob, in metres. */
+export const WALK_BOB = 0.022;
+/** ...and the amplitude of its lateral sway, in metres. Both are functions of the walk frame only. */
+export const WALK_SWAY = 0.014;
+/** The staged frames one stored expression draws inside its window. */
+export const EXPRESSION_FRAMES = 4;
+/** Where each staged frame begins, as a fraction of the stored window. */
+export const EXPRESSION_FRAME_AT = Object.freeze([0, 0.1, 0.55, 0.78]);
+/** The single frame a reduced-motion draw holds: the action itself, still, never an anticipation. */
+export const EXPRESSION_ACTION_FRAME = 1;
 
 export const MOTION_LIMITS = Object.freeze({
   /** Tracked participants: the same 220-avatar bound the renderer draws (`VOXEL_LIMITS.participants`). */
@@ -48,6 +66,21 @@ const tile = (item) => ({ x: Number.isFinite(item?.x) ? item.x : 0, y: Number.is
 
 /** The unit grid step for a confirmed facing. */
 export const facingStep = (facing) => CARDINAL[FACINGS.includes(facing) ? facing : 'down'];
+
+/**
+ * The body frame of one confirmed facing, in the renderer's own axes: `forward` is the direction of
+ * the confirmed step and `across` is the perpendicular, so a body can be authored once in its own
+ * frame and turned without restating a single coordinate. `swap` reports that a box's across and
+ * forward extents exchange the world x and z axes.
+ */
+export const facingFrame = (facing) => {
+  const step = facingStep(facing);
+  return Object.freeze({
+    forward: Object.freeze({ x: step.x, y: step.y }),
+    across: Object.freeze({ x: step.y, y: step.x === 0 ? 0 : -step.x }),
+    swap: step.x !== 0,
+  });
+};
 
 /** The facing a confirmed payload stores: the direction of the confirmed step, else the stored yaw. */
 export function confirmedFacing(item, step = null) {
@@ -65,6 +98,14 @@ export function confirmedFacing(item, step = null) {
   return ['up', 'left', 'down', 'right'][quarter];
 }
 
+/** The staged frame inside a stored expression window, from the fraction of that window elapsed. */
+export const expressionFrameAt = (progress) => {
+  if (!Number.isFinite(progress)) return 0;
+  let frame = 0;
+  for (let index = 0; index < EXPRESSION_FRAME_AT.length; index += 1) if (progress >= EXPRESSION_FRAME_AT[index]) frame = index;
+  return frame;
+};
+
 /**
  * The confirmed expression, or null. A payload whose `emote_until` is not a finite number in the
  * future (a missing column, a string, an expired window) is treated as no expression at all, so an
@@ -76,9 +117,9 @@ export function confirmedExpression(item, time = Date.now()) {
   const until = item.emote_until;
   if (!Number.isFinite(until) || !Number.isFinite(time) || !(time < until)) return null;
   const elapsed = Math.max(0, EXPRESSION_MS - (until - time));
-  // Two frames inside the confirmed window: the action, then a settled rest. No frame is invented
-  // outside the window the server stored.
-  return { action: emote, until, frame: elapsed < EXPRESSION_MS / 2 ? 0 : 1 };
+  // Four staged frames inside the confirmed window: the anticipation, the action, its hold, then the
+  // rest. No frame is invented outside the window the server stored.
+  return { action: emote, until, frame: expressionFrameAt(elapsed / EXPRESSION_MS) };
 }
 
 /**
@@ -185,53 +226,102 @@ export function createMotionTracker({ tweenMs = MOTION_TWEEN_MS, limit = MOTION_
 /**
  * The confirmed animation state of one participant. The state is decided only by the stored stance,
  * the stored expression window and whether the display is currently between two confirmed tiles.
+ *
+ * `reducedMotion: true` is the presentation half of `prefers-reduced-motion`: the drawn position is
+ * the **confirmed** tile rather than the gliding one (so it snaps rather than slides), the walk is at
+ * rest, and a stored expression holds its single action frame for the whole window instead of playing
+ * four. The renderer already reconciles every confirmed step under the same preference; this option
+ * is the module's own contract for a caller that drives it directly.
  */
-export function characterState(item, { tracker = null, time = Date.now(), animated = true } = {}) {
+export function characterState(item, { tracker = null, time = Date.now(), animated = true, reducedMotion = false } = {}) {
   const id = typeof item?.id === 'string' ? item.id : null;
+  const still = reducedMotion === true;
   const step = tracker && id ? tracker.position(id, time) : null;
   const stored = tile(item);
-  const shown = step ? { x: step.x, y: step.y, z: step.z } : stored;
+  const shown = still ? stored : step ? { x: step.x, y: step.y, z: step.z } : stored;
   const stance = STANCES.includes(item?.posture) ? item.posture : 'standing';
   const expression = confirmedExpression(item, time);
   const moved = Boolean(step) && (step.from.x !== step.to.x || step.from.y !== step.to.y);
-  const walking = Boolean(step?.walking) && moved && animated === true;
+  const walking = !still && Boolean(step?.walking) && moved && animated === true;
   const state = stance !== 'standing' ? 'seated' : expression ? 'interacting' : walking ? 'walking' : 'idle';
   const facing = confirmedFacing(item, step);
+  const expressionFrame = !expression ? 0 : still ? EXPRESSION_ACTION_FRAME : expression.frame;
   return Object.freeze({
     id, kind: typeof item?.kind === 'string' ? item.kind : null, state, stance,
     action: state === 'interacting' ? expression.action : null,
-    expressionFrame: state === 'interacting' ? expression.frame : 0,
+    expressionFrame: state === 'interacting' ? expressionFrame : 0,
     walking, phase: state === 'walking' ? Math.min(WALK_FRAMES - 1, Math.floor(step.t * WALK_FRAMES)) : 0,
-    facing, direction: facingStep(facing),
+    facing, direction: facingStep(facing), frame: facingFrame(facing),
     position: Object.freeze({ ...shown }), confirmed: Object.freeze({ ...stored }), elevation: shown.z,
-    t: step ? step.t : 1,
+    t: still ? 1 : step ? step.t : 1,
+    reducedMotion: still,
   });
 }
 
 const WALK_SWING_FRAMES = Object.freeze([1, 0, -1, 0]);
-const EXPRESSION_ARMS = Object.freeze({
-  wave: Object.freeze({ left: 'down', right: 'up' }),
-  cheer: Object.freeze({ left: 'up', right: 'up' }),
-  think: Object.freeze({ left: 'down', right: 'head' }),
-  bow: Object.freeze({ left: 'down', right: 'down' }),
-  heart: Object.freeze({ left: 'forward', right: 'forward' }),
+const WALK_BOB_FRAMES = Object.freeze([0, 1, 0, 1]);
+const WALK_SWAY_FRAMES = Object.freeze([0, 1, 0, -1]);
+
+/**
+ * The four staged frames of every stored expression, as the arm poses, body lean and dip each one
+ * draws. The vocabulary the renderer can name is therefore the authored pose table below, not the
+ * five stored values: each stored value is one *sequence* of four poses.
+ *
+ * `dip` lowers the body. No frame raises it: the tallest draw of any confirmed state is the neutral
+ * standing body, so a pose can never pass the head the footprint table measures.
+ */
+const EXPRESSION_FRAMES_POSES = Object.freeze({
+  wave: Object.freeze([Object.freeze({ right: 'rise' }), Object.freeze({ right: 'up' }),
+    Object.freeze({ right: 'up', dip: .02 }), Object.freeze({})]),
+  cheer: Object.freeze([Object.freeze({ left: 'rise', right: 'rise', dip: .02 }),
+    Object.freeze({ left: 'up', right: 'up', dip: .06 }), Object.freeze({ left: 'up', right: 'up', dip: .04 }),
+    Object.freeze({})]),
+  think: Object.freeze([Object.freeze({ right: 'rise' }), Object.freeze({ right: 'head', lean: .12 }),
+    Object.freeze({ right: 'head', lean: .06 }), Object.freeze({})]),
+  heart: Object.freeze([Object.freeze({ left: 'out', right: 'out' }),
+    Object.freeze({ left: 'forward', right: 'forward' }), Object.freeze({ left: 'forward', right: 'forward', dip: .03 }),
+    Object.freeze({})]),
+  bow: Object.freeze([Object.freeze({ lean: .35 }), Object.freeze({ lean: 1 }),
+    Object.freeze({ lean: .8 }), Object.freeze({})]),
 });
+const EMPTY_FRAME = Object.freeze({});
 /** An expression that leans: the torso and head shift along the stored facing. */
-const EXPRESSION_LEAN = Object.freeze({ bow: 1 });
+export const LEANING_EXPRESSIONS = Object.freeze(['bow', 'think']);
+
+/**
+ * The two confirmed seated stances, as the pose each one folds the body into. Both drop the upper
+ * body by exactly `SEATED_LIFT`; they differ in how the legs and hands are placed, so `sitting` and
+ * `meditating` are two readable poses rather than one shared number.
+ */
+const SEATED_POSES = Object.freeze({
+  sitting: Object.freeze({ legDepth: .34, legForward: .16, legAcross: 0, footForward: .30, footAcross: 0, arms: Object.freeze({ left: 'lap', right: 'lap' }) }),
+  meditating: Object.freeze({ legDepth: .30, legForward: .04, legAcross: .07, footForward: .10, footAcross: .08, arms: Object.freeze({ left: 'clasp', right: 'clasp' }) }),
+});
 
 /**
  * The pose the body is drawn in. Every number is derived from the confirmed state above: a seated
- * stance uses the stored posture, an expression uses its stored window, and the only free number is
- * the walk frame, which is the quantised progress between the two confirmed tiles.
+ * stance uses the stored posture, an expression uses its stored window and staged frame, and the only
+ * free numbers are the walk frame — the quantised progress between the two confirmed tiles — and the
+ * `reducedMotion` flag, which snaps both to rest. Every term is a lower: `lift` is never positive, so
+ * no pose can draw a body taller than its own standing head.
  */
 export function characterPose(state) {
   const seated = state.state === 'seated';
-  const swing = state.state === 'walking' ? WALK_SWING_FRAMES[state.phase] : 0;
-  const action = state.state === 'interacting' && state.expressionFrame === 0 ? EXPRESSION_ARMS[state.action] : null;
+  const stance = seated ? SEATED_POSES[state.stance] || SEATED_POSES.sitting : null;
+  const walking = state.state === 'walking';
+  const acting = state.state === 'interacting';
+  const frame = acting ? EXPRESSION_FRAMES_POSES[state.action]?.[state.expressionFrame] || EMPTY_FRAME : EMPTY_FRAME;
   return Object.freeze({
-    state: state.state, phase: state.phase, seated,
-    lift: seated ? -SEATED_LIFT : 0, legDepth: seated ? 0.25 : 0.4, swing,
-    arm: Object.freeze({ left: action?.left || 'down', right: action?.right || 'down' }),
-    lean: state.state === 'interacting' && state.expressionFrame === 0 ? EXPRESSION_LEAN[state.action] || 0 : 0,
+    state: state.state, stance: state.stance, phase: state.phase, seated,
+    lift: (seated ? -SEATED_LIFT : 0) - (walking ? WALK_BOB * WALK_BOB_FRAMES[state.phase] : 0) - (frame.dip || 0),
+    legDepth: stance ? stance.legDepth : 0.62,
+    legForward: stance ? stance.legForward : 0,
+    legAcross: stance ? stance.legAcross : 0,
+    footForward: stance ? stance.footForward : 0.05,
+    footAcross: stance ? stance.footAcross : 0,
+    swing: walking ? WALK_SWING_FRAMES[state.phase] : 0,
+    sway: walking ? WALK_SWAY * WALK_SWAY_FRAMES[state.phase] : 0,
+    arm: Object.freeze(stance ? { ...stance.arms } : { left: frame.left || 'down', right: frame.right || 'down' }),
+    lean: acting ? frame.lean || 0 : 0,
   });
 }
