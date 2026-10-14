@@ -20,6 +20,7 @@ import { civicAtlas, REGIONS, AMBASSADOR_REMIT, mayorTopic } from './src/civic.j
 import { manifest } from './src/content.js';
 import { serveVideo } from './src/media.js';
 import { ensureTradeMarket } from './src/trade-market.js';
+import { ensureLivingWorld, livingWorldTick } from './src/living-world.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -95,6 +96,7 @@ files.set('/src/character-animation.js', ['src/character-animation.js', 'text/ja
 files.set('/src/footprints.js', ['src/footprints.js', 'text/javascript; charset=utf-8']);
 files.set('/src/elevation.js', ['src/elevation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/content.js', ['src/content.js', 'text/javascript; charset=utf-8']);
+files.set('/src/living-world.js', ['src/living-world.js', 'text/javascript; charset=utf-8']);
 // The voxel renderer's scene modules. src/voxel-world.js is a browser module and imports these
 // relatively, so the hand-maintained table has to serve them or the whole client module graph 404s.
 // tests/content-http.test.js walks that graph from /app.js and fails on a missing file.
@@ -170,8 +172,9 @@ const writes = new Map([
   // The versioned evidence library. A curator capture extends an already-registered host; a reviewer
   // records that a source is withdrawn. Both fail closed on an unapproved host, a bad hash or a quota.
   ['/evidence/capture', ['evidenceCapture', null]], ['/evidence/withdraw', ['evidenceWithdraw', null]],
+  ['/living-world/tick', ['livingWorldTick', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -381,7 +384,7 @@ export function createEventHub({ platform, limits = EVENT_LIMITS, clock = Date.n
 }
 
 
-export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, residentRunner = runAgent, researchRunner = runResearch, researchConcurrency = 4, modelQueueWait = 8, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null } = {}) {
+export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, residentRunner = runAgent, researchRunner = runResearch, researchConcurrency = 4, modelQueueWait = 8, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null, livingWorld = process.env.LUCY_LIVING_WORLD === 'true' || process.env.LUCY_LIVING_WORLD === '1' } = {}) {
   if(!Number.isInteger(researchConcurrency)||researchConcurrency<1||researchConcurrency>8)throw new Error('Research concurrency must be between one and eight.');
   // One local model is one inference at a time. Work beyond this bound is refused instead of being
   // queued without limit, so a burst of requests cannot hold unbounded work outside the model.
@@ -395,6 +398,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   // re-checked as the process starts: a board that cannot balance refuses to serve rather than
   // reporting items that no resident ever grew or crafted.
   ensureTradeMarket(platform);
+  if (livingWorld) {
+    try { ensureLivingWorld(platform); } catch {}
+  }
   const researchRuns=new Map(),residentRuns=new Map();
   const revokeWorker = credential => platform.run("UPDATE tokens SET revoked=1 WHERE hash=? AND kind='runtime'",createHash('sha256').update(credential.token).digest('hex'));
   const activeWorker = accountId => researchRuns.has(accountId)||residentRuns.has(accountId);
@@ -522,7 +528,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact', '/first-play', '/restoration'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact', '/first-play', '/restoration', '/living-world/status'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
@@ -597,6 +603,19 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           // The administrator dashboard: database counters from the platform, process and model
           // counters from this process. The route keeps its own administrator role check.
           else if (route === '/operations') value = platform.operations(actor, liveDiagnostics);
+          else if (route === '/living-world/status') {
+            const atmosphere = worldAtmosphere(platform.clock());
+            const livingResidents = platform.all("SELECT id, name, color, symbol, kind, x, y, z, posture, emote, last_seen FROM agents WHERE id LIKE 'lw-%'");
+            const openTrades = platform.all("SELECT id, poster_agent_id, posted_at, note FROM trade_listings WHERE status='open' LIMIT 10");
+            value = {
+              active: livingResidents.length > 0,
+              phase: atmosphere.phase,
+              population: livingResidents.length,
+              residents: livingResidents,
+              open_trades: openTrades,
+              server_time: platform.clock(),
+            };
+          }
           else value = platform[route.slice(1)](actor);
           if (actor && route !== '/runtime/status') platform.charge(actor);
           return value;
@@ -763,8 +782,8 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       else response.end();
     }
   });
-  let mayorTimer;
-  server.once('listening',()=>{mayorTimer=setInterval(()=>{try{platform.transaction(()=>platform.tickMayors());}catch{/* A shutdown may have closed storage. */}try{platform.transaction(()=>platform.expireOffers());}catch{/* A shutdown may have closed storage. */}try{platform.transaction(()=>platform.tradeExpire());}catch{/* A shutdown may have closed storage. */}},3000);mayorTimer.unref();});
+  let mayorTimer, livingTickCount = 0;
+  server.once('listening',()=>{mayorTimer=setInterval(()=>{try{platform.transaction(()=>platform.tickMayors());}catch{/* A shutdown may have closed storage. */}try{platform.transaction(()=>platform.expireOffers());}catch{/* A shutdown may have closed storage. */}try{platform.transaction(()=>platform.tradeExpire());}catch{/* A shutdown may have closed storage. */}if(livingWorld&&++livingTickCount%2===0){try{platform.transaction(()=>livingWorldTick(platform));}catch{}}},3000);mayorTimer.unref();});
   server.once('close',()=>{clearInterval(mayorTimer);hub.closeAll();for(const run of [...researchRuns.values(),...residentRuns.values()])run.controller.abort();});
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
@@ -781,7 +800,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     // before migrations or seeding can change it and before any listener serves requests.
     if (existsSync(databasePath)) validateDatabase(databasePath);
     platform = new Platform(databasePath);
-    ({ server, stopWorkers, stopEvents } = createApp({ platform, backupDir: join(dirname(databasePath), 'backups'), publicOrigin: hosting.publicOrigin || '', setupCode: hosting.setupCode }));
+    ({ server, stopWorkers, stopEvents } = createApp({ platform, backupDir: join(dirname(databasePath), 'backups'), publicOrigin: hosting.publicOrigin || '', setupCode: hosting.setupCode, livingWorld: process.env.LUCY_LIVING_WORLD !== 'false' }));
     let closing = false;
     const close = () => {
       if (closing) return;
