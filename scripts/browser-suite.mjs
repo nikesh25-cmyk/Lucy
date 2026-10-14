@@ -27,7 +27,7 @@ import { cameraWalkDirection, facingLabel } from '../src/camera-controls.js';
 import { RESTORATION_PLAN } from '../src/community.js';
 import { validateDatabase } from '../src/recovery.js';
 import { planWalk } from '../src/world-walk.js';
-import { getWorldDefinition } from '../world.js';
+import { frontierGates, getWorldDefinition } from '../world.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const RESULTS = join(ROOT, 'test-results');
@@ -133,6 +133,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'interaction-state-refusals', title: 'Paused, revoked, wrong-owner and observer refusals keep the server authoritative', regression: null },
   { id: 'consolidated-proposal-history', title: 'Retired research templates remain readable but cannot become missions', regression: 'batch 02 integration correction' },
   { id: 'shared-build-and-restart', title: 'Two humans and an AI runtime build together, exchange items and keep progress after restart', regression: 'shared integration' },
+  { id: 'wave-b-two-gates', title: 'Two humans and an active AI cross two connected frontier gates, talk in the sector they reached, and return to it after a restart', regression: 'wave B acceptance' },
   { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
   { id: 'reviewer-workbench', title: 'A reviewer assesses each criterion, compares source versions, requests changes and the mission owner records an adoption', regression: null },
   { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
@@ -364,6 +365,11 @@ const ACTORS = {
   // The reviewer-workbench scenarios keep all four roles on different accounts: the administrator
   // proposes and later adopts, this operator contributes, and the reviewer is the fourth person.
   contributor: { email: 'contributor@browser.test', password: PASSWORD, name: 'Browser contributor' },
+  // The Wave B crossing scenario creates its own two operators and their three residents, so the two
+  // humans that cross the frontier gates share no account, character or fixture with any other
+  // scenario, and no shared resident is left standing in another sector when it ends.
+  'wave-b-host': { email: 'wave-b-host@browser.test', password: PASSWORD, name: 'Wave B host' },
+  'wave-b-guest': { email: 'wave-b-guest@browser.test', password: PASSWORD, name: 'Wave B guest' },
 };
 
 /**
@@ -3560,6 +3566,21 @@ async function selectResident(page, agentId, name) {
 }
 
 /**
+ * Selects one resident and then waits for that control's own trailing render. "Enter as this
+ * character" ends by opening the world view (`app.js`: `selectAgent(id).then(() => {state.tab='world';
+ * render();})`), and that render lands after the selection is already visible — so a section opened in
+ * between is silently overwritten by it. Callers that need another section afterwards use this.
+ */
+async function selectResidentAndSettle(page, agentId, name) {
+  const before = await page.evaluate(() => window.__nemoworld?.selected?.() || '');
+  await selectResident(page, agentId, name);
+  if (before === agentId) return { selected: agentId };
+  await waitForCondition(async () => (await page.evaluate(() => document.querySelector('#toggle-navigation')?.textContent || '')) === 'Menu · Open world' ? true : null, 'the character switch to land on the world view');
+  await settle(page);
+  return { selected: agentId };
+}
+
+/**
  * Waits until the interface itself has reported the outcome of a control it was given, so a later
  * navigation is never clobbered by the trailing render of an action that is still finishing.
  */
@@ -4325,6 +4346,357 @@ define('shared-build-and-restart', async () => {
     return '403 for cached guest session after revocation; three attributed blocks remain';
   });
   return 'two humans and a scoped AI runtime built together, exchanged one item, and reloaded their saved progress after a real server restart';
+});
+
+// ---------------------------------------------------------------------------------------------
+// Wave B — two connected frontier gates, crossed by two independent humans and one active AI
+//
+// Wave B's acceptance sentence is only partly unproved on this tip. `shared-build-and-restart` already
+// drives two humans and one scoped AI runtime building, exchanging an item and surviving a restart;
+// `restoration-two-clients` and `cooperative-restoration-two-operators` drive a shared world change;
+// `first-ten-minutes` covers choosing a calling. None of them crosses a frontier gate. This scenario
+// covers that one thing and re-proves none of the others: three residents in one seeded sector, the
+// two connected gates that leave it, and the server's own stored answer for every crossing.
+//
+// Each claim is read back from the temporary SQLite database or from the server's own payload: the
+// stored `world_id`, the stored arrival tile, the `messages` rows with their sender, operator,
+// channel, world, recipients and text, and the `resident_memory` purpose row across a real process
+// restart. The two humans belong to operators this scenario creates for itself, so no shared fixture
+// is moved, and each human walks into the frontier through the Commons' own passage in its browser.
+// ---------------------------------------------------------------------------------------------
+
+/** The seeded 3 × 3 frontier a two-gate path crosses, and the Commons passage into the first sector. */
+const WAVE_B_FIRST = 'frontier:0:0';
+const WAVE_B_SECOND = 'frontier:0:-1';
+const WAVE_B_THIRD = 'frontier:1:-1';
+const COMMONS_FRONTIER_PASSAGE = { x: 19, y: 6 };
+/**
+ * The order the client's four movement controls sit in around the compass. A movement control is
+ * camera-relative in first person and absolute in the orbiting view, but a camera rotation preserves
+ * this cycle, so one measured step names all four.
+ */
+const CONTROL_CYCLE = Object.freeze({ up: 'right', right: 'down', down: 'left', left: 'up' });
+const WAVE_B_HUMAN_LINE = 'The east passage answers back onto the field we came from; the new path holds.';
+const WAVE_B_AI_LINE = 'Both passages are open and I am standing on the second gate.';
+const WAVE_B_PURPOSE = 'Cross both frontier passages and keep the shared path open.';
+
+/** One gate of a sector, by the direction a resident crosses it in. */
+const waveBGate = (worldId, direction) => frontierGates(worldId).find((gate) => gate.direction === direction) || null;
+/**
+ * Where a crossing lands. `travel()` places the resident on the gate the entered sector answers the
+ * sector it left with, so this is the tile a crossing must store — not the sector's own plaza start
+ * and not whatever tile the movement happened to reach.
+ */
+const waveBArrival = (worldId, fromWorldId) => frontierGates(worldId).find((gate) => gate.targetWorldId === fromWorldId) || null;
+/** The world cardinal one stored step produced. */
+const stepCardinal = (from, to) => (to.y < from.y ? 'up' : to.y > from.y ? 'down' : to.x > from.x ? 'right' : 'left');
+/** The stored row a resident's movement is judged by — never the interface's own opinion of it. */
+const residentAt = (agentId) => row('SELECT world_id,x,y,status FROM agents WHERE id=?', agentId);
+
+/**
+ * One press of a movement control, confirmed by the database rather than by the interface looking
+ * busy: `arrived` reads the stored row. Only the server's own movement-throttle refusal is resumed, a
+ * bounded number of times, and every resume is reported — a documented refusal is never a failure.
+ */
+async function pressMoveUntil(page, agentId, control, arrived, label, { attempts = 4, timeout = 8000 } = {}) {
+  const button = page.locator(`#view button[aria-label="Move ${control}"]`);
+  await button.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+  let notice = '';
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await button.click();
+    const reached = await waitForCondition(arrived, label, { timeout, interval: 80 }).catch(() => null);
+    if (reached) return reached;
+    notice = ((await page.locator('#notice').textContent().catch(() => '')) || '').trim();
+    if (!throttleRefusal(notice)) break;
+    console.log(`        walk retry       the server’s own movement throttle refused a step; pressing “Move ${control}” again for ${label}`);
+    await page.waitForTimeout(500);
+  }
+  throw new BrowserSuiteFailure(`the “Move ${control}” control did not carry the step`, { expected: label, actual: `${describe(residentAt(agentId))}; the interface said “${notice}”` });
+}
+
+/**
+ * Which movement control carries which world direction, measured instead of assumed, because a
+ * movement control is camera-relative whenever this browser is in first person. One confirmed step
+ * names its own control, the control cycle names the other three, and a second measured control then
+ * checks the derived map. Both measured steps are undone immediately, so the resident starts and
+ * ends on the tile this found it standing on.
+ */
+async function learnMovementControls(page, agentId) {
+  const start = residentAt(agentId);
+  const stepped = () => { const now = residentAt(agentId); return now.x !== start.x || now.y !== start.y ? now : null; };
+  const backOn = () => { const now = residentAt(agentId); return now.x === start.x && now.y === start.y ? true : null; };
+  const press = (control, arrived, label) => pressMoveUntil(page, agentId, control, arrived, label);
+  let measuredControl = null, measuredDirection = null;
+  for (const candidate of ['up', 'right', 'down', 'left']) {
+    const after = await press(candidate, stepped, `the “Move ${candidate}” control to carry one confirmed step from ${start.x},${start.y}`).catch(() => null);
+    if (!after) continue;
+    measuredControl = candidate;
+    measuredDirection = stepCardinal(start, after);
+    break;
+  }
+  expect(measuredDirection, 'one movement control must carry a confirmed step out of the tile this resident was found on', { expected: `one tile of movement from ${start.x},${start.y}`, actual: `${describe(residentAt(agentId))} was refused in all four directions` });
+  const controlFor = {};
+  let control = measuredControl, direction = measuredDirection;
+  for (let index = 0; index < 4; index += 1) { controlFor[direction] = control; control = CONTROL_CYCLE[control]; direction = CONTROL_CYCLE[direction]; }
+  await press(controlFor[OPPOSITE_DIRECTION[measuredDirection]], backOn, `the resident to step back to ${start.x},${start.y}`);
+  // The map is about to decide which way a crossing goes, so it is checked before it is used: a second
+  // control is measured and has to agree with the direction the first measurement gave it.
+  const probe = Object.keys(controlFor).find((item) => item !== measuredDirection);
+  const after = await press(controlFor[probe], stepped, `the “Move ${controlFor[probe]}” control to carry one confirmed step for the map check`);
+  expect(stepCardinal(start, after) === probe, 'the derived control map must hold for a second measured control', { expected: `“Move ${controlFor[probe]}” to move the resident ${probe}`, actual: `${stepCardinal(start, after)} to ${after.x},${after.y}` });
+  await press(controlFor[OPPOSITE_DIRECTION[probe]], backOn, `the resident to step back to ${start.x},${start.y}`);
+  return controlFor;
+}
+
+/**
+ * One frontier crossing, driven from the exact gate tile with a movement control and confirmed by the
+ * database. `src/spaces.js` crosses only when the resident stands on the gate tile itself *and* the
+ * neighbour is opened, so that tile is asserted first, and the arrival is asserted against the gate
+ * the entered sector answers with.
+ */
+async function browserCrossGate(page, agentId, controlFor, fromWorldId, gate, who) {
+  const arrival = waveBArrival(gate.targetWorldId, fromWorldId);
+  expect(arrival, `${gate.targetWorldId} must answer ${fromWorldId} with a gate of its own`, { expected: `a gate in ${gate.targetWorldId} that leads back to ${fromWorldId}`, actual: describe(frontierGates(gate.targetWorldId)) });
+  const standing = residentAt(agentId);
+  expect(standing.world_id === fromWorldId && standing.x === gate.x && standing.y === gate.y, `${who} must stand on the exact ${gate.direction} gate tile before crossing`, { expected: `${gate.x},${gate.y} in ${fromWorldId}`, actual: describe(standing) });
+  const crossed = await pressMoveUntil(page, agentId, controlFor[gate.direction], () => { const now = residentAt(agentId); return now.world_id === gate.targetWorldId ? now : null; }, `${who} to cross the ${gate.direction} gate into ${gate.targetWorldId}`);
+  expect(crossed.x === arrival.x && crossed.y === arrival.y, `${who} must arrive on the tile ${gate.targetWorldId} answers the crossing with`, { expected: `${arrival.x},${arrival.y} (its ${arrival.direction} gate)`, actual: describe(crossed) });
+  return crossed;
+}
+
+/** One documented movement step with a runtime credential, paced past the server's own 120 ms throttle. */
+async function runtimeStep(ticket, agentId, direction, { attempts = 4, paceMs = 140 } = {}) {
+  let last = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await sleep(paceMs);
+    const response = await api(ticket, 'POST', '/move', { agent_id: agentId, direction });
+    if (response.status === 200) return response.body;
+    last = `HTTP ${response.status} ${response.raw}`;
+    if (response.status !== 429) break;
+  }
+  throw new BrowserSuiteFailure(`the resident’s ${direction} step was refused`, { expected: 'HTTP 200 from POST /move', actual: last });
+}
+
+/** The shipped planner's own route out of the world it stands in, walked one documented step at a time. */
+async function runtimeWalk(ticket, agentId, worldId, target, who) {
+  const from = residentAt(agentId);
+  expect(from.world_id === worldId, `${who} must stand in ${worldId} before this walk`, { expected: worldId, actual: describe(from) });
+  const route = planWalk(getWorldDefinition(worldId), { x: from.x, y: from.y }, target, { objects: rows('SELECT type,x,y FROM world_objects WHERE world_id=?', worldId), maxSteps: 256, maxVisited: 16_384 });
+  expect(route, `${who} must have a walkable route from ${from.x},${from.y} to ${target.x},${target.y}`, { expected: `a planned route from ${from.x},${from.y} to ${target.x},${target.y}`, actual: `no route through ${worldId}` });
+  for (const direction of route) await runtimeStep(ticket, agentId, direction);
+  const arrived = residentAt(agentId);
+  expect(arrived.world_id === worldId && arrived.x === target.x && arrived.y === target.y, `${who} must finish the walk on the tile the planner aimed at`, { expected: `${target.x},${target.y} in ${worldId}`, actual: describe(arrived) });
+  return { steps: route.length, arrived };
+}
+
+/** One gate crossing by a runtime credential: the same server rule, driven over the documented route. */
+async function runtimeCrossGate(ticket, agentId, direction, fromWorldId, gate, who) {
+  const arrival = waveBArrival(gate.targetWorldId, fromWorldId);
+  expect(arrival, `${gate.targetWorldId} must answer ${fromWorldId} with a gate of its own`, { expected: `a gate in ${gate.targetWorldId} that leads back to ${fromWorldId}`, actual: describe(frontierGates(gate.targetWorldId)) });
+  const standing = residentAt(agentId);
+  expect(standing.world_id === fromWorldId && standing.x === gate.x && standing.y === gate.y, `${who} must stand on the exact ${direction} gate tile before crossing`, { expected: `${gate.x},${gate.y} in ${fromWorldId}`, actual: describe(standing) });
+  await runtimeStep(ticket, agentId, direction);
+  const crossed = residentAt(agentId);
+  expect(crossed.world_id === gate.targetWorldId, `${who} must cross the ${direction} gate into ${gate.targetWorldId}`, { expected: gate.targetWorldId, actual: describe(crossed) });
+  expect(crossed.x === arrival.x && crossed.y === arrival.y, `${who} must arrive on the tile ${gate.targetWorldId} answers the crossing with`, { expected: `${arrival.x},${arrival.y} (its ${arrival.direction} gate)`, actual: describe(crossed) });
+  return crossed;
+}
+
+define('wave-b-two-gates', async () => {
+  const host = await actor('wave-b-host'), guest = await actor('wave-b-guest');
+  // Two operators this scenario owns end to end: one human avatar each, plus the AI resident that
+  // carries the saved purpose. No other scenario reads any of the three.
+  const hostTicket = await ensureAccount(fixtures().admin, ACTORS['wave-b-host']);
+  const guestTicket = await ensureAccount(fixtures().admin, ACTORS['wave-b-guest']);
+  const resident = (ticket, body) => apiExpect(ticket, 'POST', '/agents', { color: '#397f79', symbol: '✦', capabilities: 'Walks the shared frontier in the browser acceptance run', limitations: 'No external tools and no real-world claims', ...body });
+  const crosserOne = await resident(hostTicket, { kind: 'human', name: 'Crosser one', symbol: '◆' });
+  const crosserTwo = await resident(guestTicket, { kind: 'human', name: 'Crosser two', symbol: '▲' });
+  const crosserAide = await resident(hostTicket, { kind: 'agent', name: 'Crosser aide' });
+  const firstGate = waveBGate(WAVE_B_FIRST, 'up'), secondGate = waveBGate(WAVE_B_SECOND, 'right');
+  const firstAnswer = waveBArrival(WAVE_B_SECOND, WAVE_B_FIRST), secondAnswer = waveBArrival(WAVE_B_THIRD, WAVE_B_SECOND);
+  let runtime = null, purpose = null, hostControls = null, guestControls = null;
+
+  await step('two new humans and one AI resident walk out of the Commons into the same frontier sector', async () => {
+    const created = rows('SELECT id,kind,world_id,x,y FROM agents WHERE id IN (?,?,?)', crosserOne.id, crosserTwo.id, crosserAide.id);
+    expect(created.length === 3 && created.every((item) => item.world_id === 'commons'), 'a newly created resident starts in the Commons', { expected: 'three residents in commons', actual: describe(created) });
+    // Both humans walk the Commons passage and travel through it, each in its own browser.
+    for (const [page, account, human] of [[host.page, ACTORS['wave-b-host'], crosserOne], [guest.page, ACTORS['wave-b-guest'], crosserTwo]]) {
+      await openApp(page, account);
+      await selectResidentAndSettle(page, human.id, human.name);
+      await enterFrontierAs(page, human.id);
+    }
+    // The AI resident walks the same passage with its own runtime credential, which it keeps for the
+    // rest of the scenario: that credential is what makes every later AI claim the AI's own action.
+    runtime = await apiExpect(hostTicket, 'POST', '/runtime/start', { agent_id: crosserAide.id, minutes: 20, max_calls: 500, scopes: ['read', 'move', 'chat'] });
+    await runtimeWalk(runtime, crosserAide.id, 'commons', COMMONS_FRONTIER_PASSAGE, 'the AI resident');
+    await travelTo(runtime, crosserAide.id, WAVE_B_FIRST);
+
+    for (const [who, human] of [['Crosser one', crosserOne], ['Crosser two', crosserTwo], ['Crosser aide', crosserAide]]) {
+      const stored = residentAt(human.id);
+      expect(stored.world_id === WAVE_B_FIRST, `${who} must stand in ${WAVE_B_FIRST}`, { expected: WAVE_B_FIRST, actual: describe(stored) });
+      expect(stored.x === 24 && stored.y === 24, `${who} must arrive on the sector's own start tile`, { expected: '24,24', actual: describe(stored) });
+      expect(stored.status === 'active', `${who} must still be an active resident`, { expected: 'active', actual: describe(stored.status) });
+    }
+    // The server wrote down who entered which world, so the arrival is the server's own record of a
+    // travel and not merely a position that happens to look right.
+    const entries = rows("SELECT actor,record_id FROM audit WHERE event='world.entered' ORDER BY seq");
+    expect(entries.filter((entry) => entry.actor === hostTicket.account.id && entry.record_id === WAVE_B_FIRST).length >= 2, 'the host operator must have both its human entry and its AI entry in the audit trail', { expected: `two ${WAVE_B_FIRST} entries for ${hostTicket.account.id}`, actual: describe(entries) });
+    expect(entries.some((entry) => entry.actor === guestTicket.account.id && entry.record_id === WAVE_B_FIRST), 'the guest operator must have its own entry in the audit trail', { expected: `${WAVE_B_FIRST} for ${guestTicket.account.id}`, actual: describe(entries) });
+    // Both browsers hold a freshly read server payload for that one sector, with the party in it.
+    for (const [page, human] of [[host.page, crosserOne], [guest.page, crosserTwo]]) {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await settle(page);
+      await openWorldAs(page, human.id);
+    }
+    for (const page of [host.page, guest.page]) await waitForClient(page, (world) => {
+      const view = window.__nemoworld?.world?.();
+      if (view?.world?.id !== world) return null;
+      const kinds = view.participants.map((item) => item.kind);
+      return kinds.filter((kind) => kind === 'human').length === 2 && kinds.includes('agent') ? true : null;
+    }, WAVE_B_FIRST, 'both browsers to show two humans and one AI resident in the same frontier sector', 15_000);
+    state.notes.push(`wave B entry: ${crosserOne.name} and ${crosserTwo.name} (two operators) and the AI resident ${crosserAide.name} walked the Commons passage at ${COMMONS_FRONTIER_PASSAGE.x},${COMMONS_FRONTIER_PASSAGE.y} into ${WAVE_B_FIRST}, arriving on 24,24 with one audit entry per operator`);
+    return `three residents in ${WAVE_B_FIRST} at 24,24 (two human entries and one AI entry in the audit trail), visible from both browsers`;
+  });
+
+  await step('the operator records the AI resident’s chosen purpose and the resident reads it back', async () => {
+    await selectResidentAndSettle(host.page, crosserAide.id, crosserAide.name);
+    await openSectionNamed(host.page, 'Callings & guilds');
+    const recorder = host.page.locator('#view form').filter({ has: host.page.getByRole('button', { name: 'Record a memory fact from your own input', exact: true }) });
+    await recorder.locator('[name="kind"]').selectOption('purpose');
+    await recorder.locator('[name="attribute"]').selectOption('intent');
+    await recorder.locator('[name="value"]').fill(WAVE_B_PURPOSE);
+    await recorder.getByRole('button', { name: 'Record a memory fact from your own input', exact: true }).click();
+    const stored = await waitForCondition(async () => row("SELECT * FROM resident_memory WHERE agent_id=? AND kind='purpose' AND state='active'", crosserAide.id), 'the recorded purpose to be stored');
+    expect(stored.value === WAVE_B_PURPOSE && stored.attribute === 'intent' && stored.origin === 'operator' && stored.source_kind === 'human' && stored.decided_by === hostTicket.account.id, 'the stored purpose must be this operator’s own recorded fact about its own resident', { expected: `${WAVE_B_PURPOSE} · purpose/intent · operator · human`, actual: describe({ value: stored.value, attribute: stored.attribute, origin: stored.origin, source: stored.source_kind, decided_by: stored.decided_by }) });
+    purpose = stored;
+    const own = await apiRequest('/memory', { token: runtime.token });
+    expect(own.status === 200 && own.body.facts.some((fact) => fact.value === WAVE_B_PURPOSE), 'the AI resident must read its own approved purpose through its runtime credential', { expected: 'the recorded purpose in the resident’s own memory read', actual: `HTTP ${own.status} ${describe(own.body?.facts?.map((fact) => fact.value))}` });
+    // Back to the human that crosses the gates; this control ends on the world view by itself.
+    await selectResidentAndSettle(host.page, crosserOne.id, crosserOne.name);
+    return `resident_memory ${stored.id} recorded by ${hostTicket.account.id} as purpose/intent, read back by the resident itself`;
+  });
+
+  await step('the host walks to the north gate and crosses it into the second sector', async () => {
+    hostControls = await learnMovementControls(host.page, crosserOne.id);
+    const walked = await walkResidentTo(host.page, crosserOne.id, firstGate.x, firstGate.y);
+    expect(walked.world_id === WAVE_B_FIRST, 'the walk to the gate must stay in the sector it started in', { expected: WAVE_B_FIRST, actual: describe(walked) });
+    const crossed = await browserCrossGate(host.page, crosserOne.id, hostControls, WAVE_B_FIRST, firstGate, 'Crosser one');
+    await browserShows(host.page, WAVE_B_SECOND);
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered' AND record_id=? AND actor=?", WAVE_B_SECOND, hostTicket.account.id) === 1, 'the crossing must be the server’s own recorded entry of the new sector, exactly once', { actual: describe(rows("SELECT record_id FROM audit WHERE actor=? AND event='world.entered'", hostTicket.account.id)) });
+    state.notes.push(`wave B gate 1 (browser): Crosser one walked to the up gate ${firstGate.x},${firstGate.y} in ${WAVE_B_FIRST} and crossed into ${WAVE_B_SECOND}, arriving on ${crossed.x},${crossed.y} — the tile that sector answers the crossing with`);
+    return `${WAVE_B_FIRST} ${firstGate.x},${firstGate.y} → ${WAVE_B_SECOND} ${crossed.x},${crossed.y}; one world.entered audit row`;
+  });
+
+  await step('the guest crosses the same gate from the same tile', async () => {
+    guestControls = await learnMovementControls(guest.page, crosserTwo.id);
+    const walked = await walkResidentTo(guest.page, crosserTwo.id, firstGate.x, firstGate.y);
+    expect(walked.world_id === WAVE_B_FIRST, 'the guest’s walk to the gate must stay in the sector it started in', { expected: WAVE_B_FIRST, actual: describe(walked) });
+    const crossed = await browserCrossGate(guest.page, crosserTwo.id, guestControls, WAVE_B_FIRST, firstGate, 'Crosser two');
+    await browserShows(guest.page, WAVE_B_SECOND);
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered' AND record_id=? AND actor=?", WAVE_B_SECOND, guestTicket.account.id) === 1, 'the guest’s crossing must be its own recorded entry of the new sector', { actual: describe(rows("SELECT record_id FROM audit WHERE actor=? AND event='world.entered'", guestTicket.account.id)) });
+    return `${WAVE_B_FIRST} ${firstGate.x},${firstGate.y} → ${WAVE_B_SECOND} ${crossed.x},${crossed.y}, recorded against the second operator`;
+  });
+
+  await step('the AI resident crosses the same pair of gates with its runtime credential, both ways', async () => {
+    await runtimeWalk(runtime, crosserAide.id, WAVE_B_FIRST, { x: firstGate.x, y: firstGate.y }, 'the AI resident');
+    const forward = await runtimeCrossGate(runtime, crosserAide.id, 'up', WAVE_B_FIRST, firstGate, 'the AI resident');
+    const back = await runtimeCrossGate(runtime, crosserAide.id, 'down', WAVE_B_SECOND, firstAnswer, 'the AI resident');
+    expect(back.world_id === WAVE_B_FIRST && back.x === firstGate.x && back.y === firstGate.y, 'the two gates must be one connected passage: crossing back lands on the exact tile the resident left', { expected: `${firstGate.x},${firstGate.y} in ${WAVE_B_FIRST}`, actual: describe(back) });
+    const again = await runtimeCrossGate(runtime, crosserAide.id, 'up', WAVE_B_FIRST, firstGate, 'the AI resident');
+    expect(again.x === forward.x && again.y === forward.y, 'a repeated crossing must store the same arrival tile, so the landing is the server’s rule and not an accident', { expected: `${forward.x},${forward.y}`, actual: `${again.x},${again.y}` });
+    const spent = scalar("SELECT MAX(used_calls) FROM tokens WHERE account_id=? AND agent_id=? AND kind='runtime'", hostTicket.account.id, crosserAide.id);
+    expect(spent >= 30, 'the AI resident’s steps must be charged to its own runtime credential, not to a human session', { expected: 'at least 30 charged calls', actual: describe(spent) });
+    state.notes.push(`wave B gate 1 (runtime): the AI resident crossed ${WAVE_B_FIRST} → ${WAVE_B_SECOND} (arriving ${forward.x},${forward.y}), back to ${WAVE_B_FIRST} ${back.x},${back.y}, and forward again to ${WAVE_B_SECOND} ${again.x},${again.y} — the same landing every time, on ${spent} charged runtime calls`);
+    return `the AI resident crossed the connected pair three times through its own credential (${forward.x},${forward.y} · back to ${back.x},${back.y} · again to ${again.x},${again.y})`;
+  });
+
+  await step('the host crosses the second gate into the third sector', async () => {
+    const walked = await walkResidentTo(host.page, crosserOne.id, secondGate.x, secondGate.y);
+    expect(walked.world_id === WAVE_B_SECOND, 'the walk to the second gate must happen in the sector the first crossing reached', { expected: WAVE_B_SECOND, actual: describe(walked) });
+    const crossed = await browserCrossGate(host.page, crosserOne.id, hostControls, WAVE_B_SECOND, secondGate, 'Crosser one');
+    await browserShows(host.page, WAVE_B_THIRD);
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered' AND record_id=? AND actor=?", WAVE_B_THIRD, hostTicket.account.id) === 1, 'the second crossing must be its own recorded entry of the third sector', { actual: describe(rows("SELECT record_id FROM audit WHERE actor=? AND event='world.entered'", hostTicket.account.id)) });
+    state.notes.push(`wave B gate 2 (browser): Crosser one walked to the right gate ${secondGate.x},${secondGate.y} in ${WAVE_B_SECOND} and crossed into ${WAVE_B_THIRD}, arriving on ${crossed.x},${crossed.y}`);
+    return `${WAVE_B_SECOND} ${secondGate.x},${secondGate.y} → ${WAVE_B_THIRD} ${crossed.x},${crossed.y} after a ${walked.x},${walked.y} walk across the sector`;
+  });
+
+  await step('the guest crosses the second gate as well', async () => {
+    const walked = await walkResidentTo(guest.page, crosserTwo.id, secondGate.x, secondGate.y);
+    expect(walked.world_id === WAVE_B_SECOND, 'the guest’s walk to the second gate must happen in the second sector', { expected: WAVE_B_SECOND, actual: describe(walked) });
+    const crossed = await browserCrossGate(guest.page, crosserTwo.id, guestControls, WAVE_B_SECOND, secondGate, 'Crosser two');
+    await browserShows(guest.page, WAVE_B_THIRD);
+    return `${WAVE_B_SECOND} ${secondGate.x},${secondGate.y} → ${WAVE_B_THIRD} ${crossed.x},${crossed.y}: both humans reached the third sector on foot`;
+  });
+
+  await step('the AI resident crosses the second gate with the same credential', async () => {
+    await runtimeWalk(runtime, crosserAide.id, WAVE_B_SECOND, { x: secondGate.x, y: secondGate.y }, 'the AI resident');
+    const crossed = await runtimeCrossGate(runtime, crosserAide.id, 'right', WAVE_B_SECOND, secondGate, 'the AI resident');
+    return `the AI resident crossed ${WAVE_B_SECOND} → ${WAVE_B_THIRD} and stands on ${crossed.x},${crossed.y}, the tile that sector answers the crossing with`;
+  });
+
+  await step('the crossing partners talk in the sector they crossed into, and a third party cannot read it', async () => {
+    // The guest's own browser sends the first line through the conversation card of the world its
+    // resident now stands in, so the stored world is the sector the crossing reached.
+    const form = guest.page.locator('#world-chat-card form');
+    await form.locator('[name="channel"]').selectOption('private');
+    await form.locator('[name="recipient_id"]').selectOption(crosserOne.id);
+    await form.locator('[name="text"]').fill(WAVE_B_HUMAN_LINE);
+    await form.getByRole('button', { name: 'Send message', exact: true }).click();
+    const humanRow = await waitForCondition(async () => row('SELECT * FROM messages WHERE text=?', WAVE_B_HUMAN_LINE), 'the guest’s saved line');
+    expect(humanRow.agent_id === crosserTwo.id && humanRow.account_id === guestTicket.account.id, 'the saved line must be attributed to the resident and the operator that wrote it', { expected: `agent ${crosserTwo.id} of ${guestTicket.account.id}`, actual: describe({ agent: humanRow.agent_id, account: humanRow.account_id }) });
+    expect(humanRow.channel === 'private' && humanRow.world_id === WAVE_B_THIRD && humanRow.status === 'visible', 'the saved line must belong to the sector the party crossed into', { expected: `private in ${WAVE_B_THIRD}`, actual: describe({ channel: humanRow.channel, world: humanRow.world_id, status: humanRow.status }) });
+    expect(JSON.stringify(JSON.parse(humanRow.recipients).sort()) === JSON.stringify([crosserOne.id, crosserTwo.id].sort()), 'the private line must name exactly its two crossing partners as recipients', { expected: describe([crosserOne.id, crosserTwo.id].sort()), actual: describe(humanRow.recipients) });
+    // The AI resident answers through the credential it crossed with, so its line is its own.
+    await apiExpect(runtime, 'POST', '/messages', { agent_id: crosserAide.id, channel: 'private', recipient_id: crosserOne.id, text: WAVE_B_AI_LINE }, [200]);
+    const aiRow = await waitForCondition(async () => row('SELECT * FROM messages WHERE text=?', WAVE_B_AI_LINE), 'the AI resident’s saved line');
+    expect(aiRow.agent_id === crosserAide.id && aiRow.account_id === hostTicket.account.id && aiRow.world_id === WAVE_B_THIRD && aiRow.channel === 'private', 'the AI line must be attributed to the AI resident in the sector it crossed into', { expected: `agent ${crosserAide.id} in ${WAVE_B_THIRD}`, actual: describe({ agent: aiRow.agent_id, account: aiRow.account_id, world: aiRow.world_id, channel: aiRow.channel }) });
+    // The recipient reads both lines from its own browser and the server's own payload.
+    await host.page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(host.page);
+    await openWorldAs(host.page, crosserOne.id);
+    await waitForClient(host.page, (lines) => {
+      const held = (window.__nemoworld?.world?.()?.messages || []).map((message) => message.text);
+      return lines.every((line) => held.includes(line)) ? true : null;
+    }, [WAVE_B_HUMAN_LINE, WAVE_B_AI_LINE], 'the recipient’s own browser to read both saved lines', 20_000);
+    // A third operator that was never addressed reads the same sector and sees neither line.
+    const outsider = await apiRequest(`/world?world_id=${encodeURIComponent(WAVE_B_THIRD)}`, { token: fixtures().stranger.token });
+    expect(outsider.status === 200, 'a third operator must still be able to read the public sector', { expected: 'HTTP 200', actual: `HTTP ${outsider.status} ${outsider.raw}` });
+    const seen = (outsider.body.messages || []).map((message) => message.text);
+    expect(!seen.includes(WAVE_B_HUMAN_LINE) && !seen.includes(WAVE_B_AI_LINE), 'a third operator must read neither line of the private thread in that sector', { expected: 'neither saved line', actual: describe(seen) });
+    const dbThread = rows('SELECT agent_id,account_id,channel,world_id FROM messages WHERE world_id=? ORDER BY created_at', WAVE_B_THIRD);
+    expect(dbThread.length === 2 && dbThread.every((item) => item.channel === 'private' && item.world_id === WAVE_B_THIRD), 'both saved lines must be stored private in that sector', { actual: describe(dbThread) });
+    state.notes.push(`wave B conversation: two private messages stored in ${WAVE_B_THIRD} (one from the human guest, one from the AI resident), read by the addressed operator and withheld from ${ACTORS.stranger.email} reading the same sector`);
+    return `messages ${humanRow.id} (${crosserTwo.name}) and ${aiRow.id} (${crosserAide.name}) saved private in ${WAVE_B_THIRD}, readable by the recipient and withheld from a third operator`;
+  });
+
+  await step('the party leaves and returns: a real restart keeps the same sector and the same purpose', async () => {
+    const place = () => Object.fromEntries([crosserOne, crosserTwo, crosserAide].map((human) => [human.id, residentAt(human.id)]));
+    const before = place();
+    const purposeBefore = row('SELECT * FROM resident_memory WHERE id=?', purpose.id);
+    await stopServer();
+    await startServer();
+    expect(describe(place()) === describe(before), 'a restart against the same database must not move any of the three residents', { expected: describe(before), actual: describe(place()) });
+    for (const [who, human] of [['Crosser one', crosserOne], ['Crosser two', crosserTwo], ['Crosser aide', crosserAide]]) {
+      const stored = residentAt(human.id);
+      expect(stored.world_id === WAVE_B_THIRD, `${who} must still stand in the sector it crossed into`, { expected: WAVE_B_THIRD, actual: describe(stored) });
+      expect(stored.x === secondAnswer.x && stored.y === secondAnswer.y, `${who} must still stand on the tile the crossing left it on`, { expected: `${secondAnswer.x},${secondAnswer.y}`, actual: `${stored.x},${stored.y}` });
+    }
+    const purposeAfter = row('SELECT * FROM resident_memory WHERE id=?', purpose.id);
+    expect(describe(purposeAfter) === describe(purposeBefore), 'the purpose-bearing record the resident crossed for must be unchanged by the restart', { expected: describe(purposeBefore), actual: describe(purposeAfter) });
+    const own = await apiRequest('/memory', { token: runtime.token });
+    expect(own.status === 200 && own.body.facts.some((fact) => fact.value === WAVE_B_PURPOSE), 'the AI resident must still read its own purpose through the same credential after the restart', { expected: WAVE_B_PURPOSE, actual: `HTTP ${own.status} ${describe(own.body?.error || own.body?.facts?.map((fact) => fact.value))}` });
+    for (const [page, account, human] of [[host.page, ACTORS['wave-b-host'], crosserOne], [guest.page, ACTORS['wave-b-guest'], crosserTwo]]) {
+      await openApp(page, account);
+      await openWorldAs(page, human.id);
+      await browserShows(page, WAVE_B_THIRD);
+    }
+    const kept = rows('SELECT agent_id,text FROM messages WHERE world_id=? ORDER BY created_at', WAVE_B_THIRD);
+    expect(kept.length === 2, 'the sector’s saved conversation must still be there after the restart', { expected: 'both saved lines', actual: describe(kept) });
+    state.notes.push(`wave B restart: ${WAVE_B_THIRD} ${secondAnswer.x},${secondAnswer.y} held by all three residents, resident_memory ${purpose.id} byte-for-byte unchanged, both saved lines still addressable, both browsers back in the same sector`);
+    return `after a real restart: three residents still on ${secondAnswer.x},${secondAnswer.y} in ${WAVE_B_THIRD}, the purpose fact and both saved lines unchanged, both browsers showing that sector`;
+  });
+
+  return `two independent humans and one active AI resident entered ${WAVE_B_FIRST} through the Commons, crossed the connected ${firstGate.direction} and ${secondGate.direction} gates into ${WAVE_B_SECOND} and ${WAVE_B_THIRD} with every crossing read back from the stored world and arrival tile, talked in saved attributed text, and returned after a restart to the same sector and the same recorded purpose`;
 });
 
 define('hero-introduction-film',async()=>{
