@@ -38,3 +38,9 @@ This is a tile-based local prototype, not an MMO or seamless rendering of all re
 - Sealed-content check: 136 definitions, three support files, 42 notices/assets.
 - Six pinned Luanti 5.17 probes passed: onboarding, controls, navigation (including injected 429), world/build/restart, missions and conversations.
 - Actual desktop mouse/keyboard placement is not established by these synthetic-player probes; installation and a GUI check follow.
+
+## Local installation
+
+Installed source was verified against its previous 1,475-file manifest before changing twelve source files. The updated manifest verifies 1,480 tracked files. Native cache was backed up to `outputs/native-cache-before-spaces-20261016.tar.gz`; authoritative data, engine account and encrypted remembered connection were preserved. Only this task's identified native launcher was restarted. Web health and native bridge health both pass; the engine listens on local UDP 39333.
+
+The desktop was at Luanti's normal engine login after restart. A GUI login attempt was interrupted by a window change, so live mouse placement/travel is **not verified**. The six real-engine callback probes are the established acceptance evidence; do not report them as a completed desktop mouse walkthrough. Existing engine credentials were not read or changed.
