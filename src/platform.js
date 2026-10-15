@@ -11,6 +11,7 @@ import { openDatabase } from './database.js';
 import { start } from '../world.js';
 import { mapDistance, mapEnabled, nearbyWorlds } from './global-map.js';
 import { spaceMethods } from './spaces.js';
+import { viewportMethods } from './map-viewport.js';
 import { communityMethods } from './community.js';
 import { vocationMethods } from './vocations.js';
 import { firstPlayMethods } from './firstplay.js';
@@ -1342,7 +1343,7 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, questMethods, guildMethods, firstPlayMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, questMethods, guildMethods, firstPlayMethods, viewportMethods);
 
 Object.assign(Platform.prototype,draftMethods);
 
