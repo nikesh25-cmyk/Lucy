@@ -625,6 +625,7 @@ async function climbPreview() {
 }
 async function travelAgent(id) {
  const resident=selected(),epoch=state.sessionEpoch||0;if(!resident)return false;
+ const navigationTicket=sectionTicket,sectionAtStart=activeSection();
  movementQueue.reset('world-travel');walkVersion++;motionRevision++;
  const stillCurrent=()=>selected()?.id===resident.id&&(state.sessionEpoch||0)===epoch;
  const result=await motionRequest(`/agents/${resident.id}/travel`,{world_id:id});
@@ -632,7 +633,10 @@ async function travelAgent(id) {
  Object.assign(resident,result.agent||result);
  state.viewWorld='';state.focus=null;state.building=false;state.interaction=null;state.interactionRefusal=null;setGameMode('play');
  await refresh();if(!stillCurrent()||selected().world_id!==id)return false;
- setTab('world');render();
+ // A destination can be saved before its refresh finishes. If the operator opened another section
+ // during that wait, keep it visible while the confirmed arrival updates the world underneath.
+ if(sectionTicket===navigationTicket&&activeSection()===sectionAtStart)setTab('world');
+ render();
  // The arrival names the way back, so a journey is reversible in one action without opening a menu.
  const back=travelRoutes(worldPortals(),worldPosition(),{limit:1,home:`home:${state.selected}`})[0];
  const arrived=`Arrived in ${definition().name}.`;notice(back?`${arrived} ${back.label} at ${back.x}, ${back.y} leads back.`:arrived);

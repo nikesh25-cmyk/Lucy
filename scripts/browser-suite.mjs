@@ -40,6 +40,9 @@ const READY_TIMEOUT_MS = 180_000;
 const STEP_TIMEOUT_MS = 120_000;
 const SCENARIO_TIMEOUT_MS = 300_000;
 const PAGE_TIMEOUT_MS = 25_000;
+// These operators deliberately keep browser-local state between scenarios. Every other key owns
+// a single scenario; unload its finished scene instead of retaining dozens of WebGL worlds.
+const REUSABLE_ACTORS=new Set(['admin','owner','stranger','reviewer','contributor']);
 
 class BrowserSuiteFailure extends Error {
   constructor(message, evidence = {}) {
@@ -385,6 +388,7 @@ async function context(key) {
       await record.context.tracing.start({screenshots:true,snapshots:true,sources:false});
       state.scenarioContexts.add(key);
     }
+    if(record.parkedUrl){const url=record.parkedUrl;record.parkedUrl=null;await record.page.goto(url,{waitUntil:'domcontentloaded'});await settle(record.page);}
     return record;
   }
   const browserContext = await state.browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -649,15 +653,15 @@ async function runScenario(definition) {
     for (const line of pageLog.slice(0, 6)) console.log(`        page      ${line}`);
     return false;
   } finally {
-    // Keep each operator's real cookies, DOM and browser-local choices, while letting completed
-    // scenarios rest like inactive tabs. Otherwise every old 3D scene continues painting in the
-    // headless browser and later two-client cases compete with dozens of unrelated scenes.
+    // Keep reusable operators' exact DOM and browser-local choices; unload one-off scenes, keeping
+    // their browsing context/storage available if reused. Freezing alone retains their WebGL memory.
     // The clients participating in one scenario stay active together for its entire duration.
     for(const key of state.scenarioContexts){
       const record=state.contexts.get(key);
       if(record&&!record.page.isClosed()){
         if(failed){await record.context.close();state.contexts.delete(key);}
-        else{await record.lifecycle.send('Page.setWebLifecycleState',{state:'frozen'});record.frozen=true;}
+        else if(REUSABLE_ACTORS.has(key)){await record.lifecycle.send('Page.setWebLifecycleState',{state:'frozen'});record.frozen=true;}
+        else{record.parkedUrl=record.page.url();await record.page.goto('about:blank',{waitUntil:'load'});}
       }
     }
     state.scenario = null;
@@ -2688,9 +2692,9 @@ const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.l
 async function openWorldAs(page, agentId) {
   await openTab(page, 'Open world');
   const select = page.locator('#view select[name="agent"]');
-  if(await select.count() && await select.inputValue()!==agentId){await select.selectOption(agentId);await settle(page);}
-  await page.waitForFunction(id=>window.__nemoworld?.selected?.()===id&&Boolean(document.querySelector('#view .world-layout #world')),agentId,{timeout:PAGE_TIMEOUT_MS});
-  await settle(page);
+  // Re-selecting also returns an operator from Look around to its resident. Preserve the trailing
+  // world refresh before the next helper reads local permissions or the nearby guest directory.
+  if(await select.count()){await select.selectOption(agentId);await settle(page);await page.waitForTimeout(500);}
 }
 
 /**
@@ -7675,7 +7679,7 @@ define('restoration-two-clients', async () => {
   await step('the garden is opened to visitors and the owner opens one restoration through the interface', async () => {
     await apiPatch(fixtures().owner, `/agents/${gardener.id}/home`, { visibility: 'public' });
     await openApp(owner.page, ACTORS.owner);
-    await selectResident(owner.page, gardener.id, gardener.name);
+    await selectResidentAndSettle(owner.page, gardener.id, gardener.name);
     await openTab(owner.page, 'Open world');
     await owner.page.locator('#view').getByRole('button', { name: 'Go home', exact: true }).first().click();
     await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', gardener.id).world_id === garden ? garden : null, 'the owner’s resident to travel into the garden it will restore');
