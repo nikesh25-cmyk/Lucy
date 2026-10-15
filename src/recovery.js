@@ -1,4 +1,5 @@
 import {verifyCoinLedger} from './coins.js';
+import { verifyKarmaLedger } from './karma.js';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync, chmodSync, existsSync, readFileSync, readdirSync, statSync, writeFileSync, unlinkSync, copyFileSync, renameSync, lstatSync, constants } from 'node:fs';
@@ -156,7 +157,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -340,6 +341,18 @@ export function validateDatabase(path) {
       // Structure only: a backup never needs, and recovery never holds, the key that opens a note.
       if (!verifyVaultRecords(db)) throw new Error('Database resident vault validation failed.');
     }
+    if (version >= 26) {
+      // Karma Coins are a second currency and the shop is their only sink. Every stored receipt names
+      // a saved source row the server itself wrote, one receipt per source, inside its per-service and
+      // per-operator daily bounds, and every purchase leaves a non-negative balance. `verifyKarmaLedger`
+      // re-checks both chains and every receipt against the row it cites, so a backup carrying a
+      // forged credit fails closed here rather than being discovered in a wallet.
+      const columns={karma_receipts:['seq','id','agent_id','account_id','service_id','tier','source_kind','source_id','source_at','amount','per_day','requires_other_operator','award_day','policy_version','created_at','previous_hash','hash'],karma_purchases:['seq','id','account_id','agent_id','good_id','amount','balance_after','policy_version','idempotency_key','fingerprint','created_at','previous_hash','hash'],shop_purchases:['id','account_id','agent_id','good_id','category','price','granted','world_id','karma_receipt_id','balance_after','key','day','created_at']};
+      for(const [table,fields] of Object.entries(columns))if(!tables.has(table)||fields.some((column)=>!db.prepare(`PRAGMA table_info(${table})`).all().some((field)=>field.name===column)))throw new Error('Database karma ledger schema is incomplete.');
+      if(!db.prepare("SELECT name FROM sqlite_schema WHERE type='view' AND name='karma_service_rules'").get()||!db.prepare("SELECT name FROM sqlite_schema WHERE type='view' AND name='karma_source_events'").get())throw new Error('Database karma service rules are missing.');
+      if(['karma_receipts_no_update','karma_receipts_no_delete','karma_receipts_validate_insert','karma_purchases_no_update','karma_purchases_no_delete','karma_purchases_validate_insert','shop_purchases_no_update'].some((name)=>!db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name)))throw new Error('Database karma ledger protections are incomplete.');
+      if(!verifyKarmaLedger(db)) throw new Error('Database karma ledger validation failed.');
+    }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';
     for (const entry of db.prepare('SELECT * FROM audit ORDER BY seq').all()) {
@@ -457,8 +470,8 @@ export function restoreDatabase(source, destination, { lockPath = resolve(dirnam
 // The recovery point and the interruption limits an operator must know. These are the same values
 // the runbook (docs/OPERATIONS.md) states and the failure drills (scripts/ops-rehearsal.mjs) prove.
 export const RECOVERY_LIMITS = Object.freeze({
-  schema_version: 25,
-  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+  schema_version: 26,
+  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
   // A private resident memory record lives entirely in the database, so a process restart keeps it.
   // It holds no credential and it is read within the runtime's existing observation byte budget.
   resident_memory: Object.freeze({ bounded_facts_per_resident: 24, bounded_value_characters: 160, prompt_facts: 10, prompt_bytes: 4096, approval: 'operator-approval', source: 'a verified calling receipt, a finished run that recorded a refusal, an independent review decision, or the operator’s own explicit input' }),

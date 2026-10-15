@@ -28,7 +28,7 @@ test('encrypted export restores a validated world and rejects a wrong key or cha
   const bytes = readFileSync(sealed);
   assert.equal(bytes.subarray(0, 8).toString(), 'NEMOBK01');
   assert.equal(bytes.includes(Buffer.from('SQLite format 3')), false);
-  assert.equal(run('verify-encrypted', sealed, key).schema_version, 25);
+  assert.equal(run('verify-encrypted', sealed, key).schema_version, 26);
   assert.equal(readdirSync(directory).some((item) => item.includes('encrypted-stage')), false);
   run('keygen', wrong);
   const wrongTarget = join(directory, 'wrong-target.sqlite');
@@ -47,8 +47,8 @@ test('encrypted export restores a validated world and rejects a wrong key or cha
   assert.equal(refused('verify-encrypted', changed, key).status, 1);
   const target = join(directory, 'restored.sqlite');
   const restored = run('restore-encrypted', sealed, target, key);
-  assert.equal(restored.schema_version, 25);
-  assert.equal(validateDatabase(target).schema_version, 25);
+  assert.equal(restored.schema_version, 26);
+  assert.equal(validateDatabase(target).schema_version, 26);
   const reopened = new Platform(target);
   try { assert.equal(reopened.get("SELECT COUNT(*) AS n FROM audit WHERE event='saved.before.backup'").n, 1); }
   finally { reopened.close(); }

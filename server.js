@@ -105,7 +105,7 @@ for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'bl
 }
 // The interface components of the game shell. Each one is a browser module app.js imports, so the
 // hand-maintained table has to serve it; tests/content-http.test.js walks that graph from /app.js.
-for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls', 'first-play-guide']) {
+for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls', 'first-play-guide', 'shop-panel']) {
   files.set(`/src/ui/${component}.js`, [`src/ui/${component}.js`, 'text/javascript; charset=utf-8']);
 }
 files.set('/game-mobile.css', ['game-mobile.css', 'text/css; charset=utf-8']);
@@ -175,8 +175,12 @@ const writes = new Map([
   // The versioned evidence library. A curator capture extends an already-registered host; a reviewer
   // records that a source is withdrawn. Both fail closed on an unapproved host, a bad hash or a quota.
   ['/evidence/capture', ['evidenceCapture', null]], ['/evidence/withdraw', ['evidenceWithdraw', null]],
+  // Karma Coins and the shop. Settling is the one way a resident's saved service becomes currency,
+  // and it is a signed-in human operator action (the `null` scope is what makes the runtime refusal
+  // fire). A purchase spends and grants inside the one request transaction.
+  ['/karma/settle', ['karmaSettle', null]], ['/shop/purchase', ['shopPurchase', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -585,6 +589,10 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/worlds') value = platform.worldList(actor, Object.fromEntries(url.searchParams));
           else if (route === '/community') value = platform.community(actor, Object.fromEntries(url.searchParams));
           else if(route==='/coins')value=platform.coins(actor,Object.fromEntries(url.searchParams));
+          // Karma Coins and the shop are their own reads: the wallet is a private projection of the
+          // signed-in operator's purse, and the shop is the frozen catalogue with today's allowances.
+          else if (route === '/karma') value = platform.karmaWallet(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/shop') value = platform.shopCatalogue(actor, Object.fromEntries(url.searchParams));
           else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
           else if (route === '/journey/offers') value = platform.resourceOffers(actor, Object.fromEntries(url.searchParams));
           else if (route === '/trade/listings') value = platform.tradeBoard(actor, Object.fromEntries(url.searchParams));
@@ -739,7 +747,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         else if (route === '/operations/pause') {
           if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
           value = platform.pause(actor, input.paused);
-        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept', '/trade/listings', '/trade/claim'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept', '/trade/listings', '/trade/claim', '/shop/purchase'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
         else value = platform[method](actor, input);
         platform.charge(actor);
         return value;

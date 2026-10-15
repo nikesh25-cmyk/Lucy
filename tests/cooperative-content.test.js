@@ -270,7 +270,7 @@ for(const firstOutcome of ['rejected','released','expired'])test(`commons-trail 
  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n,1);
  if(firstOutcome==='rejected'){
   f.platform.close();
-  assert.equal(validateDatabase(f.database).schema_version,25);
+  assert.equal(validateDatabase(f.database).schema_version,26);
   const restarted=new Platform(f.database,f.clock);
   t.after(()=>restarted.close());
   const saved=restarted.quests(restarted.authenticate(f.credentials.alice.token),{agent_id:agent.id});
@@ -362,11 +362,11 @@ test('the new cooperative content survives backup, restore and validation',async
  assert.equal(verifyGuildRecords(f.platform.db),true);
  const backup=join(f.directory,'cooperative-content-backup.sqlite');
  backupDatabase(f.platform.db,backup);
- assert.equal(validateDatabase(backup).schema_version,25);
+ assert.equal(validateDatabase(backup).schema_version,26);
  f.platform.close();
  const restored=new Platform(f.database,f.clock);t.after(()=>restored.close());
  assert.equal(restored.quests(restored.authenticate(f.credentials.alice.token),{agent_id:agent.id}).progress.find(p=>p.chain_slug==='shared-frontier-path').complete,true);
  const restoredProject=restored.guildProject(restored.authenticate(f.credentials.alice.token),{id:project.id});
  assert.equal(restoredProject.contributions.find(c=>c.workstream_id==='trace-route').status,'verified');
- assert.equal(validateDatabase(f.database).schema_version,25);
+ assert.equal(validateDatabase(f.database).schema_version,26);
 });
