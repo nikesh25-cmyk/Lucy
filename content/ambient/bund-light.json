@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "id": "bund-light",
+  "kind": "ambient",
+  "label": "Bund light",
+  "since": "1.1.0",
+  "order": 5,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#a8bd93",
+    "geometry": "ambient-layer",
+    "transparent": true,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "ambient",
+    "place": "mosaic-field-venue",
+    "profile": "light",
+    "time_of_day": {
+      "unit": "tick",
+      "start": 20,
+      "end": 280
+    },
+    "layers": [
+      {
+        "key": "ground",
+        "color": "#a8bd93",
+        "opacity": 1,
+        "motion": "none"
+      },
+      {
+        "key": "haze",
+        "color": "#d3dfc2",
+        "opacity": 0.7,
+        "motion": "none"
+      }
+    ],
+    "motion": "none",
+    "reduced_motion": "not-needed",
+    "provenance": {
+      "derived_from": "the groundColor and ambiance text of the world definition the place names",
+      "reuse": "authored colour and time data only; no sampled audio, no texture and no third-party clip"
+    }
+  },
+  "notes": [
+    "A flat field light with no moving layer, so it needs no reduced-motion equivalent."
+  ]
+}

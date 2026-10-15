@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "id": "field-guide",
+  "kind": "resident",
+  "label": "Field guide",
+  "since": "1.1.0",
+  "order": 5,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "resident-role",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "residents",
+    "place": "mosaic-field-venue",
+    "role": "field guide",
+    "appearance": "mayor-7",
+    "schedule": {
+      "unit": "tick",
+      "slots": [
+        12,
+        52,
+        92
+      ],
+      "ordering": "authored"
+    },
+    "dialogue_topics": [
+      "which bund is which",
+      "where the pond margin runs",
+      "when the field is quiet"
+    ],
+    "remit": "Answers only from this fictional place and the sealed definitions it names. Holds no office, signs nothing, and speaks for no country, people or institution.",
+    "independence": {
+      "fictional": true,
+      "claims_endorsement": false,
+      "government_role": false,
+      "un_role": false,
+      "statement": "A fictional NemoWorld space. It is not a government, ministry, embassy or United Nations office, it does not represent any country or people, and nothing here asserts endorsement, representation or official status."
+    }
+  },
+  "notes": [
+    "A fictional host of the mosaic field venue. The sprite is a sealed CC0 appearance already in the roster; no new portrait was drawn or copied."
+  ]
+}
