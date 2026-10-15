@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "id": "terrace-flight-venue",
+  "kind": "place",
+  "label": "Terrace Flight Venue",
+  "since": "1.1.0",
+  "order": 0,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#9fb39a",
+    "geometry": "venue-layout",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "places",
+    "site": {
+      "kind": "country-variant",
+      "world": "country:NPL",
+      "venue": "terraces",
+      "iso3": "NPL",
+      "columns": 40,
+      "rows": 28,
+      "arrival": {
+        "x": 20,
+        "y": 25
+      },
+      "portal": {
+        "x": 20,
+        "y": 26
+      },
+      "plaza": {
+        "x": 12,
+        "y": 8,
+        "width": 16,
+        "height": 16
+      },
+      "band_rule": "clear-of-mass",
+      "registers_land": false,
+      "machinery": "world.js makeCountry(iso3) with COUNTRY_VENUE_ASSIGNMENT.NPL === 'terraces'; the 40 x 28 grid, COUNTRY_VENUE_PLAZA, the arrival (20,25), the return portal (20,26) and the walkable plaza band are the shared country-venue contract asserted by tests/country-venues.test.js"
+    },
+    "structure": {
+      "kind": "terrace-flight",
+      "terrain": [
+        "meadow",
+        "path",
+        "plaza",
+        "farm"
+      ],
+      "water": false,
+      "elevation_steps": 3,
+      "footprint_class": "mixed",
+      "approach": {
+        "axis": "y",
+        "at": [
+          20
+        ],
+        "from": 2,
+        "to": 27
+      },
+      "retainer_rows": [
+        1,
+        4,
+        7
+      ]
+    },
+    "fixtures": [
+      "bench-row",
+      "tank-cistern",
+      "open-shelter"
+    ],
+    "activities": [
+      "terrace-tending",
+      "seed-swap"
+    ],
+    "residents": [
+      "venue-steward"
+    ],
+    "ambient": "highland-morning",
+    "motion": "none",
+    "accessibility": {
+      "min_viewport_px": 390,
+      "hit_target_px": 44,
+      "reduced_motion": "not-needed",
+      "contrast": [
+        {
+          "role": "text",
+          "foreground": "#f6f0d8",
+          "background": "#0a2b25",
+          "target": 4.5
+        },
+        {
+          "role": "nontext",
+          "foreground": "#ded6a5",
+          "background": "#0a2b25",
+          "target": 3
+        }
+      ],
+      "route": "native-selector"
+    },
+    "independence": {
+      "fictional": true,
+      "claims_endorsement": false,
+      "government_role": false,
+      "un_role": false,
+      "statement": "A fictional NemoWorld space. It is not a government, ministry, embassy or United Nations office, it does not represent any country or people, and nothing here asserts endorsement, representation or official status."
+    }
+  },
+  "notes": [
+    "Three path retaining edges with two farm beds between them, a west-edge grove mass, a pond tank and an open shelter, on the terraces shape world.js already builds for the NPL catalog entry.",
+    "This place adds no renderer code: it is a declaration of what the terraces shape places and of the contract that shape already keeps, so a change to world.js that moves the arrival, the band or the portal is refused here rather than shipped."
+  ]
+}

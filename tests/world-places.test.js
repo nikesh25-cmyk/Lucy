@@ -282,13 +282,18 @@ test('every asset a place draws is an existing sealed, project-authored definiti
     assert.equal(entry.license.commit, null);
     assert.deepEqual(content.assets(type, 'furniture'), [], `${type} bundles no third-party asset file`);
   }
-  // The sealed layer is unchanged by these places: the counts are the sealed ones, and no entry was
-  // added for a place.
+  // The sealed layer gains the authored content families, but nothing about *these* places: every
+  // authored place is a new kind, and no shipped block, furniture, crop, appearance or cosmetic
+  // entry was added, removed or renumbered by this slice.
   const manifest = content.manifest();
   assert.equal(manifest.schema_version, 1);
-  assert.deepEqual(manifest.kinds, { appearance: 20, block: 9, cosmetic: 32, crop: 6, furniture: 31 });
+  assert.deepEqual(manifest.kinds, { activity: 8, ambient: 6, appearance: 20, block: 9, cosmetic: 32, crop: 6, fixture: 12, furniture: 31, place: 6, resident: 6 });
+  for (const [kind, count] of [['appearance', 20], ['block', 9], ['cosmetic', 32], ['crop', 6], ['furniture', 31]]) {
+    assert.equal(content.entries(kind).length, count, `the shipped ${kind} family is unchanged by this slice`);
+  }
   const sealed = execFileSync(process.execPath, [join(fileURLToPath(new URL('..', import.meta.url)), 'scripts', 'seal-content.mjs'), '--check'], { encoding: 'utf8' });
-  assert.match(sealed, /98/);
+  assert.match(sealed, /136 definitions/);
+  assert.match(sealed, /6 place/);
 });
 
 test('the five places are distinct from each other and from every authored world', () => {

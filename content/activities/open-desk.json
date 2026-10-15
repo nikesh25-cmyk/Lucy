@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "id": "open-desk",
+  "kind": "activity",
+  "label": "Open desk",
+  "since": "1.1.0",
+  "order": 4,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the activity manifests in src/content-manifest.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. An activity is a deterministic schedule, not an implemented simulation loop. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "activity-schedule",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "activities",
+    "place": "coast-landing-district",
+    "residents": [
+      "district-guide"
+    ],
+    "participants": {
+      "min": 1,
+      "max": 2
+    },
+    "cadence": {
+      "unit": "tick",
+      "interval": 45,
+      "offset": 0,
+      "jitter": 0
+    },
+    "duration_ticks": 12,
+    "relates_to": [
+      "Explorer"
+    ],
+    "motion": "none",
+    "reduced_motion": "not-needed",
+    "ordering": "authored",
+    "clock": "tick indices counted from the world boot; no wall-clock time, no date and no random draw is read, so two runs of the same world produce the same schedule",
+    "implements": "the living-world resident loop (src/living-world.js) and the venue machinery the place names; this definition records the schedule the loop is expected to keep and is not yet read by it"
+  },
+  "notes": [
+    "A guide keeps an open desk on the district plaza for whoever walks in. It reads no evidence, claims no finding and adopts nothing."
+  ]
+}

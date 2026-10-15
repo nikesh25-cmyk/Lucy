@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "id": "coast-landing-district",
+  "kind": "place",
+  "label": "Coast Landing District",
+  "since": "1.1.0",
+  "order": 3,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#a4ba8c",
+    "geometry": "venue-layout",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "places",
+    "site": {
+      "kind": "district",
+      "world": "district:coast",
+      "region": "coast",
+      "columns": 48,
+      "rows": 36,
+      "arrival": {
+        "x": 24,
+        "y": 24
+      },
+      "portal": {
+        "x": 24,
+        "y": 31
+      },
+      "plaza": {
+        "x": 18,
+        "y": 12,
+        "width": 13,
+        "height": 12
+      },
+      "band_rule": "none",
+      "registers_land": false,
+      "machinery": "world.js makeDistrict('district:coast') over src/civic.js REGIONS, the shared regional world the Commons already roads into; 48 x 36, the north-south road at x = 24, the cross road at y = 18 and the painted plaza"
+    },
+    "structure": {
+      "kind": "road-and-plaza",
+      "terrain": [
+        "meadow",
+        "water",
+        "path",
+        "plaza"
+      ],
+      "water": true,
+      "elevation_steps": 1,
+      "footprint_class": "mixed",
+      "approach": {
+        "axis": "y",
+        "at": [
+          24
+        ],
+        "from": 5,
+        "to": 32
+      },
+      "roads": [
+        {
+          "axis": "y",
+          "at": [
+            24
+          ]
+        },
+        {
+          "axis": "x",
+          "at": [
+            18
+          ]
+        }
+      ],
+      "shore": {
+        "axis": "x",
+        "below": 5
+      }
+    },
+    "fixtures": [
+      "plaza-lanterns",
+      "shore-shelter"
+    ],
+    "activities": [
+      "open-desk"
+    ],
+    "residents": [
+      "district-guide"
+    ],
+    "ambient": "shore-haze",
+    "motion": "drift",
+    "accessibility": {
+      "min_viewport_px": 390,
+      "hit_target_px": 44,
+      "reduced_motion": "equivalent-still",
+      "contrast": [
+        {
+          "role": "text",
+          "foreground": "#f6f0d8",
+          "background": "#0a2b25",
+          "target": 4.5
+        },
+        {
+          "role": "nontext",
+          "foreground": "#ded6a5",
+          "background": "#0a2b25",
+          "target": 3
+        }
+      ],
+      "route": "native-selector"
+    },
+    "independence": {
+      "fictional": true,
+      "claims_endorsement": false,
+      "government_role": false,
+      "un_role": false,
+      "statement": "A fictional NemoWorld space. It is not a government, ministry, embassy or United Nations office, it does not represent any country or people, and nothing here asserts endorsement, representation or official status."
+    }
+  },
+  "notes": [
+    "Two crossed roads, a painted plaza, lanterns at the plaza corners and an open shelter on the north approach, on the shared district world world.js already builds from the coast region record.",
+    "This is the regional case, not the country case: band_rule is none because makeDistrict paints plaza under its own lanterns, whereas a country venue paints the band last and keeps it clear of solid scenery."
+  ]
+}

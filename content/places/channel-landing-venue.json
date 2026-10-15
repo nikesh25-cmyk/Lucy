@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "id": "channel-landing-venue",
+  "kind": "place",
+  "label": "Channel Landing Venue",
+  "since": "1.1.0",
+  "order": 2,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#8fb0a4",
+    "geometry": "venue-layout",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "places",
+    "site": {
+      "kind": "country-variant",
+      "world": "country:MEX",
+      "venue": "chinampas",
+      "iso3": "MEX",
+      "columns": 40,
+      "rows": 28,
+      "arrival": {
+        "x": 20,
+        "y": 25
+      },
+      "portal": {
+        "x": 20,
+        "y": 26
+      },
+      "plaza": {
+        "x": 12,
+        "y": 8,
+        "width": 16,
+        "height": 16
+      },
+      "band_rule": "clear-of-mass",
+      "registers_land": false,
+      "machinery": "world.js makeCountry(iso3) with COUNTRY_VENUE_ASSIGNMENT.MEX === 'chinampas'; farmed strips cut by two water channels and a cross channel, with bridge crossings and a boardwalk landing"
+    },
+    "structure": {
+      "kind": "channel-network",
+      "terrain": [
+        "meadow",
+        "farm",
+        "water",
+        "bridge",
+        "path",
+        "plaza"
+      ],
+      "water": true,
+      "elevation_steps": 1,
+      "footprint_class": "mixed",
+      "approach": {
+        "axis": "y",
+        "at": [
+          20
+        ],
+        "from": 2,
+        "to": 27
+      },
+      "channels": [
+        {
+          "axis": "y",
+          "at": [
+            30,
+            31
+          ]
+        },
+        {
+          "axis": "x",
+          "at": [
+            17
+          ]
+        }
+      ]
+    },
+    "fixtures": [
+      "boardwalk-mooring",
+      "crop-strip"
+    ],
+    "activities": [
+      "channel-navigation"
+    ],
+    "residents": [
+      "landing-keeper"
+    ],
+    "ambient": "water-light",
+    "motion": "drift",
+    "accessibility": {
+      "min_viewport_px": 390,
+      "hit_target_px": 44,
+      "reduced_motion": "equivalent-still",
+      "contrast": [
+        {
+          "role": "text",
+          "foreground": "#edf0dc",
+          "background": "#092a24",
+          "target": 4.5
+        },
+        {
+          "role": "nontext",
+          "foreground": "#ded6a5",
+          "background": "#071b19",
+          "target": 3
+        }
+      ],
+      "route": "native-selector"
+    },
+    "independence": {
+      "fictional": true,
+      "claims_endorsement": false,
+      "government_role": false,
+      "un_role": false,
+      "statement": "A fictional NemoWorld space. It is not a government, ministry, embassy or United Nations office, it does not represent any country or people, and nothing here asserts endorsement, representation or official status."
+    }
+  },
+  "notes": [
+    "Farmed strips cut by channels at x = 30 and 31 and y = 17, a boardwalk landing with a moored hull, and a walkable raising bed.",
+    "The water tiles are declared, so a solid fixture placed on working water is refused unless it declares placement.on water, which is how a mooring is allowed and a bench is not."
+  ]
+}

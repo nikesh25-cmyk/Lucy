@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "id": "grove-host",
+  "kind": "resident",
+  "label": "Grove host",
+  "since": "1.1.0",
+  "order": 1,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the resident role manifests in src/content-manifest.js; the sprite is the sealed appearance named in rules.appearance",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. The sprite is a sealed appearance definition named in rules.appearance. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "resident-role",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "residents",
+    "place": "grove-ring-venue",
+    "role": "clearing host",
+    "appearance": "mayor-11",
+    "schedule": {
+      "unit": "tick",
+      "slots": [
+        16,
+        76,
+        136
+      ],
+      "ordering": "authored"
+    },
+    "dialogue_topics": [
+      "which corridor leads in",
+      "where the ring benches are",
+      "when the clearing is quiet"
+    ],
+    "remit": "Answers only from this fictional place and the sealed definitions it names. Holds no office, signs nothing, and speaks for no country, people or institution.",
+    "independence": {
+      "fictional": true,
+      "claims_endorsement": false,
+      "government_role": false,
+      "un_role": false,
+      "statement": "A fictional NemoWorld space. It is not a government, ministry, embassy or United Nations office, it does not represent any country or people, and nothing here asserts endorsement, representation or official status."
+    }
+  },
+  "notes": [
+    "A fictional host of the grove ring venue. The place depicts a grove, a clearing, a path and a shelter only; the resident names no practice, offering, shrine or site."
+  ]
+}

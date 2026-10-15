@@ -38,9 +38,10 @@ test('the content layer, its palettes and every definition declare schema versio
   assert.equal(bundle.palettes.schema_version, 1);
   assert.equal(bundle.notices.schema_version, 1);
   for (const definition of entries()) assert.equal(definition.schema_version, 1, `${definition.kind}:${definition.id} must declare schema version 1`);
-  assert.deepEqual(CONTENT_KINDS, ['block', 'furniture', 'crop', 'appearance', 'cosmetic']);
-  assert.deepEqual(manifest().kinds, { appearance: 20, block: 9, cosmetic: 32, crop: 6, furniture: 31 });
-  assert.equal(entries().length, 98);
+  assert.deepEqual(CONTENT_KINDS, ['block', 'furniture', 'crop', 'appearance', 'cosmetic',
+    'place', 'fixture', 'activity', 'resident', 'ambient'], 'the five authored families are appended after the shipped kinds, so an ambiguous id keeps resolving as it did');
+  assert.deepEqual(manifest().kinds, { activity: 8, ambient: 6, appearance: 20, block: 9, cosmetic: 32, crop: 6, fixture: 12, furniture: 31, place: 6, resident: 6 });
+  assert.equal(entries().length, 136);
   assert.deepEqual(palettes(), ['garden', 'house', 'frontier']);
   for (const kind of CONTENT_KINDS) assert.equal(entries(kind).length, manifest().kinds[kind], `${kind} count must match the sealed manifest`);
 });

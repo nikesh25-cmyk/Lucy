@@ -17,7 +17,32 @@ import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url);
 const root = fileURLToPath(ROOT);
-const KINDS = Object.freeze({ blocks: 'block', furniture: 'furniture', crops: 'crop', appearances: 'appearance', cosmetics: 'cosmetic' });
+const KINDS = Object.freeze({ blocks: 'block', furniture: 'furniture', crops: 'crop', appearances: 'appearance', cosmetics: 'cosmetic',
+  places: 'place', fixtures: 'fixture', activities: 'activity', residents: 'resident', ambient: 'ambient' });
+// The five authored content families carry their own manifest shape (src/content-manifest.js). The
+// sealer checks only the parts that must hold for every entry of a family: the family label, and the
+// cross-family references the seal can resolve. The deep rules live in the validator, which the
+// publication path runs before anything is written.
+const FAMILY_OF_KIND = Object.freeze({ place: 'places', fixture: 'fixtures', activity: 'activities', resident: 'residents', ambient: 'ambient' });
+const REFERENCE_FIELDS = Object.freeze({
+  place: { fixtures: 'fixture', residents: 'resident', activities: 'activity', ambient: 'ambient' },
+  fixture: { object: 'furniture' },
+  activity: { place: 'place', residents: 'resident' },
+  resident: { appearance: 'appearance' },
+  ambient: { place: 'place' },
+});
+const article = (kind) => (/^[aeiou]/.test(kind) ? 'an' : 'a');
+const KINDS_OF_FAMILY = Object.freeze({
+  place: 'place', fixture: 'fixture', activity: 'activity', resident: 'resident', ambient: 'ambient',
+  furniture: 'furniture', appearance: 'appearance', block: 'block', crop: 'crop', cosmetic: 'cosmetic',
+});
+const TEXT_FIELDS = Object.freeze({
+  place: ['site.machinery', 'structure.kind', 'independence.statement'],
+  fixture: ['provenance.derived_from', 'owner'],
+  activity: ['clock', 'implements'],
+  resident: ['role', 'remit'],
+  ambient: ['provenance.derived_from'],
+});
 const HEX = /^[a-f0-9]{64}$/;
 const check = process.argv.includes('--check');
 
@@ -101,6 +126,23 @@ for (const [directory, kind] of Object.entries(KINDS)) {
     if (entry.kind === 'cosmetic' && (typeof rules.earned_by !== 'string' || !rules.earned_by.trim())) fail(`${file}: rules.earned_by is required`);
     if (entry.kind === 'appearance' && (!Array.isArray(rules.roster_roles) || !rules.roster_roles.length)) fail(`${file}: rules.roster_roles is required`);
 
+    // The five authored families declare which family they belong to, so a definition filed under the
+    // wrong kind is refused at the seal instead of being indexed under a label that contradicts it.
+    const family = FAMILY_OF_KIND[entry.kind];
+    if (family) {
+      if (rules.family !== family) fail(`${file}: rules.family must be "${family}" for kind ${entry.kind}`);
+      for (const path of TEXT_FIELDS[entry.kind]) {
+        const value = path.split('.').reduce((item, key) => item?.[key], rules);
+        if (typeof value !== 'string' || !value.trim()) fail(`${file}: rules.${path} must be a non-empty string`);
+      }
+      for (const [field, kind] of Object.entries(REFERENCE_FIELDS[entry.kind] || {})) {
+        const value = rules[field];
+        if (Array.isArray(value) ? value.some((id) => typeof id !== 'string' || !id) : typeof value !== 'string' || !value) {
+          fail(`${file}: rules.${field} must name at least one ${kind} id`);
+        }
+      }
+    }
+
     const assets = [];
     for (const asset of entry.assets || []) {
       if (typeof asset.path !== 'string' || asset.path.startsWith('/') || asset.path.split('/').includes('..')) fail(`${file}: asset.path must be a repository-relative path`);
@@ -134,6 +176,11 @@ for (const entry of entries) {
   if (entry.kind === 'crop') {
     const tile = entry.rules.tile_object;
     if (!entries.some((item) => item.kind === 'furniture' && item.id === tile)) fail(`${entry.file}: rules.tile_object "${tile}" is not a furniture definition`);
+  }
+  for (const [field, kind] of Object.entries(REFERENCE_FIELDS[entry.kind] || {})) {
+    for (const id of [].concat(entry.rules[field])) {
+      if (!entries.some((item) => item.kind === kind && item.id === id)) fail(`${entry.file}: rules.${field} "${id}" is not ${article(kind)} ${kind} definition`);
+    }
   }
 }
 

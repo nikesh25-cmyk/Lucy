@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "shore-shelter",
+  "kind": "fixture",
+  "label": "Shore Shelter",
+  "since": "1.1.0",
+  "order": 7,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "shelter",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "fixtures",
+    "object": "shelter",
+    "footprint": "open",
+    "scenery_class": "frame",
+    "blocks_route": false,
+    "arrangement": {
+      "kind": "single",
+      "axis": null,
+      "spacing": 0,
+      "count": 1,
+      "from": {
+        "x": 24,
+        "y": 10
+      }
+    },
+    "tiles": [
+      [
+        24,
+        10
+      ]
+    ],
+    "owner": "coast-landing-district",
+    "placement": {
+      "on": "ground"
+    },
+    "provenance": {
+      "derived_from": "content/furniture/shelter.json",
+      "reuse": "the sealed furniture builder is drawn; this fixture adds no asset and no geometry"
+    }
+  },
+  "notes": [
+    "One open shelter on the north approach, matching the shelter makeDistrict places at 24,10 for a non-city region."
+  ]
+}
