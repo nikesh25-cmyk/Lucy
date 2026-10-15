@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { worldAtmosphere } from './atmosphere.js';
 import { ensureTradeMarket } from './trade-market.js';
 import content from './content.js';
+import { seedLivingCommunity } from './living-community.js';
 
 const blossomRules = content.rules('crop').find((entry) => entry.id === 'blossom')?.rules;
 
@@ -489,6 +490,11 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
       } catch {}
     }
   }
+
+  // The cooperative layer: circles, one upcoming gathering per host and a public guild project, all
+  // created through the ordinary community methods so a newcomer always has something to join.
+  try { report.community = seedLivingCommunity(platform, { accounts, roster: LIVING_ROSTER, now }); }
+  catch (err) { if (verbose) console.error('Living world community error:', err.message); }
 
   // 6. Autonomous Trade Market Activity (WoW Auction House Style)
   // Check if open trade listings exist; if so, claim them. If low on listings, post new ones!
