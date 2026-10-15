@@ -8,15 +8,13 @@
 // 2. The token is never printed, logged, or saved to disk.
 // 3. Rate-limiting (HTTP 429) triggers exponential backoff.
 // 4. Revocation (HTTP 401/403) triggers a clean shutdown.
-// 5. Authoritative State Reconciliation: Before dispatching actions and upon
-//    recovery from an unexpected exit or network drop, the client inspects
-//    in-flight action intents against authoritative server state to avoid
-//    unintended re-execution of non-idempotent endpoints (e.g. /move).
+// 5. Interrupted /move requests fail closed. Coordinates cannot prove whether
+//    an unkeyed action committed; an operator must resolve the saved intent.
 // 6. Idempotent route support: Supplies Idempotency-Key headers for routes
 //    supporting server-side deduplication.
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, unlinkSync, writeSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 export function computeExpectedTarget(origin, direction) {
   const target = { x: origin.x, y: origin.y, world_id: origin.world_id };
@@ -42,22 +40,35 @@ export class ExternalWorkerClient {
 
   _loadState() {
     if (existsSync(this.stateFile)) {
-      try {
-        const parsed = JSON.parse(readFileSync(this.stateFile, 'utf8'));
-        return {
-          completedActions: Array.isArray(parsed.completedActions) ? parsed.completedActions : [],
-          inFlight: parsed.inFlight || null,
-          uncertainDiverged: Array.isArray(parsed.uncertainDiverged) ? parsed.uncertainDiverged : [],
-        };
-      } catch {
-        return { completedActions: [], inFlight: null, uncertainDiverged: [] };
+      let parsed;
+      try { parsed = JSON.parse(readFileSync(this.stateFile, 'utf8')); }
+      catch { throw new Error('Worker state is unreadable; refusing to dispatch actions. Restore or inspect the state file.'); }
+      if (!parsed || !Array.isArray(parsed.completedActions) ||
+          (parsed.inFlight !== null && (typeof parsed.inFlight !== 'object' || !parsed.inFlight.actionId))) {
+        throw new Error('Worker state is invalid; refusing to dispatch actions.');
       }
+      return { completedActions: parsed.completedActions, inFlight: parsed.inFlight };
     }
-    return { completedActions: [], inFlight: null, uncertainDiverged: [] };
+    return { completedActions: [], inFlight: null };
   }
 
   _saveState() {
-    writeFileSync(this.stateFile, JSON.stringify(this.state, null, 2), 'utf8');
+    const temp = `${this.stateFile}.${process.pid}.tmp`;
+    let fd;
+    try {
+      fd = openSync(temp, 'w', 0o600);
+      writeSync(fd, JSON.stringify(this.state, null, 2));
+      fsyncSync(fd);
+      closeSync(fd);
+      fd = undefined;
+      renameSync(temp, this.stateFile);
+      const directory = openSync(dirname(this.stateFile), 'r');
+      try { fsyncSync(directory); } finally { closeSync(directory); }
+    } catch (error) {
+      if (fd !== undefined) closeSync(fd);
+      try { unlinkSync(temp); } catch {}
+      throw error;
+    }
   }
 
   async _request(path, method = 'GET', body = null, extraHeaders = {}) {
@@ -80,6 +91,9 @@ export class ExternalWorkerClient {
       });
 
       if (res.status === 429) {
+        // An unkeyed move is never retried automatically, even on a refusal.
+        // Keep its saved intent until an operator confirms the outcome.
+        if (path === '/move') throw new Error('Move rate-limited (HTTP 429); saved intent requires operator resolution.');
         if (attempt === maxRetries) {
           throw new Error('Rate limit exceeded (HTTP 429); action budget or request threshold exhausted.');
         }
@@ -134,8 +148,9 @@ export class ExternalWorkerClient {
   }
 
   /**
-   * Authoritative State Reconciliation
-   * Reconciles any in-flight intent recorded prior to a process crash or disconnect.
+   * Read-only diagnosis of an interrupted non-idempotent move. The current
+   * coordinate is only an observation: it cannot prove whether a request is
+   * still in flight, was refused, or committed and subsequently reversed.
    */
   async reconcileInFlight() {
     if (!this.state.inFlight) {
@@ -147,60 +162,23 @@ export class ExternalWorkerClient {
     const target = inFlight.expectedTarget;
     const origin = inFlight.origin;
 
-    if (current.x === target.x && current.y === target.y && current.world_id === target.world_id) {
-      // The server successfully committed the move before the client crashed!
-      if (!this.state.completedActions.includes(inFlight.actionId)) {
-        this.state.completedActions.push(inFlight.actionId);
-      }
-      this.state.inFlight = null;
-      this._saveState();
-      return {
-        reconciled: true,
-        actionId: inFlight.actionId,
-        outcome: 'already_committed',
-        position: current,
-      };
-    } else if (current.x === origin.x && current.y === origin.y && current.world_id === origin.world_id) {
-      // The move was NOT committed by the server (e.g. process died before dispatch).
-      this.state.inFlight = null;
-      this._saveState();
-      return {
-        reconciled: true,
-        actionId: inFlight.actionId,
-        outcome: 'not_committed',
-        position: current,
-      };
-    } else {
-      // Coordinates diverged from both origin and target.
-      // Classify as uncertain diverged and require manual/operator inspection.
-      this.state.uncertainDiverged.push({
-        ...inFlight,
-        divergedAt: Date.now(),
-        observedPosition: current,
-      });
-      this.state.inFlight = null;
-      this._saveState();
-      return {
-        reconciled: true,
-        actionId: inFlight.actionId,
-        outcome: 'diverged',
-        position: current,
-      };
-    }
+    const matches = (position) => current.x === position.x && current.y === position.y && current.world_id === position.world_id;
+    return {
+      reconciled: false,
+      actionId: inFlight.actionId,
+      outcome: matches(target) ? 'observed_target' : matches(origin) ? 'observed_origin' : 'observed_elsewhere',
+      position: current,
+      requiresOperatorResolution: true,
+    };
   }
 
   async performPermittedMove(direction = 'right', actionId = null) {
     const currentActionId = actionId || `move-${Date.now()}`;
 
-    // 1. Reconcile any prior interrupted action first
-    const reconciliation = await this.reconcileInFlight();
-    if (reconciliation.reconciled && reconciliation.actionId === currentActionId && reconciliation.outcome === 'already_committed') {
-      return {
-        skipped: true,
-        reason: 'Action was committed by authoritative server prior to restart and reconciled safely.',
-        reconciled: true,
-        outcome: reconciliation.outcome,
-      };
+    // No automatic replay or further movement while a request is uncertain.
+    if (this.state.inFlight) {
+      const observation = await this.reconcileInFlight();
+      throw new Error(`Move ${observation.actionId} is unresolved (${observation.outcome}); operator resolution is required before any further move.`);
     }
 
     // 2. Check if already marked completed

@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fixture } from '../../tests/helpers.js';
 import { createApp } from '../../server.js';
 import { ExternalWorkerClient } from './client.mjs';
 
-test('external worker executes permitted action, recovers from crash with authoritative state reconciliation', async (t) => {
+test('external worker executes permitted action and fails closed after uncertain move', async (t) => {
   const f = await fixture(t);
   const app = createApp({ platform: f.platform });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
@@ -116,9 +116,7 @@ test('external worker executes permitted action, recovers from crash with author
   assert.equal(dbRowAfterCrash.x, 16);
   assert.equal(dbRowAfterCrash.y, 16);
 
-  // Test 3: Worker Restart and Authoritative State Reconciliation
-  // When worker restarts, it must reconcile inFlight, detect the server committed it,
-  // mark it completed, and NOT send a duplicate /move that would move the agent to (16, 17)!
+  // A coordinate at the target is consistent with a commit, but cannot prove it.
   f.advance(500);
   const recoveredClient = new ExternalWorkerClient({
     apiUrl: baseUrl,
@@ -127,23 +125,23 @@ test('external worker executes permitted action, recovers from crash with author
     agentId: agent.id,
   });
 
-  const retryResult = await recoveredClient.performPermittedMove('down', 'action-step-2-crashable');
-  assert.equal(retryResult.skipped, true);
-  assert.equal(retryResult.reconciled, true);
-  assert.equal(retryResult.outcome, 'already_committed');
+  const observation = await recoveredClient.reconcileInFlight();
+  assert.equal(observation.outcome, 'observed_target');
+  assert.equal(observation.requiresOperatorResolution, true);
+  await assert.rejects(recoveredClient.performPermittedMove('down', 'action-step-2-crashable'), /operator resolution is required/);
+  await assert.rejects(recoveredClient.performPermittedMove('right', 'new-action'), /operator resolution is required/);
 
   // Verify server database position: agent MUST still be at (16, 16), proving NO duplicate move occurred!
   const dbRowAfterReconcile = f.platform.get('SELECT x, y FROM agents WHERE id=?', agent.id);
   assert.equal(dbRowAfterReconcile.x, 16, 'X coordinate must not have changed');
   assert.equal(dbRowAfterReconcile.y, 16, 'Y coordinate must remain 16 (did not replay move)');
 
-  // Verify state on disk is now clean
+  // The saved intent remains unresolved for operator inspection.
   const stateAfterReconcile = JSON.parse(readFileSync(stateFile, 'utf8'));
-  assert.ok(stateAfterReconcile.completedActions.includes('action-step-2-crashable'));
-  assert.equal(stateAfterReconcile.inFlight, null);
+  assert.ok(!stateAfterReconcile.completedActions.includes('action-step-2-crashable'));
+  assert.equal(stateAfterReconcile.inFlight.actionId, 'action-step-2-crashable');
 
-  // Test 4: Crash before server commits (uncommitted intent)
-  // Simulate an intent where server position is still at origin (e.g. socket dropped before server)
+  // An origin observation is also uncertain: a delayed request could still commit.
   f.advance(500);
   stateAfterReconcile.inFlight = {
     actionId: 'action-step-3-uncommitted',
@@ -158,12 +156,11 @@ test('external worker executes permitted action, recovers from crash with author
   recoveredClient._saveState();
 
   const reconUncommitted = await recoveredClient.reconcileInFlight();
-  assert.equal(reconUncommitted.reconciled, true);
-  assert.equal(reconUncommitted.outcome, 'not_committed');
+  assert.equal(reconUncommitted.outcome, 'observed_origin');
+  await assert.rejects(recoveredClient.performPermittedMove('left', 'action-step-3-uncommitted'), /operator resolution is required/);
 
-  // State is cleared and ready for fresh dispatch
   const stateAfterUncommitted = JSON.parse(readFileSync(stateFile, 'utf8'));
-  assert.equal(stateAfterUncommitted.inFlight, null);
+  assert.equal(stateAfterUncommitted.inFlight.actionId, 'action-step-3-uncommitted');
   assert.ok(!stateAfterUncommitted.completedActions.includes('action-step-3-uncommitted'));
 
   // Test 5: Diverged position classification
@@ -183,11 +180,13 @@ test('external worker executes permitted action, recovers from crash with author
   recoveredClient._saveState();
 
   const reconDiverged = await recoveredClient.reconcileInFlight();
-  assert.equal(reconDiverged.reconciled, true);
-  assert.equal(reconDiverged.outcome, 'diverged');
+  assert.equal(reconDiverged.outcome, 'observed_elsewhere');
+  await assert.rejects(recoveredClient.performPermittedMove('right', 'action-step-5'), /operator resolution is required/);
 
   const stateAfterDiverged = JSON.parse(readFileSync(stateFile, 'utf8'));
-  assert.equal(stateAfterDiverged.inFlight, null);
-  assert.equal(stateAfterDiverged.uncertainDiverged.length, 1);
-  assert.equal(stateAfterDiverged.uncertainDiverged[0].actionId, 'action-step-4-diverged');
+  assert.equal(stateAfterDiverged.inFlight.actionId, 'action-step-4-diverged');
+
+  // Corruption cannot reset the journal and silently permit a replay.
+  writeFileSync(stateFile, '{bad json');
+  assert.throws(() => new ExternalWorkerClient({ apiUrl: baseUrl, token, stateFile, agentId: agent.id }), /unreadable/);
 });

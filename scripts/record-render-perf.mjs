@@ -11,11 +11,12 @@
 
 import { spawn } from 'node:child_process';
 import { createServer as createTcpServer } from 'node:net';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir, platform, arch, release, cpus, totalmem } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'playwright-core';
 
@@ -253,14 +254,19 @@ export async function runPerformanceSuite(options = {}) {
       const frameData = await page.evaluate(async () => {
         return new Promise((resolve) => {
           const deltas = [];
-          let lastTime = performance.now();
-          let frameCount = 0;
+          let lastTime = null;
+          let sampleStartTime = null;
 
           function sample(now) {
+            if (lastTime === null) {
+              lastTime = now;
+              sampleStartTime = now;
+              requestAnimationFrame(sample);
+              return;
+            }
             deltas.push(now - lastTime);
             lastTime = now;
-            frameCount++;
-            if (frameCount < 120) {
+            if (deltas.length < 120) {
               requestAnimationFrame(sample);
             } else {
               const mem = window.performance?.memory ? {
@@ -270,6 +276,7 @@ export async function runPerformanceSuite(options = {}) {
 
               resolve({
                 deltas,
+                sampleStartTime,
                 memory: mem,
                 longTasks: window.__perfMetrics?.longTasks || [],
               });
@@ -280,12 +287,12 @@ export async function runPerformanceSuite(options = {}) {
       });
 
       const frameStats = calculateStats(frameData.deltas);
-      const droppedFrames = frameData.deltas.filter((d) => d > 20).length;
-      const longTasksAfterWarmup = frameData.longTasks.filter((t) => t.startTime > 1000);
+      const over50msIntervals = frameData.deltas.filter((d) => d > 50).length;
+      const longTasksAfterWarmup = frameData.longTasks.filter((t) => t.startTime >= frameData.sampleStartTime);
       const longTaskStats = calculateStats(longTasksAfterWarmup.map((t) => t.duration));
 
       // 6. Confirmed Movement Latency (5 iterations)
-      // Input -> Server SQLite stored tile -> Client rendered position
+      // Automation key dispatch -> Server SQLite stored tile -> reticle text update.
       const movementSamples = [];
       await page.locator('#world').focus();
 
@@ -293,7 +300,7 @@ export async function runPerformanceSuite(options = {}) {
         const beforeRow = db.prepare('SELECT x, y FROM agents WHERE id=?').get(player.id);
         let t0 = null;
         let tDb = null;
-        let tRender = null;
+        let tReticle = null;
         let successfulKey = null;
 
         for (const key of ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown']) {
@@ -320,29 +327,26 @@ export async function runPerformanceSuite(options = {}) {
 
         const afterRow = db.prepare('SELECT x, y FROM agents WHERE id=?').get(player.id);
 
-        try {
-          await page.waitForFunction(
-            ([x, y]) => (document.querySelector('#world-reticle')?.textContent || '').includes(`at ${x}, ${y}`),
-            [afterRow.x, afterRow.y],
-            { timeout: 2000 }
-          );
-          tRender = Date.now();
-        } catch {
-          tRender = Date.now();
-        }
+        await page.waitForFunction(
+          ([x, y]) => (document.querySelector('#world-reticle')?.textContent || '').includes(`at ${x}, ${y}`),
+          [afterRow.x, afterRow.y],
+          { timeout: 2000 }
+        );
+        tReticle = Date.now();
 
         movementSamples.push({
           step: i + 1,
           direction: successfulKey,
           inputToServerDbMs: tDb - t0,
-          inputToRenderedMs: tRender - t0,
+          inputToReticleMs: tReticle - t0,
         });
 
         await page.waitForTimeout(100);
       }
 
       const inputToDbStats = calculateStats(movementSamples.map((s) => s.inputToServerDbMs));
-      const inputToRenderStats = calculateStats(movementSamples.map((s) => s.inputToRenderedMs));
+      if (!movementSamples.length) throw new Error(`No persisted movement in ${config.id}`);
+      const inputToReticleStats = calculateStats(movementSamples.map((s) => s.inputToReticleMs));
 
       // 7. Second Client Observed Update
       // Client 2 signs in as observer and enters the world to open live SSE subscription
@@ -371,14 +375,18 @@ export async function runPerformanceSuite(options = {}) {
       for (const key of ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft']) {
         tMove1 = Date.now();
         await page.keyboard.press(key);
-        await new Promise((r) => setTimeout(r, 80));
-        const posAfter = db.prepare('SELECT x, y FROM agents WHERE id=?').get(player.id);
-        if (posAfter.x !== posBefore.x || posAfter.y !== posBefore.y) {
-          break;
+        const moveDeadline = Date.now() + 400;
+        while (Date.now() < moveDeadline) {
+          const posAfter = db.prepare('SELECT x, y FROM agents WHERE id=?').get(player.id);
+          if (posAfter.x !== posBefore.x || posAfter.y !== posBefore.y) break;
+          await new Promise((r) => setTimeout(r, 10));
         }
+        const posAfter = db.prepare('SELECT x, y FROM agents WHERE id=?').get(player.id);
+        if (posAfter.x !== posBefore.x || posAfter.y !== posBefore.y) break;
       }
 
       const currentPos = db.prepare('SELECT x, y FROM agents WHERE id=?').get(player.id);
+      if (currentPos.x === posBefore.x && currentPos.y === posBefore.y) throw new Error(`Observer step did not persist in ${config.id}`);
       let tObsMoved = null;
       const obsDeadline = Date.now() + 5000;
       while (Date.now() < obsDeadline) {
@@ -397,7 +405,8 @@ export async function runPerformanceSuite(options = {}) {
         }
         await new Promise((r) => setTimeout(r, 20));
       }
-      const observerUpdateLatencyMs = tObsMoved ? tObsMoved - tMove1 : 5000;
+      if (!tObsMoved) throw new Error(`Observer did not show stored movement in ${config.id}`);
+      const observerUpdateLatencyMs = tObsMoved - tMove1;
       await observerContext.close();
 
       // 8. Capture scene screenshot
@@ -420,8 +429,8 @@ export async function runPerformanceSuite(options = {}) {
           minDeltaMs: frameStats.min,
           maxDeltaMs: frameStats.max,
           meanDeltaMs: frameStats.mean,
-          droppedFramesOver20ms: droppedFrames,
-          approxFPS: Number((1000 / frameStats.mean).toFixed(1)),
+          intervalsOver50ms: over50msIntervals,
+          observedRafHz: Number((1000 / frameStats.mean).toFixed(1)),
         },
         longTasks: {
           count: longTasksAfterWarmup.length,
@@ -433,8 +442,8 @@ export async function runPerformanceSuite(options = {}) {
           samples: movementSamples,
           inputToServerDbMedianMs: inputToDbStats.median,
           inputToServerDbP95Ms: inputToDbStats.p95,
-          inputToRenderedMedianMs: inputToRenderStats.median,
-          inputToRenderedP95Ms: inputToRenderStats.p95,
+          inputToReticleMedianMs: inputToReticleStats.median,
+          inputToReticleP95Ms: inputToReticleStats.p95,
         },
         secondClientObservedUpdateMs: observerUpdateLatencyMs,
         memory: frameData.memory,
@@ -443,16 +452,16 @@ export async function runPerformanceSuite(options = {}) {
 
       testResults.push(resultEntry);
 
-      console.log(`  FPS: ~${resultEntry.frames.approxFPS} (Median frame: ${resultEntry.frames.medianDeltaMs}ms, p95: ${resultEntry.frames.p95DeltaMs}ms)`);
+      console.log(`  Browser rAF: ~${resultEntry.frames.observedRafHz} Hz (Median interval: ${resultEntry.frames.medianDeltaMs}ms, p95: ${resultEntry.frames.p95DeltaMs}ms)`);
       console.log(`  Movement (Input -> Server DB): Median ${resultEntry.movementLatency.inputToServerDbMedianMs}ms, p95 ${resultEntry.movementLatency.inputToServerDbP95Ms}ms`);
-      console.log(`  Movement (Input -> Rendered): Median ${resultEntry.movementLatency.inputToRenderedMedianMs}ms, p95 ${resultEntry.movementLatency.inputToRenderedP95Ms}ms`);
+      console.log(`  Movement (Input -> Reticle): Median ${resultEntry.movementLatency.inputToReticleMedianMs}ms, p95 ${resultEntry.movementLatency.inputToReticleP95Ms}ms`);
       console.log(`  2nd Client Observed Update: ${resultEntry.secondClientObservedUpdateMs}ms`);
     }
 
     const payload = {
       timestamp: new Date().toISOString(),
       hardware: hardwareInfo,
-      targetCommit: options.commit || 'review/antigravity-2026-10-15',
+      targetCommit: options.commit || execFileSync('git', ['rev-parse', 'HEAD'], { cwd: targetDir, encoding: 'utf8' }).trim(),
       results: testResults,
     };
 

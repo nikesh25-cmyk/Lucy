@@ -1,6 +1,6 @@
-# NemoWorld External AI Worker Reference Client
+# NemoWorld External AI Worker Example
 
-An authoritative reference client demonstrating how a separately hosted, autonomous AI worker or background runtime connects to NemoWorld via the scoped runtime API.
+An example of a separately hosted worker using NemoWorld's scoped runtime API. It is not a production worker supervisor.
 
 ---
 
@@ -14,19 +14,16 @@ Specifically, for non-idempotent server operations such as `/api/v1/move`:
 2. If network partition, process termination, or hardware failure occurs **after** the server commits the state change but **before** the client receives the HTTP response or flushes its local log to disk, the client cannot know whether the action was applied solely by examining its local filesystem.
 3. A naive client that merely replays the action on restart will cause duplicate movement, corrupting agent patrol paths.
 
-### The Precise Guarantee: At-Least-Once Intent Dispatch with Authoritative State Reconciliation
-The NemoWorld External AI Worker provides **at-least-once intent dispatch with authoritative state reconciliation (convergent execution)**:
+### Recovery behavior
+The example saves a local intent before dispatching `/move`. If it loses the response or crashes before recording completion, it **stops movement**. Current coordinates are shown to an operator as diagnostic information, but are not proof that a particular request committed. No automatic retry or subsequent move is permitted while that intent remains unresolved.
 
 1. **Pre-Action Intent Logging:**
    - Before dispatching any mutating action, the worker logs an `inFlight` intent record containing `{ actionId, type, origin, expectedTarget, dispatchedAt }` to persistent storage (`.worker-state.json`).
-2. **Authoritative Reconciliation on Startup / Retry:**
-   - On process boot or prior to executing subsequent steps, the worker executes `reconcileInFlight()`.
-   - It queries the server's authoritative state via `GET /api/v1/world` or `GET /api/v1/runtime/status`.
-   - **Case A (`already_committed`):** If the agent's current position matches `expectedTarget`, the server already committed the step before the crash. The worker marks the action as completed in `completedActions`, clears `inFlight`, and **does not replay** the move.
-   - **Case B (`not_committed`):** If the agent's current position matches `origin`, the server never received or committed the move. The worker clears the intent and can safely re-dispatch.
-   - **Case C (`diverged`):** If the agent's position is neither `origin` nor `expectedTarget` (e.g. administrative intervention, teleportation, or collision), the worker flags the action as `uncertainDiverged`, avoids replaying, and logs an alert for operator inspection.
+2. **Diagnostic observation on restart:** `reconcileInFlight()` reports `observed_target`, `observed_origin`, or `observed_elsewhere`. All three retain the intent and require operator resolution. A delayed request may commit after an origin observation; another actor may move the resident back to origin after a commit. The example provides no automatic resolution method.
 3. **Idempotent Routes:**
-   - For routes with native server-side idempotency (`/claims`, `/submissions`, `/interact`, `/frontier/build`), the worker supplies the standard `Idempotency-Key: <actionId>` HTTP header, offloading deduplication to the server's authoritative ledger.
+   - `performIdempotentAction` sends an `Idempotency-Key` header. Use it only after verifying that the particular server route actually enforces deduplication for that key. A header alone does not confer idempotency.
+
+The journal is written through a temporary file and rename, then synced. Corrupt saved state fails closed. This local example still cannot provide exactly-once delivery or automatic recovery of an uncertain unkeyed move; server-side action receipts/idempotency would be needed for that.
 
 ---
 
@@ -48,7 +45,7 @@ export NEMOWORLD_RUNTIME_TOKEN="rt-your-scoped-token"
 node examples/external-worker/client.mjs
 ```
 
-### Run the Failure Injection & Crash Reconciliation Test
+### Run the Failure Injection & Fail-Closed Test
 ```bash
 node --test examples/external-worker/worker.test.js
 ```
@@ -56,4 +53,4 @@ node --test examples/external-worker/worker.test.js
 ---
 
 ## 4. Coordination Note for DeepSeek (Backend Contracts)
-While state reconciliation handles discrete coordinate movements (`/move`), adding native server-side idempotency to `/move` via `Idempotency-Key` or sequence tokens in future framework waves will allow unified deduplication across all mutating routes.
+The `/move` route needs a server-validated idempotency key or action receipt before uncertain moves can be retried safely.
