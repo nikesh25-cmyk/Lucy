@@ -42,8 +42,10 @@ return function(options)
         parts[#parts+1]='dropdown[0.5,3.6;5.8,0.8;plot;'..table.concat(choices,',')..';1;true]'
         parts[#parts+1]='field[6.5,3.6;6,0.8;purpose;Project name / purpose;Creative workshop]'
         parts[#parts+1]='button[0.5,4.6;4,0.8;claim;Use this free building plot]'
-      else parts[#parts+1]='label[0.5,3.9;No available plot in this area. Choose another opened sector.]' end
+      else parts[#parts+1]='label[0.5,3.9;No free plot here. Use Travel and places to reach Shared Frontier.]' end
     end
+    if local_plot then parts[#parts+1]='button_exit[0.5,4.7;5.4,0.8;walk_plot;Walk to my plot]' end
+    parts[#parts+1]='button_exit[6.4,4.7;5.6,0.8;travel_places;Travel and places]'
     local blueprints={}
     for _,blueprint in ipairs(data.blueprints or {}) do blueprints[#blueprints+1]=core.formspec_escape(blueprint.name..' · '..blueprint.block_count..' blocks') end
     local draft=drafts[name] or {}
@@ -76,6 +78,8 @@ return function(options)
         show(name,'Tool not found. Rejoin to restore your creative palette.');return true
       end
     end
+    if fields.walk_plot and options.navigate then options.navigate(name,{kind='plot'});return true end
+    if fields.travel_places and options.travel then options.travel(name);return true end
     if fields.claim then
       local available=available_plots(scene)
       local selected=available[tonumber(fields.plot or '')]
@@ -83,7 +87,8 @@ return function(options)
       options.request(name,'/native/plot',{player=name,plot_id=selected.id,purpose=fields.purpose or ''},function(ok,data)
         if ok then
           scene.creative.my_plot=data.result.plot
-          options.sync(name);show(name,'Plot stewardship saved by NemoWorld. Walk to its coordinates to build.')
+          options.sync(name)
+          if options.navigate then options.navigate(name,{kind='plot'}) else show(name,'Plot saved. Choose Walk to my plot to reach a usable building spot.') end
         else show(name,data) end
       end)
     elseif fields.preview or fields.build then

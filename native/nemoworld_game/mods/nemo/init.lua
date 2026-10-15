@@ -6,6 +6,7 @@ local mod_key = core.settings:get('nemo_bridge_key')
 if not mod_key or #mod_key < 32 then error('nemo_bridge_key must match the local bridge key') end
 core.set_mapgen_setting('mg_name', 'singlenode', true)
 local size = 48
+local width,height=48,48
 local paired = {}
 local mission_evidence = {}
 local projected = {}
@@ -21,7 +22,7 @@ local motion_threshold = 0.55
 local kinds = {'stone','wood','glass','brick','sand','grass','path','clay','slate'}
 local names = {}
 for _,kind in ipairs(kinds) do names[kind]=true end
-local terrain_types = {meadow=true,tree=true,water=true,garden=true,path=true,plaza=true,grass=true}
+local terrain_types = {meadow=true,tree=true,water=true,garden=true,path=true,plaza=true,grass=true,bridge=true,floor=true,rug=true,wall=true,building=true,fountain=true}
 local markers = {}
 local gate_markers = {}
 local project_scene = dofile(core.get_modpath('nemo')..'/scene.lua')
@@ -58,7 +59,7 @@ local function suspend_player(player, state)
 end
 
 local function inside(pos)
-  return pos and pos.x >= 0 and pos.x < size and pos.z >= 0 and pos.z < size and pos.y >= 0 and pos.y <= 7
+  return pos and pos.x >= 0 and pos.x < width and pos.z >= 0 and pos.z < height and pos.y >= 0 and pos.y <= 7
     and pos.x == math.floor(pos.x) and pos.y == math.floor(pos.y) and pos.z == math.floor(pos.z)
 end
 local function message(name, text)
@@ -93,9 +94,11 @@ local function paired_request(name, path, payload, callback)
 end
 local function key(pos) return pos.x .. ':' .. pos.y .. ':' .. pos.z end
 local sync
+local navigate,travel
 local creative = dofile(core.get_modpath('nemo')..'/creative.lua')({
   scene=function(name) local state=motion[name];return paired[name] and state and state.ready and state.scene or nil end,
   request=paired_request,sync=function(name) sync(name) end,connect=show_pairing,message=message,
+  navigate=function(name,target) navigate(name,target) end,travel=function(name) travel.show(name) end,
 })
 local function stop_player(player)
   if player and player.set_velocity then player:set_velocity({x=0, y=0, z=0}) end
@@ -146,21 +149,31 @@ local function request_move(name, direction)
   local generation = state.generation
   if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   if state.in_flight then return false, 'Movement is still being confirmed.' end
-  if motion_clock - (state.last_request or -math.huge) < move_cooldown then return false, 'Movement is cooling down.' end
+  if core.get_us_time()/1000000 - (state.last_request or -math.huge) < move_cooldown then return false, 'Movement is cooling down.' end
   state.in_flight = true
-  state.last_request = motion_clock
+  state.last_request = core.get_us_time()/1000000
   state.last_direction = direction
   motion[name] = state
-  request('/native/action', {player=name, action='move', direction=direction}, function(ok, data)
+  request('/native/action', {player=name, action='move', direction=direction}, function(ok, data, code)
     if motion[name] ~= state or state.generation ~= generation then return end
+    state.last_request=core.get_us_time()/1000000
     if not ok then
       state.in_flight = false
       state.last_direction = nil
+      if code==429 then state.last_request=state.last_request+0.12;return end
+      state.navigation=nil
       message(name, data)
       sync(name, false)
     else
-      -- Keep the gate closed until state reconciliation proves where the authoritative avatar is.
-      sync(name, true)
+      local result=data.result
+      if state.navigation and not (result and result.blocked) then state.navigation.index=state.navigation.index+1 end
+      state.move_version=(state.move_version or 0)+1
+      if result and result.world_id==active_world and type(result.x)=='number' and type(result.y)=='number' then
+        if state.scene then state.scene.player={x=result.x,y=result.y,z=result.z or 0} end
+        local player=core.get_player_by_name(name)
+        if player then set_anchor(name,player,result,true) else state.in_flight=false;state.last_direction=nil end
+        if result.blocked then state.navigation=nil;message(name,'The route is blocked. Choose a clear path.');sync(name) end
+      else sync(name,true) end
     end
   end)
   return true
@@ -177,7 +190,8 @@ sync = function(name, release_motion)
   local state = motion[name]
   local generation = state and state.generation
   busy[name] = state
-  request('/native/state', {player=name}, function(ok, data, code)
+  local move_version=state and state.move_version or 0
+  request('/native/state', {player=name,known_world=state and state.scene and state.scene.world_id or nil}, function(ok, data, code)
     if motion[name] ~= state or state.generation ~= generation then
       -- A leave/re-pair may have installed a newer state. Release only this callback's slot;
       -- never clear a newer request's busy marker.
@@ -190,7 +204,8 @@ sync = function(name, release_motion)
         paired[name] = nil
         state.ready = false
         suspend_player(core.get_player_by_name(name), state)
-        resume_player(name)
+        if code==401 then resume_player(name)
+        else state.retry_resume=true;state.resume_pending=false;show_pairing(name,data) end
       end
       if code ~= 401 then
         local state = motion[name]
@@ -199,6 +214,7 @@ sync = function(name, release_motion)
       message(name, data)
       return
     end
+    if (state.move_version or 0)~=move_version and state.scene and data.world_id==state.scene.world_id then data.player=state.scene.player end
     local function apply()
       if not paired[name] or motion[name] ~= state or state.generation ~= generation then
         emerging = false
@@ -209,9 +225,22 @@ sync = function(name, release_motion)
         active_world = data.world_id
         reconciled = false
       end
-      core.load_area({x=0,y=-1,z=0}, {x=47,y=7,z=47})
+      width=data.bounds and data.bounds.columns or 48;height=data.bounds and data.bounds.rows or 48
+      if not data.terrain then data.terrain=state.scene and state.scene.terrain or {} end
+      if not reconciled then state.block_cache={} end
+      local cache=state.block_cache or {}
+      local window=data.block_window
+      if window then
+        for id,block in pairs(cache) do
+          if block.x>=window.x and block.x<window.x+window.columns and block.y>=window.y and block.y<window.y+window.rows then cache[id]=nil end
+        end
+      else cache={} end
+      for _,block in ipairs(data.blocks or {}) do cache[block.x..':'..block.y..':'..block.z]=block end
+      state.block_cache=cache;data.blocks={}
+      for _,block in pairs(cache) do data.blocks[#data.blocks+1]=block end
+      core.load_area({x=-1,y=-1,z=-1}, {x=96,y=7,z=64})
       for _, tile in ipairs(data.terrain or {}) do
-        if tile.x >= 0 and tile.x < 48 and tile.y >= 0 and tile.y < 48 then
+        if tile.x >= 0 and tile.x < width and tile.y >= 0 and tile.y < height then
           local type_name = terrain_types[tile.type] and tile.type or 'meadow'
           local pos = {x=tile.x,y=-1,z=tile.y}
           if core.get_node(pos).name ~= 'nemo:terrain_' .. type_name then core.set_node(pos,{name='nemo:terrain_' .. type_name}) end
@@ -229,10 +258,10 @@ sync = function(name, release_motion)
       end
       if not reconciled then
         -- A Luanti world may have persisted a node removed while this server was offline.
-        for x=0,47 do for z=0,47 do for y=0,7 do
+        for x=-1,96 do for z=-1,64 do for y=-1,7 do
           local pos={x=x,y=y,z=z}
           local node=core.get_node(pos).name
-          if node:sub(1,5) == 'nemo:' and not next_nodes[key(pos)] then core.set_node(pos,{name='air'}) end
+          if node:sub(1,5) == 'nemo:' and not next_nodes[key(pos)] and not (y==-1 and x>=0 and x<width and z>=0 and z<height) then core.set_node(pos,{name='air'}) end
         end end end
         reconciled = true
       else
@@ -242,16 +271,19 @@ sync = function(name, release_motion)
       end
       projected = next_nodes
       state.scene=data
-      local show_build_start=not state.build_onboarding_shown and data.creative and not data.creative.my_plot
+      local show_build_start=not state.build_onboarding_shown and data.creative and #data.creative.palette>0 and not data.creative.my_plot
       state.build_onboarding_shown=true
       for _,marker in pairs(gate_markers) do if marker and marker:get_pos() then marker:remove() end end
       gate_markers={}
       local compass={up='North',down='South',left='West',right='East'}
-      for _,gate in ipairs(data.gates or {}) do
+      local entrances,seen={},{}
+      for _,gate in ipairs(data.gates or {}) do entrances[#entrances+1]=gate;seen[gate.target_world_id]=true end
+      for _,portal in ipairs(data.portals or {}) do if not seen[portal.target_world_id] then entrances[#entrances+1]=portal end end
+      for index,gate in ipairs(entrances) do
         local marker=core.add_entity({x=gate.x,y=4.6,z=gate.y},'nemo:gate_label')
         if marker then
-          marker:set_properties({nametag=(compass[gate.direction] or gate.direction)..' · '..gate.target_world_id..(gate.exists and ' · open' or ' · unopened')})
-          gate_markers[gate.direction]=marker
+          marker:set_properties({nametag=(gate.label or gate.name or compass[gate.direction] or gate.direction or 'Entrance')..' · '..gate.target_world_id})
+          gate_markers[index]=marker
         end
       end
       local seen = {}
@@ -279,7 +311,7 @@ sync = function(name, release_motion)
         if player.hud_add then
           local plot=data.creative and data.creative.my_plot
           local land_hint=plot and ('Your plot: '..plot.x..'–'..(plot.x+5)..', '..plot.y..'–'..(plot.y+5)) or 'Choose a free building plot: /nemo_build'
-          local text=data.world_id..' · Tile '..data.player.x..','..data.player.y..' · '..#(data.participants or {})..' other residents · '..#(data.blocks or {})..' saved blocks\n'..land_hint..'\nCreative materials: free and reusable · /nemo_build for tools, plots and blueprints\n/nemo_chat for conversation · Walk to a labelled gate to cross an opened area'
+          local text=data.world_id..' · Tile '..data.player.x..','..data.player.y..' · '..#(data.participants or {})..' nearby residents · '..#(data.blocks or {})..' loaded blocks\n'..land_hint..'\nInventory: Build / Travel · /nemo_travel to explore · /nemo_chat to talk'
           if state.hud then player:hud_change(state.hud,'text',text)
           else state.hud=player:hud_add({type='text',position={x=0,y=0},offset={x=18,y=95},alignment={x=1,y=1},number=0xF5EED9,text=text,z_index=100}) end
         end
@@ -298,7 +330,7 @@ sync = function(name, release_motion)
     end
     if reconciled then apply() else
       emerging = true
-      core.emerge_area({x=0,y=-1,z=0},{x=47,y=7,z=47},function(_, action, remaining)
+      core.emerge_area({x=0,y=-1,z=0},{x=(data.bounds and data.bounds.columns or 48)-1,y=7,z=(data.bounds and data.bounds.rows or 48)-1},function(_, action, remaining)
         if remaining == 0 then emerging = false; apply() end
       end)
     end
@@ -318,14 +350,14 @@ end
 core.register_node('nemo:ground', {description='NemoWorld ground', tiles={'nemo_ground.png'}, diggable=false, pointable=true,
   groups={immortal=1}, on_punch=function() end})
 local ground_textures={meadow='nemo_cc0_grass.jpg',tree='nemo_cc0_grass.jpg',grass='nemo_cc0_grass.jpg',
-  garden='nemo_cc0_soil.jpg',path='nemo_cc0_soil.jpg^[colorize:#d2c08a:110',plaza='nemo_cc0_concrete.jpg',water='nemo_terrain_water.png'}
+  garden='nemo_cc0_soil.jpg',path='nemo_cc0_soil.jpg^[colorize:#d2c08a:110',plaza='nemo_cc0_concrete.jpg',water='nemo_terrain_water.png',bridge='nemo_cc0_wood.jpg',floor='nemo_cc0_wood.jpg',rug='nemo_cc0_terracotta.jpg',wall='nemo_cc0_concrete.jpg',building='nemo_cc0_concrete.jpg',fountain='nemo_cc0_rock.jpg'}
 for type_name in pairs(terrain_types) do
   core.register_node('nemo:terrain_' .. type_name, {description='NemoWorld ' .. type_name .. ' terrain', tiles={ground_textures[type_name]},
     diggable=false, groups={immortal=1}, on_punch=function() end})
 end
 core.register_entity('nemo:resident', {initial_properties={physical=false,pointable=false,static_save=false,
   visual='cube',visual_size={x=0.55,y=1.05},textures={'nemo_resident.png','nemo_resident.png','nemo_resident.png','nemo_resident.png','nemo_resident.png','nemo_resident.png'}}})
-core.register_node('nemo:boundary', {description='Finite sector boundary', tiles={'nemo_boundary.png'}, diggable=false,
+core.register_node('nemo:boundary', {description='Finite sector boundary', drawtype='airlike',pointable=false,diggable=false,
   groups={immortal=1}, on_punch=function() end})
 local block_textures={stone='nemo_cc0_rock.jpg',wood='nemo_cc0_wood.jpg',glass='nemo_glass.png',
   brick='nemo_cc0_terracotta.jpg',sand='nemo_cc0_soil.jpg^[colorize:#d3c28d:130',grass='nemo_cc0_grass.jpg',
@@ -345,22 +377,46 @@ for _,kind in ipairs(kinds) do
     end})
 end
 core.register_on_generated(function(minp, maxp)
-  local xmin, xmax = math.max(minp.x, 0), math.min(maxp.x, size - 1)
-  local zmin, zmax = math.max(minp.z, 0), math.min(maxp.z, size - 1)
+  local xmin, xmax = math.max(minp.x, 0), math.min(maxp.x, width - 1)
+  local zmin, zmax = math.max(minp.z, 0), math.min(maxp.z, height - 1)
   if minp.y <= -1 and maxp.y >= -1 then
     for x=xmin,xmax do for z=zmin,zmax do core.set_node({x=x,y=-1,z=z}, {name='nemo:ground'}) end end
   end
-  for y=math.max(0,minp.y),math.min(3,maxp.y) do
-    for x=math.max(-1,minp.x),math.min(48,maxp.x) do
-      if minp.z <= -1 and maxp.z >= -1 then core.set_node({x=x,y=y,z=-1},{name='nemo:boundary'}) end
-      if minp.z <= 48 and maxp.z >= 48 then core.set_node({x=x,y=y,z=48},{name='nemo:boundary'}) end
-    end
-    for z=math.max(0,minp.z),math.min(47,maxp.z) do
-      if minp.x <= -1 and maxp.x >= -1 then core.set_node({x=-1,y=y,z=z},{name='nemo:boundary'}) end
-      if minp.x <= 48 and maxp.x >= 48 then core.set_node({x=48,y=y,z=z},{name='nemo:boundary'}) end
-    end
-  end
+
 end)
+local function begin_route(name,target)
+  local state=motion[name]
+  paired_request(name,'/native/navigation',{player=name,kind=target.kind,world_id=target.world_id},function(ok,data)
+    if not ok then message(name,data);return end
+    if not state.scene or data.world_id~=state.scene.world_id then message(name,'Your world changed. Choose the destination again.');return end
+    state.navigation={route=data,index=1}
+    core.close_formspec(name,'nemo:creative');core.close_formspec(name,'nemo:travel')
+    message(name,'Walking to your destination. Press a movement key to cancel.')
+  end)
+end
+navigate=begin_route
+travel=dofile(core.get_modpath('nemo')..'/travel.lua')({scene=function(name) local s=motion[name];return s and s.ready and s.scene end,connect=show_pairing,navigate=begin_route})
+local function finish_route(name,state,job)
+  state.navigation=nil
+  local finish=job.route.finish or {}
+  if not finish.world_id then
+    message(name,'Your building plot is here. Aim at nearby clear ground inside its boundary; right-click to place.')
+    local player=core.get_player_by_name(name)
+    local target=job.route.build_target
+    if player and target and player.set_look_horizontal and player.set_look_vertical then
+      local p=state.scene.player;local dx,dz=target.x-p.x,target.y-p.y
+      player:set_look_horizontal(math.atan2(-dx,dz));player:set_look_vertical(1.0)
+    end
+    sync(name);return
+  end
+  local function enter()
+    paired_request(name,'/native/action',{player=name,action=finish.direction and 'move' or 'travel',direction=finish.direction,world_id=finish.world_id},function(ok,data)
+      if ok then sync(name,true) else message(name,data) end
+    end)
+  end
+  if finish.expand then paired_request(name,'/native/action',{player=name,action='expand',direction=finish.direction},function(ok,data) if ok then enter() else message(name,data) end end)
+  else enter() end
+end
 local function finish_connection(name, previous, pairing_attempt, ok, data)
     if motion[name] ~= previous or not motion[name] or motion[name].pairing_attempt ~= pairing_attempt then return end
     if ok and type(data.pair_id) == 'string' and #data.pair_id == 32 then
@@ -429,13 +485,15 @@ core.register_on_joinplayer(function(player)
   inventory:set_size('main',math.max(36,9*math.ceil(#tools/9)))
   inventory:set_list('main',tools)
   if player.hud_set_hotbar_itemcount then player:hud_set_hotbar_itemcount(9) end
-  if player.set_inventory_formspec then player:set_inventory_formspec('formspec_version[4]size[11,7]label[0.5,0.5;Free creative tools · /nemo_build for plots and blueprints]list[current_player;main;0.5,1;9,4;]listring[]') end
+  if player.set_inventory_formspec then player:set_inventory_formspec('formspec_version[4]size[11,7]label[0.5,0.5;Free creative tools · /nemo_build for plots and blueprints]list[current_player;main;0.5,1;9,4;]listring[]button_exit[0.5,5.4;4.3,0.8;open_build;Build and plot]button_exit[5.4,5.4;4.3,0.8;open_travel;Travel and places]') end
   message(name,'Connecting your saved character. Free tools: /nemo_build. Click ground to place; punch saved blocks to remove.')
   show_pairing(name,'Restoring your saved connection...')
   resume_player(name)
 end)
 core.register_on_player_receive_fields(function(player,formname,fields)
   local name=player:get_player_name()
+  if fields.open_build then creative.show(name);return true end
+  if fields.open_travel then travel.show(name);return true end
   if formname=='nemo:characters' then
     local session=native_logins[name]
     if fields.native_connect and session then
@@ -472,6 +530,7 @@ core.register_on_leaveplayer(function(player)
   motion[name] = nil
   creative.clear(name)
   native_logins[name]=nil
+  travel.clear(name)
 end)
 core.register_chatcommand('nemo_pair', {params='CODE', description='Pair this player to an operator-owned human avatar', func=function(name, code)
   if not code:match('^[a-f0-9]+$') then return false, 'Invalid pairing code.' end
@@ -630,7 +689,7 @@ core.register_chatcommand('nemo_tell', {params='RESIDENT_ID then the message', d
   return true, 'Sending.'
 end})
 core.register_globalstep(function(dt)
-  motion_clock = motion_clock + dt
+  motion_clock = core.get_us_time()/1000000
   sync_elapsed = sync_elapsed + dt
   if sync_elapsed >= 5 then
     sync_elapsed = 0
@@ -643,13 +702,23 @@ core.register_globalstep(function(dt)
     local name = player:get_player_name()
     local state = motion[name]
     local p = player:get_pos()
-    if p.x < 0 or p.x >= 48 or p.z < 0 or p.z >= 48 or p.y < -1 or p.y > 12 then
+    if p.x < 0 or p.x >= width or p.z < 0 or p.z >= height or p.y < -1 or p.y > 12 then
       local safe = state and state.anchor or {x=24,y=2,z=24}
       player:set_pos(safe)
       stop_player(player)
       p = player:get_pos()
     end
-    if paired[name] and state and state.anchor then
+    if paired[name] and state and state.ready and state.navigation then
+      local controls=player.get_player_control and player:get_player_control() or {}
+      if controls.up or controls.down or controls.left or controls.right then state.navigation=nil;message(name,'Walking cancelled.')
+      elseif not state.in_flight and not busy[name] and motion_clock-(state.last_request or -math.huge)>=move_cooldown then
+        local job=state.navigation
+        local direction=job.route.directions[job.index]
+        if direction then request_move(name,direction)
+        else finish_route(name,state,job) end
+      end
+    end
+    if paired[name] and state and state.anchor and not state.navigation then
       local dx, dz = p.x - state.anchor.x, p.z - state.anchor.z
       if state.in_flight then
         -- Keep client-side physics from carrying the player through a second tile while the
@@ -667,7 +736,6 @@ core.register_globalstep(function(dt)
         local direction
         if math.abs(dx) >= math.abs(dz) then direction = dx > 0 and 'right' or 'left'
         else direction = dz > 0 and 'down' or 'up' end
-        stop_horizontal(player)
         request_move(name, direction)
       end
     end

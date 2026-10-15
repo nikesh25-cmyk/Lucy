@@ -42,13 +42,14 @@ local slots={}
 local form
 local after_loaded=false
 local vertical_velocity=0
+local horizontal_velocity=0
 local highest_correction=-100
 local player={is_player=function() return true end,get_player_name=function() return 'Probe' end,
  get_pos=function() return {x=pos.x,y=pos.y,z=pos.z} end,
  set_pos=function(_,p) pos={x=p.x,y=p.y,z=p.z};if after_loaded then highest_correction=math.max(highest_correction,p.y) end end,
  get_properties=function() return {collisionbox={-0.3,0,-0.3,0.3,1.7,0.3}} end,
- get_velocity=function() return {x=0,y=vertical_velocity,z=0} end,
- set_velocity=function(_,v) vertical_velocity=v.y end,
+ get_velocity=function() return {x=horizontal_velocity,y=vertical_velocity,z=0} end,
+ set_velocity=function(_,v) vertical_velocity=v.y;horizontal_velocity=v.x end,
  get_physics_override=function() return physics end,
  set_physics_override=function(_,p) for k,v in pairs(p) do physics[k]=v end end,
  get_inventory=function() return {get_list=function() return slots end,set_size=function() end,set_list=function(_,_,s) slots=s end} end,
@@ -87,7 +88,7 @@ core.register_on_mods_loaded(function()
   fields({claim=true,plot='1',purpose='Native controls community workshop'})
  end)
  core.after(5,function()
-  assert(form.spec:find('plot:0:0:5:5',1,true),'explicit stewardship must be confirmed before building')
+  assert(not form,'choosing a plot must return to the scene and guide the player to usable land')
   local stack=ItemStack('nemo:place_wood')
   local returned=core.registered_items['nemo:place_wood'].on_place(stack,player,{type='node',under={x=33,y=-1,z=32},above={x=33,y=0,z=32}})
   assert(returned:get_count()==1,'placement must retain the free reusable tool')
@@ -101,8 +102,10 @@ core.register_on_mods_loaded(function()
   pos.x=32.6
   pos.y=0.4
   vertical_velocity=2
+  horizontal_velocity=4
  end)
  core.after(10,function()
+  assert(horizontal_velocity==4,'ordinary walking must not zero horizontal velocity on every saved tile')
   assert(vertical_velocity==2,'walking confirmation must preserve the native jump velocity')
   assert(highest_correction<0.5,'walking or heartbeat must not teleport feet into the air; max '..highest_correction)
   pos.y=0.4 -- a legitimate short native jump; the heartbeat must not cancel it
