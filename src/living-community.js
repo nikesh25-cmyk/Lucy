@@ -40,6 +40,16 @@ const lastSeed = new WeakMap();
 const iso = (ms) => new Date(Math.floor(ms / 60_000) * 60_000).toISOString();
 const quiet = (action) => { try { return action(); } catch (error) { if (error?.status) return null; throw error; } };
 
+// The server runs the living tick inside its own transaction, while a direct caller (a test, a script)
+// has none. Inside one, an operation becomes a savepoint, so a refused or failed write undoes only
+// itself; outside one it is an ordinary transaction. A nested BEGIN would throw and silently seed nothing.
+function atomic(platform, action) {
+  if (!platform.db.isTransaction) return platform.transaction(action);
+  platform.db.exec('SAVEPOINT living_community');
+  try { const result = action(); platform.db.exec('RELEASE living_community'); return result; }
+  catch (error) { platform.db.exec('ROLLBACK TO living_community'); platform.db.exec('RELEASE living_community'); throw error; }
+}
+
 /** The signed-in-operator actor a resident's own operator would use, as the living tick already does. */
 const actorOf = (accounts, resident) => ({ account: accounts[resident.operatorKey], kind: 'session' });
 
@@ -61,7 +71,7 @@ export function seedLivingCommunity(platform, { accounts, roster, now = platform
     if (!creator || !accounts[creator.operatorKey]) continue;
     let row = platform.get("SELECT id FROM community_circles WHERE name=? AND creator_agent_id=? AND status='active'", spec.name, creator.id);
     if (!row) {
-      const made = quiet(() => platform.transaction(() => platform.createCircle(actorOf(accounts, creator), { agent_id: creator.id, name: spec.name, summary: spec.summary, focus: spec.focus })));
+      const made = quiet(() => atomic(platform, () => platform.createCircle(actorOf(accounts, creator), { agent_id: creator.id, name: spec.name, summary: spec.summary, focus: spec.focus })));
       if (made) { row = { id: made.id }; report.circles_created++; }
     }
     if (!row) continue;
@@ -70,7 +80,7 @@ export function seedLivingCommunity(platform, { accounts, roster, now = platform
       const member = byId.get(memberId);
       if (!member || !accounts[member.operatorKey]) continue;
       if (platform.get('SELECT 1 FROM community_members WHERE circle_id=? AND agent_id=?', row.id, member.id)) continue;
-      if (quiet(() => platform.transaction(() => platform.circleMembership(actorOf(accounts, member), { agent_id: member.id, circle_id: row.id, action: 'join' })))) report.circle_joins++;
+      if (quiet(() => atomic(platform, () => platform.circleMembership(actorOf(accounts, member), { agent_id: member.id, circle_id: row.id, action: 'join' })))) report.circle_joins++;
     }
   }
 
@@ -79,14 +89,14 @@ export function seedLivingCommunity(platform, { accounts, roster, now = platform
   if (plan && organiser && accounts[organiser.operatorKey]) {
     let project = platform.get('SELECT id FROM guild_projects WHERE title=? AND creator_agent_id=?', plan.title, organiser.id);
     if (!project) {
-      const made = quiet(() => platform.transaction(() => platform.guildProjectCreate(actorOf(accounts, organiser), { agent_id: organiser.id, guild_id: plan.guild_id, title: plan.title, summary: plan.summary, visibility: 'public', plan: plan.plan })));
+      const made = quiet(() => atomic(platform, () => platform.guildProjectCreate(actorOf(accounts, organiser), { agent_id: organiser.id, guild_id: plan.guild_id, title: plan.title, summary: plan.summary, visibility: 'public', plan: plan.plan })));
       if (made) { project = { id: made.id }; report.projects_created++; }
     }
     if (project) {
       for (const memberId of ['lw-lyra', 'lw-rowan']) {
         const member = byId.get(memberId);
         if (!member || !accounts[member.operatorKey] || platform.get('SELECT 1 FROM guild_participants WHERE project_id=? AND agent_id=?', project.id, member.id)) continue;
-        if (quiet(() => platform.transaction(() => platform.guildParticipation(actorOf(accounts, member), { agent_id: member.id, project_id: project.id, action: 'join' })))) report.project_joins++;
+        if (quiet(() => atomic(platform, () => platform.guildParticipation(actorOf(accounts, member), { agent_id: member.id, project_id: project.id, action: 'join' })))) report.project_joins++;
       }
     }
   }
@@ -100,7 +110,7 @@ export function seedLivingCommunity(platform, { accounts, roster, now = platform
     let eventId = upcoming?.id;
     if (!eventId) {
       const circleId = spec.circle ? circleIds.get(spec.circle) : null;
-      const made = quiet(() => platform.transaction(() => platform.createEvent(actorOf(accounts, host), {
+      const made = quiet(() => atomic(platform, () => platform.createEvent(actorOf(accounts, host), {
         agent_id: host.id, ...(circleId ? { circle_id: circleId } : {}), world_id: spec.world,
         title: spec.titles[slot % spec.titles.length], summary: spec.summary,
         starts_at: iso(now + GATHERING_LEAD_MS), ends_at: iso(now + GATHERING_LEAD_MS + GATHERING_MS), capacity: 24,
@@ -112,7 +122,7 @@ export function seedLivingCommunity(platform, { accounts, roster, now = platform
     const attendees = circleId ? platform.all('SELECT agent_id FROM community_members WHERE circle_id=? AND agent_id!=?', circleId, host.id).map((row) => byId.get(row.agent_id)).filter(Boolean) : [];
     for (const attendee of attendees) {
       if (!accounts[attendee.operatorKey] || platform.get('SELECT 1 FROM community_rsvps WHERE event_id=? AND agent_id=?', eventId, attendee.id)) continue;
-      if (quiet(() => platform.transaction(() => platform.eventRSVP(actorOf(accounts, attendee), { agent_id: attendee.id, event_id: eventId, action: 'join' })))) report.rsvps++;
+      if (quiet(() => atomic(platform, () => platform.eventRSVP(actorOf(accounts, attendee), { agent_id: attendee.id, event_id: eventId, action: 'join' })))) report.rsvps++;
     }
   }
   return report;

@@ -84,3 +84,21 @@ test('the living tick runs the seeding and reports it', (t) => {
   const report = livingWorldTick(w.platform, { bootstrap: true });
   assert.equal(report.community.gatherings_created, LIVING_GATHERINGS.length);
 });
+
+test('seeding works inside the server\'s own tick transaction, and a refused write undoes only itself', (t) => {
+  const w = world(t);
+  ensureLivingWorld(w.platform, { bootstrap: true });
+  // The server runs `platform.transaction(() => livingWorldTick(platform))`; a nested BEGIN would throw
+  // and silently seed nothing, so the real scheduling path is the one that has to be proven.
+  const report = w.platform.transaction(() => livingWorldTick(w.platform, { bootstrap: true }));
+  assert.equal(report.community.circles_created, LIVING_CIRCLES.length);
+  assert.equal(count(w.platform, "SELECT COUNT(*) AS n FROM community_circles WHERE status='active'"), LIVING_CIRCLES.length);
+  assert.equal(count(w.platform, "SELECT COUNT(*) AS n FROM community_events WHERE status='scheduled'"), LIVING_GATHERINGS.length);
+  assert.equal(count(w.platform, "SELECT COUNT(*) AS n FROM guild_projects"), 1);
+  assert.equal(w.platform.db.isTransaction, false);
+  // A second tick inside its own transaction after the interval adds nothing and still commits cleanly.
+  w.advance(61_000);
+  const again = w.platform.transaction(() => livingWorldTick(w.platform, { bootstrap: true }));
+  assert.equal(again.community.circles_created + again.community.gatherings_created + again.community.projects_created, 0);
+  assert.equal(w.platform.verifyAudit(), true);
+});
