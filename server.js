@@ -185,8 +185,13 @@ const writes = new Map([
   // and it is a signed-in human operator action (the `null` scope is what makes the runtime refusal
   // fire). A purchase spends and grants inside the one request transaction.
   ['/karma/settle', ['karmaSettle', null]], ['/shop/purchase', ['shopPurchase', null]],
+
+  // The activity pipeline. Authoring a scoped activity task validates it first — a duplicate, a vague
+  // or an unanswerable task is refused — and then delegates to the module that already owns that kind
+  // of write. Checking a task writes nothing. A stage is never set by a request.
+  ['/activity/tasks/check', ['activityTaskCheck', null]], ['/activity/author', ['activityAuthor', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status', '/residents/declaration']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status', '/residents/declaration', '/activity', '/activity/instance', '/activity/trace']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -575,6 +580,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if(route==='/quests/catalog')value=platform.questCatalog(Object.fromEntries(url.searchParams));
           else if(route==='/guilds')value=platform.guilds(actor,Object.fromEntries(url.searchParams));
           else if(route==='/guilds/project')value=platform.guildProject(actor,Object.fromEntries(url.searchParams));
+          else if(route==='/activity')value=platform.activity(actor,Object.fromEntries(url.searchParams));
+          else if(route==='/activity/instance')value=platform.activityInstance(actor,Object.fromEntries(url.searchParams));
+          else if(route==='/activity/trace')value=platform.traceContribution(actor,Object.fromEntries(url.searchParams));
           else if(route==='/drafts')value={drafts:platform.drafts(actor,{archived:url.searchParams.get('archived')==='1'})};
           else if (route === '/countries') value=platform.countries(actor,Object.fromEntries(url.searchParams));
           else if (route === '/country-evidence') value=platform.countryEvidence(actor,Object.fromEntries(url.searchParams));
