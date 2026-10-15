@@ -21,6 +21,31 @@ local motion_threshold = 0.55
 local names = {stone=true, wood=true, glass=true, brick=true, sand=true, grass=true, path=true}
 local terrain_types = {meadow=true,tree=true,water=true,garden=true,path=true,plaza=true,grass=true}
 local markers = {}
+local pairing_form = 'nemo:pairing'
+
+local function show_pairing(name, reason)
+  core.show_formspec(name, pairing_form, 'formspec_version[4]size[11,7]' ..
+    'label[0.5,0.6;Welcome to NemoWorld]' ..
+    'textarea[0.5,1.1;10,2.8;;;' .. core.formspec_escape(
+      'Connect your saved human character before entering the shared frontier.\n\n' ..
+      '1. Open ' .. endpoint .. '/ in your browser and sign in.\n' ..
+      '2. Select a human character already in an opened frontier sector.\n' ..
+      '3. Create a two-minute code and enter it below.\n\n' ..
+      'This native client currently shows one frontier sector, not the browser Commons.') .. ']' ..
+    'pwdfield[0.5,4.2;10,0.8;pair_code;Two-minute pairing code]' ..
+    'button[0.5,5.2;4.8,0.8;pair;Connect character]' ..
+    'button_exit[5.6,5.2;4.8,0.8;later;Wait here]' ..
+    'textarea[0.5,6.1;10,0.8;;;' .. core.formspec_escape(reason or 'Waiting for pairing. No shared action has been saved.') .. ']')
+end
+
+local function suspend_player(player, state)
+  if not player or not player.set_physics_override then return end
+  if not state.physics then
+    local current = player:get_physics_override()
+    state.physics = {speed=current.speed, jump=current.jump, gravity=current.gravity}
+  end
+  player:set_physics_override({speed=0, jump=0, gravity=0})
+end
 
 local function inside(pos)
   return pos and pos.x >= 0 and pos.x < size and pos.z >= 0 and pos.z < size and pos.y >= 0 and pos.y <= 7
@@ -74,6 +99,12 @@ local function set_anchor(name, player, pos, release)
     stop_player(player)
   end
   state.anchor = {x=target.x, y=target.y, z=target.z}
+  if not state.ready then
+    state.ready = true
+    if state.physics and player.set_physics_override then player:set_physics_override(state.physics) end
+    core.close_formspec(name, pairing_form)
+    message(name, 'Shared frontier loaded. Walk normally; saved actions follow NemoWorld permissions.')
+  end
   if release then
     state.in_flight = false
     state.last_direction = nil
@@ -125,7 +156,12 @@ sync = function(name, release_motion)
     end
     busy[name] = nil
     if not ok then
-      if code == 401 then paired[name] = nil end
+      if code == 401 then
+        paired[name] = nil
+        state.ready = false
+        suspend_player(core.get_player_by_name(name), state)
+        show_pairing(name, data)
+      end
       if code ~= 401 then
         local state = motion[name]
         if state then state.release_after = state.release_after or release_motion end
@@ -268,11 +304,32 @@ end)
 core.register_on_joinplayer(function(player)
   local name = player:get_player_name()
   motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge}
+  suspend_player(player, motion[name])
   player:set_pos({x=24,y=2,z=24})
+  -- The old path emerged terrain only after pairing; a new arrival could fall through an empty
+  -- singlenode map. Generate the neutral render-cache floor before any account is connected.
+  core.emerge_area({x=0,y=-1,z=0},{x=47,y=7,z=47})
   local inventory = player:get_inventory()
   for kind in pairs(names) do inventory:add_item('main', 'nemo:place_' .. kind) end
   message(name, 'Pair with /nemo_pair CODE. Move with /nemo_move up|down|left|right. Click with a block item to request placement; punch a block to request removal.')
+  show_pairing(name)
 end)
+core.register_on_player_receive_fields(function(player, formname, fields)
+  if formname ~= pairing_form then return false end
+  if fields.pair or fields.key_enter_field == 'pair_code' then
+    local code = fields.pair_code or ''
+    if #code ~= 12 or not code:match('^[a-f0-9]+$') then
+      show_pairing(player:get_player_name(), 'Enter the 12-character code from the local pairing page.')
+    else
+      core.registered_chatcommands.nemo_pair.func(player:get_player_name(), code)
+    end
+  end
+  return true
+end)
+core.register_chatcommand('nemo_connect', {description='Open the local character pairing screen', func=function(name)
+  show_pairing(name)
+  return true, 'Use the local pairing page to connect your saved human character.'
+end})
 core.register_on_leaveplayer(function(player)
   local name = player:get_player_name()
   paired[name] = nil
@@ -295,12 +352,17 @@ core.register_chatcommand('nemo_pair', {params='CODE', description='Pair this pl
     if motion[name] ~= previous or not motion[name] or motion[name].pairing_attempt ~= pairing_attempt then return end
     if ok and type(data.pair_id) == 'string' and #data.pair_id == 32 then
       local next_generation = ((previous and previous.generation) or 0) + 1
-      motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=next_generation}
+      motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=next_generation, physics=previous.physics}
+      suspend_player(core.get_player_by_name(name), motion[name])
       paired[name] = data.pair_id
       mission_evidence[name] = nil
       busy[name] = nil
       message(name, 'Paired to the opened frontier.'); sync(name)
-    else message(name, ok and 'Bridge pairing response was invalid.' or data) end
+    else
+      local reason = ok and 'Bridge pairing response was invalid.' or data
+      message(name, reason)
+      show_pairing(name, reason)
+    end
   end)
   return true, 'Pairing request sent.'
 end})
