@@ -1,10 +1,11 @@
 import {createServer} from 'node:http';
 import {randomBytes, createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
+import {palette} from '../src/content.js';
 
 const WORLD = 'frontier:0:0';
 const SIZE = 48;
-const TYPES = new Set(['stone', 'wood', 'glass', 'brick', 'sand', 'grass', 'path']);
+const TYPES = new Set(palette('frontier'));
 const frontierWorld = /^frontier:(-?\d+):(-?\d+)$/;
 const apiBase = process.env.NEMO_API || 'http://127.0.0.1:3000';
 
@@ -175,7 +176,20 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
         const terrain = [...new Map(views.flatMap(view => (view.terrain || []).flatMap((row, ry) => row.map((type, rx) => ({x:view.camera.x+rx,y:view.camera.y+ry,type})))).map(tile => [`${tile.x}:${tile.y}`,tile])).values()];
         const participants = [...new Map(views.flatMap(view => view.participants || []).filter(item => item.id && item.id !== pair.agentId).map(item => [item.id,{id:item.id,name:item.name,kind:item.kind,x:item.x,y:item.y,z:item.z || 0}])).values()];
         const gates = [...new Map(views.flatMap(view => view.frontier?.neighbors || []).map(gate => [gate.direction, gate])).values()];
-        return send(200, {world_id: worldId, size: SIZE, blocks, terrain, participants, gates, player: {x: agent.x, y: agent.y, z: agent.z}});
+        const frontier = views.find(view => view.frontier)?.frontier;
+        const creative = {palette:frontier?.palette || [],blueprints:frontier?.blueprints || [],
+          parcels:frontier?.parcels || [],my_plot:frontier?.my_plot || null,limits:frontier?.limits || {},
+          unlimited_items:true,coin_reward:0};
+        return send(200, {world_id: worldId, size: SIZE, blocks, terrain, participants, gates, creative, player: {x: agent.x, y: agent.y, z: agent.z}});
+      }
+      if (url.pathname === '/native/plot' && request.method === 'POST') {
+        const {pair, agent} = await current(input.player, input.pair_id);
+        const prefix = agent.world_id.replace('frontier:','plot:') + ':';
+        if (typeof input.plot_id !== 'string' || !input.plot_id.startsWith(prefix)) throw Object.assign(new Error('Choose an available plot in your current frontier sector.'),{status:409});
+        // The paired human session and existing land authority decide ownership, availability and
+        // the one-plot limit. Never accept a caller-supplied account or resident identity.
+        const result=await call('/land/assign',pair.token,'POST',{plot_id:input.plot_id,purpose:input.purpose,description:input.description || ''});
+        return send(200,{accepted:true,result});
       }
       if (url.pathname === '/native/missions' && request.method === 'POST') {
         // The native client reads the same mission directory and the paired human's own active claim
@@ -272,6 +286,8 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
         let path, payload;
         if (input.action === 'move' && ['up','down','left','right'].includes(input.direction)) {
           path = '/move'; payload = {agent_id: pair.agentId, direction: input.direction};
+        } else if (input.action === 'blueprint' && typeof input.blueprint === 'string' && /^[a-z0-9_-]{1,80}$/.test(input.blueprint)) {
+          path = '/frontier/build'; payload = {agent_id:pair.agentId,world_id:worldId,...nativeToNemo(input.pos),blueprint:input.blueprint,preview:input.preview === true};
         } else if (input.action === 'place' && TYPES.has(input.type)) {
           path = '/frontier/build'; payload = {agent_id: pair.agentId, world_id: worldId, ...nativeToNemo(input.pos), type: input.type};
         } else if (input.action === 'remove') {

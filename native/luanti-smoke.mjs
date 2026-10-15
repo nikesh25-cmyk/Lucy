@@ -1,5 +1,5 @@
 // Real Luanti 5.17 server/mod callback against a disposable NemoWorld HTTP server and DB.
-import {mkdtemp, mkdir, cp, writeFile, rm} from 'node:fs/promises';
+import {mkdtemp, mkdir, cp, writeFile, appendFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join, dirname} from 'node:path';
 import {randomBytes} from 'node:crypto';
@@ -8,6 +8,7 @@ import {Platform} from '../src/platform.js';
 import {createApp} from '../server.js';
 import {createBridge} from './bridge.mjs';
 import {startLoopbackSmokeEngine} from './smoke-process.mjs';
+import {getWorldDefinition} from '../world.js';
 
 const binary = process.env.LUANTI_BIN;
 if (!binary) throw new Error('Set LUANTI_BIN to the verified Luanti 5.17.0 executable.');
@@ -36,6 +37,9 @@ try {
   await writeFile(join(game,'mods','nemo_probe','mod.conf'),'name = nemo_probe\ndepends = nemo\n');
   await writeFile(join(game,'mods','nemo_probe','init.lua'),`local code = ${JSON.stringify(issued.code)}\ncore.register_on_mods_loaded(function()\n core.after(1,function() core.registered_chatcommands.nemo_pair.func('Probe',code) end)\n core.after(3,function()\n  local placer={is_player=function() return true end,get_player_name=function() return 'Probe' end}\n  core.registered_items['nemo:place_wood'].on_place(nil,placer,{type='node',above={x=33,y=0,z=32}})\n  core.log('action','NEMO_PROBE_CALLBACK_INVOKED')\n end)\n core.after(4,function() core.registered_chatcommands.nemo_move.func('Probe','left'); core.log('action','NEMO_PROBE_MOVE_REQUESTED') end)\n core.after(8,function() core.log('action','NEMO_PROBE_RENDERED ' .. core.get_node({x=33,y=0,z=32}).name) end)\n core.after(12,function() core.registered_chatcommands.nemo_move.func('Probe','right'); core.log('action','NEMO_PROBE_GATE_REQUESTED') end)\n core.after(17,function() core.log('action','NEMO_PROBE_CROSSED ' .. core.get_node({x=33,y=0,z=32}).name) end)\nend)\n`);
   const world=join(user,'worlds','slice'); await mkdir(world,{recursive:true});
+  const terrain=getWorldDefinition('frontier:0:0').terrain;
+  const treeY=terrain.findIndex(row=>row.includes('tree')),treeX=terrain[treeY].indexOf('tree');
+  await appendFile(join(game,'mods','nemo_probe','init.lua'),`\ncore.register_on_mods_loaded(function() core.after(8,function()\n assert(core.get_node({x=${treeX},y=0,z=${treeY}}).name=='nemo:scenery_trunk','authoritative trees must be projected in three dimensions')\n assert(core.registered_items['nemo:place_clay'] and core.registered_items['nemo:place_slate'],'the complete nine-material palette must be registered')\n assert(core.registered_items['nemo:place_clay'].stack_max==1,'creative tools must not accumulate duplicate stacks')\n core.log('action','NEMO_CREATIVE_SCENE_PASS')\nend) end)\n`);
   await writeFile(join(world,'world.mt'),'gameid = nemoworld\nbackend = sqlite3\nmg_name = singlenode\n');
   const config=join(user,'minetest.conf');
   const secrets=[modKey,login.token,issued.code];
@@ -46,6 +50,7 @@ try {
   assert.match(logs,/NEMO_PROBE_CALLBACK_INVOKED/);
   assert.match(logs,/NEMO_PROBE_MOVE_REQUESTED/);
   assert.match(logs,/NEMO_PROBE_RENDERED nemo:wood/,logs.slice(-2500));
+  await engine.waitForMarker('NEMO_CREATIVE_SCENE_PASS',{timeoutMs:10000});
   assert.equal(platform.get('SELECT type FROM frontier_blocks WHERE world_id=? AND x=33 AND y=32 AND z=0','frontier:0:0')?.type,'wood',logs.slice(-2000));
   assert.equal(platform.get('SELECT x FROM agents WHERE id=?',human.id)?.x,31,logs.slice(-2000));
   const response=await fetch(`${api}/api/v1/world?world_id=frontier:0:0&agent_id=${human.id}&x=28&y=28`,{headers:{Authorization:`Bearer ${login.token}`}});

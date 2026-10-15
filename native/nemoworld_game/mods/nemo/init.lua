@@ -18,9 +18,13 @@ local motion_clock = 0
 local sync_elapsed = 0
 local move_cooldown = 0.16
 local motion_threshold = 0.55
-local names = {stone=true, wood=true, glass=true, brick=true, sand=true, grass=true, path=true}
+local kinds = {'stone','wood','glass','brick','sand','grass','path','clay','slate'}
+local names = {}
+for _,kind in ipairs(kinds) do names[kind]=true end
 local terrain_types = {meadow=true,tree=true,water=true,garden=true,path=true,plaza=true,grass=true}
 local markers = {}
+local gate_markers = {}
+local project_scene = dofile(core.get_modpath('nemo')..'/scene.lua')
 local pairing_form = 'nemo:pairing'
 
 local function show_pairing(name, reason)
@@ -83,6 +87,10 @@ local function paired_request(name, path, payload, callback)
 end
 local function key(pos) return pos.x .. ':' .. pos.y .. ':' .. pos.z end
 local sync
+local creative = dofile(core.get_modpath('nemo')..'/creative.lua')({
+  scene=function(name) local state=motion[name];return paired[name] and state and state.ready and state.scene or nil end,
+  request=paired_request,sync=function(name) sync(name) end,connect=show_pairing,message=message,
+})
 local function stop_player(player)
   if player and player.set_velocity then player:set_velocity({x=0, y=0, z=0}) end
 end
@@ -187,14 +195,15 @@ sync = function(name, release_motion)
           if core.get_node(pos).name ~= 'nemo:terrain_' .. type_name then core.set_node(pos,{name='nemo:terrain_' .. type_name}) end
         end
       end
-      local next_nodes = {}
+      local next_nodes = project_scene(data)
       for _, block in ipairs(data.blocks or {}) do
         local pos = {x=block.x, y=block.z, z=block.y}
         if inside(pos) and names[block.type] then
           local id = key(pos); next_nodes[id] = {pos=pos, type=block.type}
-          local current = core.get_node(pos).name
-          if current ~= 'nemo:' .. block.type then core.set_node(pos, {name='nemo:' .. block.type}) end
         end
+      end
+      for _,node in pairs(next_nodes) do
+        if core.get_node(node.pos).name~='nemo:'..node.type then core.set_node(node.pos,{name='nemo:'..node.type}) end
       end
       if not reconciled then
         -- A Luanti world may have persisted a node removed while this server was offline.
@@ -210,6 +219,17 @@ sync = function(name, release_motion)
         end
       end
       projected = next_nodes
+      state.scene=data
+      for _,marker in pairs(gate_markers) do if marker and marker:get_pos() then marker:remove() end end
+      gate_markers={}
+      local compass={up='North',down='South',left='West',right='East'}
+      for _,gate in ipairs(data.gates or {}) do
+        local marker=core.add_entity({x=gate.x,y=4.6,z=gate.y},'nemo:gate_label')
+        if marker then
+          marker:set_properties({nametag=(compass[gate.direction] or gate.direction)..' · '..gate.target_world_id..(gate.exists and ' · open' or ' · unopened')})
+          gate_markers[gate.direction]=marker
+        end
+      end
       local seen = {}
       for _, resident in ipairs(data.participants or {}) do
         if resident.id and resident.x and resident.y then
@@ -232,6 +252,11 @@ sync = function(name, release_motion)
       local release_now = release_motion or (state and state.release_after and not state.sync_after)
       if player and data.player then
         set_anchor(name, player, data.player, release_now)
+        if player.hud_add then
+          local text=data.world_id..' · '..#(data.participants or {})..' other residents · '..#(data.blocks or {})..' saved blocks\nCreative materials: free and reusable · /nemo_build for tools, plots and blueprints\n/nemo_chat for conversation · Walk to a labelled gate to cross an opened area'
+          if state.hud then player:hud_change(state.hud,'text',text)
+          else state.hud=player:hud_add({type='text',position={x=0,y=0},offset={x=18,y=95},alignment={x=1,y=1},number=0xF5EED9,text=text,z_index=100}) end
+        end
       elseif data.player and release_now and state then
         -- The server confirmed the step, but a player object may have vanished during sync (or
         -- the server-only smoke probe may use a synthetic name). Do not strand motion in flight.
@@ -262,21 +287,26 @@ end
 
 core.register_node('nemo:ground', {description='NemoWorld ground', tiles={'nemo_ground.png'}, diggable=false, pointable=true,
   groups={immortal=1}, on_punch=function() end})
+local ground_textures={meadow='nemo_cc0_grass.jpg',tree='nemo_cc0_grass.jpg',grass='nemo_cc0_grass.jpg',
+  garden='nemo_cc0_soil.jpg',path='nemo_cc0_soil.jpg^[colorize:#d2c08a:110',plaza='nemo_cc0_concrete.jpg',water='nemo_terrain_water.png'}
 for type_name in pairs(terrain_types) do
-  core.register_node('nemo:terrain_' .. type_name, {description='NemoWorld ' .. type_name .. ' terrain', tiles={'nemo_terrain_' .. type_name .. '.png'},
+  core.register_node('nemo:terrain_' .. type_name, {description='NemoWorld ' .. type_name .. ' terrain', tiles={ground_textures[type_name]},
     diggable=false, groups={immortal=1}, on_punch=function() end})
 end
 core.register_entity('nemo:resident', {initial_properties={physical=false,pointable=false,static_save=false,
   visual='cube',visual_size={x=0.55,y=1.05},textures={'nemo_resident.png','nemo_resident.png','nemo_resident.png','nemo_resident.png','nemo_resident.png','nemo_resident.png'}}})
 core.register_node('nemo:boundary', {description='Finite sector boundary', tiles={'nemo_boundary.png'}, diggable=false,
   groups={immortal=1}, on_punch=function() end})
-for type_name in pairs(names) do
-  local kind = type_name
-  core.register_node('nemo:' .. kind, {description='NemoWorld ' .. kind, tiles={'nemo_' .. kind .. '.png'},
+local block_textures={stone='nemo_cc0_rock.jpg',wood='nemo_cc0_wood.jpg',glass='nemo_glass.png',
+  brick='nemo_cc0_terracotta.jpg',sand='nemo_cc0_soil.jpg^[colorize:#d3c28d:130',grass='nemo_cc0_grass.jpg',
+  path='nemo_cc0_soil.jpg',clay='nemo_cc0_terracotta.jpg^[colorize:#ba7957:80',slate='nemo_cc0_rock.jpg^[colorize:#536478:110'}
+for _,kind in ipairs(kinds) do
+  core.register_node('nemo:' .. kind, {description='NemoWorld ' .. kind, tiles={block_textures[kind]},
     diggable=false, groups={immortal=1}, on_punch=function(pos, node, puncher)
       if puncher and puncher:is_player() then act(puncher:get_player_name(), 'remove', pos) end
     end})
-  core.register_craftitem('nemo:place_' .. kind, {description='Request ' .. kind .. ' block', inventory_image='nemo_' .. kind .. '.png',
+  core.register_craftitem('nemo:place_' .. kind, {description=kind..' · free reusable creative tool', inventory_image=block_textures[kind],stack_max=1,
+    on_secondary_use=function(itemstack,user) if user then creative.show(user:get_player_name()) end;return itemstack end,
     on_place=function(itemstack, placer, pointed)
       if placer and placer:is_player() and pointed and pointed.type == 'node' then
         act(placer:get_player_name(), 'place', pointed.above, kind)
@@ -310,7 +340,17 @@ core.register_on_joinplayer(function(player)
   -- singlenode map. Generate the neutral render-cache floor before any account is connected.
   core.emerge_area({x=0,y=-1,z=0},{x=47,y=7,z=47})
   local inventory = player:get_inventory()
-  for kind in pairs(names) do inventory:add_item('main', 'nemo:place_' .. kind) end
+  local kept={}
+  for _,stack in ipairs(inventory:get_list('main') or {}) do
+    if not stack:is_empty() and not stack:get_name():match('^nemo:place_') then kept[#kept+1]=stack end
+  end
+  local tools={}
+  for _,kind in ipairs(kinds) do tools[#tools+1]=ItemStack('nemo:place_'..kind) end
+  for _,stack in ipairs(kept) do tools[#tools+1]=stack end
+  inventory:set_size('main',math.max(36,9*math.ceil(#tools/9)))
+  inventory:set_list('main',tools)
+  if player.hud_set_hotbar_itemcount then player:hud_set_hotbar_itemcount(9) end
+  if player.set_inventory_formspec then player:set_inventory_formspec('formspec_version[4]size[11,7]label[0.5,0.5;Free creative tools · /nemo_build for plots and blueprints]list[current_player;main;0.5,1;9,4;]listring[]') end
   message(name, 'Pair with /nemo_pair CODE. Move with /nemo_move up|down|left|right. Click with a block item to request placement; punch a block to request removal.')
   show_pairing(name)
 end)
@@ -336,6 +376,7 @@ core.register_on_leaveplayer(function(player)
   mission_evidence[name] = nil
   busy[name] = nil
   motion[name] = nil
+  creative.clear(name)
 end)
 core.register_chatcommand('nemo_pair', {params='CODE', description='Pair this player to an operator-owned human avatar', func=function(name, code)
   if not code:match('^[a-f0-9]+$') then return false, 'Invalid pairing code.' end
@@ -352,10 +393,11 @@ core.register_chatcommand('nemo_pair', {params='CODE', description='Pair this pl
     if motion[name] ~= previous or not motion[name] or motion[name].pairing_attempt ~= pairing_attempt then return end
     if ok and type(data.pair_id) == 'string' and #data.pair_id == 32 then
       local next_generation = ((previous and previous.generation) or 0) + 1
-      motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=next_generation, physics=previous.physics}
+      motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=next_generation, physics=previous.physics, hud=previous.hud}
       suspend_player(core.get_player_by_name(name), motion[name])
       paired[name] = data.pair_id
       mission_evidence[name] = nil
+      creative.clear(name)
       busy[name] = nil
       message(name, 'Paired to the opened frontier.'); sync(name)
     else

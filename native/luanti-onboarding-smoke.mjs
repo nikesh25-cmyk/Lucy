@@ -19,6 +19,8 @@ try {
 local pos={x=24,y=-80,z=24}
 local physics={speed=1,jump=1,gravity=1}
 local form=nil
+local slots={ItemStack('nemo:place_wood 3')}
+local inventory={get_list=function() return slots end,set_size=function() end,set_list=function(_,_,items) slots=items end}
 local player={
  get_player_name=function() return 'UnpairedProbe' end,
  get_pos=function() return pos end,
@@ -26,7 +28,7 @@ local player={
  set_velocity=function() end,
  set_physics_override=function(_,p) for k,v in pairs(p) do physics[k]=v end end,
  get_physics_override=function() return physics end,
- get_inventory=function() return {add_item=function() end} end,
+ get_inventory=function() return inventory end,
 }
 local original_show=core.show_formspec
 core.show_formspec=function(name,id,spec) if name=='UnpairedProbe' then form={id=id,spec=spec} else original_show(name,id,spec) end end
@@ -40,6 +42,39 @@ core.register_on_mods_loaded(function()
   assert(physics.gravity==0 and physics.speed==0,'unpaired join must suspend physics until shared state is loaded')
   assert(form and form.spec:find('127.0.0.1:3999',1,true),'unpaired join must show local pairing instructions')
   assert(form.spec:find('pair_code',1,true),'pairing screen needs a code field')
+  assert(#slots==9,'joining must replace duplicate tool stacks with the nine canonical creative tools')
+  for _,stack in ipairs(slots) do assert(stack:get_count()==1,'each reusable tool must appear only once') end
+  local receive
+  local original_receive=core.register_on_player_receive_fields
+  local original_command=core.register_chatcommand
+  core.register_on_player_receive_fields=function(callback) receive=callback end
+  core.register_chatcommand=function() end
+  local requests={}
+  local scene={world_id='frontier:0:0',player={x=32,y=32},creative={palette={'wood','clay','slate'},parcels={{id='plot:0:0:5:5',x=30,y=30,can_assign=true}},blueprints={{id='research-kiosk',name='Research kiosk',block_count=11}}}}
+  local factory=dofile(core.get_modpath('nemo')..'/creative.lua')
+  local ui=factory({scene=function() return scene end,connect=function() error('unexpected connection fallback') end,
+   sync=function() end,message=function() end,request=function(_,path,body,done)
+    requests[#requests+1]={path=path,body=body}
+    if path=='/native/plot' then done(true,{result={plot={id=body.plot_id,world_id='frontier:0:0',x=30,y=30,purpose=body.purpose}}})
+    elseif body.preview then done(true,{result={valid=true,issues={}}}) else done(true,{result={}}) end
+   end})
+  core.register_on_player_receive_fields=original_receive
+  core.register_chatcommand=original_command
+  ui.show('UnpairedProbe')
+  assert(form.spec:find('material_slate',1,true) and form.spec:find('Steward selected plot',1,true),'creative menu must offer tools and explicit plot stewardship')
+  receive(player,'nemo:creative',{claim=true,plot='1',purpose='Community research studio'})
+  assert(requests[1].path=='/native/plot' and requests[1].body.purpose=='Community research studio','plot purpose must be explicitly sent to authoritative route')
+  local fields={blueprint='1',anchor_x='30',anchor_z='30',build=true}
+  receive(player,'nemo:creative',fields)
+  assert(#requests==1,'placement without an exact successful preview must not send a write')
+  fields.build=nil;fields.preview=true;receive(player,'nemo:creative',fields)
+  assert(requests[2].body.preview==true,'preview must remain a read-only request')
+  fields.preview=nil;fields.build=true;fields.anchor_x='31';receive(player,'nemo:creative',fields)
+  assert(#requests==2,'changed footprint must require another preview')
+  fields.anchor_x='30';receive(player,'nemo:creative',fields)
+  assert(#requests==3 and requests[3].body.preview==false,'explicit confirmed placement must call the existing build route')
+  ui.clear('UnpairedProbe')
+  core.log('action','NEMO_CREATIVE_UI_PASS')
   core.log('action','NEMO_JOIN_GUIDE_PASS')
  end)
  core.after(5,function()
@@ -56,7 +91,8 @@ end)
   });
   await engine.waitForMarker('NEMO_JOIN_FLOOR_PASS',{timeoutMs:20000});
   assert.match(engine.logs,/NEMO_JOIN_GUIDE_PASS/);
-  console.log('PASS: real Luanti join callback shows pairing UI, suspends unpaired physics and emerges a visible floor without an account or world writes.');
+  assert.match(engine.logs,/NEMO_CREATIVE_UI_PASS/);
+  console.log('PASS: real Luanti join callback shows pairing UI, suspends unpaired physics and emerges a floor; creative UI sends explicit plot purpose and refuses placement without an unchanged successful preview.');
 } finally {
   if(engine) await engine.stop();
   await rm(root,{recursive:true,force:true});
