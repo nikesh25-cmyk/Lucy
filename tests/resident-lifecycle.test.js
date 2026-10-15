@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
+import { join } from 'node:path';
 import { Platform } from '../src/platform.js';
+import { backupDatabase, restoreDatabase, validateDatabase } from '../src/recovery.js';
 import { fixture } from './helpers.js';
 import { actionHistory, assertProposalNotOutcome, parseLedgerRecord, REFUSAL_REASON_IDS } from '../src/resident-framework.js';
 
@@ -274,8 +277,19 @@ test('the resident ledger is one append-only audit line per step and keeps the a
   assert.equal(rows.length, 3);
   assert.deepEqual(rows.map((row) => row.action), ['say', 'thanks', 'juggle']);
   assert.ok(rows.every((row) => /^[a-f0-9]{32}$/.test(row.key) || row.state === 'refused'));
-  // The ledger is the world's own audit table: the chain still verifies, and the reads are bounded.
+  // The ledger is the world's own audit table: the chain still verifies, a backup of it still
+  // validates and carries the same lines into a restore, and the reads are bounded.
   assert.equal(f.platform.verifyAudit(), true);
+  const stored = f.platform.all("SELECT record_id FROM audit WHERE event LIKE 'resident.action.%' ORDER BY seq").map((row) => row.record_id);
+  const backup = join(f.directory, 'ledger-backup.sqlite'), restored = join(f.directory, 'ledger-restored.sqlite');
+  backupDatabase(f.platform.db, backup);
+  restoreDatabase(backup, restored);
+  assert.equal(validateDatabase(restored).schema_version, 25, 'a backup of the ledger validates as schema 25');
+  const copy = new DatabaseSync(restored, { readOnly: true });
+  try {
+    assert.deepEqual(copy.prepare("SELECT record_id FROM audit WHERE event LIKE 'resident.action.%' ORDER BY seq").all().map((row) => row.record_id), stored);
+    assert.equal(copy.prepare('SELECT COUNT(*) AS n FROM community_thanks').get().n, 1);
+  } finally { copy.close(); }
   const history = actionHistory(f.platform, giver.id, { limit: 2 });
   assert.equal(history.limit, 2);
   assert.equal(history.has_more, true);

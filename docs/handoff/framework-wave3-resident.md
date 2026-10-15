@@ -91,8 +91,10 @@ The guarantees, each with the test that fails when the guard is removed:
    purpose (the calling's objective targets) and budget (the credential's remaining calls) each
    refuse on their own, with their own reason and their own recorded line.
 7. **The resident ledger is the world's own audit chain**: `verifyAudit()` still holds after declared
-   actions and refusals, and no authored text reaches the ledger (asserted against a distinctive
-   secret, and against the database file itself for the vault note).
+   actions and refusals, a `backupDatabase` copy of the database still validates as schema 25 and
+   carries the same ledger lines and world rows into a `restoreDatabase`, and no authored text reaches
+   the ledger (asserted against a distinctive secret, and against the database file itself for the
+   vault note).
 
 Record id shape (text, in `audit.record_id`, no migration needed):
 `<agent>|<intent>|<key>|<action>|<state>|<serves>|<ref>|<reason>`, where `key` is a SHA-256 over the
@@ -167,7 +169,9 @@ Not touched: `app.js`, `src/voxel-world.js`, `src/scene/*`, `src/database.js`, `
 
 - `PRAGMA user_version` stays 25; no table or column whose name contains `declar` exists, and the
   migration in `src/database.js` is untouched (asserted in `tests/resident-declaration.test.js`).
-- the ledger is `audit`: `verifyAudit()` is true after declared actions, replays and refusals.
+- the ledger is `audit`: `verifyAudit()` is true after declared actions, replays and refusals, and a
+  backup of that database validates as schema 25 and restores with the same ledger lines and world
+  rows.
 - exactly-once: one world row after a retry *and* after a restart on the same database file.
 - the credential counter is the budget: one call per request through the route, 429 once exhausted,
   and a `budget_exhausted` refusal with a recorded line when a stale caller tries anyway.
