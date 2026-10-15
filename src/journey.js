@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import content from './content.js';
+import { assertReservationCovered, assertTransferable } from './goods-policy.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const readText = (value, label, maximum, optional = false) => {
@@ -638,6 +639,10 @@ export const journeyMethods = {
     const open = this.get("SELECT COUNT(*) AS n FROM resource_offers WHERE status='proposed' AND offerer_agent_id=?", agent.id).n;
     if (open >= RESOURCE_OFFER_LIMITS.open_per_agent) fail(429, `A resident can hold ${RESOURCE_OFFER_LIMITS.open_per_agent} open offers at once.`);
     const now = this.clock();
+    // Wave 5: the same one classification the trade board consults (src/goods-policy.js). A grown crop
+    // or a crafted keepsake is transferable; a keepsake this account bought from the shop is
+    // account-bound and is refused here with that named reason, before anything is escrowed.
+    assertTransferable(this, { account_id: actor.account.id, agent_id: agent.id, items, move: 'offered' });
     // Escrow the items first: they leave the offerer's shelf when the offer exists, so the same items
     // cannot be promised twice and the recipient accepts something the server already holds.
     debitInventory(this, agent.id, items);
@@ -661,6 +666,9 @@ export const journeyMethods = {
     if (this.get('SELECT id FROM resource_offers WHERE recipient_account_id=? AND accept_key=? AND id!=?', actor.account.id, acceptKey, offer.id)) fail(409, 'This idempotency key was used to accept a different offer.');
     const recipient = this.get('SELECT status FROM agents WHERE id=?', offer.recipient_agent_id);
     if (!recipient || recipient.status !== 'active') fail(403, 'Resume the recipient resident before accepting an offer.');
+    // The take side of the same classification: an offer that escrowed an account-bound good can
+    // neither be accepted nor declined into another account, and expires back to its offerer.
+    assertReservationCovered(this, { account_id: offer.offerer_account_id, items: JSON.parse(offer.items), move: 'accepted' });
     if (!settleOffer(this, offer, 'accepted', actor.account.id, this.clock(), acceptKey)) fail(409, 'This offer is no longer open.');
     this.audit(actor.account.id, 'offer.accepted', offer.id);
     return { ...offerView(this, this.get('SELECT * FROM resource_offers WHERE id=?', offer.id), actor.account.id), inventory: inventory(this, offer.recipient_agent_id) };
