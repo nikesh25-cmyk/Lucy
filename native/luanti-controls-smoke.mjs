@@ -24,7 +24,7 @@ try {
   await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
   const api=`http://127.0.0.1:${app.server.address().port}`;
   const modKey=randomBytes(32).toString('hex');
-  bridge=createBridge({api,modKey});
+  bridge=createBridge({api,modKey,sessionDirectory:join(root,'private-connection')});
   await new Promise(resolve=>bridge.listen(0,'127.0.0.1',resolve));
   const bridgeUrl=`http://127.0.0.1:${bridge.address().port}`;
   const issued=await fetch(bridgeUrl+'/pair/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:login.token,agent_id:human.id})}).then(r=>r.json());
@@ -57,6 +57,8 @@ local player={is_player=function() return true end,get_player_name=function() re
 local original_get=core.get_player_by_name
 core.get_player_by_name=function(name) if name=='Probe' then return player end return original_get(name) end
 core.get_connected_players=function() return {player} end
+local original_close=core.close_formspec
+core.close_formspec=function(name,id) if name=='Probe' then form=nil else original_close(name,id) end end
 local original_show=core.show_formspec
 core.show_formspec=function(name,id,spec) if name=='Probe' then form={id=id,spec=spec} else original_show(name,id,spec) end end
 core.chat_send_player=function() end
@@ -70,7 +72,9 @@ core.register_on_mods_loaded(function()
   for _,callback in ipairs(core.registered_on_joinplayers) do
    if debug.getinfo(callback,'S').source:find('/nemo/init.lua',1,true) then callback(player) end
   end
-  core.registered_chatcommands.nemo_pair.func('Probe',code)
+  for _,callback in ipairs(core.registered_on_player_receive_fields) do
+   if debug.getinfo(callback,'S').source:find('/nemo/init.lua',1,true) then callback(player,'nemo:pairing',{native_signin=true,native_email='native-smoke@example.org',native_password='disposable-password-2026'}) end
+  end
  end)
  core.after(3,function()
   assert(math.abs(pos.y+0.49)<0.05,'paired feet must rest on terrain instead of spawning two nodes in the air; actual '..pos.y)
@@ -107,18 +111,33 @@ core.register_on_mods_loaded(function()
   assert(pos.y==0.4,'a stationary heartbeat must preserve normal native vertical motion')
   core.log('action','NEMO_NATIVE_CONTROLS_PASS')
  end)
+ core.after(12,function()
+  for _,callback in ipairs(core.registered_on_leaveplayers) do
+   if debug.getinfo(callback,'S').source:find('/nemo/init.lua',1,true) then callback(player) end
+  end
+  for _,callback in ipairs(core.registered_on_joinplayers) do
+   if debug.getinfo(callback,'S').source:find('/nemo/init.lua',1,true) then callback(player) end
+  end
+ end)
+ core.after(15,function()
+  assert(math.abs(pos.y+0.49)<0.05,'returning native login must restore the saved character without another password or browser code')
+  assert(not form,'automatic reconnect must close the sign-in form')
+  core.log('action','NEMO_NATIVE_SIGNIN_RESUME_PASS')
+ end)
 end)
 `);
   const world=join(user,'worlds','slice');await mkdir(world,{recursive:true});
   await writeFile(join(world,'world.mt'),'gameid = nemoworld\nbackend = sqlite3\nmg_name = singlenode\n');
   const config=join(user,'minetest.conf');
   engine=await startLoopbackSmokeEngine(binary,['--server','--world',world,'--config',config,'--logfile',''],{configPath:config,configText:port=>`secure.http_mods = nemo\nnemo_bridge_url = ${bridgeUrl}\nnemo_bridge_key = ${modKey}\nmg_name = singlenode\nbind_address = 127.0.0.1\nport = ${port}\nserver_announce = false\n`,env:{...process.env,LUANTI_USER_PATH:user},secrets:[modKey,login.token,issued.code]});
-  await engine.waitForMarker('NEMO_NATIVE_CONTROLS_PASS',{timeoutMs:20000});
+  await engine.waitForMarker('NEMO_NATIVE_SIGNIN_RESUME_PASS',{timeoutMs:20000});
   assert.equal(platform.get('SELECT x FROM agents WHERE id=?',human.id).x,33);
   assert.equal(platform.get('SELECT COUNT(*) n FROM frontier_blocks').n,0);
   assert.equal(platform.get('SELECT plot_id FROM land_stewardships WHERE account_id=?',actor.account.id).plot_id,'plot:0:0:5:5');
   assert.equal(platform.get('SELECT COUNT(*) n FROM coin_rewards').n,0);
-  console.log('PASS: native ground height, heartbeat/jump stability, walking, visible land refusal, explicit stewardship, reusable ground placement and punch removal share authoritative saved records.');
+  assert.ok(!engine.logs.includes('disposable-password-2026'));
+  assert.ok(!engine.logs.includes(login.token));
+  console.log('PASS: direct native sign-in and code-free return; native ground height, heartbeat/jump stability, walking, visible land refusal, explicit stewardship, reusable ground placement and punch removal share authoritative saved records.');
 } finally {
   if(engine) await engine.stop();
   if(bridge) await new Promise(r=>bridge.close(r));

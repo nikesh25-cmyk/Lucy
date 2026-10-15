@@ -2,6 +2,7 @@ import {createServer} from 'node:http';
 import {randomBytes, createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {palette} from '../src/content.js';
+import {rememberedSession} from './remembered-session.mjs';
 
 const WORLD = 'frontier:0:0';
 const SIZE = 48;
@@ -18,7 +19,7 @@ function isSupportedFrontierWorldId(value) {
   return Number.isInteger(x) && Number.isInteger(y) && x >= -8 && x <= 7 && y >= -8 && y <= 7;
 }
 
-// This bridge holds a human operator credential in memory. Keep every authenticated request on
+// This bridge holds a human operator credential in memory and an optional private encrypted cache. Keep every authenticated request on
 // literal loopback, even when an environment variable is mistyped or the local API redirects.
 export function localApiOrigin(value) {
   let url;
@@ -37,9 +38,10 @@ export function nativeToNemo(pos) {
 }
 export function nemoToNative(pos) { return {x: pos.x, y: pos.z, z: pos.y}; }
 
-export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, modKey = process.env.NEMO_MOD_KEY} = {}) {
+export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, modKey = process.env.NEMO_MOD_KEY, sessionDirectory} = {}) {
   if (typeof modKey !== 'string' || modKey.length < 32) throw new Error('A random NEMO_MOD_KEY of at least 32 characters is required.');
   const localApi = localApiOrigin(api);
+  const remembered=sessionDirectory?rememberedSession(sessionDirectory,localApi):null;
   const pending = new Map(), loginSessions = new Map(), loginAttempts = new Map(), players = new Map(), pairingAttempts = new Map();
   const csrfToken = randomBytes(24).toString('hex');
   async function call(path, token, method = 'GET', payload, key) {
@@ -72,6 +74,19 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
     if (players.get(player) !== pair) throw Object.assign(new Error('This pairing was replaced.'), {status: 401});
     if (!isSupportedFrontierWorldId(agent.world_id)) throw Object.assign(new Error('Enter an opened frontier area in NemoWorld first.'), {status: 409});
     return {pair, agent};
+  }
+  const validPlayer = player => /^[a-zA-Z0-9_-]{1,32}$/.test(player || '');
+  async function attach(player, pair, remember=false) {
+    if(!validPlayer(player)) throw Object.assign(new Error('Invalid native player.'),{status:400});
+    const attempt=(pairingAttempts.get(player)||0)+1;pairingAttempts.set(player,attempt);
+    const agent=await owner(pair.token,pair.agentId);
+    if(pairingAttempts.get(player)!==attempt)throw Object.assign(new Error('A newer connection replaced this request.'),{status:409});
+    if(!isSupportedFrontierWorldId(agent.world_id))throw Object.assign(new Error('Enter an opened frontier area first.'),{status:409});
+    const expires=remembered?(pair.rememberedExpires||clock()+7*86400000):clock()+20*60000;
+    if(remembered&&remember)remembered.write({player,token:pair.token,agentId:pair.agentId,expires});
+    const pairId=randomBytes(16).toString('hex');players.clear();
+    players.set(player,{token:pair.token,agentId:pair.agentId,pairId,expires});
+    return {paired:true,pair_id:pairId,world_id:agent.world_id,remembered:Boolean(remembered)};
   }
   const ownClaim = (claim, pair) => claim?.agent_id === pair.agentId;
   const claimView = claim => claim && ({id:claim.id, task_id:claim.task_id, task_title:claim.task_title, status:claim.status, expires_at:claim.expires_at});
@@ -106,7 +121,7 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
       if (request.socket.remoteAddress !== '127.0.0.1' && request.socket.remoteAddress !== '::1' && request.socket.remoteAddress !== '::ffff:127.0.0.1') throw Object.assign(new Error('Loopback only.'), {status: 403});
       if (url.pathname === '/' && request.method === 'GET') {
         response.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'"});
-        response.end(`<!doctype html><html><meta charset="utf-8"><meta name="csrf-token" content="${csrfToken}"><title>NemoWorld native pairing</title><style>body{font:16px system-ui;max-width:42rem;margin:4rem auto;padding:1rem;background:#102921;color:#f4eedb}input,select,button{font:inherit;padding:.7rem;display:block;width:100%;box-sizing:border-box;margin:.6rem 0}button{background:#d6b970;border:0;cursor:pointer}code{font-size:1.5rem}</style><h1>Pair a Luanti player</h1><p>Sign in with your NemoWorld operator account. The bridge keeps the session only in memory on this computer and never shows or copies its raw token.</p><form id="login" autocomplete="off"><label>Email<input id="email" type="email" required maxlength="320" autocomplete="username"></label><label>Password<input id="password" type="password" required maxlength="128" autocomplete="current-password"></label><button>Sign in and load human avatars</button></form><form id="pair" autocomplete="off" hidden><label>Active human avatar<select id="agent" required></select></label><button>Create two-minute code</button></form><p id="result" role="status"></p><script>const csrf=document.querySelector('meta[name=csrf-token]').content,headers={'Content-Type':'application/json','X-CSRF-Token':csrf},loginForm=document.querySelector('#login'),pairForm=document.querySelector('#pair'),result=document.querySelector('#result');let loginId;loginForm.onsubmit=async e=>{e.preventDefault();const password=document.querySelector('#password');const r=await fetch('/pair/login',{method:'POST',headers,body:JSON.stringify({email:document.querySelector('#email').value,password:password.value})});password.value='';const b=await r.json();if(!r.ok){result.textContent=b.error;return}loginId=b.login_id;const select=document.querySelector('#agent');select.replaceChildren(...b.agents.map(a=>new Option(a.name+' ('+a.id+')',a.id)));pairForm.hidden=!b.agents.length;result.textContent=b.agents.length?'Choose an active human avatar in an opened frontier area.':'No active human avatar is available in an opened frontier area.'};pairForm.onsubmit=async e=>{e.preventDefault();const r=await fetch('/pair/start',{method:'POST',headers,body:JSON.stringify({login_id:loginId,agent_id:document.querySelector('#agent').value})});const b=await r.json();result.textContent=r.ok?'In Luanti, type /nemo_pair '+b.code:b.error}</script></html>`);
+        response.end(`<!doctype html><html><meta charset="utf-8"><meta name="csrf-token" content="${csrfToken}"><title>NemoWorld native pairing</title><style>body{font:16px system-ui;max-width:42rem;margin:4rem auto;padding:1rem;background:#102921;color:#f4eedb}input,select,button{font:inherit;padding:.7rem;display:block;width:100%;box-sizing:border-box;margin:.6rem 0}button{background:#d6b970;border:0;cursor:pointer}code{font-size:1.5rem}</style><h1>Pair a Luanti player</h1><p>Sign in with your NemoWorld operator account. The bridge keeps credentials on this computer and never shows or copies its raw token. The normal launcher encrypts a remembered connection outside game files. Returning players sign in through Luanti automatically.</p><form id="login" autocomplete="off"><label>Email<input id="email" type="email" required maxlength="320" autocomplete="username"></label><label>Password<input id="password" type="password" required maxlength="128" autocomplete="current-password"></label><button>Sign in and load human avatars</button></form><form id="pair" autocomplete="off" hidden><label>Active human avatar<select id="agent" required></select></label><button>Create two-minute code</button></form><p id="result" role="status"></p><script>const csrf=document.querySelector('meta[name=csrf-token]').content,headers={'Content-Type':'application/json','X-CSRF-Token':csrf},loginForm=document.querySelector('#login'),pairForm=document.querySelector('#pair'),result=document.querySelector('#result');let loginId;loginForm.onsubmit=async e=>{e.preventDefault();const password=document.querySelector('#password');const r=await fetch('/pair/login',{method:'POST',headers,body:JSON.stringify({email:document.querySelector('#email').value,password:password.value})});password.value='';const b=await r.json();if(!r.ok){result.textContent=b.error;return}loginId=b.login_id;const select=document.querySelector('#agent');select.replaceChildren(...b.agents.map(a=>new Option(a.name+' ('+a.id+')',a.id)));pairForm.hidden=!b.agents.length;result.textContent=b.agents.length?'Choose an active human avatar in an opened frontier area.':'No active human avatar is available in an opened frontier area.'};pairForm.onsubmit=async e=>{e.preventDefault();const r=await fetch('/pair/start',{method:'POST',headers,body:JSON.stringify({login_id:loginId,agent_id:document.querySelector('#agent').value})});const b=await r.json();result.textContent=r.ok?'In Luanti, type /nemo_pair '+b.code:b.error}</script></html>`);
         return;
       }
       if (url.pathname === '/health') return send(200, {world_id: WORLD, size: SIZE, paired_players: players.size});
@@ -141,7 +156,7 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
           browserProtection();
           if (!/^[a-f0-9]{48}$/.test(input.login_id)) throw Object.assign(new Error('Local sign-in session required.'), {status: 400});
           const session = loginSessions.get(input.login_id); loginSessions.delete(input.login_id);
-          if (!session || session.expires <= clock()) throw Object.assign(new Error('Local sign-in session expired.'), {status: 401});
+          if (!session || session.player || session.expires <= clock()) throw Object.assign(new Error('Local sign-in session expired.'), {status: 401});
           pairToken = session.token;
         } else if (!/^[a-f0-9]{64}$/.test(pairToken || '')) throw Object.assign(new Error('Operator session token required.'), {status: 400});
         await owner(pairToken, input.agent_id);
@@ -151,19 +166,41 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
         pending.set(code, {token: pairToken, agentId: input.agent_id, expires: clock() + 120000});
         return send(200, {code, expires_in_seconds: 120});
       }
+      if (url.pathname === '/native/login' && request.method === 'POST') {
+        if(!validPlayer(input.player)||typeof input.email!=='string'||input.email.length>320||typeof input.password!=='string'||!input.password||input.password.length>128)throw Object.assign(new Error('Enter your NemoWorld email and password.'),{status:400});
+        const now=clock(),recent=(loginAttempts.get('native')||[]).filter(time=>time>now-60000);
+        if(recent.length>=5)throw Object.assign(new Error('Too many sign-in attempts. Try again shortly.'),{status:429});
+        recent.push(now);loginAttempts.set('native',recent);
+        const token=await login(input.email,input.password),me=await call('/me',token);
+        const agents=(me.agents||[]).filter(a=>a.kind==='human'&&a.status==='active'&&isSupportedFrontierWorldId(a.world_id)).map(a=>({id:a.id,name:a.name||a.id,world_id:a.world_id}));
+        if(!agents.length)throw Object.assign(new Error('No active human character is in an opened frontier. Enter one in NemoWorld first.'),{status:409});
+        for(const [id,session] of loginSessions)if(session.expires<=now)loginSessions.delete(id);
+        if(loginSessions.size>=16)throw Object.assign(new Error('Too many pending sign-ins.'),{status:429});
+        const loginId=randomBytes(24).toString('hex');loginSessions.set(loginId,{token,player:input.player,expires:now+10*60000});
+        return send(200,{login_id:loginId,agents});
+      }
+      if (url.pathname === '/native/connect' && request.method === 'POST') {
+        const session=loginSessions.get(input.login_id);loginSessions.delete(input.login_id);
+        if(!session||session.expires<=clock()||session.player!==input.player)throw Object.assign(new Error('Sign in again to connect this character.'),{status:401});
+        return send(200,await attach(input.player,{token:session.token,agentId:input.agent_id},true));
+      }
+      if (url.pathname === '/native/resume' && request.method === 'POST') {
+        const saved=remembered?.read();
+        if(!saved||saved.player!==input.player)throw Object.assign(new Error('Sign in to NemoWorld once on this native player.'),{status:404});
+        if(saved.expires<=clock()){remembered.clear();throw Object.assign(new Error('Your saved sign-in expired. Sign in again.'),{status:401});}
+        try{return send(200,await attach(input.player,{...saved,rememberedExpires:saved.expires}));}
+        catch(error){if(error.status===401)remembered.clear();throw error;}
+      }
+      if (url.pathname === '/native/forget' && request.method === 'POST') {
+        const active=players.get(input.player);
+        if(!active||typeof input.pair_id!=='string'||active.pairId!==input.pair_id)throw Object.assign(new Error('No matching native connection.'),{status:401});
+        if(remembered?.read()?.player===input.player)remembered.clear();
+        players.delete(input.player);return send(200,{forgotten:true});
+      }
       if (url.pathname === '/native/pair' && request.method === 'POST') {
-        if (!/^[a-zA-Z0-9_-]{1,32}$/.test(input.player || '')) throw Object.assign(new Error('Invalid native player.'), {status: 400});
-        const attempt = (pairingAttempts.get(input.player) || 0) + 1;
-        pairingAttempts.set(input.player, attempt);
-        const pair = pending.get(input.code); pending.delete(input.code);
-        if (!pair || pair.expires <= clock()) throw Object.assign(new Error('Pair code expired.'), {status: 401});
-        const agent = await owner(pair.token, pair.agentId);
-        if (pairingAttempts.get(input.player) !== attempt) throw Object.assign(new Error('A newer pairing replaced this request.'), {status: 409});
-        if (!isSupportedFrontierWorldId(agent.world_id)) throw Object.assign(new Error('Pair an active human avatar in an opened frontier area.'), {status: 409});
-        players.clear(); // one local native player session per bridge instance
-        const pairId = randomBytes(16).toString('hex');
-        players.set(input.player, {...pair, pairId, expires: Math.min(pair.expires + 18 * 60000, clock() + 20 * 60000)});
-        return send(200, {paired: true, pair_id:pairId, world_id: agent.world_id});
+        const pair=pending.get(input.code);pending.delete(input.code);
+        if(!pair||pair.expires<=clock())throw Object.assign(new Error('Pair code expired.'),{status:401});
+        return send(200,await attach(input.player,pair,true));
       }
       if (url.pathname === '/native/state' && request.method === 'POST') {
         const {pair, agent: initialAgent} = await current(input.player, input.pair_id);
@@ -304,5 +341,5 @@ export function createBridge({api = apiBase, fetcher = fetch, clock = Date.now, 
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.NEMO_BRIDGE_PORT || 3999);
-  createBridge().listen(port, '127.0.0.1', () => process.stdout.write(`NemoWorld native bridge listening on 127.0.0.1:${port}\n`));
+  createBridge({sessionDirectory:process.env.NEMO_NATIVE_SESSION_DIR}).listen(port, '127.0.0.1', () => process.stdout.write(`NemoWorld native bridge listening on 127.0.0.1:${port}\n`));
 }

@@ -25,21 +25,27 @@ local terrain_types = {meadow=true,tree=true,water=true,garden=true,path=true,pl
 local markers = {}
 local gate_markers = {}
 local project_scene = dofile(core.get_modpath('nemo')..'/scene.lua')
+local resume_player
+local native_logins={}
 local pairing_form = 'nemo:pairing'
 
 local function show_pairing(name, reason)
-  core.show_formspec(name, pairing_form, 'formspec_version[4]size[11,7]' ..
-    'label[0.5,0.6;Welcome to NemoWorld]' ..
-    'textarea[0.5,1.1;10,2.8;;;' .. core.formspec_escape(
-      'Connect your saved human character before entering the shared frontier.\n\n' ..
-      '1. Open ' .. endpoint .. '/ in your browser and sign in.\n' ..
-      '2. Select a human character already in an opened frontier sector.\n' ..
-      '3. Create a two-minute code and enter it below.\n\n' ..
-      'This native client currently shows one frontier sector, not the browser Commons.') .. ']' ..
-    'pwdfield[0.5,4.2;10,0.8;pair_code;Two-minute pairing code]' ..
-    'button[0.5,5.2;4.8,0.8;pair;Connect character]' ..
-    'button_exit[5.6,5.2;4.8,0.8;later;Wait here]' ..
-    'textarea[0.5,6.1;10,0.8;;;' .. core.formspec_escape(reason or 'Waiting for pairing. No shared action has been saved.') .. ']')
+  core.show_formspec(name,pairing_form,'formspec_version[4]size[11,8]'..
+    'label[0.5,0.6;Sign in to NemoWorld]'..
+    'textarea[0.5,1.1;10,1.6;;;'..core.formspec_escape('Use your NemoWorld account. Choose your saved human character and return automatically on this Luanti login. No browser or pairing code is needed. The connection is remembered privately on this computer.')..']'..
+    'field[0.5,3;10,0.8;native_email;NemoWorld email;]'..
+    'pwdfield[0.5,4.2;10,0.8;native_password;NemoWorld password]'..
+    'button[0.5,5.3;4.8,0.8;native_signin;Sign in]'..
+    'button_exit[5.6,5.3;4.8,0.8;later;Wait here]'..
+    'textarea[0.5,6.5;10,1;;;'..core.formspec_escape(reason or 'Your password is used only for sign-in. It is not saved in the game or connection cache.')..']')
+end
+local function show_characters(name,session)
+  local choices={}
+  for _,agent in ipairs(session.agents) do choices[#choices+1]=core.formspec_escape(agent.name..' · '..agent.world_id) end
+  core.show_formspec(name,'nemo:characters','formspec_version[4]size[11,5]label[0.5,0.6;Choose your human character]'..
+    'dropdown[0.5,1.4;10,0.8;character;'..table.concat(choices,',')..';1;true]'..
+    'button[0.5,2.8;10,0.8;native_connect;Enter world]'..
+    'label[0.5,4;This choice will be restored automatically on your next native login.]')
 end
 
 local function suspend_player(player, state)
@@ -138,7 +144,7 @@ end
 local function request_move(name, direction)
   local state = motion[name] or {}
   local generation = state.generation
-  if not paired[name] then return false, 'Pair first.' end
+  if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   if state.in_flight then return false, 'Movement is still being confirmed.' end
   if motion_clock - (state.last_request or -math.huge) < move_cooldown then return false, 'Movement is cooling down.' end
   state.in_flight = true
@@ -180,11 +186,11 @@ sync = function(name, release_motion)
     end
     busy[name] = nil
     if not ok then
-      if code == 401 then
+      if code == 401 or code == 403 then
         paired[name] = nil
         state.ready = false
         suspend_player(core.get_player_by_name(name), state)
-        show_pairing(name, data)
+        resume_player(name)
       end
       if code ~= 401 then
         local state = motion[name]
@@ -299,7 +305,7 @@ sync = function(name, release_motion)
   end)
 end
 local function act(name, action, pos, block_type)
-  if not paired[name] then message(name, 'Use /nemo_pair CODE first.'); return end
+  if not paired[name] then message(name, 'Sign in with /nemo_connect first.'); return end
   if pos and not inside(pos) then message(name, 'Outside the 48 by 48 sector or block layers 0 to 7.'); return end
   paired_request(name, '/native/action', {player=name, action=action, pos=pos, type=block_type}, function(ok, data)
     if not ok then
@@ -355,6 +361,55 @@ core.register_on_generated(function(minp, maxp)
     end
   end
 end)
+local function finish_connection(name, previous, pairing_attempt, ok, data)
+    if motion[name] ~= previous or not motion[name] or motion[name].pairing_attempt ~= pairing_attempt then return end
+    if ok and type(data.pair_id) == 'string' and #data.pair_id == 32 then
+      local next_generation = ((previous and previous.generation) or 0) + 1
+      motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=next_generation, physics=previous.physics, hud=previous.hud}
+      suspend_player(core.get_player_by_name(name), motion[name])
+      paired[name] = data.pair_id
+      native_logins[name]=nil
+      core.close_formspec(name,'nemo:characters')
+      mission_evidence[name] = nil
+      creative.clear(name)
+      busy[name] = nil
+      message(name, 'Connected to your saved character.'); sync(name)
+    else
+      local reason = ok and 'Bridge connection response was invalid.' or data
+      message(name, reason)
+      show_pairing(name, reason)
+    end
+end
+local function connection_attempt(name)
+  local previous=motion[name]
+  if not previous then return end
+  previous.pairing_attempt=(previous.pairing_attempt or 0)+1
+  previous.retry_resume=false
+  return previous,previous.pairing_attempt
+end
+local function connect_character(name,agent_id)
+  local session=native_logins[name]
+  if not session then show_pairing(name,'Sign in to choose your character.');return end
+  native_logins[name]=nil
+  local previous,attempt=connection_attempt(name)
+  request('/native/connect',{player=name,login_id=session.login_id,agent_id=agent_id},function(ok,data)
+    finish_connection(name,previous,attempt,ok,data)
+  end)
+end
+resume_player=function(name)
+  local previous,attempt=connection_attempt(name)
+  if not previous then return end
+  previous.resume_pending=true
+  request('/native/resume',{player=name},function(ok,data,code)
+    if motion[name]~=previous or previous.pairing_attempt~=attempt then return end
+    previous.resume_pending=false
+    if ok then finish_connection(name,previous,attempt,ok,data)
+    else
+      previous.retry_resume=code~=401 and code~=404
+      show_pairing(name,data)
+    end
+  end)
+end
 core.register_on_joinplayer(function(player)
   local name = player:get_player_name()
   motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge}
@@ -375,24 +430,39 @@ core.register_on_joinplayer(function(player)
   inventory:set_list('main',tools)
   if player.hud_set_hotbar_itemcount then player:hud_set_hotbar_itemcount(9) end
   if player.set_inventory_formspec then player:set_inventory_formspec('formspec_version[4]size[11,7]label[0.5,0.5;Free creative tools · /nemo_build for plots and blueprints]list[current_player;main;0.5,1;9,4;]listring[]') end
-  message(name, 'Pair with /nemo_pair CODE. Move with /nemo_move up|down|left|right. Click with a block item to request placement; punch a block to request removal.')
-  show_pairing(name)
+  message(name,'Connecting your saved character. Free tools: /nemo_build. Click ground to place; punch saved blocks to remove.')
+  show_pairing(name,'Restoring your saved connection...')
+  resume_player(name)
 end)
-core.register_on_player_receive_fields(function(player, formname, fields)
-  if formname ~= pairing_form then return false end
-  if fields.pair or fields.key_enter_field == 'pair_code' then
-    local code = fields.pair_code or ''
-    if #code ~= 12 or not code:match('^[a-f0-9]+$') then
-      show_pairing(player:get_player_name(), 'Enter the 12-character code from the local pairing page.')
-    else
-      core.registered_chatcommands.nemo_pair.func(player:get_player_name(), code)
+core.register_on_player_receive_fields(function(player,formname,fields)
+  local name=player:get_player_name()
+  if formname=='nemo:characters' then
+    local session=native_logins[name]
+    if fields.native_connect and session then
+      local agent=session.agents[tonumber(fields.character or '') or 0]
+      if agent then connect_character(name,agent.id) else show_characters(name,session) end
     end
+    return true
+  end
+  if formname~=pairing_form then return false end
+  if fields.native_signin or fields.key_enter_field=='native_password' then
+    local previous,attempt=connection_attempt(name)
+    local payload={player=name,email=fields.native_email or '',password=fields.native_password or ''}
+    fields.native_password=nil
+    request('/native/login',payload,function(ok,data)
+      payload.password=nil
+      if motion[name]~=previous or previous.pairing_attempt~=attempt then return end
+      if not ok then show_pairing(name,data);return end
+      native_logins[name]={login_id=data.login_id,agents=data.agents}
+      if #data.agents==1 then connect_character(name,data.agents[1].id)
+      else show_characters(name,native_logins[name]) end
+    end)
   end
   return true
 end)
-core.register_chatcommand('nemo_connect', {description='Open the local character pairing screen', func=function(name)
+core.register_chatcommand('nemo_connect', {description='Sign in or choose a different NemoWorld account', func=function(name)
   show_pairing(name)
-  return true, 'Use the local pairing page to connect your saved human character.'
+  return true, 'Sign in here to connect your saved human character.'
 end})
 core.register_on_leaveplayer(function(player)
   local name = player:get_player_name()
@@ -401,6 +471,7 @@ core.register_on_leaveplayer(function(player)
   busy[name] = nil
   motion[name] = nil
   creative.clear(name)
+  native_logins[name]=nil
 end)
 core.register_chatcommand('nemo_pair', {params='CODE', description='Pair this player to an operator-owned human avatar', func=function(name, code)
   if not code:match('^[a-f0-9]+$') then return false, 'Invalid pairing code.' end
@@ -414,23 +485,20 @@ core.register_chatcommand('nemo_pair', {params='CODE', description='Pair this pl
   local pairing_attempt = (previous and previous.pairing_attempt or 0) + 1
   if previous then previous.pairing_attempt = pairing_attempt end
   request('/native/pair', {player=name, code=code}, function(ok, data)
-    if motion[name] ~= previous or not motion[name] or motion[name].pairing_attempt ~= pairing_attempt then return end
-    if ok and type(data.pair_id) == 'string' and #data.pair_id == 32 then
-      local next_generation = ((previous and previous.generation) or 0) + 1
-      motion[name] = {anchor={x=24,y=2,z=24}, last_request=-math.huge, generation=next_generation, physics=previous.physics, hud=previous.hud}
-      suspend_player(core.get_player_by_name(name), motion[name])
-      paired[name] = data.pair_id
-      mission_evidence[name] = nil
-      creative.clear(name)
-      busy[name] = nil
-      message(name, 'Paired to the opened frontier.'); sync(name)
-    else
-      local reason = ok and 'Bridge pairing response was invalid.' or data
-      message(name, reason)
-      show_pairing(name, reason)
-    end
+    finish_connection(name,previous,pairing_attempt,ok,data)
   end)
   return true, 'Pairing request sent.'
+end})
+core.register_chatcommand('nemo_signout',{description='Forget this computer’s saved NemoWorld connection',func=function(name)
+  if not paired[name] then show_pairing(name);return false,'No active connection.' end
+  paired_request(name,'/native/forget',{player=name},function(ok,data)
+    if not ok then message(name,data);return end
+    paired[name]=nil;native_logins[name]=nil
+    local state=motion[name];state.ready=false;state.retry_resume=false
+    suspend_player(core.get_player_by_name(name),state)
+    show_pairing(name,'Signed out. This computer will not reconnect until you sign in again.')
+  end)
+  return true,'Signing out.'
 end})
 core.register_chatcommand('nemo_move', {params='up|down|left|right', description='Request one authoritative step', func=function(name, direction)
   if not ({up=true,down=true,left=true,right=true})[direction] then return false, 'Choose up, down, left or right.' end
@@ -441,7 +509,7 @@ end})
 -- Mission work over the same records the browser reads. The pairing credential selects the human
 -- avatar; the bridge resolves the sender from NemoWorld, never from a recipient typed in chat.
 core.register_chatcommand('nemo_missions', {params='', description='List open mission tasks and your active claim', func=function(name)
-  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   paired_request(name, '/native/missions', {player=name}, function(ok, data)
     if not ok then core.log('action','NEMO_MISSIONS_ERROR '..tostring(data)); message(name, data); return end
     local ids = {}
@@ -453,7 +521,7 @@ core.register_chatcommand('nemo_missions', {params='', description='List open mi
   return true, 'Reading the mission directory.'
 end})
 core.register_chatcommand('nemo_claim', {params='TASK_ID', description='Claim one open mission task', func=function(name, task_id)
-  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   if not task_id or task_id == '' then return false, 'Give a task id from /nemo_missions.' end
   paired_request(name, '/native/claim', {player=name, task_id=task_id}, function(ok, data)
     if not ok then core.log('action','NEMO_CLAIM_ERROR '..tostring(data)); message(name, data); return end
@@ -472,7 +540,7 @@ local function evidence(name)
   return mission_evidence[name]
 end
 core.register_chatcommand('nemo_source', {params='URL PAGE_OR_SECTION', description='Record a source you actually checked for your mission', func=function(name, args)
-  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   local url, location = args:match('^(%S+)%s+(.+)$')
   if not url or not location or #location > 300 then return false, 'Use /nemo_source URL PAGE_OR_SECTION (300 characters max).' end
   local draft = evidence(name)
@@ -482,19 +550,19 @@ core.register_chatcommand('nemo_source', {params='URL PAGE_OR_SECTION', descript
 end})
 for _, field in ipairs({'method','limitations','rights'}) do
   core.register_chatcommand('nemo_'..field, {params='YOUR_TEXT', description='Record your own '..field..' for the mission submission', func=function(name, value)
-    if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+    if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
     if not value or value == '' or #value > 2000 then return false, 'Give your '..field..' in 1–2000 characters.' end
     evidence(name)[field] = value
     return true, 'Your '..field..' statement is saved locally for this pairing.'
   end})
 end
 core.register_chatcommand('nemo_evidence_reset', {params='', description='Discard locally entered mission evidence', func=function(name)
-  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   mission_evidence[name] = nil
   return true, 'Local evidence cleared. No server record was changed.'
 end})
 core.register_chatcommand('nemo_submit', {params='the deliverable text', description='Submit evidence for your active claim', func=function(name, artifact)
-  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   if not artifact or artifact == '' then return false, 'Give the deliverable text.' end
   local draft = evidence(name)
   if not draft.method or not draft.limitations or not draft.rights or #draft.sources == 0 then
@@ -528,7 +596,7 @@ end})
 -- credential selects the sender; a native client can only address a resident it can see, and the
 -- token never enters the world, a log or a prompt.
 core.register_chatcommand('nemo_chat', {params='', description='Read the recent messages you can see', func=function(name)
-  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   paired_request(name, '/native/messages', {player=name}, function(ok, data)
     if not ok then core.log('action','NEMO_CHAT_ERROR '..tostring(data)); message(name, data); return end
     local ids, lines = {}, {}
@@ -542,7 +610,7 @@ core.register_chatcommand('nemo_chat', {params='', description='Read the recent 
   return true, 'Reading messages.'
 end})
 core.register_chatcommand('nemo_say', {params='text', description='Say a public message in your world', func=function(name, text)
-  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   paired_request(name, '/native/say', {player=name, text=text}, function(ok, data)
     if not ok then core.log('action','NEMO_SAY_ERROR '..tostring(data)); message(name, data); return end
     core.log('action','NEMO_SAY_RESULT id='..data.message.id..' channel='..data.message.channel)
@@ -551,7 +619,7 @@ core.register_chatcommand('nemo_say', {params='text', description='Say a public 
   return true, 'Sending.'
 end})
 core.register_chatcommand('nemo_tell', {params='RESIDENT_ID then the message', description='Privately message a resident you can see', func=function(name, args)
-  if not paired[name] then return false, 'Use /nemo_pair CODE first.' end
+  if not paired[name] then return false, 'Sign in with /nemo_connect first.' end
   local to, text = args:match('^(%S+)%s+(.+)$')
   if not to or not text then return false, 'Use /nemo_tell RESIDENT_ID then the message.' end
   paired_request(name, '/native/say', {player=name, to=to, text=text}, function(ok, data)
@@ -566,7 +634,10 @@ core.register_globalstep(function(dt)
   sync_elapsed = sync_elapsed + dt
   if sync_elapsed >= 5 then
     sync_elapsed = 0
-    for name in pairs(paired) do sync(name) end
+    for name,state in pairs(motion) do
+      if paired[name] then sync(name)
+      elseif state.retry_resume and not state.resume_pending then resume_player(name) end
+    end
   end
   for _, player in ipairs(core.get_connected_players()) do
     local name = player:get_player_name()

@@ -40,8 +40,8 @@ core.register_on_mods_loaded(function()
    if debug.getinfo(callback,'S').source:find('/nemo/init.lua',1,true) then callback(player) end
   end
   assert(physics.gravity==0 and physics.speed==0,'unpaired join must suspend physics until shared state is loaded')
-  assert(form and form.spec:find('127.0.0.1:3999',1,true),'unpaired join must show local pairing instructions')
-  assert(form.spec:find('pair_code',1,true),'pairing screen needs a code field')
+  assert(form and form.spec:find('native_email',1,true),'unpaired join must show local pairing instructions')
+  assert(form.spec:find('native_password',1,true),'native sign-in needs a password field; no browser code')
   assert(#slots==9,'joining must replace duplicate tool stacks with the nine canonical creative tools')
   for _,stack in ipairs(slots) do assert(stack:get_count()==1,'each reusable tool must appear only once') end
   local receive
