@@ -13,6 +13,7 @@ import { spaceMethods } from './spaces.js';
 import { karmaMethods } from './karma.js';
 import { shopMethods } from './shop.js';
 import { goodsMethods, goodsPolicyExport } from './goods-policy.js';
+import { provenanceMethods } from './economy-provenance.js';
 import { communityMethods } from './community.js';
 import { vocationMethods } from './vocations.js';
 import { vaultMethods } from './vault.js';
@@ -1341,7 +1342,7 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, vaultMethods, questMethods, guildMethods, firstPlayMethods, karmaMethods, shopMethods, goodsMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, vaultMethods, questMethods, guildMethods, firstPlayMethods, karmaMethods, shopMethods, goodsMethods, provenanceMethods);
 
 Object.assign(Platform.prototype,draftMethods);
 
