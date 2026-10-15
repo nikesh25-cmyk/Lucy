@@ -76,8 +76,11 @@ Unknown kinds and same-version schema drift are refused. An injected interruptio
 table rebuild proves rollback rather than leaving a partly migrated world.
 
 A rehearsal on a copy of the previously verified schema-24 installed backup preserved all **28,123
-rows across 70 existing tables**, including four accounts, while migrating to 27. The current live
-schema-26 world still requires a fresh stopped-server backup before installation.
+rows across 70 existing tables**, including four accounts, while migrating to 27. Before the actual
+installation, a fresh stopped-server schema-26 backup was verified. Both a rehearsal of that backup
+and the actual installed migration preserved **all 30,064 rows across 75 existing tables**, comparing
+the original columns and ordered row digests. Post-start checks confirmed schema 27, four accounts,
+ten residents, 312 saved spaces and SQLite integrity `ok`.
 
 ## Verification
 
@@ -139,6 +142,37 @@ complete backend rerun above passed 1,456/1,456. These interrupted runs are not 
 passes. Final gates are run one heavy job at a time on this task; other agents' processes are left
 untouched. Neither test coverage nor permission, reward, rendering, movement or timeout limits were
 relaxed.
+
+## Installed local release
+
+The integrated release is installed and healthy at **http://127.0.0.1:3000/**. The functional tree is
+`5365702`; the subsequent commits record release and installation evidence only. The exact installed
+documentation commit and all 1,454 tracked file fingerprints are recorded in
+`outputs/shared-installed-source.json`. Every tracked installed file was verified against Git.
+Private configuration, credentials, model weights, vault keys, `.runtime/`, `node_modules/` and the
+existing database were preserved. HTTP checks confirmed the homepage and served application, phone
+controls, map and Home modules match the recorded source. The health endpoint reports SQLite `ok`
+and the existing model configuration present; this does not imply an active inference run.
+
+The world is managed by `org.nemoworld.local`. Its recoverable launchd definition is saved at
+`outputs/org.nemoworld.local.plist`; a loaded job can be restarted with
+`launchctl kickstart -k gui/501/org.nemoworld.local`. Following `bootout`, use `launchctl bootstrap`
+with that saved definition before `kickstart`.
+
+Installation evidence is kept outside Git, under `outputs/`:
+
+- Validated pre-upgrade database:
+  `Lucy/data/backups/pre-unified-20261015T163206Z.sqlite`.
+- Matching old source: `pre-unified-27063ae-source.tar.gz`, SHA-256
+  `f3f50b872f3eed98ddb2383471c8e301074a3cf528d56ef8fb0c77c82d0eebf6`.
+- Old installed-source record: `shared-installed-source.pre-unified.json`.
+- Preservation witness, installation receipt and HTTP evidence:
+  `unified-preservation-20261015.json`, `unified-installation-20261015.json` and
+  `unified-health-20261015.json`. These contain counts/digests and operational metadata, not exported
+  account records or credentials.
+
+The local installation is distinct from a public deployment. GitHub publication status is verified
+separately from this installation record.
 
 ## Limits and next evidence
 
