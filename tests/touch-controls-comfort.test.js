@@ -207,6 +207,16 @@ test('a detached or hidden quickbar cannot replace the default or previously mea
   assert.equal(controls.root.style.bottom, `${144 + QUICKBAR_GAP}px`, 'a temporarily hidden HUD must keep the last valid lift');
 });
 
+test('the floating lift also clears the HUD inset from the map bottom', () => {
+  const { controls, mount } = harness({ floating: true });
+  mount.rect = rect(0, 60, 390, 784);
+  const quickbar = rect(10, 690, 370, 144); // bottom 834, ten pixels above the map bottom
+  const result = controls.avoidQuickbar(quickbar);
+  assert.equal(result.offset, 144 + 10 + QUICKBAR_GAP);
+  const padBottom = mount.rect.bottom - result.offset;
+  assert.equal(quickbar.top - padBottom, QUICKBAR_GAP, 'all pad controls end eight pixels above the complete HUD band');
+});
+
 test('the quickbar overlap is measured, and a floating bar is lifted clear of it', () => {
   const quickbar = rect(0, 800, 393, 44);      // the shell's own row, flush with the bottom of the panel
   const over = layoutReport({ bar: rect(0, 740, 393, 160), quickbar });

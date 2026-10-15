@@ -575,7 +575,9 @@ export function createTouchControls({
     // A newly built, detached HUD (or a hidden one) has no height yet. Keep the stylesheet default
     // or last valid measurement instead of pulling the pad down onto the future action row.
     if (rect.height <= 0) return Object.freeze({ applied: false, reason: 'no-quickbar-layout' });
-    const offset = Math.round(rect.height + QUICKBAR_GAP);
+    const frame = rectOf(mount);
+    const inset = frame && frame.height > 0 ? Math.max(0, frame.bottom - rect.bottom) : 0;
+    const offset = Math.round(rect.height + inset + QUICKBAR_GAP);
     if (!lifted) { lifted = true; previousBottom = root.style ? root.style.bottom : undefined; }
     root.style.bottom = `${offset}px`;
     return Object.freeze({ applied: true, offset });

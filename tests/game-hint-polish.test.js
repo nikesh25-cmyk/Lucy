@@ -80,9 +80,11 @@ test('the real shell assigns action ownership only when the local game HUD is mo
   const code = app.slice(start, end);
   for (const [gamePresentation, hasHud] of [[true,true],[true,false],[false,true],[false,false]]) {
     let owner = null, received = null, synchronized = 0;
+    const pending = [];
     const quickbar = { name: 'local quickbar' };
     const scope = { state: { gamePresentation, graphics: 'voxel' }, touchControls: null,
       window: { matchMedia() {}, innerWidth: 390, innerHeight: 844 }, document: {},
+      queueMicrotask(task) { pending.push(task); },
       createTouchControls(options) { received = options; return { root: { classList: { toggle(name,on) { owner = { name,on }; } } }, avoidQuickbar() {} }; },
       syncTouchEnabled() { synchronized++; },
     };
@@ -94,4 +96,43 @@ test('the real shell assigns action ownership only when the local game HUD is mo
     assert.equal(received.quickbar, hasHud ? quickbar : null, 'the detached map supplies its own HUD for overlap measurement');
     assert.equal(synchronized, 1, 'existing enable/disable synchronization remains in place');
   }
+});
+
+test('the shell lifts the current phone pad after its detached HUD receives real layout, and ignores replaced maps', () => {
+  const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const start = app.indexOf('function mountTouchControls(');
+  const code = app.slice(start, app.indexOf('\n// ---------------------------------------------------------------------------------------------', start));
+  const pending = [], mounted = [];
+  const scope = { state: { gamePresentation: true, graphics: 'voxel' }, touchControls: null,
+    window: { matchMedia() {}, innerWidth: 390, innerHeight: 844 }, document: {},
+    queueMicrotask(task) { pending.push(task); }, syncTouchEnabled() {},
+    createTouchControls(options) {
+      const control = { root: { classList: { toggle() {} } }, measurements: [], destroy() {},
+        avoidQuickbar() { this.measurements.push(options.quickbar.height + 8); },
+      };
+      mounted.push(control);
+      return control;
+    },
+  };
+  vm.createContext(scope);
+  vm.runInContext(`${code}\nthis.mount = mountTouchControls;`, scope);
+  const quickbar = { height: 0 };
+  const map = { isConnected: false, querySelector() { return quickbar; } };
+  scope.mount(map, {}, {}, null);
+  map.isConnected = true; quickbar.height = 164;
+  while (pending.length) pending.shift()();
+  assert.equal(mounted[0].measurements.at(-1), 172, 'the visible pad must clear the measured 164px HUD plus its 8px gap');
+  const old = mounted[0];
+  scope.mount(map, {}, {}, null);
+  scope.mount(map, {}, {}, null);
+  const replacedCount = mounted[1].measurements.length;
+  while (pending.length) pending.shift()();
+  assert.equal(mounted[1].measurements.length, replacedCount, 'a deferred callback cannot move a pad replaced by another world render');
+  assert.equal(mounted[2].measurements.at(-1), 172);
+  assert.equal(old.measurements.at(-1), 172);
+  scope.mount(map, {}, {}, null);
+  const beforeSessionChange = mounted[3].measurements.length;
+  scope.state.sessionEpoch = 1;
+  while (pending.length) pending.shift()();
+  assert.equal(mounted[3].measurements.length, beforeSessionChange, 'a prior session cannot move the currently connected pad');
 });

@@ -2319,9 +2319,9 @@ define('in-game-command-surface', async () => {
   await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
   await settle(page);
   if (!await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, ACTORS.admin);
-  // An earlier scenario may have left this operator inside the game; Play appears only on the entry screen.
-  const entry = page.locator('#hero-actions').getByRole('button', { name: 'Play', exact: true });
-  if (await entry.waitFor({ state: 'visible', timeout: 8000 }).then(() => true, () => false)) await entry.click();
+  // Establish this scenario's own selected character through the entry control. A focused run or
+  // a recreated context after a failed case must not depend on another scenario's local selection.
+  await enterWorldAs(page, player.id, player.name);
   await page.waitForFunction((id) => window.__nemoworld?.selected?.() === id && document.querySelector('#world'), player.id, { timeout: PAGE_TIMEOUT_MS });
   await page.waitForTimeout(1500);
   await page.evaluate(() => { document.querySelector('#world').dataset.surfaceMark = 'kept'; });
