@@ -129,6 +129,11 @@ const writes = new Map([
   ['/land/assign',['landAssign',null]], ['/land/release',['landRelease',null]], ['/frontier/expand',['frontierExpand','build']], ['/frontier/build',['frontierBuild','build']], ['/frontier/grant',['plotGrantCreate',null]], ['/frontier/grant/revoke',['plotGrantRevoke',null]], ['/operations/registration',['registrationSettings',null]],
   ['/drafts', ['draftSave', null]], ['/drafts/resume', ['draftResume', null]], ['/drafts/archive', ['draftArchive', null]],
   ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]], ['/residents/resume', ['residentResume', null]],
+  // One declared action of one resident, walked through the declared lifecycle and executed once.
+  // The route carries no single scope: the lifecycle checks the action’s own scope against the
+  // credential row it re-reads, so an observe-only credential is refused with a recorded reason
+  // rather than by the generic scope gate.
+  ['/residents/act', ['residentAct', null]],
   ['/research/run', ['researchRun', null]], ['/research/cancel', ['researchCancel', null]], ['/mayors/talk', ['mayorTalk', 'chat']], ['/mayors/control', ['mayorControl', null]], ['/ambassadors/talk', ['ambassadorTalk', 'chat']], ['/ambassadors/control', ['ambassadorControl', null]], ['/research/generate', ['researchGenerate', null]], ['/research/activate', ['researchActivate', null]],
   ['/invites', ['invite', null]], ['/agents', ['createAgent', null]],
   ['/agents/control', ['agentControl', null]], ['/runtime/start', ['runtime', null]],
@@ -181,7 +186,7 @@ const writes = new Map([
   // fire). A purchase spends and grants inside the one request transaction.
   ['/karma/settle', ['karmaSettle', null]], ['/shop/purchase', ['shopPurchase', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status', '/residents/declaration']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -543,7 +548,11 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         cookie(response,'',0,hosting);response.setHeader('X-Lucy-Session','expired');
         if(!publicRoute)throw error;actor=null;
       }
-      if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/drafts','/workers', '/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
+      // `/residents/act` is the one runtime write route with no single scope: the declared lifecycle
+      // checks the action's own scope against the credential row itself, and records a refusal with a
+      // reason instead of being turned away by this generic gate. Every other scope-less route stays
+      // a human-operator route.
+      if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope && route !== '/residents/act') || dynamic?.action === 'home' || ['/drafts','/workers', '/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
       if (request.method === 'GET') {
         const result = platform.transaction(() => {
           let value;
@@ -557,7 +566,10 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
             // calling context, its available work and the projects it may join or leave. Only this
             // resident's own read is extended; a session and every other route are unchanged.
             value.guilds=platform.guildObservation(actor);}
-            if(actor?.kind==='runtime'&&JSON.parse(actor.credential.scopes).includes('vault'))value.vault=platform.vaultPrompt(actor);}
+            if(actor?.kind==='runtime'&&JSON.parse(actor.credential.scopes).includes('vault'))value.vault=platform.vaultPrompt(actor);
+            // The resident's own derived declaration rides in the same private read, so the runtime
+            // that acts and the operator who inspects read one object rather than two copies of it.
+            if(actor?.kind==='runtime')value.declaration=platform.residentOwnDeclaration(actor);}
           else if(route==='/callings/guilds')value=platform.callingGuilds(Object.fromEntries(url.searchParams));
           else if(route==='/quests')value=platform.quests(actor,Object.fromEntries(url.searchParams));
           else if(route==='/quests/catalog')value=platform.questCatalog(Object.fromEntries(url.searchParams));
@@ -614,6 +626,11 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));
           else if (route === '/export') value = platform.exportAccount(actor);
           else if (route === '/runtime/status') value = platform.runtimeStatus(actor);
+          // The declared lifecycle surface: the declaration, the budget, the current purpose, the
+          // declared action history and every refusal reason, for the operator who owns the resident
+          // and for a moderator. It reads the ledger and the declaration only; the resident’s private
+          // memory, conversations and vault stay out, and an inspection that asks for them is refused.
+          else if (route === '/residents/declaration') value = platform.residentDeclaration(actor, Object.fromEntries(url.searchParams));
           // The administrator dashboard: database counters from the platform, process and model
           // counters from this process. The route keeps its own administrator role check.
           else if (route === '/operations') value = platform.operations(actor, liveDiagnostics);
@@ -646,6 +663,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         }
         if(route==='/research'&&url.searchParams.get('download')==='programme'){if(!result.country_plan)fail(400,'Choose a catalog country for the work programme.');response.setHeader('Content-Disposition',`attachment; filename="lucy-${result.country_plan.country.iso2}-research-programme.json"`);return json(response,200,result.country_plan);}
         if(route==='/country-evidence'&&url.searchParams.get('download')==='1')response.setHeader('Content-Disposition',`attachment; filename="lucy-${result.country.iso3}-${result.sector||'agriculture'}-evidence.json"`);
+        // An inspection that asks for private material is refused by name, with the reason, rather
+        // than quietly returning a smaller object the caller could misread as "nothing is held".
+        if (route === '/residents/declaration' && result?.refused === true) return json(response, result.http_status || 403, { error: result.error, state: 'refused', include: result.include, private_refusals: result.private_refusals });
         return json(response, 200, result);
       }
       if (request.method === 'DELETE') {
@@ -748,11 +768,21 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         else if (route === '/operations/pause') {
           if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
           value = platform.pause(actor, input.paused);
-        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept', '/trade/listings', '/trade/claim', '/shop/purchase'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept', '/trade/listings', '/trade/claim', '/shop/purchase', '/residents/act'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
         else value = platform[method](actor, input);
         platform.charge(actor);
         return value;
       });
+      if (route === '/residents/act' && result?.state === 'refused') {
+        // A refused step is committed — its ledger line is durable — and answered with a refusing
+        // status and the reason. A refusal is never answered with a success.
+        return json(response, result.http_status || 409, {
+          error: result.error, state: 'refused', success: false, applied: false,
+          reason: result.reason, reason_note: result.reason_note, detail: result.detail || null,
+          action: result.action, serves: result.serves, intent_id: result.intent_id, key: result.key,
+          recorded: result.recorded, lifecycle: result.lifecycle, next_step: result.next_step || null,
+        });
+      }
       if (route === '/frontier/build') {
         const delta = frontierDelta(result);
         if (delta && delta.length) hub.publish(result.world_id, { blocks: delta });

@@ -15,6 +15,7 @@ import { shopMethods } from './shop.js';
 import { communityMethods } from './community.js';
 import { vocationMethods } from './vocations.js';
 import { vaultMethods } from './vault.js';
+import { residentFrameworkMethods } from './resident-framework.js';
 import { firstPlayMethods } from './firstplay.js';
 import { questMethods } from './quests.js';
 import { guildMethods } from './guilds.js';
@@ -1341,6 +1342,7 @@ export class Platform {
   close() { this.db.close(); }
 }
 Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, vaultMethods, questMethods, guildMethods, firstPlayMethods, karmaMethods, shopMethods);
+Object.assign(Platform.prototype, residentFrameworkMethods);
 
 Object.assign(Platform.prototype,draftMethods);
 
