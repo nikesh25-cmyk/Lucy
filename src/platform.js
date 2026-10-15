@@ -876,7 +876,16 @@ export class Platform {
     // counters are then assembled only after the administrator check above has passed.
     const runtime = typeof live === 'function' ? live() : live;
     const audit_valid = this.verifyAudit(), coin_ledger_valid = verifyCoinLedger(this.db);
-    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts'), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100'), audit_valid, coin_ledger_valid, coin_receipts:this.get('SELECT COUNT(*) AS n FROM coin_rewards').n, credit_units: UNIT_SEPARATION_POLICY, audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100'), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100"),
+    // Two of these lists carry text a *caller* supplied: an account name from registration, and a job's
+    // own run summary, which a runtime credential writes through POST /jobs. Both are published to every
+    // administrator, so both are passed through the same value scrub the diagnostics payload uses —
+    // otherwise a resident's runtime credential could print its own session token, or any contact
+    // address it was handed, straight onto the administrator dashboard. Redaction is applied per row
+    // rather than to the whole array, because `redactDiagnostics` bounds an array at 200 entries and an
+    // account listing must not silently truncate. The sealed unit-separation policy is deliberately not
+    // passed through that scrub: it is authored rather than caller-supplied, and its `token: false` is a
+    // published declaration, not a secret.
+    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts').map((row) => redactDiagnostics(row)), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100').map((row) => redactDiagnostics(row)), audit_valid, coin_ledger_valid, coin_receipts:this.get('SELECT COUNT(*) AS n FROM coin_rewards').n, credit_units: UNIT_SEPARATION_POLICY, audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100').map((row) => redactDiagnostics(row)), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100"),
       diagnostics: this.diagnostics({ ...runtime, integrity: { audit_chain_valid: audit_valid, coin_ledger_valid } }) };
   }
   // The administrator dashboard. Every number here is read from this process or from the database;
