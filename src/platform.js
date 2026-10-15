@@ -544,7 +544,7 @@ export class Platform {
     const citations = normalized.map((source, index) => { const cite = this.attachEvidence(source, index + 1); return { ...cite, submission_id: id, created_at: now() }; });
     for (const cite of citations) this.run('INSERT INTO submission_evidence(submission_id,source_number,capture_id,url,locator,cited_date,state,created_at) VALUES(?,?,?,?,?,?,?,?)', cite.submission_id, cite.source_number, cite.capture_id, cite.url, cite.locator, cite.cited_date, cite.state, cite.created_at);
     this.run("UPDATE claims SET status='submitted' WHERE id=?", claim.id);
-    this.run('UPDATE claim_drafts SET archived=1 WHERE claim_id=?',claim.id);
+    this.archiveDraft(claim.id);
     this.run("UPDATE tasks SET status='under_review' WHERE id=?", claim.task_id);
     this.audit(actor.account.id, 'submission.created', id);
     return { id, version, status: 'pending_review',...(brief?{brief}:{} ) };
@@ -564,7 +564,7 @@ export class Platform {
     this.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', id, submission.id, actor.account.id, input.decision, changes.reason, now());
     this.run('UPDATE submissions SET status=? WHERE id=?', input.decision, submission.id);
     this.run('UPDATE claims SET status=?,expires_at=? WHERE id=?', input.decision, this.clock() + 20 * 60_000, submission.claim_id);
-    if(input.decision==='changes_requested')this.run('UPDATE claim_drafts SET archived=0 WHERE claim_id=?',submission.claim_id);
+    if(input.decision==='changes_requested')this.archiveDraft(submission.claim_id,false);
     this.run('UPDATE tasks SET status=? WHERE id=?', input.decision === 'rejected' ? 'open' : input.decision, submission.task_id);
     // Reopening a rejected task must not present its research lead as freshly activated.
     if(input.decision==='rejected')this.run("UPDATE research_leads SET status='rejected' WHERE task_id=?",submission.task_id);
