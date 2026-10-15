@@ -196,6 +196,17 @@ test('a bar the mount clips is reported off screen, which is the bug a fixed-hei
   assert.equal(outside.on_screen_basis, 'mount+viewport');
 });
 
+test('a detached or hidden quickbar cannot replace the default or previously measured lift with eight pixels', () => {
+  const { controls } = harness({ floating: true });
+  assert.equal(controls.root.style.bottom, undefined);
+  assert.deepEqual(controls.avoidQuickbar(rect(0, 0, 0, 0)), { applied: false, reason: 'no-quickbar-layout' });
+  assert.equal(controls.root.style.bottom, undefined, 'the stylesheet default remains until a real HUD is measured');
+  controls.avoidQuickbar(rect(0, 700, 390, 144));
+  assert.equal(controls.root.style.bottom, `${144 + QUICKBAR_GAP}px`);
+  assert.equal(controls.avoidQuickbar(rect(0, 0, 390, 0)).applied, false);
+  assert.equal(controls.root.style.bottom, `${144 + QUICKBAR_GAP}px`, 'a temporarily hidden HUD must keep the last valid lift');
+});
+
 test('the quickbar overlap is measured, and a floating bar is lifted clear of it', () => {
   const quickbar = rect(0, 800, 393, 44);      // the shell's own row, flush with the bottom of the panel
   const over = layoutReport({ bar: rect(0, 740, 393, 160), quickbar });

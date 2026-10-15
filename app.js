@@ -766,6 +766,9 @@ function syncTouchEnabled(){
   const enabled=Boolean(touchControls&&compact&&!buildingOnPhone&&state.gamePresentation&&state.tab==='world'&&state.gameMode==='play'&&viewedAgent()&&state.gameDrawer!=='chat'&&!state.gameMenuOpen&&!(gamePanelOpen()&&panelMode(window.innerWidth)==='sheet'));
   touchControls?.setEnabled(enabled);
   document.body.classList.toggle('game-touch-active',enabled);
+  // Resizing or resuming a phone surface can change the HUD height. Measure after visibility and
+  // shell classes are current; a detached world still has no layout to measure.
+  if(enabled&&touchControls.root.isConnected)touchControls.avoidQuickbar?.();
 }
 window.addEventListener('resize',()=>{applyPanelGeometry(state.gamePresentation&&state.tab==='world');syncTouchEnabled();});
 // One drawer at a time. `state.gameDrawer` holds a single value, so opening Chat closes the tools
@@ -4196,6 +4199,11 @@ function mountTouchControls(map,canvas,world,agent){
   // a conversation is open does not briefly re-arm a pad the conversation just stood down.
   syncTouchEnabled();
   touchControls?.avoidQuickbar?.();
+  // renderWorld builds this map before attaching it. Its HUD then reports height zero, so the first
+  // lift alone would leave Look sitting over Places/More. Read the connected map after this render,
+  // and never let an older render's callback move the newer pad.
+  const mountedTouch=touchControls,touchEpoch=state.sessionEpoch||0,touchActor=state.selected||'';
+  queueMicrotask(()=>{if(touchControls===mountedTouch&&map.isConnected&&(state.sessionEpoch||0)===touchEpoch&&(state.selected||'')===touchActor)mountedTouch.avoidQuickbar?.();});
 }
 
 // ---------------------------------------------------------------------------------------------

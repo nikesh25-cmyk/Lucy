@@ -6346,7 +6346,8 @@ define('signed-in-game-play', async () => {
       const controls = await page.locator('#game-hud .game-quickbar button').evaluateAll((buttons) => buttons.map((button) => {
         const box = button.getBoundingClientRect();
         const atCenter = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-        return { label: button.textContent?.trim(), x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable: button === atCenter || button.contains(atCenter) };
+        const reachable = button === atCenter || button.contains(atCenter), blocker = !reachable && atCenter ? { tag: atCenter.tagName, id: atCenter.id, class: atCenter.getAttribute('class'), rect: atCenter.getBoundingClientRect().toJSON() } : null;
+        return { label: button.textContent?.trim(), x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable, blocker };
       }));
       // The game-experience specification keeps the HUD at five actions: the mode switch moved to
       // the world menu, so the quickbar is Interact, Build, Chat, Places, More.
@@ -6362,7 +6363,8 @@ define('signed-in-game-play', async () => {
       const targets = await pad.locator('button').evaluateAll((buttons) => buttons.filter((button) => button.getClientRects().length && getComputedStyle(button).visibility !== 'hidden').map((button) => {
         const box = button.getBoundingClientRect();
         const atCenter = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-        return { label: button.getAttribute('aria-label'), disabled: button.disabled, x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable: button === atCenter || button.contains(atCenter) };
+        const reachable = button === atCenter || button.contains(atCenter), blocker = !reachable && atCenter ? { tag: atCenter.tagName, id: atCenter.id, class: atCenter.getAttribute('class'), rect: atCenter.getBoundingClientRect().toJSON() } : null;
+        return { label: button.getAttribute('aria-label'), disabled: button.disabled, x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable, blocker };
       }));
       expect(targets.length === 6 && targets.every((target) => target.x >= 0 && target.right <= 390 && target.y >= 60 && target.bottom <= 844 && target.width >= 44 && target.height >= 44),
         'the four movement and two camera targets must be visible and tappable beside the HUD', { actual: describe(targets) });
