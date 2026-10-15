@@ -6,18 +6,17 @@
 import {mkdtemp, mkdir, cp, writeFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {spawn} from 'node:child_process';
 import {randomBytes, createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {Platform} from '../src/platform.js';
 import {createApp} from '../server.js';
 import {createBridge} from './bridge.mjs';
+import {startLoopbackSmokeEngine} from './smoke-process.mjs';
 
 const binary = process.env.LUANTI_BIN;
 if (!binary) throw new Error('Set LUANTI_BIN to the verified Luanti 5.17.0 executable.');
 const root = await mkdtemp(join(tmpdir(), 'nemo-luanti-mission-'));
 let platform, app, bridge, engine;
-const settle = ms => new Promise(r => setTimeout(r, ms));
 try {
   platform = new Platform(join(root, 'nemo.sqlite'));
   const login = await platform.register({name:'Native mission operator',email:'native-mission@example.org',password:'disposable-password-2026',consent:true});
@@ -43,23 +42,21 @@ try {
   const world = join(user, 'worlds', 'slice'); await mkdir(world, {recursive:true});
   await writeFile(join(world, 'world.mt'), 'gameid = nemoworld\nbackend = sqlite3\nmg_name = singlenode\n');
   const config = join(user, 'minetest.conf');
-  await writeFile(config, `secure.enable_security = true\nsecure.http_mods = nemo\nnemo_bridge_url = ${bridgeUrl}\nnemo_bridge_key = ${modKey}\nmg_name = singlenode\nbind_address = 127.0.0.1\nport = 39335\nserver_announce = false\n`, {mode:0o600});
-  const pair = async () => (await fetch(bridgeUrl + '/pair/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:login.token, agent_id:human.id})}).then(r => r.json())).code;
+  const secrets=[modKey,login.token];
+  const launch=()=>startLoopbackSmokeEngine(binary,['--server','--world',world,'--config',config,'--logfile',''],{configPath:config,configText:port=>`secure.enable_security = true\nsecure.http_mods = nemo\nnemo_bridge_url = ${bridgeUrl}\nnemo_bridge_key = ${modKey}\nmg_name = singlenode\nbind_address = 127.0.0.1\nport = ${port}\nserver_announce = false\n`,env:{...process.env,LUANTI_USER_PATH:user},secrets});
+  const pair = async () => {const code=(await fetch(bridgeUrl + '/pair/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:login.token, agent_id:human.id})}).then(r => r.json())).code;secrets.push(code);return code;};
   const probeScript = code => (body) => `local code = ${JSON.stringify(code)}\ncore.register_on_mods_loaded(function()\n core.after(1,function() core.registered_chatcommands.nemo_pair.func('Probe',code) end)\n ${body}\nend)\n`;
 
   const runEngine = async (probe, steps, timeout = 30000) => {
     await writeFile(probeFile, probe);
-    let logs = '';
-    const child = spawn(binary, ['--server','--world',world,'--config',config,'--logfile',''], {env:{...process.env, LUANTI_USER_PATH:user}, stdio:['ignore','pipe','pipe']});
+    const child = await launch();
     engine = child;
-    child.stdout.on('data', b => { logs += b.toString(); });
-    child.stderr.on('data', b => { logs += b.toString(); });
     for (const step of steps) {
-      const deadline = Date.now() + timeout;
-      while (Date.now() < deadline && !logs.includes(step.marker)) await settle(100);
-      if (step.then) await step.then(logs);
+      await child.waitForMarker(step.marker,{timeoutMs:timeout});
+      if (step.then) await step.then(child.logs);
     }
-    child.kill('SIGINT'); await new Promise(r => child.once('exit', r)); engine = null;
+    await child.stop(); engine = null;
+    const logs=child.logs;
     return logs;
   };
 
@@ -128,7 +125,7 @@ try {
   assert.match(logsD, /revoked|Pair this player again|Unauthorized/i, 'the post-revocation Luanti callback was refused');
   process.stdout.write('PASS: real Luanti 5.17 native mission callbacks -> one claim and one submission row across a retry and a restart; browser and native share the task and active-claim ids; a revoked pairing is refused\n');
 } finally {
-  if (engine) { engine.kill('SIGINT'); await new Promise(r => { if (engine.exitCode !== null) r(); else engine.once('exit', r); }); }
+  if (engine) await engine.stop();
   if (bridge) await new Promise(r => bridge.close(r));
   if (app) { await app.stopWorkers(); await new Promise(r => { app.server.close(r); app.server.closeAllConnections(); }); }
   platform?.close();
