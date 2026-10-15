@@ -16,6 +16,7 @@ import { vaultMethods } from './vault.js';
 import { firstPlayMethods } from './firstplay.js';
 import { questMethods } from './quests.js';
 import { guildMethods } from './guilds.js';
+import { activityMethods } from './activity-pipeline.js';
 import { journeyMethods } from './journey.js';
 import { civicMethods } from './civic-engine.js';
 import { REGIONS } from './civic.js';
@@ -1338,7 +1339,9 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, vaultMethods, questMethods, guildMethods, firstPlayMethods);
+// The activity pipeline adds no table: it reads the ordered stage of one activity instance from the
+// rows the quest, calling, guild, restoration, journey and mission layers already store.
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, vaultMethods, questMethods, guildMethods, activityMethods, firstPlayMethods);
 
 Object.assign(Platform.prototype,draftMethods);
 

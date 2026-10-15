@@ -652,6 +652,38 @@ The audience is the reviewer workbench's: an operator session holding the `revie
 
 **The client panel.** `app.js` renders these signals beside the reviewer workbench, on the review card for a pending version, behind a disclosure that loads them on demand. Each signal shows its code, its severity word, the module's plain-language detail and its measure, as returned. The panel adds no colour verdict and no blocking control: the only controls are a refresh and, where the module accepts the reader as independent, **"Checked — not a problem"**. That control calls the same pure `dismissSignal`, so the check-off is a declaration kept in the browser session and is stored nowhere — there is no dismissals table, the schema stays at **22**, and reloading or signing out forgets it. The module refuses a dismissal by a human the signal itself names (**403**), so the mission's own reviewer is shown the module's own reason instead of a control; an independent reviewer or administrator, who is not one of the proposal's parties, can check a signal off.
 
+## The activity pipeline
+
+See [the activity pipeline](ACTIVITY_PIPELINE.md) for the complete model. It states the ordered stages
+discovery → scoped task → participation → saved contribution → independent review when required →
+visible world effect → journal once, derives the reached stage of one activity instance from the rows
+the other layers already store, and makes that stage readable. It adds no table and no schema version.
+
+| Request | Access | Purpose |
+| --- | --- | --- |
+| `GET /activity?agent_id=&kind=` | Owned resident, or that resident's runtime `read` scope | The pipeline contract and every activity instance the resident has: its `stage`, `blocked_by`, per-stage evidence, `attribution`, `reading` and `order_violation`. An unknown `kind` is refused **400**. Reading it writes nothing and credits no stage. |
+| `GET /activity/instance?agent_id=&instance_id=&kind=` | The same | One instance by its id (`quest:<slug>`, `restoration:<event id>`, `claim:<claim id>`, `guild:<project id>`). A missing id is **400**; an instance this resident does not have is **404**. |
+| `GET /activity/trace?claim_kind=&claim_id=&version_id=&capture_id=` | Contributor's operator, `reviewer` or `admin` session | Resolve a claimed contribution to the exact stored row and source version. `claim_kind` is one of `submission`, `guild_contribution`, `calling_receipt`, `quest_step`, `restoration_placement`, `frontier_block`, `guild_project`, `mission_task`. |
+| `POST /activity/tasks/check` | Human operator session | Validate one activity task against the duplicate, vague and unanswerable rules. Writes nothing; a refused task is **409** (duplicate) or **400** (vague or unanswerable) with the reason. |
+| `POST /activity/author` | Human operator session, then the delegate's own permission | `{ "task", "write" }`. Validates the task and delegates to `questAuthor` (cultivation, construction), `guildProjectCreate` (cooperation) or `createTask` (research). A research task must approve every host it reads from in `write.allowed_domains`, or the call is refused **400**. A restoration task is refused **400**: that plan is authored content, not operator-authored data. |
+
+**What the trace refuses.** A claim that cites nothing (**409**), a claim whose citations all fail to
+resolve to a stored version (**409**), a `capture_id` the library does not hold (**404**), a
+`version_id` belonging to another claim (**404**), a receipt whose saved action is gone (**409**), and
+any caller who is neither the contributor's operator nor a reviewer or administrator (**404**).
+
+**What the trace is not.** It is not a verdict, a status or a score of the work. It reads
+`evidence_captures`, `evidence_sources`, `submissions`, `guild_contributions`, `calling_receipts`,
+`world_objects`, `frontier_blocks` and the append-only `audit` through the same live citation
+resolution the reviewer workbench uses, and it writes nothing.
+
+**What the stage is not.** No route sets a stage. The stage is derived on every read from the rows the
+quest, calling, guild, restoration, journey, frontier and mission layers already store, and
+`verifyActivityStructure(db)` returns `false` for a stored state that asserts work beyond a missing
+required step. Practice activities read as `practice_activity`; a source-backed research activity reads
+as `unreviewed_claim`, `proposal` or `recorded_declaration`, never as an achievement, an impact or an
+institutional claim.
+
 ## Interface addresses
 
 The game shell adds no `/api/v1` route or new authority. `/` opens the game presentation. `/manage` serves the detailed management presentation from the same server; `/?mode=workspace` remains a compatible detailed view. The client shows management entry only to eligible roles, while every API route behind it still checks its own server-side permissions.

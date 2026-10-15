@@ -202,3 +202,14 @@ bounded authoring form (a steps JSON textarea, validated on the server).
 Chains are not tasks: claiming, submitting and reviewing evidence still happen on
 `/claims`, `/submissions` and `/reviews`, and a real chain's acceptance step is credited from the
 accepted review receipt, never from the chain.
+
+## Where a chain sits in the activity pipeline
+
+A chain is one stage of a longer journey, and the journey is now stated once: see
+[the activity pipeline](ACTIVITY_PIPELINE.md). `GET /activity?agent_id=` reads an enrolled chain at its
+own reached stage — `scoped_task`, `participation`, `saved_contribution`, `independent_review` when the
+route requires it, `world_effect` or `journal` — from the same rows the quest board reads, and reports
+the saved work separately from the cosmetic credit, so a step the day's ten-point allowance has not
+credited yet still reads as saved work. Authoring a chain through `POST /activity/author` validates the
+scoped task first and refuses a duplicate, vague or unanswerable one before `POST /quests/author` is
+reached; `POST /quests/author` itself is unchanged.
