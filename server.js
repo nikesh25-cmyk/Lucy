@@ -163,6 +163,9 @@ const writes = new Map([
   // A resident proposes a bounded memory fact (scope `contribute`, the same scope a resident needs to
   // write its private journal); the owning operator records, decides, corrects and deletes memory.
   ['/memory/propose', ['memoryPropose', 'contribute']], ['/memory/manage', ['memoryManage', null]],
+  // The resident vault: a resident's own private, encrypted notes. Only the resident's own credential,
+  // carrying the operator-granted `vault` scope, enrols, writes or reads; the operator can only erase.
+  ['/vault/enroll', ['vaultEnroll', 'vault']], ['/vault/write', ['vaultWrite', 'vault']], ['/vault/manage', ['vaultManage', null]],
   // One cooperative world restoration event. Opening or reopening one is a human operator decision
   // (no runtime scope); joining, leaving and recording a saved contribution are ordinary community
   // writes; the planned placement needs the same `build` scope the shipped garden build route needs.
@@ -173,7 +176,7 @@ const writes = new Map([
   // records that a source is withdrawn. Both fail closed on an unapproved host, a bad hash or a quota.
   ['/evidence/capture', ['evidenceCapture', null]], ['/evidence/withdraw', ['evidenceWithdraw', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -528,7 +531,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       }
       const token = tokenFrom(request);
       const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact', '/first-play', '/restoration', '/living-world/status'].includes(route) && request.method === 'GET';
-      const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
+      const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : route === '/vault/notes' ? 'vault' : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
         if(error.status!==401||request.headers.authorization||!token)throw error;
@@ -548,7 +551,8 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
             // directory does, so a contribute-scoped resident pays one credential charge for its
             // calling context, its available work and the projects it may join or leave. Only this
             // resident's own read is extended; a session and every other route are unchanged.
-            value.guilds=platform.guildObservation(actor);}}
+            value.guilds=platform.guildObservation(actor);}
+            if(actor?.kind==='runtime'&&JSON.parse(actor.credential.scopes).includes('vault'))value.vault=platform.vaultPrompt(actor);}
           else if(route==='/callings/guilds')value=platform.callingGuilds(Object.fromEntries(url.searchParams));
           else if(route==='/quests')value=platform.quests(actor,Object.fromEntries(url.searchParams));
           else if(route==='/quests/catalog')value=platform.questCatalog(Object.fromEntries(url.searchParams));
@@ -586,6 +590,8 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/trade/listings') value = platform.tradeBoard(actor, Object.fromEntries(url.searchParams));
           else if (route === '/interact') value = platform.interactionView(actor, Object.fromEntries(url.searchParams));
           else if (route === '/memory') value = platform.memory(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/vault') value = platform.vaultStatus(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/vault/notes') value = platform.vaultRead(actor, Object.fromEntries(url.searchParams));
           else if (route === '/first-play') value = platform.firstPlay(actor, Object.fromEntries(url.searchParams));
           else if (route === '/restoration') value = platform.restoration(actor, Object.fromEntries(url.searchParams));
           else if (route === '/evidence') value = platform.evidenceLibrary(actor, Object.fromEntries(url.searchParams));
@@ -667,7 +673,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         if(agent.status!=='active')fail(409,'Resume this character before running local AI work for it.');
         const minutes=Number(request.minutes??2),calls=Number(request.model_calls??5),permission=request.permission||'explore';
         if(!Number.isInteger(minutes)||minutes<1||minutes>20||!Number.isInteger(calls)||calls<1||calls>20||!['observe','explore','creative'].includes(permission))fail(400,'Choose 1–20 minutes, 1–20 model decisions and a listed permission mode.');
-        const scopes=permission==='observe'?['read']:permission==='explore'?['read','move','chat']:['read','move','chat','contribute','build'];
+        const scopes=permission==='observe'?['read']:permission==='explore'?['read','move','chat']:['read','move','chat','contribute','build','vault'];
         const id=randomUUID(),controller=new AbortController(),resumedFrom=resumePlan?.run_id||null;
         const durationMs=resumePlan?Math.min(minutes*60000,resumePlan.duration_ms):minutes*60000,apiCalls=resumePlan?Math.min(calls*8+4,resumePlan.api_calls_remaining):calls*8+4;
         const credential=platform.transaction(()=>{

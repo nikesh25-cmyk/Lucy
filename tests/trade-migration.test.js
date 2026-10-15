@@ -33,9 +33,9 @@ test('schema 22 without a board migrates to schema 23 without losing existing re
   assert.equal(restoreDatabase(f.database, restoredPath).schema_version, 22, 'a schema-22 backup without trade tables restores');
   const migrated = new Platform(restoredPath, f.clock);
   t.after(() => migrated.close());
-  assert.equal(version(migrated), 24);
+  assert.equal(version(migrated), 25);
   for (const name of ['trade_listings', 'trade_terms', 'trade_claims', 'trade_claim_units', 'trade_events']) assert.equal(tables(migrated).has(name), true, name);
-  assert.equal(validateDatabase(restoredPath).schema_version, 24);
+  assert.equal(validateDatabase(restoredPath).schema_version, 25);
   assert.deepEqual({ accounts: migrated.get('SELECT COUNT(*) AS n FROM accounts').n, agents: migrated.get('SELECT COUNT(*) AS n FROM agents').n, audit: migrated.get('SELECT COUNT(*) AS n FROM audit').n }, before);
   assert.equal(migrated.get('SELECT quantity FROM journey_inventory WHERE agent_id=? AND kind=?', alice.id, 'herbs').quantity, 3);
   const posted = migrated.transaction(() => migrated.tradePost(migrated.authenticate(f.credentials.alice.token), { agent_id: alice.id, items: { herbs: 2 } }, 'migrate-post'));
@@ -56,11 +56,11 @@ test('schema 22 with a populated trade board migrates without changing its ledge
   assert.equal(validateDatabase(f.database).schema_version, 22);
   const migrated = new Platform(f.database, f.clock);
   t.after(() => migrated.close());
-  assert.equal(version(migrated), 24);
+  assert.equal(version(migrated), 25);
   for (const [name, rows] of Object.entries(records)) assert.deepEqual(migrated.all(`SELECT * FROM ${name}`), rows, name);
   assert.equal(migrated.get('SELECT quantity FROM journey_inventory WHERE agent_id=? AND kind=?', bob.id, 'herbs').quantity, 1);
   assert.equal(migrated.get('SELECT id FROM trade_claims WHERE id=?', claim.id).id, claim.id);
-  assert.equal(validateDatabase(f.database).schema_version, 24);
+  assert.equal(validateDatabase(f.database).schema_version, 25);
 });
 
 test('a listed exchange survives close, reopen, backup and restore, and settles on expiry once', async (t) => {
@@ -72,7 +72,7 @@ test('a listed exchange survives close, reopen, backup and restore, and settles 
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const backup = join(directory, 'backup.sqlite');
   backupDatabase(f.platform.db, backup);
-  assert.equal(validateDatabase(backup).schema_version, 24, 'recovery accepts a database that carries the board');
+  assert.equal(validateDatabase(backup).schema_version, 25, 'recovery accepts a database that carries the board');
   // A process restart reads the same listing, terms, claim and ledger back.
   f.platform.close();
   const reopened = new Platform(f.database, f.clock);
@@ -99,7 +99,7 @@ test('a listed exchange survives close, reopen, backup and restore, and settles 
   assert.equal(verifyTradeRecords(reopened), true);
   // The restored copy is the same board, and it still balances.
   const restored = restoreDatabase(backup, join(directory, 'restored.sqlite'));
-  assert.equal(restored.schema_version, 24);
+  assert.equal(restored.schema_version, 25);
   const copy = new Platform(join(directory, 'restored.sqlite'), f.clock);
   t.after(() => copy.close());
   assert.equal(copy.get('SELECT status FROM trade_listings WHERE id=?', listing.id).status, 'open', 'the backup holds the open listing as it was taken');

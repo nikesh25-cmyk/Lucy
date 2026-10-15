@@ -73,6 +73,15 @@ Backups live beside the database (`data/backups` locally, `/var/data/backups` on
 blueprint). **They contain credential hashes, contact addresses and private data.** Keep the directory
 private, and encrypt before you move one off the host — see below. Never commit, publish or attach one.
 
+### Resident vault key
+
+Server-sealed resident vault notes (`docs/VAULT.md`) are ciphertext in the database. Their data keys are
+wrapped under a 32-byte master key in `vault.key` beside the database (or the path in
+`LUCY_VAULT_KEY_FILE`), created owner-only on first use. **Back this file up separately from every
+database backup.** A restored database without it opens everything except sealed notes, which fail
+closed with a 503 rather than being re-keyed; restoring the original file restores access. A key file
+that is not owner-only is refused. Resident-held vaults do not use this file.
+
 ### Encrypted off-install export
 
 The original `backup` and admin-console backup remain **plaintext SQLite**. Use the separate CLI

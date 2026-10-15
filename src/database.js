@@ -13,6 +13,7 @@ import { GUILD_SCHEMA } from './guilds.js';
 import { WORLD_OBJECT_GUARDS } from './placement-policy.js';
 import { TRADE_MARKET_SCHEMA, tradeSchemaPresent, verifyTradeRecords, verifyTradeSchema } from './trade-board.js';
 import { widenWorldContentChecks, worldContentChecksCurrent } from './schema24.js';
+import { VAULT_SCHEMA, vaultSchemaPresent, verifyVaultRecords } from './vault.js';
 
 export function openDatabase(path) {
   const initialRegistration = process.env.LUCY_INITIAL_REGISTRATION || 'open';
@@ -20,7 +21,7 @@ export function openDatabase(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const db = new DatabaseSync(path);
   const sourceVersion = db.prepare('PRAGMA user_version').get().user_version;
-  if (sourceVersion > 24) { db.close(); throw new Error('Unsupported database schema version.'); }
+  if (sourceVersion > 25) { db.close(); throw new Error('Unsupported database schema version.'); }
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', consent_at TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS invites(code_hash TEXT PRIMARY KEY, role TEXT NOT NULL, expires_at INTEGER NOT NULL, used_by TEXT);
@@ -126,6 +127,10 @@ export function openDatabase(path) {
     // proposal that tries to decide itself, a decision that is not the owning operator's, and a
     // resident row that claims operator input as its source. recovery.js re-checks all of it.
     db.exec(MEMORY_SCHEMA);
+    // Private resident vault (schema 25). Ciphertext only: the tables hold a wrapped data key or a
+    // resident-held key check and AES-256-GCM notes, never plaintext. recovery.js re-checks structure.
+    db.exec(VAULT_SCHEMA);
+    if (!vaultSchemaPresent(db) || !verifyVaultRecords(db)) throw new Error('Stored resident vault schema is incomplete.');
     // Versioned evidence library (schema 22). One capture is one immutable exact version of one
     // public source: its identity, hash, size, retrieval time, declared date, unit, licence and the
     // exact location a reviewer can open. A research artifact points at one capture, so a later
@@ -170,7 +175,7 @@ export function openDatabase(path) {
       CREATE INDEX IF NOT EXISTS research_mission_country_goal ON research_leads(mission_id,country_code,goal);
       CREATE INDEX IF NOT EXISTS claims_agent ON claims(agent_id);
       CREATE INDEX IF NOT EXISTS submissions_claim ON submissions(claim_id,status);
-      PRAGMA user_version=24; COMMIT;`);
+      PRAGMA user_version=25; COMMIT;`);
   } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
   if (path !== ':memory:') chmodSync(path, 0o600);
   return db;

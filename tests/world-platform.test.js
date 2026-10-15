@@ -83,6 +83,7 @@ test('a non-owner reaches another public garden from anywhere in the directory, 
   const owner = f.agent('alice');
   const visitor = f.agent('bob');
   const homeId = `home:${owner.id}`;
+  f.tx('homeSettings', f.actor('alice'), owner.id, { house_visibility: 'public' }); // an AI resident's cottage starts private
   assert.equal(f.platform.get('SELECT world_id FROM agents WHERE id=?', visitor.id).world_id, 'commons');
   assert.equal(f.tx('travel', f.actor('bob'), visitor.id, { world_id: homeId }).world_id, homeId);
   assert.equal(f.platform.get('SELECT world_id FROM agents WHERE id=?', visitor.id).world_id, homeId);
@@ -247,6 +248,7 @@ test('a personal cottage requires its garden doorway and inherits private visiti
   const homeId = `home:${alice.id}`;
   const houseId = `house:${alice.id}`;
   assert.equal(f.platform.world(f.actor('alice'), { world_id: houseId }).world.kind, 'house');
+  f.tx('homeSettings', f.actor('alice'), alice.id, { house_visibility: 'public' }); // an AI resident's cottage starts private
   denied(() => f.tx('travel', f.actor('alice'), alice.id, { world_id: houseId }), [409]);
   f.tx('travel', f.actor('alice'), alice.id, { world_id: homeId });
   f.advance();
@@ -308,6 +310,7 @@ test('deleting a home owner clears construction and safely evacuates garden and 
   const owner = f.agent('alice');
   const cottageVisitor = f.agent('bob');
   const gardenVisitor = f.agent('bob', 'Garden visitor');
+  f.tx('homeSettings', f.actor('alice'), owner.id, { house_visibility: 'public' }); // an AI resident's cottage starts private
   const homeId = `home:${owner.id}`;
   const houseId = `house:${owner.id}`;
   f.tx('travel', f.actor('alice'), owner.id, { world_id: homeId });
@@ -367,6 +370,7 @@ test('garden decorations and safe cottage furnishing preserve ownership and clea
   const f = await fixture(t);
   const owner = f.agent('alice'); const visitor = f.agent('bob');
   const homeId = `home:${owner.id}`; const houseId = `house:${owner.id}`;
+  f.tx('homeSettings', f.actor('alice'), owner.id, { house_visibility: 'public' }); // an AI resident's cottage starts private
   f.tx('travel', f.actor('alice'), owner.id, { world_id: homeId });
   for (const [index, type] of ['bookshelf', 'table', 'lantern', 'sculpture', 'trellis', 'cushion'].entries()) {
     f.tx('build', f.actor('alice'), owner.id, { type, x: 8 + index, y: 18 });

@@ -373,7 +373,10 @@ export const spaceMethods = {
     const definition = getWorldDefinition(id);
     this.run('INSERT OR IGNORE INTO worlds VALUES(?,?,?,?,?,?,?,?)', id, `${name}’s garden`, 'home', agentId, 'public', definition.columns, definition.rows, date());
     const visibility = this.get('SELECT visibility FROM worlds WHERE id=?', id).visibility;
-    this.run('INSERT OR IGNORE INTO worlds VALUES(?,?,?,?,?,?,?,?)', `house:${agentId}`, `${name}’s cottage`, 'house', agentId, visibility, 20, 14, date());
+    // An AI resident's cottage is its own private space: closed to visitors until its operator opens
+    // it. A human's cottage keeps following the garden, as before. Existing cottages are untouched.
+    const house = this.get('SELECT kind FROM agents WHERE id=?', agentId)?.kind === 'agent' ? 'private' : visibility;
+    this.run('INSERT OR IGNORE INTO worlds VALUES(?,?,?,?,?,?,?,?)', `house:${agentId}`, `${name}’s cottage`, 'house', agentId, house, 20, 14, date());
     return id;
   },
   space(actor, id) {
@@ -592,15 +595,22 @@ export const spaceMethods = {
     const name = input.name === undefined ? world.name : typeof input.name === 'string' && input.name.trim() && input.name.length <= 80 ? input.name.trim() : fail(400, 'Garden name must contain 1–80 characters.');
     const visibility = input.visibility || world.visibility;
     if (!['public', 'private'].includes(visibility)) fail(400, 'Choose public or private visiting.');
+    // The cottage normally follows the garden, but an operator can open or close it on its own:
+    // `house_visibility` is the resident's private space, `visibility` is the garden's.
+    const houseRow = this.get("SELECT visibility FROM worlds WHERE owner_agent_id=? AND kind='house'", agentId);
+    const houseVisibility = input.house_visibility !== undefined ? input.house_visibility : visibility === 'private' ? 'private' : houseRow?.visibility || visibility;
+    if (!['public', 'private'].includes(houseVisibility)) fail(400, 'Choose public or private visiting for the cottage.');
     this.run('UPDATE worlds SET name=?,visibility=? WHERE id=?', name, visibility, world.id);
-    this.run("UPDATE worlds SET visibility=? WHERE owner_agent_id=? AND kind='house'", visibility, agentId);
+    this.run("UPDATE worlds SET visibility=? WHERE owner_agent_id=? AND kind='house'", houseVisibility, agentId);
     let returned = [];
-    if (visibility === 'private') {
+    const closing = [...(visibility === 'private' ? [world.id] : []), ...(houseVisibility === 'private' ? [`house:${agentId}`] : [])];
+    if (closing.length) {
       const start = getWorldDefinition('commons').start;
       // Capture the old world before the bulk move. The database row is authoritative, and both
       // the garden/cottage and Commons event subscribers need the same confirmed crossing.
-      returned = this.all("SELECT id,world_id,posture,status FROM agents WHERE world_id IN (?,?) AND id!=? AND status!='deleted'", world.id, `house:${agentId}`, agentId);
-      this.run('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE world_id IN (?,?) AND id!=?', 'commons', start.x, start.y, world.id, `house:${agentId}`, agentId);
+      const marks = closing.map(() => '?').join(',');
+      returned = this.all(`SELECT id,world_id,posture,status FROM agents WHERE world_id IN (${marks}) AND id!=? AND status!='deleted'`, ...closing, agentId);
+      this.run(`UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE world_id IN (${marks}) AND id!=?`, 'commons', start.x, start.y, ...closing, agentId);
     }
     this.audit(actor.account.id, 'garden.settings', world.id);
     // Changing a garden to private returns its visitors to the Commons and must also revoke any
@@ -619,7 +629,7 @@ export const spaceMethods = {
       for (const [sourceWorld, agents] of departures) this.events?.publish(sourceWorld, { agents });
       this.events?.publish('commons', { agents: arrivals });
     }
-    return { id: world.id, name, visibility };
+    return { id: world.id, name, visibility, house_visibility: houseVisibility };
   },
   heartbeat(actor, agentId) {
     this.active(); const agent = this.ownedAgent(actor, agentId);

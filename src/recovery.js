@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { COMMUNITY_TABLES } from './community.js';
 import { JOURNEY_TABLES } from './journey.js';
 import { verifyCallingReceipts, verifyMemoryRecords } from './vocations.js';
+import { vaultSchemaPresent, verifyVaultRecords } from './vault.js';
 import { verifyQuestReceipts, verifyQuestStructure } from './quests.js';
 import { verifyGuildRecords } from './guilds.js';
 import { REGIONS } from './civic.js';
@@ -155,7 +156,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].includes(version)) throw new Error('Unsupported database schema version.');
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].includes(version)) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -333,6 +334,12 @@ export function validateDatabase(path) {
       if (!verifyTradeRecords(trade)) throw new Error('Database trade board validation failed.');
     }
     if (version >= 24 && !worldContentChecksCurrent(db)) throw new Error('Database world content constraints are incomplete.');
+    if (version >= 25) {
+      if (!vaultSchemaPresent(db)) throw new Error('Database resident vault schema is incomplete.');
+      if (['resident_vault_identity_immutable','resident_vault_keys_identity_immutable','resident_vault_validate_insert','resident_vault_keys_validate_insert'].some((name) => !db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name))) throw new Error('Database resident vault guards are incomplete.');
+      // Structure only: a backup never needs, and recovery never holds, the key that opens a note.
+      if (!verifyVaultRecords(db)) throw new Error('Database resident vault validation failed.');
+    }
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Database contains invalid references.');
     let previous = '';
     for (const entry of db.prepare('SELECT * FROM audit ORDER BY seq').all()) {
@@ -450,8 +457,8 @@ export function restoreDatabase(source, destination, { lockPath = resolve(dirnam
 // The recovery point and the interruption limits an operator must know. These are the same values
 // the runbook (docs/OPERATIONS.md) states and the failure drills (scripts/ops-rehearsal.mjs) prove.
 export const RECOVERY_LIMITS = Object.freeze({
-  schema_version: 24,
-  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+  schema_version: 25,
+  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
   // A private resident memory record lives entirely in the database, so a process restart keeps it.
   // It holds no credential and it is read within the runtime's existing observation byte budget.
   resident_memory: Object.freeze({ bounded_facts_per_resident: 24, bounded_value_characters: 160, prompt_facts: 10, prompt_bytes: 4096, approval: 'operator-approval', source: 'a verified calling receipt, a finished run that recorded a refusal, an independent review decision, or the operator’s own explicit input' }),
