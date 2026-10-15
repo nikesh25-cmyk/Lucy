@@ -47,7 +47,7 @@ test('the suite runs its scenarios in order, and a focused run keeps only the na
   const all = selectedScenarios();
   assert.deepEqual(all, SCENARIOS.map((scenario) => scenario.id));
   assert.equal(all.length, 49);
-  assert.equal(new Set(all).size, 48);
+  assert.equal(new Set(all).size, 49);
   assert.equal(all[all.length - 1], 'signout-privacy', 'the sign-out scenario stays last');
   for (const id of [
     'hero-introduction-film', 'game-entry-and-observation', 'signed-in-game-play',

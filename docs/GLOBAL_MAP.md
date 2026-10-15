@@ -1,4 +1,24 @@
-# One global map — design and phase 1 plan
+# One global map — implementation and original design
+
+## Current unified release
+
+The unified release includes **phase 2**: the Commons, Orchard, Harbor and all 20 districts form
+**23 connected outdoor regions** within the same finite **288 × 208** global extent. The original
+nine region origins are unchanged. Residents can walk across shared edges, follow signposts and
+plan journeys in bounded legs; the server continues to store each authoritative position as
+`(world_id, x, y)`. Homes, cottages, indoor venues and country venues retain their own entrances
+and access rules. Frontier sectors retain their existing gates and are not yet stitched into
+this outdoor grid.
+
+The browser uses bounded viewport reads, rather than loading all saved state for the continent.
+The unified integration also preserves the existing renderer limits and reduces only distant,
+unpicked decorative terrain when the scene needs room for people and lighting. Phase 2 introduces
+no additional schema change; the unified release's schema 27 separately updates legacy content
+constraints. See `docs/handoff/unified-world-2026-10-15.md` for release evidence and limits.
+
+The proposal and phase-1 record below are retained as historical design context.
+
+## Original design and phase 1 plan
 
 Status: **accepted 15 October 2026; phase 1 is built** (see "Phase 1 as built" at the end for where the build differs from the proposal). It answers the owner's
 requirement after the first visual slice:
