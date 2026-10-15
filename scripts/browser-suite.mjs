@@ -400,6 +400,14 @@ async function settle(page) {
 const nav = (page, label) => page.locator(`#navigation button[aria-label="${label}"]`);
 
 async function openTab(page, label) {
+  // In the game the section list lives in the World menu, which closes once a section is chosen; open it again
+  // when the entry is not on screen, exactly as a visitor would.
+  const menu = page.locator('#game-menu-button');
+  for (let attempt = 0; attempt < 2 && !await nav(page, label).isVisible().catch(() => false); attempt++) {
+    if (!await menu.isVisible().catch(() => false)) break;
+    await menu.click();
+    await nav(page, label).waitFor({ state: 'visible', timeout: 2500 }).catch(() => {});
+  }
   await nav(page, label).click();
   await settle(page);
   await page.waitForTimeout(150);
@@ -2230,7 +2238,9 @@ define('in-game-command-surface', async () => {
   await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
   await settle(page);
   if (!await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, ACTORS.admin);
-  await page.locator('#hero-actions').getByRole('button', { name: 'Play', exact: true }).click();
+  // An earlier scenario may have left this operator inside the game; Play appears only on the entry screen.
+  const entry = page.locator('#hero-actions').getByRole('button', { name: 'Play', exact: true });
+  if (await entry.waitFor({ state: 'visible', timeout: 8000 }).then(() => true, () => false)) await entry.click();
   await page.waitForFunction((id) => window.__nemoworld?.selected?.() === id && document.querySelector('#world'), player.id, { timeout: PAGE_TIMEOUT_MS });
   await page.waitForTimeout(1500);
   await page.evaluate(() => { document.querySelector('#world').dataset.surfaceMark = 'kept'; });
@@ -5418,17 +5428,27 @@ define('world-sound-controls', async () => {
     return `mute persisted as ${persisted.pressed}; volume persisted at ${persisted.volume}`;
   });
 
-  await step('leaving the game stops playback and returning keeps sound opt in', async () => {
+  await step('a panel keeps the world and its sound, and leaving the game stops playback and keeps sound opt in', async () => {
+    // Guide is a section of the in-game panel now: the world keeps running and its controls stay.
     await openTab(page, 'Guide');
+    expect(await page.locator('#world').count() === 1, 'a section must open beside the running world, not replace it');
+    await page.locator('#game-menu-button').click();
+    await page.locator('.game-audio-controls').waitFor({ state: 'visible' });
+    expect((await page.locator('.game-audio-controls').getByRole('button').first().textContent())?.trim() === 'Enable sound',
+      'opening a panel must not start sound the visitor had not enabled');
+    await page.keyboard.press('Escape');
+    // Leaving the game is leaving the page: the management interface has no world and no sound controls.
+    await page.goto(`${baseUrl()}/manage`, { waitUntil: 'domcontentloaded' });
     expect(await page.locator('.game-audio-controls').count() === 0, 'leaving the game must remove its live sound controls');
-    await openTab(page, 'Open world');
+    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
     await page.locator('#game-menu-button').click();
     const controls = page.locator('.game-audio-controls');
     const mute = controls.getByRole('button').first();
     await controls.waitFor({ state: 'visible' });
     expect((await mute.textContent())?.trim() === 'Enable sound',
       'returning to the game must show stopped playback and require opt in again', { actual: (await mute.textContent())?.trim() });
-    return 'Guide stopped playback; returning to the world required an explicit enable click again';
+    return 'a panel left the world and its sound alone; leaving for /manage stopped playback and returning required an explicit enable click again';
   });
 
   return 'world ambience is opt in, keyboard accessible, persistent and stopped when leaving the game';
@@ -6426,7 +6446,8 @@ async function signUp(page, { name, email, password }) {
 
 /** Creates one AI resident through the shipped character form, leaving the calling at its default. */
 async function createResidentThroughInterface(page, name) {
-  const form = page.locator('#view form[data-draft-section="character-create"]');
+  // The creation form opens in the in-game panel while playing and in the view otherwise.
+  const form = page.locator('#view form[data-draft-section="character-create"], #game-panel-body form[data-draft-section="character-create"]').first();
   await form.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
   await form.locator('[aria-label="Character name"]').fill(name);
   await form.getByRole('button', { name: 'Create character', exact: true }).click();
@@ -6519,7 +6540,7 @@ define('first-ten-minutes', async () => {
 
   await step('a calling is chosen through the interface and a calling.selected audit row is written', async () => {
     await openGameTab(page, 'Callings & guilds');
-    const choice = page.locator('#view .calling-choice[data-calling="cultivator"]');
+    const choice = page.locator(':is(#view, #game-panel-body) .calling-choice[data-calling="cultivator"]');
     await choice.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
     await choice.getByRole('button', { name: /^Become/ }).click();
     const audit = await waitForCondition(async () => row("SELECT seq,event,record_id FROM audit WHERE event='calling.selected' AND record_id=?", resident.id), 'the saved calling.selected audit row');
@@ -6932,7 +6953,7 @@ define('first-play-solo-ambassador', async () => {
     resident = await createResidentThroughInterface(page, RESIDENT);
     await enterWorldAs(page, resident.id, RESIDENT);
     await openGameTab(page, 'Callings & guilds');
-    const choice = page.locator('#view .calling-choice[data-calling="cultivator"]');
+    const choice = page.locator(':is(#view, #game-panel-body) .calling-choice[data-calling="cultivator"]');
     await choice.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
     await choice.getByRole('button', { name: /^Become/ }).click();
     await waitForCondition(async () => row("SELECT seq FROM audit WHERE event='calling.selected' AND record_id=?", resident.id), 'the solo resident’s calling selection to be saved');
