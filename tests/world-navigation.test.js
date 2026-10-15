@@ -84,6 +84,22 @@ test('actor and world are rechecked before walking', async () => {
   strictEqual(calls.length, 0);
 });
 
+test('a newer navigation while walking cancels before dispatching portal travel',async()=>{
+  let release,started;const pending=new Promise(resolve=>{release=resolve;}),walking=new Promise(resolve=>{started=resolve;});
+  const {journey,state,calls}=setup({walkTo:async(x,y)=>{calls.push(['walk',x,y]);started();await pending;state.actor.x=x;state.actor.y=y;return true;}});
+  state.navigationId='section:1|tools';
+  const response=journey({portal,actor,sessionId:'session-1',navigationId:state.navigationId});
+  await walking;state.navigationId='section:2|chat';release();
+  const finished=await response;strictEqual(finished.ok,false);strictEqual(finished.reason,'stale');strictEqual(finished.stage,'after-walk');deepStrictEqual(calls,[['walk',24,1]]);strictEqual(state.actor.world_id,actor.world_id);
+});
+
+test('an explicit cancelled travel response cannot be reported as successful entry',async()=>{
+  let release,started;const pending=new Promise(resolve=>{release=resolve;}),travelling=new Promise(resolve=>{started=resolve;});
+  const {journey,state,calls}=setup({travelAgent:async id=>{calls.push(['travel',id]);started();await pending;return false;}});
+  const response=journey({portal,actor,sessionId:'session-1'});await travelling;state.sessionId='replacement-session';release();
+  const finished=await response;strictEqual(finished.ok,false);strictEqual(finished.reason,'cancelled');strictEqual(finished.stage,'travel');strictEqual(state.actor.world_id,actor.world_id);deepStrictEqual(calls,[['walk',24,1],['travel','frontier:0:-1']]);
+});
+
 test('plans a finite route through opened cardinal frontier sectors with both gates', () => {
   const opened = ['frontier:0:0', { world_id: 'frontier:0:1' }, { id: 'frontier:1:1' }, 'frontier:2:1'];
   const response = planFrontierRoute('frontier:0:0', 'frontier:2:1', opened);

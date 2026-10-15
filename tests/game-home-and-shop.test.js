@@ -144,6 +144,17 @@ test('a new panel chosen during the cottage doorway journey remains open after c
   assert.equal(await pending,true,'the confirmed cottage arrival is retained');assert.equal(h.agent.world_id,'house:a');assert.equal(h.state.gamePanel,'community');assert.equal(h.state.gameDrawer,'');assert.equal(h.state.building,false);
 });
 
+test('the real portal journey cancels a cottage walk on new navigation, and the next explicit Home request resumes',async()=>{
+  const release=deferred(),started=deferred(),destinations=[],door={x:4,y:2,target_world_id:'house:a'};
+  const h=homeHarness(async id=>{destinations.push(id);Object.assign(h.agent,{world_id:id,x:0,y:0});h.state.world={world:{id,owner_agent_id:'a'},build_palette:['flowers'],portals:id==='home:a'?[door]:[]};h.scope.setTab('world');return true;});
+  vm.runInNewContext(`${between('function portalNavigationIdentity()', 'const portalJourney=')}${between('async function enterPortal(', 'async function refresh(')};globalThis.enterPortal=enterPortal`,h.scope);
+  h.scope.portalJourney=createPortalJourney({travelAgent:h.scope.travelAgent,readState:()=>({actor:h.scope.selected(),worldId:h.agent.world_id,sessionId:h.state.sessionEpoch,navigationId:h.scope.portalNavigationIdentity()}),walkTo:async(x,y)=>{started.resolve();await release.promise;Object.assign(h.agent,{x,y});return true;}});
+  const pending=h.scope.run({cottage:true});await started.promise;
+  h.scope.sectionTicket++;h.state.gamePanel='restoration';h.state.gameDrawer='';release.resolve();
+  assert.equal(await pending,false);assert.equal(h.agent.world_id,'home:a');assert.equal(h.state.gamePanel,'restoration');assert.equal(h.state.gameDrawer,'');assert.deepEqual(destinations,['home:a'],'a newer view must prevent the cottage request itself');assert.match(h.scope.notices.at(-1)[0],/Cottage entry stopped/);
+  assert.equal(await h.scope.run({cottage:true}),true);assert.equal(h.agent.world_id,'house:a');assert.deepEqual(destinations,['home:a','house:a'],'a fresh explicit intent can enter from the reached doorway');
+});
+
 test('home privacy reads the actual cottage state and saves through the existing settings route',async()=>{
   for(const visibility of ['public','private']){
     const fields={},calls=[],agent={id:'a'},host={isConnected:true,replaceChildren(){},append(){}},state={selected:'a',sessionEpoch:1,account:{id:'operator'},world:{}};

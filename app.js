@@ -643,15 +643,16 @@ async function travelAgent(id) {
  reportMoveOutcome(moveFeedback({outcome:'travel',message:back?`Arrived in ${definition().name} · ${back.label} leads back.`:arrived}));
  return true;
 }
+function portalNavigationIdentity(){return JSON.stringify([sectionTicket,activeSection(),state.gameDrawer]);}
 const portalJourney=createPortalJourney({
   walkTo,
   travelAgent,
-  readState:()=>({actor:viewedAgent(),worldId:currentWorldId(),sessionId:state.sessionEpoch||0}),
+  readState:()=>({actor:viewedAgent(),worldId:currentWorldId(),sessionId:state.sessionEpoch||0,navigationId:portalNavigationIdentity()}),
 });
 async function enterPortal(portal){
   const actor=viewedAgent();
   if(!actor)return visitWorld(portalTarget(portal));
-  const result=await portalJourney({portal,actor,sessionId:state.sessionEpoch||0});
+  const result=await portalJourney({portal,actor,sessionId:state.sessionEpoch||0,navigationId:portalNavigationIdentity()});
   if(result.ok)return true;
   if(['cancelled','stale'].includes(result.reason))return false;
   const message=result.error?.message||({unreachable:'There is no walkable route to this entrance. Choose a clear path and try again.',refused:'The destination is unavailable for this character.',invalid:'This entrance has no valid destination.'}[result.reason])||'The journey could not be completed.';
@@ -2592,7 +2593,7 @@ async function enterOwnedSpace({cottage=false,build=false}={}){
       if(!ownsNavigation()){navigationRecovery();return false;}
       const doorway=worldPortals().find(portal=>portalTarget(portal)===cottageId);
       if(!doorway){notice('Your garden is open, but its cottage doorway is unavailable. You can keep using the garden and try the cottage again later.',true);return false;}
-      if(!await enterPortal(doorway))return false;
+      if(!await enterPortal(doorway)){if(stillCurrent()&&!ownsNavigation())navigationRecovery();return false;}
     }else if(!await travelAgent(target))return false;
   }
   if(!stillCurrent()||selected().world_id!==target)return false;

@@ -28,28 +28,30 @@ const result = (ok, reason, extra = {}) => ({ ok, ...(reason ? { reason } : {}),
 /**
  * Create a portal journey using the app's existing route walker and travel request.
  *
- * `readState` should return the current `{ actor, worldId, sessionId }` snapshot.  The
+ * `readState` should return the current `{ actor, worldId, sessionId, navigationId }` snapshot. The
  * snapshot is checked before walking and again after walking, so a late route completion
- * cannot travel a replacement character or a character that has changed worlds.
+ * cannot travel a replacement character or a character that has changed worlds. A caller that
+ * supplies a navigationId also cancels the pending portal trip when its view choice changes.
  */
 export function createPortalJourney({ walkTo, travelAgent, readState, isCancelled } = {}) {
   if (typeof walkTo !== 'function' || typeof travelAgent !== 'function') {
     throw new TypeError('Portal journey requires walkTo and travelAgent functions.');
   }
 
-  return async function journeyToPortal({ portal, actor, sessionId, signal } = {}) {
+  return async function journeyToPortal({ portal, actor, sessionId, navigationId, signal } = {}) {
     const targetWorldId = targetOf(portal);
     if (!portal || !Number.isInteger(portal.x) || !Number.isInteger(portal.y) || !targetWorldId || !actor?.id || !actor?.world_id) {
       return result(false, PORTAL_JOURNEY_REASONS.invalid);
     }
-    const expected = { actorId: actor.id, worldId: actor.world_id, sessionId };
+    const expected = { actorId: actor.id, worldId: actor.world_id, sessionId, navigationId };
     const current = () => {
-      const snapshot = typeof readState === 'function' ? readState() : { actor, worldId: actor.world_id, sessionId };
+      const snapshot = typeof readState === 'function' ? readState() : { actor, worldId: actor.world_id, sessionId, navigationId };
       const currentActor = snapshot?.actor;
       return {
         actorId: currentActor?.id,
         worldId: snapshot?.worldId ?? currentActor?.world_id,
         sessionId: snapshot?.sessionId,
+        navigationId: snapshot?.navigationId,
         x: currentActor?.x,
         y: currentActor?.y,
       };
@@ -58,7 +60,8 @@ export function createPortalJourney({ walkTo, travelAgent, readState, isCancelle
       if (aborted(signal) || isCancelled?.()) return PORTAL_JOURNEY_REASONS.cancelled;
       const snapshot = current();
       if (snapshot.actorId !== expected.actorId || snapshot.worldId !== expected.worldId ||
-          expected.sessionId !== undefined && snapshot.sessionId !== expected.sessionId) return PORTAL_JOURNEY_REASONS.stale;
+          expected.sessionId !== undefined && snapshot.sessionId !== expected.sessionId ||
+          expected.navigationId !== undefined && snapshot.navigationId !== expected.navigationId) return PORTAL_JOURNEY_REASONS.stale;
       return null;
     };
 
@@ -87,7 +90,8 @@ export function createPortalJourney({ walkTo, travelAgent, readState, isCancelle
     const beforeTravel = isStale();
     if (beforeTravel) return result(false, beforeTravel, { stage: 'before-travel' });
     try {
-      await travelAgent(targetWorldId);
+      const travelled=await travelAgent(targetWorldId);
+      if(travelled===false)return result(false, PORTAL_JOURNEY_REASONS.cancelled, { stage: 'travel' });
       return result(true, null, { target_world_id: targetWorldId });
     } catch (error) {
       if (aborted(signal) || cancellationError(error) || isCancelled?.()) return result(false, PORTAL_JOURNEY_REASONS.cancelled, { stage: 'travel' });
