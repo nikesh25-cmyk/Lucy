@@ -1,36 +1,74 @@
-name: Verify platform
-on: [push, pull_request]
+name: NemoWorld CI Gate
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
 permissions:
   contents: read
+
 jobs:
-  local-platform:
+  core-verification:
+    name: Core Gate (Syntax, Tests, E2E, Content Seal)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm run check
-      - run: npm test
-  browser-acceptance:
+
+      # The core engine and test suite have zero npm dependencies.
+      - name: Verify code syntax
+        run: npm run check
+
+      - name: Verify sealed content definitions
+        run: node scripts/seal-content.mjs --check
+
+      - name: Run unit and integration tests
+        run: npm test
+
+      - name: Run HTTP API end-to-end smoke suite
+        run: npm run e2e
+
+  chrome-browser-acceptance:
+    name: Browser Acceptance Gate (System Chrome)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
-      # The production server stays dependency-free; playwright-core is a dev dependency used only
-      # to drive the already-installed Chrome build. No browser is downloaded and no model runs.
-      - run: npm ci
-      - name: Locate the system Chrome
+
+      - name: Install declared devDependencies
+        run: npm ci
+
+      - name: Locate system Chrome
+        id: chrome-check
         run: |
-          which google-chrome || which google-chrome-stable || which chromium || which chromium-browser
-          google-chrome --version || google-chrome-stable --version
-      - run: npm run browser
-      - if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-test-results
-          path: test-results/
-          if-no-files-found: ignore
+          CHROME_BIN=$(which google-chrome || which google-chrome-stable || which chromium || which chromium-browser || echo "")
+          if [ -z "$CHROME_BIN" ]; then
+            echo "::warning ::Google Chrome binary not located in standard runner path."
+          else
+            echo "Found Chrome at $CHROME_BIN"
+            "$CHROME_BIN" --version
+          fi
+          echo "chrome_path=$CHROME_BIN" >> "$GITHUB_OUTPUT"
+
+      - name: Run browser acceptance suite
+        run: |
+          npm run browser
+        env:
+          CI: '1'
+          LUCY_CHROME_PATH: ${{ steps.chrome-check.outputs.chrome_path }}
+
+      # No test artifacts are uploaded. A text redactor cannot verify that
+      # screenshots and arbitrary diagnostics contain no private fixture data.

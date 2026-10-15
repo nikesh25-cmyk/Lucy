@@ -65,12 +65,12 @@ export const LIVING_ROSTER = Object.freeze([
     symbol: '✦',
     capabilities: 'Wayfinder charting frontier passages and distant portals.',
     limitations: 'Travels only on foot; respects frontier boundaries.',
-    startX: 50,
-    startY: 40,
+    startX: 46,
+    startY: 36,
     destinations: {
-      dawn: { x: 50, y: 40, label: 'Harbor' },
+      dawn: { x: 46, y: 36, label: 'Harbor' },
       day: { x: 20, y: 18, label: 'Central Plaza' },
-      dusk: { x: 60, y: 12, label: 'Observatory' },
+      dusk: { x: 84, y: 53, label: 'Observatory' },
       night: { x: 11, y: 7, label: 'Meeting Hall' },
     },
     barks: [
@@ -190,7 +190,7 @@ export const LIVING_ROSTER = Object.freeze([
     destinations: {
       dawn: { x: 19, y: 6, label: 'Gateway' },
       day: { x: 20, y: 18, label: 'Central Plaza' },
-      dusk: { x: 50, y: 40, label: 'Harbor' },
+      dusk: { x: 46, y: 36, label: 'Harbor' },
       night: { x: 11, y: 7, label: 'Meeting Hall' },
     },
     barks: [
@@ -264,6 +264,15 @@ export function ensureLivingWorld(platform, { bootstrap = false } = {}) {
       platform.createHome(resident.id, resident.name);
       platform.recordVisit?.({ account: operator, kind: 'session' }, resident.id, 'commons');
       agent = platform.get('SELECT * FROM agents WHERE id=?', resident.id);
+    }
+
+    // The first seeded Bram stood on a Commons tree at (50,40). Repair only that
+    // impossible legacy position; any position he has since reached stays saved.
+    if (resident.id === 'lw-bram' && agent.world_id === 'commons' && agent.x === 50 && agent.y === 40) {
+      platform.run('UPDATE agents SET x=?,y=? WHERE id=? AND world_id=? AND x=? AND y=?',
+        resident.startX, resident.startY, agent.id, 'commons', 50, 40);
+      platform.audit(operator.id, 'resident.position_repaired', agent.id);
+      agent = platform.get('SELECT * FROM agents WHERE id=?', agent.id);
     }
 
     // Ensure calling
