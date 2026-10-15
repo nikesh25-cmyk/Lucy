@@ -1,5 +1,5 @@
-// The home panel — an operator's AI residents' private vaults and the two visiting switches of their
-// garden and cottage, in one place.
+// The home panel — every owned character's garden and cottage visiting switches, plus AI residents'
+// private vaults, in one place.
 //
 // Four rules this file keeps.
 //
@@ -33,7 +33,7 @@ export const CANCEL_KEY = 'Escape';
 /** The one rule about the two switches, in the words every surface uses. */
 export const SWITCH_RULE = 'The garden and the cottage each have their own switch. Closing the garden also closes the cottage. Opening the garden does not open the cottage; open the cottage with its own switch.';
 export const VISITOR_NOTE = 'Closing a space sends anyone visiting it back to the Commons. You and your resident can always go in.';
-export const ERASE_WARNING = 'Erasing deletes every note and the key that opens them. It cannot be undone, and nothing is recoverable afterwards.';
+export const ERASE_WARNING = 'Erasing deletes every note and this resident’s vault key from the current world. It cannot be undone here. Existing backups may retain the notes and key.';
 export const NO_VAULT_SENTENCE = 'This resident has no vault yet. One is created when the resident first writes a note or chooses how its key is held.';
 export const OPERATOR_SIGHT = 'From here you can see only whether a vault exists, how its key is held and how many notes it holds. You cannot read, write or search a note.';
 /** What the key model is called on the page; the server states only `sealed` or `agent`. */
@@ -116,7 +116,8 @@ const residentRow = (entry) => {
   return Object.freeze({
     id: String(resident.id ?? ''),
     name: String(resident.name ?? resident.id ?? 'A resident'),
-    vault: vaultModel(entry?.vault),
+    hasVault: resident.kind === 'agent',
+    vault: vaultModel(resident.kind === 'agent' ? entry?.vault : null),
     garden: spaceModel(entry?.garden),
     cottage: spaceModel(entry?.cottage),
     error: textOr(entry?.error),
@@ -146,7 +147,8 @@ export function homeSummaryModel(entry) {
     name: row.name,
     garden: visitingSentence(row.garden, 'garden'),
     cottage: visitingSentence(row.cottage, 'cottage'),
-    vault: vaultSentence(row.vault),
+    hasVault: row.hasVault,
+    vault: row.hasVault ? vaultSentence(row.vault) : null,
     error: row.error,
   });
 }
@@ -164,9 +166,9 @@ export function homeSummaryView(summary, { onVault, onPrivacy } = {}) {
     summary.error ? el('p', { class: 'privacy', attrs: { role: 'alert' }, text: summary.error }) : null,
     el('p', { class: 'ui-home-line', attrs: { 'data-home-summary-garden': '1' }, text: summary.garden }),
     el('p', { class: 'ui-home-line', attrs: { 'data-home-summary-cottage': '1' }, text: summary.cottage }),
-    el('p', { class: 'ui-home-line', attrs: { 'data-home-summary-vault': '1' }, text: `Vault: ${summary.vault}` }),
+    summary.hasVault ? el('p', { class: 'ui-home-line', attrs: { 'data-home-summary-vault': '1' }, text: `Vault: ${summary.vault}` }) : null,
     el('div', { class: 'actions' }, [
-      button('Open the vault', () => onVault?.(summary.id), { class: 'small ui-home-link', label: `Open ${summary.name}’s vault`, attrs: { 'data-home-open': 'vault' } }),
+      summary.hasVault ? button('Open the vault', () => onVault?.(summary.id), { class: 'small ui-home-link', label: `Open ${summary.name}’s vault`, attrs: { 'data-home-open': 'vault' } }) : null,
       button('Who can visit', () => onPrivacy?.(summary.id), { class: 'secondary small ui-home-link', label: `Choose who can visit ${summary.name}’s garden and cottage`, attrs: { 'data-home-open': 'privacy' } }),
     ]),
   ]);
@@ -336,7 +338,7 @@ export function createHomePanel({ onVisibility, onErase, onChange, reducedMotion
       el('h3', { text: row.name }),
       row.error ? el('p', { class: 'ui-home-refusal-words', attrs: { role: 'alert', 'data-home-load-error': row.id }, text: row.error }) : null,
       privacyView(row, current),
-      vaultView(row, current),
+      row.hasVault ? vaultView(row, current) : null,
       refused ? el('div', { class: 'ui-home-refusal', attrs: { 'data-home-refusal': row.id } }, [
         el('p', { class: 'privacy', text: 'The server refused the change. Its own words:' }),
         el('p', { class: 'ui-home-refusal-words', attrs: { role: 'alert', 'aria-live': 'assertive', 'data-home-refusal-words': '1' }, text: refused.text }),
@@ -350,7 +352,7 @@ export function createHomePanel({ onVisibility, onErase, onChange, reducedMotion
     return el('section', { class: `ui-home${quiet() ? ` ${REDUCED_MOTION_CLASS}` : ''}`, attrs: { 'aria-label': 'Home and vault', 'data-home-panel': '1', 'aria-busy': String(current.loading) } }, [
       current.loading ? el('p', { class: 'privacy', attrs: { role: 'status', 'data-home-loading': '1' }, text: 'Asking the server about your residents’ homes.' }) : null,
       !current.loading && !current.residents.length
-        ? el('p', { class: 'privacy', attrs: { 'data-home-empty': '1' }, text: 'You have no AI residents yet. Create one in My characters and its cottage and vault will appear here.' })
+        ? el('p', { class: 'privacy', attrs: { 'data-home-empty': '1' }, text: 'You have no characters yet. Create one in My characters and its home will appear here.' })
         : null,
       ...current.residents.map((row) => residentView(row, current)),
     ]);

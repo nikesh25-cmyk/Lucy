@@ -31,6 +31,7 @@ export const JOURNEY_MAX_STEPS = 900;
  * Returns `{route, legs}` (legs are consecutive slices of the route), or null when there is no known route.
  */
 export function planJourney(definition,start,target,{objects=[],blocks=[],legSteps=JOURNEY_LEG_STEPS,maxSteps=JOURNEY_MAX_STEPS}={}){
+ if(!Number.isInteger(legSteps)||legSteps<1)return null;
  const maxVisited=Math.max(8192,(definition?.columns||0)*(definition?.rows||0)+1);
  const route=planWalk(definition,start,target,{objects,blocks,maxSteps,maxVisited});
  if(!route)return null;

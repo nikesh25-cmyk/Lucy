@@ -159,3 +159,20 @@ test('a confirmed erase removes every note and the key, and the panel then shows
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM resident_vault WHERE agent_id=?', agent.id).n, 0);
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM resident_vault_keys WHERE agent_id=?', agent.id).n, 0);
 });
+
+test('a human character can close its cottage separately while the vault remains AI-only', async (t) => {
+  const f = await open(t);
+  const human = f.tx('createAgent', f.actor('alice'), { name: 'Alice builder', kind: 'human' });
+  assert.equal(human.kind, 'human');
+  const result = await f.request(`/agents/${human.id}/home`, { account: 'alice', method: 'PATCH', input: { house_visibility: 'private' } });
+  assert.equal(result.status, 200);
+  assert.deepEqual([result.data.visibility, result.data.house_visibility], ['public', 'private']);
+  const [garden, cottage] = await Promise.all(['home', 'house'].map(kind => f.request(`/world?world_id=${encodeURIComponent(`${kind}:${human.id}`)}&agent_id=${human.id}`, { account: 'alice' })));
+  assert.equal(garden.status, 200); assert.equal(cottage.status, 200);
+  const panel = createHomePanel({});
+  panel.update({ residents: [{ resident: human, garden: garden.data.world, cottage: cottage.data.world }] });
+  const row = panel.model().residents[0];
+  assert.deepEqual([row.garden.open, row.cottage.open, row.hasVault], [true, false, false]);
+  assert.equal(panel.arm(human.id), null);
+  assert.equal((await f.request(`/vault?agent_id=${human.id}`, { account: 'alice' })).status, 404);
+});

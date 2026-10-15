@@ -50,7 +50,7 @@ Object.assign(state,{gamePresentation,gameMode:savedGameMode,gameDrawer:'',gameM
 const gameAudio = createGameAudio();
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
 Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',firstPlay:null,firstPlayRefusal:null,interaction:null,interactionRefusal:null,interactionError:null,evidenceLibrary:null,moveFeedback:null});
-let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false,shopPanel=null,shopHost=null,shopStatus=null,shopContext=null,shopRevision=0,homePanel=null,homeHost=null,homeRows=[],homeFocus=null;
+let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false,shopPanel=null,shopHost=null,shopStatus=null,shopContext=null,shopRevision=0,homePanel=null,homeHost=null,homeRows=[],homeFocus=null,homeContext=null,homeRevision=0;
 const movementQueue = createMovementQueue({ move: performMove });
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -199,6 +199,7 @@ async function guarded(action) { try { await action(); } catch (error) { if(erro
 let sessionRecovery=null;
 function clearBrowserOperator(){
  clearShopView();
+ clearHomeView();
  gameAudio.stop();spectator?.close();spectator=null;firstPlayGuide.reset();cancelFirstPlayRead();movementQueue.reset('session-ended');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.voxelHover=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.evidenceLibrary=null;state.moveFeedback=null;clearOperatorState(state);state.workbenches=null;state.quality=null;state.qualityDismissals=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}try{localStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
@@ -1214,10 +1215,14 @@ function renderWorld(parent) {
   const locations = card('Your place in the world', 'THE BIGGER PICTURE'); const list = element('div', null, 'landmark-list');
   for (const landmark of worldLandmarks()) { const item = button(landmark.name, () => { notice(`${landmark.name}: ${landmark.description || 'Explore this place.'} Position ${landmark.x}, ${landmark.y}.`); }); item.append(element('small', `${landmark.x}, ${landmark.y}`)); list.append(item); }
   for (const portal of worldPortals()) { const item = button(portal.label || portal.name || 'Entrance', () => agent ? enterPortal(portal) : visitWorld(portalTarget(portal))); item.append(element('small', `Entrance · ${portal.x}, ${portal.y}`));list.append(item); }
-  const overview=card(null);overview.classList.add('minimap-card');const minimap=element('canvas');minimap.id='world-overview';minimap.width=240;minimap.height=160;minimap.setAttribute('aria-label','Overview of the entire world. The outlined rectangle marks the current map view. Select open ground to walk there.');minimap.addEventListener('click',(event)=>{if(viewedAgent()){if(!mapActive(state.world))return notice('The outline follows your character. Use movement controls to explore.');
+  const overview=card(null);overview.classList.add('minimap-card');const minimap=element('canvas');minimap.id='world-overview';minimap.width=240;minimap.height=160;minimap.setAttribute('aria-label',viewedAgent()?'Overview of the entire world. The outlined rectangle marks the current map view. Select open ground to walk there.':'Overview of the entire world. Select a place on land to observe it.');minimap.addEventListener('click',(event)=>{if(mapActive(state.world)){
   // On the global map a click is a journey: the same walk a pick makes, planned across however many districts lie between.
   const stitched=getWorldDefinition(MAP_ID),area=stitched.bounds,rect=minimap.getBoundingClientRect(),zoom=Math.min(240/area.width,160/area.height),left=(240-area.width*zoom)/2-area.x*zoom,top=(160-area.height*zoom)/2-area.y*zoom,tile={x:Math.floor(((event.clientX-rect.left)/rect.width*240-left)/zoom),y:Math.floor(((event.clientY-rect.top)/rect.height*160-top)/zoom)};
-  if(!walkable(tile,stitched))return notice('Choose open ground on the map to walk there.');return void guarded(()=>walkTo(tile.x,tile.y,true));}const bounds=minimap.getBoundingClientRect(),world=definition(),scale=Math.min(240/world.columns,160/world.rows),offsetX=(240-world.columns*scale)/2,offsetY=(160-world.rows*scale)/2;const px=(event.clientX-bounds.left)/bounds.width*240,py=(event.clientY-bounds.top)/bounds.height*160;state.focus={x:Math.max(0,Math.min(world.columns-1,Math.floor((px-offsetX)/scale))),y:Math.max(0,Math.min(world.rows-1,Math.floor((py-offsetY)/scale)))};guarded(async()=>{await loadWorld();paintWorld();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`View position ${state.focus.x}, ${state.focus.y} · Arrow keys / WASD to look around`;});});overview.append(minimap,paragraph('Your view of the whole world. Click to look around while visiting.'));if(!state.gamePresentation)locations.append(overview);disclosure(locations,'Places & entrances',(body)=>body.append(list));const mayor=state.world.participants.find(resident=>resident.kind==='npc');if(mayor){const office=card(mayor.name,String(mayor.id).startsWith('amb-')?'COUNTRY AMBASSADOR':'REGIONAL GUIDE');office.append(guidePortrait(mayor),paragraph(mayor.focus),button('Talk to '+mayor.name,()=>talkAmbassador(mayor.id),'small'));aside.append(office);}if(state.gamePresentation){aside.append(interactionCard(),journalCard(),inventoryCard(),projectsCard());map.append(gameConversationHost());}else{aside.append(interactionCard(),chatCard(),journalCard(),inventoryCard(),projectsCard());}aside.append(locations);const livingCard=livingWorldCard();if(livingCard)aside.append(livingCard);if(state.gamePresentation){map.append(overview,gameHud(world,agent,position));mountShellTools(map,canvas,world,agent,position);}append(layout, map, aside); parent.append(layout);renderResidentInspection(); paintWorld();
+  const destination=fromGlobal(tile.x,tile.y);
+  if(!destination)return notice('Choose a place on land to explore; this part of the map is open sea.');
+  if(!viewedAgent())return void guarded(()=>enterObservation(destination.world_id,{x:destination.x,y:destination.y}));
+  if(!walkable(tile,stitched))return notice('Choose open ground on the map to walk there.');return void guarded(()=>walkTo(tile.x,tile.y,true));}
+  if(viewedAgent())return notice('The outline follows your character. Use movement controls to explore.');const bounds=minimap.getBoundingClientRect(),world=definition(),scale=Math.min(240/world.columns,160/world.rows),offsetX=(240-world.columns*scale)/2,offsetY=(160-world.rows*scale)/2;const px=(event.clientX-bounds.left)/bounds.width*240,py=(event.clientY-bounds.top)/bounds.height*160;state.focus={x:Math.max(0,Math.min(world.columns-1,Math.floor((px-offsetX)/scale))),y:Math.max(0,Math.min(world.rows-1,Math.floor((py-offsetY)/scale)))};guarded(async()=>{await loadWorld();paintWorld();const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`View position ${state.focus.x}, ${state.focus.y} · Arrow keys / WASD to look around`;});});overview.append(minimap,paragraph('Your view of the whole world. Click to look around while visiting.'));if(!state.gamePresentation)locations.append(overview);disclosure(locations,'Places & entrances',(body)=>body.append(list));const mayor=state.world.participants.find(resident=>resident.kind==='npc');if(mayor){const office=card(mayor.name,String(mayor.id).startsWith('amb-')?'COUNTRY AMBASSADOR':'REGIONAL GUIDE');office.append(guidePortrait(mayor),paragraph(mayor.focus),button('Talk to '+mayor.name,()=>talkAmbassador(mayor.id),'small'));aside.append(office);}if(state.gamePresentation){aside.append(interactionCard(),journalCard(),inventoryCard(),projectsCard());map.append(gameConversationHost());}else{aside.append(interactionCard(),chatCard(),journalCard(),inventoryCard(),projectsCard());}aside.append(locations);const livingCard=livingWorldCard();if(livingCard)aside.append(livingCard);if(state.gamePresentation){map.append(overview,gameHud(world,agent,position));mountShellTools(map,canvas,world,agent,position);}append(layout, map, aside); parent.append(layout);renderResidentInspection(); paintWorld();
   if(!state.interaction&&viewedAgent())queueMicrotask(()=>guarded(()=>loadInteraction({})));
 }
 // The one next action the HUD shows: the resident's current calling objective, else the quest's next
@@ -2572,75 +2577,112 @@ function renderKarmaShop(parent){
   });
 }
 /**
- * Home & vault: each AI resident's private vault (counts and an erase action only) and the two
- * independent visiting switches of its garden and cottage. Everything on screen is the last server
+ * Home & vault: each AI resident's private vault (counts and an erase action only) and every owned
+ * character's independent garden and cottage switches. Everything on screen is the last server
  * answer: a switch or an erase is never assumed to have worked, and the server's refusal is shown in
  * its own words. The vault's text is never requested here: the operator route sends counts only.
  */
 const aiResidents=()=>state.agents.filter(agent=>agent.kind==='agent'&&agent.status!=='deleted');
-async function readHomeRow(agent){
+const homeResidents=()=>state.agents.filter(agent=>agent.status!=='deleted');
+const homeSession=()=>({accountId:state.account?.id||'',epoch:state.sessionEpoch||0});
+const currentHomeSession=context=>Boolean(context?.accountId&&context.accountId===state.account?.id&&context.epoch===(state.sessionEpoch||0));
+function currentHomeContext(context){return Boolean(currentHomeSession(context)&&context===homeContext&&context.revision===homeRevision&&context.host===homeHost&&context.panel===homePanel&&context.host?.isConnected);}
+function clearHomeView(){homeRevision++;homeContext=null;homePanel=null;homeHost=null;homeRows=[];homeFocus=null;}
+async function readHomeRow(agent,context=homeSession()){
+  if(!currentHomeSession(context))return null;
   const id=encodeURIComponent(agent.id);
-  const [vault,garden,cottage]=await Promise.allSettled([api(`/vault?agent_id=${id}`),api(`/world?world_id=${encodeURIComponent(`home:${agent.id}`)}&agent_id=${id}`),api(`/world?world_id=${encodeURIComponent(`house:${agent.id}`)}&agent_id=${id}`)]);
+  const [vault,garden,cottage]=await Promise.allSettled([agent.kind==='agent'?api(`/vault?agent_id=${id}`):Promise.resolve(null),api(`/world?world_id=${encodeURIComponent(`home:${agent.id}`)}&agent_id=${id}`),api(`/world?world_id=${encodeURIComponent(`house:${agent.id}`)}&agent_id=${id}`)]);
+  const ended=[vault,garden,cottage].find(result=>result.status==='rejected'&&result.reason?.sessionEnded);
+  if(ended)throw ended.reason;
+  if(!currentHomeSession(context))return null;
   const failed=[vault,garden,cottage].find(result=>result.status==='rejected');
   return {resident:agent,vault:vault.value,garden:garden.value?.world,cottage:cottage.value?.world,error:failed?`Part of this home could not be read: ${failed.reason?.message||'the server did not answer.'}`:null};
 }
-function paintHomePanel(){if(homePanel&&homeHost?.isConnected)homePanel.paint(homeHost);}
-async function reloadHomeRow(agentId){
-  const agent=aiResidents().find(item=>item.id===agentId);
-  const fresh=agent?await readHomeRow(agent):null;
+function paintHomePanel(context=homeContext){if(currentHomeContext(context))context.panel.paint(context.host);}
+async function reloadHomeRow(agentId,context=homeContext){
+  if(!currentHomeContext(context))return null;
+  const agent=homeResidents().find(item=>item.id===agentId);
+  const fresh=agent?await readHomeRow(agent,context):null;
+  if(!currentHomeContext(context))return null;
   if(fresh)homeRows=homeRows.map(row=>row.resident.id===agentId?fresh:row);
+  return fresh;
 }
-async function setHomeVisibility(agentId,patch,which){
+async function setHomeVisibility(agentId,patch,which,context=homeContext){
+  if(!currentHomeContext(context)||!homeResidents().some(agent=>agent.id===agentId))return false;
   let refusal=null,saved=null;
   try{
     const result=await api(`/agents/${encodeURIComponent(agentId)}/home`,'PATCH',patch);
     const word=value=>value==='public'?'open to visitors':'closed to visitors';
     saved={agentId,text:`The server saved it: the garden is ${word(result.visibility)} and the cottage is ${word(result.house_visibility)}.`};
   }catch(error){if(error.sessionEnded)return;refusal={agentId,text:error.message||'The server refused this change.'};}
-  await reloadHomeRow(agentId);
-  homePanel.update({residents:homeRows,refusal,saved});paintHomePanel();
+  if(!currentHomeContext(context))return false;
+  await reloadHomeRow(agentId,context);
+  if(!currentHomeContext(context))return false;
+  context.panel.update({residents:homeRows,refusal,saved});paintHomePanel(context);return true;
 }
-async function eraseHomeVault(agentId){
+async function eraseHomeVault(agentId,context=homeContext){
+  if(!currentHomeContext(context)||!aiResidents().some(agent=>agent.id===agentId))return false;
   let refusal=null,saved=null;
   try{
     const result=await api('/vault/manage','POST',{agent_id:agentId,action:'erase',confirm:true});
     saved={agentId,text:`The server erased the vault: ${result.removed===1?'1 note':`${result.removed} notes`} and the key were deleted.`};
   }catch(error){if(error.sessionEnded)return;refusal={agentId,text:error.message||'The server refused to erase this vault.'};}
-  await reloadHomeRow(agentId);
-  homePanel.update({residents:homeRows,refusal,saved});paintHomePanel();
+  if(!currentHomeContext(context))return false;
+  await reloadHomeRow(agentId,context);
+  if(!currentHomeContext(context))return false;
+  context.panel.update({residents:homeRows,refusal,saved});paintHomePanel(context);return true;
 }
-async function loadHome(){
-  homeRows=await Promise.all(aiResidents().map(readHomeRow));
+async function loadHome(context=homeContext){
+  if(!currentHomeContext(context))return null;
+  const residents=homeResidents(),fresh=new Array(residents.length);let next=0,stopped=false;
+  // Each row makes up to three metadata reads. Two workers bound the directory to six requests, even
+  // for an operator with many residents; an invalidated panel never starts its remaining rows.
+  const readNext=async()=>{
+    while(!stopped&&currentHomeContext(context)&&next<residents.length){
+      const index=next++;
+      try{fresh[index]=await readHomeRow(residents[index],context);}
+      catch(error){stopped=true;throw error;}
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(2,residents.length)},readNext));
+  if(!currentHomeContext(context))return null;
+  homeRows=fresh.filter(Boolean);
   return homeRows;
 }
 function renderHomeVault(parent){
-  parent.append(heading('Home & vault','Each AI resident keeps a private vault of its own notes, and has a garden and a cottage you choose to open or close to visitors.'));
-  if(!state.account){parent.append(empty('Sign in to see your residents’ homes.'),button('Sign in',()=>openAuth('login')));return;}
+  parent.append(heading('Home & vault','Choose who can visit each character’s garden and cottage. AI residents also keep a private vault of their own notes.'));
+  if(homeContext&&!currentHomeSession(homeContext))clearHomeView();
+  if(!state.account){clearHomeView();parent.append(empty('Sign in to see your residents’ homes.'),button('Sign in',()=>openAuth('login')));return;}
   const node=card('Your residents’ homes','VAULT · GARDEN · COTTAGE');node.id='world-home-vault-card';
-  if(!homePanel)homePanel=createHomePanel({onVisibility:(agentId,patch,which)=>guarded(()=>setHomeVisibility(agentId,patch,which)),onErase:(agentId)=>guarded(()=>eraseHomeVault(agentId)),onChange:()=>paintHomePanel(),reducedMotion:()=>prefersReducedMotion(window.matchMedia)});
   homeHost=element('div');homeHost.id='home-panel-host';
+  const context={...homeSession(),revision:++homeRevision,host:homeHost,panel:null};
+  homeContext=context;
+  homePanel=createHomePanel({onVisibility:(agentId,patch,which)=>guarded(()=>setHomeVisibility(agentId,patch,which,context)),onErase:(agentId)=>guarded(()=>eraseHomeVault(agentId,context)),onChange:()=>paintHomePanel(context),reducedMotion:()=>prefersReducedMotion(window.matchMedia)});
+  context.panel=homePanel;
   // Escape cancels an armed erase first; the shell's own Escape (close the panel) only sees it when nothing is armed.
-  homeHost.addEventListener('keydown',event=>{if(event.key==='Escape'&&homePanel.handleKey('Escape')){event.preventDefault();event.stopPropagation();}});
+  homeHost.addEventListener('keydown',event=>{if(currentHomeContext(context)&&event.key==='Escape'&&homePanel.handleKey('Escape')){event.preventDefault();event.stopPropagation();}});
   node.append(homeHost);parent.append(node);
   homePanel.update({residents:homeRows.length?homeRows:undefined});paintHomePanel();
   guarded(async()=>{
-    await loadHome();
-    homePanel.update({residents:homeRows});
-    if(homeFocus){homePanel.focusSection(homeFocus.agentId,homeFocus.which);homeFocus=null;}
-    paintHomePanel();
+    const fresh=await loadHome(context);
+    if(!currentHomeContext(context)||!fresh)return;
+    context.panel.update({residents:fresh});
+    if(homeFocus&&currentHomeSession(homeFocus)){context.panel.focusSection(homeFocus.agentId,homeFocus.which);homeFocus=null;}
+    paintHomePanel(context);
   });
 }
 /** The passport's "Your resident's home" card: three sentences and two links into the section above. */
 function homeSummaryCard(){
   const agent=selected();
   const node=card(null);node.id='world-home-summary';
-  if(!agent||agent.kind!=='agent'){node.append(element('h3','Your resident’s home'),paragraph('A human player’s cottage follows its garden. The vault and the separate cottage switch belong to AI residents.','privacy'),button('Open Home & vault',()=>openSection('home'),'secondary small'));return node;}
+  if(!agent){node.append(element('h3','Your resident’s home'),paragraph('Choose a character to see its garden and cottage. AI residents also have a private vault.','privacy'),button('Open Home & vault',()=>openSection('home'),'secondary small'));return node;}
   const draw=entry=>{mount(node,homeSummaryView(homeSummaryModel(entry),{onVault:id=>openHomeSection(id,'vault'),onPrivacy:id=>openHomeSection(id,'privacy')}));};
   draw({resident:agent,error:'Asking the server about this home.'});
-  readHomeRow(agent).then(row=>{if(node.isConnected)draw(row);}).catch(()=>{});
+  const context=homeSession();
+  readHomeRow(agent,context).then(row=>{if(row&&node.isConnected&&currentHomeSession(context)&&selected()?.id===agent.id)draw(row);}).catch(()=>{});
   return node;
 }
-async function openHomeSection(agentId,which){homeFocus={agentId,which};await openSection('home');}
+async function openHomeSection(agentId,which){const agent=homeResidents().find(item=>item.id===agentId);if(!state.account||!agent||(which==='vault'&&agent.kind!=='agent'))return;homeFocus={...homeSession(),agentId,which};await openSection('home');}
 /** The free personal space every resident already owns, named and reachable in one action. */
 async function enterOwnedSpace({cottage=false,build=false}={}){
   const resident=selected(),epoch=state.sessionEpoch||0;if(!resident)return false;

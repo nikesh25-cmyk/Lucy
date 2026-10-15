@@ -17,13 +17,15 @@ for (const seam of seams()) for (const centre of AVENUES[`${seam.a}|${seam.b}`] 
 }
 
 function drawn(scene) {
-  const boxes = [], matrix = new THREE.Matrix4();
+  const boxes = [], matrix = new THREE.Matrix4(), colour = new THREE.Color();
   for (const group of scene.root.children) for (const mesh of group.children) {
     if (!mesh.userData.picks) continue;
     for (let index = 0; index < mesh.count; index++) {
       mesh.getMatrixAt(index, matrix);
+      if (mesh.instanceColor) mesh.getColorAt(index, colour); else colour.set(0xffffff);
+      colour.multiply(mesh.material.color);
       const e = matrix.elements;
-      boxes.push({ group: group.name, centreX: e[12], height: e[13], centreY: e[14], halfWidth: Math.abs(e[0]) / 2, halfHeight: Math.abs(e[5]) / 2, halfLength: Math.abs(e[10]) / 2, pick: mesh.userData.picks[index] || null });
+      boxes.push({ group: group.name, colour: colour.getHexString(), centreX: e[12], height: e[13], centreY: e[14], halfWidth: Math.abs(e[0]) / 2, halfHeight: Math.abs(e[5]) / 2, halfLength: Math.abs(e[10]) / 2, pick: mesh.userData.picks[index] || null });
     }
   }
   return boxes;
@@ -33,27 +35,20 @@ test('there is an avenue to cross on every seam that has one', () => {
   assert.equal(crossings.length, 34);
 });
 
-/**
- * The instance ceiling for a window across the map. `DIORAMA_BUDGET.instances` (3,600) was set before the
- * second visual slice; slice 2's water is three pickable instances a tile plus its reads, so a window that is
- * mostly river or harbour now reads up to 3,676 instances (the Commons east edge over Stillwater Harbor) and
- * the Commons centre beside its own river 3,649, with no seam involved. Draw batches, the cost that grows
- * with the number of worlds in a window, keep the shipped 130 exactly. See docs/PERFORMANCE.md.
- */
-const MAP_WINDOW_INSTANCES = 3800;
-
 test('a window straddling any join stays inside the instance, cell and batch budgets', () => {
   let worstInstances = 0, worstBatches = 0;
   for (const crossing of crossings) for (const offset of [-18, -6, 0, 6, 18]) {
-    const anchor = { x: crossing.x, y: crossing.y + offset };
-    if (!walkable(anchor, map)) continue;
-    const scene = createVoxelScene(), plan = voxelPlan(map, { camera: { x: 0, y: 0 } }, anchor);
-    assert.ok(plan.cells.length <= VOXEL_LIMITS.cells);
-    const stats = scene.update(map, {}, { position: anchor, self: null });
-    assert.ok(stats.cubes <= MAP_WINDOW_INSTANCES, `${crossing.label} at ${anchor.x},${anchor.y} draws ${stats.cubes} instances`);
-    assert.ok(stats.drawBatches <= DIORAMA_BUDGET.draw_calls, `${crossing.label} at ${anchor.x},${anchor.y} draws ${stats.drawBatches} batches`);
-    worstInstances = Math.max(worstInstances, stats.cubes); worstBatches = Math.max(worstBatches, stats.drawBatches);
-    scene.destroy?.();
+    const position = { x: crossing.x, y: crossing.y + offset };
+    for (const anchor of [position, { x: position.y, y: position.x }]) {
+      if (!walkable(anchor, map)) continue;
+      const scene = createVoxelScene(), plan = voxelPlan(map, { camera: { x: 0, y: 0 } }, anchor);
+      assert.ok(plan.cells.length <= VOXEL_LIMITS.cells);
+      const stats = scene.update(map, {}, { position: anchor, self: null });
+      assert.ok(stats.cubes <= DIORAMA_BUDGET.instances, `${crossing.label} at ${anchor.x},${anchor.y} draws ${stats.cubes} instances`);
+      assert.ok(stats.drawBatches <= DIORAMA_BUDGET.draw_calls, `${crossing.label} at ${anchor.x},${anchor.y} draws ${stats.drawBatches} batches`);
+      worstInstances = Math.max(worstInstances, stats.cubes); worstBatches = Math.max(worstBatches, stats.drawBatches);
+      scene.destroy?.();
+    }
   }
   assert.ok(worstInstances > 0 && worstBatches > 0);
   console.log(`# worst window at an avenue: ${worstInstances} instances, ${worstBatches} of ${DIORAMA_BUDGET.draw_calls} batches`);
@@ -77,7 +72,7 @@ test('a window around a four-way corner of the map stays inside the instance, ce
     const scene = createVoxelScene(), plan = voxelPlan(map, { camera: { x: 0, y: 0 } }, anchor);
     assert.ok(plan.cells.length <= VOXEL_LIMITS.cells);
     const stats = scene.update(map, {}, { position: anchor, self: null });
-    assert.ok(stats.cubes <= MAP_WINDOW_INSTANCES, `corner ${corner.x},${corner.y} (${dx},${dy}) draws ${stats.cubes} instances`);
+    assert.ok(stats.cubes <= DIORAMA_BUDGET.instances, `corner ${corner.x},${corner.y} (${dx},${dy}) draws ${stats.cubes} instances`);
     assert.ok(stats.drawBatches <= DIORAMA_BUDGET.draw_calls, `corner ${corner.x},${corner.y} (${dx},${dy}) draws ${stats.drawBatches} batches`);
     worstBatches = Math.max(worstBatches, stats.drawBatches); worstInstances = Math.max(worstInstances, stats.cubes);
     scene.destroy?.();
@@ -121,6 +116,35 @@ test('dense joined groves adapt only decoration, keep every pick and stay bounde
   assert.equal(scene.root.getObjectByName('voxel-terrain'), terrain, 'unchanged frames reuse the adapted terrain batch');
   assert.equal(again.detail.radius, night.detail.radius, 'the report retains the same tier as the cached meshes');
   scene.destroy();
+});
+
+test('a four-region scene with distinct human and AI appearances stays inside the total draw-call budget by day and night', () => {
+  const position = { x: 95, y: 71 }, participants = [];
+  const colors = ['#397f79', '#3d5875', '#cb725f'], callings = ['cultivator', 'builder', 'steward'];
+  for (let x = position.x - 5; x <= position.x + 5 && participants.length < 20; x++) for (let y = position.y - 5; y <= position.y + 5 && participants.length < 20; y++) {
+    if (!walkable({ x, y }, map)) continue;
+    const index = participants.length;
+    participants.push({ id: `mixed-resident-${index}`, name: `Mixed resident ${index}`, world_id: MAP_ID, x, y, z: 0,
+      kind: index % 2 ? 'agent' : 'human', status: 'active', color: colors[index % colors.length],
+      calling: { id: callings[index % callings.length], name: callings[index % callings.length] }, avatar: index % 2 ? 'star' : 'sprout' });
+  }
+  assert.equal(participants.length, 20);
+  for (const count of [3, 20]) for (const dayPhase of ['day', 'night']) {
+    const scene = createVoxelScene(), roster = participants.slice(0, count);
+    const options = { position, self: roster[0], dayPhase, weather: 'clear', time: 0 };
+    scene.update(map, { participants: roster }, { ...options, lod: false });
+    const fullPicks = drawn(scene).filter((box) => box.pick).map((box) => JSON.stringify(box)).sort();
+    const stats = scene.update(map, { participants: roster }, options);
+    assert.equal(stats.participants, count);
+    assert.ok(stats.drawBatches <= DIORAMA_BUDGET.draw_calls, `${count} distinct residents at this junction in ${dayPhase} draw ${stats.drawBatches} batches`);
+    assert.deepEqual(drawn(scene).filter((box) => box.pick).map((box) => JSON.stringify(box)).sort(), fullPicks, 'batching retains every picked matrix and its exact displayed source colour');
+    const actorInstances = scene.root.getObjectByName('voxel-characters').children.reduce((sum, mesh) => sum + mesh.count, 0);
+    assert.ok(stats.cubes - actorInstances <= DIORAMA_BUDGET.instances, 'static geometry retains its existing ceiling independently of the declared actor allowance');
+    const terrain = scene.root.getObjectByName('voxel-terrain');
+    scene.update(map, { participants: roster.map((resident) => ({ ...resident, last_seen: 1 })) }, options);
+    assert.equal(scene.root.getObjectByName('voxel-terrain'), terrain, 'a volatile presence poll reuses the same compact terrain batch');
+    scene.destroy();
+  }
 });
 
 test('nothing solid is drawn on a walkable tile of the avenue at the join', () => {

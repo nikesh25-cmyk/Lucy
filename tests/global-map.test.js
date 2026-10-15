@@ -221,6 +221,14 @@ test('a journey crosses many worlds in one plan, in legs, where a single walk gi
   assert.equal(planJourney(map, start, { x: 0, y: 0 }), null);
 });
 
+test('journey leg sizes must be positive integers', () => {
+  const map = stitched(), start = map.start, target = { x: start.x + 1, y: start.y };
+  for (const legSteps of [0, -1, .5, NaN, Infinity, '64', null]) {
+    assert.equal(planJourney(map, start, target, { legSteps }), null, `${String(legSteps)} is refused before a route can loop or acquire empty legs`);
+  }
+  assert.deepEqual(planJourney(map, start, target, { legSteps: 1 }).legs, [['right']]);
+});
+
 test('every world of the map can be walked to from every other, over avenues only where a road is needed', () => {
   const map = stitched(), origin = toGlobal('commons', getWorldDefinition('commons').start.x, getWorldDefinition('commons').start.y);
   const start = { x: origin.gx, y: origin.gy };

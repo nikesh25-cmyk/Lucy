@@ -1,6 +1,7 @@
 // Instanced-batch primitives shared by every scene module under src/scene/.
 //
-// One `InstancedMesh` per colour and material style means a scene's cost is cubes, not draw calls.
+// The default is one `InstancedMesh` per colour and material style; a dense terrain view can combine
+// compatible opaque solid colours through exact per-instance albedo without altering any box or pick.
 // `src/voxel-world.js` keeps the reuse policy (a batch is rebuilt only when its own key changes);
 // this module only knows how to add boxes and how to finish them into real GPU batches.
 //
@@ -225,25 +226,32 @@ export const validColor = (value) => typeof value === 'string' && /^#[a-f\d]{6}$
 /**
  * A batch collector. Instances are grouped by colour and style, then finished into one
  * `InstancedMesh` each. `size` is the running instance count, so a caller can account for the
- * cubes its own pass contributed without splitting a batch.
+ * cubes its own pass contributed without splitting a batch. A dense terrain view may opt into
+ * `instanceSolidColors`: opaque, non-emissive solid boxes then share one white material and retain
+ * their exact source albedo in Three.js's per-instance colour attribute. Other styles keep their
+ * original material, including transparency, emissive colour, motion program and shadow behavior.
  */
-export function cubeBatch(resources) {
+export function cubeBatch(resources, { instanceSolidColors = false } = {}) {
   const batches = new Map(); let cubes = 0;
   const add = (x, height, y, width, depth, length, color, pick = null, style = 'solid') => {
-    const key = `${color}:${style}`;
-    if (!batches.has(key)) batches.set(key, { material: resources.material(color, style), style, instances: [] });
-    batches.get(key).instances.push({ x, height, y, width, depth, length, pick }); cubes++;
+    const perInstance = instanceSolidColors && style === 'solid';
+    const key = perInstance ? 'instance-colours:solid' : `${color}:${style}`;
+    if (!batches.has(key)) batches.set(key, { material: resources.material(perInstance ? 0xffffff : color, style), style, perInstance, instances: [] });
+    batches.get(key).instances.push({ x, height, y, width, depth, length, pick, color }); cubes++;
   };
   function finish() {
-    const group = new THREE.Group(), pickables = [], dummy = new THREE.Object3D();
+    const group = new THREE.Group(), pickables = [], dummy = new THREE.Object3D(), instanceColour = new THREE.Color();
     for (const batch of batches.values()) {
       const mesh = new THREE.InstancedMesh(resources.geometry, batch.material, batch.instances.length);
       mesh.userData.picks = []; mesh.userData.style = batch.style;
       batch.instances.forEach((item, index) => {
         dummy.position.set(item.x, item.height, item.y); dummy.scale.set(item.width, item.depth, item.length); dummy.updateMatrix();
         mesh.setMatrixAt(index, dummy.matrix); mesh.userData.picks[index] = item.pick;
+        if (batch.perInstance) mesh.setColorAt(index, instanceColour.set(item.color));
       });
-      mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere();
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.computeBoundingSphere();
       const shadowed = !SHADOWLESS_STYLES.includes(batch.style);
       mesh.castShadow = shadowed; mesh.receiveShadow = shadowed;
       group.add(mesh); if (mesh.userData.picks.some(Boolean)) pickables.push(mesh);

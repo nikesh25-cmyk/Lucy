@@ -227,8 +227,8 @@ const parcelAttacher = (definition, plan) => {
  * landmark pennants and the ground cover, composed from the scene modules. The pass order is also
  * the layer order the benchmark reports (`result.layers`).
  */
-function terrainScene(resources, definition, snapshot, plan, cullHidden = true) {
-  const batch = cubeBatch(resources), layers = {}, withParcel = parcelAttacher(definition, plan);
+function terrainScene(resources, definition, snapshot, plan, cullHidden = true, instanceSolidColors = false) {
+  const batch = cubeBatch(resources, { instanceSolidColors }), layers = {}, withParcel = parcelAttacher(definition, plan);
   const scenery = new Map(plan.objects.map(item => [`${item.x},${item.y}`, item.type || item.kind]));
   const colors = COLORS, style = districtStyle(definition), builders = { tree: (target, tx, ty, type, pick) => tree(target, tx, ty, type, pick, style), furniture: (target, item) => furniture(target, item, style) };
   groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers, style });
@@ -374,14 +374,27 @@ export function createVoxelScene() {
       // on the nearest unpicked ground/water decoration. The requested twelve-tile detail stays in
       // sparse windows; only a dense window's outer decorative ring becomes coarse. Use the actual
       // sky and lamp batches so a night phase cannot silently push the same scene over its ceiling.
+      // Draw calls also include the real resident, block, weather and other scene batches: a crowd's
+      // distinct colours must not silently turn an otherwise bounded landscape into excess draws.
       const terrainBudget = DIORAMA_BUDGET.instances - (lightBatch?.cubes || 0) - (skyBatch?.cubes || 0);
-      if (nextKey !== key || (options.lod !== false && staticBatch?.cubes > terrainBudget)) {
+      const terrainDrawBudget = DIORAMA_BUDGET.draw_calls - (batchCount() - (staticBatch?.batches || 0));
+      const overTerrainBudget = (batch) => batch.cubes > terrainBudget || batch.batches > terrainDrawBudget;
+      if (nextKey !== key || (options.lod !== false && staticBatch && overTerrainBudget(staticBatch))) {
         if (staticBatch) root.remove(staticBatch.group); disposeBatch(staticBatch);
         staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden);
-        while (options.lod !== false && staticBatch.cubes > terrainBudget && plan.detailRadius > 0) {
+        let instanceSolidColors = false;
+        if (options.lod !== false && staticBatch.batches > terrainDrawBudget) {
+          // Nearby regions can own many ground/roof colours and a mixed crowd adds its own. Combine
+          // only compatible opaque solid materials using exact per-instance albedo, keeping every
+          // original matrix and pick. Glass, lights, water and emissive panes retain their materials.
+          disposeBatch(staticBatch);
+          instanceSolidColors = true;
+          staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden, instanceSolidColors);
+        }
+        while (options.lod !== false && overTerrainBudget(staticBatch) && plan.detailRadius > 0) {
           disposeBatch(staticBatch);
           plan = { ...plan, detailRadius: plan.detailRadius - 1 };
-          staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden);
+          staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden, instanceSolidColors);
         }
         staticBatch.detailRadius = plan.detailRadius;
         staticBatch.group.name = 'voxel-terrain'; root.add(staticBatch.group); key = nextKey;

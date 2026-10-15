@@ -139,7 +139,7 @@ test('the bound is measured: the read stays inside its own statement and row cei
   assert.equal(counts.run, 0, 'a viewport read issues no write');
   assert.equal(wide.work.statements, counts.statements, 'the read reports the statements it really issued');
   assert.ok(counts.statements <= VIEWPORT_BOUNDS.max_statements, `the measured ${counts.statements} statements stay inside the stated ${VIEWPORT_BOUNDS.max_statements}`);
-  assert.equal(wide.work.regions, MAP_LAYOUT.length - 4, 'the widest permitted window over the layout covers five regions');
+  assert.equal(wide.work.regions, 6, 'this clamped window covers six regions, including the second-ring rainforest strip');
   assert.ok(wide.work.regions <= VIEWPORT_BOUNDS.max_regions, 'the region count stays inside the stated bound');
   assert.ok(wide.participants.length <= VIEWPORT_BOUNDS.max_participants && wide.objects.length <= VIEWPORT_BOUNDS.max_rows_returned, 'no family exceeds its stated cap');
   assert.equal(wide.clamped, true, 'an over-large window is clamped and says so');

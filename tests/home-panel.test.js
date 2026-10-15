@@ -256,12 +256,29 @@ test('several residents each get their own switches, vault and messages', () => 
   assert.deepEqual(sent.visibility, [{ id: 'bo', patch: { visibility: 'public' } }]);
 });
 
-test('before the server answers the panel says so, and with no AI resident it points to My characters', () => {
+test('human characters have both independent privacy switches and no vault surface', () => {
+  const human = entry({ resident: { id: 'human', name: 'Human builder', kind: 'human' }, garden: world('home:human', 'public'), cottage: world('house:human', 'private') });
+  const { panel, sent } = ready([human]);
+  const root = paintInto(panel).root;
+  assert.ok(byAttribute(root, 'data-home-switch', 'human:garden'));
+  assert.ok(byAttribute(root, 'data-home-switch', 'human:cottage'));
+  assert.equal(byAttribute(root, 'data-home-vault', 'human'), null, 'even a supplied vault payload cannot create a human vault surface');
+  panel.toggle('human', 'cottage');
+  assert.deepEqual(sent.visibility.at(-1), { id: 'human', patch: { house_visibility: 'public' } });
+  panel.update({ residents: [human] });
+  assert.equal(panel.arm('human'), null, 'a human vault cannot be armed');
+  const summary = homeSummaryModel(human), tree = homeSummaryView(summary);
+  assert.equal(tree.children.filter(Boolean).some(node => node.attrs?.['data-home-summary-vault']), false);
+  const links = tree.children.find(node => node.attrs?.class === 'actions')?.children || tree.children.at(-1).children;
+  assert.deepEqual(links.filter(Boolean).map(node => node.attrs['data-home-open']), ['privacy']);
+});
+
+test('before the server answers the panel says so, and with no character it points to My characters', () => {
   const panel = createHomePanel({});
   assert.match(paintInto(panel).root.textContent, /Asking the server about your residents’ homes\./);
   panel.update({ residents: [] });
   const { root } = paintInto(panel);
-  assert.match(root.textContent, /You have no AI residents yet\. Create one in My characters/);
+  assert.match(root.textContent, /You have no characters yet\. Create one in My characters/);
   assert.equal(byAttribute(root, 'data-home-loading', '1'), null);
   const failed = ready([entry({ error: 'Part of this home could not be read: boom', vault: undefined, garden: undefined, cottage: undefined })]);
   assert.match(paintInto(failed.panel).root.textContent, /Part of this home could not be read: boom/);

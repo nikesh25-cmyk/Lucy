@@ -51,7 +51,7 @@ test('a seam crossing is a step, not a travel: one agent row, no new world, and 
 
 test('a blocked step across a seam changes nothing at all: the same rule, applied on the far side', async (t) => {
   const f = await fixture(t), agent = f.agent('alice');
-  place(f, agent, 'district:highlands', 0, 5);
+  place(f, agent, 'district:wetlands', 0, 5);
   const before = stored(f, agent);
   assert.equal(step(f, 'alice', agent, 'left').blocked, true, 'a step off the map is refused');
   assert.deepEqual(stored(f, agent), before, 'a refused crossing leaves the stored tuple exactly as it was');

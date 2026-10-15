@@ -5770,6 +5770,41 @@ define('shared-world-seam-crossing', async () => {
     return `after a real restart: three residents still in ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y}, ${objectsAfter.length} placements and 2 saved lines unchanged, both browsers back in ${SHARED_SEAM.neighbour}`;
   });
 
+  await step('Chrome draws the dense four-region junction with mixed residents by day and night', async () => {
+    // Render-only fixture: these three appearances do not create accounts, move residents or claim
+    // saved progress. This corner exercises the exact per-instance colour GPU path which the sparse
+    // Commons entry does not need. Module tests separately compare every matrix, colour and pick.
+    const {page}=await context('map-gpu-budget'),errors=[];
+    page.on('console',message=>{if(message.type()==='error'&&/THREE|shader|WebGL/i.test(message.text()))errors.push(message.text());});
+    page.on('pageerror',error=>errors.push(error.message));
+    await page.goto(baseUrl(),{waitUntil:'domcontentloaded'});
+    try{
+      const result=await page.evaluate(async()=>{
+        const [{createVoxelWorld},{getWorldDefinition,walkable},{MAP_ID}]=await Promise.all([import('/src/voxel-world.js'),import('/world.js'),import('/src/global-map.js')]);
+        const definition=getWorldDefinition(MAP_ID),position={x:95,y:71},participants=[];
+        const colors=['#397f79','#3d5875','#cb725f'],callings=['cultivator','builder','steward'];
+        for(let x=90;x<=100&&participants.length<3;x++)for(let y=66;y<=76&&participants.length<3;y++)if(walkable({x,y},definition)){
+          const index=participants.length;participants.push({id:`gpu-resident-${index}`,name:`Render fixture ${index+1}`,world_id:MAP_ID,x,y,z:0,kind:index%2?'agent':'human',status:'active',color:colors[index],calling:{id:callings[index],name:callings[index]},avatar:index%2?'star':'sprout'});
+        }
+        const canvas=document.createElement('canvas');canvas.id='gpu-junction-fixture';canvas.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;z-index:2147483647';document.body.append(canvas);
+        let unavailable=null;const view=createVoxelWorld(canvas,{reducedMotion:true,onUnavailable:text=>{unavailable=text;}});
+        if(!view)throw new Error(unavailable||'WebGL renderer unavailable');
+        window.__nemoGpuProbe={view,canvas};
+        const options={definition,position,self:participants[0],weather:'clear',dayPhase:'day'},snapshot={participants};
+        const unbounded=view.render(snapshot,{...options,lod:false});
+        const day=view.render(snapshot,options),night=view.render(snapshot,{...options,dayPhase:'night'});
+        return{unbounded:unbounded.drawBatches,day:day.drawBatches,night:night.drawBatches,participants:participants.length,width:canvas.width,height:canvas.height};
+      });
+      expect(result.participants===3&&result.unbounded>130,'the GPU fixture must actually need the new colour batching',{actual:describe(result)});
+      expect(result.day<=130&&result.night<=130,'both GPU views keep the existing total draw-call ceiling',{actual:describe(result)});
+      await page.waitForTimeout(100);
+      expect(errors.length===0,'the real WebGL renderer must compile and draw without shader errors',{actual:describe(errors)});
+      const shots=join(RESULTS,'shared-world-seam-crossing');await mkdir(shots,{recursive:true});
+      await page.locator('#gpu-junction-fixture').screenshot({path:join(shots,'mixed-residents-night.png')});
+      return `real Chrome WebGL: ${result.unbounded} unbatched calls, ${result.day} by day and ${result.night} at night, three appearances and no shader error`;
+    }finally{await page.evaluate(()=>{window.__nemoGpuProbe?.view.destroy();window.__nemoGpuProbe?.canvas.remove();delete window.__nemoGpuProbe;}).catch(()=>{});}
+  });
+
   return `two independent humans drove two browsers and one AI resident drove its own runtime credential from the Commons edge ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} into ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} with no portal and no new world, read a bounded viewport that reported both sides of the seam, spoke across the join with the far resident excluded and the neighbour included, built three placements in the AI resident's own garden with the same call refused on the map, and returned after a real restart to the same stored rows, the same conversation and the same garden`;
 
 });
