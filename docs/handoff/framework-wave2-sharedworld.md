@@ -211,9 +211,10 @@ world it left is a crossing, counted in `residents_that_left_the_world`, not a m
 
 **Untested**
 
-8. The new browser scenario was **not executed** (the integrator runs Chrome serially). Its helpers are
-   the shipped ones and its registry is covered by `tests/browser-suite.test.js`, but its first real
-   run is the integrator's.
+8. The new browser scenario **was executed** after this document was written — see
+   *Wave 2 browser verification* below. It failed on that first run for two reasons, both of them in the
+   scenario itself; both are fixed, and the scenario passes 5 focused runs and the full 46-scenario
+   run. Its helpers are the shipped ones and its registry is covered by `tests/browser-suite.test.js`.
 9. The map-wide neighbour read in `publishNear` (radius 18) sends the same delta to worlds whose
    subscribers cannot hold it, because the delta names the world the change happened in. Correct
    client-side (the frame is dropped) but not measured here.
@@ -232,7 +233,7 @@ recorded beside each run because two of the base's own tests are load-sensitive.
 | `npm run e2e` | **PASS — 20 steps passed, 0 failed**, `E2E_EXIT=0` | load average 115 at the end of the run |
 | `node scripts/multiplayer-soak.mjs --accounts 8 --subscriptions 4 --duration 6000` | **PASS, 70 checks passed, 0 failed** | not recorded by the harness |
 | `node tests/framework/known-gaps-sharedworld.mjs` | **0 fixed, 3 reproducing** (exit 1 by design) | — |
-| `npm run browser` | **UNRUN** | — |
+| `npm run browser` | **UNRUN at the time of writing** — run afterwards; the results are in *Wave 2 browser verification* below | — |
 
 The base is 1082 tests of which 2 failed; this tip is 1112 with none failing, and the arithmetic closes
 exactly: 1080 base passes + 30 added tests + the base's own 2 that passed this run = 1112. The 30 added
@@ -262,8 +263,203 @@ genuinely grew by one scenario.
   does not discover.
 - **`src/global-map.js` and `src/map-view.js` were not changed.** The viewport module imports
   `worldRects`, `toGlobal`, `fromGlobal`, `mapRect`, `onMap` and `MAP_LAYOUT` and adds no second layout.
-- **The browser scenario is unrun.** `scripts/browser-suite.mjs` now holds 46 scenarios; the full 46
-  must be run by the integrator before merging. `npm run e2e` was run here and passed 20 of 20.
+- **The browser scenario has now been run.** `scripts/browser-suite.mjs` holds 46 scenarios; the full 46
+  were run serially on this host, and the numbers are in *Wave 2 browser verification* below, together
+  with the two defects the first run exposed (both in the scenario) and the one regression that is the
+  map owner's.
 - **`src/platform.js` gained one import and one `Object.assign`.** Another agent's merge of that file
   must keep `viewportMethods`.
 - No schema change, so nothing here needs a migration rehearsal; no installation was touched.
+
+## Wave 2 browser verification: the seam scenario's own defects, and an escalated regression
+
+Written after the first real Chrome run of this branch (Chrome 155.0.8059.40, Node 24.15.0, this
+host). It records what failed, what was changed, the evidence, and the one failing scenario that is
+**not** this slice's to fix.
+
+### What failed, and why it was the scenario
+
+`shared-world-seam-crossing` failed on its first run — in a different place depending on how it was
+run. Both failures were flaws in what the scenario asserted, not in the product. Both are fixed in
+`scripts/browser-suite.mjs`. No assertion was deleted, skipped or weakened, and no coverage was dropped.
+
+**1. A global `worlds` count cannot witness "the crossing created no world".** Focused, the scenario
+failed 5 of 5 times at `crossing a seam must create no world` — `expected 310 worlds, actual 326`. The
+16 extra rows are the living-world loop seeding its eight scripted residents: `server.js:798` runs a
+3 s timer that calls `livingWorldTick` on every second tick (6 s) unless `LUCY_LIVING_WORLD=false`, and
+`ensureLivingWorld` (`src/living-world.js:220`) returns early while no administrator exists, so the
+seeding lands at *some* point after the fixtures create the first administrator — inside whichever
+scenario is running then. Measured directly against a disposable platform, not inferred:
+
+```text
+fresh platform                       292 worlds
+after one administrator account      292 worlds
+after ONE livingWorldTick            308 worlds   (+16 in 28 ms)
+added worlds                         home:lw-aria, house:lw-aria, home:lw-theron, house:lw-theron, …
+                                     (8 living residents × one garden + one cottage)
+after a SECOND tick                  308 worlds   (idempotent)
+```
+
+The invariant the scenario wants is causal, so that is what it now asserts: **the world across the
+seam must already be stored before the crossing**, **no rectangle of the global map may appear**, and
+**no resident that crossed may come to own a world**. The seeded rows are reported as a note instead of
+being asserted away. (In the full 46-scenario run the count happened to be stable *because* the seeding
+had already happened during an earlier scenario — which is exactly why a focused run is the only honest
+witness, and why this defect hid from the full run and showed up alone.)
+
+**2. Two conversation lines from one account inside the server's own interval.** In the full
+46-scenario run the scenario failed at `fixture request POST /messages was refused` —
+`HTTP 429 {"error":"Please wait before sending another message."}`. `src/platform.js message()` refuses
+a second line from one `account_id` inside 1500 ms, and a runtime credential posts as the account that
+issued it — so the human's nearby line and the AI resident's answer share one interval, and the
+scenario raced a rule the product documents. Both sends now go through a new `sendLine()` helper, which
+waits the interval out first (bounded, measured from the stored row) and resumes **only** the documented
+refusal, printing every resume; any other refusal is still the failure. The step also now asserts the
+truth that makes the sharing visible: both lines are stored under the one account.
+
+### Escalation: `shared-presence-two-clients` is red on `f85c84b` and its ancestors are innocent
+
+Not this slice's code and not environmental. Reproduced by me, focused runs, Chrome 155, exit codes as
+recorded:
+
+| Tree | Commit | Focused run | Exit | Host load at start |
+| --- | --- | --- | --- | --- |
+| `work/wave0` | `1246bfe` (on `27c0d72`, World-life) | **PASS** — `walker 10,6 → 10,5; the other browser showed it in 497 ms` | 0 | 6.67 |
+| `work/base-control` (detached) | `f85c84b` — pristine map tip, no Wave 2 commits | **FAIL** — `the second client’s presence record must hold the confirmed tile`, `confirmed {x:106,y:77,z:0}` | 1 | 8.00 |
+| `work/wave2` (this branch) | `974d9c4` | **FAIL** — identical assertion, identical `106,77` | 1 | 4.42 |
+
+The failing evidence is decisive on its own: `106,77` is not a stored tile, it is
+`toGlobal('commons', 10, 5)` — the Commons' rectangle is `{x:96,y:72,96×64}` (`MAP_LAYOUT`), and the
+walker's stored tile in the passing run is `10,5`.
+
+**What the scenario asserts.** `scripts/browser-suite.mjs:2564` (line 2513 on `f85c84b`):
+`record.confirmed.x === moved.x && record.confirmed.y === moved.y`, where `moved` is the tile read back
+from `agents.x,y` in the database and `record` is this client's own presence record, taken from the page
+through `window.__nemoworld.presence()` (`clientPresence`, `:2440`).
+
+**Where the confirmed tile is written and read.**
+
+- written: `app.js:382` `noteConfirmed(item)` → `app.js:383`
+  `presence.confirm(mapActive(state.world) ? toMapItem(item, state.world.world.id) : item)`; the tracker
+  is `createPresenceTracker` (`src/camera-controls.js:287-345`), whose records are seeded by
+  `seedPresence` from every `GET /world` payload;
+- exposed: `app.js:523` `presence: () => presence.entries().map(([id, record]) => ({ id, confirmed: { ...record.confirmed }, … }))`;
+- driven into the global frame by `app.js:361` `worldURL()` — it adds `map=core` for any world on the
+  map, so the server returns `world.map` and `mapActive` is true (for the Commons as much as for
+  Highlands).
+
+**Cause: `f85c84b`'s own changes, not the two commits the map branch lacks.** `f85c84b` introduced both
+the projection and the client change, in the same commit:
+
+```diff
++ import { mapActive, mapPoint, mapSnapshot, toMapItem } from './src/map-view.js';     app.js:29
+  function noteConfirmed(item) {
+-   const record = presence.confirm(item);
++   const record = presence.confirm(mapActive(state.world) ? toMapItem(item, state.world.world.id) : item);
+```
+```diff
++ if (onMap(currentWorldId())) query.set('map','core');                                app.js:361
+```
+
+`src/map-view.js` exists only from `f85c84b` (`git log --oneline -- src/map-view.js` → one commit).
+The two commits the map branch lacks are `32d8362` (schema-25 vault) and `27c0d72` (living-resident
+seeding, `src/living-world.js` / `src/living-community.js`); **neither touches `app.js`,
+`src/map-view.js` or `src/global-map.js`** (`git show --name-only 32d8362 27c0d72`), and neither can
+move a client-side record into the global frame. The `106,77` value is the projection and nothing else.
+The map branch therefore inherits a red shipped scenario from its own commit, whatever World-life adds.
+
+**Is the product wrong, or the witness?** The client's own design is coherent: when the map is active
+the renderer interpolates in global tiles and converts back for every tile it names
+(`app.js:1290`, `fromGlobal`). What changed silently is the frame of a surface the shipped suite treats
+as a contract — `docs/handoff/task-deepseek-movement-feel.md:121` states the record "holds the same
+confirmed tile the database stores", which is what `shared-presence-two-clients` asserts. On the map
+that is no longer true. That is a contract decision for the owner, not for this slice, so no file was
+edited; `tests/framework/known-gaps-sharedworld.mjs` now carries the repro
+(`the-presence-surface-reports-the-global-map-tile`, which reproduces the identical pair
+`{reported:{x:106,y:77}, stored:{x:10,y:5}}` by evaluating the shipped client's own two expressions over
+a real observation).
+
+**Proposed patch (Option A, recommended — restore the documented frame).** One expression in
+`app.js:523`, plus `localTile` in the `./src/map-view.js` import on `app.js:29`; the renderer is
+untouched because it reads the tracker through `displayed()`:
+
+```diff
+-  presence: () => presence.entries().map(([id, record]) => ({ id, confirmed: { ...record.confirmed }, display: displayCoords(record, performance.now()), tweening: presence.tweening(id) })),
++  presence: () => presence.entries().map(([id, record]) => { const stored = (point) => { const local = mapActive(state.world) && Number.isFinite(point?.x) ? localTile(point.x, point.y) : null; return local ? { ...point, x: local.x, y: local.y, world_id: local.world_id } : point; }; return { id, confirmed: stored({ ...record.confirmed }), display: stored(displayCoords(record, performance.now())), tweening: presence.tweening(id) }; }),
+```
+
+**Option B**, if the owner decides the global frame *is* the new contract: change the witness instead —
+`scripts/browser-suite.mjs:2564` converts through `localTile` before comparing, and
+`docs/handoff/task-deepseek-movement-feel.md:121` is corrected to state the drawn frame. The two must
+change together, and the claim "the record holds the stored tile" is withdrawn.
+
+**The test that proves either fix**: `LUCY_BROWSER_ONLY=shared-presence-two-clients npm run browser`,
+which must be green on the patched tree (it is red at `f85c84b` and at this tip, and green at `27c0d72`).
+
+### Residual risk
+
+- `shared-world-seam-crossing` reads the same database while the living-world loop writes to it. The two
+  remaining count-based assertions are on tables that loop never touches (`frontier_sectors`) or are
+  causal (`world.entered` audit rows for exactly the two operators), and a note records the seeded rows
+  every run, so the next such collision is visible rather than fatal.
+- The scenario still runs one server process, one SQLite writer, loopback only, and now spends up to
+  1.5 s waiting out the message interval: it is ~1 s slower than it needs to be for the sake of not
+  racing a documented refusal.
+- `live-observation-readonly` failed in the integrator's full run and **passes focused on this tip**
+  (exit 0, 2.9 s) — the same load sensitivity the shipped 45 already had; it is not this slice's.
+
+### Gates, re-run for this verification
+
+Node 24.15.0 throughout. **Another agent was running its own browser suite against a different project
+tree for most of this work** (`node scripts/browser-suite.mjs`, cwd
+`…/2026-10-11-i-ve-prepared-automatic-mac-setup/work/…`), which is what carried the host to load average
+46 during the full run; the 1-minute average at the start of that run was 19.4 and rising. Every
+load-attributed result below was therefore re-run afterwards, focused, on the same tip.
+
+| Gate | Result | Exit | Host load |
+| --- | --- | --- | --- |
+| `npm run check` | 104 files, 0 failed | 0 | 2.4 |
+| `npm test` | **1112 tests, 1112 pass, 0 fail, 0 skipped** (110.9 s) | 0 | 4.5 |
+| `npm run e2e` | 20 steps passed, 0 failed | 0 | 2.4 |
+| `node tests/framework/known-gaps-sharedworld.mjs` | 0 fixed, **4 reproducing** (exit 1 by design) | 1 | — |
+| focused `shared-world-seam-crossing`, before the fix | FAIL ×5 — `crossing a seam must create no world`, `expected 310 worlds, actual 326` | 1 ×5 | 2.8–8.1 |
+| focused `shared-world-seam-crossing`, after the fix | **PASS ×5** | 0 ×5 | 2.0–5.9 |
+| focused `shared-presence-two-clients` — wave2 / `f85c84b` / `27c0d72` | FAIL / FAIL / **PASS** | 1 / 1 / 0 | 4.4 / 8.0 / 6.7 |
+| focused `live-observation-readonly` | **PASS** | 0 | 5.9 |
+| **full 46-scenario serial run, host shared** (run 1) | **38 passed, 8 failed** | 1 | 19.4–46.5 |
+| focused re-run of those 8, same tip | **7 passed, 1 failed** — the failure is `shared-presence-two-clients` | 1 | 9.5–51.5 |
+| **full 46-scenario serial run, host quiet** (run 2) | **44 passed, 2 failed** — `shared-presence-two-clients` and `live-observation-readonly`; **`shared-world-seam-crossing` PASSES (66.6 s)** | 1 | 4.1–7.2 |
+
+The full run's eight, and what each actually was:
+
+- `shared-presence-two-clients` — the escalated regression above (`confirmed {x:106,y:76}` for a walker
+  stored at `10,4`);
+- `live-observation-readonly` — `no message may be stored by an observer`, the shipped suite's own
+  load flake; green focused, as the integrator found;
+- six timeouts at the shipped limits (25 s page, 10 s request) — `first-ten-minutes` (`page.reload`),
+  `first-play-solo-ambassador` (`page.goto`), `restoration-two-clients` (`POST /auth/login` aborted),
+  `phone-conversation` (`page.goto`), `signout-privacy` (`page.goto`) and **this branch's own
+  `shared-world-seam-crossing`**, whose *fixture login* was aborted at the 10 s request limit before
+  any step of the scenario ran.
+
+All seven non-presence failures pass when re-run focused on the same tip — the seam scenario among
+them, 32.4 s, on a host still at load 32–51. Nothing was weakened to reach that; the red full run is
+reported as red because that is what it was.
+
+One intermediate run of the seam scenario failed on a typo in the new `sendLine` helper (`m.id` in a
+query that has no `m`), caught by the run and fixed before the five passes above — it is recorded here
+so the count of runs is complete rather than convenient.
+
+The second full run — same tip, same command, no other suite on the host (1-minute load average 4.1,
+against 19.4–46.5 during the first) — is the honest picture of this branch: **44 of 46**, with the seam
+scenario passing end to end in the full suite for the first time, and two failures neither of which is
+this slice's code:
+
+- `shared-presence-two-clients`, the escalated regression above — this is what the branch actually
+  fails, and it fails on `f85c84b` without a single Wave 2 commit;
+- `live-observation-readonly` (`no message may be stored by an observer`). It is worth recording
+  precisely, because "load-sensitive" is not quite the whole story: it fails in **both** full runs,
+  loaded and quiet, and passes in **both** focused runs (`LUCY_BROWSER_ONLY=live-observation-readonly`,
+  exit 0, 3.0 s alone and 3.8 s in an eight-scenario batch). So it is sensitive to the full suite's
+  accumulated state or order rather than to the host, and a quiet full run does not clear it. It is the
+  shipped 45's own scenario and none of this slice's files are in its path; it is reported, not touched.
