@@ -20,7 +20,9 @@ server to travel. A refused or stale journey never becomes a teleport.
 | Use the aimed fixture | `Enter`, `Space` or `I` | Performs the server-authorized interaction. |
 | Choose a frontier block | `1`–`7` while building | Selects a block type. Placement still requires a picked face or typed coordinates. |
 | Climb one authored layer | **Step-up mode**, then movement keys | Sends a server-authorized step-up request. |
-| Release capture or stand down | `Escape` | Releases pointer capture or pointer lock when one is active. |
+| Release capture or stand down | `Escape` | Releases pointer capture or pointer lock when one is active. With nothing captured it closes, in order, the world menu, an open drawer, then an open section panel. |
+| Open the world menu | `M` (focus on the scene) | Opens and closes the menu; its *Find a section* box takes a few words and **Enter** opens the first match. |
+| Walk while a panel is open | Click the scene or **Focus world**, then the usual keys | An open section panel does not suspend movement; a focused panel control keeps its own keys. |
 | Rotate in turn mode | **Turn mode**, then `W`/`A`/`S`/`D` | Turns instead of walking. |
 
 `E` turns the camera. The interaction keys are `Enter`, `Space` and `I`; the HUD and target prompt use
@@ -99,7 +101,7 @@ Gameplay shortcuts stand down when the key belongs to another control:
 - focus is in an input, select, textarea, button or content-editable element;
 - a dialog is open;
 - `Ctrl`, `Meta` or `Alt` is held; or
-- the game menu or a drawer is open.
+- the game menu or a drawer is open (an open *section panel* is not one of these: the scene keeps the keyboard whenever it has focus, and a focused panel control keeps its own keys).
 
 The focused control keeps the key. Pointer look also stands down while a dialog or drawer is open.
 Suspension is counted, so independent callers can resume without releasing another caller's hold.

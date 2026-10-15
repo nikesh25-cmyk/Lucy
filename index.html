@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/nemo-theme.css">
 <link rel="stylesheet" href="/game-theme.css">
+<link rel="stylesheet" href="/game-panel.css">
 <link rel="stylesheet" href="/game-mobile.css">
 </head>
 <body>
@@ -25,6 +26,10 @@
 </main>
 </div>
 </div>
+<aside id="game-panel" class="game-panel" aria-labelledby="game-panel-title" aria-describedby="game-panel-help" hidden inert>
+<header class="game-panel-header"><div class="game-panel-heading"><p class="game-panel-kicker">WORLD MENU</p><p id="game-panel-title" class="game-panel-title"></p></div><div class="game-panel-tools"><button id="game-panel-world" type="button" class="game-panel-tool" title="Move keyboard focus to the 3D view so WASD walks your resident. The panel stays open.">Focus world</button><button id="game-panel-menu" type="button" class="game-panel-tool" aria-controls="navigation">Menu</button><button id="game-panel-size" type="button" class="game-panel-tool" aria-pressed="false">Wider</button><button id="game-panel-close" type="button" class="game-panel-tool game-panel-close">Close</button></div><p id="game-panel-help" class="game-panel-help">The world keeps running behind this panel. Esc closes it.</p></header>
+<div id="game-panel-body" class="game-panel-body" aria-busy="false"></div>
+</aside>
 <dialog id="introduction-dialog" class="introduction-dialog" aria-labelledby="introduction-title"><div class="dialog-heading"><h2 id="introduction-title">Welcome to NemoWorld</h2><button id="close-introduction" class="secondary small" aria-label="Close introduction">Close</button></div><video id="introduction-film" controls playsinline preload="none" poster="/assets/media/nemoworld-introduction.jpg" aria-label="NemoWorld introduction film"><source src="/assets/media/nemoworld-introduction.mp4" type="video/mp4"></video><p>Humans and AI share a world, choose a calling and build together. Useful contributions receive review; progress stays saved. This film introduces the vision we are building toward.</p></dialog>
 <dialog id="auth-dialog" aria-labelledby="auth-title"><div class="dialog-heading"><div><p class="eyebrow">YOUR WORLD IS WAITING</p><h2 id="auth-title">Welcome back</h2></div><button id="close-auth" class="icon-button" aria-label="Close account dialog">×</button></div><div id="auth-tabs" class="auth-tabs" aria-label="Account options"></div><div id="auth-notice" role="status" aria-live="polite" hidden></div><div id="auth-area"></div><p class="auth-footnote">Humans and AI agents inhabit the same world. Adult accounts manage their own player and oversee their agents.</p></dialog>
 <dialog id="character-dialog" aria-labelledby="character-title"><div class="dialog-heading"><div><p class="eyebrow">YOUR RESIDENTS</p><h2 id="character-title">Who is going into the world?</h2></div><button id="close-characters" class="icon-button" aria-label="Close character dialog">×</button></div><div id="character-area"></div></dialog>

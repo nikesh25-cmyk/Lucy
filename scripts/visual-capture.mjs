@@ -106,6 +106,15 @@ const SHOTS = [
   { id: 'observatory-interior', world: 'observatory', at: [16, 20], phase: 'night', orbit: true },
   { id: 'cottage-interior-night', world: 'house', at: [10, 9], phase: 'night' },
   { id: 'cottage-interior', world: 'house', at: [10, 9], phase: 'day', orbit: true },
+  // The in-game command surface. Each opens a platform section through the world menu, which is the
+  // same click before and after the command surface: before, the section replaced the 3D view; after,
+  // it is a panel over (desktop: beside) the running world.
+  { id: 'menu-open', world: 'commons', at: [10, 6], phase: 'day', menu: true },
+  { id: 'panel-explore', world: 'commons', at: [10, 6], phase: 'day', section: 'Explore worlds' },
+  { id: 'panel-missions', world: 'commons', at: [10, 6], phase: 'day', section: 'Missions' },
+  { id: 'panel-wallet', world: 'commons', at: [10, 6], phase: 'day', section: 'Coin wallet' },
+  { id: 'panel-characters', world: 'commons', at: [10, 6], phase: 'day', section: 'My characters' },
+  { id: 'panel-countries', world: 'commons', at: [10, 6], phase: 'day', section: 'Countries & areas' },
 ];
 
 for (const [name, options] of Object.entries(VIEWPORTS)) {
@@ -145,6 +154,12 @@ for (const [name, options] of Object.entries(VIEWPORTS)) {
     }
     // A zoom shot turns the wheel over the canvas, which is exactly what a visitor does to come closer.
     if (shot.zoom) { const box = await page.locator('#world').boundingBox(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); for (let tick = 0; tick < shot.zoom; tick++) { await page.mouse.wheel(0, -100); await page.waitForTimeout(80); } await page.waitForTimeout(500); }
+    if (shot.menu || shot.section) {
+      await page.locator('#game-menu-button').click();
+      await page.locator('#navigation button[aria-label="Open world"]').waitFor({ state: 'visible' });
+      if (shot.section) { await page.locator(`#navigation button[aria-label="${shot.section}"]`).click(); await page.waitForTimeout(1500); }
+      else await page.waitForTimeout(600);
+    }
     const state = await page.evaluate(() => ({ world: window.__nemoworld?.worldId?.(), graphics: document.querySelector('#world')?.dataset.graphics }));
     await page.screenshot({ path: join(outDir, `${label}-${name}-${shot.id}.png`) });
     if (process.env.DUMP_SELECTOR) console.log(await page.evaluate((selector) => [...document.querySelectorAll(selector)].map((node) => node.outerHTML).join('\n'), process.env.DUMP_SELECTOR));

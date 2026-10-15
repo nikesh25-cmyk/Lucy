@@ -105,10 +105,11 @@ for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'in
 }
 // The interface components of the game shell. Each one is a browser module app.js imports, so the
 // hand-maintained table has to serve it; tests/content-http.test.js walks that graph from /app.js.
-for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls', 'first-play-guide']) {
+for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls', 'first-play-guide', 'command-deck']) {
   files.set(`/src/ui/${component}.js`, [`src/ui/${component}.js`, 'text/javascript; charset=utf-8']);
 }
 files.set('/game-mobile.css', ['game-mobile.css', 'text/css; charset=utf-8']);
+files.set('/game-panel.css', ['game-panel.css', 'text/css; charset=utf-8']);
 // The sampled CC0 audio pool (assets/audio). A fixed, server-owned allowlist — never a URL-derived
 // filesystem path — so only the recorded clips can ever be served. Rights: assets/audio/THIRD_PARTY.md.
 for (const clip of ['ui-click', 'ui-confirm', 'ui-close', 'world-step-grass', 'world-step-stone', 'world-place', 'world-remove', 'world-door-open', 'world-door-close', 'world-chop', 'world-coin', 'music-jingle-1', 'music-jingle-2', 'music-jingle-3']) {
