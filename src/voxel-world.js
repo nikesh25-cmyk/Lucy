@@ -4,11 +4,13 @@ import { VOXEL_LIMITS, LOD_LIMITS, inDetail, voxelPlan, voxelPick, orbitCamera, 
 import content from './content.js';
 import { createResources, cubeBatch, disposeBatch, hash, variant, validColor, shade } from './scene/batch.js';
 import { gateFrames, groundPass, landmarkPennants, layer, portalFrames } from './scene/terrain.js';
+import { isInterior } from './scene/interiors.js';
 import { groundCoverPass } from './scene/vegetation.js';
 import { blocksScene } from './scene/blocks.js';
 import { parcelScene } from './scene/parcels.js';
 import { WATER_TINTS, waterBasin } from './scene/water.js';
-import { SHADOW_LIMITS, applyPhase, phaseLighting, resolvedPhase, skyScene } from './scene/sky.js';
+import { INTERIOR_LIGHTING, SHADOW_LIMITS, applyPhase, phaseLighting, resolvedPhase, skyScene } from './scene/sky.js';
+import { lampGlowScene, litLamps } from './scene/lights.js';
 import { charactersScene, charactersVisualKey, renderableCharacters, characterNameplates, createMotionTracker } from './characters.js';
 import { confirmedExpression } from './character-animation.js';
 
@@ -31,7 +33,7 @@ export const DISTANT_GROUND_LIMITS = Object.freeze({ y: -1.36, draw_calls: 1, ve
 function distantGround(definition) {
   const columns = Number.isInteger(definition?.columns) ? definition.columns : 0;
   const rows = Number.isInteger(definition?.rows) ? definition.rows : 0;
-  if (definition?.kind === 'interior' || columns < 1 || rows < 1) return null;
+  if (isInterior(definition) || columns < 1 || rows < 1) return null;
   // The retained Three.js bundle intentionally exposes only BoxGeometry. A very thin box keeps the
   // same single-surface role while providing a stable, bounded renderable in the GPU-independent
   // test bundle; its top is the documented backdrop height.
@@ -173,6 +175,16 @@ function furniture(batch, item) {
   } else if (type === 'boat') { add(0, -.02, 0, .99, .3, .65, COLORS.wood); add(0, .8, 0, .08, 1.5, .08, COLORS.dark); add(.26, 1.02, 0, .48, .6, .05, COLORS.cream); }
   else if (type === 'bed') { add(0, .23, 0, .9, .45, .99, COLORS.wood); add(0, .48, .18, .85, .13, .7, '#8bafa2'); add(0, .5, -.3, .7, .18, .3, COLORS.cream); }
   else if (type === 'cushion') add(0, .1, 0, .7, .2, .7, '#bfa4a4');
+  else if (type === 'kitchen') {
+    // A cottage kitchen: a cabinet run against the wall, a worktop, a two-burner hob with one ring alight,
+    // a kettle and a wall cupboard above. One tile, one mass, 1.80 m tall; the cabinet carries the sealed
+    // kitchen tone.
+    add(0, .44, -.14, .96, .88, .66, '#ae987a'); add(0, .92, -.14, .99, .08, .72, shade('#ae987a', 1.14));
+    for (const dx of [-.2, .2]) add(dx, .975, -.1, .22, .03, .22, COLORS.dark);
+    add(.2, .995, -.1, .14, .02, .14, COLORS.gold, 'glow');
+    add(-.2, 1.07, -.1, .14, .12, .14, '#9aa7a6'); add(-.2, 1.16, -.1, .06, .06, .06, COLORS.dark);
+    add(0, 1.6, -.33, .92, .46, .3, shade('#ae987a', .9)); add(0, 1.6, -.17, .8, .38, .03, COLORS.cream);
+  }
   else if (type === 'telescope') { add(0, .55, 0, .14, 1.1, .14, COLORS.stone); add(0, 1.07, 0, .99, .28, .3, '#526f82'); }
   else if (type !== 'gateway') { add(0, .22, 0, .7, .44, .7, COLORS.stone); add(0, .8, 0, .45, .7, .45, type === 'display' ? COLORS.gold : '#a4b9ab'); }
 }
@@ -242,10 +254,10 @@ function peopleScene(resources, participants, self, options = {}) {
  *   `time`, `cameraMode`, `dayPhase`, `parcelSelection`, `parcelHover`, `definition`, `self`.
  */
 export function createVoxelScene() {
-  const resources = createResources(), root = new THREE.Group(), motionTracker = createMotionTracker(); let staticBatch, blockBatch, peopleBatch, parcelBatch, skyBatch, groundMesh, key = '', blockKey = '', peopleKey = '', parcelKey = '', skyKey = '', groundKey = '', lastPlan, destroyed = false, animating = false;
+  const resources = createResources(), root = new THREE.Group(), motionTracker = createMotionTracker(); let staticBatch, blockBatch, peopleBatch, parcelBatch, lightBatch, skyBatch, groundMesh, key = '', blockKey = '', peopleKey = '', parcelKey = '', lightKey = '', skyKey = '', groundKey = '', lastPlan, destroyed = false, animating = false;
   let stats = { cells: 0, blocks: 0, participants: 0, cubes: 0, drawBatches: 0, layers: {} }, pickables = [];
-  // The one child order for both the tests and the renderer: terrain, characters, blocks, plots, sky.
-  const managed = () => [staticBatch, peopleBatch, blockBatch, parcelBatch, skyBatch].filter(Boolean);
+  // The one child order for both the tests and the renderer: terrain, characters, blocks, plots, lamp light, sky.
+  const managed = () => [staticBatch, peopleBatch, blockBatch, parcelBatch, lightBatch, skyBatch].filter(Boolean);
   const settle = () => { for (const batch of managed()) root.add(batch.group); if (groundMesh) root.add(groundMesh); };
   return { root,
     update(definition, snapshot = {}, options = {}) {
@@ -256,7 +268,12 @@ export function createVoxelScene() {
       const detailRadius = options.lod === false ? Infinity : LOD_LIMITS.detail_radius;
       const plan = voxelPlan(definition, snapshot, position, detailRadius);
       const cullHidden = options.cullHidden !== false;
-      const nextKey = JSON.stringify([definition.id, definition.kind, definition.groundColor, plan.cells, plan.objects, plan.portals, plan.gates, cullHidden, detailRadius]);
+      // Which tiles are read closely depends on where the viewer stands, not only on which tiles are in the
+      // window: a room smaller than the window is the same window from every tile in it. So the anchor is
+      // part of the key exactly when some tile is coarse (it decides which decals exist), and is left out
+      // when every tile is fine, where it decides nothing and a step must not rebuild the room.
+      const tier = plan.cells.some((cell) => !inDetail(cell.x, cell.y, plan.anchor, plan.detailRadius)) ? [plan.anchor?.x, plan.anchor?.y] : 0;
+      const nextKey = JSON.stringify([definition.id, definition.kind, definition.groundColor, plan.cells, plan.objects, plan.portals, plan.gates, cullHidden, detailRadius, tier]);
       if (nextKey !== key) {
         if (staticBatch) root.remove(staticBatch.group); disposeBatch(staticBatch);
         staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden); staticBatch.group.name = 'voxel-terrain'; root.add(staticBatch.group); key = nextKey;
@@ -290,10 +307,21 @@ export function createVoxelScene() {
       // The sky is its own small batch, so a phase change never touches the diorama: only the phase
       // markers and the cloud tint are rebuilt, and an unchanged phase reuses every existing mesh.
       const phase = resolvedPhase(options.dayPhase || snapshot.atmosphere?.phase);
+      // Lamp light follows the same phase and rebuilds only with it: an interior is lit at every phase,
+      // the sun lights the outdoors by day, and the glow strength of lamps and windows is a material
+      // property moved here, so it never costs a rebuild.
+      const interior = isInterior(definition), lightPhase = interior ? 'interior' : phase;
+      resources.setGlow((interior ? INTERIOR_LIGHTING : phaseLighting(phase)).glow);
+      const nextLightKey = JSON.stringify([definition.id, definition.kind, lightPhase, litLamps(plan)]);
+      if (nextLightKey !== lightKey) {
+        if (lightBatch) root.remove(lightBatch.group); disposeBatch(lightBatch);
+        lightBatch = lampGlowScene({ resources, cubeBatch, plan, phase: lightPhase });
+        root.add(lightBatch.group); lightKey = nextLightKey;
+      }
       const nextSkyKey = JSON.stringify([definition.id, definition.kind, phase, plan.window]);
       if (nextSkyKey !== skyKey) {
         if (skyBatch) root.remove(skyBatch.group); disposeBatch(skyBatch);
-        skyBatch = definition.kind === 'interior' ? null : skyScene({ resources, cubeBatch, plan, phase });
+        skyBatch = isInterior(definition) ? null : skyScene({ resources, cubeBatch, plan, phase });
         if (skyBatch) root.add(skyBatch.group);
         skyKey = nextSkyKey;
       }
@@ -314,15 +342,15 @@ export function createVoxelScene() {
       animating = !reducedMotion && (motionTracker.isSettling(now) || renderableCharacters(drawnPeople, drawnSelf).some((person) => confirmedExpression(person, now)));
       const fine = plan.cells.reduce((count, cell) => count + (inDetail(cell.x, cell.y, plan.anchor, plan.detailRadius) ? 1 : 0), 0);
       stats = { cells: plan.cells.length, blocks: plan.blocks.length, participants: renderablePeople(drawnPeople, drawnSelf).length,
-        cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0) + (skyBatch?.cubes || 0),
-        parcelCubes: parcelBatch?.cubes || 0, skyCubes: skyBatch?.cubes || 0,
-        drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0),
+        cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0) + (lightBatch?.cubes || 0) + (skyBatch?.cubes || 0),
+        parcelCubes: parcelBatch?.cubes || 0, skyCubes: skyBatch?.cubes || 0, lightCubes: lightBatch?.cubes || 0,
+        drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0) + (lightBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0),
         distantGround: groundMesh ? 1 : 0,
         parcels: plan.parcels.length, selectedParcel: parcelBatch?.group.userData.selectedParcel || null, window: plan.window,
         // The detail report: the radius in force, and the cells inside and beyond it. `Infinity` means
         // the escape hatch is on and every cell is read at full detail.
         detail: { radius: plan.detailRadius, fine, coarse: plan.cells.length - fine },
-        layers: { ...staticBatch.layers, sky: skyBatch?.cubes || 0 } };
+        layers: { ...staticBatch.layers, lights: lightBatch?.cubes || 0, sky: skyBatch?.cubes || 0 } };
       root.updateMatrixWorld(true); return stats;
     },
     /** Public label projection for the live renderer; positions use the same confirmed tracker as bodies. */
@@ -343,14 +371,14 @@ export function createVoxelScene() {
       if (parcelBatch) root.add(parcelBatch.group); parcelKey = nextKey; settle(); root.updateMatrixWorld(true);
       stats.selectedParcel = selected?.id || null;
       stats.parcelCubes = parcelBatch?.cubes || 0;
-      stats.cubes = (staticBatch?.cubes || 0) + (blockBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0) + (skyBatch?.cubes || 0);
-      stats.drawBatches = (staticBatch?.batches || 0) + (blockBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0);
-      stats.layers = { ...(staticBatch?.layers || {}), sky: skyBatch?.cubes || 0 };
+      stats.cubes = (staticBatch?.cubes || 0) + (blockBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0) + (lightBatch?.cubes || 0) + (skyBatch?.cubes || 0);
+      stats.drawBatches = (staticBatch?.batches || 0) + (blockBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0) + (lightBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0);
+      stats.layers = { ...(staticBatch?.layers || {}), lights: lightBatch?.cubes || 0, sky: skyBatch?.cubes || 0 };
     },
     get pickables() { return pickables; }, get stats() { return stats; }, get animating() { return animating; },
     isAnimating() { return animating; },
     reconcileCharacter(id) { return motionTracker.reconcile(id); },
-    destroy() { if (destroyed) return; destroyed = true; motionTracker.clear(); animating = false; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(skyBatch); disposeDistantGround(groundMesh); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; skyKey = ''; groundKey = ''; lastPlan = null; }
+    destroy() { if (destroyed) return; destroyed = true; motionTracker.clear(); animating = false; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(lightBatch); disposeBatch(skyBatch); disposeDistantGround(groundMesh); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; lightKey = ''; skyKey = ''; groundKey = ''; lastPlan = null; }
   };
 }
 
@@ -411,7 +439,8 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     // One phase model, one owner: src/scene/sky.js resolves the named phase (with the legacy
     // `evening` alias), places the key light and its shadow frustum, and sets the depth cue.
     lastAtmosphere = applyPhase({ scene, sky, sun, renderer, phase: lastOptions?.dayPhase || lastSnapshot.atmosphere?.phase,
-      position: target, distance: orbitInput.orbit.distance, plan: { window: contents.stats.window } });
+      position: target, distance: orbitInput.orbit.distance, plan: { window: contents.stats.window },
+      interior: isInterior(lastOptions?.definition || getWorldDefinition(lastSnapshot.world || 'commons')) });
     const selected = lastOptions?.selection;
     selection.visible = !!selected && Number.isInteger(selected.x) && Number.isInteger(selected.y);
     if (selection.visible) selection.position.set(selected.x + .5, Math.max(0, selected.z || 0) + .5, selected.y + .5);

@@ -300,3 +300,60 @@ body.game-world #game-conversation-host #world-chat-card form>button{min-height:
 #living-world-card .living-agent-info strong{font-size:0.85rem;color:#f3f4df}
 #living-world-card .living-agent-info small{font-size:0.7rem;color:#a8bba8}
 
+
+/* ------------------------------------------------------------------------------------------------
+   HUD layout, first visual slice. Nothing below hides information or removes a control: it moves
+   panels that used to share pixels onto pixels of their own, and on a phone it turns the stacked
+   guide into one short strip so the world is the thing on the screen. Every rule sits after the rules
+   it refines, so deleting this block restores the previous layout exactly.
+
+   Desktop (651 px and wider)
+     - the transient #notice drops below the aim line it used to cover;
+     - the interaction prompt leaves the left column, where it sat on the Step-up, First person and
+       Look toggles, for the free right column above the target line, which it already belongs with;
+     - the move-feedback line lifts above the objective chips it used to overlap;
+     - the guide's scroll box fades at its lower edge instead of cutting a line of text in half.
+   Phone (650 px and narrower)
+     - the place card is two lines, the aim line is one line (its full text stays in the DOM for
+       assistive technology and is the live region it always was), and the minimap shrinks to fit
+       beside the card;
+     - the guide becomes a one-card-high strip you swipe sideways, with Dismiss pinned inside the first
+       card; every paragraph is still reachable by scrolling the card;
+     - the interaction prompt sits on its own band above the touch pad, not on the pad's top key.
+   ------------------------------------------------------------------------------------------------ */
+@media(min-width:651px){
+  body.game-world #notice:not([hidden]){top:152px}
+  body.game-world .game-prompt-host{left:auto;right:20px;bottom:160px;width:min(300px,34vw);max-width:none}
+  body.game-world .game-feedback{bottom:200px}
+  body.game-world.game-building .game-feedback{bottom:auto;top:152px}
+  body.game-world .game-guide{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent)}
+}
+@media(min-width:651px) and (max-width:1279px){
+  body.game-world #notice:not([hidden]){top:252px}
+}
+@media(max-width:650px){
+  body.game-world #notice:not([hidden]){top:278px;max-width:calc(100vw - 20px);padding:7px 12px;font-size:.7rem}
+  body.game-world .game-place{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:0;padding:6px 11px;max-width:calc(100vw - 126px)}
+  body.game-world .game-place .game-kicker{display:none}
+  body.game-world .game-place strong{flex:1 0 100%;font-size:1.05rem;line-height:1.15}
+  body.game-world .world-panel>.minimap-card{width:96px;height:60px;padding:4px!important}
+  body.game-world .world-reticle{top:72px;left:10px;transform:none;width:calc(100% - 20px);padding:4px 10px;font-size:.62rem;line-height:1.5;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:9px}
+  body.game-world .game-guide{top:164px;bottom:auto;left:10px;right:10px;width:auto;max-height:116px;display:flex;flex-direction:row;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-mask-image:none;mask-image:none;scrollbar-width:none}
+  body.game-world .game-guide::-webkit-scrollbar{display:none}
+  body.game-world .game-guide-card{position:relative;flex:0 0 min(86vw,330px);max-height:116px;overflow-y:auto;scroll-snap-align:start;padding:7px 11px 14px;gap:3px;scrollbar-width:thin}
+  body.game-world .game-guide-card{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 16px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 16px),transparent)}
+  body.game-world .game-guide-card .game-guide-progress{font-size:.54rem}
+  body.game-world .game-guide-card .game-guide-meter{height:5px}
+  body.game-world .game-guide-card .game-guide-title{font-size:.84rem}
+  body.game-world .game-guide-card .game-guide-instruction{font-size:.7rem;line-height:1.35}
+  body.game-world .game-guide-card .game-guide-reason,body.game-world .game-guide-card .game-guide-alternative,body.game-world .game-guide-card .game-guide-target{font-size:.62rem;line-height:1.35}
+  body.game-world .game-guide-next{padding-right:104px}
+  body.game-world .game-guide-next .game-guide-controls{position:absolute;top:6px;right:8px;display:block}
+  body.game-world .game-guide-next .game-guide-button{width:auto;min-width:88px;padding:8px 10px}
+  body.game-world .game-guide-encounter-art{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:9px}
+  body.game-world .game-guide-encounter-art .resident-encounter-art{grid-row:1/span 2;margin-bottom:0}
+  body.game-world .game-guide-encounter-art>:not(.resident-encounter-art):not(.game-guide-title):not(.game-guide-role){grid-column:1/-1}
+  body.game-world .game-guide-encounter-art .game-guide-honest,body.game-world .game-guide-encounter-art .game-guide-response,body.game-world .game-guide-encounter-art .game-guide-limits,body.game-world .game-guide-encounter-art .game-guide-capabilities,body.game-world .game-guide-encounter-art .game-guide-calling{font-size:.62rem;line-height:1.35}
+  body.game-world .game-prompt-host{bottom:284px}
+  body.game-world .game-prompt-host .interaction-prompt{padding:6px 10px;font-size:.62rem;line-height:1.35}
+}
