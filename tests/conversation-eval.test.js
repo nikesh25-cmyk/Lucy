@@ -45,6 +45,7 @@ test('real conversation evaluation suite executes against disposable server and 
   assert.equal(summary.failed, 0, `Expected 0 failures, got ${summary.failed}: ${JSON.stringify(summary.cases.filter(c => !c.passed))}`);
   assert.equal(summary.passed, 8, 'Expected all 8 cases to pass');
   assert.equal(summary.score, '100.0%');
+  assert.ok(summary.cases.every((item) => item.model_inference_ran === false), 'This fixture checks scripted routes, not model inference');
 
   // Verify that database persistence assertions succeeded
   const storedAliceConversations = f.platform.all("SELECT * FROM ambassador_conversations WHERE account_id=?", f.actor('alice').account.id);

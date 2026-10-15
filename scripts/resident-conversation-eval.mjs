@@ -1,10 +1,11 @@
-// AI resident conversation evaluation harness for NemoWorld.
-// Evaluates real conversation routes (POST /api/v1/ambassadors/talk, POST /api/v1/messages)
-// against disposable databases and accounts.
+// Scripted ambassador conversation and message authorization regression harness.
+// Evaluates real HTTP routes (POST /api/v1/ambassadors/talk, POST /api/v1/messages)
+// against disposable databases and accounts. Without a configured model this does
+// not evaluate AI inference or open-ended resident conversation quality.
 //
 // Separates deterministic policy checks (HTTP status, database persistence,
-// channel authorization boundaries, refusal on pause) from response quality checks
-// (accurate identity, non-impersonation, refusal of unverified completion).
+// channel authorization boundaries, refusal on pause) from narrow answer-text
+// regression checks (required or forbidden phrases in the scripted response).
 
 import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -297,10 +298,10 @@ export async function runEvaluationSuite(options = {}) {
 }
 
 if (process.argv[1] && process.argv[1].endsWith('resident-conversation-eval.mjs')) {
-  console.log('Running NemoWorld AI Resident Real Conversation Evaluation...');
+  console.log('Running NemoWorld scripted ambassador route evaluation (no model inference)...');
   runEvaluationSuite().then((summary) => {
     console.log(`\n===============================================================`);
-    console.log(`  AI Resident Conversation Evaluation Results`);
+    console.log(`  Scripted Ambassador Route Evaluation Results`);
     console.log(`  Total Cases: ${summary.total} | Passed: ${summary.passed} | Failed: ${summary.failed} | Score: ${summary.score}`);
     console.log(`===============================================================\n`);
     for (const c of summary.cases) {
