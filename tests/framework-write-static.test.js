@@ -20,7 +20,7 @@ const DYNAMIC = source.match(/\/\^\\\/agents\\\/\(\[\^\/\]\+\)\\\/\(([^)]+)\)\$\
 const DYNAMIC_SCOPES = Object.fromEntries([...source.match(/scope: \{ ([^}]+) \}\[match\[2\]\]/)[1].matchAll(/(\w+): (?:'(\w+)'|null)/g)].map((match) => [match[1], match[2] || null]));
 // How the handler reaches a route: an explicit comparison in the request handler, or the fall-through
 // that resolves the declared platform method by name.
-const explicitlyHandled = (route) => new RegExp(`route\\s*===\\s*'${route.replaceAll('/', '\\/')}'`).test(source) || new RegExp(`route\\s*===\\s*'${route.replaceAll('/', '\\/')}'`).test(source.replaceAll(' ', ''));
+const explicitlyHandled = (route) => new RegExp(`route\\s*===\\s*'${route.replaceAll('/', '\\/')}'`).test(source);
 const methodIsLive = (platform, name) => typeof platform[name] === 'function';
 
 test('every literal in the gets, writes and publicRoute declarations is reachable by the handler', async (t) => {

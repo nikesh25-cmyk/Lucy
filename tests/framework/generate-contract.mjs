@@ -1,7 +1,17 @@
+// Regenerates `src/framework/write-contract.js` from the router and from probe evidence.
+//
+//   export PATH="$HOME/.nvm/versions/node/v24.15.0/bin:$PATH"
+//   node tests/framework/probe.mjs > /tmp/wave1-probe.txt     # drive every route, record the audit trail
+//   node tests/framework/generate-contract.mjs > /tmp/contract.js
+//   diff /tmp/contract.js src/framework/write-contract.js      # review every changed line, then copy it over
+//
+// The module is a source file, not a build artifact: regenerate it deliberately, read the diff, and
+// commit the reviewed result. `tests/framework-write-static.test.js` fails when the committed table no
+// longer matches the router, so the two can never drift apart silently.
 import { readFileSync } from 'node:fs';
 
 const server = readFileSync('server.js', 'utf8');
-const probe = readFileSync(process.env.WAVE1_PROBE || "/tmp/wave1-probe.txt", 'utf8');
+const probe = readFileSync(process.env.WAVE1_PROBE || '/tmp/wave1-probe.txt', 'utf8');
 
 // --- evidence from the probe: which exercised writes produced an attribution record --------------
 const probed = new Map();
