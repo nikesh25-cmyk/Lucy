@@ -811,10 +811,11 @@ define('accounts-and-switching', async () => {
     await settle(page);
     const account = row('SELECT id,name,email,role,status FROM accounts WHERE email=?', ACTORS.admin.email);
     expect(account && account.role === 'admin', 'the first account created in the browser must be the administrator', { expected: 'a stored admin account', actual: describe(account) });
-    expect(count('SELECT COUNT(*) AS n FROM accounts') === 1, 'the first signup must create exactly one account', { actual: `accounts=${count('SELECT COUNT(*) AS n FROM accounts')}` });
+    const humanAccounts = count("SELECT COUNT(*) AS n FROM accounts WHERE email NOT LIKE 'living-%@nemoworld.internal'");
+    expect(humanAccounts === 1, 'the first signup must create exactly one human account', { actual: `human_accounts=${humanAccounts}` });
     expect(await signedInName(page) === ACTORS.admin.name, 'the session bar must name the signed-in administrator', { actual: await signedInName(page) });
     state.fixtures.adminAccountId = account.id;
-    return `201 in the browser · account ${account.id} role=admin · one account in the temporary database`;
+    return `201 in the browser · account ${account.id} role=admin · one human account in the temporary database`;
   });
 
   await step('signing out revokes the server session and clears local operator state', async () => {

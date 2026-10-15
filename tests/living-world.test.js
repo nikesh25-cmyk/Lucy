@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Platform } from '../src/platform.js';
 import { createApp } from '../server.js';
 import { ensureLivingWorld, livingWorldTick, LIVING_ROSTER } from '../src/living-world.js';
+import content from '../src/content.js';
 
 test('living world initializes 8 diverse resident agents with callings and starter inventory', () => {
   const platform = new Platform(':memory:');
@@ -78,9 +79,60 @@ test('living world agents respond to human chat in the Commons with helpful in-c
     );
     assert.ok(botReply, 'Bot reply about quests recorded in database');
     assert.ok(botReply.agent_id.startsWith('lw-'), 'Reply is attributed to a living world resident');
+    livingWorldTick(platform);
+    assert.equal(platform.get("SELECT COUNT(*) AS n FROM messages WHERE text LIKE '%Quests%'").n, 1, 'The same human message receives one reply');
   } finally {
     platform.close();
   }
+});
+
+test('living residents receive starter stock once and leave human trade listings untouched', async () => {
+  const platform = new Platform(':memory:');
+  try {
+    const human = await platform.register({
+      name: 'Human Trader', email: 'trader@example.org', password: 'human-trader-password-2026', consent: true,
+    });
+    const actor = platform.authenticate(human.token);
+    const avatar = platform.createAgent(actor, { kind: 'human', name: 'Trader', country: 'NemoWorld' });
+    ensureLivingWorld(platform);
+    platform.run("UPDATE journey_inventory SET quantity=0 WHERE agent_id='lw-aria' AND kind='wood'");
+    platform.run("INSERT INTO journey_inventory(agent_id,kind,quantity) VALUES(?,?,?)", avatar.id, 'wood', 2);
+    const listing = platform.tradePost(actor, { agent_id: avatar.id, items: { wood: 2 }, note: 'Human offer' }, 'human-offer');
+    livingWorldTick(platform);
+    assert.equal(platform.get("SELECT quantity FROM journey_inventory WHERE agent_id='lw-aria' AND kind='wood'").quantity, 0, 'Autonomous tick does not refill spent stock');
+    assert.equal(platform.get('SELECT status FROM trade_listings WHERE id=?', listing.id).status, 'open', 'Autonomous traders do not take a human offer');
+    assert.equal(platform.get('SELECT COUNT(*) AS n FROM trade_claims WHERE listing_id=?', listing.id).n, 0);
+  } finally {
+    platform.close();
+  }
+});
+
+test('legacy internal operator credentials are repaired and cannot sign in', async () => {
+  const platform = new Platform(':memory:');
+  try {
+    ensureLivingWorld(platform, { bootstrap: true });
+    platform.run("UPDATE accounts SET password='internal-living-world-pass' WHERE email='living-botanists@nemoworld.internal'");
+    ensureLivingWorld(platform, { bootstrap: true });
+    const stored = platform.get("SELECT password FROM accounts WHERE email='living-botanists@nemoworld.internal'").password;
+    assert.match(stored, /^[a-f0-9]{32}:[a-f0-9]{128}$/);
+    await assert.rejects(platform.login({ email: 'living-botanists@nemoworld.internal', password: 'internal-living-world-pass' }), { status: 401 });
+  } finally {
+    platform.close();
+  }
+});
+
+test('the public API cannot force an autonomous living-world tick', async (t) => {
+  const platform = new Platform(':memory:');
+  const admin = await platform.register({
+    name: 'Administrator', email: 'admin-tick@example.org', password: 'admin-tick-password-2026', consent: true,
+  });
+  const { server } = createApp({ platform, livingWorld: true });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const res = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/living-world/tick`, {
+    method: 'POST', headers: { Authorization: `Bearer ${admin.token}`, 'Content-Type': 'application/json' }, body: '{}',
+  });
+  assert.equal(res.status, 404);
 });
 
 test('living world autonomous trade market posts and claims listings between guilds', () => {
@@ -155,10 +207,14 @@ test('living world residents enroll in practice quests and advance callings thro
     let tick = livingWorldTick(platform, { bootstrap: true });
     assert.equal(tick.cultivated, 1, 'Crop planted by cultivator');
 
-    // Advance platform clock past growth duration (e.g. 5 seconds)
+    // The resident uses the same sealed growth time as player crops.
     const originalClock = platform.clock;
     let simulatedTime = originalClock.call(platform) + 5000;
     platform.clock = () => simulatedTime;
+
+    tick = livingWorldTick(platform, { bootstrap: true });
+    assert.equal(tick.harvested, 0, 'A crop cannot mature after five seconds');
+    simulatedTime += content.rules('crop').find((entry) => entry.id === 'blossom').rules.grow_ms;
 
     // Second tick harvests crop and crafts
     tick = livingWorldTick(platform, { bootstrap: true });

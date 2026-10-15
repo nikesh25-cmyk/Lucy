@@ -1,7 +1,9 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { worldAtmosphere } from './atmosphere.js';
 import { ensureTradeMarket } from './trade-market.js';
-import { Platform } from './platform.js';
+import content from './content.js';
+
+const blossomRules = content.rules('crop').find((entry) => entry.id === 'blossom')?.rules;
 
 
 export const LIVING_ROSTER = Object.freeze([
@@ -233,9 +235,12 @@ export function ensureLivingWorld(platform, { bootstrap = false } = {}) {
       const now = new Date(platform.clock()).toISOString();
       platform.run(
         'INSERT INTO accounts(id,name,email,password,role,status,consent_at,created_at) VALUES(?,?,?,?,?,?,?,?)',
-        id, spec.name, spec.email, 'internal-living-world-pass', spec.role, 'active', now, now
+        id, spec.name, spec.email, `${randomBytes(16).toString('hex')}:${randomBytes(64).toString('hex')}`, spec.role, 'active', now, now
       );
       account = platform.get('SELECT * FROM accounts WHERE id=?', id);
+    } else if (account.password === 'internal-living-world-pass') {
+      // Repair accounts created by the initial release. They must not be usable as login identities.
+      platform.run('UPDATE accounts SET password=? WHERE id=?', `${randomBytes(16).toString('hex')}:${randomBytes(64).toString('hex')}`, account.id);
     }
     accounts[key] = account;
   }
@@ -245,7 +250,8 @@ export function ensureLivingWorld(platform, { bootstrap = false } = {}) {
   for (const resident of LIVING_ROSTER) {
     const operator = accounts[resident.operatorKey];
     let agent = platform.get('SELECT * FROM agents WHERE id=?', resident.id);
-    if (!agent) {
+    const newAgent = !agent;
+    if (newAgent) {
       const now = new Date(platform.clock()).toISOString();
       platform.run(
         'INSERT INTO agents(id,operator_id,name,color,symbol,capabilities,limitations,x,y,z,world_id,grounded,posture,status,created_at,last_seen,verified,kind,region_id,country) VALUES(?,?,?,?,?,?,?,?,?,0,?,1,?,?,?,?,1,?,?,?)',
@@ -268,7 +274,7 @@ export function ensureLivingWorld(platform, { bootstrap = false } = {}) {
       );
     }
 
-    // Seed starter inventory for trading and crafting loops
+    // Starter stock is a one-time grant. Refilling it on every tick creates unlimited goods.
     const initialItems = [
       { kind: 'blossom', qty: 10 },
       { kind: 'fiber', qty: 10 },
@@ -276,9 +282,9 @@ export function ensureLivingWorld(platform, { bootstrap = false } = {}) {
       { kind: 'wood', qty: 12 },
       { kind: 'stone', qty: 12 },
     ];
-    for (const item of initialItems) {
+    for (const item of newAgent ? initialItems : []) {
       platform.run(
-        'INSERT INTO journey_inventory(agent_id,kind,quantity) VALUES(?,?,?) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=MAX(quantity,excluded.quantity)',
+        'INSERT OR IGNORE INTO journey_inventory(agent_id,kind,quantity) VALUES(?,?,?)',
         agent.id, item.kind, item.qty
       );
     }
@@ -363,14 +369,16 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
 
   // Inspect recent public messages to see if any human spoke recently and needs an answer
   const recentMessages = platform.all(
-    "SELECT id, agent_id, account_id, text, created_at FROM messages WHERE world_id='commons' AND channel='public' ORDER BY created_at DESC LIMIT 5"
+    "SELECT rowid AS message_order, id, agent_id, account_id, text, created_at FROM messages WHERE world_id='commons' AND channel='public' ORDER BY rowid DESC LIMIT 10"
   );
   const now = platform.clock();
   const latestHumanMsg = recentMessages.find((m) => {
     const isBot = Object.keys(agents).includes(m.agent_id);
     const age = now - Date.parse(m.created_at);
-    return !isBot && age < 30_000;
+    return !isBot && age >= -5_000 && age < 30_000;
   });
+  const alreadyAnswered = latestHumanMsg && recentMessages.some((m) =>
+    Object.keys(agents).includes(m.agent_id) && m.message_order > latestHumanMsg.message_order);
 
   let repliedToHuman = false;
 
@@ -414,7 +422,7 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
 
     // 3. Interactive Response or Ambient Chatter
     // If a human recently spoke in Commons, nearest living agent replies
-    if (!repliedToHuman && latestHumanMsg) {
+    if (!repliedToHuman && latestHumanMsg && !alreadyAnswered) {
       const dist = Math.abs(agent.x - 20) + Math.abs(agent.y - 18);
       if (dist <= 12) {
         const text = latestHumanMsg.text.toLowerCase();
@@ -485,8 +493,10 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
   // 6. Autonomous Trade Market Activity (WoW Auction House Style)
   // Check if open trade listings exist; if so, claim them. If low on listings, post new ones!
   try {
+    // Autonomous operators only exchange their own listings; player offers require player intent.
     const openListings = platform.all(
-      "SELECT id, poster_agent_id, poster_account_id, status FROM trade_listings WHERE status='open' LIMIT 5"
+      "SELECT id, poster_agent_id, poster_account_id, status FROM trade_listings WHERE status='open' AND poster_account_id IN (?,?) LIMIT 5",
+      accounts.artisans.id, accounts.botanists.id
     );
 
     // If an artisan listing exists, botanist agent can claim it if they hold the terms
@@ -564,9 +574,9 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
           aria.id, 3, 3, 'blossom', now, null
         );
         report.cultivated = (report.cultivated || 0) + 1;
-      } else if (crop.harvested_at == null && now - crop.planted_at > 2000) {
+      } else if (crop.harvested_at == null && now - crop.planted_at >= blossomRules.grow_ms) {
         platform.run('UPDATE journey_crops SET harvested_at=? WHERE agent_id=? AND x=3 AND y=3 AND harvested_at IS NULL', now, aria.id);
-        platform.run('INSERT INTO journey_inventory VALUES(?,?,?) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=quantity+excluded.quantity', aria.id, crop.kind, 4);
+        platform.run('INSERT INTO journey_inventory VALUES(?,?,?) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=quantity+excluded.quantity', aria.id, crop.kind, blossomRules.yield.quantity);
         platform.run('UPDATE journey_profiles SET harvests=harvests+1 WHERE agent_id=?', aria.id);
         report.harvested = (report.harvested || 0) + 1;
       }
@@ -577,14 +587,10 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
 
     // Kael crafts keepsakes when materials are available
     if (kael && accounts.artisans) {
-      const fiber = platform.get("SELECT quantity FROM journey_inventory WHERE agent_id=? AND kind='fiber'", kael.id)?.quantity || 0;
-      if (fiber >= 2) {
-        platform.run("UPDATE journey_inventory SET quantity=quantity-2 WHERE agent_id=? AND kind='fiber'", kael.id);
-        platform.run("INSERT INTO journey_inventory VALUES(?,'woven_banner',1) ON CONFLICT(agent_id,kind) DO UPDATE SET quantity=quantity+1", kael.id);
-        platform.run('UPDATE journey_profiles SET crafts=crafts+1 WHERE agent_id=?', kael.id);
-        platform.audit(accounts.artisans.id, 'journey.crafted', kael.id);
+      try {
+        platform.craftItem({ account: accounts.artisans, kind: 'session' }, { agent_id: kael.id, recipe_id: 'woven_banner' });
         report.crafted = (report.crafted || 0) + 1;
-      }
+      } catch (error) { if (error.status !== 409) throw error; }
       try {
         platform.callings({ account: accounts.artisans, kind: 'session' }, { agent_id: kael.id });
       } catch {}
@@ -615,7 +621,3 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
 
   return report;
 }
-
-Platform.prototype.livingWorldTick = function() {
-  return livingWorldTick(this);
-};

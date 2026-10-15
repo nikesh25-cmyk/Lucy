@@ -476,6 +476,8 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   }
   const cancel = () => { drag = null; };
   const leave = () => { if (destroyed || !hoveredParcel) return; hoveredParcel = null; contents.highlightParcel(lastOptions?.parcelSelection, null); paint(); onHover?.(null); };
+  const contextLost = event => { event.preventDefault(); lost = true; drag = null; onUnavailable?.('The 3D view lost its graphics context. Switch to the map view.'); };
+  const contextRestored = () => { if (destroyed) return; lost = false; paint(); };
   const wheel = event => {
     if (destroyed || lost) return;
     if (event.preventDefault) event.preventDefault();
