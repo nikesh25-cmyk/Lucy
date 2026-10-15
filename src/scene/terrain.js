@@ -56,8 +56,14 @@ export function portalFrames({ batch, plan, colors, layers }) {
   layer(batch, layers, 'navigation', () => {
     for (const item of plan.portals) {
       const pick = { x: item.x, y: item.y, z: 0, type: 'portal', portal: item };
-      for (const dx of [-.5, .5]) batch.add(item.x + .5 + dx, 1.1, item.y + .5, .2, 2.2, .2, '#78998b', pick);
+      for (const dx of [-.5, .5]) {
+        batch.add(item.x + .5 + dx, 1.1, item.y + .5, .2, 2.2, .2, '#78998b', pick);
+        batch.add(item.x + .5 + dx, 2.26, item.y + .5, .24, .14, .24, '#5d7e70', pick);
+        batch.add(item.x + .5 + dx, 2.4, item.y + .5, .16, .16, .16, colors.gold, pick, 'glow');
+      }
       batch.add(item.x + .5, 2.17, item.y + .5, 1.3, .22, .22, colors.gold, pick, 'glow');
+      batch.add(item.x + .5, 2.36, item.y + .5, .4, .2, .24, colors.gold, pick, 'glow');
+      batch.add(item.x + .5, 2.52, item.y + .5, .2, .16, .2, '#c8f0dc', pick, 'glow');
       batch.add(item.x + .5, .04, item.y + .5, 1.28, .07, .8, '#9dccb6', pick, 'glow');
     }
   });
@@ -68,7 +74,11 @@ export function gateFrames({ batch, plan, colors, layers }) {
   layer(batch, layers, 'navigation', () => {
     for (const item of plan.gates) {
       const pick = { x: item.x, y: item.y, z: 0, type: 'gate', neighbor: item };
-      for (const dx of [-.5, .5]) batch.add(item.x + .5 + dx, 1, item.y + .5, .22, 2, .22, colors.trunk, pick);
+      for (const dx of [-.5, .5]) {
+        batch.add(item.x + .5 + dx, 1, item.y + .5, .22, 2, .22, colors.trunk, pick);
+        batch.add(item.x + .5 + dx, 2.16, item.y + .5, .26, .12, .26, colors.dark, pick);
+        batch.add(item.x + .5 + dx, 2.3, item.y + .5, .18, .18, .18, colors.gold, pick, 'glow');
+      }
       batch.add(item.x + .5, 2.04, item.y + .5, 1.42, .23, .23, colors.gold, pick, 'glow');
       batch.add(item.x + .5, 1.72, item.y + .5, 1.24, .1, .12, '#98ac96', pick);
       batch.add(item.x + .5, 1.68, item.y + .5, .2, .2, .2, colors.gold, pick, 'glow');

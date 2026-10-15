@@ -476,9 +476,13 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   }
   const cancel = () => { drag = null; };
   const leave = () => { if (destroyed || !hoveredParcel) return; hoveredParcel = null; contents.highlightParcel(lastOptions?.parcelSelection, null); paint(); onHover?.(null); };
-  const contextLost = event => { event.preventDefault(); lost = true; drag = null; onUnavailable?.('The 3D view lost its graphics context. Switch to the map view.'); };
-  const contextRestored = () => { if (destroyed) return; lost = false; paint(); };
-  const listeners = [['pointerdown', down], ['pointermove', movePointer], ['pointerup', up], ['pointerleave', leave], ['pointercancel', cancel], ['lostpointercapture', cancel], ['webglcontextlost', contextLost], ['webglcontextrestored', contextRestored]];
+  const wheel = event => {
+    if (destroyed || lost) return;
+    if (event.preventDefault) event.preventDefault();
+    const delta = Math.sign(event.deltaY || 0) * 1.5;
+    if (delta) { orbitInput.zoom(delta); paint(); }
+  };
+  const listeners = [['pointerdown', down], ['pointermove', movePointer], ['pointerup', up], ['pointerleave', leave], ['pointercancel', cancel], ['lostpointercapture', cancel], ['wheel', wheel], ['webglcontextlost', contextLost], ['webglcontextrestored', contextRestored]];
   for (const [name, handler] of listeners) canvas.addEventListener(name, handler);
   const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(paint) : null; observer?.observe(canvas);
   return {

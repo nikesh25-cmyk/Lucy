@@ -169,7 +169,23 @@ function newcomerProgress(){const stored=storedObject(ownerStorageKey(NEWCOMER_K
 function saveNewcomerProgress(progress){const next={completed:[...new Set((progress.completed||[]).filter(id=>typeof id==='string'))],acknowledged:Boolean(progress.acknowledged)};storageSet(ownerStorageKey(NEWCOMER_KEY),JSON.stringify(next));return next;}
 function newcomerComplete(id,acknowledged=null){const progress=newcomerProgress();if(progress.completed.includes(id)&&(acknowledged===null||acknowledged===progress.acknowledged))return progress;return saveNewcomerProgress({completed:[...progress.completed,id],acknowledged:acknowledged===null?progress.acknowledged:acknowledged});}
 // newcomer-persistence:end
-function notice(message, error = false) { const node = error && $('#auth-dialog').open ? $('#auth-notice') : $('#notice'); node.textContent = message; node.className = error ? 'error' : ''; node.hidden = false; node.setAttribute('role',error?'alert':'status'); }
+let noticeTimer = null;
+function notice(message, error = false) {
+  const node = error && $('#auth-dialog')?.open ? $('#auth-notice') : $('#notice');
+  if (!node) return;
+  node.textContent = message;
+  node.className = error ? 'error' : '';
+  node.hidden = false;
+  node.setAttribute('role', error ? 'alert' : 'status');
+  if (node.id === 'notice') {
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => {
+      node.hidden = true;
+      noticeTimer = null;
+    }, 5500);
+    node.onclick = () => { node.hidden = true; if (noticeTimer) { clearTimeout(noticeTimer); noticeTimer = null; } };
+  }
+}
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
@@ -486,7 +502,7 @@ async function loadAmbassadors() { state.ambassadorPage = await api('/ambassador
 async function openAmbassador(id) { state.ambassadorProfile = await api('/ambassador?id=' + encodeURIComponent(id)); newcomerComplete('ambassador'); await openSection('civic'); }
 async function visitWorld(id) { walkVersion++;$('#notice').hidden=true; await enterObservation(id,getWorldDefinition(id).start); }
 let lastMotionAt = 0;
-async function motionRequest(path, body) { const delay = Math.max(0, 160 - (performance.now() - lastMotionAt)); if (delay) await new Promise((resolve) => setTimeout(resolve, delay)); lastMotionAt = performance.now(); return api(path, 'POST', body); }
+async function motionRequest(path, body) { const delay = Math.max(0, 130 - (performance.now() - lastMotionAt)); if (delay) await new Promise((resolve) => setTimeout(resolve, delay)); lastMotionAt = performance.now(); return api(path, 'POST', body); }
 const wrapFacing = (value) => value >= -Math.PI && value <= Math.PI ? value : ((value + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 const clampFacing = (value) => Math.max(-1.4, Math.min(1.4, value));
 let lookChain = Promise.resolve();

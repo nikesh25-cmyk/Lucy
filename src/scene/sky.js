@@ -34,17 +34,17 @@ export const SHADOW_LIMITS = Object.freeze({ map_size: 1024, extent: 24, extent_
  * far markers.
  */
 export const SKY_PHASES = Object.freeze({
-  dawn: Object.freeze({ sky: '#d9c7a7', fog: '#c9c8aa', zenith: '#f8dfb3', ground: '#6e8069', sun: '#ffd79d', skyLight: 1.55,
-    sunLight: 1.9, sunHeight: 16, sunAzimuth: -1.15, exposure: 1.14, edgeFade: .66, cloud: '#ecd9c0',
+  dawn: Object.freeze({ sky: '#d9bda0', fog: '#d9bda0', zenith: '#fae3c6', ground: '#667761', sun: '#ffd094', skyLight: 1.65,
+    sunLight: 2.05, sunHeight: 16, sunAzimuth: -1.15, exposure: 1.14, edgeFade: .66, cloud: '#ecd9c0',
     disc: Object.freeze({ color: '#ffe0b0', glow: '#f0cfa2', size: 1.5 }), horizon: '#f6d7a8', stars: 0 }),
-  day: Object.freeze({ sky: '#a9ccc5', fog: '#b6d1c0', zenith: '#eff7e7', ground: '#697f64', sun: '#fff0c9', skyLight: 1.9,
-    sunLight: 2.35, sunHeight: 25, sunAzimuth: .42, exposure: 1.12, edgeFade: .6, cloud: '#e1ebe4',
+  day: Object.freeze({ sky: '#8ab4c4', fog: '#8ab4c4', zenith: '#eaf4f7', ground: '#5c7558', sun: '#fff2ce', skyLight: 2.05,
+    sunLight: 2.45, sunHeight: 25, sunAzimuth: .42, exposure: 1.14, edgeFade: .6, cloud: '#eaf2ee',
     disc: Object.freeze({ color: '#fff6d6', glow: '#eaf2e4', size: 1.3 }), horizon: null, stars: 0 }),
-  dusk: Object.freeze({ sky: '#c59e86', fog: '#c1a68d', zenith: '#f6d3ae', ground: '#667568', sun: '#ffbe78', skyLight: 1.4,
-    sunLight: 1.75, sunHeight: 13, sunAzimuth: 1.05, exposure: 1.1, edgeFade: .66, cloud: '#e5c3a6',
+  dusk: Object.freeze({ sky: '#b8836e', fog: '#b8836e', zenith: '#f6bca0', ground: '#5e685f', sun: '#ffa86b', skyLight: 1.5,
+    sunLight: 1.85, sunHeight: 13, sunAzimuth: 1.05, exposure: 1.12, edgeFade: .66, cloud: '#e5c3a6',
     disc: Object.freeze({ color: '#ffcb8b', glow: '#edb086', size: 1.7 }), horizon: '#e8b98c', stars: 0 }),
-  night: Object.freeze({ sky: '#334d57', fog: '#405b60', zenith: '#9ebbc0', ground: '#344841', sun: '#a9c7d8', skyLight: 1.05,
-    sunLight: 1.15, sunHeight: 20, sunAzimuth: 2.4, exposure: 1.2, edgeFade: .72, cloud: '#46566a',
+  night: Object.freeze({ sky: '#223340', fog: '#223340', zenith: '#6d8fa1', ground: '#2c3d36', sun: '#9cbacc', skyLight: 1.1,
+    sunLight: 1.2, sunHeight: 20, sunAzimuth: 2.4, exposure: 1.2, edgeFade: .72, cloud: '#3d4d5e',
     disc: Object.freeze({ color: '#eef2e0', glow: '#cfe0e2', size: 1.1 }), horizon: null, stars: 44 }),
 });
 
