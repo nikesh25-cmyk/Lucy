@@ -27,6 +27,6 @@
     "geometry": "prop"
   },
   "notes": [
-    "Private cottage interior furnishing; the tile renderer draws a dedicated case (world.js) and the voxel scene uses the generic prop branch."
+    "Private cottage interior furnishing; the tile renderer draws a dedicated case (world.js) and the voxel scene draws its own kitchen case in furniture(): a cabinet run in this tone, a worktop, a hob, a kettle and a wall cupboard inside one tile."
   ]
 }

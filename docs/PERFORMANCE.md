@@ -746,3 +746,26 @@ commands there.
 The harness exits non-zero when the failure budget is exceeded, so it can be used as a release probe on
 a machine of interest. It is deliberately **not** part of `npm test`: a timing measurement is evidence,
 not a stable assertion.
+
+## Renderer budgets after the first visual slice (15 October 2026)
+
+The slice adds geometry (room walls, windows and floor patterns; lamp light) and one batch (`voxel-lights`).
+It stays inside the stated budgets without raising any of them. Exact and machine-independent, from the same
+GPU-free scene builder the tests use (`createVoxelScene().update`, no residents, the world's own start tile):
+
+| World | Instances before → after | Draw batches before → after | Lit-lamp instances |
+| --- | --- | --- | --- |
+| `hall` / `pavilion` | 790 → 1,192 | 42 → 77 | 12 |
+| `library` | 1,588 → 2,069 | 49 → 83 | 19 |
+| `observatory` (the largest room, 32 × 24) | 1,230 → 1,787 | 53 → 88 | 14 |
+| `house:sample` (a cottage) | 783 → 1,186 | 53 → 90 | 6 |
+| `commons`, day | 1,902 → 1,902 | 90 → 90 | 0 |
+| `commons`, night | 1,946 → 1,948 | 92 → 94 | 2 |
+| `frontier:0:0` and `frontier:-3:5`, night | 2,527 and 2,667, unchanged | 84 and 56, unchanged | 0 |
+
+The largest room is 1,787 of the 3,600-instance `DIORAMA_BUDGET.instances`, and the worst batch count anywhere
+in the sweep is 94 of the 130 `DIORAMA_BUDGET.draw_calls`. Outdoor worlds are unchanged except for lit lamps at
+dusk, night and dawn (at most 48 lamps, three instances each). The face tone adds no instance and no batch: it
+is a shader change on the existing materials, and the glow strength is a material property. No frame time was
+measured (there is no GPU in this loop); `tests/render-interiors.test.js` asserts the instance and batch
+ceilings for every authored room, with and without the level-of-detail rule, and under reduced motion.

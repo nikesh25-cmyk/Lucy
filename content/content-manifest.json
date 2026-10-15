@@ -1505,7 +1505,7 @@
       "id": "kitchen",
       "kind": "furniture",
       "file": "content/furniture/kitchen.json",
-      "sha256": "4aa066647dfaf011b50812f2666f7911baacfd020adb32c8b8bc7f30257357bf",
+      "sha256": "817099cdebba54d2ead305c8b36db59e9feb0e0198b893fe7d5a5182f2ac007e",
       "license": {
         "spdx": "LicenseRef-NemoWorld-Project-Authored",
         "author": "NemoWorld project contributors",

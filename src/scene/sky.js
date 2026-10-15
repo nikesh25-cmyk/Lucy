@@ -13,6 +13,11 @@
 //      drawn object is ever more than ~70% faded, so an obstacle keeps its silhouette.
 //   2. The night phase raises its ambient light and exposure instead of darkening the world below
 //      legibility, so a resident can still see the obstacle in front of them at 03:00.
+//
+// Light contrast. A flat-shaded world only reads when its lit faces and its shaded faces are clearly
+// different, so every phase keeps the key light well above the hemisphere light (a `sunLight` to
+// `skyLight` ratio of about 1.5 to 2) and the phase table below states that ratio instead of leaving it
+// implied. The per-face tone and the contact shade that finish the job live in src/scene/batch.js.
 import * as THREE from '../../assets/vendor/three-voxel.js';
 import { hash } from './batch.js';
 
@@ -34,19 +39,32 @@ export const SHADOW_LIMITS = Object.freeze({ map_size: 1024, extent: 24, extent_
  * far markers.
  */
 export const SKY_PHASES = Object.freeze({
-  dawn: Object.freeze({ sky: '#d9bda0', fog: '#d9bda0', zenith: '#fae3c6', ground: '#667761', sun: '#ffd094', skyLight: 1.65,
-    sunLight: 2.05, sunHeight: 16, sunAzimuth: -1.15, exposure: 1.14, edgeFade: .66, cloud: '#ecd9c0',
+  dawn: Object.freeze({ sky: '#d9bda0', fog: '#d9bda0', zenith: '#fae3c6', ground: '#6d7d66', sun: '#ffc98a', skyLight: 1.3,
+    sunLight: 2.55, sunHeight: 15, sunAzimuth: -1.15, exposure: 1.14, edgeFade: .66, cloud: '#ecd9c0', glow: .5,
     disc: Object.freeze({ color: '#ffe0b0', glow: '#f0cfa2', size: 1.5 }), horizon: '#f6d7a8', stars: 0 }),
-  day: Object.freeze({ sky: '#8ab4c4', fog: '#8ab4c4', zenith: '#eaf4f7', ground: '#5c7558', sun: '#fff2ce', skyLight: 2.05,
-    sunLight: 2.45, sunHeight: 25, sunAzimuth: .42, exposure: 1.14, edgeFade: .6, cloud: '#eaf2ee',
+  day: Object.freeze({ sky: '#8ab4c4', fog: '#8ab4c4', zenith: '#eaf4f7', ground: '#5c7558', sun: '#fff2ce', skyLight: 1.85,
+    sunLight: 3.05, sunHeight: 25, sunAzimuth: .42, exposure: 1.14, edgeFade: .6, cloud: '#eaf2ee', glow: .28,
     disc: Object.freeze({ color: '#fff6d6', glow: '#eaf2e4', size: 1.3 }), horizon: null, stars: 0 }),
-  dusk: Object.freeze({ sky: '#b8836e', fog: '#b8836e', zenith: '#f6bca0', ground: '#5e685f', sun: '#ffa86b', skyLight: 1.5,
-    sunLight: 1.85, sunHeight: 13, sunAzimuth: 1.05, exposure: 1.12, edgeFade: .66, cloud: '#e5c3a6',
+  dusk: Object.freeze({ sky: '#b8836e', fog: '#b8836e', zenith: '#f6bca0', ground: '#625b5c', sun: '#ff9d5c', skyLight: 1.15,
+    sunLight: 2.3, sunHeight: 12, sunAzimuth: 1.05, exposure: 1.14, edgeFade: .66, cloud: '#e5c3a6', glow: .85,
     disc: Object.freeze({ color: '#ffcb8b', glow: '#edb086', size: 1.7 }), horizon: '#e8b98c', stars: 0 }),
-  night: Object.freeze({ sky: '#223340', fog: '#223340', zenith: '#6d8fa1', ground: '#2c3d36', sun: '#9cbacc', skyLight: 1.1,
-    sunLight: 1.2, sunHeight: 20, sunAzimuth: 2.4, exposure: 1.2, edgeFade: .72, cloud: '#3d4d5e',
+  // Night keeps a legible floor by *colour*, not by flattening: a pale blue moon on the lit faces, a
+  // clearly darker bounce on the shaded ones, and lamps and windows burning at full strength so they
+  // become the brightest things in view.
+  night: Object.freeze({ sky: '#1b2a3d', fog: '#223348', zenith: '#9dbbe0', ground: '#3a4f62', sun: '#c4d9ff', skyLight: 1.4,
+    sunLight: 2.3, sunHeight: 20, sunAzimuth: 2.4, exposure: 1.34, edgeFade: .72, cloud: '#3d4d5e', glow: 1.25,
     disc: Object.freeze({ color: '#eef2e0', glow: '#cfe0e2', size: 1.1 }), horizon: null, stars: 44 }),
 });
+
+/**
+ * The light of a room. An interior has no sky and no hour, so it is lit the same way at every phase: a
+ * warm window-and-lamp key from one side, a soft warm bounce, and a dark warm backdrop so the room
+ * reads as a lit stage instead of a floor floating in daylight. Not a fifth phase: `SKY_PHASES` stays
+ * the four published names, and this entry is only ever chosen by an interior world.
+ */
+export const INTERIOR_LIGHTING = Object.freeze({ sky: '#201c1a', fog: '#2a2420', zenith: '#fff1d8', ground: '#8f7b63', sun: '#ffe2b4',
+  skyLight: 1.45, sunLight: 2.7, sunHeight: 22, sunAzimuth: .8, exposure: 1.2, edgeFade: .66, cloud: '#3a322c', glow: 1.0,
+  disc: null, horizon: null, stars: 0 });
 
 /** The phase table entry for a published name, the legacy alias, or an unknown phase (day). */
 export function phaseLighting(name) {
@@ -99,8 +117,8 @@ export const shadowResolution = (extent) => SHADOW_LIMITS.map_size / (extent * 2
  * Applies one phase to the live scene and returns exactly what it set, so a test can read the
  * applied values back instead of re-deriving them.
  */
-export function applyPhase({ scene, sky, sun, renderer, phase, position, distance = 0, plan }) {
-  const entry = phaseLighting(phase), fog = fogFor(entry, distance), name = resolvedPhase(phase);
+export function applyPhase({ scene, sky, sun, renderer, phase, position, distance = 0, plan, interior = false }) {
+  const entry = interior ? INTERIOR_LIGHTING : phaseLighting(phase), fog = fogFor(entry, distance), name = interior ? 'interior' : resolvedPhase(phase);
   if (scene.background) scene.background.set(entry.sky); else scene.background = new THREE.Color(entry.sky);
   if (!scene.fog) scene.fog = new THREE.Fog(entry.fog, fog.near, fog.far);
   scene.fog.color.set(entry.fog);
@@ -118,7 +136,7 @@ export function applyPhase({ scene, sky, sun, renderer, phase, position, distanc
   if (sun.shadow.mapSize.x !== SHADOW_LIMITS.map_size) sun.shadow.mapSize.set(SHADOW_LIMITS.map_size, SHADOW_LIMITS.map_size);
   if (renderer) renderer.toneMappingExposure = entry.exposure;
   return { phase: name, background: entry.sky, fog: { ...fog }, skyLight: entry.skyLight,
-    sunLight: entry.sunLight, sun: { ...placement }, extent, exposure: entry.exposure };
+    sunLight: entry.sunLight, sun: { ...placement }, extent, exposure: entry.exposure, glow: entry.glow };
 }
 
 /**

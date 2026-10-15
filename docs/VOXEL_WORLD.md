@@ -60,11 +60,13 @@ thing stands in the world* lives under `src/scene/`:
 
 | Module | Responsibility | Interface |
 | --- | --- | --- |
-| `src/scene/batch.js` | Instanced batches, one per colour and material style; the batch primitives, the style vocabulary (including the unfogged `haze`/`star`/`sun` styles), and the deterministic palette helpers `hash`, `variant` and `shade` | `createResources()`, `cubeBatch(resources)` → `{ add, finish, size }`, `disposeBatch(batch)`, `SHADOWLESS_STYLES` |
+| `src/scene/batch.js` | Instanced batches, one per colour and material style; the batch primitives, the style vocabulary (including the unfogged `haze`/`star`/`sun` styles and the additive `light` style), the per-face tone, and the glow strength (`setGlow`), and the deterministic palette helpers `hash`, `variant` and `shade` | `createResources()`, `cubeBatch(resources)` → `{ add, finish, size }`, `disposeBatch(batch)`, `SHADOWLESS_STYLES` |
 | `src/scene/terrain.js` | The ground diorama: base cubes with the whole-node cull, surface slabs, bridges, wall and building tiles, garden cells; portal frames, frontier gate frames, landmark pennants | `groundPass(context)`, `portalFrames`, `gateFrames`, `landmarkPennants`, `layer(batch, layers, name, run)` |
 | `src/scene/water.js` | Water as water: depth classification, the surface with its pick, glides, shore breaks, marginal reeds; the basin a `pond` or `fountain` holds | `waterDepth(typeAt, x, y)`, `shoreSides`, `waterTile(batch, spec)`, `waterBasin(batch, spec)`, `WATER_TINTS` |
 | `src/scene/vegetation.js` | Ground cover and understory, placed by the occupancy rule above | `groundCoverPass({ batch, plan, layers })`, `COVER_TINTS`, `COVER_HEIGHT_LIMIT` |
 | `src/scene/buildings.js` | The two building *tiles* of the authored terrain: a boundary wall and a world building cell | `wallTile(batch, spec)`, `buildingTile(batch, spec)`, `BUILDING_TINTS` |
+| `src/scene/interiors.js` | A room's own grammar: walls with wainscot, rail, plaster and crown, a lit window on every fifth tile, framed pictures (stars in the observatory), brackets, parquet seams, rug borders and insets, plaza rings, the floor shade where it meets a wall; one palette per room kind | `isInterior(definition)`, `interiorContext`, `interiorWall`, `interiorFloor`, `openSides`, `interiorStyle`, `INTERIOR_STYLES` |
+| `src/scene/lights.js` | Lamp light as geometry: a halo and two stacked floor pools per lit lamp, in the additive `light` style; empty by day, always on in a room | `lampGlowScene({ resources, cubeBatch, plan, phase })`, `litLamps(plan)`, `LAMP_LIMIT`, `LIT_PHASES` |
 | `src/scene/blocks.js` | Saved frontier blocks, batched apart from the diorama | `blocksScene({ resources, definition, plan, colors, cubeBatch, withParcel })` |
 | `src/scene/parcels.js` | The stewardship overlay (edges, hover, selection, protected lanes) | `parcelScene({ resources, plan, selection, hover, cubeBatch, parcelSelection })` |
 | `src/scene/sky.js` | The phase light, the shadow frustum, the depth cue and the far sky layer | `SKY_PHASES`, `SHADOW_LIMITS`, `phaseLighting(name)`, `resolvedPhase(name)`, `fogFor(entry, distance)`, `sunPlacement`, `shadowExtent(plan)`, `shadowResolution(extent)`, `applyPhase(spec)`, `skyScene(spec)` |
@@ -160,6 +162,38 @@ The sky is its own small batch, rebuilt only when the phase or the window change
 never touches the diorama, the character batch or the saved blocks. A day-phase poll costs 0.3 ms on
 the measured machine and rebuilds 59 of 60 samples' sky layers alone (the sixtieth has the same phase
 as the one before it).
+
+## Rooms, lamp light and face tone
+
+First visual slice (15 October 2026). Three things changed how the world *reads*; none changed what is
+where.
+
+**Face tone** (`FACE_TONES` in `src/scene/batch.js`). A flat-shaded box was lit by its angle to the sun
+and nothing else, so with a high sun or a camera looking along the light every face of a big mass came
+out one colour. The lit `solid` and `detail` materials now carry a vertex-shader tone by world-space face
+(top brightest, then south, east, west, north, bottom darkest) and a contact shade that darkens a side
+face toward the ground. It multiplies albedo only, so emissive panes keep their light, and the sky, haze,
+glass and cloud styles are never patched. The patched program has its own cache key
+(`voxel-face-tone-1`). The phase table also states a key-to-fill ratio of at least 1.4 for every phase
+(`tests/render-interiors.test.js` holds it): night keeps its lifted exposure and ambient floor, and gains
+a pale blue moon on the lit faces and lamps and windows burning at 1.25 instead of 0.28.
+
+**Lamp light** (`src/scene/lights.js`, the `voxel-lights` batch). The bundle exposes no point light, so a
+lit lamp or lantern draws a halo above its lamp head (lowest face 1.56 m) and two stacked 0.03 m floor
+pools, in the additive `light` style. The batch is keyed to the phase like the sky and is empty by day, so
+a phase change rebuilds it and nothing else. At most 48 lamps, nearest first. The emissive strength of
+every `glow` material is a material property moved by the phase (`resources.setGlow`), never a rebuild.
+
+**Rooms** (`src/scene/interiors.js`). `isInterior(definition)` is true for an authored `interior` and for
+any `house:` world, because a cottage reaches the browser as the server's world record (`kind: 'house'`)
+merged over the authored definition; reading `kind` alone drew every cottage as an open garden under a
+daylight sky. A room has its own light (`INTERIOR_LIGHTING`, not a fifth phase), no sky, no distant ground
+and always-lit lamps. Occupancy is unchanged: a wall is still the blocking mass it was and carries its own
+pick; its details protrude at most 0.10 m into the open tile beside it, except a bracket over a window,
+whose lowest face is 1.92 m; floor decals are at most 0.03 m thick and unpicked, so they are exactly the
+decoration the level-of-detail rule may drop. The static diorama's key now includes the viewer's anchor
+whenever some tile is coarse: a room smaller than the window is the same window from every tile in it, so
+without that the first anchor's decals would stay for good.
 
 ## Water, cover and buildings
 
