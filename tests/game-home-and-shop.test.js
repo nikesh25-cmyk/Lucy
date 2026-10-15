@@ -39,8 +39,8 @@ test('opening a calling panel or guide details writes no action and preserves se
 });
 
 function homeHarness(travel){
-  const agent={id:'a',world_id:'commons',status:'active'},state={selected:'a',sessionEpoch:1,account:{id:'operator'},world:{paused:false,world:{id:'commons'}},building:false,gameDrawer:'tools'};
-  const scope={state,selected:()=>state.selected==='a'?agent:{id:'b',world_id:'commons'},currentWorldId:()=>agent.world_id,viewedAgent:()=>agent,travelAgent:travel,worldPortals:()=>state.world.portals||[],portalTarget:portal=>portal.target_world_id||portal.targetWorldId,enterPortal:async()=>false,placementRulesFor:payload=>({available:Boolean(payload.build_palette?.length)}),notice:(...args)=>scope.notices.push(args),notices:[],setTab:()=>{},renderGamePanel:()=>{},render:()=>scope.renders++,renders:0,applyGameShell:()=>{},$:()=>({focus(){}})};
+  const agent={id:'a',world_id:'commons',status:'active'},state={selected:'a',sessionEpoch:1,account:{id:'operator'},world:{paused:false,world:{id:'commons'}},building:false,gameDrawer:'tools',gamePanel:''};
+  const scope={state,sectionTicket:0,activeSection:()=>state.gamePanel||'world',selected:()=>state.selected==='a'?agent:{id:'b',world_id:'commons'},currentWorldId:()=>agent.world_id,viewedAgent:()=>agent,travelAgent:travel,worldPortals:()=>state.world.portals||[],portalTarget:portal=>portal.target_world_id||portal.targetWorldId,enterPortal:async()=>false,placementRulesFor:payload=>({available:Boolean(payload.build_palette?.length)}),notice:(...args)=>scope.notices.push(args),notices:[],setTab:tab=>{state.gamePanel=tab==='world'?'':tab;},renderGamePanel:()=>{},render:()=>scope.renders++,renders:0,applyGameShell:()=>{},$:()=>({focus(){}})};
   vm.runInNewContext(`${between('async function enterOwnedSpace(', 'async function readHomePrivacy(')};globalThis.run=enterOwnedSpace`,scope);
   return{agent,state,scope};
 }
@@ -111,6 +111,37 @@ test('a stale cottage doorway walk cannot dispatch travel, while building inside
   h.agent.world_id='house:a';h.state.world={world:{id:'house:a',owner_agent_id:'a'},build_palette:['chair']};
   h.scope.travelAgent=async()=>assert.fail('furnishing an already-entered cottage must not travel');
   assert.equal(await h.scope.run({build:true}),true);assert.equal(h.state.building,true);
+});
+
+test('a newer panel, pending section or drawer choice cancels Home Build without losing the saved arrival',async()=>{
+  for(const change of [h=>{h.scope.sectionTicket++;h.state.gamePanel='restoration';},h=>{h.scope.sectionTicket++;},h=>{h.state.gameDrawer='chat';}]){
+    const gate=deferred(),h=homeHarness(async id=>{await gate.promise;h.agent.world_id=id;h.state.world={world:{id,owner_agent_id:'a'},build_palette:['flowers']};return true;});
+    const pending=h.scope.run({build:true});change(h);
+    const panel=h.state.gamePanel,drawer=h.state.gameDrawer;gate.resolve();
+    assert.equal(await pending,false);assert.equal(h.agent.world_id,'home:a');assert.equal(h.state.building,false);assert.equal(h.state.gamePanel,panel);assert.equal(h.state.gameDrawer,drawer);assert.equal(h.scope.renders,0);assert.match(h.scope.notices.at(-1)[0],/Building did not start/);
+  }
+});
+
+test('normal Home Build from an existing panel accepts travelAgent’s own return to the world',async()=>{
+  const h=homeHarness(async id=>{h.agent.world_id=id;h.state.world={world:{id,owner_agent_id:'a'},build_palette:['flowers']};h.scope.setTab('world');return true;});
+  h.state.gamePanel='home';
+  assert.equal(await h.scope.run({build:true}),true);assert.equal(h.agent.world_id,'home:a');assert.equal(h.state.building,true);assert.equal(h.state.gamePanel,'');
+});
+
+test('choosing another view during garden travel stops the cottage chain and a later explicit request resumes at its real doorway',async()=>{
+  const gate=deferred(),destinations=[],door={x:4,y:2,target_world_id:'house:a'};
+  const h=homeHarness(async id=>{destinations.push(id);await gate.promise;h.agent.world_id=id;h.state.world={world:{id,owner_agent_id:'a'},build_palette:['flowers'],portals:[door]};return true;});
+  let attempts=0;h.scope.enterPortal=async observed=>{assert.equal(observed,door);attempts++;h.agent.world_id='house:a';h.state.world={world:{id:'house:a',owner_agent_id:'a'},build_palette:['chair']};return true;};
+  const pending=h.scope.run({cottage:true});h.scope.sectionTicket++;h.state.gamePanel='restoration';gate.resolve();
+  assert.equal(await pending,false);assert.equal(h.agent.world_id,'home:a');assert.equal(attempts,0);assert.equal(h.state.gamePanel,'restoration');assert.match(h.scope.notices.at(-1)[0],/Cottage entry stopped/);
+  assert.equal(await h.scope.run({cottage:true}),true);assert.equal(attempts,1);assert.equal(h.agent.world_id,'house:a');assert.deepEqual(destinations,['home:a'],'resuming uses the already-reached garden rather than starting another Home trip');
+});
+
+test('a new panel chosen during the cottage doorway journey remains open after confirmed entry',async()=>{
+  const gate=deferred(),started=deferred(),h=homeHarness(async id=>{h.agent.world_id=id;h.state.world={world:{id,owner_agent_id:'a'},portals:[{x:4,y:2,target_world_id:'house:a'}]};return true;});
+  h.scope.enterPortal=async()=>{started.resolve();await gate.promise;h.agent.world_id='house:a';h.state.world={world:{id:'house:a',owner_agent_id:'a'}};return true;};
+  const pending=h.scope.run({cottage:true});await started.promise;h.scope.sectionTicket++;h.state.gamePanel='community';h.state.gameDrawer='';gate.resolve();
+  assert.equal(await pending,true,'the confirmed cottage arrival is retained');assert.equal(h.agent.world_id,'house:a');assert.equal(h.state.gamePanel,'community');assert.equal(h.state.gameDrawer,'');assert.equal(h.state.building,false);
 });
 
 test('home privacy reads the actual cottage state and saves through the existing settings route',async()=>{

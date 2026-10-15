@@ -2565,12 +2565,21 @@ function renderKarmaShop(parent){
 /** The free personal space every resident already owns, named and reachable in one action. */
 async function enterOwnedSpace({cottage=false,build=false}={}){
   const resident=selected(),epoch=state.sessionEpoch||0;if(!resident)return false;
+  const navigationTicket=sectionTicket,sectionAtStart=activeSection(),drawerAtStart=state.gameDrawer;
   if(state.world.paused){notice('The world is paused. Your home and saved work are still here; try again when it resumes.',true);return false;}
   const gardenId=`home:${resident.id}`,cottageId=`house:${resident.id}`;
   // Continue furnishing the owned cottage when already inside it; a Build request elsewhere goes
   // to the garden first. The arrival is confirmed by the server before any palette is enabled.
   const target=cottage||build&&currentWorldId()===cottageId?cottageId:gardenId;
   const stillCurrent=()=>selected()?.id===resident.id&&(state.sessionEpoch||0)===epoch;
+  // travelAgent may open the world as its ordinary arrival. A newer menu selection or changed
+  // drawer belongs to the operator, so a continuing Home chain must not close it or arm building.
+  const ownsNavigation=()=>sectionTicket===navigationTicket&&(activeSection()===sectionAtStart||activeSection()==='world')&&state.gameDrawer===drawerAtStart;
+  const navigationRecovery=()=>{
+    if(!stillCurrent())return;
+    if(selected().world_id===gardenId&&target===cottageId)notice('You are home in your garden. Cottage entry stopped when you chose another view. Use Open my cottage when you are ready.');
+    else if(build&&selected().world_id===target)notice('You are home. Building did not start because you chose another view. Use Build something to resume.');
+  };
   if(currentWorldId()!==target||!viewedAgent()){
     if(target===cottageId){
       // A cottage is entered through its actual garden doorway. Going home is allowed directly;
@@ -2580,12 +2589,14 @@ async function enterOwnedSpace({cottage=false,build=false}={}){
       }
       if(!stillCurrent())return false;
       if(selected().world_id!==gardenId||state.world.world?.id!==gardenId)return false;
+      if(!ownsNavigation()){navigationRecovery();return false;}
       const doorway=worldPortals().find(portal=>portalTarget(portal)===cottageId);
       if(!doorway){notice('Your garden is open, but its cottage doorway is unavailable. You can keep using the garden and try the cottage again later.',true);return false;}
       if(!await enterPortal(doorway))return false;
     }else if(!await travelAgent(target))return false;
   }
   if(!stillCurrent()||selected().world_id!==target)return false;
+  if(!ownsNavigation()){navigationRecovery();return !build;}
   state.gameDrawer='';state.gameMenuOpen=false;setTab('world');renderGamePanel();
   if(build){
     if(state.world.world?.id!==target||state.world.world?.owner_agent_id!==resident.id||!placementRulesFor(state.world).available){
