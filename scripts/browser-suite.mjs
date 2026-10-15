@@ -5634,7 +5634,7 @@ define('signed-in-game-play', async () => {
         const atCenter = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
         return { label: button.getAttribute('aria-label'), disabled: button.disabled, x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable: button === atCenter || button.contains(atCenter) };
       }));
-      expect(targets.length === 10 && targets.every((target) => target.x >= 0 && target.right <= 390 && target.y >= 60 && target.bottom <= 844 && target.width >= 44 && target.height >= 44),
+      expect(targets.length === 11 && targets.every((target) => target.x >= 0 && target.right <= 390 && target.y >= 60 && target.bottom <= 844 && target.width >= 44 && target.height >= 44),
         'every phone movement, camera and action target must be visible and tappable', { actual: describe(targets) });
       expect(targets.every((target) => target.reachable), 'no guide, map control or HUD may cover a phone touch target', { actual: describe(targets.filter((target) => !target.reachable)) });
       const bands = await page.evaluate(() => ({ touch: document.querySelector('.nm-touch-floating').getBoundingClientRect().bottom, hud: document.querySelector('.game-hud-bottom').getBoundingClientRect().top }));

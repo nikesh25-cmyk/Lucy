@@ -77,8 +77,7 @@ Re-proved on the current schema, not assumed (`tests/karma-ledger.test.js`, `tes
 
 - **Nothing in the source branch was left out.** The only parts not carried over verbatim are the lines
   named above.
-- Not run by me: the browser suite beyond what is listed under Verification, the operator's own
-  walk-through of the shop on a real device, and any load or soak run.
+- Not run by me: the operator's own walk-through of the shop on a real device, and any load or soak run.
 - **Expected conflict with `feat/visual-upgrade-slice-1`:** exactly one, in `src/voxel-world.js` inside
   `paint()` at the `applyPhase({ ... })` call. This branch passes `distance: view.distance` (the eased
   distance) and the visual branch appends `interior: isInterior(...)`. Resolution is to keep both:
@@ -101,19 +100,17 @@ Re-proved on the current schema, not assumed (`tests/karma-ledger.test.js`, `tes
 - `npm test`: 1146 of 1146 pass, including the new `karma-ledger`, `shop`, `karma-shop-http`,
   `karma-integration`, `shop-panel`, `build-interface-home`, `camera-comfort`,
   `touch-controls-comfort` and `ui-mount-listeners` tests.
-- Real Chrome, focused run: `LUCY_BROWSER_ONLY=karma-closed-loop npm run browser` passes (sign-up, a
+- Real Chrome: the full browser suite passes 45 of 46 (see below); `karma-closed-loop` passes (sign-up, a
   built object, settle to 8 Karma Coins, one purchase, a real restart, and 390 px with reduced motion).
 
-## Open: the full browser suite is NOT green
+## Browser suite result
 
-`npm run browser` (full): 31 passed, 15 failed. Not yet compared with the vault base (`32d8362`), so it is
-unknown how many are caused by this port. The first failure, `signed-in-game-play`, is a phone check
-("every phone movement, camera and action target must be visible and tappable"): the pad keys now
-measure 52 px and the bar is lifted over the quickbar, so this is probably a real effect of the
-touch-controls port and needs a look. Later failures (`cooperative-restoration-two-operators`,
-`reviewer-workbench`, `review-states-and-refusals`, `mission-quality-advisory-signals`,
-`live-observation-readonly`, `game-shell-entry-and-continue`, `selection-does-not-clobber-navigation`,
-`management-interface-and-roles`, `private-memory-and-journal-boundaries`, `first-ten-minutes`,
-`first-play-solo-ambassador`, `restoration-two-clients`, `phone-conversation`, `signout-privacy`) may be
-a cascade or pre-existing. Next step: run the same suite in `work/karma-base` (a detached worktree of
-`32d8362`, node_modules symlinked) and diff the failing set. `karma-closed-loop` passes.
+`npm run browser` (full, quiet machine): 45 of 46 pass. Two earlier full runs were unreliable because
+other sessions were loading the machine (load average about 19): the base commit `32d8362` itself
+failed 12 scenarios under that load and this branch 15, most of them "server never came back after a
+restart" (`ECONNREFUSED`). One failure was a real effect of this port and is fixed: the phone touch bar
+now has an 11th button (the pad-side "Use" key), so `signed-in-game-play` expects 11 targets, not 10.
+The remaining failure, `first-play-solo-ambassador` ("the entry screen never owned the door after the
+reload"), passed on rerun here twice and on the base once; it is the entry-mode write race the
+`karma-closed-loop` scenario's door helper also retries around, and is not caused by this port.
+None of the failures came from the visual-upgrade branches.
