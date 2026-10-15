@@ -94,16 +94,32 @@ local creative = dofile(core.get_modpath('nemo')..'/creative.lua')({
 local function stop_player(player)
   if player and player.set_velocity then player:set_velocity({x=0, y=0, z=0}) end
 end
+local function stop_horizontal(player)
+  if player and player.set_velocity then
+    local velocity=player.get_velocity and player:get_velocity() or {y=0}
+    player:set_velocity({x=0,y=velocity.y,z=0})
+  end
+end
 local function set_anchor(name, player, pos, release)
   if not player or not pos then return end
-  local target = {x=pos.x, y=math.max(2, pos.z + 2), z=pos.y}
+  -- Nemo z is the standing layer. The native terrain's top is -0.5; the player
+  -- origin is offset by its collision-box minimum, not two metres above its feet.
+  local properties=player.get_properties and player:get_properties() or {}
+  local collision_min=properties.collisionbox and properties.collisionbox[2] or 0
+  local target = {x=pos.x, y=(pos.z or 0)-0.5-collision_min+0.01, z=pos.y}
   local current = player:get_pos()
   local state = motion[name] or {}
-  local dx, dy, dz = current.x - target.x, current.y - target.y, current.z - target.z
+  local dx, dz = current.x - target.x, current.z - target.z
   -- A sync is a reconciliation point, not a heartbeat teleport. Small differences are normal
   -- while Luanti settles a step and are left alone to avoid visible jitter.
-  if release or not state.anchor or math.max(math.abs(dx), math.abs(dy), math.abs(dz)) > 0.45 then
-    player:set_pos(target)
+  local changed_height=state.ready and state.anchor and math.abs(state.anchor.y-target.y)>0.05
+  local horizontal_error=math.max(math.abs(dx),math.abs(dz))
+  -- Leave a physically settled or jumping player alone on heartbeats. A confirmed
+  -- walking step may already be within half a tile of its new authoritative centre.
+  if not state.ready or changed_height or horizontal_error>0.55 or current.y<target.y-0.3 or current.y>target.y+2 then
+    local corrected={x=target.x,y=target.y,z=target.z}
+    if state.ready and not changed_height and current.y>=target.y-0.1 and current.y<=target.y+2 then corrected.y=current.y end
+    player:set_pos(corrected)
     stop_player(player)
   end
   state.anchor = {x=target.x, y=target.y, z=target.z}
@@ -220,6 +236,8 @@ sync = function(name, release_motion)
       end
       projected = next_nodes
       state.scene=data
+      local show_build_start=not state.build_onboarding_shown and data.creative and not data.creative.my_plot
+      state.build_onboarding_shown=true
       for _,marker in pairs(gate_markers) do if marker and marker:get_pos() then marker:remove() end end
       gate_markers={}
       local compass={up='North',down='South',left='West',right='East'}
@@ -253,7 +271,9 @@ sync = function(name, release_motion)
       if player and data.player then
         set_anchor(name, player, data.player, release_now)
         if player.hud_add then
-          local text=data.world_id..' · '..#(data.participants or {})..' other residents · '..#(data.blocks or {})..' saved blocks\nCreative materials: free and reusable · /nemo_build for tools, plots and blueprints\n/nemo_chat for conversation · Walk to a labelled gate to cross an opened area'
+          local plot=data.creative and data.creative.my_plot
+          local land_hint=plot and ('Your plot: '..plot.x..'–'..(plot.x+5)..', '..plot.y..'–'..(plot.y+5)) or 'Choose a free building plot: /nemo_build'
+          local text=data.world_id..' · Tile '..data.player.x..','..data.player.y..' · '..#(data.participants or {})..' other residents · '..#(data.blocks or {})..' saved blocks\n'..land_hint..'\nCreative materials: free and reusable · /nemo_build for tools, plots and blueprints\n/nemo_chat for conversation · Walk to a labelled gate to cross an opened area'
           if state.hud then player:hud_change(state.hud,'text',text)
           else state.hud=player:hud_add({type='text',position={x=0,y=0},offset={x=18,y=95},alignment={x=1,y=1},number=0xF5EED9,text=text,z_index=100}) end
         end
@@ -263,6 +283,7 @@ sync = function(name, release_motion)
         state.in_flight = false
         state.last_direction = nil
       end
+      if show_build_start and state.ready and player then creative.show(name,'Choose a free plot and enter its purpose before placing blocks. A collaboration grant also permits building on its specified plot.') end
       local follow_up = state and state.sync_after
       local follow_release = state and state.release_after
       if follow_up then state.sync_after = nil end
@@ -281,7 +302,10 @@ local function act(name, action, pos, block_type)
   if not paired[name] then message(name, 'Use /nemo_pair CODE first.'); return end
   if pos and not inside(pos) then message(name, 'Outside the 48 by 48 sector or block layers 0 to 7.'); return end
   paired_request(name, '/native/action', {player=name, action=action, pos=pos, type=block_type}, function(ok, data)
-    if not ok then message(name, data) else sync(name) end
+    if not ok then
+      message(name,data)
+      if action=='place' then creative.show(name,data) end
+    else sync(name) end
   end)
 end
 
@@ -559,16 +583,20 @@ core.register_globalstep(function(dt)
       if state.in_flight then
         -- Keep client-side physics from carrying the player through a second tile while the
         -- bridge is confirming the first one. The authoritative response will release the gate.
-        if math.max(math.abs(dx), math.abs(p.y - state.anchor.y), math.abs(dz)) > 0.2 then
-          player:set_pos(state.anchor)
-          stop_player(player)
+        local offset={x=0,z=0}
+        if state.last_direction=='right' then offset.x=math.min(0.95,math.max(0,dx))
+        elseif state.last_direction=='left' then offset.x=math.max(-0.95,math.min(0,dx))
+        elseif state.last_direction=='down' then offset.z=math.min(0.95,math.max(0,dz))
+        elseif state.last_direction=='up' then offset.z=math.max(-0.95,math.min(0,dz)) end
+        if math.abs(dx-offset.x)>0.05 or math.abs(dz-offset.z)>0.05 then
+          player:set_pos({x=state.anchor.x+offset.x,y=p.y,z=state.anchor.z+offset.z})
+          stop_horizontal(player)
         end
       elseif math.max(math.abs(dx), math.abs(dz)) >= motion_threshold then
         local direction
         if math.abs(dx) >= math.abs(dz) then direction = dx > 0 and 'right' or 'left'
         else direction = dz > 0 and 'down' or 'up' end
-        player:set_pos(state.anchor)
-        stop_player(player)
+        stop_horizontal(player)
         request_move(name, direction)
       end
     end

@@ -40,8 +40,8 @@ return function(options)
       end
       if #choices>0 then
         parts[#parts+1]='dropdown[0.5,3.6;5.8,0.8;plot;'..table.concat(choices,',')..';1;true]'
-        parts[#parts+1]='field[6.5,3.6;6,0.8;purpose;Public purpose for this plot;]'
-        parts[#parts+1]='button[0.5,4.6;4,0.8;claim;Steward selected plot · free]'
+        parts[#parts+1]='field[6.5,3.6;6,0.8;purpose;Project name / purpose;Creative workshop]'
+        parts[#parts+1]='button[0.5,4.6;4,0.8;claim;Use this free building plot]'
       else parts[#parts+1]='label[0.5,3.9;No available plot in this area. Choose another opened sector.]' end
     end
     local blueprints={}

@@ -61,7 +61,7 @@ core.register_on_mods_loaded(function()
   core.register_on_player_receive_fields=original_receive
   core.register_chatcommand=original_command
   ui.show('UnpairedProbe')
-  assert(form.spec:find('material_slate',1,true) and form.spec:find('Steward selected plot',1,true),'creative menu must offer tools and explicit plot stewardship')
+  assert(form.spec:find('material_slate',1,true) and form.spec:find('Use this free building plot',1,true),'creative menu must offer tools and explicit plot stewardship')
   receive(player,'nemo:creative',{claim=true,plot='1',purpose='Community research studio'})
   assert(requests[1].path=='/native/plot' and requests[1].body.purpose=='Community research studio','plot purpose must be explicitly sent to authoritative route')
   local fields={blueprint='1',anchor_x='30',anchor_z='30',build=true}
