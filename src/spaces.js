@@ -9,6 +9,7 @@ import { escapeColumns, nearestClearTile } from './world-walk.js';
 import { GARDEN_PALETTE, HOUSE_PALETTE } from './placement-policy.js';
 import { INTERACTION_DISTANCE } from './camera-controls.js';
 import content from './content.js';
+import { DIRECTION_OFFSETS, MAP_LAYOUT, mapEnabled, mapRect, neighbourStep, onMap, toGlobal, worldRects } from './global-map.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 // The two authored build palettes live in content/palettes.json and are resolved once by
@@ -326,6 +327,15 @@ function replayLedger(platform) {
   return ledger;
 }
 
+// A presence delta goes to the resident's own world and, on the global map, to the worlds within sight
+// of it, so a viewer on one side of a seam sees a walker on the other. Elsewhere it is plain `publish`.
+function announce(platform, worldId, x, y, delta) {
+  const events = platform.events;
+  if (!events) return;
+  if (typeof events.publishNear === 'function') events.publishNear(worldId, x, y, delta);
+  else events.publish(worldId, delta);
+}
+
 export const spaceMethods = {
   ...frontierMethods,
   canReadMission(actor, missionId) {
@@ -406,6 +416,9 @@ export const spaceMethods = {
   world(actor, input = {}) {
     const viewerAgent = actor?.kind === 'runtime' ? this.get('SELECT * FROM agents WHERE id=?', actor.agent.id) : input.agent_id && actor ? this.ownedAgent(actor, input.agent_id) : null;
     const id = input.world_id || viewerAgent?.world_id || 'commons';
+    // `_neighbour` is set only by the map window below (an HTTP query value is a string, never `true`): a
+    // neighbouring world is read for its residents and saved objects only.
+    const lite = input._neighbour === true;
     const world = this.space(actor, id), definition = getWorldDefinition(world);
     const center = viewerAgent?.world_id === id ? viewerAgent : definition.start;
     const camera = { x: Math.min(Math.max(0, world.width - COLS), quantity(input.x, Math.max(0, center.x - Math.floor(COLS / 2)), world.width)), y: Math.min(Math.max(0, world.height - ROWS), quantity(input.y, Math.max(0, center.y - Math.floor(ROWS / 2)), world.height)) };
@@ -445,19 +458,22 @@ export const spaceMethods = {
         ? participant
         : anonymousResident(participant)
     ));
+    const messageScopeAgentId = viewerAgent?.id || null;
+    const visibleMessages = lite ? [] : (() => {
     // Apply access control before the page limit. A busy world or another account's private
     // traffic must never push an addressed message out of its recipient's 200-message view.
     // Selecting a character scopes direct chat to that character; an unselected account view
     // still sees the account's characters, while a runtime always sees only its own character.
-    const messageScopeAgentId = viewerAgent?.id || null;
     const visibleMessageClauses = ["(m.channel='public' AND m.world_id=?)"];
     const visibleMessageArgs = [id];
     if (actor) {
       const directAudience = messageScopeAgentId
         ? 'EXISTS (SELECT 1 FROM json_each(m.recipients) recipient WHERE recipient.value=?)'
         : 'EXISTS (SELECT 1 FROM json_each(m.recipients) recipient JOIN agents viewer ON viewer.id=recipient.value WHERE viewer.operator_id=?)';
-      visibleMessageClauses.push(`(m.channel IN ('private','nearby') AND (m.channel='private' OR m.world_id=?) AND ${directAudience})`);
-      visibleMessageArgs.push(id, messageScopeAgentId || actor.account.id);
+      // A nearby message reaches residents either side of a seam, so on the global map it is read from any of its worlds.
+      const nearbyWorldIds = mapEnabled() && onMap(id) ? MAP_LAYOUT.map((item) => item.world) : [id];
+      visibleMessageClauses.push(`(m.channel IN ('private','nearby') AND (m.channel='private' OR m.world_id IN (${nearbyWorldIds.map(() => '?').join(',')})) AND ${directAudience})`);
+      visibleMessageArgs.push(...nearbyWorldIds, messageScopeAgentId || actor.account.id);
       if (actor.kind === 'runtime') {
         visibleMessageClauses.push("(m.channel='mission' AND EXISTS (SELECT 1 FROM missions mission JOIN tasks task ON task.mission_id=mission.id JOIN claims claim ON claim.task_id=task.id WHERE mission.id=m.mission_id AND claim.agent_id=?))");
         visibleMessageArgs.push(actor.agent.id);
@@ -472,7 +488,8 @@ export const spaceMethods = {
       FROM messages m LEFT JOIN agents a ON a.id=m.agent_id JOIN accounts o ON o.id=m.account_id
       WHERE m.status='visible' AND (${visibleMessageClauses.join(' OR ')}) ORDER BY m.created_at DESC,m.id DESC LIMIT 200`, ...visibleMessageArgs)
       .reverse().map(({ recipients, ...message }) => message);
-    const visibleMessages = actor ? messages : messages.map(anonymousMessage);
+    return actor ? messages : messages.map(anonymousMessage);
+    })();
     const objects = this.all('SELECT id,type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', id).map((object) => ({ ...object, kind: object.type }));
     // Authored scenery inside the returned window, resolved through the shared footprint table, so a
     // client or agent reads the same occupancy the server enforces instead of re-deriving it.
@@ -488,7 +505,39 @@ export const spaceMethods = {
       bounds: { columns: world.width, rows: world.height, width: world.width, height: world.height }, viewer_agent_id: viewerAgent?.id || null, message_scope_agent_id: messageScopeAgentId,
       counts: { registered_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='agent'").n, registered_humans: this.get("SELECT COUNT(*) AS n FROM agents WHERE status!='deleted' AND kind='human'").n, world_agents: this.get("SELECT COUNT(*) AS n FROM agents WHERE world_id=? AND status!='deleted'", id).n+this.get('SELECT COUNT(*) AS n FROM npc_mayors WHERE world_id=?',id).n+this.get('SELECT COUNT(*) AS n FROM npc_ambassadors WHERE world_id=?',id).n, visible_agents: participants.length, hidden_agents: hiddenAgents },
       next_passage: nextPassageCue(this, world, definition, viewerAgent, portals, objects),
-      paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true' };
+      paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true',
+      ...(!lite && input.map === 'core' && mapEnabled() && onMap(id) ? { map: this.mapWindow(actor, viewerAgent, id, camera, input) } : {}) };
+  },
+  /**
+   * The rest of the global map around a viewer: the residents, civic guides and saved objects of every
+   * neighbouring world the viewer's window overlaps, each kept in its own world's coordinates beside its
+   * `world_id`. The stored world's own part is the ordinary payload, so a client that does not ask for the
+   * map sees exactly what it always saw, and a private garden is never a rectangle of the map.
+   */
+  mapWindow(actor, viewerAgent, id, camera, input) {
+    const rect = mapRect(id), here = viewerAgent?.world_id === id ? viewerAgent : { x: camera.x + Math.floor(COLS / 2), y: camera.y + Math.floor(ROWS / 2) };
+    const centre = toGlobal(id, here.x, here.y);
+    const peopleWindow = { gx: centre.gx - Math.floor(COLS / 2), gy: centre.gy - Math.floor(ROWS / 2), width: COLS, height: ROWS };
+    const objectWindow = { gx: centre.gx - 18, gy: centre.gy - 18, width: 37, height: 37 };
+    const people = worldRects(peopleWindow.gx, peopleWindow.gy, peopleWindow.width, peopleWindow.height);
+    const things = worldRects(objectWindow.gx, objectWindow.gy, objectWindow.width, objectWindow.height);
+    const participants = [], objects = [], worlds = [];
+    for (const place of things) {
+      if (place.world_id === id) continue;
+      const own = people.find((item) => item.world_id === place.world_id), definition = getWorldDefinition(place.world_id);
+      let read;
+      try {
+        const left = Math.min(place.x, own ? own.x : place.x), top = Math.min(place.y, own ? own.y : place.y);
+        read = this.world(actor, { world_id: place.world_id, x: Math.max(0, Math.min(definition.columns - COLS, left)), y: Math.max(0, Math.min(definition.rows - ROWS, top)),
+          ...(input.agent_id ? { agent_id: input.agent_id } : {}), _neighbour: true });
+      } catch (error) { if (error?.status === 403 || error?.status === 404) continue; throw error; }
+      worlds.push({ world_id: place.world_id, name: read.world.name });
+      if (own) for (const item of read.participants) {
+        if (item.x >= own.x && item.x < own.right && item.y >= own.y && item.y < own.bottom && participants.length < participantLimit - 1) participants.push({ ...item, world_id: place.world_id });
+      }
+      for (const item of read.objects) if (item.x >= place.x && item.x < place.right && item.y >= place.y && item.y < place.bottom) objects.push({ ...item, world_id: place.world_id });
+    }
+    return { id: 'core', world_id: id, origin: { gx: rect.x, gy: rect.y }, window: peopleWindow, worlds, participants, objects };
   },
   /**
    * One cardinal step against server-authoritative column layers.
@@ -503,14 +552,46 @@ export const spaceMethods = {
     const crossing = frontierGates(agent.world_id).find((gate) => gate.direction === input.direction && gate.x === agent.x && gate.y === agent.y && this.get('SELECT world_id FROM frontier_sectors WHERE world_id=?', gate.targetWorldId));
     if (crossing) return this.travel(actor, agent.id, { world_id: crossing.targetWorldId });
     const definition = getWorldDefinition(this.space(actor, agent.world_id));
+    // A step off the edge of a world that touches another on the global map walks into the neighbour:
+    // the stored position is rewritten to the neighbour's own coordinates, with no portal.
+    const offset = DIRECTION_OFFSETS[input.direction], reaches = [agent.x + offset[0], agent.y + offset[1]];
+    if ((reaches[0] < 0 || reaches[1] < 0 || reaches[0] >= definition.columns || reaches[1] >= definition.rows) && mapEnabled()) {
+      const landing = neighbourStep(agent.world_id, agent.x, agent.y, input.direction);
+      if (landing) return this.crossSeam(actor, agent, landing, input.direction, allowAuthoredStepUp);
+    }
     const layers = blockLayers(this.all("SELECT x,y,z FROM frontier_blocks WHERE world_id=? AND type!='path' AND x BETWEEN ? AND ? AND y BETWEEN ? AND ?", agent.world_id, agent.x - 1, agent.x + 1, agent.y - 1, agent.y + 1));
     const objects = this.all('SELECT type,x,y FROM world_objects WHERE world_id=? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ?', agent.world_id, agent.x - 1, agent.x + 1, agent.y - 1, agent.y + 1);
     const stepped = canStep(agent, input.direction, { walkable, definition, layers, objects }, { allowAuthoredStepUp });
     const position = settle(stepped.blocked ? agent : stepped.position, layers);
     const grounded = isGrounded(position, layers);
     this.run("UPDATE agents SET x=?,y=?,z=?,grounded=?,posture='standing',last_move=?,last_seen=?,verified=CASE WHEN ?=1 THEN 1 ELSE verified END WHERE id=?", position.x, position.y, position.z, grounded ? 1 : 0, this.clock(), this.clock(), actor.kind === 'runtime' ? 1 : 0, agent.id);
-    this.events?.publish(agent.world_id, { agents: [{ id: agent.id, x: position.x, y: position.y, z: position.z, grounded: grounded ? 1 : 0, posture: 'standing', status: agent.status }] });
+    announce(this, agent.world_id, position.x, position.y, { agents: [{ id: agent.id, x: position.x, y: position.y, z: position.z, grounded: grounded ? 1 : 0, posture: 'standing', status: agent.status, world_id: agent.world_id }] });
     return { ...position, grounded, blocked: stepped.blocked, world_id: agent.world_id, posture: 'standing' };
+  },
+  /**
+   * One step across a seam of the global map. It is judged exactly like a step inside the landing world
+   * (walkable tile, solid scenery, saved objects, block columns, step-up and headroom), by standing the
+   * resident on the virtual tile one step behind the landing tile. Success rewrites world_id, x, y, z in
+   * one write and counts as entering the world, so the journey atlas still records what was walked.
+   */
+  crossSeam(actor, agent, landing, direction, allowAuthoredStepUp) {
+    const target = this.space(actor, landing.world_id), definition = getWorldDefinition(target), [dx, dy] = DIRECTION_OFFSETS[direction];
+    const near = [landing.world_id, landing.x - 1, landing.x + 1, landing.y - 1, landing.y + 1];
+    const layers = blockLayers(this.all("SELECT x,y,z FROM frontier_blocks WHERE world_id=? AND type!='path' AND x BETWEEN ? AND ? AND y BETWEEN ? AND ?", ...near));
+    const objects = this.all('SELECT type,x,y FROM world_objects WHERE world_id=? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ?', ...near);
+    const stepped = canStep({ x: landing.x - dx, y: landing.y - dy, z: agent.z }, direction, { walkable, definition, layers, objects }, { allowAuthoredStepUp });
+    if (stepped.blocked) {
+      this.run("UPDATE agents SET posture='standing',last_move=?,last_seen=? WHERE id=?", this.clock(), this.clock(), agent.id);
+      return { x: agent.x, y: agent.y, z: agent.z, grounded: Boolean(agent.grounded), blocked: true, world_id: agent.world_id, posture: 'standing' };
+    }
+    const position = settle(stepped.position, layers), grounded = isGrounded(position, layers), from = agent.world_id;
+    this.run("UPDATE agents SET world_id=?,x=?,y=?,z=?,grounded=?,posture='standing',last_move=?,last_seen=?,verified=CASE WHEN ?=1 THEN 1 ELSE verified END WHERE id=?", landing.world_id, position.x, position.y, position.z, grounded ? 1 : 0, this.clock(), this.clock(), actor.kind === 'runtime' ? 1 : 0, agent.id);
+    this.audit(actor.account.id, 'world.entered', landing.world_id);
+    this.recordVisit?.(actor, agent.id, landing.world_id);
+    const delta = { agents: [{ id: agent.id, x: position.x, y: position.y, z: position.z, grounded: grounded ? 1 : 0, posture: 'standing', status: agent.status, world_id: landing.world_id }] };
+    this.events?.publish(from, delta);
+    announce(this, landing.world_id, position.x, position.y, delta);
+    return { ...position, grounded, blocked: false, world_id: landing.world_id, from_world_id: from, seam: true, posture: 'standing' };
   },
   moveAgent(actor, ...args) { return this.stepAgent(actor, actionInput(args), false); },
   climbAgent(actor, ...args) { return this.stepAgent(actor, actionInput(args), true); },

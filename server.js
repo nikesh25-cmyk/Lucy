@@ -12,6 +12,7 @@ import { acquireProcessLock, backupDatabase, backupInventory, validateDatabase }
 import { createIncidentLog } from './src/incidents.js';
 import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from './src/hosting.js';
 import { worldAtmosphere } from './src/atmosphere.js';
+import { mapEnabled, nearbyWorlds } from './src/global-map.js';
 import { runResearch, approvedSource } from './runtime/research-worker.js';
 import { createLocalModel, boundedModel, mayorDraft, mayorCountryDraft, ambassadorCountryDraft } from './runtime/model.js';
 import { mayorModelCountryContext } from './src/mayor-evidence.js';
@@ -95,6 +96,8 @@ files.set('/src/world-navigation.js', ['src/world-navigation.js', 'text/javascri
 files.set('/src/characters.js', ['src/characters.js', 'text/javascript; charset=utf-8']);
 files.set('/src/character-animation.js', ['src/character-animation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/footprints.js', ['src/footprints.js', 'text/javascript; charset=utf-8']);
+files.set('/src/global-map.js', ['src/global-map.js', 'text/javascript; charset=utf-8']);
+files.set('/src/map-view.js', ['src/map-view.js', 'text/javascript; charset=utf-8']);
 files.set('/src/elevation.js', ['src/elevation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/content.js', ['src/content.js', 'text/javascript; charset=utf-8']);
 files.set('/src/living-world.js', ['src/living-world.js', 'text/javascript; charset=utf-8']);
@@ -192,7 +195,7 @@ const writes = new Map([
   // of write. Checking a task writes nothing. A stage is never set by a request.
   ['/activity/tasks/check', ['activityTaskCheck', null]], ['/activity/author', ['activityAuthor', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status', '/residents/declaration', '/activity', '/activity/instance', '/activity/trace']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/map', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status', '/residents/declaration', '/activity', '/activity/instance', '/activity/trace']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -342,6 +345,13 @@ export function createEventHub({ platform, limits = EVENT_LIMITS, clock = Date.n
     return queued;
   }
 
+  /** `publish` to a world and to the worlds of the global map within sight of the tile the change happened on. */
+  function publishNear(worldId, x, y, update = {}) {
+    let queued = publish(worldId, update);
+    if (mapEnabled()) for (const other of nearbyWorlds(worldId, x, y)) queued += publish(other, update);
+    return queued;
+  }
+
   function flush(sub) {
     const p = sub.pending, count = totalPending(sub);
     if (sub.closed || sub.backpressure || (!count && !p.refresh)) return;
@@ -398,7 +408,7 @@ export function createEventHub({ platform, limits = EVENT_LIMITS, clock = Date.n
   }
 
   function closeAll() { retired = true; stop(); for (const sub of [...subscribers]) close(sub, 'server_shutdown', true); }
-  return { subscribe, publish, revalidateNow, closeAll, counts, get size() { return subscribers.size; }, limits };
+  return { subscribe, publish, publishNear, revalidateNow, closeAll, counts, get size() { return subscribers.size; }, limits };
 }
 
 
@@ -555,7 +565,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact', '/first-play', '/restoration', '/living-world/status'].includes(route) && request.method === 'GET';
+      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/map', '/missions', '/gallery', '/briefing', '/community', '/interact', '/first-play', '/restoration', '/living-world/status'].includes(route) && request.method === 'GET';
       const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : route === '/vault/notes' ? 'vault' : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
@@ -618,6 +628,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/frontier') value=platform.frontierMap(actor,Object.fromEntries(url.searchParams));
           else if (route === '/frontier/grants') value=platform.plotGrants(actor,Object.fromEntries(url.searchParams));
           else if (route === '/worlds') value = platform.worldList(actor, Object.fromEntries(url.searchParams));
+          // The bounded viewport read across the map's seams. It is additive: it decides nothing and
+          // writes nothing, and the map owner's `world?map=core` window is untouched.
+          else if (route === '/map') value = platform.mapViewport(actor, Object.fromEntries(url.searchParams));
           else if (route === '/community') value = platform.community(actor, Object.fromEntries(url.searchParams));
           else if(route==='/coins')value=platform.coins(actor,Object.fromEntries(url.searchParams));
           // Karma Coins and the shop are their own reads: the wallet is a private projection of the

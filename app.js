@@ -27,6 +27,8 @@ import { draw, landmarkAt, start, landmarks, getWorldDefinition, walkable, terra
 import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 import { createGameAudio } from './src/game-audio.js';
 import { SECTIONS, sectionById, sectionLabel, menuGroups, filterSections, panelMode, dockWidth } from './src/ui/command-deck.js';
+import { MAP_ID, MAP_LAYOUT, fromGlobal, onMap } from './src/global-map.js';
+import { mapActive, mapPoint, mapSnapshot, toMapItem } from './src/map-view.js';
 
 const $ = (selector) => document.querySelector(selector);
 const gamePresentation = location.pathname !== '/manage' && new URLSearchParams(location.search).get('mode') !== 'workspace';
@@ -326,18 +328,42 @@ function portalTarget(portal) { return portal.target_world_id || portal.targetWo
 function cameraFor(position = worldPosition()) {
   const world = definition(); return { x: Math.max(0, Math.min((world.width || world.columns) - 20, Math.floor(position.x - 10))), y: Math.max(0, Math.min((world.height || world.rows) - 14, Math.floor(position.y - 7))) };
 }
+// The renderer's camera on the global map, in global tiles: the same 20 x 14 viewport, clamped to the map.
+function mapCameraFor(position,world) { return { x: Math.max(0, Math.min(world.columns - 20, Math.floor(position.x - 10))), y: Math.max(0, Math.min(world.rows - 14, Math.floor(position.y - 7))) }; }
+// The followed resident (or the observer's focus) as the global-map view sees them, with presence interpolation.
+function mapView(agent,now) {
+  if (!mapActive(state.world)) return null;
+  const stitched = getWorldDefinition(MAP_ID), view = mapSnapshot(state.world, agent, stitched);
+  const local = worldPosition(), position = view.self ? displayed(view.self, now) : mapPoint({ ...local, world_id: currentWorldId() }, currentWorldId());
+  const selection = state.voxelSelection && toMapItem({ ...state.voxelSelection, world_id: currentWorldId() }, currentWorldId());
+  return { ...view, self: view.self ? { ...view.self, ...position } : null, position, selection: selection || null, camera: mapCameraFor(position, stitched) };
+}
 function paintWorld() {
   const canvas = $('#world'); if (!canvas) return; const owned = viewedAgent(); const agent=owned?{...owned,...state.world.participants.find(item=>item.id===owned.id)}:null;
   const audioPhase=state.world.atmosphere?.phase;if(audioPhase&&gameAudio.getState().phase!==audioPhase)gameAudio.setPhase(audioPhase);
   // Presentation applies the interpolation; the confirmed values in `state.world` are never rewritten.
-  const now = performance.now(), base = worldPosition(), displayPosition = base?.id ? displayed(base, now) : base;
-  state.camera = cameraFor(displayPosition);
+  const now = performance.now(), base = worldPosition(), mapped = mapView(agent, now), displayPosition = mapped ? mapped.position : base?.id ? displayed(base, now) : base;
+  // The server is always asked about the stored world, so its camera stays in that world's own tiles.
+  state.camera = cameraFor(mapped ? base : displayPosition);
   syncEventStream();
-  if(state.graphics==='voxel'){if(!voxelView){voxelView=createVoxelWorld(canvas,{onPick:pick=>guarded(()=>pickWorld(pick)),onHover:hover=>{state.voxelHover=hover||null;syncWorldControls();},onLook:look=>queueLook(look.yaw,look.pitch,{apply:false}),onUnavailable:()=>{if(state.graphicsUnavailable)return;state.graphics='pixel';state.graphicsUnavailable=true;queueMicrotask(()=>renderView());}});if(!voxelView)return;if(state.voxelOrbit)voxelView.setOrbit(state.voxelOrbit);}voxelView.render(state.world,{definition:definition(),position:displayPosition,self:agent||null,selection:state.voxelSelection||state.voxelHover,parcelSelection:state.parcelSelection,cameraMode:state.firstPerson&&agent?'first-person':'orbit',facing:state.facing,dayPhase:state.world.atmosphere?.phase});canvas.dataset.graphics='voxel';}
+  if(state.graphics==='voxel'){if(!voxelView){voxelView=createVoxelWorld(canvas,{onPick:pick=>guarded(()=>{const local=localizePick(pick);return local?pickWorld(local):undefined;}),onHover:hover=>{state.voxelHover=hover?localizePick(hover):null;syncWorldControls();},onLook:look=>queueLook(look.yaw,look.pitch,{apply:false}),onUnavailable:()=>{if(state.graphicsUnavailable)return;state.graphics='pixel';state.graphicsUnavailable=true;queueMicrotask(()=>renderView());}});if(!voxelView)return;if(state.voxelOrbit)voxelView.setOrbit(state.voxelOrbit);}voxelView.render(mapped?mapped.snapshot:state.world,{definition:mapped?mapped.definition:definition(),position:displayPosition,self:mapped?mapped.self:agent||null,selection:mapped?mapped.selection:state.voxelSelection,parcelSelection:state.parcelSelection,cameraMode:state.firstPerson&&agent?'first-person':'orbit',facing:state.facing,dayPhase:state.world.atmosphere?.phase});canvas.dataset.graphics='voxel';}
+  else if(mapped){draw(canvas, displayPosition, { blocks:mapped.snapshot.blocks, world: mapped.definition, camera: mapped.camera, objects: mapped.snapshot.objects, portals: mapped.definition.portals, visitors: mapped.snapshot.participants.filter((a) => a.id !== agent?.id && a.status !== 'revoked').map((item) => displayed(item, now)), self: mapped.self ? displayed(mapped.self, now) : null, sprites:mayorSprites, dayPhase: state.world.atmosphere?.phase });canvas.dataset.graphics='pixel';}
   else {draw(canvas, displayPosition, { blocks:state.world.blocks||[],world: definition(), camera: state.camera, objects: state.world.objects || [], portals: worldPortals(), visitors: state.world.participants.filter((a) => a.id !== agent?.id && a.status !== 'revoked').map((item) => displayed(item, now)), self: agent ? displayed(agent, now) : null, sprites:mayorSprites, dayPhase: state.world.atmosphere?.phase });canvas.dataset.graphics='pixel';}
-  syncWorldControls();updateCallingHUD();const coordinates=$('#game-coordinates');if(coordinates)coordinates.textContent=`${Math.floor(displayPosition.x)}, ${Math.floor(displayPosition.y)}`;const population=$('#game-population');if(population)population.textContent=String(state.world.counts?.world_agents??state.world.population??state.world.participants.length);const overview=$('#world-overview');if(overview)drawMiniMap(overview,definition(),{camera:state.camera,position:agent||null,objects:state.world.objects||[],blocks:state.world.blocks||[],portals:worldPortals()});
+  const here = mapped ? fromGlobal(Math.floor(displayPosition.x), Math.floor(displayPosition.y)) : null, shown = here || { x: Math.floor(displayPosition.x), y: Math.floor(displayPosition.y) };
+  syncWorldControls();updateCallingHUD();if(mapped){const here=state.world.world,name=$('#game-place-name'),extent=$('#game-extent');if(name&&name.textContent!==here.name)name.textContent=here.name;if(extent&&!state.world.frontier)extent.textContent=`${here.width||here.columns} × ${here.height||here.rows} tiles`;}const coordinates=$('#game-coordinates');if(coordinates)coordinates.textContent=`${shown.x}, ${shown.y}`;const population=$('#game-population');if(population)population.textContent=String(state.world.counts?.world_agents??state.world.population??state.world.participants.length);const overview=$('#world-overview');if(overview){if(mapped)drawMiniMap(overview,mapped.definition,{camera:mapped.camera,position:mapped.self||mapped.position,objects:mapped.snapshot.objects,blocks:mapped.snapshot.blocks,portals:mapped.definition.portals,rects:MAP_LAYOUT});else drawMiniMap(overview,definition(),{camera:state.camera,position:agent||null,objects:state.world.objects||[],blocks:state.world.blocks||[],portals:worldPortals()});}
 }
-function worldURL() { const position = cameraFor(); const query = new URLSearchParams({ view:state.graphics==='voxel'?'voxel':'pixel',world_id: currentWorldId(), x: String(Math.floor(position.x)), y: String(Math.floor(position.y)) }); if (selected() && state.account && state.gameMode!=='observe') query.set('agent_id', state.selected); return `/world?${query}`; }
+/** A pick in global tiles back to the stored world: on the resident's own world it is an ordinary local pick; elsewhere it can only be walked to. */
+function localizePick(pick) {
+  if (!mapActive(state.world) || !pick || !Number.isInteger(pick.x) || !Number.isInteger(pick.y)) return pick;
+  const place = fromGlobal(pick.x, pick.y);
+  if (!place) return null;
+  if (place.world_id !== state.world.world.id) return { ...pick, foreign: true, gx: pick.x, gy: pick.y, world_id: place.world_id };
+  const unlift = (item) => item && Number.isInteger(item.local_x) ? { ...item, x: item.local_x, y: item.local_y, world_id: item.home_world_id } : item;
+  const portal = pick.portal ? (() => { const there = fromGlobal(pick.portal.x, pick.portal.y); return there?.world_id === place.world_id ? { ...pick.portal, x: there.x, y: there.y } : null; })() : null;
+  return { ...pick, x: place.x, y: place.y, ...(pick.portal ? { portal } : {}), ...(pick.participant ? { participant: unlift(pick.participant) } : {}),
+    ...(pick.adjacent ? { adjacent: { ...pick.adjacent, x: pick.adjacent.x - (pick.x - place.x), y: pick.adjacent.y - (pick.y - place.y) } } : {}) };
+}
+function worldURL() { const position = cameraFor(); const query = new URLSearchParams({ view:state.graphics==='voxel'?'voxel':'pixel',world_id: currentWorldId(), x: String(Math.floor(position.x)), y: String(Math.floor(position.y)) }); if (onMap(currentWorldId())) query.set('map','core');if (selected() && state.account && state.gameMode!=='observe') query.set('agent_id', state.selected); return `/world?${query}`; }
 const publicObserverMessage = (message) => Object.fromEntries(['id','author','text','created_at','world_id','channel'].filter(key=>message?.[key]!==undefined).map(key=>[key,message[key]]));
 const publicObserverResident = (resident) => resident?.kind==='npc'?resident:Object.fromEntries(['id','name','kind','color','symbol','status','verified','x','y','z','grounded','yaw','pitch','world_id','posture','last_seen','emote','emote_until','presence','calling','title','avatar','accepted_contributions'].filter(key=>resident?.[key]!==undefined).map(key=>[key,resident[key]]));
 function normalizeWorld(world) { return { ...world, participants: state.gameMode==='observe'?(world.participants||world.agents||[]).map(publicObserverResident):(world.participants||world.agents||[]), messages: state.gameMode==='observe' ? (world.messages||[]).filter(message=>message?.channel==='public').map(publicObserverMessage) : (world.messages||[]) }; }
@@ -359,13 +385,13 @@ let presenceFrame = 0;
 
 /** Remember one server-confirmed position. A one-tile change glides from wherever the avatar is drawn. */
 function noteConfirmed(item) {
-  const record = presence.confirm(item);
+  const record = presence.confirm(mapActive(state.world) ? toMapItem(item, state.world.world.id) : item);
   if (record && record.duration > 0) { schedulePresence(); return record; }
   return record;
 }
 function seedPresence(participants) { for (const item of participants || []) noteConfirmed(item); }
 /** Draw an avatar where the interpolation currently places it; the record it came from is unchanged. */
-function displayed(item, now) { return presence.record(item, now); }
+function displayed(item, now) { return presence.record(mapActive(state.world) ? toMapItem(item, state.world.world.id) : item, now); }
 /** The integer tile a drawn point falls in, for any text that must name one tile and not a fraction. */
 function tileOf(point) { return { x: Math.floor(point.x), y: Math.floor(point.y), z: Number.isFinite(point.z) ? Math.round(point.z) : 0 }; }
 /** Snap one avatar back to its stored tile: used when the server refuses a step. */
@@ -445,7 +471,17 @@ function applyWorldUpdate(data) {
   for (const agent of data.agents || []) {
     if (!agent || typeof agent.id !== 'string') continue;
     const index = participants.findIndex((item) => item.id === agent.id);
-    if (agent.world_id && agent.world_id !== world) { if (index >= 0) participants.splice(index, 1); continue; }
+    if (agent.world_id && agent.world_id !== world) {
+      if (index >= 0) participants.splice(index, 1);
+      // On the global map a walker in the next world over is still in sight: keep it in the map window.
+      if (mapActive(state.world) && onMap(agent.world_id)) {
+        const seen = state.world.map.participants, at = seen.findIndex((item) => item.id === agent.id);
+        if (at >= 0) Object.assign(seen[at], agent); else unknown = true;
+        noteConfirmed(agent);
+      }
+      continue;
+    }
+    if (mapActive(state.world)) { const seen = state.world.map.participants, at = seen.findIndex((item) => item.id === agent.id); if (at >= 0) seen.splice(at, 1); }
     if (index >= 0) Object.assign(participants[index],state.gameMode==='observe'?publicObserverResident(agent):agent);
     else unknown = true;
     noteConfirmed(agent);
@@ -1212,7 +1248,7 @@ function gameHud(world,agent,position){
   const extent=world.kind==='frontier'&&frontier?.land_world
     ? `Area ${frontier.sector_x}, ${frontier.sector_y} · ${frontier.land_world.width_m} × ${frontier.land_world.height_m} m fixed world`
     : `${world.width||world.columns} × ${world.height||world.rows} tiles`;
-  append(place,paragraph(state.world.paused?'WORLD PAUSED':!agent||state.gameMode==='observe'?'LOOKING AROUND':'LIVE WORLD','game-kicker'),element('strong',world.name),pos,element('span',extent,'game-extent'));
+  append(place,paragraph(state.world.paused?'WORLD PAUSED':!agent||state.gameMode==='observe'?'LOOKING AROUND':'LIVE WORLD','game-kicker'),Object.assign(element('strong',world.name),{id:'game-place-name'}),pos,Object.assign(element('span',extent,'game-extent'),{id:'game-extent'}));
   const count=element('span',String(state.world.counts?.world_agents??state.world.population??state.world.participants.length));count.id='game-population';
   const livingCount = (state.world.participants || []).filter(p => typeof p.id === 'string' && p.id.startsWith('lw-')).length;
   top.append(place,append(element('div',null,'game-live-count'),count,element('span',livingCount ? ` residents (${livingCount} AI guilds)` : ' residents here')));hud.append(top);
@@ -1346,14 +1382,19 @@ function walkToTileForm(agent, world) {
   field(inputs, 'y', 'Tile Y', { type: 'number', min: 0, max: (world.height || world.rows) - 1, value: agent.y });
   return node;
 }
-async function walkTo(x,y){
- const player=viewedAgent();if(!player)return false;const worldId=player.world_id,id=player.id,epoch=state.sessionEpoch||0;
- const route=planWalk(getWorldDefinition(worldId),player,{x,y},{objects:state.world.objects||[],blocks:state.world.blocks||[]});if(!route){notice('No known walkable route to that tile. Choose nearby open ground.');return false;}
- const version=++walkVersion;walkActive=true;try{for(const direction of route){if(version!==walkVersion||epoch!==(state.sessionEpoch||0)||selected()?.id!==id||selected().world_id!==worldId)return false;const before={x:selected().x,y:selected().y};for(let attempt=0;attempt<4;attempt++){try{await moveAgent(direction,true);break;}catch(error){if(error.status!==429||attempt===3)throw error;await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));if(version!==walkVersion||epoch!==(state.sessionEpoch||0))return false;}}if(selected()?.id!==id||selected().x===before.x&&selected().y===before.y){notice('The path is blocked. Choose another route.');return false;}}
+async function walkTo(x,y,global=false){
+ const player=viewedAgent();if(!player)return false;const worldId=player.world_id,id=player.id,epoch=state.sessionEpoch||0,mapped=mapActive(state.world);
+ // On the global map a route is planned over the stitched map in global tiles; the server still judges each step in its own world.
+ let route;if(mapped){const stitched=getWorldDefinition(MAP_ID),view=mapSnapshot(state.world,player,stitched);route=planWalk(stitched,view.self,global?{x,y}:mapPoint({x,y,world_id:worldId},worldId),{objects:view.snapshot.objects,blocks:view.snapshot.blocks});}
+ else route=planWalk(getWorldDefinition(worldId),player,{x,y},{objects:state.world.objects||[],blocks:state.world.blocks||[]});
+ if(!route){notice('No known walkable route to that tile. Choose nearby open ground.');return false;}
+ const version=++walkVersion;walkActive=true;try{for(const direction of route){if(version!==walkVersion||epoch!==(state.sessionEpoch||0)||selected()?.id!==id||(mapped?!onMap(selected().world_id):selected().world_id!==worldId))return false;const before={x:selected().x,y:selected().y,world:selected().world_id};for(let attempt=0;attempt<4;attempt++){try{await moveAgent(direction,true);break;}catch(error){if(error.status!==429||attempt===3)throw error;await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));if(version!==walkVersion||epoch!==(state.sessionEpoch||0))return false;}}if(selected()?.id!==id||selected().x===before.x&&selected().y===before.y&&selected().world_id===before.world){notice('The path is blocked. Choose another route.');return false;}}
  return true;}finally{walkActive=false;}
 }
 async function pickWorld(pick){
- if(state.tab!=='world')return;state.voxelSelection={x:pick.x,y:pick.y,z:pick.z||0};notifyPick(state.voxelSelection);if(state.world.frontier?.parcels){state.parcelSelection=state.world.frontier.parcels.find(plot=>pick.x>=plot.x&&pick.x<plot.x+plot.width&&pick.y>=plot.y&&pick.y<plot.y+plot.height)||null;updatePlotPanel();}
+ if(state.tab!=='world')return;
+ // A tile of a neighbouring world can only be walked to: every other action belongs to the world the resident stands in.
+ if(pick.foreign){if(viewedAgent()&&!state.building)await walkTo(pick.gx,pick.gy,true);return;}state.voxelSelection={x:pick.x,y:pick.y,z:pick.z||0};notifyPick(state.voxelSelection);if(state.world.frontier?.parcels){state.parcelSelection=state.world.frontier.parcels.find(plot=>pick.x>=plot.x&&pick.x<plot.x+plot.width&&pick.y>=plot.y&&pick.y<plot.y+plot.height)||null;updatePlotPanel();}
  if(state.building){const point=state.buildKind==='remove'?pick:pick.adjacent||pick;await buildAt(point.x,point.y,point.z||0,pick);return;}
  // Selecting a tile reads what it offers from the server, so the interaction panel always shows the
  // same fixture, requirement and next step the server would enforce.
@@ -1370,7 +1411,8 @@ function syncWorldControls(){
  // The aim line and the position readout follow the tile the avatar is *drawn* at, which is on the
  // segment between the last two confirmed tiles, so a mid-step the view matches what the player sees.
  // Everything the server itself decides (portal adjacency, gate range) still reads the stored tile.
- const drawn=player?tileOf(displayed(player,performance.now())):position;
+ // On the global map the drawn tile is a global one; the readouts name the tile in the world the resident stands in.
+ const drawnTile=player?tileOf(displayed(player,performance.now())):position,drawnHere=player&&mapActive(state.world)?fromGlobal(drawnTile.x,drawnTile.y):null,drawn=drawnHere?{x:drawnHere.x,y:drawnHere.y,z:drawnTile.z}:drawnTile;
  const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`${player?'Player':'View'} position ${drawn.x}, ${drawn.y}${player&&drawn.z>0?`, layer ${drawn.z}`:''} · ${state.graphics==='voxel'?(state.firstPerson?'First person · drag to look · WASD relative to view':'Drag to orbit · click ground to walk'):'Arrow keys / WASD'}`;
  const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection||state.voxelHover,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position:drawn,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null,fixture:state.interaction?.fixture||null});}
  // A wheel or a drag over an open menu belongs to the menu: the camera stops taking pointer events
@@ -1647,7 +1689,7 @@ async function performMove(direction, context) {
   // different character or run after a world transition or session replacement.
   if(!sameMoveContext(context))return {cancelled:true,reason:'character-changed'};
   motionRevision++;
-  const agent=viewedAgent();let crossed=false,moved=false;
+  const agent=viewedAgent();let crossed=false,moved=false,seam=false;
   if(agent){
     const before={x:agent.x,y:agent.y,z:agent.z||0};
     let position;
@@ -1662,7 +1704,7 @@ async function performMove(direction, context) {
       throw error;
     }
     if(!sameMoveContext(context))return {cancelled:true,reason:'character-changed'};
-    crossed=position.world_id!==agent.world_id;moved=!position.blocked;Object.assign(agent,position);
+    crossed=position.world_id!==agent.world_id;seam=Boolean(position.seam);moved=!position.blocked;Object.assign(agent,position);
     if(position.blocked){
       // The server kept the stored tile. Snap the drawn avatar back to it and name the obstacle, so a
       // refusal is visible and recoverable rather than a step that silently did nothing.
@@ -1681,7 +1723,9 @@ async function performMove(direction, context) {
   const current=moveContext();
   if(current.actorId!==context.actorId||current.sessionEpoch!==context.sessionEpoch||!crossed&&current.worldId!==context.worldId)return {cancelled:true,reason:'character-changed'};
   if(moved)scheduleFirstPlayRead();
-  if(state.tab==='world'&&state.graphics==='voxel'&&!crossed){paintWorld();return {saved:true};}
+  // Walking across a seam of the global map is a step, not an arrival: the scene keeps its place and only names the world entered.
+  if(seam&&state.world?.world?.name){const entered=`Entering ${state.world.world.name}.`;notice(entered);reportMoveOutcome(moveFeedback({outcome:'travel',message:entered}));}
+  if(state.tab==='world'&&state.graphics==='voxel'&&(!crossed||seam)){paintWorld();return {saved:true,crossed};}
   if(state.tab==='world'){const focusedMap=document.activeElement?.id==='world';renderView();if(focusedMap)$('#world')?.focus({preventScroll:true});}
   return {saved:true,crossed};
 }

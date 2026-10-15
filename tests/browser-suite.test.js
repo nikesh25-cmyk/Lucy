@@ -46,8 +46,8 @@ test('a missing database path or workspace is refused rather than guessed', () =
 test('the suite runs its scenarios in order, and a focused run keeps only the named ones', () => {
   const all = selectedScenarios();
   assert.deepEqual(all, SCENARIOS.map((scenario) => scenario.id));
-  assert.equal(all.length, 47);
-  assert.equal(new Set(all).size, 47);
+  assert.equal(all.length, 48);
+  assert.equal(new Set(all).size, 48);
   assert.equal(all[all.length - 1], 'signout-privacy', 'the sign-out scenario stays last');
   for (const id of [
     'hero-introduction-film', 'game-entry-and-observation', 'signed-in-game-play',
@@ -57,6 +57,7 @@ test('the suite runs its scenarios in order, and a focused run keeps only the na
     'live-observation-readonly', 'game-shell-entry-and-continue', 'management-interface-and-roles', 'private-memory-and-journal-boundaries',
     'first-ten-minutes', 'first-play-solo-ambassador', 'restoration-two-clients',
     'phone-conversation', 'mission-quality-advisory-signals', 'in-game-command-surface',
+    'shared-world-seam-crossing',
   ]) assert.ok(all.includes(id), `${id} must remain in the merged browser suite`);
   for (const scenario of SCENARIOS) {
     assert.equal(typeof scenario.title, 'string');

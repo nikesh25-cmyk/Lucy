@@ -32,9 +32,11 @@ export function groundPass({ batch, definition, snapshot, plan, cullHidden, scen
     // tile is still exactly what the server says it is. Only the water reads below its surface follow
     // the tier, and those carry no pick. See `LOD_LIMITS` in src/voxel-geometry.js.
     const detail = inDetail(x, y, plan.anchor, plan.detailRadius);
+    // On the global map the ground colour belongs to the world that owns the tile, not to the whole map.
+    const ground = definition.groundAt ? definition.groundAt(x, y) || definition.groundColor : definition.groundColor;
     const base = room && type === 'rug' ? room.style.rug : ['water', 'bridge'].includes(type) ? colors.dirt
-      : type === 'building' || type === 'tree' || type === 'fountain' ? definition.groundColor || colors.grass
-        : colors[type] || definition.groundColor || colors.grass;
+      : type === 'building' || type === 'tree' || type === 'fountain' ? ground || colors.grass
+        : colors[type] || ground || colors.grass;
     const before = batch.size;
     if (type === 'water') {
       waterTile(batch, { x, y, pick, dirt: colors.dirt, depth: waterDepth(typeAt, x, y), sides: shoreSides(typeAt, x, y), detail });

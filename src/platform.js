@@ -9,9 +9,11 @@ import { randomBytes, randomUUID, createHash, scrypt as scryptCallback, timingSa
 import { promisify } from 'node:util';
 import { openDatabase } from './database.js';
 import { start } from '../world.js';
+import { mapDistance, mapEnabled, nearbyWorlds } from './global-map.js';
 import { spaceMethods } from './spaces.js';
 import { karmaMethods } from './karma.js';
 import { shopMethods } from './shop.js';
+import { viewportMethods } from './map-viewport.js';
 import { communityMethods } from './community.js';
 import { vocationMethods } from './vocations.js';
 import { vaultMethods } from './vault.js';
@@ -391,9 +393,14 @@ export class Platform {
       // A reply is not a fresh encounter: only a human-initiated private message can prove an
       // in-world meeting, so a resident's answer never satisfies another operator's meet step.
       privateEncounter = input.reply_to === undefined && actor.account.status === 'active' && target.kind === 'agent' && target.operator_id !== agent.operator_id && target.operator_status === 'active'
-        && target.world_id === agent.world_id && Math.abs(target.x - agent.x) + Math.abs(target.y - agent.y) <= 6;
+        && (target.world_id === agent.world_id ? Math.abs(target.x - agent.x) + Math.abs(target.y - agent.y) : mapEnabled() ? mapDistance(target, agent) ?? Infinity : Infinity) <= 6;
     }
-    if (channel === 'nearby') recipients = this.all("SELECT a.id FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.status='active' AND o.status='active' AND a.world_id=? AND ABS(a.x-?)+ABS(a.y-?)<=3", worldId, agent.x, agent.y).map((item) => item.id);
+    if (channel === 'nearby') {
+      // Within three tiles, counted across a seam of the global map as well as inside one world.
+      const worlds = [worldId, ...(mapEnabled() ? nearbyWorlds(worldId, agent.x, agent.y, 3) : [])];
+      recipients = this.all(`SELECT a.id,a.world_id,a.x,a.y FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.status='active' AND o.status='active' AND a.world_id IN (${worlds.map(() => '?').join(',')})`, ...worlds)
+        .filter((item) => (item.world_id === worldId ? Math.abs(item.x - agent.x) + Math.abs(item.y - agent.y) : mapDistance({ world_id: worldId, x: agent.x, y: agent.y }, item) ?? Infinity) <= 3).map((item) => item.id);
+    }
     if (channel === 'mission') { missionId = text(input.mission_id, 'Mission', 80); if (!this.get('SELECT id FROM missions WHERE id=?', missionId)) fail(404, 'Mission not found.'); }
     const id = randomUUID();
     this.run('INSERT INTO messages(id,agent_id,account_id,channel,mission_id,recipients,text,created_at,world_id) VALUES(?,?,?,?,?,?,?,?,?)', id, agent?.id || null, actor.account.id, channel, missionId, JSON.stringify(recipients), content, new Date(this.clock()).toISOString(), worldId);
@@ -1358,7 +1365,7 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, vaultMethods, questMethods, guildMethods, activityMethods, firstPlayMethods, karmaMethods, shopMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, vaultMethods, questMethods, guildMethods, activityMethods, firstPlayMethods, karmaMethods, shopMethods, viewportMethods);
 Object.assign(Platform.prototype, residentFrameworkMethods);
 
 Object.assign(Platform.prototype,draftMethods);

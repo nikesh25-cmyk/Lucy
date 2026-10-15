@@ -1,5 +1,6 @@
 // One shared tile map powers both server movement and the browser renderer.
 import { standableTile } from './src/footprints.js';
+import { MAP_ID, applySeams, onMap, stitchMap } from './src/global-map.js';
 export const TILE = 40;
 export const COLS = 20;
 export const ROWS = 14;
@@ -723,22 +724,41 @@ function makeHouse(id) {
     portals: [portal(10, 11, 'Return to your Garden', `home:${id.slice(6)}`)] };
 }
 
+// A world as its maker builds it, before the global map's seam pass. A neighbour's seam decisions read this.
+const rawDefinitions = new Map();
+function buildRaw(id, descriptor) {
+  if (id === 'commons') return makeCommons();
+  if (['hall', 'pavilion', 'gallery', 'meditation'].includes(id)) return makeInterior(id);
+  if (Object.hasOwn(regionFacts, id)) return makeRegion(id);
+  if (venuePlans.has(id)) return makePublicVenue(id);
+  if (id.startsWith('district:') && REGIONS.some(region => id === `district:${region.id}`)) return makeDistrict(id);
+  if (/^country:[A-Z]{3}$/.test(id)) return makeCountry(id, descriptor?.name);
+  if (id.startsWith('home:')) return makeHome(id);
+  if (id.startsWith('house:')) return makeHouse(id);
+  if (frontierCoordinates(id, { allowLegacy: true })) return makeFrontier(id);
+  throw new RangeError(`Unknown world: ${id}`);
+}
+function rawOf(id) {
+  let raw = rawDefinitions.get(id);
+  if (!raw) { raw = buildRaw(id); rawDefinitions.set(id, raw); }
+  return raw;
+}
+// Each world of the global map is built from its own raw definition (a fresh copy, so the seam pass can
+// edit it) and then joined to its neighbours by the same deterministic pass in the browser and the server.
+function buildWorld(id, descriptor) {
+  if (id === MAP_ID) return stitchMap(getWorldDefinition);
+  if (!onMap(id)) return buildRaw(id, descriptor);
+  const fresh = buildRaw(id, descriptor);
+  return applySeams(fresh, (other) => rawOf(other));
+}
+
 /** Pass either a stable world ID or its API descriptor. Unknown IDs are rejected. */
 export function getWorldDefinition(world = 'commons') {
   const descriptor = typeof world === 'object' && world !== null ? world : undefined;
   const id = typeof world === 'string' ? world : descriptor?.id || descriptor?.worldId || 'commons';
   let definition = definitions.get(id);
   if (!definition) {
-    if (id === 'commons') definition = makeCommons();
-    else if (['hall', 'pavilion', 'gallery', 'meditation'].includes(id)) definition = makeInterior(id);
-    else if (Object.hasOwn(regionFacts, id)) definition = makeRegion(id);
-    else if (venuePlans.has(id)) definition = makePublicVenue(id);
-    else if (id.startsWith('district:') && REGIONS.some(region => id === `district:${region.id}`)) definition = makeDistrict(id);
-    else if (/^country:[A-Z]{3}$/.test(id)) definition = makeCountry(id, descriptor?.name);
-    else if (id.startsWith('home:')) definition = makeHome(id);
-    else if (id.startsWith('house:')) definition = makeHouse(id);
-    else if (frontierCoordinates(id, { allowLegacy: true })) definition = makeFrontier(id);
-    else throw new RangeError(`Unknown world: ${id}`);
+    definition = buildWorld(id, descriptor);
     if (definitions.size >= 36) {
       const oldestHome = [...definitions.keys()].find((key) => key.startsWith('home:') || key.startsWith('house:') || key.startsWith('frontier:') || key.startsWith('country:'));
       if (oldestHome) definitions.delete(oldestHome);
@@ -835,7 +855,10 @@ export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) 
       const py = y * TILE;
       const n = (x * 47 + y * 91 + x * y * 13) % 19;
       const type = tiles[y][x];
-      rect(px, py, TILE, TILE, world.groundColor ? world.groundColor : world.kind === 'interior' && type === 'building' ? theme.floor : world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : world.id === 'harbor' ? ['#90b5a0', '#98bba5', '#a0c2ac'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
+      // A tile of no world (the sea around the global map) is not drawn.
+      if (typeof type !== 'string') continue;
+      const ground = world.groundAt ? world.groundAt(x, y) || world.groundColor : world.groundColor;
+      rect(px, py, TILE, TILE, ground ? ground : world.kind === 'interior' && type === 'building' ? theme.floor : world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : world.id === 'harbor' ? ['#90b5a0', '#98bba5', '#a0c2ac'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
       if (type === 'water') {
         rect(px, py, TILE, TILE, n % 2 ? '#6baab1' : '#71b4bc');
         rect(px + 5 + n % 8, py + 11, 12, 2, '#a6d0ca');
@@ -1413,14 +1436,17 @@ export function drawMiniMap(canvas, world = 'commons', options = {}) {
   const definition = getWorldDefinition(world);
   const ctx = canvas.getContext('2d');
   if (!ctx || !canvas.width || !canvas.height) return;
-  const scale = Math.min(canvas.width / definition.columns, canvas.height / definition.rows);
-  const offsetX = (canvas.width - definition.columns * scale) / 2;
-  const offsetY = (canvas.height - definition.rows * scale) / 2;
+  // The global map draws the rectangle its worlds occupy, not the sea around it.
+  const area = definition.bounds || { x: 0, y: 0, width: definition.columns, height: definition.rows };
+  const scale = Math.min(canvas.width / area.width, canvas.height / area.height);
+  const offsetX = (canvas.width - area.width * scale) / 2 - area.x * scale;
+  const offsetY = (canvas.height - area.height * scale) / 2 - area.y * scale;
   const palette = { meadow: '#98b886', garden: '#b8bf83', tree: '#527857', water: '#729fab', path: '#dbbd8c', plaza: '#e5ca9e', bridge: '#b58a62', building: '#a28586', fountain: '#adc9c9', floor: '#d7c3a3', rug: '#a79ba8', wall: '#747c88' };
   const background = (target) => {
     target.fillStyle = '#273e35';
     target.fillRect(0, 0, canvas.width, canvas.height);
-    for (let y = 0; y < definition.rows; y++) for (let x = 0; x < definition.columns; x++) {
+    for (let y = area.y; y < area.y + area.height; y++) for (let x = area.x; x < area.x + area.width; x++) {
+      if (typeof definition.terrain[y][x] !== 'string') continue;
       target.fillStyle = palette[definition.terrain[y][x]] || palette.meadow;
       const left = Math.round(offsetX + x * scale); const top = Math.round(offsetY + y * scale);
       target.fillRect(left, top, Math.ceil(scale), Math.ceil(scale));
@@ -1440,6 +1466,11 @@ export function drawMiniMap(canvas, world = 'commons', options = {}) {
   ctx.imageSmoothingEnabled = false;
   if (cached) ctx.drawImage(cached.layer, 0, 0);
   else background(ctx);
+  // The joins between the worlds of the global map, so a player can see where one place ends and the next begins.
+  if (options.rects) {
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255, 244, 200, 0.55)';
+    for (const item of options.rects) ctx.strokeRect(Math.round(offsetX + item.x * scale) + 0.5, Math.round(offsetY + item.y * scale) + 0.5, Math.round(item.width * scale) - 1, Math.round(item.height * scale) - 1);
+  }
   const marker = (x, y, color, size) => {
     ctx.fillStyle = '#2c403a';
     ctx.fillRect(offsetX + (x + 0.5) * scale - size / 2 - 1, offsetY + (y + 0.5) * scale - size / 2 - 1, size + 2, size + 2);

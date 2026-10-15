@@ -25,6 +25,7 @@ import { request as httpRequest } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { cameraWalkDirection, facingLabel } from '../src/camera-controls.js';
 import { RESTORATION_PLAN } from '../src/community.js';
+import { onMap } from '../src/global-map.js';
 import { validateDatabase } from '../src/recovery.js';
 import { planWalk } from '../src/world-walk.js';
 import { frontierGates, getWorldDefinition, walkable } from '../world.js';
@@ -149,6 +150,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'restoration-two-clients', title: 'Two browsers restore one shared garden and the attributed result survives a reload in both', regression: null },
   { id: 'phone-conversation', title: 'The game conversation panel is compact, preserves drafts, and respects reduced motion on phones', regression: null },
   { id: 'in-game-command-surface', title: 'Every platform section opens as a panel over the running 3D world, with keyboard, phone and reduced-motion access, and the avatar stays controllable', regression: null },
+  { id: 'shared-world-seam-crossing', title: 'Two humans and one AI resident cross a global-map seam with no portal, speak across it, build in a garden and return after a restart', regression: 'wave 2 shared-world coherence' },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -221,6 +223,40 @@ async function apiPatch(ticket, path, payload, statuses = [200]) {
     throw new BrowserSuiteFailure(`fixture request PATCH ${path} was refused`, { expected: `HTTP ${allowed.join(' or ')}`, actual: `HTTP ${response.status} ${response.raw}` });
   }
   return response.body;
+}
+
+/**
+ * The server's own interval between two saved conversation lines from one account. `POST /messages`
+ * compares the newest stored line of `actor.account.id` and answers `429 Please wait before sending
+ * another message.` inside 1500 ms (`src/platform.js message()`). A runtime credential posts as the
+ * account that issued it, so a human's line and its own resident's answer share one interval: a
+ * conversation that alternates between them is paced by this rule, not by luck.
+ */
+const MESSAGE_INTERVAL_MS = 1500;
+
+/**
+ * One saved conversation line, paced past that interval. The account whose interval the line is
+ * charged to is named by the caller, because a runtime credential has no account id of its own. Only
+ * the documented interval refusal is ever resumed — and every resume is printed — so a refusal for
+ * any other reason is the failure it looks like. The wait reads the stored row rather than sleeping a
+ * fixed time, so a line costs nothing when its account has been quiet for longer than the interval
+ * already.
+ */
+async function sendLine(ticket, accountId, body, { attempts = 3 } = {}) {
+  const quiet = () => {
+    const last = row('SELECT created_at FROM messages WHERE account_id=? ORDER BY created_at DESC,id DESC LIMIT 1', accountId);
+    return !last || Date.parse(last.created_at) + MESSAGE_INTERVAL_MS <= Date.now() ? true : null;
+  };
+  let refusal = '';
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await waitForCondition(quiet, `the server’s own ${MESSAGE_INTERVAL_MS} ms interval between two lines from account ${accountId}`, { timeout: 10_000, interval: 100 });
+    const response = await api(ticket, 'POST', '/messages', body);
+    if (response.status === 200 || response.status === 201) return response.body;
+    refusal = `HTTP ${response.status} ${response.raw}`;
+    if (response.status !== 429 || !/another message/i.test(response.raw || '')) break;
+    console.log(`        message pacing   the server’s own per-account message interval refused a line for account ${accountId}; waiting it out and sending again`);
+  }
+  throw new BrowserSuiteFailure('POST /messages was refused', { expected: 'HTTP 200 or 201 from POST /messages', actual: refusal });
 }
 
 function freePort() {
@@ -376,7 +412,23 @@ const ACTORS = {
   // central sector, because an operator may steward one plot and both scenarios need their own.
   'wave-b-host': { email: 'wave-b-host@browser.test', password: PASSWORD, name: 'Wave B host' },
   'wave-b-guest': { email: 'wave-b-guest@browser.test', password: PASSWORD, name: 'Wave B guest' },
+  // The shared-world scenario creates its own two operators and three residents, so nothing it leaves
+  // on the far side of a seam is a shared resident another scenario depends on.
+  'shared-world-host': { email: 'shared-world-host@browser.test', password: PASSWORD, name: 'Shared world host' },
+  'shared-world-guest': { email: 'shared-world-guest@browser.test', password: PASSWORD, name: 'Shared world guest' },
 };
+
+/**
+ * The one seam the shared-world scenario crosses: the Commons' north edge into Highlands. Every tile
+ * here is a plain tile of the two worlds; the avenue through the join is the one `src/global-map.js`
+ * opens, so a step off the north edge stores the resident in the neighbour without a portal.
+ */
+const SHARED_SEAM = Object.freeze({
+  anchor: 'commons', neighbour: 'district:highlands',
+  stand: { x: 25, y: 0 }, landing: { x: 25, y: 35 }, out_of_range: { x: 25, y: 31 },
+  line: 'One tile away, across the border.',
+  answer: 'Both sides of the border, one world.',
+});
 
 /**
  * Opens the application. When operator credentials are supplied the session is restored if the
@@ -5485,6 +5537,193 @@ define('karma-closed-loop', async () => {
   });
 
   return `a brand-new account signed up, created one resident, received the personal garden and cottage that come with it, built a bench there through the garden's own hotbar and placement preview, settled one saved service into Karma Coins, bought the cheapest shop good and kept the shelf, the purse and the space through a real restart - with no NemoCoin minted and no land parcel or stewardship touched`;
+});
+
+/** One crossing of the shared seam through the browser, from the edge tile the fixture left it on. */
+async function browserCrossSeam(page, agentId, controlFor, who) {
+  const standing = residentAt(agentId);
+  expect(standing.world_id === SHARED_SEAM.anchor && standing.x === SHARED_SEAM.stand.x && standing.y === SHARED_SEAM.stand.y, `${who} must stand on the edge tile before crossing`, { expected: `${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} in ${SHARED_SEAM.anchor}`, actual: describe(standing) });
+  const crossed = await pressMoveUntil(page, agentId, controlFor.up, () => { const now = residentAt(agentId); return now.world_id === SHARED_SEAM.neighbour ? now : null; }, `${who} to walk across the seam into ${SHARED_SEAM.neighbour}`);
+  expect(crossed.x === SHARED_SEAM.landing.x && crossed.y === SHARED_SEAM.landing.y, `${who} must be stored in the neighbour's own coordinates for the tile above the seam`, { expected: `${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} in ${SHARED_SEAM.neighbour}`, actual: describe(crossed) });
+  return crossed;
+}
+
+define('shared-world-seam-crossing', async () => {
+  const host = await actor('shared-world-host'), guest = await actor('shared-world-guest');
+  const hostTicket = await ensureAccount(fixtures().admin, ACTORS['shared-world-host']);
+  const guestTicket = await ensureAccount(fixtures().admin, ACTORS['shared-world-guest']);
+  const resident = (ticket, body) => apiExpect(ticket, 'POST', '/agents', { color: '#397f79', symbol: '✦', capabilities: 'Walks the shared world in the browser acceptance run', limitations: 'No external tools and no real-world claims', ...body });
+  const humanOne = await resident(hostTicket, { kind: 'human', name: 'Seam walker one', symbol: '◆' });
+  const humanTwo = await resident(guestTicket, { kind: 'human', name: 'Seam walker two', symbol: '▲' });
+  const aide = await resident(hostTicket, { kind: 'agent', name: 'Seam AI resident' });
+  let runtime = null, controlOne = null, controlTwo = null, garden = null, built = [];
+
+  await step('two humans and one AI resident walk off the Commons edge into Highlands with no portal', async () => {
+    const created = rows('SELECT id,kind,world_id FROM agents WHERE id IN (?,?,?)', humanOne.id, humanTwo.id, aide.id);
+    expect(created.length === 3 && created.every((item) => item.world_id === 'commons' && item.kind !== undefined), 'the three residents must start in the Commons', { expected: 'three residents in commons', actual: describe(created) });
+    const worldsBefore = new Set(rows('SELECT id FROM worlds').map((world) => world.id));
+    const sectorsBefore = count('SELECT COUNT(*) AS n FROM frontier_sectors');
+    // The AI resident is issued its own runtime credential by the operator that owns it: that is what
+    // makes every later AI step the AI's own action and not a human's.
+    runtime = await apiExpect(hostTicket, 'POST', '/runtime/start', { agent_id: aide.id, minutes: 20, max_calls: 500, scopes: ['read', 'move', 'chat', 'build'] });
+    for (const [page, account, human] of [[host.page, ACTORS['shared-world-host'], humanOne], [guest.page, ACTORS['shared-world-guest'], humanTwo]]) {
+      await openApp(page, account);
+      await selectResidentAndSettle(page, human.id, human.name);
+      await openWorldAs(page, human.id);
+    }
+    // The walk to the edge is the interface's own route planner, one tile in from the crossing tile so
+    // the movement controls can be measured without crossing a seam while they are being measured.
+    await walkResidentTo(host.page, humanOne.id, SHARED_SEAM.stand.x, SHARED_SEAM.stand.y + 1);
+    await walkResidentTo(guest.page, humanTwo.id, SHARED_SEAM.stand.x, SHARED_SEAM.stand.y + 1);
+    controlOne = await learnMovementControls(host.page, humanOne.id);
+    controlTwo = await learnMovementControls(guest.page, humanTwo.id);
+    await walkResidentTo(host.page, humanOne.id, SHARED_SEAM.stand.x, SHARED_SEAM.stand.y);
+    await walkResidentTo(guest.page, humanTwo.id, SHARED_SEAM.stand.x, SHARED_SEAM.stand.y);
+    const first = await browserCrossSeam(host.page, humanOne.id, controlOne, 'Seam walker one');
+    const second = await browserCrossSeam(guest.page, humanTwo.id, controlTwo, 'Seam walker two');
+    // The AI resident walks the same edge over its own credential, one documented step at a time.
+    await runtimeWalk(runtime, aide.id, SHARED_SEAM.anchor, SHARED_SEAM.stand, 'the AI resident');
+    await runtimeStep(runtime, aide.id, 'up');
+    const third = residentAt(aide.id);
+    expect(third.world_id === SHARED_SEAM.neighbour && third.x === SHARED_SEAM.landing.x && third.y === SHARED_SEAM.landing.y, 'the AI resident must cross the seam with the same rule as a human', { expected: `${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} in ${SHARED_SEAM.neighbour}`, actual: describe(third) });
+    for (const [who, human] of [['Seam walker one', humanOne], ['Seam walker two', humanTwo], ['Seam AI resident', aide]]) {
+      const stored = residentAt(human.id);
+      expect(stored.world_id === SHARED_SEAM.neighbour, `${who} must be stored in the neighbouring world`, { expected: SHARED_SEAM.neighbour, actual: describe(stored) });
+      expect(stored.status === 'active', `${who} must still be an active resident`, { expected: 'active', actual: stored.status });
+    }
+    // Crossing a seam is a step into land that already exists — not a travel and not a land claim. The
+    // *count* of every `worlds` row cannot witness that: the living-world loop seeds its eight scripted
+    // residents (and each one's garden and cottage) once the first administrator exists, so it adds
+    // sixteen rows of its own at some point while this step is running, whether or not anyone crosses
+    // anything. The invariant asserted is therefore the causal one: the world crossed into was already
+    // stored before the crossing, no region of the global map appeared, and none of the three residents
+    // that crossed owns one more world than it did before.
+    const appeared = rows('SELECT id,kind FROM worlds').map((world) => world.id).filter((id) => !worldsBefore.has(id));
+    expect(worldsBefore.has(SHARED_SEAM.neighbour), 'the world across the seam must already be stored before the crossing, so that a crossing is a step into existing land and never the creation of a world', { expected: `${SHARED_SEAM.neighbour} among the ${worldsBefore.size} worlds stored before the crossing`, actual: `${SHARED_SEAM.neighbour} was not stored before the crossing; the worlds stored then were ${describe([...worldsBefore].filter((id) => id.includes('district') || id === 'commons'))}` });
+    expect(appeared.filter((id) => onMap(id)).length === 0, 'crossing a seam must create no region of the global map', { expected: 'no new world that is a rectangle of the map', actual: `worlds that appeared during the step: ${describe(appeared)}` });
+    expect(count('SELECT COUNT(*) AS n FROM worlds WHERE owner_agent_id IN (?,?,?)', humanOne.id, humanTwo.id, aide.id) === 6, 'crossing a seam must create no world of the crossing residents\u2019 own', { expected: 'the six worlds (one garden and one cottage each) the three who crossed already owned', actual: `${count('SELECT COUNT(*) AS n FROM worlds WHERE owner_agent_id IN (?,?,?)', humanOne.id, humanTwo.id, aide.id)} owned by the three who crossed` });
+    state.notes.push(`shared world registry: the crossing step saw ${appeared.length} new worlds rows, none of them a map region (${appeared.slice(0, 4).join(', ')}${appeared.length > 4 ? ', …' : ''}), none owned by a resident that crossed; this is the living-world roster being seeded, counted as a note rather than asserted`);
+    // The finite land registry is a different table, written by a different path, and nothing else in
+    // the process touches it while this step runs: its count can be compared exactly.
+    expect(count('SELECT COUNT(*) AS n FROM frontier_sectors') === sectorsBefore, 'crossing a seam must not touch the finite land registry', { expected: `${sectorsBefore} sectors`, actual: `${count('SELECT COUNT(*) AS n FROM frontier_sectors')}` });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered' AND actor IN (?,?)", hostTicket.account.id, guestTicket.account.id) === 3, 'each crossing must be the server\u2019s own recorded entry of the new world, once per resident', { expected: 'three world.entered rows for the two operators', actual: describe(rows("SELECT actor,record_id FROM audit WHERE event='world.entered'")) });
+    // Both browsers are drawing the world the residents are stored in.
+    await browserShows(host.page, SHARED_SEAM.neighbour);
+    await browserShows(guest.page, SHARED_SEAM.neighbour);
+    state.notes.push(`shared world: Seam walker one (browser, ${hostTicket.account.id}), Seam walker two (browser, ${guestTicket.account.id}) and the AI resident crossed ${SHARED_SEAM.anchor} ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} into ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} with no portal; three world.entered audit rows, the world crossed into already stored, no new map region, no world of the crossing residents' own and no sector touched`);
+    return `${SHARED_SEAM.anchor} ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} \u2192 ${SHARED_SEAM.neighbour} ${first.x},${first.y} for two browser-driven humans and one runtime credential, both browsers drawing ${SHARED_SEAM.neighbour}`;
+  });
+
+  await step('a bounded viewport read answers for every region the window crosses, and the AI resident reads it on its own credential', async () => {
+    const view = await apiRequest('/map?world_id=' + encodeURIComponent(SHARED_SEAM.anchor) + '&agent_id=' + encodeURIComponent(aide.id), { token: runtime.token });
+    expect(view.status === 200, 'the AI resident must be able to read a viewport across the seam', { expected: 'HTTP 200', actual: `HTTP ${view.status} ${view.raw}` });
+    const regions = (view.body.regions || []).map((item) => item.world_id);
+    expect(regions.includes(SHARED_SEAM.anchor) && regions.includes(SHARED_SEAM.neighbour), 'a window straddling the seam must report both regions', { expected: `${SHARED_SEAM.anchor} and ${SHARED_SEAM.neighbour}`, actual: describe(regions) });
+    expect(view.body.work.regions <= view.body.bounds.max_regions && view.body.work.statements <= view.body.bounds.max_statements, 'the read must stay inside the bound it states', { expected: `at most ${view.body.bounds.max_regions} regions and ${view.body.bounds.max_statements} statements`, actual: describe(view.body.work) });
+    const stored = residentAt(aide.id);
+    const seen = (view.body.participants || []).find((item) => item.id === aide.id);
+    expect(seen && seen.world_id === stored.world_id && seen.x === stored.x && seen.y === stored.y, 'the viewport read must report the stored world and the stored tile, not the world the client draws', { expected: `${stored.world_id} ${stored.x},${stored.y}`, actual: describe(seen) });
+    expect(JSON.stringify(view.body).includes('home:') === false, 'no garden may ever be a region of a viewport', { actual: 'a garden id appeared in the payload' });
+    state.notes.push(`shared world viewport: /api/v1/map over ${SHARED_SEAM.anchor} reported regions ${regions.join(', ')} in ${view.body.work.statements} statements of a stated ${view.body.bounds.max_statements}, with the AI resident at ${seen.x},${seen.y} in ${seen.world_id}`);
+    return `${regions.length} regions (${regions.join(', ')}), ${view.body.work.statements}/${view.body.bounds.max_statements} statements, the AI resident reported in ${seen.world_id}`;
+  });
+
+  await step('a nearby message crosses the seam and reaches the neighbour on the other side only', async () => {
+    // Human one stays on the landing tile; the AI resident steps back across the seam, so the two stand
+    // one world-space tile apart with the boundary between them; human two walks four tiles away.
+    await runtimeStep(runtime, aide.id, 'down');
+    const aideTile = residentAt(aide.id);
+    expect(aideTile.world_id === SHARED_SEAM.anchor && aideTile.x === SHARED_SEAM.stand.x && aideTile.y === SHARED_SEAM.stand.y, 'the AI resident must be back on the Commons side of the seam', { expected: `${SHARED_SEAM.anchor} ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y}`, actual: describe(aideTile) });
+    const far = planWalk(getWorldDefinition(SHARED_SEAM.neighbour), { x: SHARED_SEAM.landing.x, y: SHARED_SEAM.landing.y }, SHARED_SEAM.out_of_range, { objects: [], maxSteps: 64, maxVisited: 4096 });
+    expect(far, 'the neighbouring world must offer a route four tiles off the landing tile', { expected: 'a route to ' + SHARED_SEAM.out_of_range.x + ',' + SHARED_SEAM.out_of_range.y, actual: 'no route' });
+    for (const step_ of far) await runtimeStep(guestTicket, humanTwo.id, step_);
+    const farTile = residentAt(humanTwo.id);
+    expect(farTile.world_id === SHARED_SEAM.neighbour && farTile.x === SHARED_SEAM.out_of_range.x && farTile.y === SHARED_SEAM.out_of_range.y, 'Seam walker two must stand four tiles off the landing tile, still in the neighbouring world', { expected: `${SHARED_SEAM.out_of_range.x},${SHARED_SEAM.out_of_range.y} in ${SHARED_SEAM.neighbour}`, actual: describe(farTile) });
+    const sent = await sendLine(hostTicket, hostTicket.account.id, { agent_id: humanOne.id, channel: 'nearby', text: SHARED_SEAM.line });
+    const stored = await waitForCondition(async () => row('SELECT * FROM messages WHERE id=?', sent.id) || null, 'the nearby line to be stored');
+    const recipients = JSON.parse(stored.recipients);
+    expect(stored.world_id === SHARED_SEAM.neighbour, 'the saved line must belong to the world its sender crossed into', { expected: SHARED_SEAM.neighbour, actual: stored.world_id });
+    expect(recipients.includes(aide.id), 'a nearby message must reach a resident one world-space tile away across the seam', { expected: `the AI resident ${aide.id} among the recipients`, actual: describe(recipients) });
+    expect(!recipients.includes(humanTwo.id), 'and must not reach a resident four world-space tiles away, whatever the two regions\u2019 local coordinates say', { expected: `${humanTwo.id} absent`, actual: describe(recipients) });
+    // The neighbour reads it from its own world, through the credential it crossed with.
+    const read = await apiRequest('/world?world_id=' + encodeURIComponent(SHARED_SEAM.anchor) + '&x=' + SHARED_SEAM.stand.x + '&y=' + SHARED_SEAM.stand.y, { token: runtime.token });
+    expect(read.status === 200 && (read.body.messages || []).some((message) => message.id === sent.id), 'the neighbour must read the line from its own world', { expected: `HTTP 200 holding ${sent.id}`, actual: `HTTP ${read.status}` });
+    // And the answer crosses the other way: the AI resident speaks, and the human on the far side hears
+    // it. The runtime credential posts as the account that issued it — the same account as the human's
+    // line above — so the answer is paced past the server's own per-account message interval instead of
+    // racing it, and the stored row proves both lines share that account.
+    const answer = await sendLine(runtime, stored.account_id, { channel: 'nearby', text: SHARED_SEAM.answer });
+    const answered = await waitForCondition(async () => row('SELECT * FROM messages WHERE id=?', answer.id) || null, 'the AI resident\u2019s answer to be stored');
+    expect(answered.account_id === stored.account_id, 'the AI resident\u2019s line must be stored under the account that issued its credential', { expected: stored.account_id, actual: describe(answered.account_id) });
+    expect(JSON.parse(answered.recipients).includes(humanOne.id), 'the AI resident\u2019s answer must reach the human one tile away across the same seam', { expected: `${humanOne.id} among the recipients`, actual: describe(JSON.parse(answered.recipients)) });
+    state.notes.push(`shared world conversation: ${sent.id} sent from ${SHARED_SEAM.neighbour} reached the AI resident one world-space tile away on the other side and was withheld from the resident four tiles away; the AI resident answered with ${answer.id}, which reached the human across the seam`);
+    return `both directions crossed the seam: ${recipients.length + 1} recipients for ${sent.id} (with the far resident excluded) and the AI answer ${answer.id} reaching the far-side human`;
+  });
+
+  await step('the AI resident builds in its own garden and the same placement is refused on the map', async () => {
+    const refusedOnTheMap = await api(runtime, 'POST', `/agents/${aide.id}/build`, { type: 'flowers', x: SHARED_SEAM.landing.x, y: SHARED_SEAM.landing.y - 2 });
+    expect(refusedOnTheMap.status >= 400, 'a placement outside the resident\u2019s own plot must be refused, on the far side of a seam', { expected: 'a refusal', actual: `HTTP ${refusedOnTheMap.status} ${refusedOnTheMap.raw}` });
+    const gardenId = `home:${aide.id}`;
+    garden = await travelTo(runtime, aide.id, gardenId);
+    const definition = getWorldDefinition(gardenId);
+    built = [];
+    for (let y = 0; y < definition.rows && built.length < 3; y++) for (let x = 0; x < definition.columns && built.length < 3; x++) {
+      if (!walkable({ x, y }, definition)) continue;
+      if (Math.abs(x - definition.start.x) + Math.abs(y - definition.start.y) <= 1) continue;
+      if ((definition.portals || []).some((portal) => Math.abs(portal.x - x) + Math.abs(portal.y - y) <= 1)) continue;
+      built.push({ x, y });
+    }
+    expect(built.length === 3, 'the AI resident\u2019s garden must offer buildable tiles', { expected: 'three buildable tiles', actual: describe(built) });
+    for (const [index, tile] of built.entries()) await apiExpect(runtime, 'POST', `/agents/${aide.id}/build`, { type: index === 1 ? 'bench' : 'flowers', x: tile.x, y: tile.y }, [201]);
+    const stored = rows('SELECT type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', gardenId);
+    expect(stored.length === 3, 'the garden must hold exactly the three placements the AI resident made', { expected: 'three saved placements', actual: describe(stored) });
+    // Out of the garden the same placement is out of reach: rights follow the stored plot.
+    await travelTo(runtime, aide.id, SHARED_SEAM.anchor);
+    const refusedAtHome = await api(runtime, 'POST', `/agents/${aide.id}/build`, { type: 'flowers', x: built[0].x, y: built[0].y });
+    expect(refusedAtHome.status >= 400, 'the same placement must be refused once the resident is back on the map', { expected: 'a refusal', actual: `HTTP ${refusedAtHome.status} ${refusedAtHome.raw}` });
+    state.notes.push(`shared world build: three attributed placements saved in ${gardenId} by the AI resident on its own credential (${built.map((tile, index) => (index === 1 ? 'bench' : 'flowers') + ' ' + tile.x + ',' + tile.y).join(' \u00b7 ')}), refused at ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y - 2} in ${SHARED_SEAM.neighbour} and refused again from the Commons`);
+    return `three placements saved in ${gardenId} and two placements refused outside the resident's own plot`;
+  });
+
+  await step('a real restart keeps the crossing, the conversation and the garden byte for byte', async () => {
+    // Leave all three on the far side of the seam again, so the restart has a crossing to preserve.
+    const home = planWalk(getWorldDefinition(SHARED_SEAM.anchor), { x: residentAt(aide.id).x, y: residentAt(aide.id).y }, SHARED_SEAM.stand, { objects: rows('SELECT type,x,y FROM world_objects WHERE world_id=?', SHARED_SEAM.anchor), maxSteps: 256, maxVisited: 16_384 });
+    expect(home, 'the AI resident must have a route back to the edge tile', { expected: `a route to ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y}`, actual: describe(residentAt(aide.id)) });
+    for (const direction of home) await runtimeStep(runtime, aide.id, direction);
+    await runtimeStep(runtime, aide.id, 'up');
+    // The humans never left the far side: they crossed in the first step and have stayed there.
+    const placement = () => Object.fromEntries([humanOne, humanTwo, aide].map((human) => [human.id, residentAt(human.id)]));
+    const before = placement();
+    expect(Object.values(before).every((item) => item.world_id === SHARED_SEAM.neighbour), 'all three residents must be on the far side of the seam before the restart', { expected: `three residents in ${SHARED_SEAM.neighbour}`, actual: describe(before) });
+    const objectsBefore = rows('SELECT id,world_id,type,x,y,created_at FROM world_objects WHERE world_id=? ORDER BY x,y', `home:${aide.id}`);
+    const conversationBefore = rows("SELECT id,agent_id,account_id,channel,world_id,created_at FROM messages WHERE text IN (?,?) ORDER BY id", SHARED_SEAM.line, SHARED_SEAM.answer);
+    expect(conversationBefore.length === 2, 'the crossing conversation must be saved before the restart', { expected: 'two saved lines', actual: describe(conversationBefore) });
+    await stopServer();
+    await startServer();
+    expect(describe(placement()) === describe(before), 'a restart against the same database must not move any of the three residents', { expected: describe(before), actual: describe(placement()) });
+    expect(Object.values(placement()).every((item) => item.world_id === SHARED_SEAM.neighbour), 'all three must still be stored in the world they crossed into', { expected: SHARED_SEAM.neighbour, actual: describe(placement()) });
+    const objectsAfter = rows('SELECT id,world_id,type,x,y,created_at FROM world_objects WHERE world_id=? ORDER BY x,y', `home:${aide.id}`);
+    expect(describe(objectsAfter) === describe(objectsBefore), 'the garden must survive the restart byte-for-byte', { expected: describe(objectsBefore), actual: describe(objectsAfter) });
+    const conversationAfter = rows("SELECT id,agent_id,account_id,channel,world_id,created_at FROM messages WHERE text IN (?,?) ORDER BY id", SHARED_SEAM.line, SHARED_SEAM.answer);
+    expect(describe(conversationAfter) === describe(conversationBefore), 'both saved lines must survive the restart unchanged', { expected: describe(conversationBefore), actual: describe(conversationAfter) });
+    // The credential the AI resident crossed with still works, and both browsers reload into the world
+    // the party is stored in.
+    const read = await apiRequest('/world?world_id=' + encodeURIComponent(SHARED_SEAM.anchor) + '&x=' + SHARED_SEAM.stand.x + '&y=' + SHARED_SEAM.stand.y, { token: runtime.token });
+    expect(read.status === 200, 'the AI resident\u2019s credential must still read after the restart', { expected: 'HTTP 200', actual: `HTTP ${read.status} ${read.raw}` });
+    for (const [page, account, human] of [[host.page, ACTORS['shared-world-host'], humanOne], [guest.page, ACTORS['shared-world-guest'], humanTwo]]) {
+      await openApp(page, account);
+      await openWorldAs(page, human.id);
+      await browserShows(page, SHARED_SEAM.neighbour);
+    }
+    await waitForClient(host.page, (party) => {
+      const held = (window.__nemoworld?.world?.()?.participants || []).map((item) => item.id);
+      return party.every((id) => held.includes(id)) ? true : null;
+    }, [humanOne.id, humanTwo.id, aide.id], 'the reloaded browser to show the whole party in the world it crossed into', 20_000);
+    state.notes.push(`shared world restart: after a real restart all three residents are still stored in ${SHARED_SEAM.neighbour} at ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y}, ${objectsAfter.length} garden placements and both crossing lines are byte-for-byte unchanged, the runtime credential still reads and both browsers show ${SHARED_SEAM.neighbour} with the party in it`);
+    return `after a real restart: three residents still in ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y}, ${objectsAfter.length} placements and 2 saved lines unchanged, both browsers back in ${SHARED_SEAM.neighbour}`;
+  });
+
+  return `two independent humans drove two browsers and one AI resident drove its own runtime credential from the Commons edge ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} into ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} with no portal and no new world, read a bounded viewport that reported both sides of the seam, spoke across the join with the far resident excluded and the neighbour included, built three placements in the AI resident's own garden with the same call refused on the map, and returned after a real restart to the same stored rows, the same conversation and the same garden`;
 });
 
 define('hero-introduction-film',async()=>{
