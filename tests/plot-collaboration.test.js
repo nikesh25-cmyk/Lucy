@@ -424,7 +424,7 @@ test('grants and their history are append-only, and stored rows keep their meani
   f.platform.run('UPDATE frontier_blocks SET creator_agent_id=?,creator_account_id=? WHERE id=?', aliceResident.id, f.actor('alice').account.id, 'bypass-block');
   assert.throws(() => validateDatabase(f.database), /collaboration construction is invalid/);
   f.platform.run('DELETE FROM frontier_blocks WHERE id=?', 'bypass-block');
-  assert.equal(validateDatabase(f.database).schema_version, 25);
+  assert.equal(validateDatabase(f.database).schema_version, 26);
 });
 
 test('racing grants, a revoke mid-build and a repeated revoke stay atomic', async t => {
@@ -483,9 +483,9 @@ test('a pre-change database migrates to schema 23, backs up and restores with it
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const backup = join(directory, 'backup.sqlite');
   backupDatabase(f.platform.db, backup);
-  assert.equal(validateDatabase(backup).schema_version, 25);
+  assert.equal(validateDatabase(backup).schema_version, 26);
   const restored = restoreDatabase(backup, join(directory, 'restored.sqlite'));
-  assert.equal(restored.schema_version, 25);
+  assert.equal(restored.schema_version, 26);
   const reopened = new Platform(join(directory, 'restored.sqlite'), f.clock);
   t.after(() => reopened.close());
   assert.equal(reopened.get('SELECT COUNT(*) AS n FROM plot_grants').n, 1);
@@ -497,14 +497,14 @@ test('a pre-change database migrates to schema 23, backs up and restores with it
   // the world it already held.
   f.platform.close();
   const legacy = new DatabaseSync(f.database);
-  legacy.exec('PRAGMA foreign_keys=OFF; DROP TRIGGER land_stewardships_revoke_grants; DROP TABLE plot_grant_events; DROP TABLE plot_grants; DROP TRIGGER frontier_blocks_plot_insert; PRAGMA user_version=18');
+  legacy.exec('PRAGMA foreign_keys=OFF; DROP VIEW IF EXISTS karma_service_rules; DROP VIEW IF EXISTS karma_source_events; DROP TABLE IF EXISTS karma_receipts; DROP TABLE IF EXISTS karma_purchases; DROP TABLE IF EXISTS shop_purchases; DROP TRIGGER land_stewardships_revoke_grants; DROP TABLE plot_grant_events; DROP TABLE plot_grants; DROP TRIGGER frontier_blocks_plot_insert; PRAGMA user_version=18');
   legacy.exec(SCHEMA_18_GUARD);
   legacy.exec('ALTER TABLE frontier_blocks DROP COLUMN grant_id');
   legacy.close();
   assert.equal(validateDatabase(f.database).schema_version, 18);
   const migrated = new Platform(f.database, f.clock);
   t.after(() => migrated.close());
-  assert.equal(validateDatabase(f.database).schema_version, 25);
+  assert.equal(validateDatabase(f.database).schema_version, 26);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM plot_grants').n, 0);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM plot_grant_events').n, 0);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM frontier_blocks').n, 1, 'guest construction is preserved');
@@ -518,7 +518,7 @@ test('a pre-change database migrates to schema 23, backs up and restores with it
   const actor = migrated.authenticate(f.credentials.alice.token);
   const next = migrated.transaction(() => migrated.plotGrantCreate(actor, grantInput(bob, { block_types: ['wood'], layers: [0], max_blocks: 12 })));
   assert.equal(next.created, true);
-  assert.equal(validateDatabase(f.database).schema_version, 25);
+  assert.equal(validateDatabase(f.database).schema_version, 26);
   // A collaboration database that lost its guard, its tables or a narrow scope fails validation
   // rather than being accepted as an equivalent world.
   migrated.db.exec('DROP TRIGGER frontier_blocks_plot_insert');
@@ -534,6 +534,6 @@ test('a pre-change database migrates to schema 23, backs up and restores with it
   migrated.db.exec('DROP TRIGGER plot_grants_lifecycle');
   migrated.run('UPDATE plot_grants SET scope=? WHERE id=?', JSON.stringify({ block_types: ['wood'], layers: [0], actions: ['place'], max_blocks: 12 }), next.grant.id);
   migrated.db.exec(PLOT_GRANT_SCHEMA);
-  assert.equal(validateDatabase(f.database).schema_version, 25);
+  assert.equal(validateDatabase(f.database).schema_version, 26);
   assert.equal(created.grant.id.length, 36);
 });

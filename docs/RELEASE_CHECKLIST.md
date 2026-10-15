@@ -37,7 +37,7 @@ Run in this order; stop at the first failure.
 | G6 | Recovery and failure drills | `node scripts/ops-rehearsal.mjs` | one `PASS` line per drill — `recovery-point`, `corrupt-backup`, `migration-rehearsal`, `interrupted-worker`, `model-queue-saturation`, `storage-limit`, `diagnostics-redaction`, `safety-and-pause` — and exit code 0, on a disposable workspace only. |
 | G7 | Capacity evidence probe | `npm run capacity` | prints the hardware, fixture, read percentiles and failures, **movement/building write** and **event-subscriber** figures, browser result and model-queue bound. Re-run on the combined tree before using the figures for planning; Wave D's schema-22 result is historical evidence, **not** a capacity guarantee. |
 | G8 | Runtime database integrity | `node --test tests/startup-integrity.test.js` | Real server startup refuses corrupt, foreign and newer databases before writes/listening; a valid existing world starts with its audited records preserved. The runtime check holds the process lock. |
-| G9 | Schema agreement | `node scripts/recovery.js verify <database>` | `{"schema_version":23,"accounts":N}` — the same version this build writes, and a non-zero account count on a live world. |
+| G9 | Schema agreement | `node scripts/recovery.js verify <database>` | `{"schema_version":26,"accounts":N}` — the same version this build writes, and a non-zero account count on a live world. |
 | G10 | Archive privacy | `tar -tzf <archive>.tgz \| grep -E '(^\|/)(data\|\.runtime\|backups\|test-results)/\|\.sqlite\|\.env$'` | no output (nothing matched). If anything matches: **do not publish**. |
 | G11 | Published-surface sanity | open `https://<origin>/api/v1/health` and `https://<origin>/api/v1/bootstrap` | `health` returns `status: "ok"` with aggregate counters only; `bootstrap` returns `setup_required: false` and `registration.mode: "closed"` after the administrator exists, and **never** the setup code; `/api/v1/operations` returns `401`/`403` to anyone but an administrator. |
 | G12 | Independent encrypted recovery | stop the service; run `backup-encrypted`, `verify-encrypted`, securely transfer the `.nemoenc` file to independent storage and `restore-encrypted` into a disposable second installation | a named operator records the verified off-host artifact, separately held key, recovery point and successful restore. A local encrypted-file test alone does not pass this gate. |
@@ -52,7 +52,7 @@ tail of the output next to the release. An untested release is not a release.
 ## 3. Migration order
 
 Current schema: **23**. `src/database.js` refuses any database above 23, and
-`src/recovery.js` (`RECOVERY_LIMITS.accepted_schema_versions`) accepts versions 1–23 and re-checks each
+`src/recovery.js` (`RECOVERY_LIMITS.accepted_schema_versions`) accepts versions 1–26 and re-checks each
 version's tables, columns, triggers and invariants.
 
 This DeepSeek wave adds no migration beyond the already integrated schema-23 trade board. An installed
@@ -67,7 +67,7 @@ Where a database is older, the order is fixed. **Stop the server and back up fir
 | 3. Verify the backup | `node scripts/recovery.js verify <backup>` | `{"schema_version":<old>,"accounts":N}` — if this fails, stop: you have no rollback. |
 | 4. Rehearse on a disposable copy | `node scripts/ops-rehearsal.mjs --drill migration-rehearsal` | `PASS  migration-rehearsal` — a schema-17 copy migrates to 23 additively with every record intact. |
 | 5. Start the new release | deploy, or `npm start` | the migration runs inside one `BEGIN IMMEDIATE … COMMIT`; an interrupted migration leaves the old version in place, not a half-migrated database. |
-| 6. Verify the migrated world | `node scripts/recovery.js verify <database>` | `{"schema_version":23,"accounts":N}` with the **same N** as step 3. |
+| 6. Verify the migrated world | `node scripts/recovery.js verify <database>` | `{"schema_version":26,"accounts":N}` with the **same N** as step 3. |
 | 7. Verify the world's own integrity | Administration → **Operational health** | `database check · ok`, `audit_chain_valid` and `coin_ledger_valid` both true, and the expected account/plot/coin/quest/guild counts. |
 | 8. Unpause | confirm the platform is not paused and a member can sign in | one ordinary human action succeeds after the migration. |
 

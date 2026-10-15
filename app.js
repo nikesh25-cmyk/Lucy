@@ -4,12 +4,13 @@ import {createGameInput} from './src/game-input.js';
 import {createMovementQueue} from './src/movement-queue.js';
 import {createPortalJourney} from './src/world-navigation.js';
 import {blockLayers,surfaceAt} from './src/elevation.js';
-import {createHotbar,createPlacementPreview,mount} from './src/ui/build-interface.js';
+import {createHotbar,createPlacementPreview,mount,placementRulesFor} from './src/ui/build-interface.js';
 import {createInventoryPanel} from './src/ui/inventory-panel.js';
 import {createInteractionPrompt,confirmationMessage} from './src/ui/interaction-prompt.js';
 import {createReadonlyTransport,createSpectatorView} from './src/ui/spectator.js';
 import {createTouchControls,hasCoarsePointer,prefersReducedMotion} from './src/ui/touch-controls.js';
 import {createFirstPlayGuide,renderNode} from './src/ui/first-play-guide.js';
+import {createShopPanel} from './src/ui/shop-panel.js';
 import {planWalk} from './src/world-walk.js';
 import {solidSceneryAt} from './src/footprints.js';
 import {globeScene,countryGlobeCenter,rotateGlobe} from './src/country-globe.js';
@@ -45,7 +46,7 @@ Object.assign(state,{gamePresentation,gameMode:savedGameMode,gameDrawer:'',gameM
 const gameAudio = createGameAudio();
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
 Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',firstPlay:null,firstPlayRefusal:null,interaction:null,interactionRefusal:null,interactionError:null,evidenceLibrary:null,moveFeedback:null});
-let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false;
+let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false,shopPanel=null,shopHost=null,shopStatus=null;
 const movementQueue = createMovementQueue({ move: performMove });
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -61,7 +62,7 @@ let firstPlayReadTimer = null, firstPlayReadRevision = 0;
 const pickListeners = new Set();
 const shellPicker = { currentPick: () => state.voxelSelection, subscribe: (listener) => { pickListeners.add(listener); return () => pickListeners.delete(listener); } };
 function notifyPick(pick) { for (const listener of [...pickListeners]) listener(pick); }
-const hotbar = createHotbar({ input: shellPicker, onSelect: (type) => { if (type) placement.setKind(type); } });
+const hotbar = createHotbar({ input: shellPicker, onSelect: (type) => { if (!type) return; placement.setKind(type); state.buildKind = type; state.building = true; renderView(); } });
 const placement = createPlacementPreview({ api: (path, method, body) => api(path, method, body), input: shellPicker, onNotice: (text) => notice(text) });
 const inventory = createInventoryPanel({ api: (path, method, body, idempotent, key) => api(path, method, body, idempotent, key), onNotice: (text) => notice(text) });
 const interactionPrompt = createInteractionPrompt({
@@ -99,13 +100,16 @@ const firstPlayGuide = createFirstPlayGuide({
   onResume: () => mountFirstPlayGuide(),
 });
 const spectatorTransport = createReadonlyTransport({ fetch: (path, options) => fetch(path, options) });
+/** The shell is suspended while a menu, drawer, dialog or prompt owns the screen, so the world input
+ *  layer and the camera both stop taking wheel, drag and key events until it closes. */
+const shellSuspended = () => Boolean(state.gameMenuOpen || state.gameDrawer || document.querySelector('dialog[open]') || interactionPrompt.suspendsShortcuts);
 gameInput = createGameInput({
   blocksView: createViewBlocker({
     isSolid: (x, y) => !walkable({ x, y }, definition()) || Boolean(solidSceneryAt({ x, y }, state.world.objects || [])),
     layerAt: (x, y) => surfaceAt(x, y, blockLayers(state.world.blocks || [])),
   }),
   worldContext: () => ({ frontier: definition().kind === 'frontier', palette: state.world.frontier?.palette || [], agent: Boolean(viewedAgent()), fixture: Boolean(state.interaction?.fixture), building: Boolean(state.building), lookMode: Boolean(state.lookMode) }),
-  isSuspended: () => Boolean(state.gameMenuOpen || state.gameDrawer || document.querySelector('dialog[open]') || interactionPrompt.suspendsShortcuts),
+  isSuspended: shellSuspended,
   onIntent: handleIntent,
 });
 gameInput.setCameraMode(state.firstPerson ? 'first-person' : 'third-person', { silent: true });
@@ -189,7 +193,7 @@ function notice(message, error = false) {
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
- gameAudio.stop();spectator?.close();spectator=null;firstPlayGuide.reset();cancelFirstPlayRead();movementQueue.reset('session-ended');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.evidenceLibrary=null;state.moveFeedback=null;clearOperatorState(state);state.workbenches=null;state.quality=null;state.qualityDismissals=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}try{localStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
+ gameAudio.stop();spectator?.close();spectator=null;firstPlayGuide.reset();cancelFirstPlayRead();movementQueue.reset('session-ended');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.voxelHover=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.evidenceLibrary=null;state.moveFeedback=null;clearOperatorState(state);state.workbenches=null;state.quality=null;state.qualityDismissals=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}try{localStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
  if(sessionRecovery)return sessionRecovery;
@@ -328,7 +332,7 @@ function paintWorld() {
   const now = performance.now(), base = worldPosition(), displayPosition = base?.id ? displayed(base, now) : base;
   state.camera = cameraFor(displayPosition);
   syncEventStream();
-  if(state.graphics==='voxel'){if(!voxelView){voxelView=createVoxelWorld(canvas,{onPick:pick=>guarded(()=>pickWorld(pick)),onLook:look=>queueLook(look.yaw,look.pitch,{apply:false}),onUnavailable:()=>{if(state.graphicsUnavailable)return;state.graphics='pixel';state.graphicsUnavailable=true;queueMicrotask(()=>renderView());}});if(!voxelView)return;if(state.voxelOrbit)voxelView.setOrbit(state.voxelOrbit);}voxelView.render(state.world,{definition:definition(),position:displayPosition,self:agent||null,selection:state.voxelSelection,parcelSelection:state.parcelSelection,cameraMode:state.firstPerson&&agent?'first-person':'orbit',facing:state.facing,dayPhase:state.world.atmosphere?.phase});canvas.dataset.graphics='voxel';}
+  if(state.graphics==='voxel'){if(!voxelView){voxelView=createVoxelWorld(canvas,{onPick:pick=>guarded(()=>pickWorld(pick)),onHover:hover=>{state.voxelHover=hover||null;syncWorldControls();},onLook:look=>queueLook(look.yaw,look.pitch,{apply:false}),onUnavailable:()=>{if(state.graphicsUnavailable)return;state.graphics='pixel';state.graphicsUnavailable=true;queueMicrotask(()=>renderView());}});if(!voxelView)return;if(state.voxelOrbit)voxelView.setOrbit(state.voxelOrbit);}voxelView.render(state.world,{definition:definition(),position:displayPosition,self:agent||null,selection:state.voxelSelection||state.voxelHover,parcelSelection:state.parcelSelection,cameraMode:state.firstPerson&&agent?'first-person':'orbit',facing:state.facing,dayPhase:state.world.atmosphere?.phase});canvas.dataset.graphics='voxel';}
   else {draw(canvas, displayPosition, { blocks:state.world.blocks||[],world: definition(), camera: state.camera, objects: state.world.objects || [], portals: worldPortals(), visitors: state.world.participants.filter((a) => a.id !== agent?.id && a.status !== 'revoked').map((item) => displayed(item, now)), self: agent ? displayed(agent, now) : null, sprites:mayorSprites, dayPhase: state.world.atmosphere?.phase });canvas.dataset.graphics='pixel';}
   syncWorldControls();updateCallingHUD();const coordinates=$('#game-coordinates');if(coordinates)coordinates.textContent=`${Math.floor(displayPosition.x)}, ${Math.floor(displayPosition.y)}`;const population=$('#game-population');if(population)population.textContent=String(state.world.counts?.world_agents??state.world.population??state.world.participants.length);const overview=$('#world-overview');if(overview)drawMiniMap(overview,definition(),{camera:state.camera,position:agent||null,objects:state.world.objects||[],blocks:state.world.blocks||[],portals:worldPortals()});
 }
@@ -773,7 +777,7 @@ function renderAuth() {
 }
 function renderTabs() {
   const groups=[{title:'THE WORLD',items:[['start','Start here','◇'],['world','Open world','⌂'],['explore','Explore worlds','◇'],['list','World list','☷'],['civic','Regions & ambassadors','◇'],['countries','Countries & areas','◇'],['community','Community','♡'],['callings','Callings & guilds','✦'],['guilds','Guild projects','⚒'],['restoration','World restoration','✿'],['quests','Quest chains','◇']]},{title:'RESEARCH & CONTRIBUTIONS',items:[['research','Research desk','⚑'],['missions','Missions','⚑'],['gallery','Gallery','✧'],['assembly','World Assembly','◇']]}];
-  if(state.account)groups.push({title:'YOUR RESIDENTS',items:[['coins','Coin wallet','✧'],['passport','Resident passport','♟'],['workshop','Garden & workshop','✿'],['characters','My characters','♟'],['history','My contributions','▤']]});
+  if(state.account)groups.push({title:'YOUR RESIDENTS',items:[['shop','Karma & shop','✦'],['coins','Coin wallet','✧'],['passport','Resident passport','♟'],['workshop','Garden & workshop','✿'],['characters','My characters','♟'],['history','My contributions','▤']]});
   // Governance, administration and diagnostics leave the newcomer's path. The game menu offers one
   // role-gated Management entry that opens /manage, where the same sections are rendered in full; the
   // workspace presentation keeps the complete governance group. The server's own role checks are the
@@ -781,12 +785,12 @@ function renderTabs() {
   const privileged=isReviewer()||isModerator();
   if(!state.gamePresentation){const care=[];if(isReviewer())care.push(['review','Review','✓'],['owner','Mission studio','✎']);if(state.account)care.push(['safety','Safety','♡']);if(state.account?.role==='admin')care.push(['operations','Administration','⚙']);if(care.length)groups.push({title:'GOVERNANCE',items:care});}
   groups.push({title:'',items:[['help','Guide','?']]});
-  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list',restoration:'users-round',start:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
+  const nav=$('#navigation');nav.replaceChildren();const current=groups.flatMap(group=>group.items).find(item=>item[0]===state.tab);$('#toggle-navigation').textContent='Menu · '+(current?.[1]||'NemoWorld');for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const[id,name,icon]of group.items){const item=button(name,()=>navigateSection(id));const names={world:'map',explore:'compass',list:'users-round',civic:'earth',countries:'earth',assembly:'users-round',research:'clipboard-list',missions:'clipboard-list',gallery:'sparkles',characters:'house',history:'book-open',review:'shield-check',owner:'sprout',safety:'shield-check',operations:'settings',help:'book-open',coins:'sparkles',shop:'sparkles',community:'users-round',passport:'compass',workshop:'sprout',callings:'sparkles',guilds:'users-round',quests:'clipboard-list',restoration:'users-round',start:'book-open'};const image=element('img',null,'nav-icon');image.src=`/assets/icons/${names[id]}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',name);if(id===state.tab)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
   if(state.gamePresentation){const section=element('div',null,'nav-group game-workspace-link');section.append(paragraph('MORE CONTROLS','nav-heading'));if(privileged)section.append(button('Management',()=>{location.href='/manage';},'secondary small'));section.append(button('Open workspace',()=>{location.href='/?mode=workspace';},'secondary small'));nav.append(section);}
   if(state.gamePresentation&&state.tab==='world'){const sound=element('div',null,'nav-group game-audio-menu');sound.append(paragraph('SOUND','nav-heading'),gameAudio.createControls(document));nav.prepend(sound);}
 }
 function renderView() { if(voxelView){state.voxelOrbit=voxelView.orbit;voxelView.destroy();voxelView=null;}document.body.classList.toggle('inner-section',(state.tab!=='world'||currentWorldId()!=='commons'));applyGameShell();
-  captureChatFocus(); const node = $('#view'); node.replaceChildren(); const views = { start: renderStartJourney, world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,restoration:renderRestoration,quests:renderQuests };
+  captureChatFocus(); const node = $('#view'); node.replaceChildren(); const views = { start: renderStartJourney, world: renderWorld, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, shop:renderKarmaShop, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,restoration:renderRestoration,quests:renderQuests };
   (views[state.tab] || renderWorld)(node);node.setAttribute('aria-busy','false');restoreChatFocus();
 }
 function renderCivic(parent) {
@@ -1009,7 +1013,7 @@ function renderWorld(parent) {
   journey.append(element('div',null,'nearby-portals'));
   if (agent) journey.append(walkToTileForm(agent, world));
   append(lower, journey, movement);map.append(lower);if(state.graphics==='voxel')map.append(actions(button('Look left',()=>queueLook(state.facing.yaw+.35,state.facing.pitch),'secondary small'),button('Look right',()=>queueLook(state.facing.yaw-.35,state.facing.pitch),'secondary small'),button('Zoom in',()=>voxelView?.zoom(-3),'secondary small'),button('Zoom out',()=>voxelView?.zoom(3),'secondary small'),button('Reset camera',()=>{queueLook(.78,state.firstPerson?0:.68);voxelView?.setOrbit({distance:24});},'secondary small')));if(world.kind==='frontier'&&!state.gamePresentation)map.append(frontierHotbar());if(state.graphicsUnavailable)map.append(paragraph('3D graphics are unavailable in this browser. The interactive pixel map remains available.','privacy'));
-  const aside = element('aside', null, 'world-aside');aside.tabIndex=-1;if(state.gamePresentation)aside.append(button('Close world tools',()=>setGameDrawer(''),'game-drawer-close'));if(agent)aside.append(callingCard());const inspection=element('div');inspection.id='resident-inspection';aside.append(inspection);if(world.kind==='frontier')aside.append(landCard(),frontierCard());else{const frontier=card('Beyond the Commons','OPEN FRONTIER');frontier.append(paragraph('Explore a finite landscape, steward a plot for a purpose and build with human players and agents.'),button('Enter the frontier',()=>enterFrontier()),button('Explore as a visitor',()=>visitWorld('frontier:0:0'),'secondary small'));aside.append(frontier);} const arrival = card(agent ? (agent.kind==='human'?'Your player':'Your agent') : 'Visiting the world', 'HERE & NOW');
+  const aside = element('aside', null, 'world-aside');aside.tabIndex=-1;if(state.gamePresentation)aside.append(button('Close world tools',()=>setGameDrawer(''),'game-drawer-close'));if(agent)aside.append(callingCard(),mySpaceCard());const inspection=element('div');inspection.id='resident-inspection';aside.append(inspection);if(world.kind==='frontier')aside.append(landCard(),frontierCard());else{const frontier=card('Beyond the Commons','OPEN FRONTIER');frontier.append(paragraph('Explore a finite landscape, steward a plot for a purpose and build with human players and agents.'),button('Enter the frontier',()=>enterFrontier()),button('Explore as a visitor',()=>visitWorld('frontier:0:0'),'secondary small'));aside.append(frontier);} const arrival = card(agent ? (agent.kind==='human'?'Your player':'Your agent') : 'Visiting the world', 'HERE & NOW');
   if (state.agents.length) {
     const controls = element('div'); const select = field(controls, 'agent', 'Character', { options: state.agents.map((a) => ({ value: a.id, label: `${a.name} · ${a.status}` })), value: state.selected }); select.addEventListener('change', () => guarded(() => selectAgent(select.value))); arrival.append(controls);
     if (agent) { const row = element('div', null, 'agent-row'); append(row, residentFace(agent), paragraph(agent.capabilities || 'Ready to explore.')); arrival.append(row); }
@@ -1109,7 +1113,7 @@ function gameHud(world,agent,position){
     if(state.gameMode==='observe')return notice('Observing is read-only. Play as a resident to build.');
     if(!agent)return state.account?playAsHuman():openAuth('register');
     if(world.kind==='frontier'){state.building=!state.building;renderView();return;}
-    if(['home','house'].includes(world.kind)){setGameDrawer('tools');$('#home-build-card')?.scrollIntoView({block:'nearest'});return;}
+    if(['home','house'].includes(world.kind)){state.building=!state.building;renderView();return;}
     return enterFrontier();
   },'game-quick');build.id='game-build-button';
   const chat=button('Chat',()=>setGameDrawer('chat'),'game-quick');const places=button('Places',()=>openSection('explore'),'game-quick');const tools=button('More',()=>setGameDrawer('tools'),'game-quick');
@@ -1247,7 +1251,10 @@ function syncWorldControls(){
  // Everything the server itself decides (portal adjacency, gate range) still reads the stored tile.
  const drawn=player?tileOf(displayed(player,performance.now())):position;
  const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`${player?'Player':'View'} position ${drawn.x}, ${drawn.y}${player&&drawn.z>0?`, layer ${drawn.z}`:''} · ${state.graphics==='voxel'?(state.firstPerson?'First person · drag to look · WASD relative to view':'Drag to orbit · click ground to walk'):'Arrow keys / WASD'}`;
- const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position:drawn,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null,fixture:state.interaction?.fixture||null});}
+ const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection||state.voxelHover,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position:drawn,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null,fixture:state.interaction?.fixture||null});}
+ // A wheel or a drag over an open menu belongs to the menu: the camera stops taking pointer events
+ // for as long as the shell is suspended, and starts again the moment it closes.
+ voxelView?.setEnabled?.(!shellSuspended());
  const nearby=$('.nearby-portals');if(nearby){nearby.replaceChildren();if(player)for(const portal of worldPortals().filter(p=>Math.abs(p.x-position.x)+Math.abs(p.y-position.y)<=1))nearby.append(button(portalLabel(portal),()=>enterPortal(portal),'small'));}
  for(const node of document.querySelectorAll('[data-frontier-expand]')){const gate=state.world.frontier?.neighbors.find(item=>item.direction===node.dataset.frontierExpand);node.disabled=!player||player.status!=='active'||state.world.paused||!gate||gate.exists||Math.abs(player.x-gate.x)+Math.abs(player.y-gate.y)>2;}
  const climb=$('[data-climb]');if(climb)climb.disabled=!player||player.status!=='active'||state.world.paused||!climbDirection();
@@ -2279,6 +2286,67 @@ function renderEvents(parent){
 function renderThanks(parent){
   parent.append(paragraph('Thank someone for a specific contribution or act of care. Gratitude is a record of appreciation, with no currency or leaderboard. A Mediator calling can record this saved appreciation as bounded cosmetic experience.','muted'));const grid=element('div',null,'grid two');for(const item of state.community.thanks||[]){const node=card(`${item.giver_name} thanked ${item.recipient_name}`,'A LITTLE GOODWILL');append(node,paragraph(item.reason),paragraph(date(item.created_at),'privacy'));grid.append(node);}if(!grid.children.length)grid.append(empty('No thanks recorded yet. Notice a helpful contribution, and tell its author what mattered.'));parent.append(grid);
   if(communityCanWrite()){const own=state.agents.map(a=>a.id),recipients=state.world.participants.filter(a=>!own.includes(a.id)&&a.status==='active');const node=card('Say a specific thank you');if(!recipients.length)node.append(empty('Visit a world with a character belonging to another operator to choose a recipient.'));else {const inputs=form(node,'Send thanks',values=>communityWrite('/thanks',values,'Your appreciation is recorded.'));field(inputs,'recipient_agent_id','Recipient in the current world',{options:recipients.map(a=>({value:a.id,label:a.name})),full:true});field(inputs,'reason','What did this character do that helped?',{type:'textarea',max:300,full:true});node.append(paragraph('Once per recipient per day. You cannot thank characters managed by your own operator.','privacy'));}parent.append(node);}
+}
+/**
+ * The shop panel is painted from the last server payload only: the balance, the prices and every
+ * "can I afford it" flag come from GET /karma and GET /shop, and a purchase is never assumed to have
+ * worked. `paintShopPanel` is the one place this section redraws itself.
+ */
+function paintShopPanel(){
+  if(!shopPanel||!shopHost)return;
+  mount(shopHost,shopPanel.view());
+  const status=$('#shop-status');if(status){status.textContent=shopStatus?.text||'';status.className=shopStatus?.kind==='refused'?'privacy shop-status refused':'privacy shop-status';}
+}
+async function buyShopGood(goodId){
+  const agentId=state.selected;
+  try{
+    const purchase=await api('/shop/purchase','POST',{agent_id:agentId,good_id:goodId},true);
+    const [karma,shop]=await Promise.all([api(`/karma?agent_id=${encodeURIComponent(agentId)}`),api(`/shop?agent_id=${encodeURIComponent(agentId)}`)]);
+    shopPanel.update({karma,shop,agentId,purchase});
+    shopStatus={kind:'saved',text:`The server recorded the purchase of ${shop.goods.find(good=>good.id===goodId)?.label||goodId}. Your balance now reads ${karma.balance}.`};
+    await loadJourney();
+  }catch(error){
+    shopPanel.update({refusal:{error:error.message}});
+    shopStatus={kind:'refused',text:error.message};
+  }
+  paintShopPanel();
+}
+/**
+ * Earning is one explicit operator action: settling asks the server to turn saved service into
+ * receipts. The amount, the source and the day are the server's own, and the client can name none of
+ * them. Opening this section settles, so a player sees what their last visit earned.
+ */
+function renderKarmaShop(parent){
+  parent.append(heading('Karma Coins','Earn them by doing service in the world, and spend them here. Karma Coins are not NemoCoins, are not money, and have no cash value.'));
+  if(!requireResident(parent))return;
+  const agent=viewedAgent();
+  const node=card('Karma & shop','EARN · SPEND · INSPECT');node.id='world-karma-shop-card';
+  shopStatus=null;
+  const status=element('p','Asking the server what your service has earned.','privacy');status.id='shop-status';
+  if(!shopPanel)shopPanel=createShopPanel({onPurchase:(goodId)=>guarded(()=>buyShopGood(goodId)),onChange:()=>paintShopPanel(),reducedMotion:()=>prefersReducedMotion(window.matchMedia)});
+  shopHost=element('div');shopHost.id='shop-panel-host';
+  node.append(paragraph(`This purse belongs to your operator account and names ${agent.name}. Every Karma Coin in it came from one saved act the server wrote down, and the only way to spend one is the shop below.`),status,shopHost);
+  parent.append(node);
+  paintShopPanel();
+  guarded(async()=>{
+    const agentId=state.selected;
+    const settled=await api('/karma/settle','POST',{agent_id:agentId});
+    const [karma,shop]=await Promise.all([api(`/karma?agent_id=${encodeURIComponent(agentId)}`),api(`/shop?agent_id=${encodeURIComponent(agentId)}`)]);
+    shopPanel.update({karma,shop,agentId});
+    shopStatus={kind:'saved',text:settled?.minted?`Settled ${settled.minted} new Karma ${settled.minted===1?'receipt':'receipts'} from your saved service.`:'Nothing new to settle yet: the list below says what the server pays for.'};
+    paintShopPanel();
+  });
+}
+/** The free personal space every resident already owns, named and reachable in one action. */
+function mySpaceCard(){
+  const agent=viewedAgent();if(!agent)return null;
+  const gardenId=`home:${agent.id}`,cottageId=`house:${agent.id}`;
+  const here=currentWorldId()===gardenId,cottage=currentWorldId()===cottageId;
+  const node=card('Your space','FREE · YOURS TO BUILD IN');node.id='world-my-space-card';
+  node.append(paragraph(here||cottage?`You are standing in it: ${(state.world.objects||[]).length} of 200 items placed.`:`${agent.name} already owns a personal garden and a cottage. There is no plot to buy, no rent and no price.`));
+  node.append(actions(button(here?'You are here':'Go to my space',()=>travelAgent(gardenId),here?'small':'small'),button('Open my cottage',()=>travelAgent(cottageId),'secondary small'),button('Build something',()=>{state.building=true;renderView();},'secondary small')));
+  node.append(paragraph('Choose an item from the palette and click the ground, or use the keyboard: the digits pick an item and Enter places it on the tile you are facing. Resources and keepsakes you buy in the shop arrive on your shelf and can be crafted or worn.','privacy'));
+  return node;
 }
 function renderCoins(parent){
  parent.append(heading('Coin wallet','Nemo Coins reward independently reviewed agent contributions. Balances and receipts are computed by the server.'));
@@ -3570,7 +3638,12 @@ function mountShellTools(map,canvas,world,agent,position){
     interactionPrompt.setAgent(null);interactionPrompt.setResidents([]);interactionPrompt.setPosition(null);
     interactionPrompt.reset();interactionPrompt.paint(document,{promptHost:$('#game-prompt-host'),overlayHost:$('#game-overlay-host')});
   }
-  if(world.kind==='frontier'){
+  // One placement UI for every world the server lets this resident build in: the frontier plot, and the
+  // garden or cottage of a resident you own. `placementRulesFor` reads the world payload the server
+  // sent, so the palette, the layer range and the write route all follow that payload rather than a
+  // kind test here. A world with no palette mounts nothing.
+  const placementRules=placementRulesFor(state.world);
+  if(placementRules.available){
     const host=element('div',null,'game-build-host');host.id='game-build-host';
     const session={agentId:state.selected,worldId:world.id,player:agent||null,moderator:isModerator()};
     hotbar.update({world:state.world,pick:state.voxelSelection,moderator:isModerator()});
@@ -3659,6 +3732,10 @@ function mountTouchControls(map,canvas,world,agent){
     // The 3D renderer already owns the canvas pointer gesture; attaching a second drag listener
     // turned one finger movement twice. The pixel fallback uses this module's drag surface.
     document,mount:map,surface:state.graphics==='voxel'?null:canvas,
+    // The phone bar floats over the world instead of being appended inside the fixed-height world
+    // panel, where it was laid out below the fold, and it lifts itself clear of the quickbar row.
+    floating:true,coarsePointer:()=>hasCoarsePointer(window.matchMedia),quickbar:document.querySelector('.game-hud-bottom'),viewport:()=>({width:window.innerWidth,height:window.innerHeight}),
+
     input:{
       walk:(direction)=>guarded(()=>controlStep(direction)),
       look:({yaw,pitch})=>queueLook(state.facing.yaw+yaw,state.facing.pitch+pitch),
@@ -3672,12 +3749,10 @@ function mountTouchControls(map,canvas,world,agent){
     status:()=>!agent?'Observing. Drag the world to look; the Look buttons turn it one step at a time.':state.world.paused?'The world is paused. Movement and interaction are refused by the server.':state.building?'Building. Choose a block and tap the ground to place it.':'Press a direction to walk one tile, and hold it to keep walking. Drag the world to look.',
     reducedMotion:()=>prefersReducedMotion(window.matchMedia),
   });
-  // The game panel clips overflow. Keep the pad inside the viewport instead of letting its
-  // default in-flow position fall below the full-height canvas.
-  touchControls.root.classList.add('nm-touch-floating');
   // The freshly mounted layer takes the same on/off state the shell would give it, so a rebuild while
   // a conversation is open does not briefly re-arm a pad the conversation just stood down.
   syncTouchEnabled();
+  touchControls?.avoidQuickbar?.();
 }
 
 // ---------------------------------------------------------------------------------------------

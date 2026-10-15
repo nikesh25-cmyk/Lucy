@@ -117,7 +117,10 @@ export function reticleText({ firstPerson = false, facing = {}, position = null,
       ? `${fixture.action?.label || 'Use it'} with ${INTERACTION_KEY_LABEL}`
       : `stand within ${fixture.required_distance || INTERACTION_DISTANCE} tile of the ${label} at ${fixture.x}, ${fixture.y}`);
   }
-  parts.push(firstPerson ? 'WASD walks the way you face · Q/E turn · R/F tilt · arrow keys also walk' : 'drag to orbit · click open ground to walk · arrow keys or WASD walk');
+  // The zoom wording has one home too: the wheel, a pinch and the panel's buttons all drive the one
+  // documented distance, so the hint may name them together.
+  parts.push(firstPerson ? 'WASD walks the way you face · Q/E turn · R/F tilt · arrow keys also walk · wheel or pinch to zoom'
+    : 'drag to orbit, level or up · click open ground to walk · arrow keys or WASD walk · wheel or pinch to zoom');
   return parts.join(' · ');
 }
 
@@ -226,6 +229,36 @@ export function createSuspension(initial = []) {
     resumeAll() { const count = reasons.size; reasons.clear(); return count; },
     get suspended() { return reasons.size > 0; },
     get reasons() { return [...reasons]; },
+  };
+}
+
+/**
+ * A zoom gesture the shipped panels own: a wheel or a pinch is inert while a menu, drawer or dialog
+ * is open, while a text field holds focus, or while the shell has switched the camera's capture off
+ * with `setEnabled(false)`. It is the pointer counterpart of `shortcutSuspended`, and it
+ * deliberately ignores modifier keys, because a trackpad pinch arrives as a Ctrl-wheel.
+ */
+export function zoomSuspended({ enabled = true, tagName = '', isContentEditable = false, dialogOpen = false, menuOpen = false } = {}) {
+  return !enabled || Boolean(menuOpen) || shortcutSuspended({ tagName, isContentEditable, dialogOpen });
+}
+
+// ---------------------------------------------------------------------------------------------
+// The hover channel. Pointing at a tile is a reading, not a command: it costs no network request and
+// it is allowed to be dropped. A pointer that moves faster than this rate simply reports less often,
+// and a pointer that leaves the canvas drops its reading immediately (`drop()`), so an aim line can
+// never be left showing a tile the pointer is no longer over.
+// ---------------------------------------------------------------------------------------------
+export const HOVER_INTERVAL_MS = 75;
+
+export function createHoverThrottle({ interval = HOVER_INTERVAL_MS, now = () => Date.now() } = {}) {
+  const wait = Number.isFinite(interval) && interval >= 0 ? interval : HOVER_INTERVAL_MS;
+  let last = -Infinity;
+  return {
+    /** True when a hover may be emitted now; a hit starts the next window. */
+    claim() { const at = now(); if (at - last < wait) return false; last = at; return true; },
+    /** The pointer left the canvas: the reading is dropped and the next claim is immediate. */
+    drop() { last = -Infinity; return true; },
+    get waiting() { return Number.isFinite(last) && last > -Infinity; },
   };
 }
 

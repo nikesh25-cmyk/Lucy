@@ -1,17 +1,27 @@
 // Building and inventory interface — the build half: the hotbar and the placement preview.
 //
 // This module replaces the coordinate-first build forms with pointing, selecting and placing. It
-// renders three things the shell can mount separately:
+// renders the things the shell can mount separately, in every buildable world — a frontier block
+// palette and a garden or cottage object palette alike:
 //
 //   createHotbar            the palette actually available to *this* resident in *this* world
 //   createPlacementPreview  pointer-driven selection of a tile and layer, with the server's own
-//                           preview/validation, refusal explanations and the plot grant that applies
+//                           preview/validation, refusal explanations and the plot grant that applies;
+//                           a block geometry in the frontier, a bounded footprint for an object
+//   aimLineView             the hovered tile as a focusable, announced reading — nothing is written
 //   mount                   the only function that touches the DOM
+//
+// and describes the world's own rules once, for the call sites that used to branch on the world kind:
+//
+//   placementRulesFor       what this world places, on which layers, with which preview and reach
+//   hoverTargetView         one hovered tile → { tile, label, action, keys, reasons }, purely
+//   paletteFor / hotbarModel / placementModel   the data behind the two components
 //
 // Design rules this file keeps, matching docs/GAME_EXPERIENCE.md §2 and docs/specs/panels.md:
 //
 //   * No palette, plot, grant, budget or palette label is invented here. Every value comes from a
 //     server payload (`GET /world`, `POST /frontier/build` with `preview: true`, `GET /journey`).
+//     A world the server publishes no palette for is reported as unavailable, never in a guessed kind.
 //   * Nothing is written to the DOM with innerHTML. The view is a plain tree of text and elements and
 //     `mount` sets text with `createTextNode`/`textContent` only.
 //   * The component never imports `src/camera-controls.js` or `src/game-input.js`. The pointer/pick
@@ -55,6 +65,14 @@ export const REFUSAL_REASONS = Object.freeze({
   'platform-paused': Object.freeze({ reason: 'World paused', next_step: 'The world is paused; building resumes when it is active again.' }),
   'not-signed-in': Object.freeze({ reason: 'Not signed in', next_step: 'Sign in as this resident’s operator to build.' }),
   'stale-world': Object.freeze({ reason: 'Stale area', next_step: 'Refresh the world: your resident has entered another area.' }),
+  // Your own garden or cottage. An object stands on one tile there, and the arrival, the exit and
+  // the world's own authored furniture stay clear. The server's own sentence is still shown verbatim.
+  'not-your-home': Object.freeze({ reason: 'Not your own space', next_step: 'Build only in a garden or cottage this resident owns; a visitor cannot reshape someone else’s home.' }),
+  'not-buildable-tile': Object.freeze({ reason: 'Not a buildable tile', next_step: 'Choose clear ground inside your garden that is neither the arrival tile nor an exit.' }),
+  'keep-clear': Object.freeze({ reason: 'Keep this tile clear', next_step: 'The cottage’s own furniture and the arrival and exit tiles stay clear; choose another tile.' }),
+  'object-limit': Object.freeze({ reason: 'Your home is full', next_step: 'A home holds 200 placed items; remove one before adding another.' }),
+  'trapped-object': Object.freeze({ reason: 'Would block the way home', next_step: 'Leave a walkable route from every resident to the entrance, then place again.' }),
+  'palette-item': Object.freeze({ reason: 'Not in this palette', next_step: 'Use only the objects this garden or cottage offers.' }),
   unknown: Object.freeze({ reason: 'Refused by the server', next_step: 'Read the server’s message and adjust the placement.' }),
 });
 
@@ -78,9 +96,17 @@ const REFUSAL_MESSAGES = Object.freeze([
   [/paused/i, 'paused'],
   [/platform|world is paused|paused platform/i, 'platform-paused'],
   [/Sign in|Authenticate|authorized builder/i, 'not-signed-in'],
+  // The garden and cottage refusals. "Choose an item from the building palette" is matched before the
+  // generic palette rule below so it is named as the item it is, not as a frontier block type.
+  [/item from the building palette|palette offers/i, 'palette-item'],
   [/palette|supported block|paths belong/i, 'invalid-blueprint'],
   [/48/i, 'outside-area'],
   [/blueprint/i, 'unknown-blueprint'],
+  [/own garden or cottage|your own garden/i, 'not-your-home'],
+  [/buildable tile inside your garden/i, 'not-buildable-tile'],
+  [/original cottage furniture|arrival and exit clear/i, 'keep-clear'],
+  [/200 placed items/i, 'object-limit'],
+  [/walkable route to the entrance/i, 'trapped-object'],
 ]);
 
 /**
@@ -107,7 +133,22 @@ export function classifyRefusal(error) {
 // rule the server did not send.
 // ---------------------------------------------------------------------------------------------
 
-/** The building palette the server published for this world, or null when the world has none. */
+/**
+ * The build reach the payload itself reports, or null when it publishes none. Nothing is assumed:
+ * the frontier publishes `frontier.limits.build_range`, and a world that publishes no reach gets
+ * `null` — "the server decides" — never a number this module made up.
+ */
+function reportedBuildRange(world) {
+  const reported = [world?.build_range, world?.world?.build_range, world?.limits?.build_range, world?.frontier?.limits?.build_range]
+    .find((value) => Number.isFinite(value));
+  return Number.isFinite(reported) ? reported : null;
+}
+
+/**
+ * The building palette the server published for this world, or null when the world has none. `shape`
+ * names what is placed: a frontier `block` carries a layer, a garden or cottage `object` stands on
+ * one tile. Both come from the payload's own palette key, never from the world id.
+ */
 export function paletteFor(world) {
   if (!world) return null;
   // The shell carries the world descriptor at `payload.world`; accept a bare descriptor too.
@@ -115,14 +156,41 @@ export function paletteFor(world) {
   if (kind === 'frontier') {
     const frontier = world.frontier;
     if (!frontier || !Array.isArray(frontier.palette) || !frontier.palette.length) return null;
-    return { kind: 'frontier', types: frontier.palette, maximum_z: frontier.limits?.maximum_z ?? 7, build_range: frontier.limits?.build_range ?? null, limits: frontier.limits || null };
+    return { kind: 'frontier', shape: 'block', types: frontier.palette, maximum_z: frontier.limits?.maximum_z ?? 7, build_range: reportedBuildRange(world), limits: frontier.limits || null };
   }
   if (['home', 'house'].includes(kind)) {
     const types = world.build_palette;
     if (!Array.isArray(types) || !types.length) return null;
-    return { kind, types, maximum_z: 0, build_range: null, limits: null };
+    return { kind, shape: 'object', types, maximum_z: 0, build_range: reportedBuildRange(world), limits: null };
   }
   return null;
+}
+
+/**
+ * The placement rules for one world, as one frozen description a call site can branch on instead of
+ * testing `kind === 'frontier'` itself:
+ *
+ *   available    whether this world has a palette at all
+ *   kind         the world's own kind — 'frontier', 'home' or 'house'
+ *   shape        'block', placed on a layer, or 'object', placed on one tile
+ *   preview      'geometry' for a block, 'footprint' for an object
+ *   maximum_z    the highest layer the server allows; 0 in a garden or a cottage
+ *   build_range  the reach the server reported, or null when it reported none
+ *   types        the palette the server published, in the server's own order
+ */
+export function placementRulesFor(world) {
+  const palette = paletteFor(world);
+  if (!palette) return Object.freeze({
+    available: false, kind: world?.world?.kind || world?.kind || null, shape: null, preview: null,
+    maximum_z: 0, build_range: null, types: Object.freeze([]),
+    reason: 'Building is not available in this world. Enter the frontier or your own garden.',
+  });
+  return Object.freeze({
+    available: true, kind: palette.kind, shape: palette.shape,
+    preview: palette.shape === 'block' ? 'geometry' : 'footprint',
+    maximum_z: palette.maximum_z, build_range: palette.build_range,
+    types: Object.freeze([...palette.types]), reason: null,
+  });
 }
 
 /** The server's own readable label for a palette type: its name, spaces instead of underscores. */
@@ -181,15 +249,38 @@ const frontierAvailability = (plot, grant, moderator) => {
 };
 
 /**
+ * How much of the palette's own capacity the payload says is left, or null when the payload
+ * publishes no cap. The frontier publishes the area's block cap and its current count; a garden
+ * publishes neither (its 200-object cap is enforced without being reported), and a module that
+ * cannot read a number must not guess one — a missing count is reported as unknown, not as zero.
+ */
+function remainingFor(palette, world) {
+  if (palette.shape === 'block') {
+    const per = world?.frontier?.limits?.blocks_per_sector;
+    const used = world?.frontier?.block_count;
+    if (Number.isInteger(per) && Number.isInteger(used)) return Math.max(0, per - used);
+    return null;
+  }
+  const per = world?.limits?.objects_per_world;
+  const used = Array.isArray(world?.objects) ? world.objects.length : null;
+  if (Number.isInteger(per) && Number.isInteger(used)) return Math.max(0, per - used);
+  return null;
+}
+
+/**
  * The hotbar as this resident actually sees it. `world` is the `GET /world` payload, `pick` the
  * injected pointer selection. The palette list always comes from the payload; only the per-entry
  * availability is computed, and only from server facts (the plot's `is_mine`, the caller's grants).
+ *
+ * Every entry has the same shape whether the world places blocks or objects — `type`, `label`, `key`,
+ * `kind`, `available`, `reason`, `remaining` — so one hotbar renders a frontier block palette and a
+ * garden object palette without a second component. `remaining` is the server's own figure or null.
  */
 export function hotbarModel({ world, pick = null, moderator = false } = {}) {
   const palette = paletteFor(world);
   if (!palette) {
     return Object.freeze({
-      available: false, kind: world?.world?.kind || world?.kind || null, entries: Object.freeze([]), remove: Object.freeze({ available: false, reason: 'Not here' }),
+      available: false, kind: world?.world?.kind || world?.kind || null, shape: null, entries: Object.freeze([]), remove: Object.freeze({ available: false, reason: 'Not here' }),
       maximum_z: 0, plot: null, grant: null, reason: 'Building is not available in this world. Enter the frontier or your own garden.',
     });
   }
@@ -198,20 +289,21 @@ export function hotbarModel({ world, pick = null, moderator = false } = {}) {
   const grant = frontier ? grantFor(world.frontier?.grants, plot?.id) : null;
   const availability = frontier ? frontierAvailability(plot, grant, moderator) : { allowed: true, reason: null, detail: null };
   const scope = grant?.live && grant.scope ? grant.scope : null;
+  const remaining = remainingFor(palette, world);
   const entries = palette.types.map((type, index) => {
     let available = availability.allowed, reason = availability.reason ? REFUSAL_REASONS[availability.reason]?.reason || null : null;
     if (available && scope) {
       if (!scope.block_types.includes(type)) { available = false; reason = `Outside this grant (${scope.block_types.join(', ')})`; }
     }
-    return Object.freeze({ type, label: paletteLabel(type), key: String(index + 1), available, reason });
+    return Object.freeze({ type, label: paletteLabel(type), key: String(index + 1), kind: palette.shape, available, reason, remaining });
   });
   let removeAvailable = availability.allowed;
   let removeReason = availability.reason ? REFUSAL_REASONS[availability.reason]?.reason || null : null;
   if (removeAvailable && scope && !scope.actions.includes('remove')) { removeAvailable = false; removeReason = 'This grant allows placement only'; }
   return Object.freeze({
-    available: true, kind: palette.kind, entries: Object.freeze(entries),
+    available: true, kind: palette.kind, shape: palette.shape, entries: Object.freeze(entries),
     remove: Object.freeze({ available: removeAvailable, reason: removeReason }),
-    maximum_z: palette.maximum_z, plot, grant,
+    maximum_z: palette.maximum_z, plot, grant, remaining,
     reason: availability.allowed ? null : 'No plot or collaboration grant here — you cannot build on this tile.',
   });
 }
@@ -220,6 +312,9 @@ export function hotbarModel({ world, pick = null, moderator = false } = {}) {
 // The placement model.
 // ---------------------------------------------------------------------------------------------
 const blueprintAnchorIssues = (report) => (report?.issues || []).map((issue) => Object.freeze({ code: issue.code, reason: REFUSAL_REASONS[issue.code]?.reason || issue.message, next_step: REFUSAL_REASONS[issue.code]?.next_step || null, message: issue.message, source: 'server-preview' }));
+
+/** The first thing the payload lists on one tile — a saved object, authored scenery or a resident. */
+const atTile = (list, tile) => Array.isArray(list) && tile ? list.find((item) => item.x === tile.x && item.y === tile.y) || null : null;
 
 /**
  * The whole placement view as one model. Sources, stated explicitly:
@@ -239,6 +334,16 @@ export function placementModel({ world, pick = null, session = {}, blueprintRepo
   const plot = frontier ? plotAt(world?.frontier?.parcels, target) : null;
   const grant = frontier ? grantFor(world?.frontier?.grants, plot?.id) : null;
   const existing = frontier ? blockAt(world?.blocks, target) : null;
+  const rules = placementRulesFor(world);
+  // What the payload's own window says stands on this tile. A block world reports blocks; an object
+  // world reports the saved objects, the world's authored scenery and the residents in view.
+  const object = !frontier ? atTile(world?.objects, target) : null;
+  const furniture = !frontier ? atTile(world?.scenery, target) : null;
+  const resident = !frontier ? atTile(world?.participants, target) : null;
+  const bounds = world?.bounds || (world?.world ? { width: world.world.width, height: world.world.height } : null);
+  const inBounds = target && Number.isInteger(bounds?.width) && Number.isInteger(bounds?.height)
+    ? target.x >= 0 && target.y >= 0 && target.x < bounds.width && target.y < bounds.height
+    : null;
   const asserts = [];
 
   // Plot and grant, from server facts only.
@@ -260,6 +365,16 @@ export function placementModel({ world, pick = null, session = {}, blueprintRepo
   if (world?.paused) asserts.push(Object.freeze({ code: 'platform-paused', reason: REFUSAL_REASONS['platform-paused'].reason, next_step: REFUSAL_REASONS['platform-paused'].next_step, message: 'The world is paused.', source: 'world-payload' }));
   if (session.player && session.player.status && session.player.status !== 'active') asserts.push(Object.freeze({ code: 'paused', reason: REFUSAL_REASONS.paused.reason, next_step: REFUSAL_REASONS.paused.next_step, message: 'This resident is paused.', source: 'world-payload' }));
 
+  // A garden or cottage placement, described from the payload's own window of what already stands on
+  // the tile. An object that is already there is reported as what the tile holds rather than as a
+  // refusal: the object facts the payload carries are the same ones a resident would read by pointing
+  // at it, and nothing here claims a rule the payload did not publish.
+  if (!frontier && target) {
+    if (resident) asserts.push(Object.freeze({ code: 'resident', reason: REFUSAL_REASONS.resident.reason, next_step: REFUSAL_REASONS.resident.next_step, message: `${resident.name} is standing at ${target.x}, ${target.y}.`, source: 'world-payload' }));
+    if (furniture && furniture.blocks) asserts.push(Object.freeze({ code: 'keep-clear', reason: REFUSAL_REASONS['keep-clear'].reason, next_step: REFUSAL_REASONS['keep-clear'].next_step, message: `This world’s own ${paletteLabel(furniture.type)} stands at ${target.x}, ${target.y}.`, source: 'world-payload' }));
+    if (inBounds === false) asserts.push(Object.freeze({ code: 'not-buildable-tile', reason: REFUSAL_REASONS['not-buildable-tile'].reason, next_step: REFUSAL_REASONS['not-buildable-tile'].next_step, message: `Tile ${target.x}, ${target.y} is outside this world.`, source: 'world-payload' }));
+  }
+
   // The server's own blueprint preview, when one was requested.
   if (blueprintReport) {
     for (const assert of blueprintAnchorIssues(blueprintReport)) asserts.push(assert);
@@ -268,10 +383,25 @@ export function placementModel({ world, pick = null, session = {}, blueprintRepo
   const serverPreview = Boolean(blueprintReport);
   const permitted = serverPreview ? blueprintReport.valid === true : asserts.length ? false : null;
   const blocked = serverPreview ? blueprintReport.valid === false : asserts.length > 0;
+  const firstReason = asserts[0] || null;
+  // What the renderer draws for this placement. A block world keeps its own geometry — the tile, the
+  // layer and the occupied cell the pick named — and an object world gets a bounded one-tile footprint
+  // carrying the object's server-published name and a readable state.
+  const preview = !target ? null : frontier
+    ? Object.freeze({ shape: 'block', x: target.x, y: target.y, z: target.z, maximum_z: palette?.maximum_z ?? 0, type: kind, name: paletteLabel(kind), occupied: Boolean(existing) })
+    : Object.freeze({
+      shape: 'footprint', x: target.x, y: target.y, width: 1, height: 1, type: kind, name: paletteLabel(kind),
+      in_bounds: inBounds, existing: object, furniture, resident,
+      state: blocked ? 'blocked' : 'unverified',
+      state_text: blocked
+        ? `${firstReason.reason}: ${firstReason.message}`
+        : 'Clear so far — nothing the world reports stands here. The server decides when you confirm.',
+    });
 
   return Object.freeze({
     kind, mode, target, plot, grant, grantNotice, existing,
     palette_kind: palette?.kind || null,
+    rules, preview,
     maximum_z: palette?.maximum_z ?? 0,
     blueprint: blueprintReport ? Object.freeze({ id: blueprintReport.blueprint?.id, name: blueprintReport.blueprint?.name, block_count: blueprintReport.block_count, new_blocks: blueprintReport.new_blocks, existing_blocks: blueprintReport.existing_blocks, replay: blueprintReport.replay, ownership: blueprintReport.ownership, access: blueprintReport.access, budgets: blueprintReport.budgets, footprint: blueprintReport.footprint }) : null,
     permitted, blocked, asserts: Object.freeze(asserts),
@@ -290,18 +420,22 @@ const button = (label, on, options = {}) => el('button', { class: options.class 
 
 const hotbarView = (model, selected) => {
   const rows = [];
+  const noun = model.shape === 'object' ? 'objects' : 'blocks';
   rows.push(el('div', { class: 'game-hotbar-palette', attrs: { role: 'group', 'aria-label': 'Building palette available to this resident' } },
     model.entries.map((entry) => {
       const active = selected === entry.type;
+      // The count the server published rides in the accessible name, so a screen reader hears what a
+      // sighted player reads from the entry, and an unknown count is simply not claimed.
+      const remaining = Number.isInteger(entry.remaining) ? ` — ${entry.remaining} ${noun} can still be placed here` : '';
       return el('button', {
         class: `game-hot ${active ? 'active' : ''}`.trim(),
-        attrs: { type: 'button', 'data-build-type': entry.type, 'aria-label': `${entry.key}. ${entry.label}${entry.available ? '' : ` — unavailable: ${entry.reason}`}`, 'aria-pressed': String(active), ...(entry.available ? {} : { 'aria-disabled': 'true' }) },
+        attrs: { type: 'button', 'data-build-type': entry.type, 'data-build-kind': entry.kind, 'aria-label': `${entry.key}. ${entry.label}${entry.available ? '' : ` — unavailable: ${entry.reason}`}${remaining}`, 'aria-pressed': String(active), ...(entry.available ? {} : { 'aria-disabled': 'true' }) },
         on: { click: () => entry.available && model.onSelect?.(entry.type) },
         text: `${entry.key} ${entry.label}`,
       });
     }),
   ));
-  rows.push(button('Remove my block', () => model.onSelect?.('remove'), { class: `secondary small ${selected === 'remove' ? 'active' : ''}`.trim(), label: 'Remove a block or object you placed', attrs: { 'data-build-remove': '1', 'aria-pressed': String(selected === 'remove'), ...(model.remove.available ? {} : { 'aria-disabled': 'true' }) } }));
+  rows.push(button(model.shape === 'object' ? 'Remove my object' : 'Remove my block', () => model.onSelect?.('remove'), { class: `secondary small ${selected === 'remove' ? 'active' : ''}`.trim(), label: 'Remove a block or object you placed', attrs: { 'data-build-remove': '1', 'aria-pressed': String(selected === 'remove'), ...(model.remove.available ? {} : { 'aria-disabled': 'true' }) } }));
   const notes = [];
   if (!model.available) notes.push(el('p', { class: 'privacy', text: model.reason }));
   else if (selected && model.entries.some((entry) => entry.type === selected && !entry.available)) notes.push(el('p', { class: 'privacy', text: `${paletteLabel(selected)}: ${model.entries.find((entry) => entry.type === selected)?.reason}` }));
@@ -341,6 +475,21 @@ const placementReportView = (model) => {
 
   const grant = grantView(model.grantNotice);
   if (grant) nodes.push(grant);
+
+  // The object preview: a bounded one-tile footprint that carries the object's server-published
+  // name and a readable state. A frontier block adds nothing here — its own target line above, with
+  // the layer, is the geometric preview and stays exactly as it was.
+  const footprint = model.preview?.shape === 'footprint' ? model.preview : null;
+  if (footprint) {
+    const held = footprint.resident ? `Resident ${footprint.resident.name}`
+      : footprint.existing ? paletteLabel(footprint.existing.type)
+        : footprint.furniture ? `${paletteLabel(footprint.furniture.type)} (the world’s own)` : null;
+    nodes.push(el('div', { class: `ui-footprint ui-footprint-${footprint.state}`, attrs: { 'data-footprint': `${footprint.x},${footprint.y}`, 'data-footprint-state': footprint.state, 'data-footprint-size': `${footprint.width}x${footprint.height}`, role: 'note' } }, [
+      el('strong', { text: `${footprint.name} · tile ${footprint.x}, ${footprint.y}` }),
+      el('p', { class: 'privacy', text: `Footprint ${footprint.width} × ${footprint.height} tile${footprint.in_bounds === false ? ' — outside this world' : ''}${held ? ` · holds ${held}` : ''}` }),
+      el('p', { text: footprint.state_text }),
+    ]));
+  }
 
   if (model.blueprint) {
     const report = model.blueprint;
@@ -424,8 +573,14 @@ export function createHotbar({ onSelect, input, initial = null } = {}) {
  * The placement preview. It consumes the shell's pick through the injected `input` interface (never
  * importing the camera or input modules), asks the server for the blueprint's own validation, and
  * renders permitted/blocked/refused. `api(path, method, body)` is the shell's own server client.
+ *
+ * The same component serves a frontier block palette and a garden or cottage object palette: the
+ * world's own palette decides the endpoint (`/frontier/build` for blocks, the resident's own
+ * `/agents/:id/build` for objects — the two routes the shipped shell already uses), which the
+ * injected `endpoint({ world, agentId, rules })` can override. Blueprints are the frontier's own
+ * validation and are offered only where the palette is a block palette.
  */
-export function createPlacementPreview({ api, input, onNotice, session = {} } = {}) {
+export function createPlacementPreview({ api, input, onNotice, session = {}, endpoint = null } = {}) {
   let state = { world: null, pick: null, session: { ...session }, moderator: false };
   let mode = 'place', kind = null, blueprint = null, report = null, refusal = null, saved = null;
   let manualAnchor = null;
@@ -434,6 +589,12 @@ export function createPlacementPreview({ api, input, onNotice, session = {} } = 
   const reset = () => { report = null; refusal = null; saved = null; };
   const context = () => ({ agentId: state.session.agentId, worldId: state.session.worldId, player: state.session.player });
   const anchor = () => manualAnchor || state.pick;
+  const rules = () => placementRulesFor(state.world);
+  // An object world (a garden or a cottage) writes through the resident's own route; anything else
+  // keeps the frontier route the shipped shell uses, including a world this component cannot read.
+  const objectsHere = () => rules().shape === 'object';
+  const routeFor = (agentId) => (typeof endpoint === 'function' ? endpoint({ world: state.world, agentId, rules: rules() }) : null)
+    || (objectsHere() ? `/agents/${agentId}/build` : '/frontier/build');
   // The pick source is injected (the shell's camera/input layer), never imported.
   if (input && typeof input.subscribe === 'function') unsubscribe = input.subscribe((pick) => { state.pick = pick; reset(); });
 
@@ -447,10 +608,13 @@ export function createPlacementPreview({ api, input, onNotice, session = {} } = 
     if (!point || !Number.isInteger(point.x) || !Number.isInteger(point.y)) { refusal = Object.freeze({ code: 'blocked-tile', status: null, message: 'Choose a target tile first.', reason: 'No target tile', next_step: 'Point at a tile, or type its X and Y below.', saved: false }); return null; }
     try {
       saved = null;
-      const body = blueprint
-        ? { agent_id: agentId, world_id: worldId, blueprint, x: point.x, y: point.y, ...(mode === 'remove' ? { remove: true } : {}) }
-        : { agent_id: agentId, world_id: worldId, x: point.x, y: point.y, z: point.z || 0, ...(mode === 'remove' ? { remove: true } : { type: kind || undefined }) };
-      const result = await api('/frontier/build', 'POST', body);
+      const body = objectsHere()
+        // The resident's own route reads the world from the resident, and an object has no layer.
+        ? { x: point.x, y: point.y, ...(mode === 'remove' ? { remove: true } : { type: kind || undefined }) }
+        : blueprint
+          ? { agent_id: agentId, world_id: worldId, blueprint, x: point.x, y: point.y, ...(mode === 'remove' ? { remove: true } : {}) }
+          : { agent_id: agentId, world_id: worldId, x: point.x, y: point.y, z: point.z || 0, ...(mode === 'remove' ? { remove: true } : { type: kind || undefined }) };
+      const result = await api(routeFor(agentId), 'POST', body);
       refusal = null; report = null; saved = Object.freeze(result); onNotice?.(result.replay ? 'The server reports nothing changed.' : 'Placement confirmed by the server.'); return { ok: true, result };
     } catch (error) { saved = null; refusal = classifyRefusal(error); onNotice?.(refusal.message); return { ok: false, refusal };
     }
@@ -459,10 +623,13 @@ export function createPlacementPreview({ api, input, onNotice, session = {} } = 
   const previewBlueprint = async () => {
     const { agentId, worldId, player } = context();
     if (!api || !player || !agentId || !blueprint) return null;
+    // A garden or cottage has no blueprint validation; the payload's own palette decides, and the
+    // request is not sent rather than sent to a route that would refuse it for another reason.
+    if (objectsHere()) return null;
     const point = anchor();
     if (!point) return null;
     try {
-      report = await api('/frontier/build', 'POST', { agent_id: agentId, world_id: worldId, blueprint, x: point.x, y: point.y, preview: true });
+      report = await api(routeFor(agentId), 'POST', { agent_id: agentId, world_id: worldId, blueprint, x: point.x, y: point.y, preview: true });
       refusal = null; saved = null; onNotice?.('Preview only — nothing was built.'); return report;
     } catch (error) { report = null; refusal = classifyRefusal(error); return null; }
   };
@@ -478,8 +645,10 @@ export function createPlacementPreview({ api, input, onNotice, session = {} } = 
 
   const controls = () => {
     const list = [];
-    if (blueprint) list.push(button('Preview blueprint', previewBlueprint, { class: 'secondary small', label: 'Ask the server to validate this blueprint without building it', attrs: { 'data-preview': '1' } }));
-    list.push(button(mode === 'remove' ? 'Remove the block here' : 'Place the block here', place, { class: 'small', label: mode === 'remove' ? 'Ask the server to remove your block at this tile' : 'Ask the server to place the selected block at this tile', attrs: { 'data-confirm': mode } }));
+    const thing = objectsHere() ? 'object' : 'block';
+    // A blueprint is the frontier's own validation, so the control is offered only on a block palette.
+    if (blueprint && !objectsHere()) list.push(button('Preview blueprint', previewBlueprint, { class: 'secondary small', label: 'Ask the server to validate this blueprint without building it', attrs: { 'data-preview': '1' } }));
+    list.push(button(mode === 'remove' ? `Remove the ${thing} here` : `Place the ${thing} here`, place, { class: 'small', label: mode === 'remove' ? `Ask the server to remove your ${thing} at this tile` : `Ask the server to place the selected ${thing} at this tile`, attrs: { 'data-confirm': mode } }));
     return el('div', { class: 'ui-placement-controls' }, list);
   };
 
@@ -513,6 +682,103 @@ export function createPlacementPreview({ api, input, onNotice, session = {} } = 
 }
 
 // ---------------------------------------------------------------------------------------------
+// The aim line: one hovered tile, read without committing to anything.
+// ---------------------------------------------------------------------------------------------
+const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+
+/**
+ * One hovered tile as the aim line reads it. **Pure**: it reads its arguments, writes nothing and
+ * reads nothing else — no document, no request, no camera — so pointing at a tile never builds,
+ * walks or uses anything, and a player can read their own furniture before deciding.
+ *
+ * `world`     the `GET /world` payload, the only source of what stands on the tile
+ * `selection` `{ kind, mode }`: the hotbar's chosen type, and `place` or `remove`
+ * `hover`     `{ x, y, z }`: the tile the pointer — or a keyboard hover channel — is over
+ *
+ * Returns `{ tile, label, action, keys, reasons }`:
+ *   tile     `{ x, y, z }`, or null when nothing is hovered
+ *   label    what stands there, from the payload: a resident, a passage, a block, a saved object,
+ *            the world's own scenery, a plot — or the plain tile when the payload reports nothing
+ *   action   the one action the tile offers, `{ id, label, keys, available }`, or null
+ *   keys     the keyboard path for that action, which is this module's own `handleKey` map
+ *   reasons  why the server would refuse, each with its own message and next step
+ */
+export function hoverTargetView({ world = null, selection = null, hover = null } = {}) {
+  const rules = placementRulesFor(world);
+  const mode = selection?.mode === 'remove' ? 'remove' : 'place';
+  const tile = Number.isInteger(hover?.x) && Number.isInteger(hover?.y)
+    ? Object.freeze({ x: hover.x, y: hover.y, z: Number.isInteger(hover?.z) ? hover.z : 0 })
+    : null;
+  if (!tile) {
+    return Object.freeze({ tile: null, label: 'Point at a tile to read what it holds', action: null, keys: Object.freeze([]), reasons: Object.freeze([]) });
+  }
+
+  const resident = atTile(world?.participants, tile);
+  const portal = atTile(world?.portals, tile);
+  const block = blockAt(world?.blocks, tile);
+  const object = atTile(world?.objects, tile);
+  const scenery = atTile(world?.scenery, tile);
+  const plot = plotAt(world?.frontier?.parcels, tile);
+  const grant = plot ? grantFor(world?.frontier?.grants, plot.id) : null;
+  const palette = paletteFor(world);
+  const entry = palette ? palette.types.indexOf(selection?.kind) : -1;
+  const entryKey = entry >= 0 ? String(entry + 1) : null;
+
+  const label = resident ? `Resident ${resident.name}`
+    : portal ? `${portal.label || 'A passage'}`
+      : block ? `${paletteLabel(block.type)} block · layer ${block.z || 0}`
+        : object ? paletteLabel(object.type)
+          : scenery ? `${paletteLabel(scenery.type)} · the world’s own`
+            : plot ? `${plot.is_mine ? 'Your plot' : `Plot of ${plot.steward_name || 'no named steward'}`}${plot.purpose ? ` · ${plot.purpose}` : ''}`
+              : `Tile ${tile.x}, ${tile.y}`;
+
+  const reasons = [];
+  const push = (code, message) => reasons.push(Object.freeze({ code, reason: REFUSAL_REASONS[code]?.reason || null, next_step: REFUSAL_REASONS[code]?.next_step || null, message, source: 'world-payload' }));
+  if (world?.paused) push('platform-paused', 'The world is paused.');
+  if (rules.available && rules.shape === 'block') {
+    if (!plot) push('no-grant', `No plot covers tile ${tile.x}, ${tile.y}.`);
+    else if (!plot.is_mine) {
+      if (grant?.live) { /* a live collaboration grant is access; nothing is refused here */ }
+      else if (grant && grant.status === 'expired') push('grant-expired', 'Your collaboration grant on this plot has expired.');
+      else push('no-grant', plot.steward_name ? `This plot belongs to ${plot.steward_name} and you hold no live collaboration grant on it.` : 'This plot has no steward you hold a grant from.');
+    }
+    if (plot && plot.state === 'reserved' && !plot.is_mine) push('shared-access', plot.reserved_reason || 'This plot is reserved and cannot be built on.');
+    if (block) push('blocked-cell', `A ${paletteLabel(block.type)} block already stands at layer ${block.z || 0}.`);
+    // The reach the server published, measured against the resident's own tile in the same payload.
+    const viewer = Array.isArray(world?.participants) ? world.participants.find((person) => person.id === world.viewer_agent_id) : null;
+    const apart = viewer ? manhattan(viewer, tile) : null;
+    if (apart !== null && Number.isFinite(rules.build_range) && apart > rules.build_range) push('out-of-range', `Your resident stands ${apart} tiles away; this world builds within ${rules.build_range}.`);
+  }
+  if (rules.available && rules.shape === 'object') {
+    if (resident) push('resident', `${resident.name} is standing at ${tile.x}, ${tile.y}.`);
+    if (scenery && scenery.blocks) push('keep-clear', `This world’s own ${paletteLabel(scenery.type)} stands at ${tile.x}, ${tile.y}.`);
+  }
+
+  let action = null;
+  if (mode === 'remove') action = Object.freeze({ id: 'remove', label: `Remove what stands at ${tile.x}, ${tile.y}`, keys: Object.freeze(['0', 'r', 'c']), available: rules.available });
+  else if (rules.available && selection?.kind) action = Object.freeze({ id: 'place', label: `Place ${paletteLabel(selection.kind)} at ${tile.x}, ${tile.y}`, keys: Object.freeze(entryKey ? [entryKey, 'c'] : ['c']), available: true });
+  else if (portal) action = Object.freeze({ id: 'enter', label: `Enter ${portal.label || 'the passage'}`, keys: Object.freeze(['Enter', 'Space', 'I']), available: true });
+  else if (resident) action = Object.freeze({ id: 'inspect', label: `Inspect ${resident.name}`, keys: Object.freeze(['Enter']), available: true });
+
+  return Object.freeze({ tile, label, action, keys: Object.freeze(action ? [...action.keys] : []), reasons: Object.freeze(reasons) });
+}
+
+/**
+ * The aim line as a view tree: one focusable, politely-announced element, so a keyboard or a screen
+ * reader reaches the same reading a pointer gets by hovering. `mount` renders it; no pointer needed.
+ */
+export function aimLineView(view) {
+  const record = view && view.tile ? view : hoverTargetView({});
+  const lines = [el('strong', { attrs: { 'data-aim': 'label' }, text: record.label })];
+  if (record.action) lines.push(el('p', { class: 'privacy', attrs: { 'data-aim': 'action' }, text: `${record.action.label}${record.keys?.length ? ` — press ${record.keys.join(' or ')}` : ''}` }));
+  for (const reason of record.reasons || []) lines.push(el('p', { class: 'privacy ui-assert', attrs: { 'data-aim': reason.code, 'data-source': reason.source }, text: `${reason.reason}: ${reason.message}` }));
+  return el('div', {
+    class: 'ui-aim-line',
+    attrs: { role: 'status', 'aria-live': 'polite', tabindex: '0', 'aria-label': 'Aim line: what the tile you point at holds, and the next action you can take there', ...(record.tile ? { 'data-aim-tile': `${record.tile.x},${record.tile.y}` } : {}) },
+  }, lines);
+}
+
+// ---------------------------------------------------------------------------------------------
 // The DOM boundary. The only function that touches a real document.
 // ---------------------------------------------------------------------------------------------
 export function mount(root, tree, document = globalThis.document) {
@@ -534,7 +800,11 @@ function renderNode(node, document) {
     element.setAttribute(key, value === true ? '' : String(value));
   }
   if (node.value !== undefined) element.value = node.value;
-  for (const [event, handler] of Object.entries(node.on || {})) element.addEventListener(event, handler);
+  // The button helpers in this module and in `src/ui/inventory-panel.js` pass their handler as `on`
+  // directly. A function has no enumerable entries, so the shorthand is wired as a click here, and the
+  // explicit `{ click: handler }` form keeps working exactly as before.
+  if (typeof node.on === 'function') element.addEventListener('click', node.on);
+  else for (const [event, handler] of Object.entries(node.on || {})) element.addEventListener(event, handler);
   for (const child of node.children || []) element.append(renderNode(child, document));
   if (typeof node.text === 'string') element.append(document.createTextNode(node.text));
   return element;
