@@ -17,15 +17,20 @@
  * failure. Nothing here opens an installed world.
  */
 import { mkdtemp, rm } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Platform } from '../../src/platform.js';
 import { getWorldDefinition } from '../../world.js';
-import { toGlobal } from '../../src/global-map.js';
+import { toGlobal, fromGlobal, onMap } from '../../src/global-map.js';
+import { mapActive, toMapItem, localTile, mapPoint } from '../../src/map-view.js';
+import { createPresenceTracker, displayCoords } from '../../src/camera-controls.js';
 
 const PASSWORD = 'known-gaps-password-2026';
 const SCRIPT = 'node tests/framework/known-gaps-sharedworld.mjs';
+/** The shipped browser client, which cannot be imported: a case reads the expressions it needs from it. */
+const APP_JS = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), 'app.js');
 
 /** One disposable world, one member account with one resident, and the helper the cases use. */
 async function withFixture(action) {
@@ -133,6 +138,52 @@ const CASES = [
         platform.world(actor(tokens.alice), { world_id: 'commons', agent_id: resident.id, map: 'core' });
         const counted = read();
         return { expected: { writes: 0 }, observed: { writes: counted.writes, statements: counted.statements } };
+      });
+    },
+  },
+  {
+    id: 'the-presence-surface-reports-the-global-map-tile',
+    invariant: 'the confirmed tile `window.__nemoworld.presence()` reports is the tile the database stores — the claim `docs/handoff/task-deepseek-movement-feel.md:121` makes and the shipped scenario `shared-presence-two-clients` asserts. On a world of the global map the client reports the global tile instead, so a resident stored at `10,5` of the Commons is reported as `106,77`.',
+    owner: 'app.js — `noteConfirmed` line 382 (`presence.confirm(mapActive(state.world) ? toMapItem(item, state.world.world.id) : item)`) and the exposed surface at line 523 (`presence: () => presence.entries().map(…)`), both introduced by f85c84b (one global map, phase 1) together with `worldURL()`’s `map=core` at line 361. `app.js` is off-limits to this slice.',
+    patch: [
+      'Report the surface in the stored frame again — the frame `docs/handoff/task-deepseek-movement-feel.md:121` and',
+      'the shipped scenario name — by mapping each point back through `localTile` when the map is active, and add',
+      '`localTile` to the `./src/map-view.js` import on app.js:29. The renderer is untouched: it reads the',
+      'tracker through `displayed()`, not through this surface.',
+      '',
+      '-  presence: () => presence.entries().map(([id, record]) => ({ id, confirmed: { ...record.confirmed }, display: displayCoords(record, performance.now()), tweening: presence.tweening(id) })),',
+      '+  presence: () => presence.entries().map(([id, record]) => { const stored = (point) => { const local = mapActive(state.world) && Number.isFinite(point?.x) ? localTile(point.x, point.y) : null; return local ? { ...point, x: local.x, y: local.y, world_id: local.world_id } : point; }; return { id, confirmed: stored({ ...record.confirmed }), display: stored(displayCoords(record, performance.now())), tweening: presence.tweening(id) }; }),',
+      '',
+      'Option B, if the owner decides the global frame *is* the new contract: change the witness instead. The',
+      'assertion at `scripts/browser-suite.mjs:2564` (line 2513 on f85c84b) converts through `localTile` before',
+      'comparing, and `docs/handoff/task-deepseek-movement-feel.md:121` is corrected to state the drawn frame.',
+      'The two must change together, and the claim "the record holds the stored tile" is withdrawn — a decision',
+      'for the owner, not for this slice.',
+      '',
+      'Either way the proof is the shipped scenario, which fails on f85c84b and on this branch and passes on',
+      '27c0d72: `LUCY_BROWSER_ONLY=shared-presence-two-clients npm run browser`.',
+    ].join('\n'),
+    async run() {
+      // The shipped client is a browser script, so the two expressions that decide the frame of the
+      // surface are read out of its source and evaluated with the shipped tracker and projection over a
+      // real observation. A fix changes those expressions, which is what turns this case green.
+      const source = readFileSync(APP_JS, 'utf8');
+      const fed = /function noteConfirmed\(item\) \{\s*const record = presence\.confirm\(([\s\S]*?)\);/.exec(source)?.[1];
+      const surface = /presence: \(\) => ([\s\S]*?),\n\s*stream: \(\) =>/.exec(source)?.[1];
+      if (!fed || !surface) throw new Error('app.js no longer holds the two expressions this case reads (`noteConfirmed` and the `presence:` surface)');
+      return withFixture(async ({ platform, actor, tokens, resident, place }) => {
+        place(resident, 'commons', 10, 5);
+        const view = platform.world(actor(tokens.alice), { world_id: 'commons', agent_id: resident.id, map: 'core' });
+        const item = view.participants.find((participant) => participant.id === resident.id);
+        // Every name a fix could reach for is on the scope, so a corrected surface evaluates too.
+        const scope = { presence: createPresenceTracker({ now: () => performance.now(), reducedMotion: () => false }), displayCoords, performance, item,
+          state: { world: view }, mapActive, toMapItem, localTile, fromGlobal, onMap, mapPoint, console, JSON, Number, Object, Array, String, Boolean };
+        const evaluate = (expression) => new Function('scope', `with (scope) { return (${expression}); }`)(scope);
+        scope.presence.confirm(evaluate(fed));                                        // exactly what seedPresence feeds it
+        // The capture is the arrow's body (`presence.entries().map(…)`), so it is already the expression.
+        const reported = evaluate(`(${surface}).find((entry) => entry.id === ${JSON.stringify(resident.id)})`).confirmed;
+        const stored = { x: item.x, y: item.y };
+        return { expected: { reported: stored, stored }, observed: { reported, stored } };
       });
     },
   },
