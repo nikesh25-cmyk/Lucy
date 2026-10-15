@@ -212,7 +212,7 @@ export function createViewBlocker({ isSolid = () => false, layerAt = () => 0, ma
 // ---------------------------------------------------------------------------------------------
 
 export const SUSPEND_REASONS = Object.freeze(['typing', 'dialog', 'menu', 'chat', 'custom']);
-export const SHORTCUT_EXEMPT_TAGS = Object.freeze(['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON']);
+export const SHORTCUT_EXEMPT_TAGS = Object.freeze(['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'SUMMARY']);
 
 export function shortcutSuspended({ tagName = '', isContentEditable = false, dialogOpen = false, modifier = false } = {}) {
   return Boolean(modifier) || Boolean(dialogOpen) || Boolean(isContentEditable)

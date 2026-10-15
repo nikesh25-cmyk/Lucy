@@ -26,6 +26,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { cameraWalkDirection, facingLabel } from '../src/camera-controls.js';
 import { RESTORATION_PLAN } from '../src/community.js';
 import { onMap } from '../src/global-map.js';
+import { LIVING_ROSTER } from '../src/living-world.js';
 import { validateDatabase } from '../src/recovery.js';
 import { planWalk } from '../src/world-walk.js';
 import { frontierGates, getWorldDefinition, walkable } from '../world.js';
@@ -377,13 +378,22 @@ function attachPageLogs(page, key) {
 }
 
 async function context(key) {
-  if (state.contexts.has(key)) return state.contexts.get(key);
+  if (state.contexts.has(key)) {
+    const record=state.contexts.get(key);
+    if(record.frozen){await record.lifecycle.send('Page.setWebLifecycleState',{state:'active'});record.frozen=false;}
+    if(!state.scenarioContexts.has(key)){
+      await record.context.tracing.start({screenshots:true,snapshots:true,sources:false});
+      state.scenarioContexts.add(key);
+    }
+    return record;
+  }
   const browserContext = await state.browser.newContext({ viewport: { width: 1440, height: 900 } });
   browserContext.setDefaultTimeout(PAGE_TIMEOUT_MS);
   await browserContext.tracing.start({ screenshots: true, snapshots: true, sources: false });
   const page = await browserContext.newPage();
   attachPageLogs(page, key);
-  const record = { key, context: browserContext, page };
+  const lifecycle=await browserContext.newCDPSession(page);
+  const record = { key, context: browserContext, page, lifecycle, frozen:false };
   state.contexts.set(key, record);
   state.scenarioContexts.add(key);
   return record;
@@ -488,7 +498,7 @@ async function signIn(page, { email, password }) {
         return { signedIn: document.body.classList.contains('signed-in'), notice: notice?.textContent || '', failed: Boolean(notice && !notice.hidden && notice.classList.contains('error')) };
       });
       if (observed.signedIn) { outcome = 'signed-in'; break; }
-      if (/Too many authentication attempts/i.test(observed.notice)) { outcome = 'rate-limited'; break; }
+      if (observed.failed && /Too many authentication attempts/i.test(observed.notice)) { outcome = 'rate-limited'; break; }
       if (observed.failed) { outcome = `refused: ${observed.notice}`; break; }
       await sleep(200);
     }
@@ -617,6 +627,7 @@ async function runScenario(definition) {
   console.log(`SCENARIO ${definition.id} — ${definition.title}${definition.regression ? `  [regression: ${definition.regression}]` : ''}`);
   const started = Date.now();
   const errors = [];
+  let failed=false;
   try {
     await withTimeout(runImplementation(definition), SCENARIO_TIMEOUT_MS, `scenario "${definition.id}"`);
     await discardTraces();
@@ -624,6 +635,7 @@ async function runScenario(definition) {
     console.log(`PASS  ${definition.id} — ${definition.title} (${Date.now() - started} ms)`);
     return true;
   } catch (error) {
+    failed=true;
     errors.push(error);
     const saved = await captureFailure(definition.id, errors);
     state.results.push({ id: definition.id, ok: false, ms: Date.now() - started, error });
@@ -637,6 +649,17 @@ async function runScenario(definition) {
     for (const line of pageLog.slice(0, 6)) console.log(`        page      ${line}`);
     return false;
   } finally {
+    // Keep each operator's real cookies, DOM and browser-local choices, while letting completed
+    // scenarios rest like inactive tabs. Otherwise every old 3D scene continues painting in the
+    // headless browser and later two-client cases compete with dozens of unrelated scenes.
+    // The clients participating in one scenario stay active together for its entire duration.
+    for(const key of state.scenarioContexts){
+      const record=state.contexts.get(key);
+      if(record&&!record.page.isClosed()){
+        if(failed){await record.context.close();state.contexts.delete(key);}
+        else{await record.lifecycle.send('Page.setWebLifecycleState',{state:'frozen'});record.frozen=true;}
+      }
+    }
     state.scenario = null;
     state.scenarioContexts = new Set();
   }
@@ -2665,7 +2688,9 @@ const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.l
 async function openWorldAs(page, agentId) {
   await openTab(page, 'Open world');
   const select = page.locator('#view select[name="agent"]');
-  if (await select.count()) { await select.selectOption(agentId); await settle(page); await page.waitForTimeout(500); }
+  if(await select.count() && await select.inputValue()!==agentId){await select.selectOption(agentId);await settle(page);}
+  await page.waitForFunction(id=>window.__nemoworld?.selected?.()===id&&Boolean(document.querySelector('#view .world-layout #world')),agentId,{timeout:PAGE_TIMEOUT_MS});
+  await settle(page);
 }
 
 /**
@@ -5377,8 +5402,10 @@ define('karma-closed-loop', async () => {
     await space.getByRole('button', { name: 'Go to my space', exact: true }).click();
     await browserShows(page, garden);
     expect(count('SELECT COUNT(*) AS n FROM journey_visits WHERE agent_id=? AND world_id=?', resident.id, garden) >= 1, 'walking in must be recorded as the visit the server wrote', { actual: 'no visit row' });
-    // The HUD's own Build action turns on the pointer palette here, exactly as it does in the frontier.
-    await page.getByRole('button', { name: 'Close world tools', exact: true }).click();
+    // Home returns to the playable scene after confirmed travel. The drawer must
+    // close as part of that action, so there is no second dismissal to perform.
+    await page.waitForFunction(() => !document.body.classList.contains('game-tools-open'), null, { timeout: PAGE_TIMEOUT_MS });
+    await page.getByRole('button', { name: 'Close world tools', exact: true }).waitFor({state:'hidden',timeout:PAGE_TIMEOUT_MS});
     await page.locator('#game-build-button').click();
     await page.waitForFunction(() => document.body.classList.contains('game-building'), null, { timeout: PAGE_TIMEOUT_MS });
     const host = page.locator('#game-build-host');
@@ -5501,6 +5528,21 @@ define('karma-closed-loop', async () => {
     await waitForCondition(async () => /Karma Coins:\s*\d+/.test((await panel.textContent()) || '') ? true : null, 'the restarted panel to state the purse again');
     state.notes.push(`karma loop restart: ${garden} still holds ${spaceBefore.length} object, the shelf still holds ${shelfBefore.length} kind, the ledger still holds ${karmaBefore.length} receipt and ${purchasesBefore.length} purchase, with no NemoCoin and no land touched`);
     return `after a real restart: the garden, the object, the shelf, ${karmaBefore.length} karma receipt and the purchase are unchanged, and the panel states the purse again`;
+  });
+
+  await step('Home opens the cottage through its real garden doorway from the Commons',async()=>{
+    const returned=await inPage(page,`/agents/${resident.id}/travel`,{body:{world_id:'commons'}});
+    expect(returned.status===200,'the cottage check starts in the Commons',{actual:describe(returned)});
+    await page.reload({waitUntil:'domcontentloaded'});await settle(page);
+    expect(await enterTheWorld(),'the saved resident re-enters the Commons');
+    await openGameTab(page,'Open world');
+    if(!await page.evaluate(()=>document.body.classList.contains('game-tools-open')))await page.locator('#game-hud').getByRole('button',{name:'More',exact:true}).click();
+    await page.locator('#world-my-space-card').getByRole('button',{name:'Open my cottage',exact:true}).click();
+    await browserShows(page,cottage);
+    expect(row('SELECT world_id FROM agents WHERE id=?',resident.id)?.world_id===cottage,'the cottage arrival must be stored by the server');
+    expect(count('SELECT COUNT(*) FROM journey_visits WHERE agent_id=? AND world_id=?',resident.id,cottage)>=1,'the physical cottage entry must leave a saved visit');
+    await page.getByRole('button',{name:'Close world tools',exact:true}).waitFor({state:'hidden',timeout:PAGE_TIMEOUT_MS});
+    return 'one Home action travelled to the garden, walked to its real door and saved entry into the cottage; the playable scene resumed';
   });
 
   await step('the same purse and shop work on a phone with reduced motion', async () => {
@@ -6098,7 +6140,9 @@ define('live-observation-readonly', async () => {
   // Put a resident in the Commons where the observer's opening window looks, so "public activity"
   // is a real stored position and not an assumption.
   write('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE id=?', 'commons', 11, 7, walker.id);
-  const before = { tile: row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id), blocks: count('SELECT COUNT(*) FROM frontier_blocks'), messages: count('SELECT COUNT(*) FROM messages'), objects: count('SELECT COUNT(*) FROM world_objects') };
+  const messageSequence = row('SELECT COALESCE(MAX(rowid),0) AS n FROM messages').n;
+  const objectSequence=row('SELECT COALESCE(MAX(rowid),0) AS n FROM world_objects').n;
+  const before = { tile: row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id), blocks: count('SELECT COUNT(*) FROM frontier_blocks'), messages: rows('SELECT * FROM messages WHERE rowid<=? ORDER BY rowid',messageSequence), objects: rows('SELECT * FROM world_objects WHERE rowid<=? ORDER BY rowid',objectSequence) };
 
   await step('the anonymous observer enters the Commons through Observe', async () => {
     await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
@@ -6145,7 +6189,7 @@ define('live-observation-readonly', async () => {
     expect(panned.following === null, 'a pan ends the follow: the camera has one target owner');
     expect(panned.target.x === panned.camera.x && panned.target.y === panned.camera.y, 'with no follow, the camera target is the observer’s own tile', { actual: describe(panned.target) });
 
-    // Eight writes from the observer's own page, including one acting as the resident in the world.
+    // Four writes from the observer's own page, including one acting as the resident in the world.
     const refusals = {};
     for (const [path, body] of [['/move', { agent_id: walker.id, direction: 'right' }], ['/messages', { text: 'a visitor cannot speak for anyone', world_id: 'commons' }], ['/frontier/build', { world_id: 'frontier:0:0', x: 1, y: 1, z: 0, type: 'wood' }], ['/interact', { agent_id: walker.id, x: 11, y: 7, action: 'travel' }]]) {
       refusals[path] = (await inPage(page, path, { body })).status;
@@ -6161,9 +6205,15 @@ define('live-observation-readonly', async () => {
   await step('observation changed nothing in the database', async () => {
     expect(describe(row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id)) === describe(before.tile), 'the watched resident must not move', { expected: describe(before.tile), actual: describe(row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id)) });
     expect(count('SELECT COUNT(*) FROM frontier_blocks') === before.blocks, 'no block may be stored by an observer');
-    expect(count('SELECT COUNT(*) FROM messages') === before.messages, 'no message may be stored by an observer');
-    expect(count('SELECT COUNT(*) FROM world_objects') === before.objects, 'no object may be stored by an observer');
-    return 'resident tile, blocks, messages and objects all unchanged after observation';
+    expect(describe(rows('SELECT * FROM messages WHERE rowid<=? ORDER BY rowid',messageSequence)) === describe(before.messages), 'observation cannot change any existing message');
+    const newMessages=rows('SELECT m.agent_id,m.account_id,m.text,a.operator_id FROM messages m LEFT JOIN agents a ON a.id=m.agent_id WHERE m.rowid>?',messageSequence);
+    const livingIds=new Set(LIVING_ROSTER.map(resident=>resident.id));
+    expect(newMessages.every(message=>livingIds.has(message.agent_id)&&message.account_id===message.operator_id), 'any concurrent message must be attributed to the independent living-world tick, never the anonymous observer');
+    expect(count("SELECT COUNT(*) FROM messages WHERE text='a visitor cannot speak for anyone'")===0,'the refused anonymous message must not be saved');
+    expect(describe(rows('SELECT * FROM world_objects WHERE rowid<=? ORDER BY rowid',objectSequence))===describe(before.objects), 'observation cannot change any existing object');
+    const newObjects=rows('SELECT id,world_id,type,x,y FROM world_objects WHERE rowid>?',objectSequence);
+    expect(newObjects.every(object=>object.id==='lw-aria-farm-3-3'&&object.world_id==='home:lw-aria'&&object.type==='farm'&&object.x===3&&object.y===3),'the only concurrent object allowed is the exact starter farm independently seeded by the living-world tick',{actual:describe(newObjects)});
+    return `resident tile, blocks, prior objects and prior messages unchanged; ${newMessages.length} messages and ${newObjects.length} exact starter farms came only from the server's living-world tick, and the anonymous message was not saved`;
   });
 
   await step('a signed-in observer sees only public conversation and public resident fields', async () => {
@@ -6714,6 +6764,7 @@ const controlKey = (node) => {
   if (node.action) return `action:${node.action}`;
   if (node.guide) return `guide:${node.guide}`;
   if (node.encounter) return `encounter:${node.encounter}`;
+  if (node.tag === 'SUMMARY') return `summary:${node.text}`;
   return String(node.tag || '?');
 };
 
@@ -6737,8 +6788,14 @@ const focusedControl = (page) => page.evaluate(() => {
 const guideControls = (page) => page.evaluate(() => {
   const root = document.querySelector('#game-guide-host .game-guide');
   if (!root) return [];
-  return [...root.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')]
-    .filter((node) => node.getClientRects().length > 0)
+  return [...root.querySelectorAll('button, summary, a[href], input, select, textarea, [tabindex]')]
+    .filter((node) => {
+      if (!node.getClientRects().length) return false;
+      for (let parent=node.parentElement;parent&&parent!==root;parent=parent.parentElement) {
+        if(parent.tagName==='DETAILS'&&!parent.open&&parent.querySelector(':scope > summary')!==node)return false;
+      }
+      return true;
+    })
     .map((node) => ({
       action: node.getAttribute('data-guide-action'),
       guide: node.getAttribute('data-guide'),
@@ -6901,7 +6958,7 @@ async function signUp(page, { name, email, password }) {
         return { signedIn: document.body.classList.contains('signed-in'), notice: notice?.textContent || '', failed: Boolean(notice && !notice.hidden && notice.classList.contains('error')) };
       });
       if (observed.signedIn) { outcome = 'signed-in'; break; }
-      if (/Too many authentication attempts/i.test(observed.notice)) { outcome = 'rate-limited'; break; }
+      if (observed.failed && /Too many authentication attempts/i.test(observed.notice)) { outcome = 'rate-limited'; break; }
       if (observed.failed) { outcome = `refused: ${observed.notice}`; break; }
       await sleep(200);
     }
@@ -7209,7 +7266,19 @@ define('first-ten-minutes', async () => {
     // accept a short one, and assert the order it finally reports.
     for (let attempt = 0; attempt < 2 && describe(seen) !== describe(expectedOrder); attempt++) seen = await tabSweepGuide(page);
     expect(describe(seen) === describe(expectedOrder), 'Tab must reach every guide control exactly once, in document order', { expected: describe(expectedOrder), actual: describe(seen) });
-    return `Tab reached ${seen.join(' → ')} (document order, none skipped)`;
+    const summary=await tabToGuideControl(page,node=>node.tag==='SUMMARY'&&node.text==='People & progress','the optional people/progress summary');
+    expect(summary.tag==='SUMMARY','optional records use a native keyboard disclosure');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.querySelector('#game-guide-host details.game-guide-details')?.open===true,null,{timeout:PAGE_TIMEOUT_MS});
+    const expanded=(await guideControls(page)).map(controlKey);
+    expect(expanded.some(key=>key.startsWith('encounter:')),'the expanded disclosure makes the resident encounter controls keyboard-reachable');
+    let expandedSeen=await tabSweepGuide(page);
+    for(let attempt=0;attempt<2&&describe(expandedSeen)!==describe(expanded);attempt++)expandedSeen=await tabSweepGuide(page);
+    expect(describe(expandedSeen)===describe(expanded),'expanded supporting controls retain native document-order focus',{expected:describe(expanded),actual:describe(expandedSeen)});
+    await tabToGuideControl(page,node=>node.tag==='SUMMARY'&&node.text==='People & progress','the open people/progress summary');
+    await page.keyboard.press('Space');
+    await page.waitForFunction(()=>document.querySelector('#game-guide-host details.game-guide-details')?.open===false,null,{timeout:PAGE_TIMEOUT_MS});
+    return `Tab reached ${seen.join(' → ')}; Enter exposed every supporting encounter control and Space closed it again`;
   });
 
   await step('a saved keyboard walk refreshes the guide’s nearby target without a reload', async () => {

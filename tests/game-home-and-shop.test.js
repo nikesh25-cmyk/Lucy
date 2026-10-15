@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { createFirstPlayGuide, guideView, guideModel } from '../src/ui/first-play-guide.js';
+import { createPortalJourney } from '../src/world-navigation.js';
 
 const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const between=(start,end)=>{const a=app.indexOf(start),b=app.indexOf(end,a);assert.ok(a>=0&&b>a,'test must execute the shipped function block');return app.slice(a,b);};
@@ -39,7 +40,7 @@ test('opening a calling panel or guide details writes no action and preserves se
 
 function homeHarness(travel){
   const agent={id:'a',world_id:'commons',status:'active'},state={selected:'a',sessionEpoch:1,account:{id:'operator'},world:{paused:false,world:{id:'commons'}},building:false,gameDrawer:'tools'};
-  const scope={state,selected:()=>state.selected==='a'?agent:{id:'b',world_id:'commons'},currentWorldId:()=>agent.world_id,viewedAgent:()=>agent,travelAgent:travel,placementRulesFor:payload=>({available:Boolean(payload.build_palette?.length)}),notice:(...args)=>scope.notices.push(args),notices:[],setTab:()=>{},renderGamePanel:()=>{},render:()=>scope.renders++,renders:0,applyGameShell:()=>{},$:()=>({focus(){}})};
+  const scope={state,selected:()=>state.selected==='a'?agent:{id:'b',world_id:'commons'},currentWorldId:()=>agent.world_id,viewedAgent:()=>agent,travelAgent:travel,worldPortals:()=>state.world.portals||[],portalTarget:portal=>portal.target_world_id||portal.targetWorldId,enterPortal:async()=>false,placementRulesFor:payload=>({available:Boolean(payload.build_palette?.length)}),notice:(...args)=>scope.notices.push(args),notices:[],setTab:()=>{},renderGamePanel:()=>{},render:()=>scope.renders++,renders:0,applyGameShell:()=>{},$:()=>({focus(){}})};
   vm.runInNewContext(`${between('async function enterOwnedSpace(', 'async function readHomePrivacy(')};globalThis.run=enterOwnedSpace`,scope);
   return{agent,state,scope};
 }
@@ -65,6 +66,51 @@ test('a refused, paused or changed-resident home journey cannot enable building'
 test('home building refuses an unconfirmed palette even after travel reports success',async()=>{
   const h=homeHarness(async id=>{h.agent.world_id=id;return true;});
   assert.equal(await h.scope.run({build:true}),false);assert.equal(h.state.building,false);assert.match(h.scope.notices.at(-1)[0],/palette is unavailable/);
+});
+
+test('Open my cottage confirms the garden, walks its observed doorway, then requests cottage travel',async()=>{
+  const steps=[],walkStarted=deferred(),walkRelease=deferred(),door={id:'cottage-door',x:4,y:2,target_world_id:'house:a'};
+  const h=homeHarness(async id=>{
+    steps.push(`travel:${id}`);
+    if(id==='house:a')assert.ok(Math.abs(h.agent.x-door.x)+Math.abs(h.agent.y-door.y)<=1,'the server travel is requested only from the doorway');
+    Object.assign(h.agent,{world_id:id,x:0,y:0});h.state.world={paused:false,world:{id,owner_agent_id:'a'},build_palette:['flowers'],portals:id==='home:a'?[door]:[]};return true;
+  });
+  const journey=createPortalJourney({travelAgent:h.scope.travelAgent,readState:()=>({actor:h.scope.selected(),worldId:h.agent.world_id,sessionId:h.state.sessionEpoch}),walkTo:async(x,y)=>{steps.push(`walk:${x},${y}`);walkStarted.resolve();await walkRelease.promise;Object.assign(h.agent,{x,y});return true;}});
+  h.scope.enterPortal=async portal=>{assert.equal(portal,door,'entry uses the actual observed portal');return(await journey({portal,actor:h.agent,sessionId:h.state.sessionEpoch})).ok;};
+  const pending=h.scope.run({cottage:true});await walkStarted.promise;
+  assert.deepEqual(steps,['travel:home:a','walk:4,2']);assert.equal(h.agent.world_id,'home:a');assert.equal(h.state.building,false);
+  walkRelease.resolve();assert.equal(await pending,true);assert.deepEqual(steps,['travel:home:a','walk:4,2','travel:house:a']);assert.equal(h.agent.world_id,'house:a');
+});
+
+test('a missing or blocked cottage doorway leaves the confirmed garden usable for building',async()=>{
+  for(const blocked of [false,true]){
+    const destinations=[];
+    const h=homeHarness(async id=>{destinations.push(id);h.agent.world_id=id;h.state.world={paused:false,world:{id,owner_agent_id:'a'},build_palette:['flowers'],portals:blocked?[{x:4,y:2,target_world_id:'house:a'}]:[]};return true;});
+    let doorwayAttempts=0;h.scope.enterPortal=async()=>{doorwayAttempts++;return false;};
+    assert.equal(await h.scope.run({cottage:true}),false);assert.equal(h.agent.world_id,'home:a');assert.deepEqual(destinations,['home:a']);assert.equal(doorwayAttempts,blocked?1:0);
+    assert.equal(await h.scope.run({build:true}),true);assert.equal(h.state.building,true);assert.deepEqual(destinations,['home:a'],'the garden can be used without another travel request');
+  }
+});
+
+test('changing resident or session while garden arrival is pending cannot enter its cottage',async()=>{
+  for(const change of [h=>{h.state.selected='b';},h=>{h.state.sessionEpoch++;}]){
+    const gate=deferred();let attempts=0;
+    const h=homeHarness(async id=>{await gate.promise;h.agent.world_id=id;h.state.world={world:{id},portals:[{x:4,y:2,target_world_id:'house:a'}]};return true;});
+    h.scope.enterPortal=async()=>{attempts++;return true;};
+    const pending=h.scope.run({cottage:true});change(h);gate.resolve();
+    assert.equal(await pending,false);assert.equal(attempts,0);assert.equal(h.state.building,false);
+  }
+});
+
+test('a stale cottage doorway walk cannot dispatch travel, while building inside the cottage stays local',async()=>{
+  const gate=deferred(),started=deferred(),destinations=[];
+  const h=homeHarness(async id=>{destinations.push(id);Object.assign(h.agent,{world_id:id,x:0,y:0});h.state.world={world:{id,owner_agent_id:'a'},build_palette:['chair'],portals:[{x:4,y:2,target_world_id:'house:a'}]};return true;});
+  const journey=createPortalJourney({travelAgent:h.scope.travelAgent,readState:()=>({actor:h.scope.selected(),worldId:h.agent.world_id,sessionId:h.state.sessionEpoch}),walkTo:async()=>{started.resolve();await gate.promise;return true;}});
+  h.scope.enterPortal=async portal=>(await journey({portal,actor:h.agent,sessionId:h.state.sessionEpoch})).ok;
+  const pending=h.scope.run({cottage:true});await started.promise;h.state.sessionEpoch++;gate.resolve();assert.equal(await pending,false);assert.deepEqual(destinations,['home:a']);
+  h.agent.world_id='house:a';h.state.world={world:{id:'house:a',owner_agent_id:'a'},build_palette:['chair']};
+  h.scope.travelAgent=async()=>assert.fail('furnishing an already-entered cottage must not travel');
+  assert.equal(await h.scope.run({build:true}),true);assert.equal(h.state.building,true);
 });
 
 test('home privacy reads the actual cottage state and saves through the existing settings route',async()=>{

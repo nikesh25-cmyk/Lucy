@@ -217,16 +217,17 @@ test('the view key toggles the camera mode and reports the new mode', () => {
 });
 
 test('a focused control, a dialog, a modifier or a menu suspends the shortcuts and they resume', () => {
-  assert.deepEqual([...SHORTCUT_EXEMPT_TAGS], ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON']);
+  assert.deepEqual([...SHORTCUT_EXEMPT_TAGS], ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'SUMMARY']);
   assert.equal(shortcutSuspended({ tagName: 'textarea' }), true);
   assert.equal(shortcutSuspended({ tagName: 'BUTTON' }), true, 'a focused button keeps Enter and Space for itself');
+  assert.equal(shortcutSuspended({ tagName: 'SUMMARY' }), true, 'a disclosure keeps native Enter and Space activation');
   assert.equal(shortcutSuspended({ isContentEditable: true }), true);
   assert.equal(shortcutSuspended({ dialogOpen: true }), true);
   assert.equal(shortcutSuspended({ modifier: true }), true);
   assert.equal(shortcutSuspended({ tagName: 'BODY' }), false);
 
   const { input, intents } = collect({ worldContext: () => ({ agent: true }) });
-  for (const event of [{ tagName: 'TEXTAREA' }, { tagName: 'INPUT' }, { isContentEditable: true }, { dialogOpen: true }, { ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
+  for (const event of [{ tagName: 'TEXTAREA' }, { tagName: 'INPUT' }, { tagName: 'SUMMARY' }, { isContentEditable: true }, { dialogOpen: true }, { ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
     assert.equal(input.press('w', event), null, `${JSON.stringify(event)} suspends movement`);
     assert.equal(input.press('Enter', event), null, 'the same suspension covers interaction');
     assert.equal(input.press('v', event), null, 'and the view key');

@@ -1,8 +1,9 @@
 # Release-candidate checklist and rollback path — a fresh public world
 
-This is the Wave 7 operator checklist for putting a **fresh public NemoWorld world** into service, and
-the safe way to take it back out again. It is deliberately narrow: it covers the reliability and
-recovery gates this slice measured, and it says plainly which gates it does not cover.
+This is the operator checklist for putting a **fresh public NemoWorld world** into service from
+`integration/nemoworld-unified-2026-10-15`, schema **27**, and the safe way to take it back out again.
+It updates the Wave 7 procedures; §5 retains the original Wave 7 measurements on schema 25. Those
+measurements are historical evidence, not results for the current release commit.
 
 It is **not** a launch authorisation, a capacity claim or a commercial-readiness statement. No part of
 it establishes MMO scale, a supported-user count or a service-level objective. Where a number appears
@@ -17,7 +18,7 @@ general release checklist), and `docs/handoff/framework-wave7-reliability.md` (w
 
 | | |
 | --- | --- |
-| Schema | `PRAGMA user_version = 25`. A database above 25 is refused at open. |
+| Schema | `PRAGMA user_version = 27`. A database above 27 is refused at open. |
 | Write authority | Exactly one process may hold the world: `openDatabase` plus the `server.lock` file. Stop the server before any command-line backup or restore. |
 | Disposable rehearsal first | Every command in §3 and §4 can be rehearsed end to end on a disposable database — `node scripts/reliability-drills.mjs --drill rollback-release-candidate` does exactly that, in a temporary directory, and removes it afterwards. Rehearse before you touch the real world. |
 | What a rollback cannot do | A restore returns the world to the backup moment. Everything committed after it is gone. There is no partial rollback and no merge. |
@@ -36,15 +37,14 @@ Run every gate on the exact tree you intend to release, with Node 24
 | Content seal | `node scripts/seal-content.mjs --check` | `Verified: …`, exit 0 | Stop. The sealed content does not match its manifest. |
 | Operational limits | `node scripts/soak-experiment.mjs --json /tmp/soak.json` | exits 0: no leaked subscription, the world writable again after the exhaustion probe, inside the disk budget | Investigate before serving. |
 | Capacity probe | `node scripts/capacity-experiment.mjs --skip-browser` | exit 0, all sections within their budgets | Warning only; it measures, it does not gate correctness. The browser arm is owned separately (see §6). |
-| The release-point backup | `node scripts/recovery.js backup <db> <backup>` | JSON with a path, `verify` returns `{"schema_version":25,…}` | **Do not release without it.** It is the only rollback artifact. |
+| The release-point backup | `node scripts/recovery.js backup <db> <backup>` | JSON with a path; `verify` returns schema 27 for a new world, or the old schema before an upgrade | **Do not release without it.** Keep the matching source and vault key as well. |
 
-Known gap that these gates do **not** cover, recorded rather than hidden: a release that adds a *crop
-kind* changes the persisted `journey_crops` schema without moving `PRAGMA user_version`, and an
-existing schema-25 world is then refused at open with `Stored world content constraints are
-incomplete.` — there is no migration for it. Reproduce with
-`node --test tests/framework/known-gaps-reliability.mjs`. **Do not release a new crop kind to an
-existing world** until that migration exists. A fresh world (the case this document covers) is
-unaffected, because there is no earlier schema for it to disagree with.
+The legacy crop/block constraint gap identified by Wave 7 now has a versioned migration in
+`src/schema27.js`. `node --test tests/content-schema27.test.js` exercises schema 24/25/26 worlds with
+narrower sealed lists, saved crops, guest construction and grants, backup/restore and interrupted
+rebuild rollback. Unknown content is refused rather than removed. Once a world is schema 27,
+another sealed-list change requires another migration; the historical known-gap repro is not the
+current acceptance gate.
 
 ## 3. Bringing a fresh public world into service
 
@@ -57,28 +57,39 @@ BACKUPS=/srv/nemoworld/data/backups
 ```
 
 1. **Create the world and let it migrate itself.** Start the server once with no database present and
-   a closed registration setting, confirm `GET /api/v1/health` answers `{"status":"ok"}`, then stop it.
-   The world is created at schema 25.
-2. **Register the first administrator** through the setup path, then close registration
-   (`LUCY_INITIAL_REGISTRATION=closed`) so no one else can self-register while you finish.
+   `LUCY_INITIAL_REGISTRATION=closed` and a private `LUCY_SETUP_CODE` for public hosting. Confirm
+   `GET /api/v1/health` has `status: "ok"`. The world is created at schema 27.
+2. **Register the first administrator** through the setup path while that server is running, using
+   its private setup code. Keep registration closed while preparing the launch. The environment
+   setting initializes a new database only; changing it later does not override the saved policy.
+   Then stop the server before taking the command-line backup.
 3. **Take the release-point backup** with the server stopped:
    `node scripts/recovery.js backup "$WORLD" "$BACKUPS/world-release-point.sqlite"`, then
    `node scripts/recovery.js verify "$BACKUPS/world-release-point.sqlite"`.
    Record the JSON. This is the rollback artifact; keep it off-host as well.
-4. **Confirm the world describes itself.** `GET /api/v1/operations` as the administrator must show
-   `diagnostics.schema.version = 25`, `diagnostics.integrity.quick_check = "ok"`,
+4. **Restart and confirm the world describes itself.** `GET /api/v1/operations` as the administrator must show
+   `diagnostics.schema.version = 27`, `diagnostics.integrity.quick_check = "ok"`,
    `audit_valid: true`, `coin_ledger_valid: true`, and `diagnostics.incidents.recorded_since_start`
    (0 on a healthy fresh world).
-5. **Open registration** and serve. Watch `diagnostics.incidents` and `diagnostics.failures`: an
+5. **Open registration** using the administrator's saved registration control
+   (`POST /api/v1/operations/registration` with `{"mode":"open"}`), when the deployment checks in
+   `docs/RELEASE_CHECKLIST.md` are satisfied. Watch `diagnostics.incidents` and `diagnostics.failures`: an
    unexpected 500 is now counted, timestamped and named by route, so "is this world failing requests?"
    is answerable from the dashboard rather than from a terminal.
 6. **Release point logged.** Write the backup filename and its `verify` output into the release record.
+   Use `backup-encrypted`, `verify-encrypted` and `restore-encrypted` as documented in
+   `docs/OPERATIONS.md` §2 for an authenticated off-host archive. No actual independent encrypted
+   backup of the installed world has been established by this checklist; record and rehearse that
+   operational copy before unrestricted enrollment.
    If you cannot say which file returns the world to its release point, you are not ready to serve.
 
 ## 4. The safe rollback path
 
-A rollback is one shipped command. It validates the backup, preserves the current bytes, and replaces
-the world atomically while the server is stopped.
+A database rollback validates the backup, preserves the current bytes, and replaces the world while
+the service is stopped. If returning to older code after the schema-27 upgrade, also restore the
+matching pre-upgrade source. Preserve `data/`, `.runtime/`, private configuration, `node_modules` and
+the vault key. For a launchd-managed Mac, unload the saved job first so `KeepAlive` cannot restart
+the server during replacement; see `docs/OPERATIONS.md` §4.
 
 ```sh
 # 1. Stop the world. The command below acquires data/server.lock and refuses if the server holds it.
@@ -90,7 +101,7 @@ node scripts/recovery.js restore "$BACKUPS/world-release-point.sqlite" "$WORLD"
 node scripts/recovery.js verify "$WORLD"
 ```
 
-- **What `restore` returns:** `{"schema_version":25,"accounts":N,"path":…,"preserved_original":…}`. The
+- **What `restore` returns:** `{"schema_version":<backup-version>,"accounts":N,"path":…,"preserved_original":…}`. The
   `preserved_original` path holds the byte copies of the database, `-wal` and `-shm` the rollback
   replaced. A rollback therefore does not destroy evidence, and can itself be undone.
 - **What is guaranteed:** the restored world is the release point exactly — every stored record and
@@ -105,7 +116,7 @@ node scripts/recovery.js verify "$WORLD"
   `restore` refuses, the world is untouched; fix the reason and run it again. Repeating the same
   rollback is safe and idempotent.
 
-## 5. The executed rollback drill
+## 5. Historical executed rollback drill — Wave 7, schema 25
 
 `node scripts/reliability-drills.mjs --drill rollback-release-candidate` seeds a fresh public world in a
 temporary directory, backs up its release point with the shipped CLI, releases (two writes and a new
@@ -166,11 +177,13 @@ back, so the rollback is itself reversible.
    checklist is evidence about model throughput, model quality or model latency.
 3. **Network reality.** Loopback only: no TLS termination, no proxy, no real latency, no packet loss,
    no CDN.
-4. **Moderation, appeal and platform pause as recovery drills.** The Wave 7 drills do not rehearse a
-   real moderation incident; `docs/OPERATIONS.md` records the same gap.
-5. **The plaintext backup.** `backupDatabase` writes a consistent but unencrypted copy. Encryption is
-   an operator step (an encrypted volume, or encrypting the artifact before it leaves the host).
-6. **Adding a crop kind to an existing world.** See the known gap in §2. It is a hard stop, not a
-   warning.
+4. **A real moderation incident.** The current operations suite includes `safety-and-pause` on
+   disposable records, including independent appeal and restart recovery. It does not establish
+   moderation staffing or incident response in a real public world.
+5. **An actual independent encrypted backup.** `backupDatabase` writes plaintext; the shipped
+   encrypted CLI can create an authenticated archive. Transfer, separate key custody and restoration
+   of the actual installation on independent storage still require an operator's recorded drill.
+6. **Future content migrations.** Schema 27 covers the known legacy constrained lists. It does not
+   permit silently changing another sealed crop/block list under the same schema version.
 7. **Multiple writers or multiple processes.** One process, one SQLite connection. Nothing here is
    evidence about horizontal scale.

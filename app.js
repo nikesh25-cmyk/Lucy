@@ -1770,7 +1770,7 @@ document.addEventListener('keydown',(event)=>{
   // Enter on a focused guide button must still activate that button.
   const target=event.target;
   if(event.ctrlKey||event.metaKey||event.altKey||document.querySelector('dialog[open]')||
-    target instanceof Element&&target.closest('input,textarea,select,button,a,[contenteditable],[role="button"]'))return;
+    target instanceof Element&&target.closest('input,textarea,select,button,summary,a,[contenteditable],[role="button"]'))return;
   const promptIntent=interactionPrompt.handleKey(event.key);
   if(promptIntent){
     event.preventDefault();
@@ -2566,10 +2566,22 @@ async function enterOwnedSpace({cottage=false,build=false}={}){
   // Continue furnishing the owned cottage when already inside it; a Build request elsewhere goes
   // to the garden first. The arrival is confirmed by the server before any palette is enabled.
   const target=cottage||build&&currentWorldId()===cottageId?cottageId:gardenId;
+  const stillCurrent=()=>selected()?.id===resident.id&&(state.sessionEpoch||0)===epoch;
   if(currentWorldId()!==target||!viewedAgent()){
-    if(!await travelAgent(target))return false;
+    if(target===cottageId){
+      // A cottage is entered through its actual garden doorway. Going home is allowed directly;
+      // entering the cottage still uses the same observed portal, walking and server travel rules.
+      if(currentWorldId()!==gardenId||!viewedAgent()){
+        if(!await travelAgent(gardenId))return false;
+      }
+      if(!stillCurrent())return false;
+      if(selected().world_id!==gardenId||state.world.world?.id!==gardenId)return false;
+      const doorway=worldPortals().find(portal=>portalTarget(portal)===cottageId);
+      if(!doorway){notice('Your garden is open, but its cottage doorway is unavailable. You can keep using the garden and try the cottage again later.',true);return false;}
+      if(!await enterPortal(doorway))return false;
+    }else if(!await travelAgent(target))return false;
   }
-  if((state.sessionEpoch||0)!==epoch||selected()?.id!==resident.id||selected().world_id!==target)return false;
+  if(!stillCurrent()||selected().world_id!==target)return false;
   state.gameDrawer='';state.gameMenuOpen=false;setTab('world');renderGamePanel();
   if(build){
     if(state.world.world?.id!==target||state.world.world?.owner_agent_id!==resident.id||!placementRulesFor(state.world).available){
