@@ -23,15 +23,22 @@ export const draftMethods={
   if(!Number.isInteger(revision)||revision<0||revision!==(row?.revision||0))fail(409,'The saved draft changed in another view. Refresh before saving again.');
   if(row?.archived)fail(409,'Restore the archived draft before editing.');
   if(row&&JSON.parse(row.content).format!==input.format)fail(409,'A saved draft keeps its original form type. Use a new claim for another form.');
-  const content=JSON.stringify(normalizeDraft(input));if(row?.content===content)return {claim_id:claim.id,revision:row.revision,updated_at:row.updated_at};
+  const content=JSON.stringify(normalizeDraft(input));if(row?.content===content)return {claim_id:claim.id,revision:row.revision,updated_at:row.updated_at,saved:false};
   if(row&&this.clock()-row.updated_ms<500)fail(429,'Draft saves are too close together. Retry in a moment.');
   if(!row&&this.get('SELECT COUNT(*) AS n FROM claim_drafts d JOIN claims c ON c.id=d.claim_id WHERE c.account_id=? AND d.archived=0',actor.account.id).n>=200)fail(429,'Your capacity is 200 active drafts. Archive existing work before starting more drafts.');
   const date=new Date(this.clock()).toISOString();
-  this.run('INSERT INTO claim_drafts(claim_id,content,revision,updated_at,updated_ms) VALUES(?,?,?,?,?) ON CONFLICT(claim_id) DO UPDATE SET content=excluded.content,revision=excluded.revision,updated_at=excluded.updated_at,updated_ms=excluded.updated_ms',claim.id,content,revision+1,date,this.clock());this.audit(actor.account.id,'draft.saved',claim.id);return {claim_id:claim.id,revision:revision+1,updated_at:date};
+  this.run('INSERT INTO claim_drafts(claim_id,content,revision,updated_at,updated_ms) VALUES(?,?,?,?,?) ON CONFLICT(claim_id) DO UPDATE SET content=excluded.content,revision=excluded.revision,updated_at=excluded.updated_at,updated_ms=excluded.updated_ms',claim.id,content,revision+1,date,this.clock());this.audit(actor.account.id,'draft.saved',claim.id);return {claim_id:claim.id,revision:revision+1,updated_at:date,saved:true};
+ },
+ // The single owner of `claim_drafts.archived`. Every other module (submission archival, review
+ // re-opening, draft resumption) reaches the flag through this one writer, and the static test
+ // `tests/framework-fixes.test.js` fails if any other module writes it directly.
+ archiveDraft(claimId,archived=true){
+  if(!this.get('SELECT claim_id FROM claim_drafts WHERE claim_id=?',claimId))return false;
+  this.run('UPDATE claim_drafts SET archived=? WHERE claim_id=?',archived?1:0,claimId);return true;
  },
  draftArchive(actor,input){
   human(actor);this.ownedClaim(actor,input.claim_id);if(!this.get('SELECT claim_id FROM claim_drafts WHERE claim_id=?',input.claim_id))fail(404,'Draft not found.');
-  if(typeof input.archived!=='boolean')fail(400,'Choose whether the draft is archived.');if(!input.archived&&this.get('SELECT archived FROM claim_drafts WHERE claim_id=?',input.claim_id).archived&&this.get('SELECT COUNT(*) AS n FROM claim_drafts d JOIN claims c ON c.id=d.claim_id WHERE c.account_id=? AND d.archived=0',actor.account.id).n>=200)fail(429,'Archive an active draft before restoring another.');this.run('UPDATE claim_drafts SET archived=? WHERE claim_id=?',input.archived?1:0,input.claim_id);this.audit(actor.account.id,input.archived?'draft.archived':'draft.restored',input.claim_id);return {archived:input.archived};
+  if(typeof input.archived!=='boolean')fail(400,'Choose whether the draft is archived.');if(!input.archived&&this.get('SELECT archived FROM claim_drafts WHERE claim_id=?',input.claim_id).archived&&this.get('SELECT COUNT(*) AS n FROM claim_drafts d JOIN claims c ON c.id=d.claim_id WHERE c.account_id=? AND d.archived=0',actor.account.id).n>=200)fail(429,'Archive an active draft before restoring another.');this.archiveDraft(input.claim_id,input.archived);this.audit(actor.account.id,input.archived?'draft.archived':'draft.restored',input.claim_id);return {archived:input.archived};
  },
  draftResume(actor,input,key){
   human(actor);if(typeof key!=='string'||!key.trim()||key.length>100)fail(400,'Provide an idempotency key.');this.active();this.expireClaims();const old=this.ownedClaim(actor,input.claim_id),row=this.get('SELECT * FROM claim_drafts WHERE claim_id=?',old.id);if(!row)fail(404,'Saved draft not found.');
@@ -41,6 +48,6 @@ export const draftMethods={
   const task=this.get('SELECT version FROM tasks WHERE id=?',old.task_id);if(task.version!==old.task_version)fail(409,'The task requirements changed. Review them before reusing old research.');
   if(row.archived&&this.get('SELECT COUNT(*) AS n FROM claim_drafts d JOIN claims c ON c.id=d.claim_id WHERE c.account_id=? AND d.archived=0',actor.account.id).n>=200)fail(429,'Archive an active draft before resuming another.');
   const claim=this.claim(actor,{task_id:old.task_id,agent_id:input.agent_id===null?null:input.agent_id||old.agent_id},key);
-  this.run('INSERT INTO claim_drafts(claim_id,content,revision,updated_at,updated_ms,resumed_from) VALUES(?,?,?,?,?,?)',claim.id,row.content,1,new Date(this.clock()).toISOString(),this.clock(),old.id);this.run('UPDATE claim_drafts SET archived=1 WHERE claim_id=?',old.id);this.audit(actor.account.id,'draft.resumed',claim.id);return {claim,draft:this.drafts(actor).find(draft=>draft.claim_id===claim.id)};
+  this.run('INSERT INTO claim_drafts(claim_id,content,revision,updated_at,updated_ms,resumed_from) VALUES(?,?,?,?,?,?)',claim.id,row.content,1,new Date(this.clock()).toISOString(),this.clock(),old.id);this.archiveDraft(old.id);this.audit(actor.account.id,'draft.resumed',claim.id);return {claim,draft:this.drafts(actor).find(draft=>draft.claim_id===claim.id)};
  },
 };
