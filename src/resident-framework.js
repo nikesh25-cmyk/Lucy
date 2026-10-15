@@ -325,7 +325,13 @@ export function institutionalClaim(value) {
   }
   return null;
 }
-/** Refuse a stored field that asserts institutional authority. Returns the field unchanged. */
+/**
+ * Refuse a stored field that asserts institutional authority. This is the helper a write-time guard
+ * should call where such text is recorded — `Platform.createAgent` for the avatar fields and
+ * `memoryRecord` for a purpose fact (see KNOWN GAP 3 in tests/framework/known-gaps-resident.mjs).
+ * The declared lifecycle refuses the same text as a recorded refusal rather than as a thrown error,
+ * which is why it calls `institutionalClaim` directly.
+ */
 export function assertNoInstitutionalClaim(value, field) {
   const claim = institutionalClaim(value);
   if (claim) fail(403, `${field}: ${claim.note}`);
@@ -796,20 +802,6 @@ function declaredAction(platform, actor, input, headerIntent) {
     budget: { ...declaration.budget, charged_calls: 1, remaining_after_charge: Math.max(0, declaration.budget.remaining_calls - 1) },
     declaration: { calling_id: declaration.calling.id, state: declaration.identity.state },
   });
-}
-
-// A verification failure is the one refusal that must undo the write it cannot confirm: the write is
-// rolled back and the refusal is then recorded on its own, so the ledger never claims an outcome the
-// saved rows cannot prove and the world never keeps an unproven write.
-function refuseVerificationFailed(platform, account, record, verified, lifecycle) {
-  record.state = 'refused'; record.reason = 'verification_failed'; record.ref = null;
-  const recorded = writeLedger(platform, account.id, record);
-  lifecycle.push({ step: 'verify', state: 'refused', detail: verified.note });
-  lifecycle.push({ step: 'record', state: 'complete', detail: `${recorded.event} written to the append-only audit ledger.` });
-  return {
-    ...refusal(record, 'verification_failed', { detail: verified.note, recorded: true, lifecycle }),
-    error: REFUSAL_REASONS.verification_failed,
-  };
 }
 
 // ---- Platform methods ----------------------------------------------------------------------------
