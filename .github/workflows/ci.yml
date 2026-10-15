@@ -70,18 +70,5 @@ jobs:
           CI: '1'
           LUCY_CHROME_PATH: ${{ steps.chrome-check.outputs.chrome_path }}
 
-      - name: Sanitize and redact test logs
-        if: always()
-        run: |
-          node scripts/ci-redact-logs.mjs test-results
-
-      - name: Upload redacted test artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-test-results-redacted
-          path: |
-            test-results/**/*.png
-            test-results/**/*.log
-            test-results/**/*.txt
-          if-no-files-found: ignore
+      # No test artifacts are uploaded. A text redactor cannot verify that
+      # screenshots and arbitrary diagnostics contain no private fixture data.

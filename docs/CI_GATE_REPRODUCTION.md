@@ -20,7 +20,7 @@ The GitHub Actions CI pipeline is declared in [`.github/workflows/ci.yml`](../.g
 2. **`chrome-browser-acceptance` (Browser Suite Gate)**:
    - Installs declared devDependency (`playwright-core`).
    - Drives system Google Chrome / Chromium in headless mode.
-   - Sanitizes and redacts all test logs and failure dumps via [`scripts/ci-redact-logs.mjs`](../scripts/ci-redact-logs.mjs) before uploading artifacts.
+   - Uploads no test artifacts. Failure output remains in the GitHub Actions job log, which still requires careful review before sharing.
 
 ---
 
@@ -62,18 +62,14 @@ npm run browser
 # 3. For focused scenario testing:
 LUCY_BROWSER_ONLY=hero-introduction-film npm run browser
 
-# 4. Redact and sanitize test results
-node scripts/ci-redact-logs.mjs test-results
 ```
 
 **CI Status & Hardware Constraints:**
 - **Status:** **Configured, not verified** on live GitHub Actions infrastructure.
-- **Limitation Notice:** The full browser acceptance suite comprises 49+ detailed end-to-end scenarios covering 3D WebGL voxel rendering, first-person camera drag, multi-tab presence, and keyboard locomotion. On virtualized GitHub Actions Linux runners (`ubuntu-latest`) without dedicated GPU hardware, software rasterization (SwiftShader via `--enable-unsafe-swiftshader`) is significantly slower than native GPU rendering. The workflow sets a 25-minute job timeout and preserves sanitized screenshots on failure.
+- **Limitation Notice:** The full browser acceptance suite covers 3D rendering, first-person controls, multi-tab presence and keyboard locomotion. Its scenario count can change. The workflow has not been run on GitHub Actions, so Chrome availability and timing there remain unverified. It sets a 25-minute job timeout and uploads no artifacts.
 
 ---
 
-## 3. Redaction & Artifact Safety
+## 3. Artifact Safety
 
-The CI helper [`scripts/ci-redact-logs.mjs`](../scripts/ci-redact-logs.mjs) guarantees:
-- Passwords, bearer tokens, HMAC keys, and authorization headers in `test-results/` logs are replaced with `[REDACTED]`.
-- Binary databases (`.sqlite`, `.sqlite-wal`, `.sqlite-shm`), private keys (`.pem`, `.key`), and environment files (`.env`) are strictly purged prior to artifact upload.
+The workflow uploads no screenshots, databases or test-result files. This avoids relying on a regex redactor to clear arbitrary logs or image pixels. GitHub Actions job output can still contain diagnostic data and must be reviewed before sharing.

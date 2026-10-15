@@ -11,14 +11,14 @@
 
 ## 1. Executive Summary & Verdict
 
-### Final Verdict: **NEW USER CAN START: VERIFIED**
+### Final Verdict: **SCRIPTED SERVER BOOTSTRAP VERIFIED**
 
-A complete release rehearsal was conducted starting from a clean extraction into a disposable sandbox. An end-to-end user onboarding journey succeeded without requiring any manual database interventions or existing assets:
+A scripted server rehearsal ran from a clean code copy in a disposable directory. It did not run `Start World.command`, create the account through the browser, or play the world as that account. The following API and process steps succeeded:
 
 1. **Clean Installation:** Engine files, client assets, and schemas initialized into an empty directory.
 2. **Database Bootstrap:** SQLite database (`world.sqlite`) and process lock (`server.lock`) automatically provisioned on first launch.
 3. **First-Account Administrator Bootstrap:** The initial registrant ("Elena Rostova") was automatically granted the `admin` role, preserving the bootstrap security invariant.
-4. **Game Entry & Character Creation:** Administrator created an AI resident character ("Elena Companion") in the Commons.
+4. **Landing Page & API Character Creation:** Chrome captured the landing page; the administrator created an AI resident ("Elena Companion") through HTTP.
 5. **Clean Process Lifecycle & Persistence:** The server process was stopped via `SIGTERM` (releasing locks) and restarted; the account, credentials, and created resident survived restart byte-for-byte.
 6. **Error Boundary Handling:** Proved clean, deterministic process exits on occupied ports (`EADDRINUSE`) and unwritable data directories (`EACCES`).
 
@@ -42,10 +42,7 @@ A complete release rehearsal was conducted starting from a clean extraction into
 
 ## 3. Negative Scenarios & Error Recovery Detail
 
-1. **Incompatible Node.js Version (< 24):**
-   - *Tested Behavior:* Running launcher under Node 22 or older triggers the documented guardrail in `scripts/local-launch.mjs`:
-     `"NemoWorld needs Node.js 24 or newer. Install it from https://nodejs.org, then open the launcher again."`
-   - *Recovery:* Mac users opening `Start World.command` automatically download and isolate a pinned, SHA256-verified `node-v24.19.0-darwin` runtime in `.runtime/`.
+1. **Incompatible Node.js Version (< 24):** Not exercised in this rehearsal. The launcher has a documented private-runtime path, but this script started `server.js` directly with an already available Node 24 executable.
 
 2. **Occupied Port (`EADDRINUSE`):**
    - *Observed Behavior:* When launched via `scripts/local-launch.mjs`, the port search loop automatically probes `PORT` through `PORT + 9` to locate an open port without user intervention. When strictly pinned to an occupied port with fallback disabled, the process exits cleanly with error code 1.

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Fresh-install release rehearsal for NemoWorld.
-// Tests whether a new user can extract NemoWorld to a clean directory,
-// launch it, register as first-admin, make a persistent change, restart,
-// and tests error handling for missing Node, occupied port, unwritable data dir.
+// Tests scripted server bootstrap from a clean code copy, API registration,
+// persistence and selected startup errors. It does not execute Start World.command
+// or drive account creation and play through the browser.
 
 import { spawn, execSync } from 'node:child_process';
 import { createServer as createTcpServer } from 'node:net';
@@ -245,6 +245,9 @@ export async function runFreshInstallRehearsal() {
       actualOutput: failOutput.trim(),
       handledCleanly: exitCode !== 0,
     });
+    if (exitCode === 0 || !/EADDRINUSE|address already in use/i.test(failOutput)) {
+      throw new Error('Occupied-port refusal did not produce the expected error.');
+    }
 
     // Step 9: Negative Test: Unwritable Data Directory
     log('Step 9: Testing failure case: Unwritable data directory...');
@@ -272,8 +275,11 @@ export async function runFreshInstallRehearsal() {
       actualOutput: unwriteOutput.trim(),
       handledCleanly: unwriteExit !== 0,
     });
+    if (unwriteExit === 0 || !/EACCES|permission denied/i.test(unwriteOutput)) {
+      throw new Error('Unwritable-directory refusal did not produce the expected error.');
+    }
 
-    report.verdict = 'NEW USER CAN START: VERIFIED. Clean install, first-admin onboarding, state persistence, and error boundaries all pass.';
+    report.verdict = 'SCRIPTED SERVER BOOTSTRAP VERIFIED. The Mac launcher and browser account/play journey were not exercised.';
     log(`\nFinal Verdict: ${report.verdict}`);
 
   } finally {

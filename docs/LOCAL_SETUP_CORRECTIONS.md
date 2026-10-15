@@ -14,7 +14,7 @@ Based on our empirical fresh-install release rehearsal, the following three docu
 - **Current README text:**
   > *"Requires Node.js 24 or newer. ... Run `npm start`."*
 - **Observed issue:**
-  Developers running system Node (e.g. Node 22 LTS or Node 20) fail immediately with `ERR_MODULE_NOT_FOUND` or sqlite syntax errors when executing `npm start` directly.
+  This rehearsal used Node 24 directly; it did not test older Node versions or the Mac launcher. The documented engine requirement remains Node 24 or newer.
 - **Proposed Correction:**
   Clarify that macOS users can run `Start World.command` (or `bash scripts/start-mac.sh`), which automatically manages a pinned, checksum-verified private Node 24 runtime in `.runtime/node-v24.19.0-darwin-arm64` without altering system packages.
 
