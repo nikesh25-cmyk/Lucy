@@ -918,6 +918,13 @@ export class Platform {
       backups,
       model: live.model || { configured: false, backend: null, state: 'unconfigured', state_note: 'No local model name is configured; resident runs and country conversations use their rules fallback.', queue: { active: 0, waiting: 0, max_waiting: 0, saturation: 0, full: false }, inference: { in_flight: 0, oldest_started_at: null, elapsed_ms: null }, since_process_start: null },
       workers: live.workers || { research: { active: 0, limit: 0, available: 0 }, resident: { active: 0, limit: 1, available: 1 }, interrupted: 0, capacity_refusals_since_start: 0 },
+      // A process running without a caller-supplied incident log (a test, an embedded use) still
+      // publishes the section, so an operator never has to guess whether the surface is absent
+      // because nothing failed or because nothing counts.
+      incidents: live.incidents || { recorded_since_start: 0, last_at: null, last_route: null, recent: [], redaction: 'No process-level incident log was supplied to this instance.' },
+      // The event channel's own counters. They are live process state and the only way an operator can
+      // see the held-subscription count, so they are published rather than left to the channel's log.
+      events: live.events || null,
       records: {
         accounts: count('SELECT COUNT(*) AS n FROM accounts'), agents: count('SELECT COUNT(*) AS n FROM agents'), worlds: count('SELECT COUNT(*) AS n FROM worlds'),
         world_objects: count('SELECT COUNT(*) AS n FROM world_objects'), land_stewardships: count('SELECT COUNT(*) AS n FROM land_stewardships'),

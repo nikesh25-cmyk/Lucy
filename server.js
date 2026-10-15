@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID, createHash } from 'node:crypto';
 import { Platform } from './src/platform.js';
 import { acquireProcessLock, backupDatabase, backupInventory, validateDatabase } from './src/recovery.js';
+import { createIncidentLog } from './src/incidents.js';
 import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from './src/hosting.js';
 import { worldAtmosphere } from './src/atmosphere.js';
 import { runResearch, approvedSource } from './runtime/research-worker.js';
@@ -428,6 +429,10 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
     catch (error) { if (/busy/i.test(error?.message || '')) { modelCounters.rejected_saturated += 1; modelCounters.last_saturated_at = new Date().toISOString(); } throw error; }
   } : null;
   const capacityRefusals = { count: 0, last_at: null };
+  // Every request that fails unexpectedly is counted, timestamped and named by route, so the
+  // administrator dashboard can answer "is this process returning 500s, and where?" without an
+  // operator reading a terminal. The record carries no request or failure text by construction.
+  const incidents = createIncidentLog();
   const refuseCapacity = (message) => { capacityRefusals.count += 1; capacityRefusals.last_at = new Date().toISOString(); fail(429, message); };
   const modelDiagnostics = () => {
     const notes = { idle: 'The local model is idle: nothing is running and nothing is waiting.', inferring: 'A working inference run is in flight right now.', inferring_with_queue: 'A working inference run is in flight and further requests are waiting for the single local slot.', queued: 'Requests are waiting; the single local model slot is between inferences.' };
@@ -445,6 +450,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
     model: modelDiagnostics(),
     workers: { research: { active: researchRuns.size, limit: researchConcurrency, available: Math.max(0, researchConcurrency - researchRuns.size) }, resident: { active: residentRuns.size, limit: 1, available: residentRuns.size ? 0 : 1 }, interrupted: platform.get("SELECT COUNT(*) AS n FROM jobs WHERE status='interrupted'").n, capacity_refusals_since_start: capacityRefusals.count, last_capacity_refusal_at: capacityRefusals.last_at },
     events: hub.counts(),
+    incidents: incidents.summary(),
     backups: backupInventory(backupDir),
   });
   const authLimiter = createAuthenticationLimiter({ publicMode: Boolean(hosting.publicOrigin) });
@@ -462,6 +468,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   };
   const server = createServer(async (request, response) => {
     headers(response, hosting);
+    // What the incident record may name about the failing request: the normalised route pattern, never
+    // the raw URL, so no query value (and therefore no token) can ever reach a record.
+    let requestRoute = '';
     try {
       validateRequestOrigin(request, server, hosting);
       const url = new URL(request.url, 'http://localhost');
@@ -481,6 +490,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       let agentId;
       if (match) { try { agentId = decodeURIComponent(match[1]); } catch { fail(400, 'Invalid agent identifier.'); } }
       const dynamic = match ? { id: agentId, action: match[2], method: match[2] === 'home' ? 'PATCH' : 'POST', scope: { travel: 'move', build: 'build', home: 'build', heartbeat: 'read', posture: 'move', look: 'move', climb: 'move' }[match[2]] } : null;
+      requestRoute = dynamic ? `/agents/:id/${dynamic.action}` : route;
       const specialWrite = ['/auth/register', '/auth/login', '/operations/backup'].includes(route);
       if (!gets.has(route) && !writes.has(route) && !specialWrite && !dynamic) return json(response, 404, { error: 'Not found.' });
       if (!(request.method === 'GET' && gets.has(route)) && !(request.method === 'POST' && (writes.has(route) || specialWrite)) && !(request.method === 'DELETE' && route === '/me') && !(dynamic && request.method === dynamic.method)) {
@@ -778,7 +788,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       if (route === '/auth/logout') cookie(response, '', 0, hosting);
       return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/tasks/follow-up', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs', '/quests/author', '/quests/join', '/guilds/projects', '/evidence/capture'].includes(route) ? 201 : 200, result);
     } catch (error) {
-      if (!error.status) console.error('HTTP request failed:', error.code || error.name || 'UnknownError');
+      // One structured, counted record per unexpected failure. A refusal the world itself produced
+      // (`error.status`) is an ordinary outcome and is not an incident.
+      if (!error.status) incidents.record({ method: request.method, route: requestRoute, status: 500, error });
       const status = error.status || (error.code === 'ERR_SQLITE_ERROR' && /constraint/i.test(error.message) ? 409 : 500);
       // A refused interaction answers with the same status the world's own rule produced, plus the
       // readable hint and the next usable step. Other refusals keep exactly their original body.
