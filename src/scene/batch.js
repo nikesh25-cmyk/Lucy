@@ -28,15 +28,23 @@ const UNFOGGED_STYLES = Object.freeze(['haze', 'star', 'sun', 'light']);
 /** Deterministic per-tile hash. The same tile always draws the same variant, in every session. */
 export const hash = (value) => { let result = 0; for (const char of String(value)) result = Math.imul(result ^ char.charCodeAt(0), 16777619); return result >>> 0; };
 
+/**
+ * Derived tones are snapped to a 6-bit-per-channel grid (steps of 4/255, about 1.6%, which no eye separates).
+ * A batch is one draw call per colour, so two tones that differ by a rounding error would otherwise cost two
+ * draws for nothing; snapping lets a derived tone that lands next to another share its batch. Sealed and
+ * authored colours are never snapped: only `shade` and `variant` results are.
+ */
+const snap = (color) => { const q = (v) => Math.min(255, Math.round(v * 255 / 4) * 4); return (q(color.r) << 16) | (q(color.g) << 8) | q(color.b); };
+
 /** A deterministic ±9% tint of `base`, so neighbouring tiles are distinguishable without a texture. */
-export const variant = (base, x, y) => new THREE.Color(base).multiplyScalar(0.91 + ((x * 47 + y * 91) % 7) * 0.025).getHex();
+export const variant = (base, x, y) => snap(new THREE.Color(base).multiplyScalar(0.91 + ((x * 47 + y * 91) % 7) * 0.025));
 
 /**
  * A brighter or darker tone of an existing family colour. Depth and phase shading are derived from
  * the palette already in the repository instead of introducing a new token, so the asset family's
  * one-palette claim stays true.
  */
-export const shade = (base, factor) => new THREE.Color(base).multiplyScalar(factor).getHex();
+export const shade = (base, factor) => snap(new THREE.Color(base).multiplyScalar(factor));
 
 /**
  * How the box faces are toned. The flat-shaded Lambert material already lights a face by its angle to

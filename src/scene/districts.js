@@ -3,7 +3,7 @@
 //
 // A style is data, never a rule. It chooses walls, roofs, trim, roof shapes, heights, chimneys, signs,
 // door-side extras, tree species and the ground decals a district scatters; `src/scene/architecture.js`,
-// `src/scene/props.js` and the sealed builders in `src/voxel-world.js` turn that into boxes. Nothing in a
+// and the sealed builders in `src/voxel-world.js` (houses, trees by species) turn that into boxes. Nothing in a
 // style reaches occupancy: it cannot add a scenery type, change a class in src/footprints.js, or move a
 // pick, and the tests that measure the drawn columns run over every style.
 //
@@ -21,8 +21,14 @@ export const SPECIES = Object.freeze(['oak', 'conifer', 'birch', 'willow', 'jung
 
 const flowers = Object.freeze(['#e1b6a2', '#e7cf83', '#b2a8cb', '#d78b86']);
 
-const style = (value) => Object.freeze({ trim: '#f1e9cb', door: ['#324842', '#5a4636', '#3d5875'], flowers, chimney: ['stone'], extras: ['window-box'],
-  heights: [1.6, 1.9], storeys: 1, sign: null, snow: false, species: ['oak'], decals: [], ...value });
+// Draw calls are one per colour, so a style's lists are capped where they are made: three walls, two roofs
+// and two doors give a street plenty of difference in shape and extras without a new batch per house.
+const cap = (list, count) => list && list.length > count ? Object.freeze(list.slice(0, count)) : list;
+const style = (value) => {
+  const made = { trim: '#f1e9cb', door: ['#324842', '#5a4636', '#3d5875'], flowers, chimney: ['stone'], extras: ['window-box'],
+    heights: [1.6, 1.9], storeys: 1, sign: null, snow: false, species: ['oak'], decals: [], ...value };
+  return Object.freeze({ ...made, wall: cap(made.wall, 3), roof: cap(made.roof, 2), door: cap(made.door, 2), flowers: cap(made.flowers, 3) });
+};
 
 /**
  * One style per district. `wall`/`roof` are lists the cottage and the building pick from by its own tile,

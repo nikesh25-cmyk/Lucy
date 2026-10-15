@@ -769,3 +769,28 @@ dusk, night and dawn (at most 48 lamps, three instances each). The face tone add
 is a shader change on the existing materials, and the glow strength is a material property. No frame time was
 measured (there is no GPU in this loop); `tests/render-interiors.test.js` asserts the instance and batch
 ceilings for every authored room, with and without the level-of-detail rule, and under reduced motion.
+
+## Renderer budgets after the second visual slice (15 October 2026)
+
+Water, weather, variety and species. Exact and machine-independent, from the GPU-free scene builder, no
+residents, the world's own start tile; slice 1 is the first column.
+
+| World, phase, weather | Instances slice 1 → slice 2 | Draw batches slice 1 → slice 2 |
+| --- | --- | --- |
+| `commons` day | 1,902 → 2,139 | 90 → 89 |
+| `commons` night | 1,948 → 2,185 | 94 → 93 |
+| `commons` day, rain | 1,902 → 2,139 (+ 523 weather) | 90 → 91 |
+| `district:cities` night | 1,849 → 2,110 | 92 → 104 |
+| `district:woodlands` day | 1,766 → 2,005 | 84 → 103 |
+| `district:coast` dusk, mist | 1,882 → 1,999 (+ 3 weather) | 66 → 81 |
+| `district:lakes` day | 1,795 → 2,085 | 84 → 91 |
+| `frontier:0:0` night | 2,527 → 2,630 | 84 → 75 |
+| `library` day | 2,069 → 2,069 | 83 → 61 |
+| `house:sample` day | 1,186 → 1,186 | 90 → 71 |
+
+The weather group is reported separately (`stats.weatherCubes`) and is not in `stats.cubes`; with it the worst
+frontier window is 2,630 + 523 = 3,153 of the 3,600-instance budget. The worst draw-call count over all 20
+districts with 20 residents, at night, in rain, is 123 of 130 (`woodlands`; `cities` 119). Batches fell where
+they could because `shade` and `variant` now snap to a 4/255 grid, so near-identical tones share a draw call.
+No frame time was measured: there is no GPU in this loop. The ambient repaint is capped at 15 frames a second
+and does not run under reduced motion or inside a room.

@@ -6,7 +6,10 @@
 // footprint test allows, and the mass of each tile fills its own standing column from the ground up.
 // The hand-built cottage, civic building and shelter are their own sealed builders in
 // src/voxel-world.js and are not drawn here.
-import { shade } from './batch.js';
+import { hash, shade } from './batch.js';
+
+/** The wall tones a building takes when its world has no district style of its own. */
+export const BUILDING_BODIES = Object.freeze(['#d3c4a6', '#c9b79a', '#dccfb2']);
 
 /** Building stone, mortar and timber, derived from the family's existing structure tokens. */
 export const BUILDING_TINTS = Object.freeze({
@@ -34,15 +37,48 @@ export function wallTile(batch, { x, y, pick }) {
  * +y face when the tile in front of it is open. An interior cell is a room, so its furniture (a
  * bookshelf) is drawn instead and the tile keeps its floor.
  */
-export function buildingTile(batch, { x, y, colors, pick, interior = false, openFront = true }) {
+export function buildingTile(batch, { x, y, colors, pick, interior = false, openFront = true, style = null }) {
   if (interior) return false;
+  // The tile's own hash and its district's style choose the look, so a street of building tiles is not one
+  // building repeated. Everything stays in the tile: 1.67 m tall, nothing wider than 1.08 m, and the front
+  // details reach no more than 0.10 m past the wall, short of a neighbour's standing column.
+  const n = hash(`${x},${y},building`), pickOf = (list, shift) => list[((n >>> shift) >>> 0) % list.length];
+  const body = style?.wall ? pickOf(style.wall, 2) : pickOf(BUILDING_BODIES, 2), roof = style?.roof ? pickOf(style.roof, 5) : colors.roof;
+  const trim = style?.trim || '#f1e9cb', profile = (n >>> 8) % 4, openings = (n >>> 11) % 3, door = pickOf(style?.door || [colors.dark], 14);
   batch.add(x + .5, .16, y + .5, 1.06, .32, 1.06, BUILDING_TINTS.base, pick);
-  batch.add(x + .5, .78, y + .5, .99, 1.18, .99, colors.body, pick);
-  // A stepped roof that stays inside the entry's recorded height for this tile (1.67 m).
-  batch.add(x + .5, 1.4, y + .5, 1.08, .12, 1.08, colors.roof, pick);
-  batch.add(x + .5, 1.52, y + .5, .96, .12, .96, shade(colors.roof, 0.93), pick);
-  batch.add(x + .5, 1.625, y + .5, .58, .09, .58, colors.roof, pick);
-  batch.add(x + .5, .3, y + .5 + .505, .34, .44, .06, colors.dark, pick);
-  if (openFront) batch.add(x + .5, .74, y + 1.005, .32, .43, .04, colors.glass, pick, 'glow');
+  batch.add(x + .5, .78, y + .5, .99, 1.18, .99, body, pick);
+  batch.add(x + .5, 1.2, y + .5, 1.03, .06, 1.03, trim, pick);
+  if (profile === 0) {
+    // stepped roof
+    batch.add(x + .5, 1.4, y + .5, 1.08, .12, 1.08, roof, pick);
+    batch.add(x + .5, 1.52, y + .5, .96, .12, .96, shade(roof, 0.93), pick);
+    batch.add(x + .5, 1.625, y + .5, .58, .09, .58, roof, pick);
+  } else if (profile === 1) {
+    // gabled: slabs long in x, narrowing toward a ridge, with the gable ends picked out in trim
+    batch.add(x + .5, 1.4, y + .5, 1.08, .12, 1.0, roof, pick);
+    batch.add(x + .5, 1.52, y + .5, 1.08, .12, .66, shade(roof, 0.93), pick);
+    batch.add(x + .5, 1.625, y + .5, 1.08, .09, .3, roof, pick);
+    for (const side of [-1, 1]) batch.add(x + .5 + side * .53, 1.5, y + .5, .04, .26, .8, trim, pick);
+  } else if (profile === 2) {
+    // flat roof with a parapet and a hatch
+    batch.add(x + .5, 1.34, y + .5, 1.06, .1, 1.06, shade(roof, 0.93), pick);
+    for (const [dx, dz, w, l] of [[0, .5, 1.08, .08], [0, -.5, 1.08, .08], [.5, 0, .08, .94], [-.5, 0, .08, .94]]) batch.add(x + .5 + dx, 1.5, y + .5 + dz, w, .22, l, roof, pick);
+    batch.add(x + .5 - .22, 1.5, y + .5 + .18, .26, .22, .26, shade(roof, 0.93), pick);
+  } else {
+    // a hip with a lit finial
+    for (let i = 0; i < 3; i++) batch.add(x + .5, 1.4 + i * .1, y + .5, 1.08 - i * .3, .12, 1.08 - i * .3, i % 2 ? shade(roof, 0.93) : roof, pick);
+    batch.add(x + .5, 1.64, y + .5, .08, .06, .08, colors.gold, pick, 'glow');
+  }
+  batch.add(x + .5, .3, y + .5 + .505, .34, .44, .06, door, pick);
+  batch.add(x + .5, .56, y + .5 + .515, .42, .06, .06, trim, pick);
+  if (openFront) {
+    if (openings === 0) batch.add(x + .5, .86, y + 1.005, .5, .34, .04, colors.glass, pick, 'glow');
+    else {
+      for (const side of [-1, 1]) batch.add(x + .5 + side * .3, .8, y + 1.005, .24, .36, .04, colors.glass, pick, 'glow');
+      if (openings === 2) { batch.add(x + .5, .76, y + .5 + .53, 1.0, .06, .12, roof, pick); batch.add(x + .5, .82, y + .5 + .59, 1.0, .06, .05, shade(roof, 0.93), pick); }
+    }
+  }
+  // The side wall's window, so the building reads from any orbit angle.
+  batch.add(x + 1.005, .8, y + .5, .04, .34, .3, colors.glass, pick, 'glow');
   return true;
 }

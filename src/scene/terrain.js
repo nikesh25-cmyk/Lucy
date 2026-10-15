@@ -18,7 +18,7 @@ export const layer = (batch, layers, name, run) => { const before = batch.size; 
 const TREES = new Set(['tree', 'fruit', 'palm', 'cactus', 'mountain']);
 
 /** The ground: a base cube (culled whole when enclosed), a surface slab, and each type's own detail. */
-export function groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers }) {
+export function groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers, style = null }) {
   // The tile type a neighbour has, resolved exactly as the plan resolved this cell: an observed tile
   // wins over the retained map, so the water depth and the shoreline are read from what is drawn.
   const typeAt = (x, y) => cellTypeAt(definition, snapshot, x, y);
@@ -49,7 +49,7 @@ export function groundPass({ batch, definition, snapshot, plan, cullHidden, scen
       if (room && detail && type !== 'wall') interiorFloor(batch, { x, y, type, base: variant(base, x, y), style: room.style, context: room, typeAt });
       if (type === 'building' && room) builders.furniture(batch, { x, y, type: 'bookshelf' });
       else if (type === 'building') buildingTile(batch, { x, y, pick, openFront: definition.terrain?.[y + 1]?.[x] !== 'building',
-        colors: { ...colors, body: '#d3c4a6' } });
+        colors: { ...colors, body: '#d3c4a6' }, style });
       if (type === 'tree' && !TREES.has(scenery.get(`${x},${y}`))) builders.tree(batch, x, y, 'tree', pick);
       if (type === 'fountain') builders.furniture(batch, { x, y, type: 'fountain' });
       if (type === 'garden' && (x + y) % 2 === 0) builders.furniture(batch, { x, y, type: 'flowers' });

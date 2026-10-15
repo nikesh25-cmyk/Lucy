@@ -67,6 +67,9 @@ thing stands in the world* lives under `src/scene/`:
 | `src/scene/buildings.js` | The two building *tiles* of the authored terrain: a boundary wall and a world building cell | `wallTile(batch, spec)`, `buildingTile(batch, spec)`, `BUILDING_TINTS` |
 | `src/scene/interiors.js` | A room's own grammar: walls with wainscot, rail, plaster and crown, a lit window on every fifth tile, framed pictures (stars in the observatory), brackets, parquet seams, rug borders and insets, plaza rings, the floor shade where it meets a wall; one palette per room kind | `isInterior(definition)`, `interiorContext`, `interiorWall`, `interiorFloor`, `openSides`, `interiorStyle`, `INTERIOR_STYLES` |
 | `src/scene/lights.js` | Lamp light as geometry: a halo and two stacked floor pools per lit lamp, in the additive `light` style; empty by day, always on in a room | `lampGlowScene({ resources, cubeBatch, plan, phase })`, `litLamps(plan)`, `LAMP_LIMIT`, `LIT_PHASES` |
+| `src/scene/weather.js` | Presentation-only weather: `clear`, `mist`, `rain`, deterministic from the shared atmosphere clock (twenty-minute slots), never inside a room; the rain streaks and mist slabs as one bounded group | `resolveWeather`, `weatherAt`, `weatherScene`, `WEATHER_LOOK`, `RAIN_LIMITS` |
+| `src/scene/districts.js` | One style per district (walls, roofs, trim, roof shapes, eave heights, chimneys, doors, door-side extras, tree species), capped to three walls, two roofs and two doors | `DISTRICT_STYLES`, `districtStyle(definition)`, `choose`, `footing` |
+| `src/scene/architecture.js` | Cottages, civic buildings and pavilions composed from a district style and the tile's own hash | `cottage`, `civic`, `pavilion`, `COTTAGE_EAVE_MAX`, `LOW_REACH` |
 | `src/scene/blocks.js` | Saved frontier blocks, batched apart from the diorama | `blocksScene({ resources, definition, plan, colors, cubeBatch, withParcel })` |
 | `src/scene/parcels.js` | The stewardship overlay (edges, hover, selection, protected lanes) | `parcelScene({ resources, plan, selection, hover, cubeBatch, parcelSelection })` |
 | `src/scene/sky.js` | The phase light, the shadow frustum, the depth cue and the far sky layer | `SKY_PHASES`, `SHADOW_LIMITS`, `phaseLighting(name)`, `resolvedPhase(name)`, `fogFor(entry, distance)`, `sunPlacement`, `shadowExtent(plan)`, `shadowResolution(extent)`, `applyPhase(spec)`, `skyScene(spec)` |
@@ -194,6 +197,42 @@ whose lowest face is 1.92 m; floor decals are at most 0.03 m thick and unpicked,
 decoration the level-of-detail rule may drop. The static diorama's key now includes the viewer's anchor
 whenever some tile is coarse: a room smaller than the window is the same window from every tile in it, so
 without that the first anchor's decals would stay for good.
+
+## Water, weather and variety
+
+Second visual slice (15 October 2026). All of it is presentation: no saved tile, object, permission or
+world rule reads it, and `src/footprints.js` is untouched.
+
+**Moving water.** The `water` and `foam` styles patch the Lambert program with a vertex wave (a few
+centimetres, driven by one shared `uTime`), shimmer glints and lapping shore foam. The sky is a gradient
+dome with a sun glow, and a cloud shadow drifts across the ground. The clock is a uniform advanced by
+`scene.tick(seconds)`, so an ambient repaint rebuilds nothing.
+
+**Weather.** `clear`, `mist` or `rain`, resolved as an explicit option, then a published `atmosphere.weather`,
+then the atmosphere's own clock (`weatherAt`: about 70% clear, 16% mist, 14% rain, in twenty-minute slots,
+the same for every client). It dims the sun, thickens the fog and draws up to 520 rain streaks and three mist
+slabs in one `voxel-weather` group: no pick, no shadow, not in the raycast list, not counted in `stats.cubes`
+(reported as `stats.weatherCubes`). A room has no weather.
+
+**Ambient loop and reduced motion.** `createVoxelWorld` repaints at most 15 times a second for an outdoor
+scene, backs off to nine times the cost of a paint, so it never takes more than a tenth of the time, pauses when the page is hidden and does not refresh the
+shadow map on those frames. Under `prefers-reduced-motion`, and inside a room, it never starts: the clock stays
+at zero, the waves have no height, and the weather is drawn as one still frame.
+
+**Variety.** `districts.js` gives every district its own palette, roof shapes, eave heights, chimneys, doors,
+door-side extras and tree species; `architecture.js` composes cottages, civic buildings and pavilions from it;
+`buildingTile` varies the commons' building tiles by hash (three wall tones, four roof profiles, window
+layouts, awnings); a plain `tree` takes one of seven species (oak, conifer, birch, willow, jungle, acacia,
+orchard). Occupancy is what it was: a house is one tile and one mass with the tile's pick; below head height
+nothing reaches more than 0.62 m from the tile centre; above 1.52 m anything may overhang. A cottage's eave is
+capped at 2.2 m (`COTTAGE_EAVE_MAX`), because on a one-tile footprint a taller body is a narrow tower; only a
+belfry-roofed `tower` goes higher.
+
+**Draw calls.** A batch is one draw call per colour and style, and variety is exactly what multiplies colours.
+Two things keep it inside the 130-call budget: a district style's lists are capped where they are made, and
+`shade` and `variant` snap their results to a 4/255 grid, so tones that differ by rounding share a batch.
+The worst measured case is 123 calls, with 20 residents, at night, in rain, in the district with the most
+variety.
 
 ## Water, cover and buildings
 

@@ -17,6 +17,8 @@ import { choose, footing } from './districts.js';
 
 /** The farthest any box below head height may reach from its tile centre (the tile edge plus 0.12 m). */
 export const LOW_REACH = .62;
+/** The highest eave of an ordinary cottage; its roof rises above that. */
+export const COTTAGE_EAVE_MAX = 2.2;
 /** The height of a resident; a box that starts at or above it is overhead. */
 export const HEAD = 1.52;
 
@@ -132,7 +134,9 @@ function extra(add, kind, o) {
 export function cottage(batch, { x, y, pick, style, colors }) {
   const add = painter(batch, x, y, pick), n = hash(`${x},${y},home`);
   const wall = style.wall ? choose(style.wall, n) : colors.wall, roof = choose(style.roof, n >>> 3), shape = choose(style.shapes, n >>> 5);
-  let top = choose(style.heights, n >>> 7); if (shape === 'tower') top = Math.min(Math.max(top, 2.0), 2.4);
+  // A cottage is one tile wide, so a tall body reads as a narrow tower: the district's height is a range of
+  // eave heights, capped at COTTAGE_EAVE_MAX (two low storeys), and only a belfry-roofed 'tower' may stand taller.
+  let top = Math.min(choose(style.heights, n >>> 7), COTTAGE_EAVE_MAX); if (shape === 'tower') top = Math.min(Math.max(top, 2.0), 2.4);
   const axis = (n >>> 9) & 1 ? 'x' : 'z', door = choose(style.door, n >>> 11), trim = style.trim || colors.trim;
   const lift = style.stilts ? .34 : .3, storeys = top >= 2.2 ? 2 : 1, dx0 = [-.24, 0, .24][(n >>> 13) % 3];
   const accent = door, glass = colors.glass;

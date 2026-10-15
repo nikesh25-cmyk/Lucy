@@ -33,6 +33,8 @@ export const RENDER_CAPS = Object.freeze({ pixel_ratio: 1.5, render_width: 1440,
 // window. It sits below the deepest water bed and owns no pick or movement surface.
 /** The ambient loop's frame interval, 15 frames a second when the device can keep up. */
 export const AMBIENT_FRAME_MS = 66;
+/** The slowest the ambient loop ever repaints, and how many paint-times it waits between paints: nine, so the loop takes at most a tenth of the time. */
+export const AMBIENT_SLOWEST_MS = 1000, AMBIENT_DUTY = 9;
 export const DISTANT_GROUND_LIMITS = Object.freeze({ y: -1.36, draw_calls: 1, vertices: 24 });
 
 function distantGround(definition) {
@@ -75,7 +77,42 @@ function disposeDistantGround(mesh) {
 // Every dimension below stays inside its own tile, and every cross member clears the drawn
 // resident's height, so a neighbouring resident is never drawn inside scenery. A canopy may cross
 // into a neighbouring tile only above 1.52 m, where no standing resident can be.
-function tree(batch, x, y, type, pick) {
+// A plain `tree` takes the species its district grows (src/scene/districts.js `species`), chosen by the tile's
+// own hash so a grove is mixed. Every crown starts above 1.52 m, so what overhangs a neighbour is over a
+// resident's head; the trunk and the lowest crown keep to the tile, so the mass is exactly the tile it was.
+function species(batch, x, y, kind, height, pick) {
+  const cx = x + .5, cz = y + .5, add = (dx, h, dz, w, d, l, color) => batch.add(cx + dx, h, cz + dz, w, d, l, color, pick);
+  if (kind === 'conifer') {
+    for (let i = 0; i < 5; i++) add(0, height + .1 + i * .4, 0, 1.55 - i * .27, .46, 1.55 - i * .27, i % 2 ? '#2f6b55' : '#3a7a60');
+    add(0, height + 2.2, 0, .1, .3, .1, '#cfe3d6'); return;
+  }
+  if (kind === 'birch') {
+    for (let i = 0; i < 4; i++) add(0, .3 + i * .45, 0, .3, .06, .3, '#2f2b28');
+    add(0, height + .35, 0, 1.3, .6, 1.3, '#86b36f'); add(.18, height + .85, -.1, 1.0, .6, 1.0, '#9cc482'); add(-.15, height + 1.3, .1, .6, .45, .6, '#b4d495'); return;
+  }
+  if (kind === 'willow') {
+    add(0, height + .3, 0, 1.7, .5, 1.7, '#6f9d62');
+    for (const [dx, dz] of [[-.78, -.5], [-.78, .35], [.78, -.35], [.78, .5], [-.4, .8], [.45, -.8], [-.4, -.8], [.4, .8]]) add(dx, height - .1, dz, .1, 1.05 + (hash(`${x},${y},${dx}`) % 3) * .08, .1, '#86b073');
+    return;
+  }
+  if (kind === 'jungle') {
+    add(0, height + .75, 0, .22, 1.5, .22, COLORS.trunk);
+    add(0, height + 1.6, 0, 1.9, .5, 1.9, '#2f7a4a'); add(0, height + 1.95, 0, 1.4, .4, 1.4, '#3f8c58');
+    for (const [dx, dz] of [[-.8, -.6], [.8, .6], [.6, -.8], [-.5, .8]]) add(dx, height + .6, dz, .06, 1.9, .06, '#4e9a62');
+    return;
+  }
+  if (kind === 'acacia') {
+    add(.06, height + .5, 0, .2, 1.0, .2, COLORS.trunk);
+    add(0, height + 1.12, 0, 2.0, .26, 1.7, '#7f9a4c'); add(0, height + 1.38, 0, 1.4, .24, 1.2, '#93ad5a'); return;
+  }
+  // orchard and oak: the family crown, the oak wider and the orchard lower with fruit.
+  const lowCrown = kind === 'orchard' ? .85 : 1;
+  add(0, height + .45, 0, 1.6 * lowCrown, .7, 1.6 * lowCrown, shade('#438367', .92)); add(0, height + .78, 0, 1.4 * lowCrown, 1.15, 1.4 * lowCrown, variant('#438367', x, y));
+  add(0, height + 1.47, 0, .95, .55, .95, variant('#6a9f73', x, y)); add(0, height + 1.82, 0, .5, .24, .5, variant('#8eb189', x, y));
+  if (kind === 'orchard') for (const dx of [-.4, .3, 0]) add(dx, height + .95, .62, .17, .17, .17, '#d7905d');
+}
+
+function tree(batch, x, y, type, pick, style) {
   const n = hash(`${x},${y}`), height = type === 'palm' ? 2.3 + n % 3 * .08 : 1.7 + n % 3 * 0.15;
   if (type === 'mountain') {
     batch.add(x + .5, .32, y + .5, 1.06, .64, 1.06, shade('#929e9d', .92), pick);
@@ -90,7 +127,9 @@ function tree(batch, x, y, type, pick) {
     batch.add(x + .5, 1.97, y + .5, .2, .18, .2, '#e1b6a2', pick);
     return;
   }
-  batch.add(x + .5, height / 2, y + .5, .28, height, .28, COLORS.trunk, pick);
+  const kind = type === 'tree' && style?.species ? style.species[(n >>> 5) % style.species.length] : null;
+  batch.add(x + .5, height / 2, y + .5, .28, height, .28, kind === 'birch' ? '#e8e4d8' : kind === 'conifer' ? shade(COLORS.trunk, .8) : kind === 'acacia' || kind === 'jungle' ? shade(COLORS.trunk, .9) : COLORS.trunk, pick);
+  if (kind && kind !== 'oak') return species(batch, x, y, kind, height, pick);
   if (type === 'palm') {
     batch.add(x + .5, height + .22, y + .5, 2.2, .22, .5, COLORS.leaf, pick);
     batch.add(x + .5, height + .22, y + .5, .5, .22, 2.2, COLORS.leaf, pick);
@@ -124,7 +163,7 @@ function house(batch, x, y, pick, type = 'cottage', style = districtStyle()) {
 function furniture(batch, item, style = districtStyle()) {
   const { x, y } = item, type = item.type || item.kind, pick = { x, y, type: 'object', object: item };
   const add = (dx, h, dy, w, d, l, color, style) => batch.add(x + .5 + dx, h, y + .5 + dy, w, d, l, color, pick, style);
-  if (['tree', 'fruit', 'palm', 'cactus', 'mountain'].includes(type)) return tree(batch, x, y, type, pick);
+  if (['tree', 'fruit', 'palm', 'cactus', 'mountain'].includes(type)) return tree(batch, x, y, type, pick, style);
   if (['cottage', 'shelter', 'civic-building'].includes(type)) return house(batch, x, y, pick, type, style);
   // A garden path object is the same thin surface the frontier block draws: flat, walkable ground.
   if (type === 'path') add(0, .04, 0, .99, .08, .99, COLORS[type] || COLORS.stone);
@@ -187,7 +226,7 @@ function terrainScene(resources, definition, snapshot, plan, cullHidden = true) 
   const batch = cubeBatch(resources), layers = {}, withParcel = parcelAttacher(definition, plan);
   const scenery = new Map(plan.objects.map(item => [`${item.x},${item.y}`, item.type || item.kind]));
   const colors = COLORS, style = districtStyle(definition), builders = { tree: (target, tx, ty, type, pick) => tree(target, tx, ty, type, pick, style), furniture: (target, item) => furniture(target, item, style) };
-  groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers });
+  groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers, style });
   layer(batch, layers, 'furniture', () => { for (const item of plan.objects) furniture(batch, item, style); });
   portalFrames({ batch, plan, colors, layers });
   gateFrames({ batch, plan, colors, layers });
@@ -501,8 +540,8 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   }
   // The ambient loop: water, cloud shadow, rain and mist move on their own clock. It is the only repaint a
   // still outdoor scene schedules, it never runs for a visitor who prefers reduced motion or inside a room,
-  // it pauses while the page is hidden, and it backs off to three times the cost of a paint (at most
-  // four frames a second) so a slow device is never asked for more than it can give.
+  // it pauses while the page is hidden, and it backs off to nine times the cost of a paint (a tenth of the time, down
+  // to one frame a second) so a slow device is never asked for more than it can give.
   function scheduleAmbient() {
     if (motion || ambientTimer !== null || destroyed || lost || !lastSnapshot || !contents.ambient) return;
     ambientTimer = setTimeout(() => {
@@ -510,7 +549,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       if (destroyed || lost || !lastSnapshot) return;
       if (!ownerDocument || ownerDocument.visibilityState !== 'hidden') paint(true);
       scheduleAmbient();
-    }, Math.min(250, Math.max(AMBIENT_FRAME_MS, paintMs * 3)));
+    }, Math.min(AMBIENT_SLOWEST_MS, Math.max(AMBIENT_FRAME_MS, paintMs * AMBIENT_DUTY)));
   }
   const movePointer = event => {
     if (!drag) {

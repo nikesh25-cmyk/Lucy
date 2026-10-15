@@ -48,7 +48,8 @@ async function fixtures() {
 const { chromium } = await import('playwright-core');
 const browser = await chromium.launch({ channel: process.env.LUCY_BROWSER_CHANNEL || 'chrome', args: ['--enable-unsafe-swiftshader', '--disable-dev-shm-usage', '--no-first-run'] });
 const fixture = await fixtures();
-const place = (world, x, y, extra = {}) => { const db = new DatabaseSync(resolve(databasePath)); try { db.prepare('UPDATE agents SET world_id=?, x=?, y=?, z=0, yaw=?, pitch=?, last_look=? WHERE id=?').run(world, x, y, extra.look?.[0] ?? Math.PI / 4, extra.look?.[1] ?? .62, extra.look ? 1 : 0, extra.id || fixture.player.id); } finally { db.close(); } };
+const place = (...args) => { for (let attempt = 0; ; attempt++) { try { return placeOnce(...args); } catch (error) { if (attempt > 8 || !/locked/.test(String(error))) throw error; Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 400); } } };
+const placeOnce = (world, x, y, extra = {}) => { const db = new DatabaseSync(resolve(databasePath)); try { db.prepare('UPDATE agents SET world_id=?, x=?, y=?, z=0, yaw=?, pitch=?, last_look=? WHERE id=?').run(world, x, y, extra.look?.[0] ?? Math.PI / 4, extra.look?.[1] ?? .62, extra.look ? 1 : 0, extra.id || fixture.player.id); } finally { db.close(); } };
 
 place('commons', 10, 6); // a previous run may have left the player somewhere unusable
 
@@ -143,7 +144,7 @@ for (const [name, options] of Object.entries(VIEWPORTS)) {
   await page.waitForFunction(() => document.body.classList.contains('signed-in'), null, { timeout: 25000 });
   for (const shot of SHOTS) {
     if (only && !only.includes(shot.id)) continue;
-    forcedPhase = shot.phase; forcedWeather = shot.weather || null; place(shot.world === 'house' ? `house:${fixture.player.id}` : shot.world, shot.at[0], shot.at[1], { look: shot.look });
+    forcedPhase = shot.phase; forcedWeather = shot.weather || 'clear'; place(shot.world === 'house' ? `house:${fixture.player.id}` : shot.world, shot.at[0], shot.at[1], { look: shot.look });
     await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
     const play = page.locator('#hero-actions').getByRole('button', { name: 'Play', exact: true });
     if (await play.waitFor({ state: 'visible', timeout: 6000 }).then(() => true, () => false)) await play.click();
