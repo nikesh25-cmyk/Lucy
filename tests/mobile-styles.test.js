@@ -157,9 +157,9 @@ test('the class names the module renders are the class names this stylesheet sty
   assert.match(touchModule, /`nm-touch-action nm-touch-\$\{item\.name\}`/, 'the affordance class is built from its name');
   for (const direction of PAD_DIRECTIONS) assert.ok(allSelectors.includes(`.nm-touch .nm-touch-${direction}`), `.nm-touch-${direction} must place the ${direction} key`);
   for (const item of AFFORDANCES) assert.ok(allSelectors.some((selector) => selector.includes(`.nm-touch-${item.name}`)), `.nm-touch-${item.name} must be styled`);
-  // And nothing in the stylesheet is an orphan rule for a class nobody renders. The two exceptions
+  // And nothing in the stylesheet is an orphan rule for a class nobody renders. The exceptions
   // are the integration owner's documented placement classes.
-  const ownerClasses = ['.nm-touch-floating', '.nm-touch-always'];
+  const ownerClasses = ['.nm-touch-floating', '.nm-touch-always', '.nm-touch-hud-owned'];
   for (const name of allClasses) {
     const known = staticClasses.includes(name.slice(1))
       || ownerClasses.includes(name)
@@ -167,6 +167,15 @@ test('the class names the module renders are the class names this stylesheet sty
       || AFFORDANCES.map((item) => `nm-touch-${item.name}`).includes(name.slice(1));
     assert.ok(known, `${name} is not a class the module renders or the integration owner adds`);
   }
+});
+
+test('only a HUD-owned pad hides duplicate actions while movement and looking keep their targets', () => {
+  assert.equal(required('.nm-touch.nm-touch-hud-owned .nm-touch-actions', 'display'), 'none');
+  assert.equal(required('.nm-touch.nm-touch-hud-owned [data-nm-beside="pad"]', 'display'), 'none');
+  const hidden = rules.filter(rule => rule.selectors.some(selector => selector.includes('.nm-touch-hud-owned')) && rule.declarations.some(([name,value]) => name === 'display' && value === 'none'));
+  assert.deepEqual(hidden.flatMap(rule => rule.selectors), ['.nm-touch.nm-touch-hud-owned .nm-touch-actions', '.nm-touch.nm-touch-hud-owned [data-nm-beside="pad"]'], 'only the duplicate actions disappear in HUD mode');
+  assert.equal(required('.nm-touch.nm-touch-hud-owned .nm-touch-camera', 'grid-row'), '1/3');
+  assert.ok(allSelectors.every(selector => !selector.includes('.nm-touch-hud-owned .nm-touch-pad')), 'the four-direction pad remains intact');
 });
 
 // --- measured target sizes ------------------------------------------------------------------------

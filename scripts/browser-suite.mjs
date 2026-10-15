@@ -6345,12 +6345,13 @@ define('signed-in-game-play', async () => {
       await page.waitForFunction(() => document.querySelector('.sidebar')?.getBoundingClientRect().right <= 2, null, { timeout: 2000 });
       const controls = await page.locator('#game-hud .game-quickbar button').evaluateAll((buttons) => buttons.map((button) => {
         const box = button.getBoundingClientRect();
-        return { label: button.textContent?.trim(), x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), height: Math.round(box.height) };
+        const atCenter = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return { label: button.textContent?.trim(), x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable: button === atCenter || button.contains(atCenter) };
       }));
       // The game-experience specification keeps the HUD at five actions: the mode switch moved to
       // the world menu, so the quickbar is Interact, Build, Chat, Places, More.
       expect(controls.length === 5, 'the phone quickbar must carry exactly the five world actions', { actual: describe(controls) });
-      expect(controls.every((control) => control.x >= 0 && control.right <= 390 && control.height >= 40),
+      expect(controls.every((control) => control.x >= 0 && control.right <= 390 && control.y >= 60 && control.bottom <= 844 && control.width >= 44 && control.height >= 44 && control.reachable),
         'every phone quickbar action must fit the screen with a tappable height', { actual: describe(controls) });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
         'the signed-in game must fit a 390px phone without sideways scrolling');
@@ -6358,13 +6359,19 @@ define('signed-in-game-play', async () => {
       await pad.waitFor({ state: 'visible' });
       expect(await page.locator('.world-bottom').isVisible() === false,
         'the compact touch pad must replace, not overlap, the legacy arrow controls');
-      const targets = await pad.locator('button').evaluateAll((buttons) => buttons.map((button) => {
+      const targets = await pad.locator('button').evaluateAll((buttons) => buttons.filter((button) => button.getClientRects().length && getComputedStyle(button).visibility !== 'hidden').map((button) => {
         const box = button.getBoundingClientRect();
         const atCenter = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
         return { label: button.getAttribute('aria-label'), disabled: button.disabled, x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable: button === atCenter || button.contains(atCenter) };
       }));
-      expect(targets.length === 11 && targets.every((target) => target.x >= 0 && target.right <= 390 && target.y >= 60 && target.bottom <= 844 && target.width >= 44 && target.height >= 44),
-        'every phone movement, camera and action target must be visible and tappable', { actual: describe(targets) });
+      expect(targets.length === 6 && targets.every((target) => target.x >= 0 && target.right <= 390 && target.y >= 60 && target.bottom <= 844 && target.width >= 44 && target.height >= 44),
+        'the four movement and two camera targets must be visible and tappable beside the HUD', { actual: describe(targets) });
+      expect(describe(targets.map((target) => target.label).sort()) === describe(['Move up','Move left','Move down','Move right','Turn the camera left','Turn the camera right'].sort()),
+        'the game companion pad must retain every movement and look direction', { actual: describe(targets) });
+      expect(new Set([...targets, ...controls].map((target) => target.label)).size === 11,
+        'the phone must expose eleven distinct movement, look and world actions without duplicates');
+      expect(await pad.locator('.nm-touch-actions').isVisible() === false && await pad.locator('[data-nm-beside="pad"]').isVisible() === false,
+        'the HUD must own the world actions while its companion pad hides their duplicates');
       expect(targets.every((target) => target.reachable), 'no guide, map control or HUD may cover a phone touch target', { actual: describe(targets.filter((target) => !target.reachable)) });
       const bands = await page.evaluate(() => ({ touch: document.querySelector('.nm-touch-floating').getBoundingClientRect().bottom, hud: document.querySelector('.game-hud-bottom').getBoundingClientRect().top }));
       expect(bands.touch < bands.hud, 'the phone touch controls must end above the five-action HUD', { actual: describe(bands) });
@@ -6390,7 +6397,7 @@ define('signed-in-game-play', async () => {
       }
       expect(touchStep, 'one of the four visible phone movement buttons must save exactly one tile', { actual: describe(row('SELECT x,y FROM agents WHERE id=?', player.id)) });
       await page.screenshot({ path: join(RESULTS, 'signed-in-game-play', 'mobile-play.png') });
-      return `five quickbar actions and ten touch targets fit a 390px phone; Look saved yaw ${yawBefore.toFixed(2)} → ${yawAfter.toFixed(2)}, and Move saved ${tileBefore.x},${tileBefore.y} → ${touchStep.x},${touchStep.y}`;
+      return `five quickbar actions and six movement/look targets fit a 390px phone; Look saved yaw ${yawBefore.toFixed(2)} → ${yawAfter.toFixed(2)}, and Move saved ${tileBefore.x},${tileBefore.y} → ${touchStep.x},${touchStep.y}`;
     } finally {
       await page.setViewportSize({ width: 1440, height: 900 });
     }

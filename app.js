@@ -70,6 +70,7 @@ const hotbar = createHotbar({ input: shellPicker, onSelect: (type) => { if (!typ
 const placement = createPlacementPreview({ api: (path, method, body) => api(path, method, body), input: shellPicker, onNotice: (text) => notice(text) });
 const inventory = createInventoryPanel({ api: (path, method, body, idempotent, key) => api(path, method, body, idempotent, key), onNotice: (text) => notice(text) });
 const interactionPrompt = createInteractionPrompt({
+  compact: () => Boolean(state.gamePresentation && state.tab === 'world'),
   transport: {
     interactRead: (query) => api(`/interact?${new URLSearchParams(query)}`),
     interactWrite: (payload, key) => api('/interact', 'POST', payload, false, key),
@@ -1189,7 +1190,7 @@ function renderWorld(parent) {
   const overlayHost=element('div',null,'game-overlay-host');overlayHost.id='game-overlay-host';
   const guideHost=element('div',null,'game-guide-host');guideHost.id='game-guide-host';
   if(state.gamePresentation)map.append(promptHost,overlayHost,guideHost);
-  if(state.graphics==='voxel'){const reticle=element('p',null,'world-reticle');reticle.id='world-reticle';reticle.tabIndex=0;reticle.setAttribute('role','status');reticle.setAttribute('aria-live','polite');reticle.setAttribute('aria-label','Aim line: where the camera looks, what the last pick targets, and which keys walk or turn');reticle.textContent=reticleText({firstPerson:Boolean(agent&&state.firstPerson),facing:state.facing,position,fixture:state.interaction?.fixture||null});map.append(reticle);}
+  if(state.graphics==='voxel'){const reticle=element('p',null,'world-reticle');reticle.id='world-reticle';reticle.tabIndex=0;reticle.setAttribute('role','status');reticle.setAttribute('aria-live','polite');reticle.setAttribute('aria-label','Aim line: camera view, facing, position and focused place. Full controls are in More.');reticle.textContent=reticleText({firstPerson:Boolean(agent&&state.firstPerson),facing:state.facing,position,fixture:state.interaction?.fixture||null,compact:state.gamePresentation});map.append(reticle);}
   const lower = element('div', null, 'world-bottom'); const journey = element('div'); const place = worldLandmarks().find((p) => p.x === position.x && p.y === position.y);
   append(journey, paragraph(agent ? `${agent.name} · ${place?.name || world.name}` : `Visiting ${world.name}`, 'eyebrow'), paragraph(place?.description || world.description || (world.kind === 'home' ? 'A personal garden, built and cared for by its agent.' : 'Explore the paths, gathering spaces, and entrances.')), element('small', `${agent ? 'Character' : 'View'} position ${position.x}, ${position.y} · ${agent ? 'Arrow keys / WASD to roam' : 'Arrow keys / WASD to look around'}`));
   const movement = element('div', null, 'movement'); movement.setAttribute('aria-label', agent ? 'Movement controls' : 'Pan view controls'); for (const [direction, icon] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) { const item = button(icon, () => controlStep(direction)); item.setAttribute('aria-label', `${agent ? (state.lookMode ? 'Turn' : 'Move') : 'Look'} ${direction}`); item.disabled = Boolean(state.world.paused); movement.append(item); } movement.append(viewToggles(agent));
@@ -1295,7 +1296,7 @@ function gameHud(world,agent,position){
   const passage=nextPassageLine();
   if(passage){const line=element('p',passage,'game-next');line.id='game-next-passage';bottom.append(line);}
   // H5 and the control hint print the keys that actually act: Enter, Space or I. `E` turns the camera.
-  const hint=element('p',controlHint({playing:Boolean(agent&&state.gameMode!=='observe'),mode:state.firstPerson?'first-person':'third-person'}),'game-control-hint');hint.id='game-control-hint';
+  const hint=element('p',controlHint({playing:Boolean(agent&&state.gameMode!=='observe'),mode:state.firstPerson?'first-person':'third-person',compact:true}),'game-control-hint');hint.id='game-control-hint';
   const actionsRow=element('div',null,'game-quickbar');actionsRow.setAttribute('role','group');actionsRow.setAttribute('aria-label','World actions');
   const interact=button('Interact',()=>usePickedFixture(),'game-quick');interact.id='game-interact-button';interact.disabled=!agent||!state.interaction?.fixture;
   const build=button(state.building?'Finish building':'Build',()=>{
@@ -1451,7 +1452,7 @@ function syncWorldControls(){
  // On the global map the drawn tile is a global one; the readouts name the tile in the world the resident stands in.
  const drawnTile=player?tileOf(displayed(player,performance.now())):position,drawnHere=player&&mapActive(state.world)?fromGlobal(drawnTile.x,drawnTile.y):null,drawn=drawnHere?{x:drawnHere.x,y:drawnHere.y,z:drawnTile.z}:drawnTile;
  const coordinates=$('.world-bottom small');if(coordinates)coordinates.textContent=`${player?'Player':'View'} position ${drawn.x}, ${drawn.y}${player&&drawn.z>0?`, layer ${drawn.z}`:''} · ${state.graphics==='voxel'?(state.firstPerson?'First person · drag to look · WASD relative to view':'Drag to orbit · click ground to walk'):'Arrow keys / WASD'}`;
- const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection||state.voxelHover,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position:drawn,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null,fixture:state.interaction?.fixture||null});}
+ const reticle=$('#world-reticle');if(reticle){const pick=state.voxelSelection||state.voxelHover,world=definition();reticle.textContent=reticleText({firstPerson:Boolean(player&&state.firstPerson),facing:state.facing,position:drawn,selection:pick,blocked:pick?!(walkable(pick,world)&&!solidSceneryAt(pick,state.world.objects||[])):null,fixture:state.interaction?.fixture||null,compact:state.gamePresentation});}
  // A wheel or a drag over an open menu belongs to the menu: the camera stops taking pointer events
  // for as long as the shell is suspended, and starts again the moment it closes.
  voxelView?.setEnabled?.(!shellSuspended());
@@ -3944,7 +3945,11 @@ function interactionBody(host) {
 function interactionCard() {
   const node = card('Interact here', 'DOORS · CROPS · BENCHES · STATIONS · AMBASSADOR DESKS'); node.id = 'interaction-panel'; node.tabIndex = -1;
   const host = element('div', null, 'interaction-body'); host.id = 'interaction-body';
-  node.append(host); interactionBody(host); return node;
+  node.append(host); interactionBody(host);
+  if(state.gamePresentation)disclosure(node,'Controls & help',(body)=>{
+    body.append(paragraph('Walk with WASD or the arrow keys. Drag to look; Q/E turn and R/F tilt the camera. Use the First person button to switch the view. Wheel or pinch to zoom.','privacy'),paragraph('Interact with Enter, Space or I, or the Interact button. On a phone, the direction pad walks and Look turns; the five buttons below it open the world actions. Escape closes an open panel.','privacy'));
+  });
+  return node;
 }
 function renderResidentInspection(){
  const parent=$('#resident-inspection');if(!parent)return;parent.replaceChildren();const resident=state.inspectedResident;if(!resident)return;
@@ -4169,7 +4174,7 @@ function mountTouchControls(map,canvas,world,agent){
     document,mount:map,surface:state.graphics==='voxel'?null:canvas,
     // The phone bar floats over the world instead of being appended inside the fixed-height world
     // panel, where it was laid out below the fold, and it lifts itself clear of the quickbar row.
-    floating:true,coarsePointer:()=>hasCoarsePointer(window.matchMedia),quickbar:document.querySelector('.game-hud-bottom'),viewport:()=>({width:window.innerWidth,height:window.innerHeight}),
+    floating:true,coarsePointer:()=>hasCoarsePointer(window.matchMedia),quickbar:map.querySelector('.game-hud-bottom'),viewport:()=>({width:window.innerWidth,height:window.innerHeight}),
 
     input:{
       walk:(direction)=>guarded(()=>controlStep(direction)),
@@ -4184,6 +4189,9 @@ function mountTouchControls(map,canvas,world,agent){
     status:()=>!agent?'Observing. Drag the world to look; the Look buttons turn it one step at a time.':state.world.paused?'The world is paused. Movement and interaction are refused by the server.':state.building?'Building. Choose a block and tap the ground to place it.':'Press a direction to walk one tile, and hold it to keep walking. Drag the world to look.',
     reducedMotion:()=>prefersReducedMotion(window.matchMedia),
   });
+  // Only the mounted game HUD replaces the pad's duplicate action buttons. Standalone or workspace
+  // touch controls keep their own actions when there is no five-action HUD beside them.
+  touchControls.root.classList.toggle('nm-touch-hud-owned',Boolean(state.gamePresentation&&map.querySelector('.game-quickbar')));
   // The freshly mounted layer takes the same on/off state the shell would give it, so a rebuild while
   // a conversation is open does not briefly re-arm a pad the conversation just stood down.
   syncTouchEnabled();

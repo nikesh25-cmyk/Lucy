@@ -100,26 +100,26 @@ const KINDS = { terrain: 'ground', object: 'scenery', block: 'block', participan
  * which fixture that pick can be used with, and which keys walk or turn. Text only, so the interface
  * never injects markup.
  */
-export function reticleText({ firstPerson = false, facing = {}, position = null, selection = null, blocked = null, fixture = null } = {}) {
+export function reticleText({ firstPerson = false, facing = {}, position = null, selection = null, blocked = null, fixture = null, compact = false } = {}) {
   const parts = [];
   parts.push(firstPerson ? 'First person' : 'Orbiting view');
   parts.push(`facing ${facingLabel(facing.yaw)}`);
-  if (Number.isInteger(position?.x) && Number.isInteger(position?.y)) parts.push(`at ${position.x}, ${position.y}${Number.isInteger(position?.z) ? `, layer ${position.z}` : ''}`);
-  if (selection && Number.isInteger(selection.x) && Number.isInteger(selection.y)) {
+  if (Number.isInteger(position?.x) && Number.isInteger(position?.y)) parts.push(`at ${position.x}, ${position.y}${Number.isInteger(position?.z) && (!compact || position.z !== 0) ? `, layer ${position.z}` : ''}`);
+  if (selection && Number.isInteger(selection.x) && Number.isInteger(selection.y) && !(compact && fixture)) {
     const kind = KINDS[selection.type] || 'tile';
     const detail = typeof blocked === 'boolean' ? blocked ? 'solid, walk around it' : 'walkable' : null;
     parts.push(`aimed at ${kind} ${selection.x}, ${selection.y}${selection.z ? `, layer ${selection.z}` : ''}${detail ? ` · ${detail}` : ''}`);
-  } else parts.push('no tile picked yet');
+  } else if (!compact) parts.push('no tile picked yet');
   // The picked fixture and how to use it, in plain text, so the hint is never only graphical.
   if (fixture && Number.isInteger(fixture.x) && Number.isInteger(fixture.y)) {
     const label = String(fixture.label || 'fixture').toLowerCase();
     parts.push(fixture.in_range
       ? `${fixture.action?.label || 'Use it'} with ${INTERACTION_KEY_LABEL}`
-      : `stand within ${fixture.required_distance || INTERACTION_DISTANCE} tile of the ${label} at ${fixture.x}, ${fixture.y}`);
+      : compact ? `Move closer to ${fixture.name || label}` : `stand within ${fixture.required_distance || INTERACTION_DISTANCE} tile of the ${label} at ${fixture.x}, ${fixture.y}`);
   }
   // The zoom wording has one home too: the wheel, a pinch and the panel's buttons all drive the one
   // documented distance, so the hint may name them together.
-  parts.push(firstPerson ? 'WASD walks the way you face · Q/E turn · R/F tilt · arrow keys also walk · wheel or pinch to zoom'
+  if (!compact) parts.push(firstPerson ? 'WASD walks the way you face · Q/E turn · R/F tilt · arrow keys also walk · wheel or pinch to zoom'
     : 'drag to orbit, level or up · click open ground to walk · arrow keys or WASD walk · wheel or pinch to zoom');
   return parts.join(' · ');
 }
@@ -269,8 +269,9 @@ export const CONTROL_HINTS = Object.freeze({
   observing: 'Drag to look · Click the map to explore',
   firstPerson: `WASD walks the way you face · Q/E turn · R/F tilt · arrow keys also walk · V switches view · ${INTERACTION_KEY_LABEL} to interact`,
 });
-export function controlHint({ playing = true, mode = DEFAULT_CAMERA_MODE } = {}) {
+export function controlHint({ playing = true, mode = DEFAULT_CAMERA_MODE, compact = false } = {}) {
   if (!playing) return CONTROL_HINTS.observing;
+  if (compact) return 'WASD to walk · Drag to look · More for controls';
   return normalizeCameraMode(mode) === 'first-person' ? CONTROL_HINTS.firstPerson : CONTROL_HINTS.playing;
 }
 export function targetHint(fixture) { return fixture ? `${fixture.label} · ${INTERACTION_KEY_LABEL} to interact` : 'Aim at a place or object to interact'; }
