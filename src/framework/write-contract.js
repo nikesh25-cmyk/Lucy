@@ -38,7 +38,7 @@ export const WRITE_ROUTES = Object.freeze([
   { route: '/agents/:id/build', method: 'POST', domain: 'building', scope: 'build', session: true, runtime: true, public: false, operator_only: false,
     idempotency_keyed: false, audit: true, durable_before_response: true, read_scope_write: false, may_skip_write: false },
   { route: '/agents/:id/climb', method: 'POST', domain: 'movement', scope: 'move', session: true, runtime: true, public: false, operator_only: false,
-    idempotency_keyed: false, audit: null, durable_before_response: true, read_scope_write: false, may_skip_write: false },
+    idempotency_keyed: false, audit: false, durable_before_response: true, read_scope_write: false, may_skip_write: false },
   { route: '/agents/:id/heartbeat', method: 'POST', domain: 'presence', scope: 'read', session: true, runtime: true, public: false, operator_only: false,
     idempotency_keyed: false, audit: false, durable_before_response: true, read_scope_write: true, may_skip_write: false },
   { route: '/agents/:id/home', method: 'PATCH', domain: 'building', scope: 'build', session: true, runtime: false, public: false, operator_only: true,
