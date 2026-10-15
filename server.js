@@ -100,7 +100,7 @@ files.set('/src/living-world.js', ['src/living-world.js', 'text/javascript; char
 // The voxel renderer's scene modules. src/voxel-world.js is a browser module and imports these
 // relatively, so the hand-maintained table has to serve them or the whole client module graph 404s.
 // tests/content-http.test.js walks that graph from /app.js and fails on a missing file.
-for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'interiors', 'lights', 'blocks', 'parcels', 'sky']) {
+for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'interiors', 'lights', 'blocks', 'parcels', 'sky', 'weather', 'districts', 'architecture', 'props']) {
   files.set(`/src/scene/${scene}.js`, [`src/scene/${scene}.js`, 'text/javascript; charset=utf-8']);
 }
 // The interface components of the game shell. Each one is a browser module app.js imports, so the

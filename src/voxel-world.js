@@ -9,8 +9,11 @@ import { groundCoverPass } from './scene/vegetation.js';
 import { blocksScene } from './scene/blocks.js';
 import { parcelScene } from './scene/parcels.js';
 import { WATER_TINTS, waterBasin } from './scene/water.js';
-import { INTERIOR_LIGHTING, SHADOW_LIMITS, applyPhase, phaseLighting, resolvedPhase, skyScene } from './scene/sky.js';
+import { INTERIOR_LIGHTING, SHADOW_LIMITS, applyPhase, cloudShadow, createSkyDome, phaseLighting, resolvedPhase, skyScene } from './scene/sky.js';
+import { disposeWeather, resolveWeather, weatherScene } from './scene/weather.js';
 import { lampGlowScene, litLamps } from './scene/lights.js';
+import { districtStyle } from './scene/districts.js';
+import { civic, cottage, pavilion } from './scene/architecture.js';
 import { charactersScene, charactersVisualKey, renderableCharacters, characterNameplates, createMotionTracker } from './characters.js';
 import { confirmedExpression } from './character-animation.js';
 
@@ -28,6 +31,8 @@ export const RENDER_CAPS = Object.freeze({ pixel_ratio: 1.5, render_width: 1440,
 
 // One finite, render-only backdrop closes the authored world's horizon behind the bounded voxel
 // window. It sits below the deepest water bed and owns no pick or movement surface.
+/** The ambient loop's frame interval, 15 frames a second when the device can keep up. */
+export const AMBIENT_FRAME_MS = 66;
 export const DISTANT_GROUND_LIMITS = Object.freeze({ y: -1.36, draw_calls: 1, vertices: 24 });
 
 function distantGround(definition) {
@@ -104,47 +109,23 @@ function tree(batch, x, y, type, pick) {
   else if (n % 4 === 0) batch.add(x + .5 + (n % 3) * .1 - .1, height + 1.96, y + .5, .2, .2, .2, '#d7905d', pick);
 }
 
-function house(batch, x, y, pick, type = 'cottage') {
-  if (type === 'shelter') {
-    // An open pavilion: corner posts in the tile-edge bands and a roof above the drawn head.
-    for (const dx of [-.5, .5]) for (const dy of [-.5, .5]) batch.add(x + .5 + dx, .8, y + .5 + dy, .16, 1.6, .16, COLORS.trunk, pick);
-    for (let step = 0; step < 3; step++) batch.add(x + .5, 1.82 + step * .2, y + .5, 1.5 - step * .35, .2, 1.5 - step * .35, COLORS.roof, pick);
-    return;
-  }
-  if (type === 'civic-building') {
-    // A civic anchor rather than a cottage: a stone plinth, a taller body, a double door, a window
-    // pair, a sign board and a wide eave with a lantern finial. One tile, one mass, 2.60 m tall.
-    batch.add(x + .5, .17, y + .5, 1.04, .34, 1.04, shade('#d5c4a1', .84), pick);
-    batch.add(x + .5, .94, y + .5, .99, 1.2, .99, '#d5c4a1', pick);
-    batch.add(x + .5, 1.66, y + .5, 1.06, .32, 1.06, COLORS.roof, pick);
-    batch.add(x + .5, 1.92, y + .5, .84, .16, .84, shade(COLORS.roof, .92), pick);
-    batch.add(x + .5, 2.1, y + .5, .6, .16, .6, COLORS.roof, pick);
-    batch.add(x + .5, 2.28, y + .5, .42, .16, .42, shade(COLORS.roof, .92), pick);
-    batch.add(x + .5, 2.48, y + .5, .3, .24, .3, COLORS.gold, pick, 'glow');
-    batch.add(x + .5, .58, y + .5 + .508, .62, .96, .05, COLORS.dark, pick);
-    batch.add(x + .5, 1.05, y + .5 + .512, .72, .1, .06, shade('#d5c4a1', 1.06), pick);
-    for (const dx of [-.2, .2]) batch.add(x + .5 + dx, .58, y + .5 + .522, .04, .84, .03, COLORS.glass, pick, 'glow');
-    for (const dx of [-.27, .27]) batch.add(x + .5 + dx, 1.33, y + .5 + .512, .28, .42, .04, COLORS.glass, pick, 'glow');
-    batch.add(x + .5, 1.78, y + .5 + .524, .46, .26, .05, COLORS.cream, pick);
-    return;
-  }
-  // The cottage: a plinth, a body, a door with a lintel, two windows with sills, a stepped roof and
-  // a chimney — the same 2.60 m silhouette the entry records, with the ground floor detailed.
-  batch.add(x + .5, .15, y + .5, 1.02, .3, 1.02, shade('#d5c4a1', .88), pick);
-  batch.add(x + .5, .8, y + .5, .99, 1.6, .99, '#d5c4a1', pick);
-  batch.add(x + .5, .6, y + .5 + .512, .38, 1.2, .035, COLORS.dark, pick);
-  batch.add(x + .5, 1.26, y + .5 + .518, .5, .12, .05, COLORS.cream, pick);
-  for (const dx of [-.3, .3]) batch.add(x + .5 + dx, 1.05, y + .5 + .52, .3, .42, .04, COLORS.glass, pick, 'glow');
-  for (const dx of [-.3, .3]) batch.add(x + .5 + dx, .8, y + .5 + .524, .34, .06, .05, COLORS.cream, pick);
-  for (let step = 0; step < 3; step++) batch.add(x + .5, 1.7 + step * .22, y + .5, 1.05 - step * .25, .23, 1.05 - step * .25, COLORS.roof, pick);
-  batch.add(x + .7, 2.2, y + .3, .22, .8, .25, '#968b79', pick);
+function house(batch, x, y, pick, type = 'cottage', style = districtStyle()) {
+  // The sealed house tones: the cottage wall, the civic wall, the roof, the glass, the door, the trim and the
+  // chimney stone. A district style (src/scene/districts.js) chooses among its own tones tile by tile, and
+  // src/scene/architecture.js composes the house, the civic building or the pavilion from boxes; the
+  // sealed tones below stay the default a style without a list of its own keeps.
+  const colors = { wall: '#d5c4a1', roof: COLORS.roof, glass: COLORS.glass, dark: COLORS.dark, cream: COLORS.cream, trim: COLORS.cream,
+    stone: '#968b79', gold: COLORS.gold, wood: COLORS.trunk, leaf: COLORS.leaf };
+  if (type === 'shelter') return pavilion(batch, { x, y, pick, style, colors });
+  if (type === 'civic-building') return civic(batch, { x, y, pick, style, colors });
+  return cottage(batch, { x, y, pick, style, colors });
 }
 
-function furniture(batch, item) {
+function furniture(batch, item, style = districtStyle()) {
   const { x, y } = item, type = item.type || item.kind, pick = { x, y, type: 'object', object: item };
   const add = (dx, h, dy, w, d, l, color, style) => batch.add(x + .5 + dx, h, y + .5 + dy, w, d, l, color, pick, style);
   if (['tree', 'fruit', 'palm', 'cactus', 'mountain'].includes(type)) return tree(batch, x, y, type, pick);
-  if (['cottage', 'shelter', 'civic-building'].includes(type)) return house(batch, x, y, pick, type);
+  if (['cottage', 'shelter', 'civic-building'].includes(type)) return house(batch, x, y, pick, type, style);
   // A garden path object is the same thin surface the frontier block draws: flat, walkable ground.
   if (type === 'path') add(0, .04, 0, .99, .08, .99, COLORS[type] || COLORS.stone);
   // A pond is water you walk around, not a pedestal: a stone rim above knee height with the sealed
@@ -205,9 +186,9 @@ const parcelAttacher = (definition, plan) => {
 function terrainScene(resources, definition, snapshot, plan, cullHidden = true) {
   const batch = cubeBatch(resources), layers = {}, withParcel = parcelAttacher(definition, plan);
   const scenery = new Map(plan.objects.map(item => [`${item.x},${item.y}`, item.type || item.kind]));
-  const colors = COLORS, builders = { tree, furniture };
+  const colors = COLORS, style = districtStyle(definition), builders = { tree: (target, tx, ty, type, pick) => tree(target, tx, ty, type, pick, style), furniture: (target, item) => furniture(target, item, style) };
   groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers });
-  layer(batch, layers, 'furniture', () => { for (const item of plan.objects) furniture(batch, item); });
+  layer(batch, layers, 'furniture', () => { for (const item of plan.objects) furniture(batch, item, style); });
   portalFrames({ batch, plan, colors, layers });
   gateFrames({ batch, plan, colors, layers });
   landmarkPennants({ batch, definition, plan, colors, layers, validColor });
@@ -254,10 +235,12 @@ function peopleScene(resources, participants, self, options = {}) {
  *   `time`, `cameraMode`, `dayPhase`, `parcelSelection`, `parcelHover`, `definition`, `self`.
  */
 export function createVoxelScene() {
-  const resources = createResources(), root = new THREE.Group(), motionTracker = createMotionTracker(); let staticBatch, blockBatch, peopleBatch, parcelBatch, lightBatch, skyBatch, groundMesh, key = '', blockKey = '', peopleKey = '', parcelKey = '', lightKey = '', skyKey = '', groundKey = '', lastPlan, destroyed = false, animating = false;
+  const resources = createResources(), root = new THREE.Group(), motionTracker = createMotionTracker(); let staticBatch, blockBatch, peopleBatch, parcelBatch, lightBatch, skyBatch, weatherBatch, groundMesh, weatherKey = '', clock = 0, key = '', blockKey = '', peopleKey = '', parcelKey = '', lightKey = '', skyKey = '', groundKey = '', lastPlan, destroyed = false, animating = false;
+  let lastMotion = { reduced: false, interior: false, weather: 'clear', phase: 'day' };
   let stats = { cells: 0, blocks: 0, participants: 0, cubes: 0, drawBatches: 0, layers: {} }, pickables = [];
-  // The one child order for both the tests and the renderer: terrain, characters, blocks, plots, lamp light, sky.
-  const managed = () => [staticBatch, peopleBatch, blockBatch, parcelBatch, lightBatch, skyBatch].filter(Boolean);
+  // The one child order for both the tests and the renderer: terrain, characters, blocks, plots, lamp light, sky, weather.
+  const managed = () => [staticBatch, peopleBatch, blockBatch, parcelBatch, lightBatch, skyBatch, weatherBatch].filter(Boolean);
+  const batchCount = () => [staticBatch, blockBatch, peopleBatch, parcelBatch, lightBatch, skyBatch, weatherBatch].reduce((total, batch) => total + (batch?.batches || 0), 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0);
   const settle = () => { for (const batch of managed()) root.add(batch.group); if (groundMesh) root.add(groundMesh); };
   return { root,
     update(definition, snapshot = {}, options = {}) {
@@ -325,6 +308,17 @@ export function createVoxelScene() {
         if (skyBatch) root.add(skyBatch.group);
         skyKey = nextSkyKey;
       }
+      // Weather is a second reading on top of the phase (src/scene/weather.js): explicit, published or taken
+      // from the shared clock, never inside a room. It rebuilds only its own small batch, and only when the
+      // kind changes; a resident walking never rebuilds it because the streaks wrap around the centre.
+      const weather = resolveWeather({ weather: options.weather, atmosphere: snapshot.atmosphere, interior });
+      if (weather !== weatherKey) {
+        if (weatherBatch) root.remove(weatherBatch.group); disposeWeather(weatherBatch);
+        weatherBatch = weather === 'clear' ? null : weatherScene({ resources, kind: weather });
+        weatherKey = weather;
+      }
+      resources.setMotion({ time: clock, reduced: reducedMotion, cloud: cloudShadow(phase, weather, interior), center: plan.anchor || position });
+      weatherBatch?.follow(plan.anchor || position);
       // The backdrop is keyed to the authored world, not the moving 37 x 37 window. It is a single
       // non-pickable plane below every tile and is rebuilt only when a world switch changes its bounds
       // or tint; its geometry never participates in occupancy, collision, or interaction.
@@ -336,7 +330,7 @@ export function createVoxelScene() {
         groundKey = nextGroundKey;
       }
       settle();
-      lastPlan = plan;
+      lastPlan = plan; lastMotion = { reduced: reducedMotion, interior, weather, phase };
       this.highlightParcel(options.parcelSelection, options.parcelHover);
       pickables = [...staticBatch.pickables, ...peopleBatch.pickables, ...(blockBatch?.pickables || [])];
       animating = !reducedMotion && (motionTracker.isSettling(now) || renderableCharacters(drawnPeople, drawnSelf).some((person) => confirmedExpression(person, now)));
@@ -344,7 +338,7 @@ export function createVoxelScene() {
       stats = { cells: plan.cells.length, blocks: plan.blocks.length, participants: renderablePeople(drawnPeople, drawnSelf).length,
         cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0) + (lightBatch?.cubes || 0) + (skyBatch?.cubes || 0),
         parcelCubes: parcelBatch?.cubes || 0, skyCubes: skyBatch?.cubes || 0, lightCubes: lightBatch?.cubes || 0,
-        drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0) + (lightBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0),
+        drawBatches: batchCount(), weather, weatherCubes: weatherBatch?.cubes || 0,
         distantGround: groundMesh ? 1 : 0,
         parcels: plan.parcels.length, selectedParcel: parcelBatch?.group.userData.selectedParcel || null, window: plan.window,
         // The detail report: the radius in force, and the cells inside and beyond it. `Infinity` means
@@ -372,13 +366,29 @@ export function createVoxelScene() {
       stats.selectedParcel = selected?.id || null;
       stats.parcelCubes = parcelBatch?.cubes || 0;
       stats.cubes = (staticBatch?.cubes || 0) + (blockBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0) + (lightBatch?.cubes || 0) + (skyBatch?.cubes || 0);
-      stats.drawBatches = (staticBatch?.batches || 0) + (blockBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0) + (lightBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0);
+      stats.drawBatches = batchCount();
       stats.layers = { ...(staticBatch?.layers || {}), lights: lightBatch?.cubes || 0, sky: skyBatch?.cubes || 0 };
     },
+    /**
+     * Advances the ambient clock: water waves, shore foam, shimmer, the drifting cloud shadow, rain and mist.
+     * It touches uniforms and one group offset only, so a tick rebuilds nothing. Under reduced motion the
+     * clock stays at zero and every one of those is drawn as a still frame.
+     */
+    tick(seconds, center = null) {
+      if (destroyed) return;
+      clock = Number.isFinite(seconds) ? seconds : clock;
+      resources.setMotion({ time: clock, reduced: lastMotion.reduced, cloud: cloudShadow(lastMotion.phase, lastMotion.weather, lastMotion.interior), center });
+      weatherBatch?.follow(center || lastPlan?.anchor || { x: 0, y: 0 });
+      if (skyBatch) for (const mesh of skyBatch.group.children) if (mesh.userData.style === 'cloud') mesh.position.x = lastMotion.reduced ? 0 : Math.sin(clock * .035) * 4;
+    },
+    /** True while something in view drifts on its own: any outdoor scene (water, cloud shadow, weather). A room and a reduced-motion visitor have none. */
+    get ambient() { return !destroyed && !lastMotion.reduced && !lastMotion.interior && !!lastPlan; },
+    get resources() { return resources; },
+    get weather() { return weatherKey || 'clear'; },
     get pickables() { return pickables; }, get stats() { return stats; }, get animating() { return animating; },
     isAnimating() { return animating; },
     reconcileCharacter(id) { return motionTracker.reconcile(id); },
-    destroy() { if (destroyed) return; destroyed = true; motionTracker.clear(); animating = false; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(lightBatch); disposeBatch(skyBatch); disposeDistantGround(groundMesh); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; lightKey = ''; skyKey = ''; groundKey = ''; lastPlan = null; }
+    destroy() { if (destroyed) return; destroyed = true; motionTracker.clear(); animating = false; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(lightBatch); disposeBatch(skyBatch); disposeWeather(weatherBatch); disposeDistantGround(groundMesh); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; lightKey = ''; skyKey = ''; groundKey = ''; weatherKey = ''; weatherBatch = null; lastPlan = null; }
   };
 }
 
@@ -398,13 +408,17 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, RENDER_CAPS.pixel_ratio)); renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = phaseLighting('day').exposure;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+  // Shadows are refreshed when something that casts one changed (an update, a repaint for a step); the ambient
+  // repaints that only move water, cloud shadow and weather leave them be, which is most of their cost.
+  renderer.shadowMap.autoUpdate = false;
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(48, 1, .1, 100), contents = createVoxelScene(); scene.add(contents.root);
+  const dome = createSkyDome(contents.resources); scene.add(dome.mesh);
   const opening = phaseLighting('day');
   scene.background = new THREE.Color(opening.sky); scene.fog = new THREE.Fog(opening.fog, 4, 34);
   const sky = new THREE.HemisphereLight(opening.zenith, opening.ground, opening.skyLight);
   const sun = new THREE.DirectionalLight(opening.sun, opening.sunLight);
   sun.castShadow = true; sun.shadow.mapSize.set(SHADOW_LIMITS.map_size, SHADOW_LIMITS.map_size);
-  sun.shadow.bias = -.001; sun.shadow.normalBias = .03; scene.add(sky, sun, sun.target);
+  sun.shadow.bias = -.001; sun.shadow.normalBias = .03; sun.shadow.radius = 2.2; scene.add(sky, sun, sun.target);
   const selectionBox = new THREE.BoxGeometry(1.025, 1.025, 1.025), selectionGeometry = new THREE.EdgesGeometry(selectionBox); selectionBox.dispose();
   const selectionMaterial = new THREE.LineBasicMaterial({ color: '#fff0b0', depthTest: false });
   const selection = new THREE.LineSegments(selectionGeometry, selectionMaterial); selection.visible = false; selection.renderOrder = 10; scene.add(selection);
@@ -423,6 +437,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   }
   const projected = new THREE.Vector3();
   const orbitInput = createOrbitInput({ onLook });
+  const clockOrigin = globalThis.performance?.now?.() ?? Date.now(); let paintMs = 0, ambientTimer = null;
   let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, lastAtmosphere = null, hoveredParcel = null, lastHoverAt = -Infinity, animationTimer = null;
   const previousTouchAction = canvas.style.touchAction; canvas.style.touchAction = 'pan-y';
   function resize() {
@@ -432,20 +447,29 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     if (size.x !== renderWidth || size.y !== renderHeight) renderer.setSize(renderWidth, renderHeight, false);
     camera.aspect = width / height; camera.updateProjectionMatrix();
   }
-  function paint() {
+  // `ambient` repaints move only the clock: no nameplate projection and no shadow-map refresh.
+  function paint(ambient = false) {
     if (destroyed || lost || !lastSnapshot) return;
+    const started = globalThis.performance?.now?.() ?? Date.now();
     resize(); const placement = orbitInput.mode === 'first-person' ? firstPersonCamera(target, orbitInput.orbit) : orbitCamera(target, orbitInput.orbit);
     camera.position.set(placement.eye.x, placement.eye.y, placement.eye.z); camera.lookAt(placement.target.x, placement.target.y, placement.target.z); camera.updateMatrixWorld();
+    const definition = lastOptions?.definition || getWorldDefinition(lastSnapshot.world || 'commons');
     // One phase model, one owner: src/scene/sky.js resolves the named phase (with the legacy
-    // `evening` alias), places the key light and its shadow frustum, and sets the depth cue.
+    // `evening` alias), places the key light and its shadow frustum, and sets the depth cue. The weather
+    // and the sky gradient ride on it; a room has neither.
     lastAtmosphere = applyPhase({ scene, sky, sun, renderer, phase: lastOptions?.dayPhase || lastSnapshot.atmosphere?.phase,
       position: target, distance: orbitInput.orbit.distance, plan: { window: contents.stats.window },
-      interior: isInterior(lastOptions?.definition || getWorldDefinition(lastSnapshot.world || 'commons')) });
+      interior: isInterior(definition), weather: contents.weather, dome, firstPerson: orbitInput.mode === 'first-person' });
+    dome.follow(camera);
+    // The ambient clock runs from the first paint, in seconds; a visitor who reduced motion keeps it at zero.
+    contents.tick(motion ? 0 : (started - clockOrigin) / 1000, target);
+    if (!ambient) renderer.shadowMap.needsUpdate = true;
     const selected = lastOptions?.selection;
     selection.visible = !!selected && Number.isInteger(selected.x) && Number.isInteger(selected.y);
     if (selection.visible) selection.position.set(selected.x + .5, Math.max(0, selected.z || 0) + .5, selected.y + .5);
-    updateNameplates();
+    if (!ambient) updateNameplates();
     renderer.render(scene, camera);
+    paintMs = (globalThis.performance?.now?.() ?? Date.now()) - started;
   }
   function updateNameplates() {
     if (!nameplateLayer || !lastSnapshot || !lastOptions) return;
@@ -474,6 +498,19 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion });
       paint(); scheduleAnimation();
     }, 100);
+  }
+  // The ambient loop: water, cloud shadow, rain and mist move on their own clock. It is the only repaint a
+  // still outdoor scene schedules, it never runs for a visitor who prefers reduced motion or inside a room,
+  // it pauses while the page is hidden, and it backs off to three times the cost of a paint (at most
+  // four frames a second) so a slow device is never asked for more than it can give.
+  function scheduleAmbient() {
+    if (motion || ambientTimer !== null || destroyed || lost || !lastSnapshot || !contents.ambient) return;
+    ambientTimer = setTimeout(() => {
+      ambientTimer = null;
+      if (destroyed || lost || !lastSnapshot) return;
+      if (!ownerDocument || ownerDocument.visibilityState !== 'hidden') paint(true);
+      scheduleAmbient();
+    }, Math.min(250, Math.max(AMBIENT_FRAME_MS, paintMs * 3)));
   }
   const movePointer = event => {
     if (!drag) {
@@ -515,7 +552,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   };
   const listeners = [['pointerdown', down], ['pointermove', movePointer], ['pointerup', up], ['pointerleave', leave], ['pointercancel', cancel], ['lostpointercapture', cancel], ['wheel', wheel], ['webglcontextlost', contextLost], ['webglcontextrestored', contextRestored]];
   for (const [name, handler] of listeners) canvas.addEventListener(name, handler);
-  const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(paint) : null; observer?.observe(canvas);
+  const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => paint()) : null; observer?.observe(canvas);
   return {
     render(snapshot, options = {}) {
       if (destroyed) return;
@@ -523,7 +560,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       orbitInput.setMode(options.cameraMode ?? orbitInput.mode);
       if (options.facing) orbitInput.set(options.facing);
       target = options.position || options.self || definition.start; lastSnapshot = snapshot; lastOptions = options;
-      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); paint(); scheduleAnimation(); return contents.stats;
+      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); paint(); scheduleAnimation(); scheduleAmbient(); return contents.stats;
     },
     rotate(deltaYaw = 0, deltaPitch = 0) { if (destroyed) return; orbitInput.rotate(deltaYaw, deltaPitch); paint(); },
     zoom(delta = 0) { if (destroyed) return; orbitInput.zoom(delta); paint(); },
@@ -533,7 +570,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       if (lastSnapshot) {
         lastOptions = { ...lastOptions, cameraMode: orbitInput.mode };
         const definition = lastOptions.definition || getWorldDefinition(lastSnapshot.world || 'commons');
-        contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); scheduleAnimation();
+        contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); scheduleAnimation(); scheduleAmbient();
       }
       paint();
     },
@@ -544,7 +581,7 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     /** What the last paint actually applied: the phase light, the fog band and the shadow frustum. */
     get atmosphere() { return lastAtmosphere; },
     destroy() {
-      if (destroyed) return; destroyed = true; if (animationTimer !== null) clearTimeout(animationTimer); animationTimer = null; observer?.disconnect(); drag = null;
+      if (destroyed) return; destroyed = true; if (animationTimer !== null) clearTimeout(animationTimer); animationTimer = null; if (ambientTimer !== null) clearTimeout(ambientTimer); ambientTimer = null; dome.dispose(); observer?.disconnect(); drag = null;
       for (const [name, handler] of listeners) canvas.removeEventListener(name, handler);
       canvas.style.touchAction = previousTouchAction; contents.destroy(); selectionGeometry.dispose(); selectionMaterial.dispose();
       nameplateLayer?.remove();

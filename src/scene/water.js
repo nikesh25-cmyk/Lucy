@@ -39,14 +39,21 @@ export function shoreSides(typeAt, x, y) {
 export function waterTile(batch, { x, y, pick, dirt, depth, sides, detail = true }) {
   batch.add(x + .5, -.82, y + .5, 1, 1, 1, variant(dirt, x, y), pick);
   batch.add(x + .5, -.16, y + .5, 1, .08, 1, variant(dirt, x, y), pick);
-  batch.add(x + .5, -.095, y + .5, .99, .08, .99, depth === 'deep' ? WATER_TINTS.deep : WATER_TINTS.shallow, pick);
+  // The surface is the one animated part: its top vertices ride a slow wave and it glints (see the `water`
+  // style in src/scene/batch.js). It stays inside .028 m of the old surface, below the 0 m ground line.
+  batch.add(x + .5, -.095, y + .5, .99, .08, .99, depth === 'deep' ? WATER_TINTS.deep : WATER_TINTS.shallow, pick, 'water');
   if (!detail) return;
   // Two glide directions rather than one, so a still surface reads as water from any orbit angle.
   const glide = hash(`${x},${y},glide`) % 4;
   if (glide === 0) batch.add(x + .34, -.05, y + .3, .42, .014, .03, WATER_TINTS.glint, null, 'detail');
   else if (glide === 1) batch.add(x + .62, -.052, y + .66, .03, .014, .5, WATER_TINTS.glint, null, 'detail');
   else if (glide === 2) batch.add(x + .3, -.048, y + .72, .3, .012, .028, WATER_TINTS.glint, null, 'detail');
-  for (const [dx, dy] of sides) batch.add(x + .5 + dx * .44, -.06, y + .5 + dy * .44, dx ? .1 : .9, .02, dx ? .9 : .1, WATER_TINTS.foam, null, 'detail');
+  // A shore break laps: the near line and a thinner line out in the water pulse out of step with each
+  // other and with the tile beside them, so the edge reads as moving water rather than a painted rim.
+  for (const [dx, dy] of sides) {
+    batch.add(x + .5 + dx * .44, -.058, y + .5 + dy * .44, dx ? .1 : .9, .02, dx ? .9 : .1, WATER_TINTS.foam, null, 'foam');
+    batch.add(x + .5 + dx * .3, -.056, y + .5 + dy * .3, dx ? .045 : .7, .016, dx ? .7 : .045, WATER_TINTS.foam, null, 'foam');
+  }
   // A shallow, land-adjacent tile grows a little marginal planting at its own edge.
   if (depth === 'shallow' && hash(`${x},${y},reed`) % 5 === 0) {
     for (const [dx, dy] of [[-.36, .3], [.3, -.34]]) batch.add(x + .5 + dx, .1, y + .5 + dy, .06, .34, .06, WATER_TINTS.reed, null, 'detail');
@@ -64,7 +71,7 @@ export function waterBasin(batch, { x, y, pick, rim, water, inner = .72, lip = .
   batch.add(x + .5, lip / 2, y + .5 + edge + bar / 2, inner + bar * 2, lip, bar, rim, pick);
   batch.add(x + .5 - edge - bar / 2, lip / 2, y + .5, bar, lip, inner, rim, pick);
   batch.add(x + .5 + edge + bar / 2, lip / 2, y + .5, bar, lip, inner, rim, pick);
-  batch.add(x + .5, lip / 2 + .01, y + .5, inner, Math.max(.06, lip - .1), inner, water, pick);
+  batch.add(x + .5, lip / 2 + .01, y + .5, inner, Math.max(.06, lip - .1), inner, water, pick, 'water');
   if (!tint) return;
   batch.add(x + .5 - .16, lip / 2 + .045, y + .5 + .12, .24, .04, .24, tint, pick, 'detail');
   for (const [dx, dy] of [[.3, -.06], [.24, .08]]) batch.add(x + .5 + dx, lip + .1, y + .5 + dy, .05, .38, .05, WATER_TINTS.reed, pick, 'detail');

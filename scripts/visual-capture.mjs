@@ -9,7 +9,7 @@
 //   LUCY_DATABASE=$(mktemp -d)/world.sqlite PORT=3100 node server.js
 //   node scripts/visual-capture.mjs --label after --url http://127.0.0.1:3100 --database <that file>
 //
-// Output: <out>/<label>-<viewport>-<shot>.png (default docs/handoff/visual-slice-1/). It refuses any
+// Output: <out>/<label>-<viewport>-<shot>.jpg (default docs/handoff/visual-slice-2/; JPEG at quality 80). It refuses any
 // database path that is not an explicit argument, and never opens one the caller did not name.
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const argument = (name, fallback) => { const index = process.argv.indexOf(`--${name}`); return index > 0 ? process.argv[index + 1] : fallback; };
 const label = argument('label', 'shot'), base = argument('url', 'http://127.0.0.1:3100'), databasePath = argument('database');
-const outDir = resolve(argument('out', join(ROOT, 'docs', 'handoff', 'visual-slice-1')));
+const outDir = resolve(argument('out', join(ROOT, 'docs', 'handoff', 'visual-slice-2')));
 const only = argument('only', '') ? argument('only').split(',') : null;
 if (!databasePath) throw new Error('--database <path to the disposable sqlite file> is required');
 if (/outputs\/Lucy|\/data\/world\.sqlite$/.test(resolve(databasePath))) throw new Error('refusing to open an installed or shipped database');
@@ -48,7 +48,7 @@ async function fixtures() {
 const { chromium } = await import('playwright-core');
 const browser = await chromium.launch({ channel: process.env.LUCY_BROWSER_CHANNEL || 'chrome', args: ['--enable-unsafe-swiftshader', '--disable-dev-shm-usage', '--no-first-run'] });
 const fixture = await fixtures();
-const place = (world, x, y, extra = {}) => { const db = new DatabaseSync(resolve(databasePath)); try { db.prepare('UPDATE agents SET world_id=?, x=?, y=?, z=0 WHERE id=?').run(world, x, y, extra.id || fixture.player.id); } finally { db.close(); } };
+const place = (world, x, y, extra = {}) => { const db = new DatabaseSync(resolve(databasePath)); try { db.prepare('UPDATE agents SET world_id=?, x=?, y=?, z=0, yaw=?, pitch=?, last_look=? WHERE id=?').run(world, x, y, extra.look?.[0] ?? Math.PI / 4, extra.look?.[1] ?? .62, extra.look ? 1 : 0, extra.id || fixture.player.id); } finally { db.close(); } };
 
 place('commons', 10, 6); // a previous run may have left the player somewhere unusable
 
@@ -106,17 +106,31 @@ const SHOTS = [
   { id: 'observatory-interior', world: 'observatory', at: [16, 20], phase: 'night', orbit: true },
   { id: 'cottage-interior-night', world: 'house', at: [10, 9], phase: 'night' },
   { id: 'cottage-interior', world: 'house', at: [10, 9], phase: 'day', orbit: true },
+  { id: 'water-day-orbit', world: 'commons', at: [6, 8], phase: 'day', orbit: true, look: [Math.PI / 2, .5] },
+  { id: 'water-b', world: 'commons', at: [6, 8], phase: 'day', orbit: true, look: [-Math.PI / 2, .5] },
+  { id: 'water-c', world: 'commons', at: [6, 8], phase: 'day', orbit: true, look: [Math.PI, .5] },
+  { id: 'water-dusk-orbit', world: 'commons', at: [6, 8], phase: 'dusk', orbit: true, look: [Math.PI / 2, .5] },
+  { id: 'rain-day-orbit', world: 'commons', at: [27, 12], phase: 'day', orbit: true, weather: 'rain' },
+  { id: 'mist-dawn-orbit', world: 'commons', at: [10, 6], phase: 'dawn', orbit: true, weather: 'mist' },
+  { id: 'houses-day-orbit', world: 'commons', at: [12, 10], phase: 'day', orbit: true, zoom: 2 },
+  { id: 'district-coast-orbit', world: 'district:coast', at: [24, 25], look: [Math.PI * .9, .5], phase: 'day', orbit: true },
+  { id: 'district-highlands-orbit', world: 'district:highlands', at: [24, 25], look: [Math.PI * .9, .5], phase: 'day', orbit: true },
+  { id: 'district-cities-orbit', world: 'district:cities', at: [24, 25], look: [Math.PI * .9, .5], phase: 'day', orbit: true },
+  { id: 'district-drylands-orbit', world: 'district:drylands', at: [24, 25], look: [Math.PI * .9, .5], phase: 'day', orbit: true },
+  { id: 'district-wetlands-orbit', world: 'district:wetlands', at: [24, 25], look: [Math.PI * .9, .5], phase: 'dusk', orbit: true },
+  { id: 'district-gardens-orbit', world: 'district:gardens', at: [24, 25], look: [Math.PI * .9, .5], phase: 'day', orbit: true },
+  { id: 'district-woodlands', world: 'district:woodlands', at: [24, 24], phase: 'day' },
 ];
 
 for (const [name, options] of Object.entries(VIEWPORTS)) {
   const context = await browser.newContext(options), page = await context.newPage();
-  let forcedPhase = 'day';
+  let forcedPhase = 'day', forcedWeather = null;
   // The world payload carries the atmosphere; forcing its phase makes a shot independent of the clock.
   await page.route('**/api/v1/**', async (route) => {
     // A live event stream never ends, so it is passed through untouched.
     if (/event-stream/.test(route.request().headers().accept || '') || /\/(events|stream)/.test(route.request().url())) return route.continue();
     const response = await route.fetch(); let text = await response.text();
-    try { const json = JSON.parse(text); if (json && typeof json === 'object' && json.atmosphere?.phase) { json.atmosphere = { ...json.atmosphere, phase: forcedPhase, label: forcedPhase }; text = JSON.stringify(json); } } catch { /* not JSON */ }
+    try { const json = JSON.parse(text); if (json && typeof json === 'object' && json.atmosphere?.phase) { json.atmosphere = { ...json.atmosphere, phase: forcedPhase, label: forcedPhase, ...(forcedWeather ? { weather: forcedWeather } : {}) }; text = JSON.stringify(json); } } catch { /* not JSON */ }
     await route.fulfill({ response, body: text });
   });
   page.on('pageerror', (error) => console.log(`[${name}] pageerror ${error.message}`));
@@ -129,7 +143,7 @@ for (const [name, options] of Object.entries(VIEWPORTS)) {
   await page.waitForFunction(() => document.body.classList.contains('signed-in'), null, { timeout: 25000 });
   for (const shot of SHOTS) {
     if (only && !only.includes(shot.id)) continue;
-    forcedPhase = shot.phase; place(shot.world === 'house' ? `house:${fixture.player.id}` : shot.world, shot.at[0], shot.at[1]);
+    forcedPhase = shot.phase; forcedWeather = shot.weather || null; place(shot.world === 'house' ? `house:${fixture.player.id}` : shot.world, shot.at[0], shot.at[1], { look: shot.look });
     await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
     const play = page.locator('#hero-actions').getByRole('button', { name: 'Play', exact: true });
     if (await play.waitFor({ state: 'visible', timeout: 6000 }).then(() => true, () => false)) await play.click();
@@ -146,7 +160,7 @@ for (const [name, options] of Object.entries(VIEWPORTS)) {
     // A zoom shot turns the wheel over the canvas, which is exactly what a visitor does to come closer.
     if (shot.zoom) { const box = await page.locator('#world').boundingBox(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); for (let tick = 0; tick < shot.zoom; tick++) { await page.mouse.wheel(0, -100); await page.waitForTimeout(80); } await page.waitForTimeout(500); }
     const state = await page.evaluate(() => ({ world: window.__nemoworld?.worldId?.(), graphics: document.querySelector('#world')?.dataset.graphics }));
-    await page.screenshot({ path: join(outDir, `${label}-${name}-${shot.id}.png`) });
+    await page.screenshot({ path: join(outDir, `${label}-${name}-${shot.id}.jpg`), type: 'jpeg', quality: 80 });
     if (process.env.DUMP_SELECTOR) console.log(await page.evaluate((selector) => [...document.querySelectorAll(selector)].map((node) => node.outerHTML).join('\n'), process.env.DUMP_SELECTOR));
     const hud = await page.evaluate(`(${hudReport})()`);
     console.log(`${name} ${shot.id} -> ${state.world} (${state.graphics}) hud: ${hud.panels} panels, ${hud.overlaps.length} overlaps, ${(hud.coverage * 100).toFixed(0)}% of the scene covered`);

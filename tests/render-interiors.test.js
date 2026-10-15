@@ -145,15 +145,15 @@ test('lamp light is geometry above the head or a floor decal, never a pick, and 
 
 test('face tone patches the lit solids only, and the glow strength follows the phase without a rebuild', () => {
   const resources = createResources();
-  for (const style of ['solid', 'detail']) assert.equal(typeof resources.material('#808080', style).onBeforeCompile, 'function', `${style} is toned`);
-  for (const style of ['glow', 'glass', 'cloud', 'haze', 'star', 'sun']) assert.equal(resources.material('#808080', style).userData.faceToning, undefined, `${style} is never toned`);
+  for (const style of ['solid', 'detail', 'water']) assert.equal(resources.material('#808080', style).userData.faceToning, true, `${style} is toned`);
+  for (const style of ['glow', 'glass', 'cloud', 'haze', 'star', 'sun', 'foam', 'contact']) assert.notEqual(resources.material('#808080', style).userData.faceToning, true, `${style} is never toned`);
   assert.ok(FACE_TONES.top > FACE_TONES.south && FACE_TONES.south > FACE_TONES.east && FACE_TONES.east > FACE_TONES.west && FACE_TONES.west > FACE_TONES.north && FACE_TONES.north > FACE_TONES.bottom, 'six faces, six different tones');
   assert.ok(FACE_TONES.top <= 1.1 && FACE_TONES.bottom >= .5, 'the tones keep the albedo recognisable');
   // The patched program is its own program, and the shader source it receives is rewritten, not replaced.
-  const shader = { vertexShader: '#include <common>\n#include <defaultnormal_vertex>\n#include <begin_vertex>', fragmentShader: '#include <common>\n#include <color_fragment>' };
+  const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <defaultnormal_vertex>\n#include <begin_vertex>', fragmentShader: '#include <common>\n#include <color_fragment>' };
   resources.material('#123456', 'solid').onBeforeCompile(shader);
   assert.match(shader.vertexShader, /vFaceTone/); assert.match(shader.fragmentShader, /diffuseColor\.rgb \*= vFaceTone/);
-  assert.equal(resources.material('#123456', 'solid').customProgramCacheKey(), 'voxel-face-tone-1');
+  assert.equal(resources.material('#123456', 'solid').customProgramCacheKey(), 'voxel-fx-3-tone+world');
   const early = resources.material('#ffcc66', 'glow'), before = early.emissiveIntensity;
   assert.equal(resources.setGlow(1.25), 1.25);
   assert.equal(early.emissiveIntensity, 1.25); assert.notEqual(before, 1.25);
