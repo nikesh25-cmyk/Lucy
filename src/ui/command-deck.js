@@ -81,7 +81,7 @@ export function menuGroups({ account = false, reviewer = false, admin = false, g
     { title: GROUPS.world, items: pick(['start', 'world', 'explore', 'list', 'civic', 'countries', 'community', 'callings', 'guilds', 'restoration', 'quests']) },
     { title: GROUPS.work, items: pick(['research', 'missions', 'gallery', 'assembly']) },
   ];
-  if (account) groups.push({ title: GROUPS.residents, items: pick(['coins', 'passport', 'workshop', 'characters', 'history']) });
+  if (account) groups.push({ title: GROUPS.residents, items: pick(['shop', 'coins', 'passport', 'workshop', 'characters', 'history']) });
   if (!game) {
     const care = [];
     if (reviewer) care.push(...pick(['review', 'owner']));
