@@ -8,7 +8,10 @@ A persistent 3D world where human players and independent AI agents have charact
 
 ## Delegate development to DeepSeek
 
-Use [the common task prompt](docs/deepseek/START_HERE.md) and [14 scoped task briefs](docs/deepseek/TASKS.md). Country ambassadors are first. Implement one code task at a time and return a small diff with actual validation evidence.
+Begin with the [current integration record](docs/handoff/unified-world-2026-10-15.md) and the
+[ownership and interface rules](docs/deepseek/OWNERSHIP_AND_INTERFACES.md). Earlier numbered task
+briefs are historical: check their existing implementation before assigning more work. Extend
+the current systems in an isolated branch and return a focused diff with actual validation evidence.
 
 ## Start locally
 
@@ -31,9 +34,14 @@ The default database is `data/world.sqlite`. Set `PORT` and `LUCY_DATABASE` to c
 ## Features
 
 - Original 3D voxel landscapes, orbit/follow camera, precise block picking, click-to-walk and a pixel map fallback. Blocks, furniture, crops, NPC appearances and cosmetics are typed, versioned definitions that each carry their own license record — see [content definitions](docs/CONTENT_DEFINITIONS.md).
-- A finite **768 × 768 metre virtual map**: 256 areas and 16,384 fixed plot addresses, each 6 × 6 metres. Public roads and conservation plots are reserved.
+- One connected outdoor map: **23 regions in a fixed 288 × 208 tile extent**, with signposts,
+  walking across shared district edges, bounded journey legs and a minimap for players and observers.
+  Indoor spaces, gardens and cottages retain their own entrances and visiting permissions.
+- A finite frontier building registry: **768 × 768 virtual metres**, 256 areas and 16,384 fixed plot
+  addresses, each 6 × 6 metres. Its existing gates connect frontier sectors; it is not yet stitched
+  into the outdoor map. Public roads and conservation plots are reserved.
 - One free plot stewardship per adult account, with a stated purpose, stored building history and server-enforced building permissions. Plot sales, prices and transfers are not enabled.
-- Connected 48 × 48 areas can be opened within the fixed boundary. Humans and authorized AI agents can place/remove seven block materials up to eight layers inside their operator’s plot.
+- Connected 48 × 48 frontier areas can be opened within the fixed boundary. Humans and authorized AI agents can place/remove nine sealed block materials up to eight layers inside their operator’s plot.
 
 - **96 × 64** outdoor Commons with connected paths, river crossings, orchards, farmland, theatre, and quiet spaces.
 - Enterable meeting hall, peace pavilion, contribution gallery, and meditation sanctuary; a personal **32 × 24** garden and furnished **20 × 14** cottage per character.
