@@ -19,7 +19,13 @@ export const AVENUE_WIDTH = 3;
 export const SEAM_WATCH_RADIUS = 18;
 
 const rect = (world, x, y, width, height) => Object.freeze({ world, x, y, width, height });
-/** Phase 1: the Commons and its eight neighbours. Sizes are checked against the world definitions by a test. */
+/**
+ * Phase 1 is the Commons and its eight neighbours (inner ring); phase 2 closes the first ring with four
+ * corner districts and adds the second ring: ten more districts, so the map holds the Commons, Orchard,
+ * Harbor and all twenty districts. Sizes are checked against the world definitions by a test. District
+ * placement is thematic and is only data: cold in the north, water on the west and south coasts, dry
+ * lands to the south-east, so every district whose own edge is water has the sea on that side.
+ */
 export const MAP_LAYOUT = Object.freeze([
   rect('commons', 96, 72, 96, 64),
   rect('district:highlands', 96, 36, 48, 36),
@@ -30,6 +36,22 @@ export const MAP_LAYOUT = Object.freeze([
   rect('harbor', 192, 108, 40, 28),
   rect('district:coast', 96, 136, 48, 36),
   rect('district:harbor', 144, 136, 48, 36),
+  // Phase 2, first ring: the four corners.
+  rect('district:rainforest', 48, 36, 48, 36),
+  rect('district:workshops', 192, 36, 48, 36),
+  rect('district:riverlands', 48, 136, 48, 36),
+  rect('district:commons', 192, 136, 48, 36),
+  // Phase 2, second ring: north row, then the west and east ends, then the south row.
+  rect('district:lakes', 48, 0, 48, 36),
+  rect('district:foothills', 96, 0, 48, 36),
+  rect('district:grasslands', 144, 0, 48, 36),
+  rect('district:gardens', 192, 0, 48, 36),
+  rect('district:wetlands', 0, 36, 48, 36),
+  rect('district:cities', 240, 36, 48, 36),
+  rect('district:islands', 48, 172, 48, 36),
+  rect('district:drylands', 96, 172, 48, 36),
+  rect('district:desert', 144, 172, 48, 36),
+  rect('district:savanna', 192, 172, 48, 36),
 ]);
 
 const byWorld = new Map(MAP_LAYOUT.map((item) => [item.world, item]));
@@ -132,6 +154,21 @@ export const AVENUES = Object.freeze({
   'orchard|commons': [122], 'commons|harbor': [123],
   'district:highlands|district:snowline': [54], 'district:coast|district:harbor': [154],
   'district:woodlands|orchard': [72],
+  // Phase 2. A district's roads cross it at local x 24 and local y 18, so two districts side by side
+  // join on y + 18 and two stacked ones on x + 24. Orchard's road stops short of its south edge, so
+  // its avenue sits on global x 72 (Orchard local 16, the district road's own column).
+  // The Harbor to south-east corner seam has none: Harbor's south edge is open water.
+  'district:wetlands|district:rainforest': [54], 'district:rainforest|district:highlands': [54],
+  'district:snowline|district:workshops': [54], 'district:workshops|district:cities': [54],
+  'district:riverlands|district:coast': [154], 'district:harbor|district:commons': [154],
+  'district:lakes|district:foothills': [18], 'district:foothills|district:grasslands': [18], 'district:grasslands|district:gardens': [18],
+  'district:islands|district:drylands': [190], 'district:drylands|district:desert': [190], 'district:desert|district:savanna': [190],
+  'district:lakes|district:rainforest': [72], 'district:foothills|district:highlands': [120],
+  'district:grasslands|district:snowline': [168], 'district:gardens|district:workshops': [216],
+  'district:rainforest|district:woodlands': [72], 'district:workshops|district:farmlands': [216],
+  'orchard|district:riverlands': [72],
+  'district:riverlands|district:islands': [72], 'district:coast|district:drylands': [120],
+  'district:harbor|district:desert': [168], 'district:commons|district:savanna': [216],
 });
 const AVENUE_TABLE = AVENUES;
 
@@ -175,7 +212,7 @@ const openTile = (definition, x, y) => {
 export function applySeams(definition, rawOf) {
   const worldId = definition?.id;
   if (!byWorld.has(worldId)) return definition;
-  const rows = definition.terrain, removed = new Set();
+  const rows = definition.terrain, removed = new Set(), signposts = [];
   const objects = definition.objects || (definition.objects = []);
   const drop = (x, y) => removed.add(tileKey(x, y));
   const inside = (x, y) => y >= 0 && x >= 0 && y < rows.length && x < rows[0].length;
@@ -204,9 +241,24 @@ export function applySeams(definition, rawOf) {
         if (lane.some((tile) => ROAD.has(rows[tile.y][tile.x]))) break;
         for (const tile of lane) { rows[tile.y][tile.x] = rows[tile.y][tile.x] === 'water' ? 'bridge' : 'path'; drop(tile.x, tile.y); }
       }
+      signposts.push({ middle, seam, other: neighbour });
     }
   }
   if (removed.size) definition.objects = objects.filter((item) => !removed.has(tileKey(item.x, item.y)) || !(MASS_OBJECTS.has(item.type) || item.type === 'flowers' || item.type === 'farm'));
+  // 4. signpost: a pennant just outside the clear zone, beside the avenue, naming the world it leads to.
+  for (const { middle, seam, other } of signposts) {
+    const candidates = [];
+    // Nearest first; a coast whose own edge is water pushes the post inland, past the shore.
+    for (let depth = SEAM_CLEAR_DEPTH; depth <= SEAM_CLEAR_DEPTH + 6; depth++) for (const side of [2, -2, 3, -3]) {
+      candidates.push(seam.axis === 'v' ? { x: middle.own.x + middle.inward[0] * depth, y: middle.own.y + side } : { x: middle.own.x + side, y: middle.own.y + middle.inward[1] * depth });
+    }
+    const spot = candidates.find((tile) => inside(tile.x, tile.y) && openTile(definition, tile.x, tile.y) && !ROAD.has(rows[tile.y][tile.x]));
+    if (!spot) continue;
+    // The district that shares the Commons' name is told apart from the town itself.
+    const place = other.id === 'district:commons' ? 'the Commons district' : String(other.name).replace(/^The /, 'the ');
+    (definition.landmarks || (definition.landmarks = [])).push({ x: spot.x, y: spot.y, name: `Road to ${place}`, symbol: '➜', color: other.groundColor || '#e9d4a1', signpost: true,
+      description: `This road crosses into ${place}. The ground is open: keep walking.` });
+  }
   return definition;
 }
 

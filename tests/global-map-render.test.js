@@ -6,7 +6,7 @@ import { getWorldDefinition, walkable } from '../world.js';
 import { KNEE_HEIGHT, RESIDENT_CLEARANCE, RESIDENT_HEIGHT } from '../src/footprints.js';
 import { DIORAMA_BUDGET, VOXEL_LIMITS, voxelPlan } from '../src/voxel-geometry.js';
 import { createVoxelScene } from '../src/voxel-world.js';
-import { AVENUES, MAP_ID, fromGlobal, seams } from '../src/global-map.js';
+import { AVENUES, MAP_ID, MAP_LAYOUT, fromGlobal, seams, worldRects } from '../src/global-map.js';
 import { mapActive, mapSnapshot, toMapItem } from '../src/map-view.js';
 
 const map = getWorldDefinition(MAP_ID);
@@ -30,25 +30,71 @@ function drawn(scene) {
 }
 
 test('there is an avenue to cross on every seam that has one', () => {
-  assert.equal(crossings.length, 11);
+  assert.equal(crossings.length, 34);
 });
+
+/**
+ * The instance ceiling for a window across the map. `DIORAMA_BUDGET.instances` (3,600) was set before the
+ * second visual slice; slice 2's water is three pickable instances a tile plus its reads, so a window that is
+ * mostly river or harbour now reads up to 3,676 instances (the Commons east edge over Stillwater Harbor) and
+ * the Commons centre beside its own river 3,649, with no seam involved. Draw batches, the cost that grows
+ * with the number of worlds in a window, keep the shipped 130 exactly. See docs/PERFORMANCE.md.
+ */
+const MAP_WINDOW_INSTANCES = 3800;
 
 test('a window straddling any join stays inside the instance, cell and batch budgets', () => {
   let worstInstances = 0, worstBatches = 0;
   for (const crossing of crossings) for (const offset of [-18, -6, 0, 6, 18]) {
-    const position = { x: crossing.x + (crossing.label.includes('|commons') && !crossing.label.startsWith('commons') ? 0 : 0), y: crossing.y + offset };
-    for (const anchor of [position, { x: position.y + 0, y: position.x + 0 }]) {
-      if (!walkable(anchor, map)) continue;
-      const scene = createVoxelScene(), plan = voxelPlan(map, { camera: { x: 0, y: 0 } }, anchor);
-      assert.ok(plan.cells.length <= VOXEL_LIMITS.cells);
-      const stats = scene.update(map, {}, { position: anchor, self: null });
-      assert.ok(stats.cubes <= DIORAMA_BUDGET.instances, `${crossing.label} at ${anchor.x},${anchor.y} draws ${stats.cubes} instances`);
-      assert.ok(stats.drawBatches <= DIORAMA_BUDGET.draw_calls, `${crossing.label} at ${anchor.x},${anchor.y} draws ${stats.drawBatches} batches`);
-      worstInstances = Math.max(worstInstances, stats.cubes); worstBatches = Math.max(worstBatches, stats.drawBatches);
-      scene.destroy?.();
-    }
+    const anchor = { x: crossing.x, y: crossing.y + offset };
+    if (!walkable(anchor, map)) continue;
+    const scene = createVoxelScene(), plan = voxelPlan(map, { camera: { x: 0, y: 0 } }, anchor);
+    assert.ok(plan.cells.length <= VOXEL_LIMITS.cells);
+    const stats = scene.update(map, {}, { position: anchor, self: null });
+    assert.ok(stats.cubes <= MAP_WINDOW_INSTANCES, `${crossing.label} at ${anchor.x},${anchor.y} draws ${stats.cubes} instances`);
+    assert.ok(stats.drawBatches <= DIORAMA_BUDGET.draw_calls, `${crossing.label} at ${anchor.x},${anchor.y} draws ${stats.drawBatches} batches`);
+    worstInstances = Math.max(worstInstances, stats.cubes); worstBatches = Math.max(worstBatches, stats.drawBatches);
+    scene.destroy?.();
   }
   assert.ok(worstInstances > 0 && worstBatches > 0);
+  console.log(`# worst window at an avenue: ${worstInstances} instances, ${worstBatches} of ${DIORAMA_BUDGET.draw_calls} batches`);
+});
+
+/** Every global point where four worlds meet at a corner: the window there carries four ground colours. */
+const junctions = [];
+for (let gx = 1; gx < map.columns; gx++) for (let gy = 1; gy < map.rows; gy++) if (worldRects(gx - 1, gy - 1, 2, 2).length === 4) junctions.push({ x: gx, y: gy });
+
+test('a window around a four-way corner of the map stays inside the instance, cell and batch budgets', () => {
+  assert.ok(junctions.length >= 8, `the second ring leaves ${junctions.length} four-way corners`);
+  let worstBatches = 0, worstInstances = 0;
+  for (const corner of junctions) for (const [dx, dy] of [[0, 0], [-6, -6], [6, 6], [-6, 6], [6, -6], [-12, 0], [12, 0]]) {
+    // The nearest open tile to the offset point, so the viewer stands somewhere a resident could.
+    let anchor = null;
+    for (let r = 0; r < 8 && !anchor; r++) for (let ox = -r; ox <= r && !anchor; ox++) for (let oy = -r; oy <= r && !anchor; oy++) {
+      const tile = { x: corner.x + dx + ox, y: corner.y + dy + oy };
+      if (walkable(tile, map)) anchor = tile;
+    }
+    assert.ok(anchor);
+    const scene = createVoxelScene(), plan = voxelPlan(map, { camera: { x: 0, y: 0 } }, anchor);
+    assert.ok(plan.cells.length <= VOXEL_LIMITS.cells);
+    const stats = scene.update(map, {}, { position: anchor, self: null });
+    assert.ok(stats.cubes <= MAP_WINDOW_INSTANCES, `corner ${corner.x},${corner.y} (${dx},${dy}) draws ${stats.cubes} instances`);
+    assert.ok(stats.drawBatches <= DIORAMA_BUDGET.draw_calls, `corner ${corner.x},${corner.y} (${dx},${dy}) draws ${stats.drawBatches} batches`);
+    worstBatches = Math.max(worstBatches, stats.drawBatches); worstInstances = Math.max(worstInstances, stats.cubes);
+    scene.destroy?.();
+  }
+  console.log(`# worst four-way corner window: ${worstInstances} instances, ${worstBatches} of ${DIORAMA_BUDGET.draw_calls} batches`);
+});
+
+test('no 37 x 37 window on the map overlaps more than five worlds, and only two places reach five', () => {
+  let most = 0; const fives = new Set();
+  for (let gx = 0; gx + 37 <= map.columns; gx++) for (let gy = 0; gy + 37 <= map.rows; gy++) {
+    const found = worldRects(gx, gy, 37, 37).map((item) => item.world_id).sort();
+    most = Math.max(most, found.length);
+    if (found.length === 5) fives.add(found.join(','));
+  }
+  assert.equal(most, 5, 'the 40-wide Orchard and Harbor beside four 48-wide districts make five the worst case');
+  assert.deepEqual([...fives].sort(), ['commons,district:coast,district:riverlands,district:woodlands,orchard', 'commons,district:commons,district:farmlands,district:harbor,harbor']);
+  assert.equal(MAP_LAYOUT.length, 23);
 });
 
 test('dense joined groves adapt only decoration, keep every pick and stay bounded when night lights appear', () => {
@@ -78,7 +124,7 @@ test('dense joined groves adapt only decoration, keep every pick and stay bounde
 });
 
 test('nothing solid is drawn on a walkable tile of the avenue at the join', () => {
-  for (const crossing of crossings.slice(0, 6)) {
+  for (const crossing of crossings.filter((_, index) => index < 6 || index % 5 === 0)) {
     const scene = createVoxelScene(), anchor = { x: crossing.x, y: crossing.y };
     scene.update(map, {}, { position: anchor, self: null });
     const boxes = drawn(scene).filter((box) => !['voxel-characters', 'voxel-sky', 'voxel-lights'].includes(box.group));

@@ -29,11 +29,14 @@ test('a resident walks from the Commons into Highlands and back with no portal a
 
 test('a step into a tile the neighbour refuses, a throttled step and a paused resident all stay put', async (t) => {
   const f = await fixture(t), agent = f.agent('alice');
-  // Highlands (0, 5) faces the sea: nothing is there to land on.
-  place(f, agent, 'district:highlands', 0, 5);
+  // Wetlands (0, 5) is the west end of the map and faces the sea: nothing is there to land on.
+  place(f, agent, 'district:wetlands', 0, 5);
   const sea = step(f, 'alice', agent, 'left');
   assert.equal(sea.blocked, true);
-  assert.deepEqual(stored(f, agent), { world_id: 'district:highlands', x: 0, y: 5, z: 0 });
+  assert.deepEqual(stored(f, agent), { world_id: 'district:wetlands', x: 0, y: 5, z: 0 });
+  // The south-east corner of the map is open water too: Harbor's south edge has a district below it, but no road.
+  place(f, agent, 'district:savanna', 47, 35);
+  assert.equal(step(f, 'alice', agent, 'down').blocked, true, 'the south edge of the map has no world below it');
   // A water tile across a seam refuses exactly as a water tile inside the world does.
   place(f, agent, 'commons', 95, 40);
   const water = step(f, 'alice', agent, 'right');
@@ -126,4 +129,62 @@ test('a presence delta near a seam reaches subscribers of the world across it, a
   assert.equal(snowline.some((chunk) => String(chunk).includes('"walker"')), false);
   assert.equal(hall.some((chunk) => String(chunk).includes('"walker"')), false);
   hub.closeAll?.();
+});
+
+test('phase 2: a resident walks north from Highlands into Foothills and round a four-way corner, never leaving the map by a portal', async (t) => {
+  const f = await fixture(t), agent = f.agent('alice');
+  // Highlands -> Foothills along the avenue at global x 120 (Highlands local 24).
+  place(f, agent, 'district:highlands', 24, 1);
+  assert.equal(step(f, 'alice', agent, 'up').y, 0);
+  const north = step(f, 'alice', agent, 'up');
+  assert.deepEqual({ world_id: north.world_id, x: north.x, y: north.y, seam: north.seam, from: north.from_world_id }, { world_id: 'district:foothills', x: 24, y: 35, seam: true, from: 'district:highlands' });
+  // The four-way corner at global (144, 36): Foothills, Grasslands, Highlands and Snowline meet there. Walk round it.
+  place(f, agent, 'district:highlands', 47, 0);
+  const up = step(f, 'alice', agent, 'up');
+  assert.deepEqual({ world_id: up.world_id, x: up.x, y: up.y, seam: up.seam }, { world_id: 'district:foothills', x: 47, y: 35, seam: true });
+  const right = step(f, 'alice', agent, 'right');
+  assert.deepEqual({ world_id: right.world_id, x: right.x, y: right.y, seam: right.seam }, { world_id: 'district:grasslands', x: 0, y: 35, seam: true });
+  const down = step(f, 'alice', agent, 'down');
+  assert.deepEqual({ world_id: down.world_id, x: down.x, y: down.y, seam: down.seam }, { world_id: 'district:snowline', x: 0, y: 0, seam: true });
+  const left = step(f, 'alice', agent, 'left');
+  assert.deepEqual({ world_id: left.world_id, x: left.x, y: left.y, seam: left.seam }, { world_id: 'district:highlands', x: 47, y: 0, seam: true }, 'round the corner and back to the tile it started on');
+  assert.equal(f.platform.all("SELECT 1 FROM audit WHERE event='world.entered'").length >= 5, true);
+});
+
+test('the map window at a four-way corner reads every world there, each in its own coordinates', async (t) => {
+  const f = await fixture(t), alice = f.agent('alice'), others = ['bob', 'reviewer', 'moderator'].map((name) => f.agent(name));
+  place(f, alice, 'district:highlands', 47, 0);
+  const spots = [['district:foothills', 46, 34], ['district:grasslands', 2, 33], ['district:snowline', 1, 2]];
+  others.forEach((agent, index) => place(f, agent, ...spots[index]));
+  const view = f.platform.world(f.actor('alice'), { world_id: 'district:highlands', agent_id: alice.id, map: 'core' });
+  assert.deepEqual(view.map.worlds.map((item) => item.world_id).sort(), ['district:foothills', 'district:grasslands', 'district:snowline']);
+  for (const [index, agent] of others.entries()) {
+    const seen = view.map.participants.find((item) => item.id === agent.id);
+    assert.ok(seen, `${spots[index][0]} resident is in the window`);
+    assert.deepEqual([seen.world_id, seen.x, seen.y], spots[index]);
+  }
+});
+
+test('private gardens and cottages are never on the map: no step leaves one, and no window ever carries one', async (t) => {
+  const f = await fixture(t), agent = f.agent('alice'), guest = f.agent('bob');
+  for (const world of [`home:${agent.id}`, `house:${agent.id}`]) {
+    const definition = (await import('../world.js')).getWorldDefinition(world);
+    place(f, agent, world, 0, 5);
+    for (const direction of ['left', 'up']) {
+      place(f, agent, world, direction === 'left' ? 0 : 5, direction === 'left' ? 5 : 0);
+      const edge = step(f, 'alice', agent, direction);
+      assert.equal(edge.blocked, true, `${world}: the ${direction} edge is a wall, not a seam`);
+      assert.equal(stored(f, agent).world_id, world);
+    }
+    assert.ok(definition.columns > 0);
+    assert.equal(f.platform.world(f.actor('alice'), { world_id: world, agent_id: agent.id, map: 'core' }).map, undefined, `${world} has no map window`);
+  }
+  // A resident standing in a cottage is on no tile of the map, so no window near any seam carries them.
+  place(f, agent, `house:${agent.id}`, 5, 5);
+  place(f, guest, 'commons', 25, 1);
+  const view = f.platform.world(f.actor('bob'), { world_id: 'commons', agent_id: guest.id, map: 'core' });
+  const text = JSON.stringify(view.map);
+  assert.equal(text.includes(agent.id), false);
+  assert.equal(text.includes('house:'), false); assert.equal(text.includes('home:'), false);
+  assert.equal(view.map.worlds.every((item) => !/^(home|house):/.test(item.world_id)), true);
 });
