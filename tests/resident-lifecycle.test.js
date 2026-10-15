@@ -284,7 +284,7 @@ test('the resident ledger is one append-only audit line per step and keeps the a
   const backup = join(f.directory, 'ledger-backup.sqlite'), restored = join(f.directory, 'ledger-restored.sqlite');
   backupDatabase(f.platform.db, backup);
   restoreDatabase(backup, restored);
-  assert.equal(validateDatabase(restored).schema_version, 25, 'a backup of the ledger validates as schema 25');
+  assert.equal(validateDatabase(restored).schema_version, 27, 'a backup of the ledger validates as schema 27');
   const copy = new DatabaseSync(restored, { readOnly: true });
   try {
     assert.deepEqual(copy.prepare("SELECT record_id FROM audit WHERE event LIKE 'resident.action.%' ORDER BY seq").all().map((row) => row.record_id), stored);
@@ -316,4 +316,29 @@ test('the ledger stores no message text, no memory value and no note content', a
   assert.match(note.withheld_ref_note, /private record/);
   assert.equal(remember.saved_ref, null);
   assert.equal(history.entries.find((entry) => entry.action === 'say').saved_ref.includes(secret), false);
+});
+
+test('refused intents can resume unchanged and underscores never match a different intent', async (t) => {
+  const f = await fixture(t);
+  const agent = resident(f);
+  const { actor } = session(f, agent, 'alice', { scopes: ['read', 'chat'] });
+  const input = { action: 'say', intent_id: 'recover_one', text: 'I am here to help in the garden.' };
+  f.platform.run("UPDATE settings SET value='true' WHERE key='paused'");
+  assert.equal(f.platform.residentAct(actor, input).reason, 'platform_paused');
+  f.platform.run("UPDATE settings SET value='false' WHERE key='paused'");
+  assert.equal(f.platform.residentAct(actor, input).state, 'executed');
+  assert.equal(f.platform.residentAct(actor, input).state, 'replayed');
+  f.platform.run("UPDATE settings SET value='true' WHERE key='paused'");
+  for (let retry = 0; retry < 24; retry++) assert.equal(f.platform.residentAct(actor, input).state, 'refused');
+  f.platform.run("UPDATE settings SET value='false' WHERE key='paused'");
+  assert.equal(f.platform.residentAct(actor, input).state, 'replayed', 'refusal history cannot push the applied receipt out of the bounded lookup');
+  assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM messages WHERE agent_id=?',agent.id).n,1);
+  f.advance(2000);
+  assert.equal(f.platform.residentAct(actor, { action: 'say', intent_id: 'literalXone', text: 'The first independent intent.' }).state, 'executed');
+  f.advance(2000);
+  assert.equal(f.platform.residentAct(actor, { action: 'say', intent_id: 'literal_one', text: 'The second independent intent.' }).state, 'executed');
+  const malformed = f.platform.residentAct(actor, { action: 'say', intent_id: 'bad_payload', text: 'Hello', unexpected: true });
+  assert.equal(malformed.reason, 'invalid_proposal');
+  assert.equal(malformed.recorded, true);
+  assert.equal(ledger(f).filter(row => row.intent_id === 'bad_payload' && row.state === 'refused').length, 1);
 });

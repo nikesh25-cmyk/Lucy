@@ -475,7 +475,7 @@ function resolveCitations(citations,explicitCaptureId,store){
  if(explicitCaptureId&&!store.get('SELECT id FROM evidence_captures WHERE id=?',explicitCaptureId))fail(404,'That source version is not stored in the evidence library.');
  if(!citations.length)fail(409,'This claim cites nothing, so a reviewer cannot resolve it to a stored row or source version.');
  const pinned=citations.filter(citation=>citation.capture);
- if(explicitCaptureId)pinned.push({capture:store.get('SELECT id,sha256,retrieved_at,evidence_kind FROM evidence_captures WHERE id=?',explicitCaptureId),source_key:null,state:'pinned_by_id'});
+ if(explicitCaptureId&&!pinned.some(citation=>citation.capture.id===explicitCaptureId))fail(409,'That stored source version is not pinned by this contribution’s citations. A caller cannot attach unrelated evidence during a trace.');
  if(!pinned.length)fail(409,`None of this claim’s ${citations.length} citation(s) resolve to a stored source version: a link or a contributor-declared hash alone is not evidence.`);
  return{exact_version:true,stored_action:true,citation_count:citations.length,
   pinned_versions:pinned.map(citation=>({capture_id:citation.capture.id,sha256:citation.capture.sha256,retrieved_at:citation.capture.retrieved_at,evidence_kind:citation.capture.evidence_kind,source_key:citation.source_key||null,state:citation.state})),
@@ -492,11 +492,15 @@ export function traceContribution(platform,actor,input={}){
  const mine=owner=>Boolean(owner)&&owner===actor.account.id;
  const visible=owner=>mine(owner)||reviewer;
  if(kind==='submission'){
-  const submission=store.get('SELECT * FROM submissions WHERE id=?',id);
+  let submission=store.get('SELECT * FROM submissions WHERE id=?',id);
   if(!submission)fail(404,'This claimed contribution is not stored.');
   const claim=store.get('SELECT * FROM claims WHERE id=?',submission.claim_id);
   if(!visible(claim?.account_id))fail(404,'This claimed contribution is not stored.');
-  if(input.version_id&&!store.get('SELECT id FROM submissions WHERE id=? AND claim_id=?',input.version_id,submission.claim_id))fail(404,'That submission version of this claim does not exist.');
+  if(input.version_id){
+   const version=store.get('SELECT * FROM submissions WHERE id=? AND claim_id=?',input.version_id,submission.claim_id);
+   if(!version)fail(404,'That submission version of this claim does not exist.');
+   submission=version;
+  }
   const task=store.get('SELECT t.id,t.title,t.version,t.instructions,t.rights,t.allowed_domains,m.id AS mission_id,m.title AS mission_title,m.beneficiary FROM tasks t JOIN missions m ON m.id=t.mission_id WHERE t.id=?',claim.task_id)||null;
   const citations=platform.submissionEvidence(submission.id)||[];
   const resolution=resolveCitations(citations,input.capture_id,store);

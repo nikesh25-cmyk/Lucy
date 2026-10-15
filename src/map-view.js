@@ -43,3 +43,17 @@ export function mapSnapshot(world, agent, definition) {
 
 /** A global tile back to the stored world it belongs to, for every API call that names a tile. */
 export const localTile = (gx, gy) => fromGlobal(gx, gy);
+
+/**
+ * A tracker point in its stored region's coordinates, for diagnostics and persistence comparisons.
+ * Rendering keeps the continuous global frame. A display point can lie between confirmed tiles, so
+ * resolve its containing tile first and retain the fractional offset instead of rounding its motion.
+ * The tracker owns its frame: changing the currently viewed world must not re-project older records.
+ */
+export function storedPresencePoint(point, frame) {
+  if (!point || frame !== MAP_ID || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return point ? { ...point } : point;
+  const tileX = Math.floor(point.x), tileY = Math.floor(point.y);
+  const place = fromGlobal(tileX, tileY);
+  if (!place) return { ...point };
+  return { ...point, x: place.x + point.x - tileX, y: place.y + point.y - tileY, world_id: place.world_id };
+}

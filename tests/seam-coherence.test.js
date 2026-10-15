@@ -123,10 +123,8 @@ test('interaction distance is never subtracted across regions: a neighbouring fi
   assert.match(read.fixture.next_step, /Travel there, or bring/, 'the resident is told to enter the world first');
   assert.equal(read.required_distance, INTERACTION_DISTANCE);
   assert.ok(INTERACTION_DISTANCE >= 1 && INTERACTION_DISTANCE <= 2, `the requirement is the documented adjacency (${INTERACTION_DISTANCE})`);
-  // The *reported* distance for such a fixture is the one value this read gets wrong: it subtracts the
-  // viewer's tiles from another world's tiles. The decision above is unaffected, so this is recorded as a
-  // known gap with a failing repro rather than asserted here: tests/framework/known-gaps-sharedworld.mjs.
-  assert.equal(typeof read.fixture.distance, 'number', 'the gap: a cross-region distance is reported at all');
+  assert.equal(read.fixture.distance, null, 'a distance is reported only inside the same stored world');
+  assert.match(read.fixture.hint, /resident is in another region/, 'the hint explains why no distance is offered');
 
   // Inside one world the same resident is judged by ordinary one-world Manhattan distance.
   place(f, alice, 'district:highlands', scenery.x, scenery.y);

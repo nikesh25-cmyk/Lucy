@@ -43,7 +43,7 @@ test('a process killed inside a transaction leaves no torn batch, and the interr
   assert.equal(trials.length, 3);
   assert.ok(trials.some((trial) => trial.batch_rolled_back), 'at least one kill must land inside a transaction body');
   for (const trial of trials) {
-    assert.equal(validateDatabase(trial.database).schema_version, 25, `${trial.label}: the killed database validates`);
+    assert.equal(validateDatabase(trial.database).schema_version, 27, `${trial.label}: the killed database validates`);
     const db = new DatabaseSync(trial.database, { readOnly: true });
     try {
       // Recompute atomicity from the rows themselves, not from the drill's counters: every batch is
@@ -106,7 +106,7 @@ test('the rollback path returns a fresh public world exactly to its release poin
   const evidence = entry.artifacts;
   assert.ok(existsSync(evidence.backup));
   assert.ok(existsSync(evidence.preserved_original));
-  assert.equal(validateDatabase(evidence.backup).schema_version, 25);
+  assert.equal(validateDatabase(evidence.backup).schema_version, 27);
   // The release changed the world, and the rollback undid exactly that.
   assert.ok(evidence.after_release.accounts > evidence.release_point.accounts);
   assert.ok(evidence.after_release.world_objects > evidence.release_point.world_objects);

@@ -174,6 +174,7 @@ test('concurrent purchases of the same key, the last of an allowance and the las
     post(base, token, '/shop/purchase', { good_id: 'flower_crown', agent_id: alice.id }, 'race-key-3'),
   ]);
   assert.deepEqual([dayA.status, dayB.status].sort(), [200, 429], 'the per-account allowance admits one keepsake');
+  const winningCrownKey = dayA.status === 200 ? 'race-key-2' : 'race-key-3';
   assert.equal(f.platform.get("SELECT COUNT(*) AS n FROM shop_purchases WHERE good_id='flower_crown'").n, 1);
   assert.deepEqual(shelf(f, alice), { flower_crown: 1, herbs: 2 });
   // 3. Two different keys racing for the last of the purse: the purse is the bound, and it never goes
@@ -199,7 +200,7 @@ test('concurrent purchases of the same key, the last of an allowance and the las
   // `created_at` and only the key decides which is which.
   assert.deepEqual(f.platform.all('SELECT good_id,price,balance_after,key FROM shop_purchases ORDER BY key').map((row) => ({ ...row })), [
     { good_id: 'herbs', price: 8, balance_after: 24, key: 'race-key-1' },
-    { good_id: 'flower_crown', price: 20, balance_after: 4, key: 'race-key-2' },
+    { good_id: 'flower_crown', price: 20, balance_after: 4, key: winningCrownKey },
   ]);
   assert.equal(verifyKarmaLedger(f.platform.db), true);
   assert.equal(f.platform.karmaSpend(f.actor('alice'), { amount: 8, good_id: 'herbs', key: 'race-key-1' }).repeated, true);

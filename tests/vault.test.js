@@ -186,7 +186,7 @@ test('a backup is valid, holds only ciphertext and fails validation when its str
   const f = await fixture(t), r = resident(f), backup = join(f.directory, 'backup.sqlite');
   call(f, 'vaultWrite', r.actor(), { slot: 1, text: SECRET });
   backupDatabase(f.platform.db, backup);
-  assert.equal(validateDatabase(backup).schema_version ?? 26, 26);
+  assert.equal(validateDatabase(backup).schema_version, 27);
   assert.ok(!readFileSync(backup).toString('latin1').includes('quiet orchard'));
   const damaged = join(f.directory, 'damaged.sqlite');
   backupDatabase(f.platform.db, damaged);

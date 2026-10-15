@@ -193,11 +193,11 @@ test('a whole pathway is derived, survives a restart, and grants no role, land r
   const credential = f.tx('runtime', f.actor('alice'), agent.id, { scopes: ['read', 'contribute'] });
   assert.throws(() => f.tx('callingSelect', f.platform.authenticate(credential.token, 'read'), { agent_id: agent.id, calling_id: 'explorer' }), { status: 403 });
   // Derived, not stored: no pathway table exists, the schema is untouched, and a backup validates.
-  assert.equal(validateDatabase(f.database).schema_version, 26);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
   assert.equal(f.platform.get("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name LIKE '%pathway%'").n, 0);
   const backup = join(f.directory, 'pathway-backup.sqlite');
   backupDatabase(f.platform.db, backup);
-  assert.equal(validateDatabase(backup).schema_version, 26);
+  assert.equal(validateDatabase(backup).schema_version, 27);
   f.platform.close();
   const restored = new Platform(f.database, f.clock);
   t.after(() => restored.close());

@@ -8,6 +8,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { writesFixture } from './framework/writes-harness.js';
 import { WRITE_ROUTES, SCOPES, POLICY_FIELDS, CONTRACT_BASE_COMMIT, policyFor } from '../src/framework/write-contract.js';
+import { RECOVERY_LIMITS } from '../src/recovery.js';
+import { WORLD_CONTENT_SCHEMA_VERSION } from '../src/schema27.js';
 
 const root = new URL('..', import.meta.url).pathname;
 const source = await readFile(join(root, 'server.js'), 'utf8');
@@ -63,9 +65,9 @@ test('publicRoute is a subset of the declared GET routes, and the contract match
     assert.equal(entry.scope, declaredScope === undefined ? null : declaredScope, `${entry.route} scope must be the router's scope`);
     for (const field of POLICY_FIELDS) assert.ok(field in entry, `${entry.route} is missing the declared policy field ${field}`);
     assert.ok(entry.scope === null || SCOPES.includes(entry.scope), `${entry.route} declares an unknown scope ${entry.scope}`);
-    assert.equal(entry.operator_only, entry.route === '/agents/:id/home' || (entry.scope === null && !entry.public), `${entry.route} operator_only must follow the runtime refusal`);
-    assert.equal(entry.runtime, entry.scope !== null && !entry.operator_only, `${entry.route} runtime reachability must follow its scope and operator gate`);
-    assert.equal(entry.session, !entry.public, `${entry.route} session reachability must follow its public flag`);
+    assert.equal(entry.operator_only, !entry.dynamic_scope && (entry.route === '/agents/:id/home' || (entry.scope === null && !entry.public)), `${entry.route} operator_only must follow the runtime refusal`);
+    assert.equal(entry.runtime, Boolean(entry.dynamic_scope) || (entry.scope !== null && !entry.operator_only), `${entry.route} runtime reachability must follow its scope and operator gate`);
+    assert.equal(entry.session, !entry.public && !entry.dynamic_scope, `${entry.route} session reachability must follow its public flag and runtime-only lifecycle`);
     assert.equal(entry.durable_before_response, true, `${entry.route} must answer only after its effect is committed`);
     if (entry.read_scope_write) assert.equal(entry.scope, 'read', `${entry.route} is not a read-scope write`);
   }
@@ -78,19 +80,16 @@ test('a fresh database reports the schema version the rehearsal and recovery tes
   const f = await writesFixture(t);
   const fresh = f.platform.get('PRAGMA user_version').user_version;
   const database = await readFile(join(root, 'src/database.js'), 'utf8');
-  const pragma = [...database.matchAll(/PRAGMA user_version=(\d+)/g)].map((match) => Number(match[1]));
-  const recovery = await readFile(join(root, 'src/recovery.js'), 'utf8');
-  const declared = [...recovery.matchAll(/schema_version:\s*(\d+)/g)].map((match) => Number(match[1]));
-  const accepted = [...recovery.match(/accepted_schema_versions: Object\.freeze\(\[([^\]]+)\]\)/)[1].matchAll(/\d+/g)].map((match) => Number(match[0]));
+  const accepted = RECOVERY_LIMITS.accepted_schema_versions;
   const rehearsal = await readFile(join(root, 'scripts/ops-rehearsal.mjs'), 'utf8');
   const recoveryTest = await readFile(join(root, 'tests/recovery.test.js'), 'utf8');
   const assumed = [...rehearsal.matchAll(/schema_version === (\d+)/g), ...recoveryTest.matchAll(/schema_version === (\d+)/g)].map((match) => Number(match[1]));
 
-  assert.ok(pragma.length, 'database.js must state the schema number it migrates to');
-  assert.equal(Math.max(...pragma), fresh, 'the fresh database must report the version database.js sets');
-  assert.equal(Math.max(...declared), fresh, 'the current schema number in recovery.js must be the fresh one');
+  assert.ok(database.includes('PRAGMA user_version=${WORLD_CONTENT_SCHEMA_VERSION}'), 'database.js sets the shared declared schema version');
+  assert.equal(WORLD_CONTENT_SCHEMA_VERSION, fresh, 'the fresh database reports the declared migration version');
+  assert.equal(RECOVERY_LIMITS.schema_version, fresh, 'recovery and the database agree on the current schema');
   assert.equal(Math.max(...accepted), fresh, 'the newest accepted schema version must be the current one');
   assert.equal(Math.max(...assumed), fresh, 'the rehearsal and the recovery tests must assume the current schema');
   assert.ok(assumed.every((version) => accepted.includes(version)), `the rehearsal assumes a schema version recovery.js does not accept: ${assumed.filter((version) => !accepted.includes(version))}`);
-  assert.ok(pragma.includes(fresh) && declared.includes(fresh) && assumed.includes(fresh), 'the current number must appear in every place that states it');
+  assert.ok(assumed.includes(fresh), 'the current version must appear in the rehearsal gates');
 });

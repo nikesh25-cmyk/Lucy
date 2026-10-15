@@ -16,6 +16,7 @@ import { GARDEN_PALETTE,HOUSE_PALETTE } from './placement-policy.js';
 import { GRANT_SCOPE_LIMITS, grantScopeNarrow, grantScopeValue } from './frontier.js';
 import { tradeSchemaPresent, verifyTradeRecords, verifyTradeSchema } from './trade-board.js';
 import { worldContentChecksCurrent } from './schema24.js';
+import { worldContentChecksUpgradeable, WORLD_CONTENT_SCHEMA_VERSION } from './schema27.js';
 
 const countryCatalog=JSON.parse(readFileSync(new URL('../catalog/countries.json',import.meta.url),'utf8')).entries;
 
@@ -157,7 +158,7 @@ export function validateDatabase(path) {
   try {
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Database integrity validation failed.');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].includes(version)) throw new Error('Unsupported database schema version.');
+    if (!Number.isInteger(version) || version < 1 || version > WORLD_CONTENT_SCHEMA_VERSION) throw new Error('Unsupported database schema version.');
     const tables = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map((item) => item.name));
     const expectedTables = version >= 3 ? [...requiredTables, 'worlds', 'world_objects', ...COMMUNITY_TABLES, ...JOURNEY_TABLES] : version === 2 ? [...requiredTables, 'worlds', 'world_objects'] : requiredTables;
     if (expectedTables.some((table) => !tables.has(table))) throw new Error('This is not a complete NemoWorld database.');
@@ -334,7 +335,10 @@ export function validateDatabase(path) {
       const trade = { all: (sql, ...args) => db.prepare(sql).all(...args) };
       if (!verifyTradeRecords(trade)) throw new Error('Database trade board validation failed.');
     }
-    if (version >= 24 && !worldContentChecksCurrent(db)) throw new Error('Database world content constraints are incomplete.');
+    // Legacy backups with a valid narrower content list remain restorable, then migrate on open.
+    // Current-version backups must have this release's exact list; a missing or broadened legacy
+    // CHECK is refused too, so migration cannot launder unsealed content into a valid backup.
+    if (version >= 24 && !(version >= WORLD_CONTENT_SCHEMA_VERSION ? worldContentChecksCurrent(db) : worldContentChecksUpgradeable(db))) throw new Error('Database world content constraints are incomplete.');
     if (version >= 25) {
       if (!vaultSchemaPresent(db)) throw new Error('Database resident vault schema is incomplete.');
       if (['resident_vault_identity_immutable','resident_vault_keys_identity_immutable','resident_vault_validate_insert','resident_vault_keys_validate_insert'].some((name) => !db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name=?").get(name))) throw new Error('Database resident vault guards are incomplete.');
@@ -470,8 +474,8 @@ export function restoreDatabase(source, destination, { lockPath = resolve(dirnam
 // The recovery point and the interruption limits an operator must know. These are the same values
 // the runbook (docs/OPERATIONS.md) states and the failure drills (scripts/ops-rehearsal.mjs) prove.
 export const RECOVERY_LIMITS = Object.freeze({
-  schema_version: 26,
-  accepted_schema_versions: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+  schema_version: WORLD_CONTENT_SCHEMA_VERSION,
+  accepted_schema_versions: Object.freeze(Array.from({ length: WORLD_CONTENT_SCHEMA_VERSION }, (_, index) => index + 1)),
   // A private resident memory record lives entirely in the database, so a process restart keeps it.
   // It holds no credential and it is read within the runtime's existing observation byte budget.
   resident_memory: Object.freeze({ bounded_facts_per_resident: 24, bounded_value_characters: 160, prompt_facts: 10, prompt_bytes: 4096, approval: 'operator-approval', source: 'a verified calling receipt, a finished run that recorded a refusal, an independent review decision, or the operator’s own explicit input' }),
@@ -546,7 +550,7 @@ const SECRET_FIELD = /(?:password|pass_hash|secret|token|credential|hash|salt|em
 // a private artifact, or a raw prompt or conversation. These rules read the field's final word, so a
 // counter that merely mentions one of them (`records.ambassador_conversations`) still publishes its
 // number; only text or a structure under such a name is dropped.
-const CONTENT_FIELD = /(?:^|_)(?:messages?|texts?|journals?|artifacts?|prompts?|conversations?|excerpts?|transcripts?|body|bodies|contents?|questions?|answers?|passages?)$/i;
+const CONTENT_FIELD = /(?:^|_)(?:messages?|texts?|journals?|artifacts?|prompts?|conversations?|excerpts?|transcripts?|body|bodies|contents?|questions?|answers?|passages?|details?|summary|summaries|receipts?)$/i;
 const textOrStructure = (item) => typeof item === 'string' || (item !== null && typeof item === 'object');
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 const PASSWORD_DIGEST = /\b[0-9a-f]{16,}:[0-9a-f]{64,}\b/gi;

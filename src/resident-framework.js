@@ -560,12 +560,14 @@ export function declaredActionKey(agentId, intentId, action, serves, payload) {
 }
 
 function ledgerRows(platform, agentId, limit = LEDGER_PAGE) {
-  return platform.all("SELECT seq,event,record_id,created_at FROM audit WHERE event IN ('resident.action.executed','resident.action.proposed','resident.action.refused') AND record_id LIKE ? ORDER BY seq DESC LIMIT ?", `${agentId}|%`, limit)
+  const prefix = `${agentId}|`;
+  return platform.all("SELECT seq,event,record_id,created_at FROM audit WHERE event IN ('resident.action.executed','resident.action.proposed','resident.action.refused') AND substr(record_id,1,?)=? ORDER BY seq DESC LIMIT ?", prefix.length, prefix, limit)
     .map((row) => { const parsed = parseLedgerRecord(row.record_id); return parsed ? { ...parsed, at: row.created_at, event: row.event, seq: row.seq } : null; })
     .filter(Boolean);
 }
 function ledgerForIntent(platform, agentId, intentId) {
-  return platform.all("SELECT seq,event,record_id,created_at FROM audit WHERE event IN ('resident.action.executed','resident.action.proposed','resident.action.refused') AND record_id LIKE ? ORDER BY seq DESC LIMIT ?", `${agentId}|${intentId}|%`, LEDGER_INTENT_LOOKUP)
+  const prefix = `${agentId}|${intentId}|`;
+  return platform.all("SELECT seq,event,record_id,created_at FROM audit WHERE event IN ('resident.action.executed','resident.action.proposed','resident.action.refused') AND substr(record_id,1,?)=? ORDER BY CASE WHEN event IN ('resident.action.executed','resident.action.proposed') THEN 0 ELSE 1 END, seq DESC LIMIT ?", prefix.length, prefix, LEDGER_INTENT_LOOKUP)
     .map((row) => { const parsed = parseLedgerRecord(row.record_id); return parsed ? { ...parsed, at: row.created_at, event: row.event } : null; })
     .filter(Boolean);
 }
@@ -627,6 +629,7 @@ export function declaredProposal(input, headerIntent) {
   const coinField = extra.find((key) => COIN_FIELDS.includes(key.toLowerCase()));
   if (!INTENT.test(typeof intent === 'string' ? intent : '')) fail(400, 'A declared action needs an intent id of 1–64 letters, digits, colon, underscore or dash.');
   const serves = input.serves === undefined || input.serves === null ? null : String(input.serves);
+  if (serves !== null && !/^[A-Za-z0-9:._-]{1,64}$/.test(serves)) fail(400, 'A purpose target must be one declared target identifier.');
   if (coinField) return { action, intent_id: intent, serves, coinField, extra, spec, payload: null };
   if (!spec) return { action, intent_id: intent, serves, coinField: null, extra, spec: null, payload: null };
   if (extra.length) fail(400, `A declared ${action} action names only ${allowed.join(', ')}.`);
@@ -647,7 +650,7 @@ const REFUSAL_STATUS = Object.freeze({ budget_exhausted: 429, credential_revoked
 function refusal(record, reason, options = {}) {
   return {
     state: 'refused', success: false, applied: false, is_outcome: false,
-    action: record?.action || null, serves: record?.serves || null, intent_id: record?.intent_id || null, key: record?.key || null,
+    action: record?.action || null, serves: record?.serves || null, intent_id: record?.intent_id || record?.intentId || null, key: record?.key || null,
     reason, reason_note: REFUSAL_REASONS[reason] || 'Refused.',
     error: options.error || REFUSAL_REASONS[reason] || 'Refused.',
     detail: options.detail || null,
@@ -678,8 +681,17 @@ function declaredAction(platform, actor, input, headerIntent) {
   const agent = platform.get('SELECT * FROM agents WHERE id=?', actor.agent.id);
   if (!agent) fail(404, 'Resident not found.');
 
-  const proposal = declaredProposal(input, headerIntent);
-  const record = { agentId: agent.id, intentId: proposal.intent_id, key: null, action: proposal.action, serves: proposal.serves, ref: null, reason: null };
+  let proposal, proposalError;
+  try { proposal = declaredProposal(input, headerIntent); }
+  catch (error) {
+    // An addressable malformed intent still gets a durable refusal. Unaddressable
+    // input remains an HTTP validation error, with no invented intent identity.
+    if (!/^[a-z_]{2,32}$/.test(input?.action || '') || !INTENT.test(input?.intent_id ?? headerIntent ?? '')) throw error;
+    proposal = { action: input.action, intent_id: input.intent_id ?? headerIntent, serves: null, payload: null, spec: null };
+    proposalError = error;
+  }
+  const key = proposal.spec && !proposalError ? declaredActionKey(agent.id, proposal.intent_id, proposal.action, proposal.serves, proposal.payload) : null;
+  const record = { agentId: agent.id, intentId: proposal.intent_id, key, action: proposal.action, serves: proposal.serves, ref: null, reason: null };
   const lifecycle = [];
   const step = (name, state, detail) => { lifecycle.push({ step: name, state, detail }); };
 
@@ -698,6 +710,7 @@ function declaredAction(platform, actor, input, headerIntent) {
   };
 
   // ---- propose: is this a declared action at all? ----
+  if (proposalError) return refuse('invalid_proposal', { detail: proposalError.message, step: 'propose' });
   if (proposal.coinField) {
     return refuse('self_award_refused', { detail: `The refused field is ${proposal.coinField}.`, step: 'propose' });
   }
@@ -736,14 +749,12 @@ function declaredAction(platform, actor, input, headerIntent) {
     return refuse('outside_declared_purpose', { detail: `${proposal.serves} is not a declared purpose target of this resident.` });
   }
   if (credential.used_calls >= credential.max_calls) return refuse('budget_exhausted', { detail: `${credential.used_calls} of ${credential.max_calls} calls used.` });
-  const key = declaredActionKey(agent.id, proposal.intent_id, proposal.action, proposal.serves, proposal.payload);
-  record.key = key;
   step('authorize', 'complete', `Scope ${spec.scope} granted, ${credential.max_calls - credential.used_calls} of ${credential.max_calls} credential calls remaining.`);
 
   // ---- execute once: the durable ledger decides whether this intent has already been applied ----
   const seen = ledgerForIntent(platform, agent.id, proposal.intent_id);
   const applied = seen.find((row) => row.key === key && APPLIED_STATES.includes(row.state));
-  const other = seen.find((row) => row.key !== key);
+  const other = seen.find((row) => row.key !== null && row.key !== key);
   if (other) {
     return refuse('intent_reused_for_other_work', { detail: `Intent ${proposal.intent_id} was already recorded for ${other.action} with a different body.`, step: 'execute' });
   }

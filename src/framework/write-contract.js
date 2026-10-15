@@ -24,13 +24,25 @@
 //   read_scope_write         a write a *read*-scoped credential can perform (see the known gaps)
 //   may_skip_write           a 2xx is honest without a new write (an unchanged save or a no-op)
 export const CONTRACT_BASE_COMMIT = '27c0d72';
-export const WRITE_CONTRACT_ROUTES = 101;
+export const WRITE_CONTRACT_ROUTES = 106;
 
 // The scope vocabulary a runtime credential can carry, in the order the platform accepts it.
 export const SCOPES = Object.freeze(['read', 'move', 'chat', 'contribute', 'build', 'vault']);
 export const POLICY_FIELDS = Object.freeze(['route', 'method', 'domain', 'scope', 'session', 'runtime', 'public', 'operator_only', 'idempotency_keyed', 'audit', 'durable_before_response', 'read_scope_write', 'may_skip_write']);
 
 export const WRITE_ROUTES = Object.freeze([
+  // Integration additions. /residents/act has no single route scope: its inner
+  // lifecycle checks the stored credential against the selected action's scope.
+  { route: '/residents/act', method: 'POST', domain: 'residents', scope: null, dynamic_scope: true, session: false, runtime: true, public: false, operator_only: false,
+    idempotency_keyed: true, audit: true, durable_before_response: true, read_scope_write: false, may_skip_write: true },
+  { route: '/activity/tasks/check', method: 'POST', domain: 'activity', scope: null, session: true, runtime: false, public: false, operator_only: true,
+    idempotency_keyed: false, audit: false, durable_before_response: true, read_scope_write: false, may_skip_write: true },
+  { route: '/activity/author', method: 'POST', domain: 'activity', scope: null, session: true, runtime: false, public: false, operator_only: true,
+    idempotency_keyed: false, audit: true, durable_before_response: true, read_scope_write: false, may_skip_write: false },
+  { route: '/karma/settle', method: 'POST', domain: 'karma', scope: null, session: true, runtime: false, public: false, operator_only: true,
+    idempotency_keyed: false, audit: true, durable_before_response: true, read_scope_write: false, may_skip_write: true },
+  { route: '/shop/purchase', method: 'POST', domain: 'shop', scope: null, session: true, runtime: false, public: false, operator_only: true,
+    idempotency_keyed: true, audit: true, durable_before_response: true, read_scope_write: false, may_skip_write: false },
   { route: '/adoptions', method: 'POST', domain: 'adoption', scope: null, session: true, runtime: false, public: false, operator_only: true,
     idempotency_keyed: false, audit: true, durable_before_response: true, read_scope_write: false, may_skip_write: false },
   { route: '/agents', method: 'POST', domain: 'residents', scope: null, session: true, runtime: false, public: false, operator_only: true,

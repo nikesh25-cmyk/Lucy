@@ -1,6 +1,6 @@
 import * as THREE from '../assets/vendor/three-voxel.js';
 import { getWorldDefinition } from '../world.js';
-import { VOXEL_LIMITS, LOD_LIMITS, inDetail, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, voxelParcelAddress, voxelParcelSelection, createOrbitInput, reducedMotionPreference,
+import { VOXEL_LIMITS, LOD_LIMITS, DIORAMA_BUDGET, inDetail, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, voxelParcelAddress, voxelParcelSelection, createOrbitInput, reducedMotionPreference,
   clampOrbitDistance, normalizedWheelDelta, wheelZoom, pinchDistance, fovForDistance, approachOrbit, easeRate, FOV_LIMITS, hoverKey } from './voxel-geometry.js';
 import { createHoverThrottle, zoomSuspended } from './camera-controls.js';
 import content from './content.js';
@@ -293,7 +293,7 @@ export function createVoxelScene() {
       // `options.lod === false` is the documented escape hatch: it rebuilds the pre-LOD view (every
       // tile at full detail), which is how the benchmark and the tests produce their "before" column.
       const detailRadius = options.lod === false ? Infinity : LOD_LIMITS.detail_radius;
-      const plan = voxelPlan(definition, snapshot, position, detailRadius);
+      let plan = voxelPlan(definition, snapshot, position, detailRadius);
       const cullHidden = options.cullHidden !== false;
       // Which tiles are read closely depends on where the viewer stands, not only on which tiles are in the
       // window: a room smaller than the window is the same window from every tile in it. So the anchor is
@@ -301,10 +301,6 @@ export function createVoxelScene() {
       // when every tile is fine, where it decides nothing and a step must not rebuild the room.
       const tier = plan.cells.some((cell) => !inDetail(cell.x, cell.y, plan.anchor, plan.detailRadius)) ? [plan.anchor?.x, plan.anchor?.y] : 0;
       const nextKey = JSON.stringify([definition.id, definition.kind, definition.groundColor, plan.cells, plan.objects, plan.portals, plan.gates, cullHidden, detailRadius, tier]);
-      if (nextKey !== key) {
-        if (staticBatch) root.remove(staticBatch.group); disposeBatch(staticBatch);
-        staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden); staticBatch.group.name = 'voxel-terrain'; root.add(staticBatch.group); key = nextKey;
-      }
       const firstPerson = options.cameraMode === 'first-person', drawnSelf = firstPerson ? null : options.self;
       const drawnPeople = firstPerson ? plan.participants.filter(item => item.id !== options.self?.id) : plan.participants;
       // The projected key ignores volatile roster fields; `rebuildPeople` restores the raw payload key.
@@ -373,6 +369,26 @@ export function createVoxelScene() {
         if (groundMesh) root.add(groundMesh);
         groundKey = nextGroundKey;
       }
+      // A stitched window can contain a denser grove or shoreline than either region's standalone
+      // view. Keep every picked surface, obstacle and fixture, and spend the remaining static budget
+      // on the nearest unpicked ground/water decoration. The requested twelve-tile detail stays in
+      // sparse windows; only a dense window's outer decorative ring becomes coarse. Use the actual
+      // sky and lamp batches so a night phase cannot silently push the same scene over its ceiling.
+      const terrainBudget = DIORAMA_BUDGET.instances - (lightBatch?.cubes || 0) - (skyBatch?.cubes || 0);
+      if (nextKey !== key || (options.lod !== false && staticBatch?.cubes > terrainBudget)) {
+        if (staticBatch) root.remove(staticBatch.group); disposeBatch(staticBatch);
+        staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden);
+        while (options.lod !== false && staticBatch.cubes > terrainBudget && plan.detailRadius > 0) {
+          disposeBatch(staticBatch);
+          plan = { ...plan, detailRadius: plan.detailRadius - 1 };
+          staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden);
+        }
+        staticBatch.detailRadius = plan.detailRadius;
+        staticBatch.group.name = 'voxel-terrain'; root.add(staticBatch.group); key = nextKey;
+      } else if (staticBatch.detailRadius !== plan.detailRadius) {
+        // A repaint reuses the chosen detail tier as well as the meshes it describes.
+        plan = { ...plan, detailRadius: staticBatch.detailRadius };
+      }
       settle();
       lastPlan = plan; lastMotion = { reduced: reducedMotion, interior, weather, phase };
       this.highlightParcel(options.parcelSelection, options.parcelHover);
@@ -387,7 +403,7 @@ export function createVoxelScene() {
         parcels: plan.parcels.length, selectedParcel: parcelBatch?.group.userData.selectedParcel || null, window: plan.window,
         // The detail report: the radius in force, and the cells inside and beyond it. `Infinity` means
         // the escape hatch is on and every cell is read at full detail.
-        detail: { radius: plan.detailRadius, fine, coarse: plan.cells.length - fine },
+        detail: { radius: plan.detailRadius, requestedRadius: detailRadius, adapted: plan.detailRadius < detailRadius, fine, coarse: plan.cells.length - fine },
         layers: { ...staticBatch.layers, lights: lightBatch?.cubes || 0, sky: skyBatch?.cubes || 0 } };
       root.updateMatrixWorld(true); return stats;
     },

@@ -229,7 +229,7 @@ function interactionGuidance(platform, world, fixture, viewer) {
   const label = INTERACTION_LABEL[fixture.kind];
   const requirement = INTERACTION_REQUIREMENT[fixture.kind], options = interactionOptions(platform, fixture, viewer);
   const paused = platform.get("SELECT value FROM settings WHERE key='paused'").value === 'true';
-  const present = Boolean(viewer && viewer.world_id === world.id), distance = viewer ? interactionDistance(viewer, fixture) : null;
+  const present = Boolean(viewer && viewer.world_id === world.id), distance = present ? interactionDistance(viewer, fixture) : null;
   const inRange = present && distance <= INTERACTION_DISTANCE;
   let blocked = null;
   if (!viewer) blocked = 'inspect_only';
@@ -238,7 +238,9 @@ function interactionGuidance(platform, world, fixture, viewer) {
   else if (paused) blocked = 'platform_paused';
   else if (!inRange) blocked = 'out_of_range';
   const actionLabel = interactionActionLabel(fixture, options);
-  const away = inRange ? `you are ${tiles(distance)} away, so you can use it now` : distance === null ? 'inspection only: no resident is acting here' : `you are ${tiles(distance)} away`;
+  const away = !viewer ? 'inspection only: no resident is acting here'
+    : !present ? 'your resident is in another region; bring it here to use this fixture'
+      : inRange ? `you are ${tiles(distance)} away, so you can use it now` : `you are ${tiles(distance)} away`;
   // A crop patch in someone else's garden is readable and named before it is tried.
   const note = fixture.kind === 'crop_patch' ? cropOwnershipNote(platform, world, viewer) : null;
   const hint = `${label} at ${fixture.x}, ${fixture.y} · ${actionLabel} · ${requirement} · ${away}.${note ? ` ${note}` : ''}`;
@@ -515,29 +517,42 @@ export const spaceMethods = {
    * map sees exactly what it always saw, and a private garden is never a rectangle of the map.
    */
   mapWindow(actor, viewerAgent, id, camera, input) {
-    const rect = mapRect(id), here = viewerAgent?.world_id === id ? viewerAgent : { x: camera.x + Math.floor(COLS / 2), y: camera.y + Math.floor(ROWS / 2) };
-    const centre = toGlobal(id, here.x, here.y);
+    const rect = mapRect(id);
+    const cameraCentre = toGlobal(id, camera.x + Math.floor(COLS / 2), camera.y + Math.floor(ROWS / 2));
+    // The anchor can lag behind a seam crossing while a client reconnects. Follow the resident's
+    // stored position wherever it is on the map; an off-map resident leaves the anchor camera intact.
+    const centre = viewerAgent ? toGlobal(viewerAgent.world_id, viewerAgent.x, viewerAgent.y) || cameraCentre : cameraCentre;
     const peopleWindow = { gx: centre.gx - Math.floor(COLS / 2), gy: centre.gy - Math.floor(ROWS / 2), width: COLS, height: ROWS };
     const objectWindow = { gx: centre.gx - 18, gy: centre.gy - 18, width: 37, height: 37 };
-    const people = worldRects(peopleWindow.gx, peopleWindow.gy, peopleWindow.width, peopleWindow.height);
-    const things = worldRects(objectWindow.gx, objectWindow.gy, objectWindow.width, objectWindow.height);
-    const participants = [], objects = [], worlds = [];
-    for (const place of things) {
-      if (place.world_id === id) continue;
-      const own = people.find((item) => item.world_id === place.world_id), definition = getWorldDefinition(place.world_id);
-      let read;
-      try {
-        const left = Math.min(place.x, own ? own.x : place.x), top = Math.min(place.y, own ? own.y : place.y);
-        read = this.world(actor, { world_id: place.world_id, x: Math.max(0, Math.min(definition.columns - COLS, left)), y: Math.max(0, Math.min(definition.rows - ROWS, top)),
-          ...(input.agent_id ? { agent_id: input.agent_id } : {}), _neighbour: true });
-      } catch (error) { if (error?.status === 403 || error?.status === 404) continue; throw error; }
-      worlds.push({ world_id: place.world_id, name: read.world.name });
-      if (own) for (const item of read.participants) {
-        if (item.x >= own.x && item.x < own.right && item.y >= own.y && item.y < own.bottom && participants.length < participantLimit - 1) participants.push({ ...item, world_id: place.world_id });
-      }
-      for (const item of read.objects) if (item.x >= place.x && item.x < place.right && item.y >= place.y && item.y < place.bottom) objects.push({ ...item, world_id: place.world_id });
+    const base = { id: 'core', world_id: id, origin: { gx: rect.x, gy: rect.y }, window: peopleWindow };
+    if (!worldRects(objectWindow.gx, objectWindow.gy, objectWindow.width, objectWindow.height).some((place) => place.world_id !== id)) {
+      return { ...base, worlds: [], participants: [], objects: [] };
     }
-    return { id: 'core', world_id: id, origin: { gx: rect.x, gy: rect.y }, window: peopleWindow, worlds, participants, objects };
+    // The shared viewport performs four windowed reads per neighbouring region. Re-reading whole
+    // world payloads here used to repeat counts, messages, profiles and patrol work for every join.
+    // The anchor already has its ordinary payload and must not consume the neighbour roster's cap.
+    const read = this.mapViewport(actor, { world_id: id, gx: objectWindow.gx, gy: objectWindow.gy,
+      columns: objectWindow.width, rows: objectWindow.height, _exclude_anchor: true,
+      ...(viewerAgent ? { agent_id: viewerAgent.id } : {}) });
+    const insidePeople = (item) => {
+      const point = toGlobal(item.world_id, item.x, item.y);
+      return point && point.gx >= peopleWindow.gx && point.gx < peopleWindow.gx + peopleWindow.width
+        && point.gy >= peopleWindow.gy && point.gy < peopleWindow.gy + peopleWindow.height;
+    };
+    const participants = read.participants.filter(insidePeople).slice(0, participantLimit - 1);
+    // These are the same public presentation fields used for the anchor's roster. Both helpers use
+    // bounded batch reads and never initialize a calling or change a cosmetic while observing it.
+    const ids = participants.map((participant) => participant.id);
+    const callings = ids.length ? this.publicCallings?.(ids) : null;
+    const cosmetics = ids.length ? this.residentCosmetics?.(ids) : null;
+    for (const participant of participants) {
+      if (callings?.[participant.id]) participant.calling = callings[participant.id];
+      const cosmetic = cosmetics?.get ? cosmetics.get(participant.id) : cosmetics?.[participant.id];
+      if (cosmetic) Object.assign(participant, { title: cosmetic.title, avatar: cosmetic.avatar });
+    }
+    const worlds = read.regions.map((region) => ({ world_id: region.world_id, name: region.name }));
+    const objects = read.objects;
+    return { ...base, worlds, participants, objects };
   },
   /**
    * One cardinal step against server-authoritative column layers.

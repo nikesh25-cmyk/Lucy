@@ -100,7 +100,7 @@ test('a deleted account leaves a ledger that still verifies, a wallet nobody can
   // The receipts are append-only and the account row is only blanked, so the chain is intact.
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM karma_receipts WHERE account_id=?', actor.account.id).n, 4);
   assert.equal(verifyKarmaLedger(f.platform.db), true);
-  assert.equal(validateDatabase(f.database).schema_version, 26);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
   assert.throws(() => f.platform.karmaWallet(actor, { agent_id: alice.id }), (error) => [403, 404].includes(error.status));
   const spend = f.platform.karmaSpend(actor, { amount: 8, good_id: 'herbs', key: 'after-deletion' });
   assert.equal(spend.ok, false, 'a deleted operator cannot spend');
@@ -115,7 +115,7 @@ test('a backup restores at schema 26 with its ledger, and a schema 25 world gain
   f.tx('shopPurchase', actor, { good_id: 'herbs', agent_id: alice.id }, 'backup-key-1');
   const backup = join(f.directory, 'karma-backup.sqlite');
   backupDatabase(f.platform.db, backup);
-  assert.equal(validateDatabase(backup).schema_version, 26);
+  assert.equal(validateDatabase(backup).schema_version, 27);
   const reopened = new Platform(backup, () => f.clock());
   t.after(() => reopened.close());
   assert.equal(reopened.karmaWallet(reopened.authenticate(f.credentials.alice.token), { agent_id: alice.id }).balance, 0);
@@ -131,7 +131,7 @@ test('a backup restores at schema 26 with its ledger, and a schema 25 world gain
   assert.equal(validateDatabase(older).schema_version, 25, 'a schema-25 database is still accepted');
   const migrated = new Platform(older, () => f.clock());
   t.after(() => migrated.close());
-  assert.equal(migrated.get('PRAGMA user_version').user_version, 26);
+  assert.equal(migrated.get('PRAGMA user_version').user_version, 27);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM accounts').n, accounts);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM karma_receipts').n, 0, 'migration never mints a receipt');
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM shop_purchases').n, 0);

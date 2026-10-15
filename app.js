@@ -28,7 +28,7 @@ import { REGIONS, SDG_GOALS, CIVIC_CHARTER } from './src/civic.js';
 import { createGameAudio } from './src/game-audio.js';
 import { SECTIONS, sectionById, sectionLabel, menuGroups, filterSections, panelMode, dockWidth } from './src/ui/command-deck.js';
 import { MAP_ID, MAP_LAYOUT, fromGlobal, onMap } from './src/global-map.js';
-import { mapActive, mapPoint, mapSnapshot, toMapItem } from './src/map-view.js';
+import { mapActive, mapPoint, mapSnapshot, toMapItem, storedPresencePoint } from './src/map-view.js';
 
 const $ = (selector) => document.querySelector(selector);
 const gamePresentation = location.pathname !== '/manage' && new URLSearchParams(location.search).get('mode') !== 'workspace';
@@ -49,7 +49,7 @@ Object.assign(state,{gamePresentation,gameMode:savedGameMode,gameDrawer:'',gameM
 const gameAudio = createGameAudio();
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
 Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',firstPlay:null,firstPlayRefusal:null,interaction:null,interactionRefusal:null,interactionError:null,evidenceLibrary:null,moveFeedback:null});
-let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false,shopPanel=null,shopHost=null,shopStatus=null;
+let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false,shopPanel=null,shopHost=null,shopStatus=null,shopContext=null,shopRevision=0;
 const movementQueue = createMovementQueue({ move: performMove });
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -82,6 +82,7 @@ const firstPlayGuide = createFirstPlayGuide({
   transport: (route, method, body, idempotent) => api(route, method, body, idempotent),
   document,
   reducedMotion: prefersReducedMotion(window.matchMedia),
+  onNavigate: (section) => guarded(() => openSection(section)),
   // A conversation requires words from this operator. Opening an existing composer is not a
   // completed guide step; only its later saved message can advance the server-derived guide.
   onCompose: async (action) => {
@@ -196,6 +197,7 @@ function notice(message, error = false) {
 async function guarded(action) { try { await action(); } catch (error) { if(error.sessionEnded)return;notice(error.message || 'This action could not be completed.', true); } }
 let sessionRecovery=null;
 function clearBrowserOperator(){
+ clearShopView();
  gameAudio.stop();spectator?.close();spectator=null;firstPlayGuide.reset();cancelFirstPlayRead();movementQueue.reset('session-ended');walkVersion++;motionRevision++;cancelLook();state.inspectedResident=null;state.memory=null;state.voxelSelection=null;state.voxelHover=null;state.parcelSelection=null;state.landData=null;state.interaction=null;state.interactionRefusal=null;state.grantPreview=null;state.restoration=null;state.restorationEventId='';state.firstPlay=null;state.firstPlayRefusal=null;state.evidenceLibrary=null;state.moveFeedback=null;clearOperatorState(state);state.workbenches=null;state.quality=null;state.qualityDismissals=null;localStorage.removeItem('selected-agent');state.gameMode='entry';state.firstPerson=false;state.gameDrawer='';state.gameMenuOpen=false;state.chatChannel='public';state.chatRecipientId='';state.chatRecipientName='';state.chatDraft='';clearChatDraft();try{sessionStorage.removeItem('nemoworld-game-mode');sessionStorage.removeItem('nemoworld-first-person');sessionStorage.removeItem('nemoworld-observe-world');}catch{}try{localStorage.removeItem('nemoworld-first-person');}catch{}$('#credential-value').textContent='';for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();closeEventStream();presence.clear();render();
 }
 async function recoverBrowserSession(){
@@ -525,7 +527,7 @@ function refreshMessageList() {
   if (replacement) messages.replaceWith(replacement);
 }
 window.__nemoworld = {
-  presence: () => presence.entries().map(([id, record]) => ({ id, confirmed: { ...record.confirmed }, display: displayCoords(record, performance.now()), tweening: presence.tweening(id) })),
+  presence: () => presence.entries().map(([id, record]) => ({ id, confirmed: storedPresencePoint(record.confirmed, record.world), display: storedPresencePoint(displayCoords(record, performance.now()), record.world), tweening: presence.tweening(id) })),
   stream: () => state.gameMode==='observe'&&spectator ? {world:spectator.worldId(),ready:spectator.status().live,closed:!spectator.status().live,reason:spectator.status().reason,updates:spectator.frames()} : (state.eventStream ? { world: state.eventStream.world, ready: state.eventStream.ready, closed: state.eventStream.closed, reason: state.eventStream.reason || null, errors: state.eventStream.errors, updates: state.eventStream.updates, lastLatencyMs: state.eventStream.lastLatencyMs ?? null } : null),
   lastClosed: () => state.eventStreamClosed || null,
   world: () => state.world,
@@ -621,11 +623,21 @@ async function climbPreview() {
   if (!direction) return notice('Pick a neighbouring tile first, then climb one block layer onto it.');
   await climbAgent(direction);
 }
-async function travelAgent(id) { movementQueue.reset('world-travel');walkVersion++;motionRevision++;if (!selected()) return; const result = await motionRequest(`/agents/${state.selected}/travel`, { world_id: id }); Object.assign(selected(), result.agent || result); selected().world_id = id; state.viewWorld = ''; state.focus = null; state.building = false; state.interaction=null; state.interactionRefusal=null;setGameMode('play'); await refresh(); setTab('world'); render();
+async function travelAgent(id) {
+ const resident=selected(),epoch=state.sessionEpoch||0;if(!resident)return false;
+ movementQueue.reset('world-travel');walkVersion++;motionRevision++;
+ const stillCurrent=()=>selected()?.id===resident.id&&(state.sessionEpoch||0)===epoch;
+ const result=await motionRequest(`/agents/${resident.id}/travel`,{world_id:id});
+ if(!stillCurrent())return false;
+ Object.assign(resident,result.agent||result);
+ state.viewWorld='';state.focus=null;state.building=false;state.interaction=null;state.interactionRefusal=null;setGameMode('play');
+ await refresh();if(!stillCurrent()||selected().world_id!==id)return false;
+ setTab('world');render();
  // The arrival names the way back, so a journey is reversible in one action without opening a menu.
  const back=travelRoutes(worldPortals(),worldPosition(),{limit:1,home:`home:${state.selected}`})[0];
  const arrived=`Arrived in ${definition().name}.`;notice(back?`${arrived} ${back.label} at ${back.x}, ${back.y} leads back.`:arrived);
  reportMoveOutcome(moveFeedback({outcome:'travel',message:back?`Arrived in ${definition().name} · ${back.label} leads back.`:arrived}));
+ return true;
 }
 const portalJourney=createPortalJourney({
   walkTo,
@@ -849,6 +861,13 @@ function renderTabs() {
   const privileged=isReviewer()||isModerator();
   const groups=menuGroups({account:Boolean(state.account),reviewer:isReviewer(),admin:state.account?.role==='admin',game:state.gamePresentation});
   const nav=$('#navigation');nav.replaceChildren();const active=activeSection();$('#toggle-navigation').textContent='Menu · '+sectionLabel(active);
+  if(state.gamePresentation&&state.account&&selected()){
+    const resident=selected(),home=element('div',null,'game-menu-home');
+    home.append(paragraph(resident.name,'game-menu-resident'));
+    if(state.callings?.agent_id===resident.id)home.append(paragraph(state.callings.calling.name,'privacy'));
+    const goHome=button('Go home',()=>{state.gameMenuOpen=false;return enterOwnedSpace();},'secondary');goHome.disabled=Boolean(state.world.paused)||resident.status!=='active';
+    home.append(goHome);nav.append(home);
+  }
   for(const group of groups){const section=element('div',null,'nav-group');if(group.title)section.append(paragraph(group.title,'nav-heading'));for(const entry of group.items){const item=button(entry.label,()=>navigateSection(entry.id));const image=element('img',null,'nav-icon');image.src=`/assets/icons/${entry.icon}.svg`;image.alt='';image.setAttribute('aria-hidden','true');item.prepend(image);item.setAttribute('aria-label',entry.label);item.dataset.section=entry.id;item.title=entry.purpose;if(entry.id===active)item.setAttribute('aria-current','page');section.append(item);}nav.append(section);}
   if(state.gamePresentation){const section=element('div',null,'nav-group game-workspace-link');section.append(paragraph('MORE CONTROLS','nav-heading'));if(privileged)section.append(button('Management',()=>{location.href='/manage';},'secondary small'));section.append(button('Open workspace',()=>{location.href='/?mode=workspace';},'secondary small'));nav.append(section);}
   if(state.gamePresentation&&state.tab==='world'){const sound=element('div',null,'nav-group game-audio-menu');sound.append(paragraph('SOUND','nav-heading'),gameAudio.createControls(document));nav.prepend(sound);}
@@ -2474,21 +2493,31 @@ function renderThanks(parent){
  * "can I afford it" flag come from GET /karma and GET /shop, and a purchase is never assumed to have
  * worked. `paintShopPanel` is the one place this section redraws itself.
  */
+function clearShopView(){
+  shopRevision++;shopPanel=null;shopHost=null;shopStatus=null;shopContext=null;
+}
+function currentShopContext(context=shopContext){
+  return Boolean(context&&context===shopContext&&context.revision===shopRevision&&context.accountId===state.account?.id&&context.agentId===state.selected&&context.epoch===(state.sessionEpoch||0)&&context.host===shopHost&&context.host?.isConnected);
+}
 function paintShopPanel(){
-  if(!shopPanel||!shopHost)return;
+  if(!shopPanel||!currentShopContext())return;
   mount(shopHost,shopPanel.view());
   const status=$('#shop-status');if(status){status.textContent=shopStatus?.text||'';status.className=shopStatus?.kind==='refused'?'privacy shop-status refused':'privacy shop-status';}
 }
 async function buyShopGood(goodId){
-  const agentId=state.selected;
+  const context=shopContext;if(!currentShopContext(context))return;
+  const agentId=context.agentId,panel=shopPanel;
   try{
     const purchase=await api('/shop/purchase','POST',{agent_id:agentId,good_id:goodId},true);
+    if(!currentShopContext(context))return;
     const [karma,shop]=await Promise.all([api(`/karma?agent_id=${encodeURIComponent(agentId)}`),api(`/shop?agent_id=${encodeURIComponent(agentId)}`)]);
-    shopPanel.update({karma,shop,agentId,purchase});
+    if(!currentShopContext(context))return;
+    panel.update({karma,shop,agentId,purchase});
     shopStatus={kind:'saved',text:`The server recorded the purchase of ${shop.goods.find(good=>good.id===goodId)?.label||goodId}. Your balance now reads ${karma.balance}.`};
     await loadJourney();
   }catch(error){
-    shopPanel.update({refusal:{error:error.message}});
+    if(!currentShopContext(context))return;
+    panel.update({refusal:{error:error.message}});
     shopStatus={kind:'refused',text:error.message};
   }
   paintShopPanel();
@@ -2499,35 +2528,105 @@ async function buyShopGood(goodId){
  * them. Opening this section settles, so a player sees what their last visit earned.
  */
 function renderKarmaShop(parent){
+  clearShopView();
   parent.append(heading('Karma Coins','Earn them by doing service in the world, and spend them here. Karma Coins are not NemoCoins, are not money, and have no cash value.'));
   if(!requireResident(parent))return;
   const agent=viewedAgent();
   const node=card('Karma & shop','EARN · SPEND · INSPECT');node.id='world-karma-shop-card';
   shopStatus=null;
   const status=element('p','Asking the server what your service has earned.','privacy');status.id='shop-status';
-  if(!shopPanel)shopPanel=createShopPanel({onPurchase:(goodId)=>guarded(()=>buyShopGood(goodId)),onChange:()=>paintShopPanel(),reducedMotion:()=>prefersReducedMotion(window.matchMedia)});
+  shopPanel=createShopPanel({onPurchase:(goodId)=>guarded(()=>buyShopGood(goodId)),onChange:()=>paintShopPanel(),reducedMotion:()=>prefersReducedMotion(window.matchMedia)});
   shopHost=element('div');shopHost.id='shop-panel-host';
+  const context={revision:shopRevision,accountId:state.account.id,agentId:agent.id,epoch:state.sessionEpoch||0,host:shopHost},panel=shopPanel;
+  shopContext=context;
   node.append(paragraph(`This purse belongs to your operator account and names ${agent.name}. Every Karma Coin in it came from one saved act the server wrote down, and the only way to spend one is the shop below.`),status,shopHost);
   parent.append(node);
-  paintShopPanel();
+  mount(shopHost,panel.view());
   guarded(async()=>{
-    const agentId=state.selected;
-    const settled=await api('/karma/settle','POST',{agent_id:agentId});
-    const [karma,shop]=await Promise.all([api(`/karma?agent_id=${encodeURIComponent(agentId)}`),api(`/shop?agent_id=${encodeURIComponent(agentId)}`)]);
-    shopPanel.update({karma,shop,agentId});
-    shopStatus={kind:'saved',text:settled?.minted?`Settled ${settled.minted} new Karma ${settled.minted===1?'receipt':'receipts'} from your saved service.`:'Nothing new to settle yet: the list below says what the server pays for.'};
-    paintShopPanel();
+    const agentId=context.agentId;
+    try{
+      const settled=await api('/karma/settle','POST',{agent_id:agentId});
+      if(!currentShopContext(context))return;
+      const [karma,shop]=await Promise.all([api(`/karma?agent_id=${encodeURIComponent(agentId)}`),api(`/shop?agent_id=${encodeURIComponent(agentId)}`)]);
+      if(!currentShopContext(context))return;
+      panel.update({karma,shop,agentId});
+      shopStatus={kind:'saved',text:settled?.minted?`Settled ${settled.minted} new Karma ${settled.minted===1?'receipt':'receipts'} from your saved service.`:'Nothing new to settle yet: the list below says what the server pays for.'};
+      paintShopPanel();
+    }catch(error){
+      if(!currentShopContext(context))return;
+      panel.update({refusal:{error:error.message}});shopStatus={kind:'refused',text:error.message};paintShopPanel();
+    }
   });
 }
 /** The free personal space every resident already owns, named and reachable in one action. */
+async function enterOwnedSpace({cottage=false,build=false}={}){
+  const resident=selected(),epoch=state.sessionEpoch||0;if(!resident)return false;
+  if(state.world.paused){notice('The world is paused. Your home and saved work are still here; try again when it resumes.',true);return false;}
+  const gardenId=`home:${resident.id}`,cottageId=`house:${resident.id}`;
+  // Continue furnishing the owned cottage when already inside it; a Build request elsewhere goes
+  // to the garden first. The arrival is confirmed by the server before any palette is enabled.
+  const target=cottage||build&&currentWorldId()===cottageId?cottageId:gardenId;
+  if(currentWorldId()!==target||!viewedAgent()){
+    if(!await travelAgent(target))return false;
+  }
+  if((state.sessionEpoch||0)!==epoch||selected()?.id!==resident.id||selected().world_id!==target)return false;
+  state.gameDrawer='';state.gameMenuOpen=false;setTab('world');renderGamePanel();
+  if(build){
+    if(state.world.world?.id!==target||state.world.world?.owner_agent_id!==resident.id||!placementRulesFor(state.world).available){
+      notice('Your home opened, but its building palette is unavailable. Reopen your home and try again.',true);return false;
+    }
+    state.building=true;render();
+    notice('Your home is ready to build. Choose an item, then place it on clear ground.');
+  }else{applyGameShell();$('#world')?.focus({preventScroll:true});}
+  return true;
+}
+async function readHomePrivacy(host,agentId){
+  const epoch=state.sessionEpoch||0,operator=state.account?.id;
+  const valid=()=>host.isConnected&&selected()?.id===agentId&&state.account?.id===operator&&(state.sessionEpoch||0)===epoch;
+  host.replaceChildren(paragraph('Reading your current visitor settings…','privacy'));
+  try{
+    const [garden,cottage]=await Promise.all([api(`/world?world_id=${encodeURIComponent(`home:${agentId}`)}&agent_id=${encodeURIComponent(agentId)}`),api(`/world?world_id=${encodeURIComponent(`house:${agentId}`)}&agent_id=${encodeURIComponent(agentId)}`)]);
+    if(!valid())return;
+    host.replaceChildren();
+    const inputs=form(host,'Save home privacy',async data=>{
+      if(!valid())return;
+      const result=await api(`/agents/${agentId}/home`,'PATCH',{visibility:data.visibility,house_visibility:data.visibility==='private'?'private':data.house_visibility});
+      if(!valid())return;
+      if(state.world.own_home?.id===`home:${agentId}`)state.world.own_home.visibility=result.visibility;
+      if(state.world.world?.id===`house:${agentId}`)state.world.world.visibility=result.house_visibility;
+      if(state.world.world?.id===`home:${agentId}`)state.world.world.visibility=result.visibility;
+      const access=$('#home-current-access');if(access)access.textContent=`Cottage access: ${result.house_visibility==='private'?'only your account and resident':'visitors welcome'}.`;
+      notice(`Home privacy saved. Garden: ${result.visibility}; cottage: ${result.house_visibility}.`);
+      await readHomePrivacy(host,agentId);
+    });
+    const options=[{value:'public',label:'Visitors welcome'},{value:'private',label:'Only my account and resident'}];
+    const gardenChoice=field(inputs,'visibility','Garden visitors',{options,value:garden.world.visibility,full:true});
+    const cottageChoice=field(inputs,'house_visibility','Cottage visitors',{options,value:cottage.world.visibility,full:true});
+    const sync=()=>{cottageChoice.disabled=gardenChoice.value==='private';if(cottageChoice.disabled)cottageChoice.value='private';};
+    gardenChoice.addEventListener('change',sync);sync();
+    host.append(paragraph('Closing the garden also closes the cottage. Visitors are returned to the Commons. These controls show the current server settings.','privacy'));
+  }catch(error){
+    if(!valid())return;
+    host.replaceChildren(paragraph(error.message||'Visitor settings are unavailable.','privacy'),button('Read settings again',()=>readHomePrivacy(host,agentId),'secondary small'));
+  }
+}
 function mySpaceCard(){
   const agent=viewedAgent();if(!agent)return null;
   const gardenId=`home:${agent.id}`,cottageId=`house:${agent.id}`;
   const here=currentWorldId()===gardenId,cottage=currentWorldId()===cottageId;
-  const node=card('Your space','FREE · YOURS TO BUILD IN');node.id='world-my-space-card';
+  const node=card(`${agent.name}’s home`,'A PLACE OF YOUR OWN');node.id='world-my-space-card';
+  const calling=state.callings?.agent?.id===agent.id||state.callings?.agent_id===agent.id?state.callings.calling:null;
+  const purpose=state.journey?.agent_id===agent.id?state.journey.profile?.purpose:null;
+  const identity=element('div',null,'home-resident-summary');identity.append(residentFace(agent,'lg'),append(element('div'),element('strong',agent.name),paragraph(calling?.name||'Choose a calling','privacy')));node.append(identity);
+  if(purpose)node.append(paragraph(purpose,'home-purpose'));
   node.append(paragraph(here||cottage?`You are standing in it: ${(state.world.objects||[]).length} of 200 items placed.`:`${agent.name} already owns a personal garden and a cottage. There is no plot to buy, no rent and no price.`));
-  node.append(actions(button(here?'You are here':'Go to my space',()=>travelAgent(gardenId),here?'small':'small'),button('Open my cottage',()=>travelAgent(cottageId),'secondary small'),button('Build something',()=>{state.building=true;renderView();},'secondary small')));
-  node.append(paragraph('Choose an item from the palette and click the ground, or use the keyboard: the digits pick an item and Enter places it on the tile you are facing. Resources and keepsakes you buy in the shop arrive on your shelf and can be crafted or worn.','privacy'));
+  const controls=actions(button(here?'You are here':'Go to my space',()=>enterOwnedSpace(),'small'),button('Open my cottage',()=>enterOwnedSpace({cottage:true}),'secondary small'),button('Build something',()=>enterOwnedSpace({build:true}),'secondary small'));
+  for(const control of controls.children)control.disabled=Boolean(state.world.paused)||agent.status!=='active';node.append(controls);
+  if(cottage){const access=paragraph(`Cottage access: ${state.world.world.visibility==='private'?'only your account and resident':'visitors welcome'}.`,'privacy');access.id='home-current-access';node.append(access);}
+  if(state.world.paused)node.append(paragraph('The world is paused. Your place and progress stay saved; home travel and building resume when the world does.','privacy'));
+  disclosure(node,'Home privacy',body=>body.append(paragraph('Read the current garden and cottage access before changing who may visit.','privacy'),button('Read visitor settings',()=>readHomePrivacy(body,agent.id),'secondary small')));
+  node.append(actions(button('My purpose & journal',()=>openSection('passport'),'secondary small'),button('Calling & guild',()=>openSection('callings'),'secondary small')));
+  node.append(paragraph('Choose an item from the palette, then click clear ground. Digits select an item; Enter places it on the tile you face. Placed items stay saved when you leave.','privacy'));
   return node;
 }
 function renderCoins(parent){
@@ -3880,10 +3979,16 @@ function mountFirstPlayGuide(){
   // floating panel, the entry-screen hide and the reduced-motion class), so `paint()`'s cards-alone
   // mount would leave every one of those styles matching nothing.
   const tree=firstPlayGuide.view();
+  const active=document.activeElement;
+  const focused=host.contains(active)?{tag:active.tagName,action:active.getAttribute('data-guide-action'),navigation:active.getAttribute('data-guide-navigation'),guide:active.getAttribute('data-guide'),stepDetails:active.parentElement?.classList.contains('game-guide-step-details')}:null;
   host.replaceChildren();
   const node=renderNode(tree,document);
   if(node){host.append(node);decorateFirstPlayEncounter(node);}
-  host.inert=state.gameDrawer==='chat';
+  host.inert=state.gameDrawer==='chat'||document.body.classList.contains('game-panel-compact');
+  if(focused&&!host.inert){
+    const control=[...host.querySelectorAll('button,summary')].find(item=>item.tagName===focused.tag&&item.getAttribute('data-guide-action')===focused.action&&item.getAttribute('data-guide-navigation')===focused.navigation&&item.getAttribute('data-guide')===focused.guide&&Boolean(item.parentElement?.classList.contains('game-guide-step-details'))===Boolean(focused.stepDetails));
+    control?.focus({preventScroll:true});
+  }
 }
 // The guide module owns what the encounter card says and renders text nodes only. Its card already
 // carries `data-guide="encounter"`, so the shell adds the one thing a text module cannot: the nearby

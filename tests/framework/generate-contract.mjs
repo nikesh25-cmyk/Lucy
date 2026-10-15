@@ -29,13 +29,14 @@ const dynamicScopes = Object.fromEntries([...server.match(/scope: \{ ([^}]+) \}\
 const KEYED = [...server.match(/\.includes\(route\)\) value = platform\[method\]\(actor, input, request\.headers\['idempotency-key'\]\)/g) ? server.match(/\['([^']+)'(?:, '[^']+')*\](?:\.concat\([^)]*\))?\.includes\(route\)\) value = platform\[method\]\(actor, input, request\.headers\['idempotency-key'\]\)/) : null];
 
 // --- the policy this wave declares ---------------------------------------------------------------
-const IDEMPOTENT = ['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept', '/trade/listings', '/trade/claim'];
+const IDEMPOTENT = ['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept', '/trade/listings', '/trade/claim', '/shop/purchase', '/residents/act'];
+const DYNAMIC_SCOPED = ['/residents/act'];
 const PUBLIC = ['/auth/register', '/auth/login'];
 const OPERATOR_ONLY_EXTRA = ['PATCH /agents/:id/home'];
 const READ_SCOPE_WRITES = ['POST /agents/:id/heartbeat'];
-const MAY_SKIP_WRITE = ['/drafts', '/residents/cancel', '/research/cancel', '/frontier/expand', '/frontier/grant/revoke', '/quests/complete'];
+const MAY_SKIP_WRITE = ['/drafts', '/residents/cancel', '/research/cancel', '/frontier/expand', '/residents/act', '/karma/settle', '/activity/tasks/check', '/frontier/grant/revoke', '/quests/complete'];
 // Audited routes the probe cannot reach, verified by reading the named method at 27c0d72.
-const BLOCKED_AUDIT = { '/auth/register': true, '/auth/login': false, '/operations/backup': true, '/residents/run': true, '/residents/resume': true, '/research/run': true, '/research/activate': true, '/memory/propose': true, '/restoration/join': true, '/restoration/leave': true, '/restoration/contribute': true, '/callings/select': true, '/quests/complete': true, '/guilds/verify': null, '/restoration/place': null, '/evidence/capture': null, '/research/generate': null };
+const BLOCKED_AUDIT = { '/residents/act': true, '/karma/settle': true, '/shop/purchase': true, '/activity/tasks/check': false, '/activity/author': true, '/auth/register': true, '/auth/login': false, '/operations/backup': true, '/residents/run': true, '/residents/resume': true, '/research/run': true, '/research/activate': true, '/memory/propose': true, '/restoration/join': true, '/restoration/leave': true, '/restoration/contribute': true, '/callings/select': true, '/quests/complete': true, '/guilds/verify': null, '/restoration/place': null, '/evidence/capture': null, '/research/generate': null };
 
 const domain = (route) => {
   if (route.startsWith('/auth/') || route === '/me') return 'auth';
@@ -86,13 +87,14 @@ const entries = [
 
 const rows = entries.map((entry) => {
   const publicRoute = PUBLIC.includes(entry.route);
-  const operatorOnly = OPERATOR_ONLY_EXTRA.includes(`${entry.method} ${entry.route}`) || (entry.scope === null && !publicRoute);
+  const dynamicScope = DYNAMIC_SCOPED.includes(entry.route);
+  const operatorOnly = !dynamicScope && (OPERATOR_ONLY_EXTRA.includes(`${entry.method} ${entry.route}`) || (entry.scope === null && !publicRoute));
   const key = `${entry.method} ${entry.route}`;
   const audit = probed.has(key) ? probed.get(key) : (entry.route in BLOCKED_AUDIT ? BLOCKED_AUDIT[entry.route] : null);
-  return { ...entry, publicRoute, operatorOnly, runtime: entry.scope !== null && !operatorOnly, session: !publicRoute, keyed: IDEMPOTENT.includes(entry.route), audit, readScopeWrite: READ_SCOPE_WRITES.includes(key), maySkip: MAY_SKIP_WRITE.includes(entry.route) };
+  return { ...entry, publicRoute, operatorOnly, dynamicScope, runtime: dynamicScope || (entry.scope !== null && !operatorOnly), session: !publicRoute && !dynamicScope, keyed: IDEMPOTENT.includes(entry.route), audit, readScopeWrite: READ_SCOPE_WRITES.includes(key), maySkip: MAY_SKIP_WRITE.includes(entry.route) };
 });
 
-const line = (r) => `  { route: '${r.route}', method: '${r.method}', domain: '${domain(r.route)}', scope: ${r.scope === null ? 'null' : `'${r.scope}'`}, session: ${r.session}, runtime: ${r.runtime}, public: ${r.publicRoute}, operator_only: ${r.operatorOnly},\n    idempotency_keyed: ${r.keyed}, audit: ${r.audit === null ? 'null' : r.audit}, durable_before_response: true, read_scope_write: ${r.readScopeWrite}, may_skip_write: ${r.maySkip} },`;
+const line = (r) => `  { route: '${r.route}', method: '${r.method}', domain: '${domain(r.route)}', dynamic_scope: ${r.dynamicScope}, scope: ${r.scope === null ? 'null' : `'${r.scope}'`}, session: ${r.session}, runtime: ${r.runtime}, public: ${r.publicRoute}, operator_only: ${r.operatorOnly},\n    idempotency_keyed: ${r.keyed}, audit: ${r.audit === null ? 'null' : r.audit}, durable_before_response: true, read_scope_write: ${r.readScopeWrite}, may_skip_write: ${r.maySkip} },`;
 
 const out = `// The declared write contract, as data. Every write route the server accepts at base commit
 // 27c0d72 states here: its method, owning domain, the scope a runtime credential must hold, whether a

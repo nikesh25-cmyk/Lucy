@@ -23,7 +23,7 @@ function drawn(scene) {
     for (let index = 0; index < mesh.count; index++) {
       mesh.getMatrixAt(index, matrix);
       const e = matrix.elements;
-      boxes.push({ group: group.name, centreX: e[12], height: e[13], centreY: e[14], halfWidth: Math.abs(e[0]) / 2, halfHeight: Math.abs(e[5]) / 2, halfLength: Math.abs(e[10]) / 2 });
+      boxes.push({ group: group.name, centreX: e[12], height: e[13], centreY: e[14], halfWidth: Math.abs(e[0]) / 2, halfHeight: Math.abs(e[5]) / 2, halfLength: Math.abs(e[10]) / 2, pick: mesh.userData.picks[index] || null });
     }
   }
   return boxes;
@@ -49,6 +49,32 @@ test('a window straddling any join stays inside the instance, cell and batch bud
     }
   }
   assert.ok(worstInstances > 0 && worstBatches > 0);
+});
+
+test('dense joined groves adapt only decoration, keep every pick and stay bounded when night lights appear', () => {
+  const position = { x: 136, y: 121 }, scene = createVoxelScene();
+  scene.update(map, {}, { position, lod: false, dayPhase: 'day' });
+  const full = drawn(scene);
+  const day = scene.update(map, {}, { position, dayPhase: 'day' });
+  const adapted = drawn(scene);
+  assert.equal(day.detail.adapted, true, 'this dense grove needs a smaller decorative ring');
+  assert.ok(day.detail.radius > 0 && day.detail.radius < day.detail.requestedRadius);
+  assert.ok(day.cubes <= DIORAMA_BUDGET.instances);
+  const picks = (boxes) => boxes.filter((box) => box.pick).map((box) => JSON.stringify(box)).sort();
+  assert.deepEqual(picks(adapted), picks(full), 'every surface, tree, building, fixture and entrance keeps its picked geometry');
+  const remaining = new Set(adapted.map((box) => JSON.stringify(box)));
+  const lost = full.filter((box) => !remaining.has(JSON.stringify(box)));
+  assert.ok(lost.length > 0);
+  assert.ok(lost.every((box) => box.pick === null), 'the budget removes only unpicked detail');
+  const night = scene.update(map, {}, { position, dayPhase: 'night', reducedMotion: true });
+  assert.ok(night.skyCubes > day.skyCubes, 'the scene actually gained its night sky geometry');
+  assert.ok(night.cubes <= DIORAMA_BUDGET.instances, 'the actual night sky and lamp batches remain inside the same budget');
+  assert.equal(scene.animating, false);
+  const terrain = scene.root.getObjectByName('voxel-terrain');
+  const again = scene.update(map, {}, { position, dayPhase: 'night', reducedMotion: true });
+  assert.equal(scene.root.getObjectByName('voxel-terrain'), terrain, 'unchanged frames reuse the adapted terrain batch');
+  assert.equal(again.detail.radius, night.detail.radius, 'the report retains the same tier as the cached meshes');
+  scene.destroy();
 });
 
 test('nothing solid is drawn on a walkable tile of the avenue at the join', () => {

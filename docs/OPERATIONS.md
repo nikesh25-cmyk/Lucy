@@ -62,7 +62,7 @@ Expected output: one JSON line, `{"path":"…/world-<stamp>.sqlite"}`, exit code
 What to check:
 - The command refuses with `The world server or another recovery operation is running. Stop it before recovery.` when the server is up. Stop the server and retry; do not delete `server.lock` by hand.
 - The file mode is `0600`: `ls -l data/backups`.
-- `node scripts/recovery.js verify <backup>` prints `{"schema_version":26,"accounts":N}` for a backup made by this build.
+- `node scripts/recovery.js verify <backup>` prints `{"schema_version":27,"accounts":N}` for a backup made by this build.
 
 Failure path: a backup that fails validation is deleted by `backupDatabase` and the error is raised.
 No partial file is left behind, and the live database is never touched.
@@ -129,7 +129,7 @@ node scripts/recovery.js restore data/backups/world-<stamp>.sqlite data/world.sq
 Expected output of step 3:
 
 ```json
-{"path":"…/data/world.sqlite","preserved_original":"…/data/world.sqlite.before-restore-<time>-<uuid>/original.sqlite","schema_version":26,"accounts":N}
+{"path":"…/data/world.sqlite","preserved_original":"…/data/world.sqlite.before-restore-<time>-<uuid>/original.sqlite","schema_version":27,"accounts":N}
 ```
 
 What to check:

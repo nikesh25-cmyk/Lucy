@@ -1,7 +1,7 @@
 // A bounded read of one *viewport* of the global map, across its seams.
 //
 // The map owner's `world?map=core` window is drawn around the resident being followed. This module
-// answers a different question, additively and without touching that projection: given the global
+// also supplies that projection's neighbouring regions: given the global
 // rectangle a client is actually drawing, what is in every region it overlaps? It returns the saved
 // state of each region (residents and civic residents with their presence, and the placements stored
 // in `world_objects`) plus the region's authored fixtures, each in the region's own coordinates
@@ -135,6 +135,9 @@ export const viewportMethods = {
       ...(viewer && input.gx === undefined && input.x === undefined && input.centre === undefined ? { centre: toGlobal(viewer.world_id, viewer.x, viewer.y) || undefined } : {}),
     });
     const plan = viewportPlan(window);
+    // Only the server's mapWindow uses this boolean to avoid reading its already-loaded anchor.
+    // HTTP query values are strings, so the public route keeps its complete viewport contract.
+    const plannedRegions = input._exclude_anchor === true ? plan.regions.filter((region) => region.world_id !== anchorId) : plan.regions;
     const now = this.clock();
     const participants = [], objects = [], scenery = [], regions = [], truncated = [];
     let rows = 0;
@@ -142,7 +145,10 @@ export const viewportMethods = {
       if (rows + count > VIEWPORT_BOUNDS.max_rows_returned) { if (!truncated.includes(region)) truncated.push(region); return false; }
       rows += count; return true;
     };
-    for (const region of plan.regions) {
+    // A followed resident must survive a crowded region's LIMIT and the aggregate
+    // response budget, including while the subscription still names the old region.
+    const readOrder = [...plannedRegions].sort((a, b) => Number(b.world_id === viewer?.world_id) - Number(a.world_id === viewer?.world_id));
+    for (const region of readOrder) {
       const id = region.world_id, { x, y, right, bottom } = region.local;
       const definition = getWorldDefinition(id);
       const [left, top] = [Math.max(0, x), Math.max(0, y)];
@@ -151,14 +157,14 @@ export const viewportMethods = {
         EXISTS(SELECT 1 FROM tokens t WHERE t.agent_id=a.id AND t.kind='runtime' AND t.revoked=0 AND t.expires_at>? AND t.used_calls<t.max_calls) AS has_session
         FROM agents a JOIN accounts o ON o.id=a.operator_id
         WHERE a.world_id=? AND a.x BETWEEN ? AND ? AND a.y BETWEEN ? AND ? AND a.status!='deleted' AND o.status='active'
-        ORDER BY a.last_seen DESC,a.id LIMIT ?`, now, id, left, endX, top, endY, VIEWPORT_BOUNDS.max_participants);
+        ORDER BY CASE WHEN a.id=? THEN 0 ELSE 1 END,a.last_seen DESC,a.id LIMIT ?`, now, id, left, endX, top, endY, viewer?.id || '', VIEWPORT_BOUNDS.max_participants);
       if (residents.length && room(id, residents.length)) for (const row of residents) participants.push(publicActor(row, now));
       const saved = this.all('SELECT id,type,x,y FROM world_objects WHERE world_id=? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ? ORDER BY y,x LIMIT ?', id, left, endX, top, endY, VIEWPORT_BOUNDS.max_objects_per_region);
       if (saved.length && room(id, saved.length)) for (const row of saved) objects.push({ ...row, kind: row.type, world_id: id });
-      const guides = this.all("SELECT id,name,x,y,status FROM npc_mayors WHERE world_id=? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ? ORDER BY name,id LIMIT ?", id, left, endX, top, endY, VIEWPORT_BOUNDS.max_npcs_per_region);
-      if (guides.length && room(id, guides.length)) for (const row of guides) participants.push({ id: row.id, name: row.name, kind: 'npc', mode: 'rules', x: row.x, y: row.y, world_id: id, status: row.status, presence: row.status === 'active' ? 'resident' : 'paused' });
-      const ambassadors = this.all("SELECT id,name,iso3,x,y FROM npc_ambassadors WHERE world_id=? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ? AND status='active' ORDER BY name,iso3 LIMIT ?", id, left, endX, top, endY, VIEWPORT_BOUNDS.max_npcs_per_region);
-      if (ambassadors.length && room(id, ambassadors.length)) for (const row of ambassadors) participants.push({ id: row.id, name: row.name, kind: 'npc', mode: 'rules', iso3: row.iso3, x: row.x, y: row.y, world_id: id, status: 'active', presence: 'resident' });
+      const guides = this.all("SELECT id,name,sprite,direction,x,y,status FROM npc_mayors WHERE world_id=? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ? ORDER BY name,id LIMIT ?", id, left, endX, top, endY, VIEWPORT_BOUNDS.max_npcs_per_region);
+      if (guides.length && room(id, guides.length)) for (const row of guides) participants.push({ id: row.id, name: row.name, kind: 'npc', mode: 'rules', sprite: row.sprite, direction: row.direction, color: '#397f79', symbol: '✦', title: `Regional guide of ${definition.name}`, x: row.x, y: row.y, world_id: id, status: row.status, presence: row.status === 'active' ? 'resident' : 'paused' });
+      const ambassadors = this.all("SELECT id,name,iso3,sprite,direction,x,y FROM npc_ambassadors WHERE world_id=? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ? AND status='active' ORDER BY name,iso3 LIMIT ?", id, left, endX, top, endY, VIEWPORT_BOUNDS.max_npcs_per_region);
+      if (ambassadors.length && room(id, ambassadors.length)) for (const row of ambassadors) participants.push({ id: row.id, name: row.name, kind: 'npc', mode: 'rules', iso3: row.iso3, sprite: row.sprite, direction: row.direction, color: '#397f79', symbol: '✦', title: `Country ambassador · ${row.name}`, x: row.x, y: row.y, world_id: id, status: 'active', presence: 'resident' });
       const authored = (definition.objects || []).filter((item) => item.x >= left && item.x <= endX && item.y >= top && item.y <= endY);
       for (const item of authored.slice(0, VIEWPORT_BOUNDS.max_scenery_per_region)) {
         if (!room(id, 1)) break;
@@ -170,7 +176,9 @@ export const viewportMethods = {
       });
     }
     const seen = new Set();
-    const unique = participants.filter((item) => { const key = `${item.world_id}|${item.id}`; return seen.has(key) ? false : (seen.add(key), true); }).slice(0, VIEWPORT_BOUNDS.max_participants);
+    const unique = participants.filter((item) => { const key = `${item.world_id}|${item.id}`; return seen.has(key) ? false : (seen.add(key), true); })
+      .sort((a, b) => Number(b.id === viewer?.id) - Number(a.id === viewer?.id)).slice(0, VIEWPORT_BOUNDS.max_participants);
+    regions.sort((a, b) => a.world_id.localeCompare(b.world_id));
     const bounded = {
       map: 'core', world_id: anchorId, origin: mapRect(anchorId) ? { gx: mapRect(anchorId).x, gy: mapRect(anchorId).y } : null,
       window: plan.window, clamped: plan.clamped, source: window.source,
@@ -178,7 +186,7 @@ export const viewportMethods = {
       presence: Object.fromEntries(unique.map((item) => [item.id, item.presence])),
       viewer_agent_id: viewer?.id || null,
       bounds: VIEWPORT_BOUNDS,
-      work: { regions: plan.regions.length, statements: 4 * plan.regions.length + (viewer ? 2 : 1), rows_returned: rows, tiles: plan.tiles, truncated },
+      work: { regions: plannedRegions.length, statements: 4 * plannedRegions.length + (viewer ? 2 : 1), rows_returned: rows, tiles: plan.tiles, truncated },
     };
     if (unique.length >= VIEWPORT_BOUNDS.max_participants && !bounded.work.truncated.includes('participants')) bounded.work.truncated.push('participants');
     return bounded;

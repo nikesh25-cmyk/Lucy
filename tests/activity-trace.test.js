@@ -85,12 +85,12 @@ test('a claim citing nothing, or citing a version the library does not hold, is 
  assert.equal(held.status,409);
  assert.match(held.message,/None of this claim’s 1 citation\(s\) resolve to a stored source version/);
  assert.equal(held.code,undefined);
- // (d) An explicit source version that does not exist is refused, while the real one resolves.
+ // (d) A caller cannot turn an unresolved citation into evidence by naming any real capture.
  assert.equal(refusalOf(()=>f.platform.traceContribution(f.actor('alice'),{claim_kind:'submission',claim_id:bareSubmitted.id,capture_id:'no-such-capture'})).status,404);
  const genuine=f.platform.get('SELECT id FROM evidence_captures WHERE sha256=? AND retained=1',worldBank.sha256).id;
- const pinned=f.platform.traceContribution(f.actor('alice'),{claim_kind:'submission',claim_id:bareSubmitted.id,capture_id:genuine});
- assert.equal(pinned.resolution.exact_version,true);
- assert.equal(pinned.resolution.pinned_versions.some(version=>version.capture_id===genuine),true);
+ const unbound=refusalOf(()=>f.platform.traceContribution(f.actor('alice'),{claim_kind:'submission',claim_id:bareSubmitted.id,capture_id:genuine}));
+ assert.equal(unbound.status,409);
+ assert.match(unbound.message,/not pinned/);
  // (e) A version that names another claim's submission is refused.
  const otherClaim=f.tx('claim',f.actor('bob'),{task_id:second.id,agent_id:other.id},'trace-second-claim');
  const otherSubmission=f.tx('submit',f.actor('bob'),{claim_id:otherClaim.id,...dossier(f)},'trace-second-submission');
@@ -189,4 +189,20 @@ test('a trace is readable by the contributor, its own operator and a reviewer, a
  // A runtime resolves only its own resident's claim.
  const session=f.tx('runtime',f.actor('alice'),agent.id,{scopes:['read'],duration_minutes:5,max_calls:5});
  assert.equal(traceContribution(f.platform,f.platform.authenticate(session.token),{claim_kind:'submission',claim_id:submitted.id}).action.id,submitted.id);
+});
+
+test('selecting a stored submission version traces that version and its own citations', async t=>{
+ const f=await fixture(t),agent=f.agent('alice');
+ const {task}=registeredMission(f);
+ const claim=f.tx('claim',f.actor('alice'),{task_id:task.id,agent_id:agent.id},'trace-version-claim');
+ const first=f.tx('submit',f.actor('alice'),{claim_id:claim.id,...dossier(f)},'trace-version-one');
+ f.tx('review',f.actor('reviewer'),{submission_id:first.id,decision:'changes_requested',reason:'Please clarify the limitation in a new stored version.'});
+ const second=f.tx('submit',f.actor('alice'),{claim_id:claim.id,...dossier(f),artifact:'A revised baseline with a clearly stated limitation and retained evidence.'},'trace-version-two');
+ const old=f.platform.traceContribution(f.actor('alice'),{claim_kind:'submission',claim_id:second.id,version_id:first.id});
+ assert.equal(old.action.id,first.id);
+ assert.equal(old.action.version,1);
+ const current=f.platform.traceContribution(f.actor('alice'),{claim_kind:'submission',claim_id:first.id,version_id:second.id});
+ assert.equal(current.action.id,second.id);
+ assert.equal(current.action.version,2);
+ assert.equal(current.action.artifact_characters,'A revised baseline with a clearly stated limitation and retained evidence.'.length);
 });

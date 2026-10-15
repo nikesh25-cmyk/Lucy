@@ -172,7 +172,7 @@ test('account deletion settles open offers immediately and erases authored listi
   assert.deepEqual(JSON.parse(settled.returned), { herbs: 2 }, 'the release is still recorded on the listing');
   assert.deepEqual(shelf(f, alice), {}, 'and no shelf row is written back for the removed account');
   assert.equal(verifyTradeRecords(f.platform), true);
-  assert.equal(validateDatabase(f.database).schema_version, 26);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
   assert.equal(f.platform.get('SELECT COUNT(*) AS n FROM coin_rewards').n, 0);
 });
 

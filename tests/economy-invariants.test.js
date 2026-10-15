@@ -209,7 +209,7 @@ test('a process killed in the middle of a claim or a purchase leaves the whole r
   assert.equal(f.platform.karmaWallet(f.actor('alice'), { agent_id: alice.id }).balance, 0);
   assert.equal(verifyKarmaLedger(f.platform.db), true, 'the ledger still verifies after two real crashes');
   assert.equal(verifyTradeRecords(f.platform), true);
-  assert.equal(validateDatabase(f.database).schema_version, 26);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
 });
 
 test('a half-written trade record refuses to open, at the board and at the backup gate', async (t) => {
@@ -235,7 +235,7 @@ test('a half-written trade record refuses to open, at the board and at the backu
   // The schema number itself is still 26: read straight from the header, because the validating open
   // is exactly what this damaged file must refuse.
   const raw = new DatabaseSync(f.database, { readOnly: true });
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 26);
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 27);
   raw.close();
 });
 
@@ -326,7 +326,7 @@ test('a deleted account gives up its goods, its escrow and its purse and leaves 
   }, records, 'the record of what the account was given and earned is kept');
   assert.equal(verifyKarmaLedger(f.platform.db), true);
   assert.equal(verifyTradeRecords(f.platform), true);
-  assert.equal(validateDatabase(f.database).schema_version, 26);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
   // Nothing of the deleted account is reachable or spendable, and no orphaned claim survives to take
   // the goods that were returned to it before the deletion.
   assert.throws(() => f.platform.authenticate(f.credentials.alice.token), { status: 401 });
@@ -387,7 +387,7 @@ test('the whole projected economy is identical after a real restart', async (t) 
   assert.equal(verifyKarmaLedger(platform.db), true);
   assert.equal(verifyCoinLedger(platform.db), true);
   assert.equal(verifyTradeRecords(platform), true);
-  assert.equal(validateDatabase(f.database).schema_version, 26);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
   // And the API is served from the restarted state: one read over HTTP returns the same classification.
   const app = createApp({ platform });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));

@@ -80,11 +80,11 @@ test('the practice chain completes end to end from saved facts only, awarding co
  assert.equal(exported.format,'shared-world-account-v18');
  assert.equal(exported.quests.enrollments.length,1);assert.equal(exported.quests.receipts.length,3);
  const backup=join(f.directory,'quest-backup.sqlite');backupDatabase(f.platform.db,backup);
- assert.equal(validateDatabase(backup).schema_version, 26);
+ assert.equal(validateDatabase(backup).schema_version, 27);
  f.platform.close();const reopened=new Platform(f.database,f.clock);t.after(()=>reopened.close());
  assert.equal(reopened.quests(reopened.authenticate(f.credentials.alice.token),{agent_id:agent.id}).progress[0].complete,true);
  assert.equal(reopened.get('SELECT COUNT(*) AS n FROM calling_receipts').n,3);
- assert.equal(validateDatabase(f.database).schema_version, 26);
+ assert.equal(validateDatabase(f.database).schema_version, 27);
 });
 
 test('progression survives reopen and replay without double-awarding, and an unattributable receipt fails validation',async t=>{

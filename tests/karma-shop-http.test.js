@@ -126,7 +126,7 @@ test('a resident earns Karma Coins from saved service in its own space and spend
   assert.equal(count(f, 'SELECT COUNT(*) AS n FROM land_parcels'), parcelsBefore, 'the finite land registry is untouched');
   assert.equal(count(f, 'SELECT COUNT(*) AS n FROM land_stewardships'), stewardshipsBefore, 'Karma buys no stewardship');
   assert.equal(verifyKarmaLedger(f.platform.db), true, 'both Karma chains must verify after the loop');
-  assert.equal(validateDatabase(f.database).schema_version, 26, 'the database must validate at the current schema');
+  assert.equal(validateDatabase(f.database).schema_version, 27, 'the database must validate at the current schema');
   assert.equal(shopCatalogue(f.platform, f.actor('alice'), { agent_id: resident.id }).goods.every((good) => good.price >= 8), true);
 });
 

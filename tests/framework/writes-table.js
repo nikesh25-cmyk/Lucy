@@ -341,6 +341,11 @@ export const WRITE_EXERCISES = [
 // Routes the harness cannot drive to a 2xx in a hermetic fixture. Each reason is an observation, not
 // a guess: a test asserts this list is exactly the coverage gap, so coverage cannot quietly shrink.
 export const BLOCKED_EXERCISES = Object.freeze({
+  '/residents/act': 'uses per-action scopes and a calling-specific lifecycle; real HTTP, replay and refusal checks are in tests/resident-lifecycle.test.js and tests/resident-controls.test.js',
+  '/activity/tasks/check': 'requires a structured type-specific task; validation and duplicate refusals are exercised in tests/activity-authoring.test.js',
+  '/activity/author': 'delegates to a type-specific authoring owner; saved effects are exercised in tests/activity-authoring.test.js',
+  '/karma/settle': 'requires saved service receipts for a specific resident; the closed-loop HTTP and restart case is exercised in tests/karma-shop-http.test.js',
+  '/shop/purchase': 'requires earned Karma and daily allowances; real HTTP, keyed replay and stored-goods effects are exercised in tests/karma-shop-http.test.js and tests/economy-invariants.test.js',
   '/auth/register': 'creates a real account; it is the public registration surface, not an authenticated write',
   '/auth/login': 'authenticates an existing account; it writes only session state',
   '/operations/backup': 'writes a backup file beside the database; tests/ops-rehearsal.test.js exercises it against its own directory',

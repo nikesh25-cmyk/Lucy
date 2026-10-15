@@ -197,7 +197,7 @@ async function drillCrashDuringWrite(directory) {
       check(checks, `${label}: the batch in flight at the kill is either wholly there or wholly gone`, attempted.every((batch) => (perBatch.get(batch) || 0) === (absent.includes(batch) ? 0 : CRASH_BATCH_SIZE)), `attempted=${attempted.join(',') || 'none'} rolled back=${absent.join(',') || 'none'}`);
       // The database itself is sound: file-level integrity, full validation (schema, audit chain,
       // coin ledger, foreign keys) and a quick check.
-      check(checks, `${label}: the database reopens sound after the kill`, validateDatabase(database).schema_version === 25 && platform.verifyAudit() && platform.integrity().quick_check === 'ok');
+      check(checks, `${label}: the database reopens sound after the kill`, validateDatabase(database).schema_version === 27 && platform.verifyAudit() && platform.integrity().quick_check === 'ok');
       // The running job is an explicit record, not a mystery.
       const job = platform.get('SELECT * FROM jobs WHERE id=?', jobId);
       const run = platform.get('SELECT * FROM resident_runs WHERE id=?', jobId);
@@ -313,7 +313,7 @@ async function drillRollbackReleaseCandidate(directory) {
   // the rollback artifact; nothing else is needed to undo a release.
   const backup = join(releases, 'world-release-point.sqlite');
   const backupReport = recovery(['backup', database, backup]);
-  check(checks, 'the released world has a verified release-point backup beside it', validateDatabase(backup).schema_version === 25 && backupReport.path === backup && (statSync(backup).mode & 0o777) === 0o600, `${statSync(backup).size} bytes, mode ${(statSync(backup).mode & 0o777).toString(8)}`);
+  check(checks, 'the released world has a verified release-point backup beside it', validateDatabase(backup).schema_version === 27 && backupReport.path === backup && (statSync(backup).mode & 0o777) === 0o600, `${statSync(backup).size} bytes, mode ${(statSync(backup).mode & 0o777).toString(8)}`);
 
   // Step 2 — the release. The first public sessions write to the world.
   const released = new Platform(database);
@@ -335,11 +335,11 @@ async function drillRollbackReleaseCandidate(directory) {
   const restoredActor = (name) => restored.authenticate(seeded.accounts[name].token);
   let live = restored;
   try {
-    check(checks, 'the rollback succeeds and preserves the released bytes before replacing them', rollback.schema_version === 25 && Boolean(rollback.preserved_original) && existsSync(rollback.preserved_original), `preserved_original=${Boolean(rollback.preserved_original)} in ${durationMs} ms`);
+    check(checks, 'the rollback succeeds and preserves the released bytes before replacing them', rollback.schema_version === 27 && Boolean(rollback.preserved_original) && existsSync(rollback.preserved_original), `preserved_original=${Boolean(rollback.preserved_original)} in ${durationMs} ms`);
     check(checks, 'the world is exactly the release-point state again', describeCounts(rolledBack) === describeCounts(releasePoint), `release point=${describeCounts(releasePoint)} rolled back=${describeCounts(rolledBack)}`);
     check(checks, 'the audit chain tip is the release-point tip again', restored.get('SELECT hash FROM audit ORDER BY seq DESC LIMIT 1').hash === releasePointAuditTip && restored.verifyAudit());
     check(checks, 'work committed after the release point is gone', restored.get("SELECT COUNT(*) AS n FROM world_objects WHERE x=4 AND y=6").n === 0 && restored.get("SELECT COUNT(*) AS n FROM accounts WHERE email='postrelease@reliability.invalid'").n === 0);
-    check(checks, 'the rolled-back world validates completely and its storage is intact', validateDatabase(database).schema_version === 25 && restored.integrity().quick_check === 'ok', JSON.stringify(storageUsage(database)));
+    check(checks, 'the rolled-back world validates completely and its storage is intact', validateDatabase(database).schema_version === 27 && restored.integrity().quick_check === 'ok', JSON.stringify(storageUsage(database)));
     // Step 4 — the world serves and accepts writes again, so a rollback is a recovery and not a stop.
     const app = createApp({ platform: restored, backupDir: join(install, 'backups'), mayorModel: async () => '{"action":"wait"}' });
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
@@ -347,7 +347,7 @@ async function drillRollbackReleaseCandidate(directory) {
       const health = await fetch(`http://127.0.0.1:${app.server.address().port}/api/v1/health`);
       check(checks, 'the rolled-back world serves the public health endpoint', health.status === 200 && (await health.json()).status === 'ok');
       const delivered = restored.transaction(() => restored.message(restoredActor('alice'), { agent_id: seeded.ids.aliceAgent, text: 'The world resumed after the rollback.' }));
-      check(checks, 'the rolled-back world accepts new writes and keeps a valid audit chain', Boolean(delivered.id) && restored.verifyAudit() && validateDatabase(database).schema_version === 25);
+      check(checks, 'the rolled-back world accepts new writes and keeps a valid audit chain', Boolean(delivered.id) && restored.verifyAudit() && validateDatabase(database).schema_version === 27);
     } finally {
       await app.stopWorkers();
       await new Promise((resolve) => { app.server.close(resolve); app.server.closeAllConnections(); });

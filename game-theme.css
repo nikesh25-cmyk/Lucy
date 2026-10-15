@@ -357,3 +357,46 @@ body.game-world #game-conversation-host #world-chat-card form>button{min-height:
   body.game-world .game-prompt-host{bottom:284px}
   body.game-world .game-prompt-host .interaction-prompt{padding:6px 10px;font-size:.62rem;line-height:1.35}
 }
+
+/* One useful action stays in view. Supporting people, saved progress and route details are native
+   disclosures, so keyboard and touch users can open the same information without a floating stack. */
+body.game-world .game-guide{gap:7px;scrollbar-width:thin;-webkit-mask-image:none;mask-image:none}
+body.game-world .game-guide-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0}
+body.game-world .game-guide-heading .game-guide-progress{flex:1;min-width:0}
+body.game-world .game-guide-heading .game-guide-dismiss{min-height:44px;min-width:68px;padding:7px 10px;font-size:.66rem}
+body.game-world .game-guide-next .game-guide-buttons{display:grid;grid-template-columns:1fr}
+body.game-world .game-guide-next .game-guide-buttons .game-guide-button{width:100%;text-align:left}
+body.game-world .game-guide-step-details{margin:0;border:0;background:none;padding:0;box-shadow:none}
+body.game-world .game-guide-step-details summary,
+body.game-world .game-guide-details-summary{display:list-item;min-height:44px;box-sizing:border-box;padding:12px 10px;cursor:pointer;color:#e5ead5;font-size:.7rem;line-height:1.35;list-style-position:inside}
+body.game-world .game-guide-step-details summary{padding-left:0;padding-right:0;color:#c4d5c4}
+body.game-world .game-guide-step-details[open]{display:grid;gap:7px}
+body.game-world .game-guide-step-details summary:focus-visible,
+body.game-world .game-guide-details-summary:focus-visible{outline:2px solid #f6f2c8;outline-offset:2px;border-radius:8px}
+body.game-world .game-guide-details{margin:0;padding:0;min-width:0;border:1px solid var(--game-edge);border-radius:13px;background:var(--game-glass);color:var(--game-ink);box-shadow:0 8px 24px #04161155;backdrop-filter:blur(13px)}
+body.game-world .game-guide-details-summary{padding-left:15px}
+body.game-world .game-guide-details-body{display:grid;gap:7px;padding:0 6px 6px}
+body.game-world .game-guide-details-body .game-guide-card{box-shadow:none;background:#0a2b25cc;border-color:#c7d6ac33}
+body.game-world.game-chat-open .game-guide-details{display:none}
+body.game-world .game-menu-home{display:grid;gap:4px;margin:0 0 12px;padding:13px;border:1px solid var(--game-edge);border-radius:13px;background:#113b30b3}
+body.game-world .game-menu-home p{margin:0}
+body.game-world .game-menu-resident{color:#fff9e1;font-size:.92rem;font-weight:700}
+body.game-world .game-menu-home button{min-height:44px;margin-top:5px}
+.home-resident-summary{display:flex;align-items:center;gap:12px;margin:6px 0 10px}
+.home-resident-summary .privacy{margin:3px 0 0}
+.home-purpose{padding:10px 12px;border-left:2px solid #9ebf85;background:#92b88b12;font-size:.86rem;line-height:1.5}
+@media(max-width:650px){
+  body.game-world .game-guide{top:164px;left:10px;right:10px;bottom:auto;width:auto;max-height:min(360px,calc(100dvh - 440px));display:grid;grid-template-columns:minmax(0,1fr);overflow-x:hidden;overflow-y:auto;scroll-snap-type:none;scrollbar-width:thin}
+  body.game-world .game-guide-card{flex:none;width:auto;max-height:none;overflow:visible;scroll-snap-align:none;padding:9px 12px;gap:6px;-webkit-mask-image:none;mask-image:none}
+  body.game-world .game-guide-next{padding-right:12px}
+  body.game-world .game-guide-next .game-guide-button{min-width:44px;min-height:44px}
+  body.game-world .game-guide-heading .game-guide-dismiss{width:auto;min-width:68px}
+  body.game-world .game-guide-card .game-guide-title{font-size:.88rem}
+  body.game-world .game-guide-card .game-guide-instruction{font-size:.72rem;line-height:1.4}
+  body.game-world .game-guide-details-body .game-guide-card{padding:10px}
+  body.game-world.game-chat-open .game-guide{max-height:36px;overflow:hidden}
+  body.game-world.game-chat-open .game-guide-next{padding:5px 9px}
+}
+@media(max-width:650px) and (max-height:700px){
+  body.game-world .game-guide{max-height:max(132px,calc(100dvh - 440px))}
+}
