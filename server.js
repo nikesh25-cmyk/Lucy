@@ -23,6 +23,8 @@ import { manifest } from './src/content.js';
 import { serveVideo } from './src/media.js';
 import { ensureTradeMarket } from './src/trade-market.js';
 import { ensureLivingWorld, livingWorldTick } from './src/living-world.js';
+import { goodsPolicyView } from './src/goods-policy.js';
+import { economyProvenance } from './src/economy-provenance.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -195,7 +197,7 @@ const writes = new Map([
   // of write. Checking a task writes nothing. A stage is never set by a request.
   ['/activity/tasks/check', ['activityTaskCheck', null]], ['/activity/author', ['activityAuthor', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/map', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status', '/residents/declaration', '/activity', '/activity/instance', '/activity/trace']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/map', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status', '/residents/declaration', '/activity', '/activity/instance', '/activity/trace', '/economy/goods', '/economy/provenance']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -637,6 +639,11 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           // signed-in operator's purse, and the shop is the frozen catalogue with today's allowances.
           else if (route === '/karma') value = platform.karmaWallet(actor, Object.fromEntries(url.searchParams));
           else if (route === '/shop') value = platform.shopCatalogue(actor, Object.fromEntries(url.searchParams));
+          // Wave 5: the world's one classification of movable goods, and the provenance of this
+          // operator's own rewards. Both are read-only: `goodsPolicyView` and `economyProvenance`
+          // write nothing, mint nothing and take no amount, no source and no day from the request.
+          else if (route === '/economy/goods') value = goodsPolicyView(platform, actor, Object.fromEntries(url.searchParams));
+          else if (route === '/economy/provenance') value = economyProvenance(platform, actor, Object.fromEntries(url.searchParams));
           else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
           else if (route === '/journey/offers') value = platform.resourceOffers(actor, Object.fromEntries(url.searchParams));
           else if (route === '/trade/listings') value = platform.tradeBoard(actor, Object.fromEntries(url.searchParams));

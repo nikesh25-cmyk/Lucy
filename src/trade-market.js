@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Platform } from './platform.js';
+import { assertReservationCovered, assertTransferable } from './goods-policy.js';
 import {
   TRADE_MARKET_LIMITS, TRADE_MARKET_POLICY, TRADE_MARKET_SCHEMA,
   claimCard, creditResources, debitResources, listingCard, listingTerms, normalizeTradeItems,
@@ -160,6 +161,11 @@ export const marketMethods = {
     this.tradeExpire();
     if (this.get("SELECT COUNT(*) AS n FROM trade_listings WHERE status='open' AND poster_agent_id=?", agent.id).n >= TRADE_MARKET_LIMITS.open_per_agent) fail(429, `A resident can keep ${TRADE_MARKET_LIMITS.open_per_agent} listings open at once.`);
     const now = this.clock(), id = randomUUID();
+    // Wave 5: what may leave an account is one classification for the whole world (src/goods-policy.js),
+    // consulted here before anything is escrowed. A grown crop or a crafted keepsake is transferable; a
+    // keepsake this account bought from the shop is account-bound and is refused with that named reason.
+    // The check runs after the replay branch above, so a retry of a recorded listing is unaffected.
+    assertTransferable(this, { account_id: actor.account.id, agent_id: agent.id, items, move: 'listed' });
     // Escrow first: the units leave the poster's shelf as the listing appears, so the same units can
     // never be promised by two listings and a claim always takes something the server already holds.
     debitResources(this, agent.id, items);
@@ -202,6 +208,9 @@ export const marketMethods = {
       if (!(kind in remaining)) fail(400, 'Claim only the kinds this listing holds.');
       if (quantity > remaining[kind]) fail(409, `This listing holds ${remaining[kind]} ${kind}, not ${quantity}.`);
     }
+    // The take side of the same classification: a listing that escrowed an account-bound good (posted
+    // before this rule existed) can neither be claimed nor accepted, and expires back to its poster.
+    assertReservationCovered(this, { account_id: listing.poster_account_id, items: wanted, move: 'claimed' });
     const now = this.clock(), claimId = randomUUID();
     this.run('INSERT INTO trade_claims VALUES(?,?,?,?,?,?)', claimId, listing.id, agent.id, actor.account.id, claimKey, now);
     for (const [kind, quantity] of Object.entries(wanted)) {

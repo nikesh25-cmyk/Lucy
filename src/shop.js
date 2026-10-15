@@ -15,6 +15,7 @@
 import { randomUUID } from 'node:crypto';
 import content from './content.js';
 import { GARDEN_PALETTE, HOUSE_PALETTE } from './placement-policy.js';
+import { shopGoodClassification } from './goods-policy.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const invalid = (message) => { throw new Error(`shop catalogue: ${message}`); };
@@ -262,6 +263,10 @@ export function shopCatalogue(platform, actor, input = {}) {
         grant: { ...good.grant }, note: good.note, daily_limit: good.per_account_limit_per_day,
         bought_today: today, remaining_today: remaining, available_today: remaining > 0,
         can_afford: balance === null ? null : balance >= good.price,
+        // Wave 5: the shop states, from the world's one classification table, whether what it sells
+        // may leave the buying account at all. A resource bundle is transferable goods; a keepsake is
+        // an account-bound entitlement the buyer's own resident wears (src/goods-policy.js).
+        ...shopGoodClassification(good.category),
       };
     }),
     server_time: platform.clock(),
