@@ -266,6 +266,13 @@ labelled controls → Escape to dismiss and return focus to the HUD (`app.js:149
 Inventory are opened from the `More` drawer and from the corresponding section, both reachable from the
 world menu.
 
+**Update (2026-10-15) — every section is a panel.** The four panels above are the *drawers*. The remaining
+platform sections (Explore, World list, Callings, Missions, Wallet, Passport, Characters and the rest) no
+longer replace the 3D view either: the world menu and the *Places* action open them as a section panel
+beside (desktop) or under (phone) the running scene, using the catalogue in `src/ui/command-deck.js`.
+See [GAME_INTERFACE.md](GAME_INTERFACE.md) *The in-game command surface* for the behaviour, the section
+inventory and the keyboard, touch and reduced-motion rules. Governance stays behind `/manage`.
+
 ## 7. Surface 5 — a separate management interface
 
 The advanced surfaces already exist; what changes is that they stop sharing the newcomer's path.

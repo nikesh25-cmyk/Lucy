@@ -128,7 +128,8 @@ test('the interface renders the guild project board from the published payload w
  const nav=readFileSync(fileURLToPath(new URL('../index.html',import.meta.url)),'utf8');
  for(const field of ['renderGuildProjects','loadGuildProjects','guildProjectCard','guildPlanList','guildContributionList','guildParticipationControls','guildProjectForm','guildOutcomeTag'])assert.match(source,new RegExp(`function ${field}\\(|async function ${field}\\(`));
  for(const field of ['shared_status','outcome','participation','guild_name','visibility','workstream'])assert.match(source,new RegExp(field));
- assert.match(source,/guilds','Guild projects'/);
+ // The menu entry now lives in the one section catalogue the game shell and the workspace both read.
+ assert.match(readFileSync(fileURLToPath(new URL('../src/ui/command-deck.js',import.meta.url)),'utf8'),/'guilds', 'Guild projects'/);
  assert.doesNotMatch(source,/innerHTML/);
  assert.doesNotMatch(source,/\$\([^)]*\)\.html\s*=/);
  assert.match(nav,/id="view"/);

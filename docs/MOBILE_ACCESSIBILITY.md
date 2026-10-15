@@ -355,3 +355,27 @@ coupling, which is what keeps this layer compatible with the four parallel tasks
 - **Zoom and very large text.** The width arithmetic assumes a 320 CSS-pixel viewport. A user at 200 %
   zoom on a 390-pixel phone has ~195 CSS pixels, where the pad's 156 px still fits but the camera row
   wraps to two rows; nothing overflows, but the layout is untested at that width (see §7.2).
+
+## 9. The in-game command surface on a phone
+
+Sections open as a **sheet** under 1280 px (a **dock** beside the world above it). The rules that matter
+on a small screen, all asserted in `tests/command-deck.test.js` and the `in-game-command-surface` browser
+scenario:
+
+- The sheet is 52 % of the height (`Taller`: 86 %) and the world is *resized* to the rest — the same canvas,
+  not a covered one — so on 390 × 844 about 360 px of live scene stays above it and the avatar stays
+  centred in the visible part. At least 28 % of the viewport area stays world at every width.
+- The touch pad stands down while the sheet covers its place (`syncTouchEnabled`, the same single place a
+  conversation stands it down) and returns on **Close**; the quickbar stays above the sheet, so *Places*,
+  *Chat* and *More* remain one tap away and the three swap with the sheet rather than stacking.
+- Every control the surface adds is a real button with a 44 × 44 px minimum; the menu's find box is a
+  `type=search` field with an associated label, a polite match count and `enterkeyhint=go`.
+- A section is one column in the panel (grids collapse, tables scroll inside their own box), and the panel
+  never scrolls sideways: the audit script checks `scrollWidth` for all 24 sections at 390, 1024 and 1440 px.
+- The panel is a labelled complementary landmark (`aria-labelledby`, `aria-describedby` → "The world keeps
+  running behind this panel. Esc closes it."). Opening moves focus to the section's first visible heading;
+  closing returns it to the control that opened the panel.
+- Where the HUD stands down (sheet, widened dock) the aim line, move feedback, target and interaction prompt
+  stay as visually hidden live regions instead of being removed.
+- No animation is defined; the sidebar and drawer transitions are removed under `prefers-reduced-motion`.
+

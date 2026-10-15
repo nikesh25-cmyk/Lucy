@@ -107,7 +107,8 @@ test('the restoration routes keep the plan public, the opening human-only and ev
     assert.match(source, new RegExp(`function ${field}\\(|async function ${field}\\(`), `${field} must exist in the interface`);
   }
   for (const field of ['restoration', 'artifact', 'participants', 'progress', 'policy', 'promise']) assert.match(source, new RegExp(field));
-  assert.match(source, /restoration','World restoration'/);
+  // The menu entry now lives in the one section catalogue the game shell and the workspace both read.
+  assert.match(readFileSync(fileURLToPath(new URL('../src/ui/command-deck.js', import.meta.url)), 'utf8'), /'restoration', 'World restoration'/);
   assert.doesNotMatch(source, /innerHTML/);
   assert.doesNotMatch(source, /\$\([^)]*\)\.html\s*=/);
 });

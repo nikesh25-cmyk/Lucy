@@ -148,6 +148,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'first-play-solo-ambassador', title: 'A new solo operator follows the guide through the Commons, asks a nearby scripted ambassador, and retains that saved meeting', regression: null },
   { id: 'restoration-two-clients', title: 'Two browsers restore one shared garden and the attributed result survives a reload in both', regression: null },
   { id: 'phone-conversation', title: 'The game conversation panel is compact, preserves drafts, and respects reduced motion on phones', regression: null },
+  { id: 'in-game-command-surface', title: 'Every platform section opens as a panel over the running 3D world, with keyboard, phone and reduced-motion access, and the avatar stays controllable', regression: null },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -400,6 +401,14 @@ async function settle(page) {
 const nav = (page, label) => page.locator(`#navigation button[aria-label="${label}"]`);
 
 async function openTab(page, label) {
+  // In the game the section list lives in the World menu, which closes once a section is chosen; open it again
+  // when the entry is not on screen, exactly as a visitor would.
+  const menu = page.locator('#game-menu-button');
+  for (let attempt = 0; attempt < 2 && !await nav(page, label).isVisible().catch(() => false); attempt++) {
+    if (!await menu.isVisible().catch(() => false)) break;
+    await menu.click();
+    await nav(page, label).waitFor({ state: 'visible', timeout: 2500 }).catch(() => {});
+  }
   await nav(page, label).click();
   await settle(page);
   await page.waitForTimeout(150);
@@ -2215,6 +2224,167 @@ define('phone-conversation', async () => {
     expect(await page.locator('#game-conversation-host').isVisible() === false, 'panel must hide after close');
     return 'panel closed';
   });
+});
+
+// The in-game command surface. A section is a panel over (desktop: beside) the running world, never a
+// replacement for it: the same WebGL canvas element survives every section, the avatar still answers
+// the keyboard while a panel is open, Escape closes the panel, and a phone gets a sheet that leaves
+// the scene on screen. The catalogue is read from the page so a section added later is covered too.
+define('in-game-command-surface', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const player = fixtures().characters.player;
+  await mkdir(join(RESULTS, 'in-game-command-surface'), { recursive: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+  await settle(page);
+  if (!await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, ACTORS.admin);
+  // An earlier scenario may have left this operator inside the game; Play appears only on the entry screen.
+  const entry = page.locator('#hero-actions').getByRole('button', { name: 'Play', exact: true });
+  if (await entry.waitFor({ state: 'visible', timeout: 8000 }).then(() => true, () => false)) await entry.click();
+  await page.waitForFunction((id) => window.__nemoworld?.selected?.() === id && document.querySelector('#world'), player.id, { timeout: PAGE_TIMEOUT_MS });
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => { document.querySelector('#world').dataset.surfaceMark = 'kept'; });
+  const facts = () => page.evaluate(() => {
+    const canvas = document.querySelector('#world'), box = canvas?.getBoundingClientRect(), panel = document.querySelector('#game-panel'), body = document.querySelector('#game-panel-body');
+    const ids = [...document.querySelectorAll('[id]')].map((node) => node.id);
+    return {
+      panel: window.__nemoworld.panel(), kept: canvas?.dataset.surfaceMark === 'kept', share: box ? (box.width * box.height) / (innerWidth * innerHeight) : 0, bottom: box?.bottom ?? 0,
+      panelHidden: panel.hidden, panelTop: panel.getBoundingClientRect().top, panelLeft: panel.getBoundingClientRect().left, overflow: body.scrollWidth - body.clientWidth, textLength: body.textContent.trim().length,
+      duplicates: [...new Set(ids.filter((value, index) => ids.indexOf(value) !== index))], focusInPanel: panel.contains(document.activeElement), focusId: document.activeElement?.id || document.activeElement?.tagName,
+      current: document.querySelector('#navigation [aria-current="page"]')?.getAttribute('aria-label') || null, menuOpen: document.body.classList.contains('game-menu-open'),
+      pad: Boolean(document.querySelector('.nm-touch') && getComputedStyle(document.querySelector('.nm-touch')).display !== 'none'),
+    };
+  });
+
+  await step('the menu finds a section by a few words and Enter opens it beside the running world', async () => {
+    await page.locator('#game-menu-button').click();
+    const search = page.getByRole('searchbox', { name: 'Find a section' });
+    await search.waitFor({ state: 'visible' });
+    await search.fill('wallet');
+    const shown = await page.locator('#navigation [data-section]:not([hidden])').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label')));
+    expect(shown.length === 1 && shown[0] === 'Coin wallet', 'a search for wallet must leave exactly the Coin wallet', { expected: 'Coin wallet', actual: describe(shown) });
+    expect(/1 section matches/.test(await page.locator('#game-menu-status').textContent()), 'the match count must be announced in a status region');
+    await search.press('Enter');
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'coins', null, { timeout: PAGE_TIMEOUT_MS });
+    await page.waitForTimeout(500);
+    const seen = await facts();
+    expect(seen.kept && !seen.panelHidden, 'the panel must be open on the same 3D canvas', { actual: describe(seen) });
+    expect(!seen.menuOpen && seen.current === 'Coin wallet', 'choosing a section closes the menu and marks it current', { actual: describe(seen) });
+    expect(seen.share >= 0.5 && seen.panelLeft >= 900, 'on a desktop the world keeps at least half the screen and the panel sits beside it', { actual: describe(seen) });
+    expect(seen.focusInPanel, 'keyboard focus must move into the panel', { actual: describe(seen.focusId) });
+    await page.screenshot({ path: join(RESULTS, 'in-game-command-surface', 'desktop-wallet.png') });
+    return `Coin wallet opened beside the world; the world keeps ${(seen.share * 100).toFixed(0)}% of the screen`;
+  });
+
+  await step('the resident still walks while the panel is open, from the keyboard and from the Focus world control', async () => {
+    await page.locator('#game-panel-world').click();
+    const before = row('SELECT x,y FROM agents WHERE id=?', player.id);
+    let moved = null;
+    for (const key of ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown']) {
+      await page.keyboard.press(key);
+      moved = await waitForCondition(() => { const now = row('SELECT x,y FROM agents WHERE id=?', player.id); return Math.abs(now.x - before.x) + Math.abs(now.y - before.y) === 1 ? now : null; }, `a ${key} step to be saved`, { timeout: 1800, interval: 100 }).catch(() => null);
+      if (moved) break;
+    }
+    expect(moved, 'a walking key must move the resident one stored tile with the panel open', { expected: `one step from ${before.x},${before.y}`, actual: describe(row('SELECT x,y FROM agents WHERE id=?', player.id)) });
+    expect((await facts()).panel === 'coins', 'walking must not close the panel');
+    return `${before.x},${before.y} → ${moved.x},${moved.y} with the Coin wallet open`;
+  });
+
+  await step('Escape closes the panel, focus returns to the control that opened it, and the canvas never changed', async () => {
+    await page.locator('#game-panel-body').locator('button, a[href], input, select').first().focus().catch(() => {});
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => window.__nemoworld.panel() === '', null, { timeout: PAGE_TIMEOUT_MS });
+    const seen = await facts();
+    expect(seen.panelHidden && seen.kept, 'the panel must be hidden and the canvas the same one', { actual: describe(seen) });
+    expect(await page.evaluate(() => !document.querySelector('#game-panel').contains(document.activeElement)), 'focus must leave the hidden panel');
+    return 'Escape closed the panel; focus is on ' + seen.focusId;
+  });
+
+  await step('every section in the catalogue opens as a panel and none replaces the world', async () => {
+    const ids = await page.evaluate(() => window.__nemoworld.sections().filter((id) => id !== 'world'));
+    expect(ids.length >= 24, 'the catalogue must list every section', { actual: String(ids.length) });
+    const broken = [];
+    for (const id of ids) {
+      const inMenu = await page.evaluate((target) => Boolean([...document.querySelectorAll('#navigation [data-section]')].find((node) => node.dataset.section === target)), id);
+      if (inMenu) { await page.locator('#game-menu-button').click(); await page.locator(`#navigation [data-section="${id}"]`).click(); }
+      else await page.evaluate((target) => window.__nemoworld.openSection(target), id);
+      await page.waitForFunction((target) => window.__nemoworld.panel() === target, id, { timeout: PAGE_TIMEOUT_MS });
+      await page.waitForTimeout(450);
+      const seen = await facts();
+      const problems = [];
+      if (!seen.kept) problems.push('canvas replaced');
+      if (seen.share < 0.5) problems.push(`world share ${seen.share.toFixed(2)}`);
+      if (seen.panelHidden) problems.push('panel hidden');
+      if (seen.overflow > 2) problems.push(`sideways overflow ${seen.overflow}`);
+      if (seen.duplicates.length) problems.push(`duplicate ids ${seen.duplicates.join(',')}`);
+      if (seen.textLength < 40) problems.push('empty');
+      if (inMenu && seen.current !== await page.evaluate((target) => [...document.querySelectorAll('#navigation [data-section]')].find((node) => node.dataset.section === target)?.getAttribute('aria-label'), id)) problems.push(`menu marks ${seen.current}`);
+      if (problems.length) broken.push(`${id}: ${problems.join('; ')}`);
+    }
+    expect(!broken.length, 'every section must open as a clean panel over the same world', { actual: describe(broken) });
+    await page.keyboard.press('Escape');
+    return `${ids.length} sections opened beside the same canvas`;
+  });
+
+  await step('the shell keeps one right-hand slot: Chat and Places swap with the panel instead of stacking', async () => {
+    const hud = page.locator('#game-hud');
+    await hud.getByRole('button', { name: 'Places', exact: true }).click();
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'explore', null, { timeout: PAGE_TIMEOUT_MS });
+    await hud.getByRole('button', { name: 'Chat', exact: true }).waitFor({ state: 'visible' });
+    await page.evaluate(() => document.querySelector('#game-hud .game-quickbar button:nth-child(3)').click());
+    await page.waitForFunction(() => document.body.dataset.gameDrawer === 'chat' && window.__nemoworld.panel() === '', null, { timeout: PAGE_TIMEOUT_MS });
+    expect(await page.locator('#game-panel').isHidden(), 'opening the conversation must close the panel');
+    await page.evaluate(() => document.querySelector('#game-hud .game-quickbar button:nth-child(4)').click());
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'explore' && !window.__nemoworld.drawer(), null, { timeout: PAGE_TIMEOUT_MS });
+    await page.evaluate(() => document.querySelector('#game-hud .game-quickbar button:nth-child(4)').click());
+    await page.waitForFunction(() => window.__nemoworld.panel() === '', null, { timeout: PAGE_TIMEOUT_MS });
+    return 'Chat closed the panel, Places reopened it and a second press closed it';
+  });
+
+  await step('the world menu key M opens the launcher from the scene', async () => {
+    await page.locator('#world').focus();
+    await page.keyboard.press('m');
+    await page.waitForFunction(() => document.body.classList.contains('game-menu-open'), null, { timeout: PAGE_TIMEOUT_MS });
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.body.classList.contains('game-menu-open'), null, { timeout: PAGE_TIMEOUT_MS });
+    return 'M opened the menu and Escape closed it';
+  });
+
+  await step('a phone gets a sheet: the scene stays above it, the touch pad stands down, and Close brings it back', async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(500);
+    await page.locator('#game-menu-button').click();
+    await page.locator('#navigation [data-section="missions"]').click();
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'missions', null, { timeout: PAGE_TIMEOUT_MS });
+    await page.waitForTimeout(700);
+    const seen = await facts();
+    expect(seen.kept && !seen.panelHidden, 'the sheet must open over the same canvas', { actual: describe(seen) });
+    expect(seen.bottom <= seen.panelTop + 2 && seen.share >= 0.28, 'the world must stay above the sheet and keep at least 28% of the screen', { actual: describe({ share: seen.share, canvasBottom: seen.bottom, sheetTop: seen.panelTop }) });
+    expect(seen.overflow <= 2 && !seen.pad, 'the sheet must not scroll sideways and the touch pad must stand down while it covers the pad', { actual: describe({ overflow: seen.overflow, pad: seen.pad }) });
+    await page.screenshot({ path: join(RESULTS, 'in-game-command-surface', 'phone-missions.png') });
+    await page.locator('#game-panel-close').click();
+    await page.waitForFunction(() => window.__nemoworld.panel() === '', null, { timeout: PAGE_TIMEOUT_MS });
+    await page.waitForTimeout(500);
+    const after = await facts();
+    expect(after.pad, 'closing the sheet must bring the touch pad back', { actual: describe(after) });
+    return `sheet top ${Math.round(seen.panelTop)}px, world ${(seen.share * 100).toFixed(0)}% of the screen, pad back after Close`;
+  });
+
+  await step('reduced motion: the panel and menu define no transition', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.locator('#game-menu-button').click();
+    await page.locator('#navigation [data-section="community"]').click();
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'community', null, { timeout: PAGE_TIMEOUT_MS });
+    const motion = await page.evaluate(() => ({ panel: getComputedStyle(document.querySelector('#game-panel')).transitionDuration, content: getComputedStyle(document.querySelector('#content')).transitionDuration, sidebar: getComputedStyle(document.querySelector('.sidebar')).transitionDuration }));
+    expect(Object.values(motion).every((value) => value.split(',').every((part) => parseFloat(part) === 0)), 'no transition may run under prefers-reduced-motion', { actual: describe(motion) });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.keyboard.press('Escape');
+    return 'transition durations are all 0s under reduced motion';
+  });
+
+  return 'every section opens as a panel over the running world, with keyboard, phone and reduced-motion access, and the resident keeps walking';
 });
 
 define('signout-privacy', async () => {
@@ -5491,17 +5661,27 @@ define('world-sound-controls', async () => {
     return `mute persisted as ${persisted.pressed}; volume persisted at ${persisted.volume}`;
   });
 
-  await step('leaving the game stops playback and returning keeps sound opt in', async () => {
+  await step('a panel keeps the world and its sound, and leaving the game stops playback and keeps sound opt in', async () => {
+    // Guide is a section of the in-game panel now: the world keeps running and its controls stay.
     await openTab(page, 'Guide');
+    expect(await page.locator('#world').count() === 1, 'a section must open beside the running world, not replace it');
+    await page.locator('#game-menu-button').click();
+    await page.locator('.game-audio-controls').waitFor({ state: 'visible' });
+    expect((await page.locator('.game-audio-controls').getByRole('button').first().textContent())?.trim() === 'Enable sound',
+      'opening a panel must not start sound the visitor had not enabled');
+    await page.keyboard.press('Escape');
+    // Leaving the game is leaving the page: the management interface has no world and no sound controls.
+    await page.goto(`${baseUrl()}/manage`, { waitUntil: 'domcontentloaded' });
     expect(await page.locator('.game-audio-controls').count() === 0, 'leaving the game must remove its live sound controls');
-    await openTab(page, 'Open world');
+    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
     await page.locator('#game-menu-button').click();
     const controls = page.locator('.game-audio-controls');
     const mute = controls.getByRole('button').first();
     await controls.waitFor({ state: 'visible' });
     expect((await mute.textContent())?.trim() === 'Enable sound',
       'returning to the game must show stopped playback and require opt in again', { actual: (await mute.textContent())?.trim() });
-    return 'Guide stopped playback; returning to the world required an explicit enable click again';
+    return 'a panel left the world and its sound alone; leaving for /manage stopped playback and returning required an explicit enable click again';
   });
 
   return 'world ambience is opt in, keyboard accessible, persistent and stopped when leaving the game';
@@ -6499,7 +6679,8 @@ async function signUp(page, { name, email, password }) {
 
 /** Creates one AI resident through the shipped character form, leaving the calling at its default. */
 async function createResidentThroughInterface(page, name) {
-  const form = page.locator('#view form[data-draft-section="character-create"]');
+  // The creation form opens in the in-game panel while playing and in the view otherwise.
+  const form = page.locator('#view form[data-draft-section="character-create"], #game-panel-body form[data-draft-section="character-create"]').first();
   await form.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
   await form.locator('[aria-label="Character name"]').fill(name);
   await form.getByRole('button', { name: 'Create character', exact: true }).click();
@@ -6592,7 +6773,7 @@ define('first-ten-minutes', async () => {
 
   await step('a calling is chosen through the interface and a calling.selected audit row is written', async () => {
     await openGameTab(page, 'Callings & guilds');
-    const choice = page.locator('#view .calling-choice[data-calling="cultivator"]');
+    const choice = page.locator(':is(#view, #game-panel-body) .calling-choice[data-calling="cultivator"]');
     await choice.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
     await choice.getByRole('button', { name: /^Become/ }).click();
     const audit = await waitForCondition(async () => row("SELECT seq,event,record_id FROM audit WHERE event='calling.selected' AND record_id=?", resident.id), 'the saved calling.selected audit row');
@@ -7005,7 +7186,7 @@ define('first-play-solo-ambassador', async () => {
     resident = await createResidentThroughInterface(page, RESIDENT);
     await enterWorldAs(page, resident.id, RESIDENT);
     await openGameTab(page, 'Callings & guilds');
-    const choice = page.locator('#view .calling-choice[data-calling="cultivator"]');
+    const choice = page.locator(':is(#view, #game-panel-body) .calling-choice[data-calling="cultivator"]');
     await choice.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
     await choice.getByRole('button', { name: /^Become/ }).click();
     await waitForCondition(async () => row("SELECT seq FROM audit WHERE event='calling.selected' AND record_id=?", resident.id), 'the solo resident’s calling selection to be saved');

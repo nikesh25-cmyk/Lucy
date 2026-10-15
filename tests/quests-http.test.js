@@ -118,7 +118,8 @@ test('the interface renders the quest board from the published payload without i
  for(const field of ['questNextCard','questProgressCard','questAuthorForm','renderQuests','loadQuests'])assert.match(source,new RegExp(`function ${field}\\(|async function ${field}\\(`));
  assert.doesNotMatch(source,/innerHTML/);
  assert.doesNotMatch(source,/\$\([^)]*\)\.html\s*=/);
- assert.match(source,/quests:'clipboard-list'/);
+ // The menu entry and its shipped icon live in the one section catalogue the game shell and the workspace both read.
+ assert.match(readFileSync(fileURLToPath(new URL('../src/ui/command-deck.js',import.meta.url)),'utf8'),/'quests', 'Quest chains', 'world', 'clipboard-list'/);
  assert.match(nav,/id="view"/);
 });
 

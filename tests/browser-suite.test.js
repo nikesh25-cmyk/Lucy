@@ -56,7 +56,7 @@ test('the suite runs its scenarios in order, and a focused run keeps only the na
     'cooperative-restoration-two-operators', 'reviewer-workbench', 'review-states-and-refusals', 'world-sound-controls',
     'live-observation-readonly', 'game-shell-entry-and-continue', 'management-interface-and-roles', 'private-memory-and-journal-boundaries',
     'first-ten-minutes', 'first-play-solo-ambassador', 'restoration-two-clients',
-    'phone-conversation', 'mission-quality-advisory-signals',
+    'phone-conversation', 'mission-quality-advisory-signals', 'in-game-command-surface',
   ]) assert.ok(all.includes(id), `${id} must remain in the merged browser suite`);
   for (const scenario of SCENARIOS) {
     assert.equal(typeof scenario.title, 'string');
