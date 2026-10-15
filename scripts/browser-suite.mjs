@@ -25,6 +25,7 @@ import { request as httpRequest } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { cameraWalkDirection, facingLabel } from '../src/camera-controls.js';
 import { RESTORATION_PLAN } from '../src/community.js';
+import { onMap } from '../src/global-map.js';
 import { validateDatabase } from '../src/recovery.js';
 import { planWalk } from '../src/world-walk.js';
 import { frontierGates, getWorldDefinition, walkable } from '../world.js';
@@ -220,6 +221,40 @@ async function apiPatch(ticket, path, payload, statuses = [200]) {
     throw new BrowserSuiteFailure(`fixture request PATCH ${path} was refused`, { expected: `HTTP ${allowed.join(' or ')}`, actual: `HTTP ${response.status} ${response.raw}` });
   }
   return response.body;
+}
+
+/**
+ * The server's own interval between two saved conversation lines from one account. `POST /messages`
+ * compares the newest stored line of `actor.account.id` and answers `429 Please wait before sending
+ * another message.` inside 1500 ms (`src/platform.js message()`). A runtime credential posts as the
+ * account that issued it, so a human's line and its own resident's answer share one interval: a
+ * conversation that alternates between them is paced by this rule, not by luck.
+ */
+const MESSAGE_INTERVAL_MS = 1500;
+
+/**
+ * One saved conversation line, paced past that interval. The account whose interval the line is
+ * charged to is named by the caller, because a runtime credential has no account id of its own. Only
+ * the documented interval refusal is ever resumed — and every resume is printed — so a refusal for
+ * any other reason is the failure it looks like. The wait reads the stored row rather than sleeping a
+ * fixed time, so a line costs nothing when its account has been quiet for longer than the interval
+ * already.
+ */
+async function sendLine(ticket, accountId, body, { attempts = 3 } = {}) {
+  const quiet = () => {
+    const last = row('SELECT created_at FROM messages WHERE account_id=? ORDER BY created_at DESC,id DESC LIMIT 1', accountId);
+    return !last || Date.parse(last.created_at) + MESSAGE_INTERVAL_MS <= Date.now() ? true : null;
+  };
+  let refusal = '';
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await waitForCondition(quiet, `the server’s own ${MESSAGE_INTERVAL_MS} ms interval between two lines from account ${accountId}`, { timeout: 10_000, interval: 100 });
+    const response = await api(ticket, 'POST', '/messages', body);
+    if (response.status === 200 || response.status === 201) return response.body;
+    refusal = `HTTP ${response.status} ${response.raw}`;
+    if (response.status !== 429 || !/another message/i.test(response.raw || '')) break;
+    console.log(`        message pacing   the server’s own per-account message interval refused a line for account ${accountId}; waiting it out and sending again`);
+  }
+  throw new BrowserSuiteFailure('POST /messages was refused', { expected: 'HTTP 200 or 201 from POST /messages', actual: refusal });
 }
 
 function freePort() {
@@ -5123,7 +5158,7 @@ define('shared-world-seam-crossing', async () => {
   await step('two humans and one AI resident walk off the Commons edge into Highlands with no portal', async () => {
     const created = rows('SELECT id,kind,world_id FROM agents WHERE id IN (?,?,?)', humanOne.id, humanTwo.id, aide.id);
     expect(created.length === 3 && created.every((item) => item.world_id === 'commons' && item.kind !== undefined), 'the three residents must start in the Commons', { expected: 'three residents in commons', actual: describe(created) });
-    const worldsBefore = count('SELECT COUNT(*) AS n FROM worlds');
+    const worldsBefore = new Set(rows('SELECT id FROM worlds').map((world) => world.id));
     const sectorsBefore = count('SELECT COUNT(*) AS n FROM frontier_sectors');
     // The AI resident is issued its own runtime credential by the operator that owns it: that is what
     // makes every later AI step the AI's own action and not a human's.
@@ -5153,14 +5188,26 @@ define('shared-world-seam-crossing', async () => {
       expect(stored.world_id === SHARED_SEAM.neighbour, `${who} must be stored in the neighbouring world`, { expected: SHARED_SEAM.neighbour, actual: describe(stored) });
       expect(stored.status === 'active', `${who} must still be an active resident`, { expected: 'active', actual: stored.status });
     }
-    // Crossing a seam is a step, not a travel: no world was created and the finite registry is untouched.
-    expect(count('SELECT COUNT(*) AS n FROM worlds') === worldsBefore, 'crossing a seam must create no world', { expected: `${worldsBefore} worlds`, actual: `${count('SELECT COUNT(*) AS n FROM worlds')}` });
+    // Crossing a seam is a step into land that already exists — not a travel and not a land claim. The
+    // *count* of every `worlds` row cannot witness that: the living-world loop seeds its eight scripted
+    // residents (and each one's garden and cottage) once the first administrator exists, so it adds
+    // sixteen rows of its own at some point while this step is running, whether or not anyone crosses
+    // anything. The invariant asserted is therefore the causal one: the world crossed into was already
+    // stored before the crossing, no region of the global map appeared, and none of the three residents
+    // that crossed owns one more world than it did before.
+    const appeared = rows('SELECT id,kind FROM worlds').map((world) => world.id).filter((id) => !worldsBefore.has(id));
+    expect(worldsBefore.has(SHARED_SEAM.neighbour), 'the world across the seam must already be stored before the crossing, so that a crossing is a step into existing land and never the creation of a world', { expected: `${SHARED_SEAM.neighbour} among the ${worldsBefore.size} worlds stored before the crossing`, actual: `${SHARED_SEAM.neighbour} was not stored before the crossing; the worlds stored then were ${describe([...worldsBefore].filter((id) => id.includes('district') || id === 'commons'))}` });
+    expect(appeared.filter((id) => onMap(id)).length === 0, 'crossing a seam must create no region of the global map', { expected: 'no new world that is a rectangle of the map', actual: `worlds that appeared during the step: ${describe(appeared)}` });
+    expect(count('SELECT COUNT(*) AS n FROM worlds WHERE owner_agent_id IN (?,?,?)', humanOne.id, humanTwo.id, aide.id) === 6, 'crossing a seam must create no world of the crossing residents\u2019 own', { expected: 'the six worlds (one garden and one cottage each) the three who crossed already owned', actual: `${count('SELECT COUNT(*) AS n FROM worlds WHERE owner_agent_id IN (?,?,?)', humanOne.id, humanTwo.id, aide.id)} owned by the three who crossed` });
+    state.notes.push(`shared world registry: the crossing step saw ${appeared.length} new worlds rows, none of them a map region (${appeared.slice(0, 4).join(', ')}${appeared.length > 4 ? ', …' : ''}), none owned by a resident that crossed; this is the living-world roster being seeded, counted as a note rather than asserted`);
+    // The finite land registry is a different table, written by a different path, and nothing else in
+    // the process touches it while this step runs: its count can be compared exactly.
     expect(count('SELECT COUNT(*) AS n FROM frontier_sectors') === sectorsBefore, 'crossing a seam must not touch the finite land registry', { expected: `${sectorsBefore} sectors`, actual: `${count('SELECT COUNT(*) AS n FROM frontier_sectors')}` });
     expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered' AND actor IN (?,?)", hostTicket.account.id, guestTicket.account.id) === 3, 'each crossing must be the server\u2019s own recorded entry of the new world, once per resident', { expected: 'three world.entered rows for the two operators', actual: describe(rows("SELECT actor,record_id FROM audit WHERE event='world.entered'")) });
     // Both browsers are drawing the world the residents are stored in.
     await browserShows(host.page, SHARED_SEAM.neighbour);
     await browserShows(guest.page, SHARED_SEAM.neighbour);
-    state.notes.push(`shared world: Seam walker one (browser, ${hostTicket.account.id}), Seam walker two (browser, ${guestTicket.account.id}) and the AI resident crossed ${SHARED_SEAM.anchor} ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} into ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} with no portal; three world.entered audit rows, no new world and no sector touched`);
+    state.notes.push(`shared world: Seam walker one (browser, ${hostTicket.account.id}), Seam walker two (browser, ${guestTicket.account.id}) and the AI resident crossed ${SHARED_SEAM.anchor} ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} into ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} with no portal; three world.entered audit rows, the world crossed into already stored, no new map region, no world of the crossing residents' own and no sector touched`);
     return `${SHARED_SEAM.anchor} ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} \u2192 ${SHARED_SEAM.neighbour} ${first.x},${first.y} for two browser-driven humans and one runtime credential, both browsers drawing ${SHARED_SEAM.neighbour}`;
   });
 
@@ -5189,7 +5236,7 @@ define('shared-world-seam-crossing', async () => {
     for (const step_ of far) await runtimeStep(guestTicket, humanTwo.id, step_);
     const farTile = residentAt(humanTwo.id);
     expect(farTile.world_id === SHARED_SEAM.neighbour && farTile.x === SHARED_SEAM.out_of_range.x && farTile.y === SHARED_SEAM.out_of_range.y, 'Seam walker two must stand four tiles off the landing tile, still in the neighbouring world', { expected: `${SHARED_SEAM.out_of_range.x},${SHARED_SEAM.out_of_range.y} in ${SHARED_SEAM.neighbour}`, actual: describe(farTile) });
-    const sent = await apiExpect(hostTicket, 'POST', '/messages', { agent_id: humanOne.id, channel: 'nearby', text: SHARED_SEAM.line });
+    const sent = await sendLine(hostTicket, hostTicket.account.id, { agent_id: humanOne.id, channel: 'nearby', text: SHARED_SEAM.line });
     const stored = await waitForCondition(async () => row('SELECT * FROM messages WHERE id=?', sent.id) || null, 'the nearby line to be stored');
     const recipients = JSON.parse(stored.recipients);
     expect(stored.world_id === SHARED_SEAM.neighbour, 'the saved line must belong to the world its sender crossed into', { expected: SHARED_SEAM.neighbour, actual: stored.world_id });
@@ -5198,9 +5245,13 @@ define('shared-world-seam-crossing', async () => {
     // The neighbour reads it from its own world, through the credential it crossed with.
     const read = await apiRequest('/world?world_id=' + encodeURIComponent(SHARED_SEAM.anchor) + '&x=' + SHARED_SEAM.stand.x + '&y=' + SHARED_SEAM.stand.y, { token: runtime.token });
     expect(read.status === 200 && (read.body.messages || []).some((message) => message.id === sent.id), 'the neighbour must read the line from its own world', { expected: `HTTP 200 holding ${sent.id}`, actual: `HTTP ${read.status}` });
-    // And the answer crosses the other way: the AI resident speaks, and the human on the far side hears it.
-    const answer = await apiExpect(runtime, 'POST', '/messages', { channel: 'nearby', text: SHARED_SEAM.answer });
+    // And the answer crosses the other way: the AI resident speaks, and the human on the far side hears
+    // it. The runtime credential posts as the account that issued it — the same account as the human's
+    // line above — so the answer is paced past the server's own per-account message interval instead of
+    // racing it, and the stored row proves both lines share that account.
+    const answer = await sendLine(runtime, stored.account_id, { channel: 'nearby', text: SHARED_SEAM.answer });
     const answered = await waitForCondition(async () => row('SELECT * FROM messages WHERE id=?', answer.id) || null, 'the AI resident\u2019s answer to be stored');
+    expect(answered.account_id === stored.account_id, 'the AI resident\u2019s line must be stored under the account that issued its credential', { expected: stored.account_id, actual: describe(answered.account_id) });
     expect(JSON.parse(answered.recipients).includes(humanOne.id), 'the AI resident\u2019s answer must reach the human one tile away across the same seam', { expected: `${humanOne.id} among the recipients`, actual: describe(JSON.parse(answered.recipients)) });
     state.notes.push(`shared world conversation: ${sent.id} sent from ${SHARED_SEAM.neighbour} reached the AI resident one world-space tile away on the other side and was withheld from the resident four tiles away; the AI resident answered with ${answer.id}, which reached the human across the seam`);
     return `both directions crossed the seam: ${recipients.length + 1} recipients for ${sent.id} (with the far resident excluded) and the AI answer ${answer.id} reaching the far-side human`;
