@@ -1,0 +1,930 @@
+[
+  {
+    "run": "desktop-3d",
+    "graphics": "voxel",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "reducedMotion": false,
+    "final": {
+      "world": "district:highlands",
+      "mapWindow": true,
+      "graphics": "voxel",
+      "place": "The Commons"
+    },
+    "sequence": [
+      {
+        "step": 1,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 4
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 2,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 3,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 4,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 5,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons",
+        "shot": "seam"
+      },
+      {
+        "step": 6,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 7,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 33
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 8,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 33
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 32
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 9,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 32
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 31
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 10,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 31
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 30
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 11,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 30
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 29
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 12,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 29
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 28
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 13,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 28
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 27
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 14,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 27
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 26
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      }
+    ],
+    "crossings": 1,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ]
+  },
+  {
+    "run": "desktop-2d",
+    "graphics": "pixel",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "reducedMotion": false,
+    "final": {
+      "world": "district:highlands",
+      "mapWindow": true,
+      "graphics": "pixel",
+      "place": "Highlands"
+    },
+    "sequence": [
+      {
+        "step": 1,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 4
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 2,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 3,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 4,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 5,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 6,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 7,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 8,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 9,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "client_world": "district:highlands",
+        "place": "Highlands",
+        "shot": "seam"
+      },
+      {
+        "step": 10,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "client_world": "district:highlands",
+        "place": "Highlands"
+      },
+      {
+        "step": 11,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "client_world": "district:highlands",
+        "place": "Highlands"
+      },
+      {
+        "step": 12,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "client_world": "district:highlands",
+        "place": "Highlands"
+      },
+      {
+        "step": 13,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 33
+        },
+        "client_world": "district:highlands",
+        "place": "Highlands"
+      },
+      {
+        "step": 14,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 33
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 33
+        },
+        "client_world": "district:highlands",
+        "place": "Highlands"
+      }
+    ],
+    "crossings": 1,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ]
+  },
+  {
+    "run": "desktop-3d-reduced-motion",
+    "graphics": "voxel",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "reducedMotion": true,
+    "final": {
+      "world": "district:highlands",
+      "mapWindow": true,
+      "graphics": "voxel",
+      "place": "The Commons"
+    },
+    "sequence": [
+      {
+        "step": 1,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 4
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 2,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 3,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 4,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 5,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons",
+        "shot": "seam"
+      },
+      {
+        "step": 6,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 7,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 33
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 8,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 33
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 32
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 9,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 32
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 31
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 10,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 31
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 30
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 11,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 30
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 29
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 12,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 29
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 28
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 13,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 28
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 27
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 14,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 27
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 26
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      }
+    ],
+    "crossings": 1,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ]
+  },
+  {
+    "run": "phone-3d",
+    "graphics": "voxel",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "reducedMotion": false,
+    "final": {
+      "world": "district:highlands",
+      "mapWindow": true,
+      "graphics": "voxel",
+      "place": "The Commons"
+    },
+    "sequence": [
+      {
+        "step": 1,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 4
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 2,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 3
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 3,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 2
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 4,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 1
+        },
+        "after": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "client_world": "commons",
+        "place": "The Commons"
+      },
+      {
+        "step": 5,
+        "before": {
+          "world_id": "commons",
+          "x": 25,
+          "y": 0
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons",
+        "shot": "seam"
+      },
+      {
+        "step": 6,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 35
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 7,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 34
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 33
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 8,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 33
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 32
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 9,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 32
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 31
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 10,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 31
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 30
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 11,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 30
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 29
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 12,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 29
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 28
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 13,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 28
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 27
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      },
+      {
+        "step": 14,
+        "before": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 27
+        },
+        "after": {
+          "world_id": "district:highlands",
+          "x": 25,
+          "y": 26
+        },
+        "client_world": "district:highlands",
+        "place": "The Commons"
+      }
+    ],
+    "crossings": 1,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ]
+  }
+]

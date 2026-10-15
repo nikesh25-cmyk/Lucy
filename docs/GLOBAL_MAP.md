@@ -1,6 +1,6 @@
 # One global map — design and phase 1 plan
 
-Status: **proposal, 15 October 2026. Nothing in this document is built yet.** It answers the owner's
+Status: **accepted 15 October 2026; phase 1 is built** (see "Phase 1 as built" at the end for where the build differs from the proposal). It answers the owner's
 requirement after the first visual slice:
 
 > the world is too fragmented. there should be one world. one map. one global map. not separate instances.
@@ -119,7 +119,7 @@ A *seam* is the shared edge of two touching rectangles. The rule for phase 1:
    existing road network on both sides (the same `road()` helper the worlds already use). The avenues sit on
    roads the worlds already have, so a walk from a Commons road continues as a district road:
    Commons x 24–26 and 72–74 on the north and south edges (district-local x 24–26 on the other side), and
-   Commons y 19–21 (Woodlands, Farmlands) and y 49–51 (Orchard, Harbor) on the west and east edges.
+   Commons y 19–21 (Woodlands, Farmlands), y 49–51 (Orchard) and y 50–52 (Harbor) on the west and east edges.
 3. **Clear zone.** No solid scenery, fixture, door, portal or ambassador stand within 3 tiles of a seam on
    either side. Consequence: no interaction fixture ever straddles a seam, so interaction distance, build
    range and the escape rule can stay per-world in phase 1.
@@ -337,3 +337,34 @@ the worlds are as separate as today and the only difference is a few opened edge
 
 Nothing above needs a schema change. If any answer to 1–5 would, I will stop and write it up instead of
 building it.
+
+## 10. Phase 1 as built
+
+Accepted by the owner as written, with the five defaults taken: countries stay enterable venues, the old
+portals stay as fast travel, the layout of section 3, per-world public chat, open border plus avenues.
+
+Built: `src/global-map.js` (layout, projection, seam pass, stitched definition, `GLOBAL_MAP` flag),
+`src/map-view.js` (the browser's global view), the seam pass inside `getWorldDefinition`, `stepAgent` /
+`crossSeam`, `publishNear`, `GET /world?map=core`, nearby chat and private-encounter distance across seams,
+the stitched map in the renderer, pathfinder, minimap and 2D view. Tests: `tests/global-map.test.js`,
+`tests/global-map-runtime.test.js`, `tests/global-map-render.test.js`. Demonstration:
+`scripts/map-capture.mjs`, shots and a crossing log in `docs/handoff/global-map-phase-1/`.
+
+Where the build is not the proposal:
+
+- **Phase 1 includes Orchard and Harbor** as well as the six districts (nine rectangles, twelve seams, eleven
+  avenues). The seam between Farmlands and Harbor has no avenue: Harbor's north edge is open water.
+- **The open border opens a tree only when there is open ground behind it** (and open ground facing it). The
+  proposal opened every tree facing open ground; that left a few single tiles cut off from their own world
+  (`world.test.js` caught one in the Harbor district), which a walker could reach only across the seam.
+- **The avenue centres are the numbers in `AVENUES`** (global coordinates along the seam), not the tile
+  ranges the proposal listed. Orchard's is Commons y 50 and Harbor's y 51, so the Harbor avenue lands on
+  Stillwater Harbor's own bridge.
+- **`GLOBAL_MAP`** defaults to on except when `NODE_ENV=production`; `GLOBAL_MAP=on|off` overrides either way.
+- **The map window carries only the neighbouring worlds** (`map.participants`, `map.objects`), each in its own
+  world's coordinates; the stored world's part is the unchanged top-level payload. `mapWindow` reuses
+  `world()` for each neighbour (without messages, counts or passage cues) rather than a second set of queries.
+- **The 2D view draws `map:core` as one world**, so the per-world pixel themes of Orchard and Harbor (the
+  harbor's blue-green ground) are not used on the map; ground colour follows the world that owns the tile.
+- **Not done in phase 1 (unchanged from the plan):** corner and ring-2 districts, multi-leg routes beyond 192
+  steps, the frontier join, map-wide chat, removal of the old portals.

@@ -11,6 +11,7 @@ import { Platform } from './src/platform.js';
 import { acquireProcessLock, backupDatabase, backupInventory, validateDatabase } from './src/recovery.js';
 import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from './src/hosting.js';
 import { worldAtmosphere } from './src/atmosphere.js';
+import { mapEnabled, nearbyWorlds } from './src/global-map.js';
 import { runResearch, approvedSource } from './runtime/research-worker.js';
 import { createLocalModel, boundedModel, mayorDraft, mayorCountryDraft, ambassadorCountryDraft } from './runtime/model.js';
 import { mayorModelCountryContext } from './src/mayor-evidence.js';
@@ -94,6 +95,8 @@ files.set('/src/world-navigation.js', ['src/world-navigation.js', 'text/javascri
 files.set('/src/characters.js', ['src/characters.js', 'text/javascript; charset=utf-8']);
 files.set('/src/character-animation.js', ['src/character-animation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/footprints.js', ['src/footprints.js', 'text/javascript; charset=utf-8']);
+files.set('/src/global-map.js', ['src/global-map.js', 'text/javascript; charset=utf-8']);
+files.set('/src/map-view.js', ['src/map-view.js', 'text/javascript; charset=utf-8']);
 files.set('/src/elevation.js', ['src/elevation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/content.js', ['src/content.js', 'text/javascript; charset=utf-8']);
 files.set('/src/living-world.js', ['src/living-world.js', 'text/javascript; charset=utf-8']);
@@ -323,6 +326,13 @@ export function createEventHub({ platform, limits = EVENT_LIMITS, clock = Date.n
     return queued;
   }
 
+  /** `publish` to a world and to the worlds of the global map within sight of the tile the change happened on. */
+  function publishNear(worldId, x, y, update = {}) {
+    let queued = publish(worldId, update);
+    if (mapEnabled()) for (const other of nearbyWorlds(worldId, x, y)) queued += publish(other, update);
+    return queued;
+  }
+
   function flush(sub) {
     const p = sub.pending, count = totalPending(sub);
     if (sub.closed || sub.backpressure || (!count && !p.refresh)) return;
@@ -379,7 +389,7 @@ export function createEventHub({ platform, limits = EVENT_LIMITS, clock = Date.n
   }
 
   function closeAll() { retired = true; stop(); for (const sub of [...subscribers]) close(sub, 'server_shutdown', true); }
-  return { subscribe, publish, revalidateNow, closeAll, counts, get size() { return subscribers.size; }, limits };
+  return { subscribe, publish, publishNear, revalidateNow, closeAll, counts, get size() { return subscribers.size; }, limits };
 }
 
 

@@ -434,6 +434,17 @@ p95 fell from 399.72 ms to 207.70 ms.
   users. Nothing here tested sustained load, memory growth, disk exhaustion, TLS, a proxy, multiple
   processes, multiple writers, write-heavy traffic or real network latency. See "not measured".
 
+## Global map windows (15 October 2026)
+
+The renderer draws the stitched map (`map:core`, 288 × 208 tiles of which 192 × 136 belong to a world) with
+the same 37 × 37 window, the same detail radius and the same budgets as one world. Measured with
+`createVoxelScene` (no GPU, no database) at five anchors along each of the 11 avenues, at most 55
+windows, none with residents: **worst 3,309 of 3,600 instances** (Commons | Harbor, at the join), **worst 111
+of 130 draw batches**, 1,369 cells. A single world at its own edge reads 3,409 instances and 87 batches on the
+same method, so a window across a seam is no heavier in instances; it uses more batches because two worlds'
+ground colours are two materials. That is 19 batches of headroom (was 43), which is the number to watch when
+a phase adds more worlds to the map. `tests/global-map-render.test.js` asserts both bounds at every seam.
+
 ## Renderer level of detail (render-scale task, 14 October 2026)
 
 Measured on the same machine, in a later worktree (`../w-render`, branch
