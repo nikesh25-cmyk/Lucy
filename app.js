@@ -11,6 +11,7 @@ import {createReadonlyTransport,createSpectatorView} from './src/ui/spectator.js
 import {createTouchControls,hasCoarsePointer,prefersReducedMotion} from './src/ui/touch-controls.js';
 import {createFirstPlayGuide,renderNode} from './src/ui/first-play-guide.js';
 import {createShopPanel} from './src/ui/shop-panel.js';
+import {createHomePanel,homeSummaryModel,homeSummaryView} from './src/ui/home-panel.js';
 import {planWalk} from './src/world-walk.js';
 import {solidSceneryAt} from './src/footprints.js';
 import {globeScene,countryGlobeCenter,rotateGlobe} from './src/country-globe.js';
@@ -47,7 +48,7 @@ Object.assign(state,{gamePresentation,gameMode:savedGameMode,gameDrawer:'',gameM
 const gameAudio = createGameAudio();
 Object.assign(state,{missionQuery:{},missionPage:{missions:[],tasks:[],total:0,offset:0,limit:12,has_more:false},workers:{resident:null,research:null},countries:[],assembly:null,research:{leads:[],counts:[]},mayors:[],ambassadors:[],ambassadorQuery:{q:'',group:''},ambassadorOffset:0,ambassadorIncludePaused:false,ambassadorProfile:null,researchQuery:{},countryQuery:'',countryGroup:'',countryPage:0,assemblyQuery:{},assemblyPage:0});
 Object.assign(state,{graphics:localStorage.getItem('nemoworld-graphics')==='pixel'?'pixel':'voxel',registrationOpen:true,frontierPage:0,frontierData:null,voxelSelection:null,parcelSelection:null,landData:null,blockLayer:0,climbing:false,lookMode:false,firstPerson:savedFirstPerson,callings:null,memory:null,guilds:null,guildFilter:'',guildOffset:0,inspectedResident:null,facing:{yaw:Math.PI/4,pitch:0.62},blueprint:null,blueprintAnchor:null,blueprintReport:null,grantPreview:null,quests:null,questCatalog:null,guildProjects:null,guildProjectQuery:'',guildProjectGuild:'',guildProjectOffset:0,eventStream:null,restoration:null,restorationEventId:'',firstPlay:null,firstPlayRefusal:null,interaction:null,interactionRefusal:null,interactionError:null,evidenceLibrary:null,moveFeedback:null});
-let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false,shopPanel=null,shopHost=null,shopStatus=null;
+let voxelView=null,heroVoxel=null,walkVersion=0,motionRevision=0,walkActive=false,shopPanel=null,shopHost=null,shopStatus=null,homePanel=null,homeHost=null,homeRows=[],homeFocus=null;
 const movementQueue = createMovementQueue({ move: performMove });
 const mayorSprites=new Map();for(const id of [1,2,3,5,6,7,9,10,11,12,13,14,15,16,17,18,19,20,21,22]){const image=new Image();image.src=`/assets/mayors/characters/${id}.png`;image.onload=()=>paintWorld();mayorSprites.set(id,image);}
 const colors = { '#3d5875': 'blue', '#8c6ab1': 'purple', '#cb725f': 'coral', '#397f79': 'teal', '#aa7845': 'gold' };
@@ -840,7 +841,7 @@ function applyMenuFilter(groups){
   const status=$('#game-menu-status');if(status)status.textContent=String(state.menuQuery||'').trim()?(matches.size?`${matches.size} ${matches.size===1?'section matches':'sections match'}. Enter opens the first.`:'No section matches. Clear the box to see them all.'):'';
 }
 // Every section the game shell can open as a panel. `world` is not one of them: it is the scene itself.
-function sectionViews(){return { start: renderStartJourney, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, shop:renderKarmaShop, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,restoration:renderRestoration,quests:renderQuests }; }
+function sectionViews(){return { start: renderStartJourney, explore: renderExplore, list: renderList, civic: renderCivic, countries:renderCountries, assembly:renderAssembly, research:renderResearch, missions: renderMissions, characters: renderCharacters, history: renderHistory, review: renderReview, gallery: renderGallery, owner: renderOwner, safety: renderSafety, operations: renderOperations, help: renderHelp, community: renderCommunity, coins:renderCoins, shop:renderKarmaShop, home:renderHomeVault, passport: renderPassport, workshop: renderWorkshop,callings:renderCallings,guilds:renderGuildProjects,restoration:renderRestoration,quests:renderQuests }; }
 /** What the scene's own markup was built from. A panel that changes none of it leaves the 3D view alone. */
 let renderedWorldKey='';
 function worldRenderKey(){return [state.worldLoads,currentWorldId(),state.selected,state.viewWorld,state.building,state.graphics,state.gameMode,state.account?.id||'',state.interaction?.fixture?.id||'',nextActionLine()||'',nextPassageLine()||''].join('|');}
@@ -2475,6 +2476,76 @@ function renderKarmaShop(parent){
     paintShopPanel();
   });
 }
+/**
+ * Home & vault: each AI resident's private vault (counts and an erase action only) and the two
+ * independent visiting switches of its garden and cottage. Everything on screen is the last server
+ * answer: a switch or an erase is never assumed to have worked, and the server's refusal is shown in
+ * its own words. The vault's text is never requested here: the operator route sends counts only.
+ */
+const aiResidents=()=>state.agents.filter(agent=>agent.kind==='agent'&&agent.status!=='deleted');
+async function readHomeRow(agent){
+  const id=encodeURIComponent(agent.id);
+  const [vault,garden,cottage]=await Promise.allSettled([api(`/vault?agent_id=${id}`),api(`/world?world_id=${encodeURIComponent(`home:${agent.id}`)}&agent_id=${id}`),api(`/world?world_id=${encodeURIComponent(`house:${agent.id}`)}&agent_id=${id}`)]);
+  const failed=[vault,garden,cottage].find(result=>result.status==='rejected');
+  return {resident:agent,vault:vault.value,garden:garden.value?.world,cottage:cottage.value?.world,error:failed?`Part of this home could not be read: ${failed.reason?.message||'the server did not answer.'}`:null};
+}
+function paintHomePanel(){if(homePanel&&homeHost?.isConnected)homePanel.paint(homeHost);}
+async function reloadHomeRow(agentId){
+  const agent=aiResidents().find(item=>item.id===agentId);
+  const fresh=agent?await readHomeRow(agent):null;
+  if(fresh)homeRows=homeRows.map(row=>row.resident.id===agentId?fresh:row);
+}
+async function setHomeVisibility(agentId,patch,which){
+  let refusal=null,saved=null;
+  try{
+    const result=await api(`/agents/${encodeURIComponent(agentId)}/home`,'PATCH',patch);
+    const word=value=>value==='public'?'open to visitors':'closed to visitors';
+    saved={agentId,text:`The server saved it: the garden is ${word(result.visibility)} and the cottage is ${word(result.house_visibility)}.`};
+  }catch(error){if(error.sessionEnded)return;refusal={agentId,text:error.message||'The server refused this change.'};}
+  await reloadHomeRow(agentId);
+  homePanel.update({residents:homeRows,refusal,saved});paintHomePanel();
+}
+async function eraseHomeVault(agentId){
+  let refusal=null,saved=null;
+  try{
+    const result=await api('/vault/manage','POST',{agent_id:agentId,action:'erase',confirm:true});
+    saved={agentId,text:`The server erased the vault: ${result.removed===1?'1 note':`${result.removed} notes`} and the key were deleted.`};
+  }catch(error){if(error.sessionEnded)return;refusal={agentId,text:error.message||'The server refused to erase this vault.'};}
+  await reloadHomeRow(agentId);
+  homePanel.update({residents:homeRows,refusal,saved});paintHomePanel();
+}
+async function loadHome(){
+  homeRows=await Promise.all(aiResidents().map(readHomeRow));
+  return homeRows;
+}
+function renderHomeVault(parent){
+  parent.append(heading('Home & vault','Each AI resident keeps a private vault of its own notes, and has a garden and a cottage you choose to open or close to visitors.'));
+  if(!state.account){parent.append(empty('Sign in to see your residents’ homes.'),button('Sign in',()=>openAuth('login')));return;}
+  const node=card('Your residents’ homes','VAULT · GARDEN · COTTAGE');node.id='world-home-vault-card';
+  if(!homePanel)homePanel=createHomePanel({onVisibility:(agentId,patch,which)=>guarded(()=>setHomeVisibility(agentId,patch,which)),onErase:(agentId)=>guarded(()=>eraseHomeVault(agentId)),onChange:()=>paintHomePanel(),reducedMotion:()=>prefersReducedMotion(window.matchMedia)});
+  homeHost=element('div');homeHost.id='home-panel-host';
+  // Escape cancels an armed erase first; the shell's own Escape (close the panel) only sees it when nothing is armed.
+  homeHost.addEventListener('keydown',event=>{if(event.key==='Escape'&&homePanel.handleKey('Escape')){event.preventDefault();event.stopPropagation();}});
+  node.append(homeHost);parent.append(node);
+  homePanel.update({residents:homeRows.length?homeRows:undefined});paintHomePanel();
+  guarded(async()=>{
+    await loadHome();
+    homePanel.update({residents:homeRows});
+    if(homeFocus){homePanel.focusSection(homeFocus.agentId,homeFocus.which);homeFocus=null;}
+    paintHomePanel();
+  });
+}
+/** The passport's "Your resident's home" card: three sentences and two links into the section above. */
+function homeSummaryCard(){
+  const agent=selected();
+  const node=card(null);node.id='world-home-summary';
+  if(!agent||agent.kind!=='agent'){node.append(element('h3','Your resident’s home'),paragraph('A human player’s cottage follows its garden. The vault and the separate cottage switch belong to AI residents.','privacy'),button('Open Home & vault',()=>openSection('home'),'secondary small'));return node;}
+  const draw=entry=>{mount(node,homeSummaryView(homeSummaryModel(entry),{onVault:id=>openHomeSection(id,'vault'),onPrivacy:id=>openHomeSection(id,'privacy')}));};
+  draw({resident:agent,error:'Asking the server about this home.'});
+  readHomeRow(agent).then(row=>{if(node.isConnected)draw(row);}).catch(()=>{});
+  return node;
+}
+async function openHomeSection(agentId,which){homeFocus={agentId,which};await openSection('home');}
 /** The free personal space every resident already owns, named and reachable in one action. */
 function mySpaceCard(){
   const agent=viewedAgent();if(!agent)return null;
@@ -2498,7 +2569,7 @@ function renderCoins(parent){
 function renderPassport(parent){
   parent.append(heading('A story still being written','Your resident’s purpose, discoveries, and private reflections. Titles and keepsake appearances are visible on the character.'));if(!requireResident(parent))return;const journey=state.journey;if(!journey){parent.append(empty('Open this passport again to load its latest progress.'));return;}residentContext(parent);
   const hero=card(selected().name,'RESIDENT PASSPORT');hero.classList.add('passport-cover');const cover=element('div',null,'passport-portrait');append(cover,residentFigure(selected()),residentFace(selected(),'lg'));append(hero,cover,badge(journey.profile.title||'Resident'),badge(resourceName(journey.profile.avatar||'sprout')),paragraph(journey.profile.purpose||'Every story can start with a small, useful intention.'),paragraph(journey.profile.bio||'Add a biography below to give this character a sense of direction.','muted'));parent.append(hero);
-  parent.append(button('Open coin wallet',()=>openSection('coins'),'secondary small'));
+  parent.append(button('Open coin wallet',()=>openSection('coins'),'secondary small'));parent.append(homeSummaryCard());
   parent.append(metrics([['Reviewed contributions',journey.merit.accepted,'Distinct eligible mission submissions accepted'],['Documented uses',journey.merit.adopted,'Accepted work with recorded adoption'],['Thanks received',journey.goodwill.thanks,'Independent operators who thanked this resident'],['Places discovered',journey.discovery_count??journey.discoveries.length,'Recorded by actual character travel']]));
   const grid=element('div',null,'grid two'),quests=card('Small steps, a growing life','YOUR NEXT CHAPTER');for(const quest of journey.quests){const row=element('div',null,'quest-row');append(row,element('h3',quest.name),badge(quest.complete?'complete':'in progress'),paragraph(`${Math.min(quest.progress, quest.target)} / ${quest.target}`,'privacy'));const progress=element('progress');progress.max=quest.target||1;progress.value=quest.progress;progress.setAttribute('aria-label',quest.name);row.append(progress);quests.append(row);}if(!journey.quests.length)quests.append(empty('New chapters will appear as the world grows.'));const skills=card('Skills & keepsakes','EARNED THROUGH PARTICIPATION');for(const skill of journey.skills)skills.append(paragraph(`${skill.name} · level ${skill.level}`));const badges=actions(...journey.badges.map(item=>badge(item.name)));skills.append(badges);if(!journey.badges.length)skills.append(empty('Your first keepsake is ahead. Explore, grow, or make something.'));skills.append(paragraph('Mission merit reflects eligible, independently reviewed work. Gardening, chat, demo tasks and gratitude do not create mission merit.','privacy'));append(grid,quests,skills);parent.append(grid);
   const atlas=card('Your atlas','WALKED, NOT ASSUMED');const atlasGrid=element('div',null,'atlas-grid');for(const world of [...state.worlds.filter(w=>w.kind!=='home'),...journey.discoveries.filter(d=>!state.worlds.filter(w=>w.kind!=='home').some(w=>w.id===d.world_id)).map(d=>({id:d.world_id,name:d.name,kind:d.kind}))]){const discovery=journey.discoveries.find(d=>d.world_id===world.id);const tile=element('article',null,`atlas-place ${discovery?'discovered':''}`);append(tile,element('h3',world.name),badge(discovery?'discovered':'unexplored'),paragraph(discovery?`First visit ${date(discovery.visited_at)}`:'Walk through its entrance to record a discovery.','privacy'),button('Look around',()=>visitWorld(world.id),'secondary small'));atlasGrid.append(tile);}atlas.append(atlasGrid,paragraph('Looking around opens a human spectator view. Your character stays where it is; discoveries require actual travel.','privacy'));parent.append(atlas);

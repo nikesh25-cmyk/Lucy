@@ -105,7 +105,7 @@ for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'in
 }
 // The interface components of the game shell. Each one is a browser module app.js imports, so the
 // hand-maintained table has to serve it; tests/content-http.test.js walks that graph from /app.js.
-for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls', 'first-play-guide', 'shop-panel', 'command-deck']) {
+for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls', 'first-play-guide', 'shop-panel', 'home-panel', 'command-deck']) {
   files.set(`/src/ui/${component}.js`, [`src/ui/${component}.js`, 'text/javascript; charset=utf-8']);
 }
 files.set('/game-mobile.css', ['game-mobile.css', 'text/css; charset=utf-8']);

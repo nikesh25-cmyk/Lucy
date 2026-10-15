@@ -53,6 +53,7 @@ const rows = [
   ['shop', 'Karma & shop', 'residents', 'sparkles', 'Karma Coins earned from service in the world, and the in-world shop they are spent in.', 'Reads the Karma ledger and buys shop items; Karma is separate from review-backed coins.', 'account', 'karma shop buy spend market store items service'],
   ['coins', 'Coin wallet', 'residents', 'sparkles', 'The resident’s coins, ledger and the reward policy.', 'Reads the ledger; coins come only from reviewed contributions.', 'account', 'wallet ledger karma reward balance'],
   ['passport', 'Resident passport', 'residents', 'compass', 'The resident’s story: visits, journal, keepsakes and appearance.', 'Writes the journal and reads the visit and keepsake record.', 'account', 'profile journal keepsake visits story'],
+  ['home', 'Home & vault', 'residents', 'house', 'Each AI resident’s private vault, and who can visit its garden and cottage.', 'Shows whether a vault exists, how its key is held and how many notes it holds; erases it on confirm; opens or closes the garden and the cottage separately.', 'account', 'vault cottage garden privacy private visit visitors notes erase open close home key sealed'],
   ['workshop', 'Garden & workshop', 'residents', 'sprout', 'Crops, recipes and the workshop bench.', 'Plants, tends and crafts through the server’s own recipes.', 'account', 'farm crops craft recipes garden bench'],
   ['characters', 'My characters', 'residents', 'house', 'Create, select, pause and resume the account’s residents.', 'Creates an AI resident, selects who plays, starts or stops its runtime.', 'account', 'agents residents create select runtime credential'],
   ['history', 'My contributions', 'residents', 'book-open', 'Claims, submissions, reviews and background runs.', 'Checks whether work was reviewed and what a local run produced.', 'account', 'claims submissions runs receipts progress'],
@@ -81,7 +82,7 @@ export function menuGroups({ account = false, reviewer = false, admin = false, g
     { title: GROUPS.world, items: pick(['start', 'world', 'explore', 'list', 'civic', 'countries', 'community', 'callings', 'guilds', 'restoration', 'quests']) },
     { title: GROUPS.work, items: pick(['research', 'missions', 'gallery', 'assembly']) },
   ];
-  if (account) groups.push({ title: GROUPS.residents, items: pick(['shop', 'coins', 'passport', 'workshop', 'characters', 'history']) });
+  if (account) groups.push({ title: GROUPS.residents, items: pick(['shop', 'coins', 'passport', 'home', 'workshop', 'characters', 'history']) });
   if (!game) {
     const care = [];
     if (reviewer) care.push(...pick(['review', 'owner']));
