@@ -20,7 +20,7 @@ const server = source('server.js');
 test('every catalogue row is complete, unique, and says what both a person and an agent do there', () => {
   const ids = SECTIONS.map((section) => section.id);
   assert.equal(new Set(ids).size, ids.length, 'ids are unique');
-  assert.equal(SECTIONS.length, 26, 'the 25 sections plus the world itself');
+  assert.equal(SECTIONS.length, 27, 'the 26 sections plus the world itself');
   for (const section of SECTIONS) {
     for (const field of ['id', 'label', 'group', 'icon', 'purpose', 'agent', 'keywords']) assert.ok(section[field], `${section.id} has a ${field}`);
     assert.ok(section.group in GROUPS, `${section.id} is in a known group`);
@@ -50,7 +50,7 @@ test('the game menu lists the same sections in the same order as the workspace m
     { title: '', ids: ['help'] },
   ]);
   const signedIn = ids({ account: true, game: true });
-  assert.deepEqual(signedIn[2], { title: 'YOUR RESIDENTS', ids: ['shop', 'coins', 'passport', 'workshop', 'characters', 'history'] });
+  assert.deepEqual(signedIn[2], { title: 'YOUR RESIDENTS', ids: ['shop', 'coins', 'passport', 'home', 'workshop', 'characters', 'history'] });
   // Governance stays behind /manage in the game: even an administrator is offered one Management link, not these.
   const everything = menuGroups({ account: true, reviewer: true, admin: true, game: true }).flatMap((group) => group.items.map((item) => item.id));
   for (const hidden of ['review', 'owner', 'safety', 'operations']) assert.equal(everything.includes(hidden), false, `${hidden} is not in the game menu`);
@@ -117,7 +117,7 @@ test('index.html hosts one labelled panel and loads its stylesheet between the g
 });
 
 test('the server serves the new module and stylesheet from its fixed file table', () => {
-  assert.match(server, /'first-play-guide', 'shop-panel', 'command-deck'\]/);
+  assert.match(server, /'first-play-guide', 'shop-panel', 'home-panel', 'command-deck']/);
   assert.match(server, /files\.set\('\/game-panel\.css', \['game-panel\.css', 'text\/css; charset=utf-8'\]\)/);
 });
 

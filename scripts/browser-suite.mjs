@@ -140,6 +140,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'shared-build-and-restart', title: 'Two humans and an AI runtime build together, exchange items and keep progress after restart', regression: 'shared integration' },
   { id: 'wave-b-two-gates', title: 'Two humans and an active AI cross two connected frontier gates, choose their callings, raise one shared saved path in the sector they reached, and return to it after a restart', regression: 'wave B acceptance' },
   { id: 'karma-closed-loop', title: 'A brand-new account builds in its own free personal space, earns Karma Coins from that saved service, buys a shop good and keeps all of it through a restart', regression: 'the closed in-world economy loop' },
+  { id: 'home-vault-interface', title: 'An operator opens Home & vault: vault counts and the server’s privacy statement, independent garden and cottage switches, a confirmed erase, a passport summary and a 44 px phone layout', regression: null },
   { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
   { id: 'reviewer-workbench', title: 'A reviewer assesses each criterion, compares source versions, requests changes and the mission owner records an adoption', regression: null },
   { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
@@ -5770,6 +5771,232 @@ define('shared-world-seam-crossing', async () => {
   });
 
   return `two independent humans drove two browsers and one AI resident drove its own runtime credential from the Commons edge ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} into ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} with no portal and no new world, read a bounded viewport that reported both sides of the seam, spoke across the join with the far resident excluded and the neighbour included, built three placements in the AI resident's own garden with the same call refused on the map, and returned after a real restart to the same stored rows, the same conversation and the same garden`;
+
+define('home-vault-interface', async () => {
+  const player = await context('home-vault');
+  const page = player.page;
+  const EMAIL = 'tester.home-vault@browser.test';
+  const NAME = 'Home vault tester';
+  const RESIDENT = 'Vault resident';
+  const SECRET = 'the orchard gate code is moonlight';
+  let account = null, resident = null, runtime = null;
+  const vaultRequests = [];
+  page.on('request', (request) => { if (/\/api\/v1\/vault/.test(request.url())) vaultRequests.push(`${request.method()} ${new URL(request.url()).pathname}${new URL(request.url()).search ? '?…' : ''}`); });
+  const shots = join(RESULTS, 'home-vault-interface');
+  await mkdir(shots, { recursive: true });
+  const spaces = () => Object.fromEntries(rows('SELECT kind,visibility FROM worlds WHERE owner_agent_id=?', resident.id).map((world) => [world.kind, world.visibility]));
+  const enterTheWorld = async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try { await enterWorldAs(page, resident.id, RESIDENT); return true; } catch { await page.waitForTimeout(600); }
+    }
+    return false;
+  };
+  const openHome = async () => {
+    await openGameTab(page, 'Home & vault');
+    const host = page.locator('#home-panel-host');
+    await host.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await page.locator('[data-home-resident] [data-vault-status]').first().waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await page.waitForFunction(() => document.querySelector('[data-home-panel]')?.getAttribute('aria-busy') === 'false', null, { timeout: PAGE_TIMEOUT_MS });
+    return host;
+  };
+  const gardenSwitch = () => page.locator('[data-home-switch$=":garden"]');
+  const cottageSwitch = () => page.locator('[data-home-switch$=":cottage"]');
+  /** The 4.5:1 floor, measured on what the browser drew: text colour against the composited ancestors. */
+  const contrastOf = (selector) => page.evaluate((query) => {
+    const parse = (value) => { const m = /rgba?\(([^)]+)\)/.exec(value); if (!m) return null; const [r, g, b, a = 1] = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r, g, b, a }; };
+    const over = (top, bottom) => ({ r: top.r * top.a + bottom.r * (1 - top.a), g: top.g * top.a + bottom.g * (1 - top.a), b: top.b * top.a + bottom.b * (1 - top.a), a: 1 });
+    const lum = ({ r, g, b }) => { const f = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const results = [];
+    for (const node of document.querySelectorAll(query)) {
+      if (!node.checkVisibility?.() || !node.textContent.trim()) continue;
+      const chain = [];
+      for (let at = node; at; at = at.parentElement) chain.push(at);
+      let background = { r: 5, g: 29, b: 24, a: 1 };
+      for (const link of chain.reverse()) { const paint = parse(getComputedStyle(link).backgroundColor); if (paint && paint.a > 0) background = over(paint, background); }
+      const ink = parse(getComputedStyle(node).color);
+      const text = over(ink, background);
+      const [light, dark] = [lum(text), lum(background)].sort((a, b) => b - a);
+      results.push({ text: node.textContent.trim().slice(0, 40), ratio: Number(((light + 0.05) / (dark + 0.05)).toFixed(2)) });
+    }
+    return results;
+  }, selector);
+
+  await step('a brand-new operator signs up, creates an AI resident and opens Home & vault from the game menu', async () => {
+    await page.goto(baseUrl(), { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await signUp(page, { name: NAME, email: EMAIL, password: PASSWORD });
+    account = row('SELECT id FROM accounts WHERE email=?', EMAIL);
+    resident = await createResidentThroughInterface(page, RESIDENT);
+    expect(resident.kind === 'agent', 'the created character must be an AI resident', { actual: describe(resident) });
+    expect(await enterTheWorld(), 'the resident must enter the world', { actual: describe(await entryState(page)) });
+    await openHome();
+    const card = page.locator('#world-home-vault-card');
+    expect((await card.locator('h2').first().textContent()).includes('homes'), 'the section must name itself', { actual: await card.textContent() });
+    expect(await card.locator(`[data-home-resident="${resident.id}"]`).count() === 1, 'the section must list the operator’s AI resident', { actual: await card.textContent() });
+    return `account ${account.id} with AI resident ${resident.id}; Home & vault open over the world`;
+  });
+
+  await step('a resident with no vault says so, and the cottage starts closed while the garden is open', async () => {
+    const vault = page.locator(`[data-home-vault="${resident.id}"]`);
+    expect(await vault.getAttribute('data-vault-enrolled') === 'false', 'a fresh resident has no vault', { actual: await vault.textContent() });
+    expect(/no vault yet/i.test(await vault.textContent()), 'the panel must say there is no vault yet', { actual: await vault.textContent() });
+    expect(await page.locator(`[data-home-erase="${resident.id}"]`).isDisabled(), 'there is nothing to erase', { actual: 'Erase is enabled' });
+    const stored = spaces();
+    expect(stored.house === 'private' && stored.home === 'public', 'the server must start the cottage private and the garden public', { actual: describe(stored) });
+    expect(await gardenSwitch().getAttribute('aria-checked') === 'true' && await cottageSwitch().getAttribute('aria-checked') === 'false', 'the switches must show the server’s state', { actual: describe(stored) });
+    const rule = (await page.locator('[data-home-rule]').first().textContent()) || '';
+    expect(/Closing the garden also closes the cottage\./.test(rule) && /Opening the garden does not open the cottage/.test(rule), 'the page must say in words what the garden switch does to the cottage', { actual: rule });
+    return `no vault; garden ${stored.home}, cottage ${stored.house}; the rule is written beside the switches`;
+  });
+
+  await step('the vault shows counts and the server’s own privacy statement, never a note or a slot map', async () => {
+    // The operator's own signed-in page mints the resident's credential, so the browser session is never replaced.
+    runtime = await inPage(page, '/runtime/start', { body: { agent_id: resident.id, minutes: 5, max_calls: 30, scopes: ['read', 'vault'] } });
+    expect(runtime.status === 200 || runtime.status === 201, 'the operator must be able to mint the resident’s own credential', { actual: describe(runtime) });
+    for (const slot of [1, 2, 3]) {
+      const written = await apiRequest('/vault/write', { method: 'POST', token: runtime.body.token, body: { slot, text: `${SECRET} ${slot}` } });
+      expect(written.status === 200, 'the resident’s own credential must write a note', { actual: `HTTP ${written.status} ${written.raw}` });
+    }
+    vaultRequests.length = 0;
+    await openGameTab(page, 'My characters');
+    const host = await openHome();
+    const vault = page.locator(`[data-home-vault="${resident.id}"]`);
+    const text = (await vault.textContent()) || '';
+    expect(/Sealed by the server\. 3 notes, /.test(text), 'the panel must state the key model and the note count', { actual: text });
+    const policy = await inPage(page, `/vault?agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    expect(policy.status === 200 && !JSON.stringify(policy.body).includes('moonlight') && !('slots' in policy.body) && !('key_check' in policy.body), 'the operator route must carry no note, slot map or key check', { actual: describe(policy.body) });
+    for (const line of [policy.body.policy.summary, policy.body.policy.sealed, policy.body.policy.effect]) expect(text.includes(line), 'the panel must show the server’s own privacy statement', { expected: line, actual: text });
+    const page_text = await page.locator('body').innerText();
+    expect(!page_text.includes('moonlight') && !page_text.includes(SECRET), 'a note must never reach the operator’s page', { actual: 'note text found on the page' });
+    expect(vaultRequests.every((entry) => !/vault\/notes/.test(entry)) && vaultRequests.some((entry) => entry.startsWith('GET /api/v1/vault')), 'the page must ask only for the counts', { actual: describe(vaultRequests) });
+    await page.screenshot({ path: join(shots, 'desktop-vault.png') });
+    state.notes.push(`home vault: three notes written by the resident's own credential; the operator's page showed "${text.match(/Sealed by the server\. 3 notes, [^.]*/)?.[0]}" and no note text; requests: ${vaultRequests.join(', ')}`);
+    return `3 notes counted, the server's VAULT_POLICY text shown, no note text on the page, requests ${[...new Set(vaultRequests)].join(', ')}`;
+  });
+
+  await step('the cottage and garden switches are independent and show only what the server saved', async () => {
+    await cottageSwitch().click();
+    await page.waitForFunction(() => document.querySelector('[data-home-switch$=":cottage"]')?.getAttribute('aria-checked') === 'true', null, { timeout: PAGE_TIMEOUT_MS });
+    let stored = spaces();
+    expect(stored.house === 'public' && stored.home === 'public', 'opening the cottage must change only the cottage', { actual: describe(stored) });
+    expect(/The server saved it: the garden is open to visitors and the cottage is open to visitors\./.test(await page.locator('[data-home-saved]').textContent()), 'the saved line must be the server’s answer', { actual: await page.locator('[data-home-saved]').textContent() });
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('data-home-switch')?.endsWith(':cottage')), 'focus must stay on the switch that was pressed', { actual: await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 120)) });
+    // Closing the garden also closes the cottage — by the keyboard alone.
+    await gardenSwitch().focus();
+    await page.keyboard.press('Space');
+    await page.waitForFunction(() => document.querySelector('[data-home-switch$=":garden"]')?.getAttribute('aria-checked') === 'false', null, { timeout: PAGE_TIMEOUT_MS });
+    stored = spaces();
+    expect(stored.home === 'private' && stored.house === 'private', 'closing the garden must also close the cottage', { actual: describe(stored) });
+    expect(await cottageSwitch().getAttribute('aria-checked') === 'false', 'the cottage switch must now read Off', { actual: await cottageSwitch().textContent() });
+    // Opening the garden does not open the cottage.
+    await gardenSwitch().focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[data-home-switch$=":garden"]')?.getAttribute('aria-checked') === 'true', null, { timeout: PAGE_TIMEOUT_MS });
+    stored = spaces();
+    expect(stored.home === 'public' && stored.house === 'private', 'opening the garden must not open the cottage', { actual: describe(stored) });
+    expect(await cottageSwitch().getAttribute('aria-checked') === 'false', 'the cottage switch must still read Off', { actual: await cottageSwitch().textContent() });
+    await page.screenshot({ path: join(shots, 'desktop-switches.png') });
+    return 'cottage opened alone; garden closed by the keyboard closed the cottage too; garden opened by the keyboard left the cottage closed';
+  });
+
+  await step('Erase asks first, cancel keeps the vault, and the confirmed erase deletes every note and the key', async () => {
+    const erase = page.locator(`[data-home-erase="${resident.id}"]`);
+    await erase.click();
+    const confirm = page.locator(`[data-home-confirm="${resident.id}"]`);
+    await confirm.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    expect(/Erase Vault resident’s vault and its 3 notes\?/.test(await confirm.textContent()) && /cannot be undone/.test(await confirm.textContent()), 'the confirm must name the resident, the notes and that it cannot be undone', { actual: await confirm.textContent() });
+    expect(count('SELECT COUNT(*) AS n FROM resident_vault WHERE agent_id=?', resident.id) === 3, 'asking must erase nothing', { actual: 'rows changed' });
+    expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-home-confirm-erase')), 'focus must move to the confirm button', { actual: await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 120)) });
+    await page.screenshot({ path: join(shots, 'desktop-erase-confirm.png') });
+    // Escape cancels the armed erase first; the panel itself stays open.
+    await page.keyboard.press('Escape');
+    await confirm.waitFor({ state: 'detached', timeout: PAGE_TIMEOUT_MS });
+    expect(await page.locator('#home-panel-host').isVisible() && count('SELECT COUNT(*) AS n FROM resident_vault WHERE agent_id=?', resident.id) === 3, 'Escape must cancel the erase and leave the panel and the vault alone', { actual: 'the panel closed or the vault changed' });
+    expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-home-erase')), 'focus must return to Erase after Escape', { actual: await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 120)) });
+    await erase.click();
+    await page.locator(`[data-home-cancel="${resident.id}"]`).click();
+    expect(await page.locator(`[data-home-confirm="${resident.id}"]`).count() === 0 && count('SELECT COUNT(*) AS n FROM resident_vault WHERE agent_id=?', resident.id) === 3, 'the Cancel button must keep the vault', { actual: 'the vault changed' });
+    expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-home-erase')), 'focus must return to Erase after Cancel', { actual: await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 120)) });
+    await erase.click();
+    await page.locator(`[data-home-confirm-erase="${resident.id}"]`).click();
+    await page.waitForFunction(() => document.querySelector('[data-vault-enrolled]')?.getAttribute('data-vault-enrolled') === 'false', null, { timeout: PAGE_TIMEOUT_MS });
+    expect(count('SELECT COUNT(*) AS n FROM resident_vault WHERE agent_id=?', resident.id) === 0 && count('SELECT COUNT(*) AS n FROM resident_vault_keys WHERE agent_id=?', resident.id) === 0, 'the confirmed erase must delete every note and the key', { actual: 'rows remain' });
+    expect(/The server erased the vault: 3 notes and the key were deleted\./.test(await page.locator('[data-home-saved]').textContent()), 'the page must report the server’s own count', { actual: await page.locator('[data-home-saved]').textContent() });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='vault.erased'") >= 1, 'the server must have audited the erase', { actual: 'no audit row' });
+    return 'Escape and Cancel each kept three notes; the confirmed erase removed them and the key, was audited, and the page reported the count';
+  });
+
+  await step('the passport carries a “Your resident’s home” summary that links to the vault and to the switches', async () => {
+    await openGameTab(page, 'Resident passport');
+    const summary = page.locator('#world-home-summary');
+    await summary.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await page.waitForFunction(() => /garden is open/.test(document.querySelector('#world-home-summary')?.textContent || ''), null, { timeout: PAGE_TIMEOUT_MS });
+    const text = (await summary.textContent()) || '';
+    expect(/Your resident’s home/.test(text) && /The garden is open: anyone can visit it\./.test(text) && /The cottage is closed: only your account and this resident can enter\./.test(text) && /Vault: This resident has no vault yet/.test(text), 'the summary must state the garden, the cottage and the vault', { actual: text });
+    await page.screenshot({ path: join(shots, 'desktop-passport-summary.png') });
+    await summary.getByRole('button', { name: `Open ${RESIDENT}’s vault` }).click();
+    await page.locator(`[data-home-vault="${resident.id}"]`).waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await page.waitForFunction(() => document.activeElement?.getAttribute('data-home-anchor')?.endsWith(':vault'), null, { timeout: PAGE_TIMEOUT_MS });
+    await openGameTab(page, 'Resident passport');
+    await page.locator('#world-home-summary').getByRole('button', { name: `Choose who can visit ${RESIDENT}’s garden and cottage` }).click();
+    await page.waitForFunction(() => document.activeElement?.getAttribute('data-home-anchor')?.endsWith(':privacy'), null, { timeout: PAGE_TIMEOUT_MS });
+    return 'the summary states garden, cottage and vault; its two links open Home & vault with the focus on the vault heading and on the visiting heading';
+  });
+
+  await step('a refusal from the server is shown plainly, in its own words, and no success is claimed', async () => {
+    await openHome();
+    const direct = await inPage(page, `/agents/${encodeURIComponent(resident.id)}/home`, { method: 'PATCH', body: { house_visibility: 'everyone' } });
+    expect(direct.status === 400 && typeof direct.body?.error === 'string', 'the server must refuse an unknown visibility', { actual: describe(direct) });
+    // The page asks for a change the server will refuse: the resident now belongs to another operator behind its back.
+    const stranger = row("SELECT id FROM accounts WHERE email='stranger@browser.test'");
+    write('UPDATE agents SET operator_id=? WHERE id=?', stranger.id, resident.id);
+    try {
+      await cottageSwitch().click();
+      const words = page.locator('[data-home-refusal-words]');
+      await words.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+      const shown = ((await words.textContent()) || '').trim();
+      const server = await inPage(page, `/agents/${encodeURIComponent(resident.id)}/home`, { method: 'PATCH', body: { house_visibility: 'public' } });
+      expect(shown.length > 3 && shown === server.body?.error, 'the page must show the server’s refusal verbatim', { expected: describe(server.body?.error), actual: shown });
+      expect(await words.getAttribute('role') === 'alert' && await page.locator('[data-home-saved]').count() === 0, 'a refusal is an alert and never a success', { actual: await page.locator('[data-home-resident]').first().textContent() });
+      state.notes.push(`home vault: a refused change showed the server's own words: "${shown}"`);
+      return `refusal shown verbatim: "${shown}"`;
+    } finally { write('UPDATE agents SET operator_id=? WHERE id=?', account.id, resident.id); }
+  });
+
+  await step('at 390 px with reduced motion the section fits, every control is 44 px or more and the text clears 4.5:1', async () => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openHome();
+    const colours = await contrastOf('[data-home-panel] p, [data-home-panel] h3, [data-home-panel] h4, [data-home-panel] button:not(:disabled)');
+    const weak = colours.filter((item) => item.ratio < 4.5);
+    expect(colours.length > 8 && weak.length === 0, 'every text on the section must reach 4.5:1 against what is behind it', { expected: 'ratio ≥ 4.5', actual: describe(weak.length ? weak : colours.slice(0, 3)) });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    expect(await enterTheWorld(), 'the resident must enter its world on a phone', { actual: describe(await entryState(page)) });
+    await openHome();
+    await page.locator(`[data-home-erase="${resident.id}"]`).scrollIntoViewIfNeeded().catch(() => {});
+    const measured = await page.evaluate(() => {
+      const root = document.querySelector('[data-home-panel]');
+      const controls = [...root.querySelectorAll('button')].filter((node) => !node.disabled);
+      return {
+        viewport: window.innerWidth, document: document.documentElement.scrollWidth,
+        smallest: Math.min(...controls.map((node) => Math.round(node.getBoundingClientRect().height))),
+        count: controls.length, reduced: root.className.includes('ui-home-reduced'), transition: getComputedStyle(root).transitionDuration,
+        overflow: [...root.querySelectorAll('*')].filter((node) => node.getBoundingClientRect().right > window.innerWidth + 1).length,
+      };
+    });
+    expect(measured.document <= measured.viewport && measured.overflow === 0, 'the section must fit a 390 px phone without horizontal scrolling', { actual: describe(measured) });
+    expect(measured.count >= 3 && measured.smallest >= 44, 'every control must meet the 44 px touch floor', { actual: describe(measured) });
+    expect(measured.reduced && /^0s/.test(measured.transition), 'the panel must drop its transitions under reduced motion', { actual: describe(measured) });
+    await page.screenshot({ path: join(shots, 'phone-home-vault.png') });
+    await page.emulateMedia({ reducedMotion: null });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    state.notes.push(`home vault phone: 390 px, document ${measured.document} px, smallest control ${measured.smallest} px, ${colours.length} text samples all ≥ 4.5:1`);
+    return `390 px: no horizontal scroll, smallest control ${measured.smallest} px, no transition under reduced motion; ${colours.length} desktop text samples all ≥ 4.5:1`;
+  });
+
+  return 'an operator opened Home & vault from the game menu; the vault showed counts and the server’s privacy statement and never a note; the two visiting switches moved independently (by pointer and by keyboard) and matched the saved rows; Erase asked first and then deleted every note and the key; the passport summary linked to both; a server refusal was shown verbatim; the phone layout held at 44 px';
 });
 
 define('hero-introduction-film',async()=>{
