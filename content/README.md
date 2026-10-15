@@ -12,21 +12,35 @@ imported by the browser client, the server and the tests alike:
 import { palette, color, crops, recipes, appearancesFor } from './src/content.js';
 ```
 
+The 129 artwork definitions are all in the sealed index; the total is **136** once the 31 authored
+family definitions are counted (see [docs/CONTENT_MANIFEST.md](../docs/CONTENT_MANIFEST.md)).
+
 ## Layout
 
 ```
 content/
-  blocks/        one JSON file per placeable voxel block      (7)
-  furniture/     one JSON file per placeable world object    (27)
-  crops/         one JSON file per growable crop              (3)
-  appearances/   one JSON file per NPC appearance             (20)
-  cosmetics/     one JSON file per cosmetic                    (32)
+  blocks/        one JSON file per placeable voxel block      (9)
+  furniture/     one JSON file per placeable world object    (31)
+  crops/         one JSON file per growable crop              (6)
+  appearances/   one JSON file per NPC appearance            (20)
+  cosmetics/     one JSON file per cosmetic                  (32)
+  places/        one JSON file per authored place            (6)
+  fixtures/      one JSON file per authored fixture         (12)
+  activities/    one JSON file per authored activity         (8)
+  residents/     one JSON file per authored resident role     (6)
+  ambient/       one JSON file per ambient profile            (6)
   palettes.json            the three authored build palettes, in their code order
   content-manifest.json    generated index: every file, digest, license and asset
   notices.json             generated map of every notice file and asset a definition references
   index.js                 generated ESM bundle for static import
   THIRD_PARTY.md           the provenance and license notice referenced by every definition
 ```
+
+`blocks` … `cosmetics` are the shipped artwork vocabulary. `places` … `ambient` are the five authored
+content families added by [the content manifest slice](../docs/CONTENT_MANIFEST.md): they carry no new
+art at all, and every one of them is a declaration over the definitions, the footprint table and the
+world machinery that already exist. The full schema, the validator and every refusal rule are in
+`src/content-manifest.js`.
 
 ## Definition envelope
 
@@ -63,6 +77,17 @@ Per kind:
 | `crop` | `grow_ms`, `yield` (`item`, `quantity`), `tile_object`, `max_growing`, `tend_saving_ms` | the tile object that hosts it |
 | `appearance` | `roster_roles`, `sprite`, `directions`, `walk_rows`, `action_rows_excluded` | `sprite-sheet` |
 | `cosmetic` | `cosmetic_kind`, `earned_by`, and for crafts `name`/`ingredients`/`output` | `null` (cosmetics carry data, not geometry) |
+| `place` | `family`, `site` (`kind`, `world`, `columns`, `rows`, `arrival`, `portal`, `plaza`, `band_rule`, `registers_land`, `machinery`), `structure`, `fixtures`, `activities`, `residents`, `ambient`, `motion`, `accessibility`, `independence` | `venue-layout` |
+| `fixture` | `family`, `object` (a sealed furniture id), `footprint`, `scenery_class`, `blocks_route`, `arrangement`, `tiles`, `owner`, `placement`, `provenance` | the sealed furniture builder it names |
+| `activity` | `family`, `place`, `residents`, `participants`, `cadence`, `duration_ticks`, `relates_to`, `motion`, `reduced_motion`, `ordering`, `clock`, `implements` | `activity-schedule` |
+| `resident` | `family`, `place`, `role`, `appearance` (a sealed appearance id), `schedule`, `dialogue_topics`, `remit`, `independence` | `resident-role` |
+| `ambient` | `family`, `place`, `profile`, `time_of_day`, `layers`, `motion`, `reduced_motion`, `provenance` | `ambient-layer` |
+
+The last five kinds are the authored content families. None of them draws new geometry: a `fixture`
+repeats the sealed furniture builder in `appearance.geometry`, and a `resident` repeats a sealed
+appearance id, so neither can introduce an asset. Every rule above the envelope — reference
+resolution, footprint and collision, accessibility, determinism, independence — is enforced by
+`src/content-manifest.js` and reachable from a real manifest in `tests/content-manifest.test.js`.
 
 ## Conventions
 
@@ -87,7 +112,16 @@ Per kind:
 node scripts/seal-content.mjs            # re-hash entries and assets, rewrite the generated files
 node scripts/seal-content.mjs --check    # verify the sealed files are current, write nothing
 node --test tests/content.test.js        # licenses, hashes, palettes and the drift guards
+
+node scripts/content-publish.mjs                       # preview a staged set; writes nothing
+node scripts/content-publish.mjs --publish             # apply it, reseal and verify
+node scripts/content-publish.mjs --rollback            # undo the last publication
 ```
+
+The publication path reads a staging directory shaped like this one (`content-incoming/` by default),
+validates the whole proposed bundle with `src/content-manifest.js`, seals a mirror of `content/` to
+show exactly what would change, and only writes when asked. See
+[docs/CONTENT_MANIFEST.md](../docs/CONTENT_MANIFEST.md).
 
 The sealer is deterministic: it records no timestamps and writes with fixed key order, so sealing
 twice leaves the working tree unchanged. It refuses to run when a declared digest, a notice hash or
@@ -112,6 +146,13 @@ a palette reference disagrees with the files on disk.
 - The loader rejects a definition with no `license.spdx`, an unresolvable notice file, a mismatched
   notice digest, an unresolved palette id, a crop whose tile object is not furniture, and a manifest
   that does not index every definition.
+- The five authored families are held to a schema of their own, in `src/content-manifest.js`: every
+  cross-family reference must resolve to the kind it promises, every fixture's footprint and scenery
+  class must repeat the shared table in `src/footprints.js`, a fixture tile must not collide with the
+  walkable plaza band, the public approach, the arrival, a saved plot or a block column, every
+  declared accessibility value must clear the bar this repository already enforces, and no value may
+  depend on a clock, a generator or the runtime locale. Each refusal is a named rule with the project
+  document it came from.
 
 ## Known gaps, recorded rather than hidden
 
