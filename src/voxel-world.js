@@ -1,6 +1,8 @@
 import * as THREE from '../assets/vendor/three-voxel.js';
 import { getWorldDefinition } from '../world.js';
-import { VOXEL_LIMITS, LOD_LIMITS, inDetail, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, voxelParcelAddress, voxelParcelSelection, createOrbitInput, reducedMotionPreference } from './voxel-geometry.js';
+import { VOXEL_LIMITS, LOD_LIMITS, inDetail, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, voxelParcelAddress, voxelParcelSelection, createOrbitInput, reducedMotionPreference,
+  clampOrbitDistance, normalizedWheelDelta, wheelZoom, pinchDistance, fovForDistance, approachOrbit, easeRate, FOV_LIMITS, hoverKey } from './voxel-geometry.js';
+import { createHoverThrottle, zoomSuspended } from './camera-controls.js';
 import content from './content.js';
 import { createResources, cubeBatch, disposeBatch, hash, variant, validColor, shade } from './scene/batch.js';
 import { gateFrames, groundPass, landmarkPennants, layer, portalFrames } from './scene/terrain.js';
@@ -23,6 +25,9 @@ const COLORS = Object.freeze({ ...LOCAL_COLORS, ...Object.fromEntries(content.pa
 // The renderer's two hard caps on the delivered image. Neither is raised here: a scene module can
 // change what a tile looks like, never how large the frame or the shadow map may be.
 export const RENDER_CAPS = Object.freeze({ pixel_ratio: 1.5, render_width: 1440, render_height: 900 });
+
+/** Only a non-passive wheel may keep the page still while the world zooms under the pointer. */
+const WHEEL_LISTENER_OPTIONS = Object.freeze({ passive: false });
 
 // One finite, render-only backdrop closes the authored world's horizon behind the bounded voxel
 // window. It sits below the deepest water bed and owns no pick or movement surface.
@@ -394,9 +399,37 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     overlayParent.appendChild(nameplateLayer);
   }
   const projected = new THREE.Vector3();
-  const orbitInput = createOrbitInput({ onLook });
-  let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, lastAtmosphere = null, hoveredParcel = null, lastHoverAt = -Infinity, animationTimer = null;
+  const orbitInput = createOrbitInput({ onLook }), hover = createHoverThrottle();
+  let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, lastAtmosphere = null, hoveredParcel = null, hoveredTile = '', animationTimer = null;
+  // `view` is the presented orbit and `orbitInput.orbit` is the stored one. The camera glides from
+  // the first to the second over a few frames, which is presentation only: the stored facing and
+  // distance are what the shell sent, they are what the server stores, and no position is derived
+  // from an eased number anywhere in this module.
+  let view = { ...orbitInput.orbit }, enabled = true, easeHandle = null, easeAt = 0;
+  const frame = typeof globalThis.requestAnimationFrame === 'function' ? globalThis.requestAnimationFrame.bind(globalThis) : null;
+  const settle = () => { view = { ...orbitInput.orbit }; };
   const previousTouchAction = canvas.style.touchAction; canvas.style.touchAction = 'pan-y';
+  function step() {
+    easeHandle = null;
+    if (destroyed) return;
+    const now = globalThis.performance?.now?.() ?? Date.now(), rate = motion ? 1 : easeRate(now - easeAt);
+    easeAt = now;
+    const next = approachOrbit(view, orbitInput.orbit, rate);
+    view = { yaw: next.yaw, pitch: next.pitch, distance: next.distance };
+    paint();
+    if (!next.settled) scheduleEase();
+  }
+  function scheduleEase() {
+    if (destroyed) return;
+    // No animation frame available (or the player asked for less motion): apply the stored value
+    // once, so a camera is never left stale because it could not animate.
+    if (!frame || motion) { settle(); return; }
+    if (easeHandle !== null) return;
+    easeAt = globalThis.performance?.now?.() ?? Date.now();
+    easeHandle = frame(step);
+  }
+  /** One stored value, applied: a camera-mode switch reaches for the new eye instead of panning to it. */
+  function applyMode(value) { const previous = orbitInput.mode; orbitInput.setMode(value); if (orbitInput.mode !== previous) settle(); return orbitInput.mode; }
   function resize() {
     const bounds = canvas.getBoundingClientRect(), width = Math.max(1, bounds.width || canvas.width || 800), height = Math.max(1, bounds.height || canvas.height || 560);
     const scale = Math.min(1, RENDER_CAPS.render_width / width, RENDER_CAPS.render_height / height), renderWidth = Math.round(width * scale), renderHeight = Math.round(height * scale);
@@ -406,12 +439,17 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   }
   function paint() {
     if (destroyed || lost || !lastSnapshot) return;
-    resize(); const placement = orbitInput.mode === 'first-person' ? firstPersonCamera(target, orbitInput.orbit) : orbitCamera(target, orbitInput.orbit);
-    camera.position.set(placement.eye.x, placement.eye.y, placement.eye.z); camera.lookAt(placement.target.x, placement.target.y, placement.target.z); camera.updateMatrixWorld();
+    const firstPerson = orbitInput.mode === 'first-person';
+    // The first-person eye narrows its field of view with the same one distance the boom uses, so a
+    // zoom means "closer" in either view and the value survives a switch between them.
+    camera.fov = firstPerson ? fovForDistance(view.distance) : FOV_LIMITS.base;
+    resize(); const placement = firstPerson ? firstPersonCamera(target, view) : orbitCamera(target, view);
+    const aim = placement.look || placement.target;
+    camera.position.set(placement.eye.x, placement.eye.y, placement.eye.z); camera.lookAt(aim.x, aim.y, aim.z); camera.updateMatrixWorld();
     // One phase model, one owner: src/scene/sky.js resolves the named phase (with the legacy
     // `evening` alias), places the key light and its shadow frustum, and sets the depth cue.
     lastAtmosphere = applyPhase({ scene, sky, sun, renderer, phase: lastOptions?.dayPhase || lastSnapshot.atmosphere?.phase,
-      position: target, distance: orbitInput.orbit.distance, plan: { window: contents.stats.window } });
+      position: target, distance: view.distance, plan: { window: contents.stats.window } });
     const selected = lastOptions?.selection;
     selection.visible = !!selected && Number.isInteger(selected.x) && Number.isInteger(selected.y);
     if (selection.visible) selection.position.set(selected.x + .5, Math.max(0, selected.z || 0) + .5, selected.y + .5);
@@ -446,18 +484,30 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       paint(); scheduleAnimation();
     }, 100);
   }
+  // Pointing at the world is a reading, not a command: the hovered tile is reported through the same
+  // `onHover` callback the renderer always had, at a bounded rate, and only when the thing under the
+  // pointer actually changed. It never issues a request, it never becomes a pick, and a click still
+  // selects and walks exactly as it did.
+  const emitHover = pick => {
+    const key = hoverKey(pick);
+    if (key === hoveredTile) return;
+    hoveredTile = key;
+    onHover?.(pick || null);
+  };
   const movePointer = event => {
     if (!drag) {
+      // A finger that is not dragging has no hover: the touch layer owns that gesture.
       if (destroyed || lost || !lastSnapshot || event.pointerType === 'touch') return;
-      const now = globalThis.performance?.now?.() ?? Date.now();
-      if (now - lastHoverAt < 75) return; lastHoverAt = now;
+      if (!hover.claim()) return;
       const pick = pickPointer(event), parcel = pick?.parcel || null;
-      if (parcel?.id !== hoveredParcel?.id) { hoveredParcel = parcel; contents.highlightParcel(lastOptions?.parcelSelection, hoveredParcel); paint(); onHover?.(pick || null); }
+      if (parcel?.id !== hoveredParcel?.id) { hoveredParcel = parcel; contents.highlightParcel(lastOptions?.parcelSelection, hoveredParcel); paint(); }
+      emitHover(pick);
       return;
     }
     if (event.pointerId !== drag.id) return;
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y; drag.distance += Math.abs(dx) + Math.abs(dy);
-    if (drag.distance > 6) { orbitInput.drag(dx, dy); paint(); }
+    // A drag is direct manipulation: the camera follows the pointer one to one, with no glide.
+    if (drag.distance > 6) { orbitInput.drag(dx, dy); settle(); paint(); }
     drag.x = event.clientX; drag.y = event.clientY;
   };
   const down = event => { if (event.button !== 0 || destroyed || lost) return; drag = { id: event.pointerId, x: event.clientX, y: event.clientY, distance: 0 }; canvas.setPointerCapture?.(event.pointerId); };
@@ -475,40 +525,70 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     return raycaster.intersectObjects(contents.pickables, false).map(voxelPick).find(Boolean) || null;
   }
   const cancel = () => { drag = null; };
-  const leave = () => { if (destroyed || !hoveredParcel) return; hoveredParcel = null; contents.highlightParcel(lastOptions?.parcelSelection, null); paint(); onHover?.(null); };
+  // Leaving the canvas drops the reading outright, however long the pointer has been away, so the aim
+  // line can never be left showing a tile the pointer is not over.
+  const leave = () => {
+    if (destroyed) return;
+    hover.drop();
+    if (hoveredParcel) { hoveredParcel = null; contents.highlightParcel(lastOptions?.parcelSelection, null); paint(); }
+    emitHover(null);
+  };
+  // What makes a wheel or a pinch inert: the shell's own switch, a menu or drawer, an open dialog, or
+  // a focused field. A suspended zoom leaves the event alone, so the panel keeps its own scrolling.
+  const zoomState = () => {
+    const active = ownerDocument?.activeElement;
+    return { enabled, tagName: active?.tagName || '', isContentEditable: Boolean(active?.isContentEditable), dialogOpen: Boolean(ownerDocument?.querySelector?.('dialog[open]')) };
+  };
+  const wheel = event => {
+    if (destroyed || lost || !lastSnapshot || zoomSuspended(zoomState())) return;
+    const distance = wheelZoom(orbitInput.orbit.distance, normalizedWheelDelta(event.deltaY, event.deltaMode));
+    event.preventDefault?.();
+    if (distance === orbitInput.orbit.distance) return;
+    orbitInput.set({ distance }); scheduleEase(); paint();
+  };
   const contextLost = event => { event.preventDefault(); lost = true; drag = null; onUnavailable?.('The 3D view lost its graphics context. Switch to the map view.'); };
   const contextRestored = () => { if (destroyed) return; lost = false; paint(); };
-  const wheel = event => {
-    if (destroyed || lost) return;
-    if (event.preventDefault) event.preventDefault();
-    const delta = Math.sign(event.deltaY || 0) * 1.5;
-    if (delta) { orbitInput.zoom(delta); paint(); }
-  };
-  const listeners = [['pointerdown', down], ['pointermove', movePointer], ['pointerup', up], ['pointerleave', leave], ['pointercancel', cancel], ['lostpointercapture', cancel], ['wheel', wheel], ['webglcontextlost', contextLost], ['webglcontextrestored', contextRestored]];
+  const listeners = [['pointerdown', down], ['pointermove', movePointer], ['pointerup', up], ['pointerleave', leave], ['pointercancel', cancel], ['lostpointercapture', cancel], ['webglcontextlost', contextLost], ['webglcontextrestored', contextRestored]];
   for (const [name, handler] of listeners) canvas.addEventListener(name, handler);
+  // Only a non-passive wheel may keep the page still while the world zooms.
+  canvas.addEventListener('wheel', wheel, WHEEL_LISTENER_OPTIONS);
   const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(paint) : null; observer?.observe(canvas);
   return {
     render(snapshot, options = {}) {
       if (destroyed) return;
       const definition = options.definition || getWorldDefinition(snapshot.world || 'commons');
-      orbitInput.setMode(options.cameraMode ?? orbitInput.mode);
+      applyMode(options.cameraMode ?? orbitInput.mode);
       if (options.facing) orbitInput.set(options.facing);
       target = options.position || options.self || definition.start; lastSnapshot = snapshot; lastOptions = options;
-      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); paint(); scheduleAnimation(); return contents.stats;
+      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); scheduleEase(); paint(); scheduleAnimation(); return contents.stats;
     },
-    rotate(deltaYaw = 0, deltaPitch = 0) { if (destroyed) return; orbitInput.rotate(deltaYaw, deltaPitch); paint(); },
-    zoom(delta = 0) { if (destroyed) return; orbitInput.zoom(delta); paint(); },
-    setOrbit(value = {}) { if (destroyed) return; orbitInput.set(value); paint(); },
+    rotate(deltaYaw = 0, deltaPitch = 0) { if (destroyed) return orbitInput.rotate(deltaYaw, deltaPitch); scheduleEase(); paint(); return orbitInput.orbit; },
+    zoom(delta = 0) { if (destroyed) return orbitInput.orbit.distance; orbitInput.zoom(delta); scheduleEase(); paint(); return orbitInput.orbit.distance; },
+    setOrbit(value = {}) { if (destroyed) return orbitInput.orbit; orbitInput.set(value); scheduleEase(); paint(); return orbitInput.orbit; },
+    /** The absolute zoom the panel buttons, a slider or a restore can ask for. */
+    setDistance(value) { if (destroyed) return view.distance; orbitInput.set({ distance: clampOrbitDistance(value) }); scheduleEase(); paint(); return orbitInput.orbit.distance; },
+    /**
+     * A two-finger pinch: `scale` is the current span over the span the gesture started with, and
+     * `from` the distance it started from. Inert whenever the wheel is, so a drawer that is open
+     * cannot be zoomed through.
+     */
+    pinch(scale = 1, { from } = {}) { if (destroyed || zoomSuspended(zoomState())) return view.distance; orbitInput.set({ distance: pinchDistance(Number.isFinite(from) ? from : orbitInput.orbit.distance, scale) }); scheduleEase(); paint(); return orbitInput.orbit.distance; },
+    /** The shell's switch: false makes the wheel and the pinch inert without touching the camera. */
+    setEnabled(value = true) { enabled = value !== false; if (!enabled) hover.drop(); return enabled; },
     setCameraMode(value) {
-      if (destroyed) return; orbitInput.setMode(value);
+      if (destroyed) return orbitInput.mode;
+      applyMode(value);
       if (lastSnapshot) {
         lastOptions = { ...lastOptions, cameraMode: orbitInput.mode };
         const definition = lastOptions.definition || getWorldDefinition(lastSnapshot.world || 'commons');
         contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); scheduleAnimation();
       }
-      paint();
+      paint(); return orbitInput.mode;
     },
     get cameraMode() { return orbitInput.mode; },
+    get enabled() { return enabled; },
+    /** The field of view the last paint applied: the base angle, or the first-person zoom. */
+    get fov() { return camera.fov; },
     get orbit() { return orbitInput.orbit; }, get stats() { return contents.stats; },
     isAnimating() { return contents.isAnimating(); },
     reconcileCharacter(id) { const changed = contents.reconcileCharacter(id); if (changed) paint(); return changed; },
@@ -516,7 +596,10 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     get atmosphere() { return lastAtmosphere; },
     destroy() {
       if (destroyed) return; destroyed = true; if (animationTimer !== null) clearTimeout(animationTimer); animationTimer = null; observer?.disconnect(); drag = null;
+      if (easeHandle !== null && typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(easeHandle);
+      easeHandle = null; hoveredTile = ''; hover.drop();
       for (const [name, handler] of listeners) canvas.removeEventListener(name, handler);
+      canvas.removeEventListener('wheel', wheel, WHEEL_LISTENER_OPTIONS);
       canvas.style.touchAction = previousTouchAction; contents.destroy(); selectionGeometry.dispose(); selectionMaterial.dispose();
       nameplateLayer?.remove();
       sun.shadow.map?.dispose(); renderer.dispose(); renderer.forceContextLoss(); lastSnapshot = null; lastOptions = null;

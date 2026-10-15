@@ -134,6 +134,7 @@ export const SCENARIOS = Object.freeze([
   { id: 'consolidated-proposal-history', title: 'Retired research templates remain readable but cannot become missions', regression: 'batch 02 integration correction' },
   { id: 'shared-build-and-restart', title: 'Two humans and an AI runtime build together, exchange items and keep progress after restart', regression: 'shared integration' },
   { id: 'wave-b-two-gates', title: 'Two humans and an active AI cross two connected frontier gates, choose their callings, raise one shared saved path in the sector they reached, and return to it after a restart', regression: 'wave B acceptance' },
+  { id: 'karma-closed-loop', title: 'A brand-new account builds in its own free personal space, earns Karma Coins from that saved service, buys a shop good and keeps all of it through a restart', regression: 'the closed in-world economy loop' },
   { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
   { id: 'reviewer-workbench', title: 'A reviewer assesses each criterion, compares source versions, requests changes and the mission owner records an adoption', regression: null },
   { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
@@ -5082,6 +5083,238 @@ define('wave-b-two-gates', async () => {
   });
 
   return `two independent humans and one active AI resident entered ${WAVE_B_FIRST} through the Commons, crossed the connected ${firstGate.direction} and ${secondGate.direction} gates into ${WAVE_B_SECOND} and ${WAVE_B_THIRD} with every crossing read back from the stored world and arrival tile, talked in saved attributed text, chose one calling each, stewarded a plot in the sector they reached and left three attributed path blocks standing there under one narrow collaboration grant, and returned after a restart to the same sector, the same recorded purpose and the same saved path`;
+});
+
+/**
+ * The free personal space every account's resident already owns, played as a closed loop: sign up,
+ * create a character, walk into the space, build an object by pointing at it, settle the service into
+ * Karma Coins, buy a good in the shop, and restart. Every claim below is read back from the temporary
+ * database or the server's own payload, and the scenario leaves no shared fixture behind.
+ */
+define('karma-closed-loop', async () => {
+  const player = await context('karma-loop');
+  const page = player.page;
+  const EMAIL = 'tester.karma-loop@browser.test';
+  const NAME = 'Karma loop tester';
+  const RESIDENT = 'Loop resident';
+  let account = null, resident = null, garden = null, cottage = null, placed = null;
+  const coinsBefore = count('SELECT COUNT(*) AS n FROM coin_rewards');
+  const parcelsBefore = count('SELECT COUNT(*) AS n FROM land_parcels');
+  const stewardshipsBefore = count('SELECT COUNT(*) AS n FROM land_stewardships');
+  /** The world door, tried a bounded number of times: the ship writes its own game mode asynchronously,
+   *  which can race the entry helper's reload, so every attempt is the real documented door. */
+  const enterTheWorld = async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try { await enterWorldAs(page, resident.id, RESIDENT); return true; }
+      catch { await page.waitForTimeout(600); }
+    }
+    return false;
+  };
+
+  await step('a brand-new operator signs up and creates its first resident through the interface', async () => {
+    await page.goto(baseUrl(), { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await signUp(page, { name: NAME, email: EMAIL, password: PASSWORD });
+    account = row('SELECT id,name,role FROM accounts WHERE email=?', EMAIL);
+    expect(account && account.role === 'member', 'the dialog must create a disposable member account', { expected: 'a stored member account', actual: describe(account) });
+    expect(count('SELECT COUNT(*) AS n FROM agents WHERE operator_id=?', account.id) === 0, 'the new operator must start with no resident', { actual: `${count('SELECT COUNT(*) AS n FROM agents WHERE operator_id=?', account.id)} residents` });
+    resident = await createResidentThroughInterface(page, RESIDENT);
+    garden = `home:${resident.id}`;
+    cottage = `house:${resident.id}`;
+    expect(resident.status === 'active', 'the created character must be an active resident', { actual: describe(resident) });
+    // Creating a character leaves the app on the characters section, so the world door is the entry
+    // screen's own Continue.
+    expect(await enterTheWorld(), 'the new resident must be able to enter the world from the entry screen', { expected: 'the world open as the resident', actual: describe(await entryState(page)) });
+    state.notes.push(`karma loop: ${EMAIL} signed up through the dialog and created ${RESIDENT} (${resident.kind} ${resident.id}) through the character overlay`);
+    return `account ${account.id} with one ${resident.kind} resident ${resident.id}`;
+  });
+
+  await step('the new resident already owns a personal space the server lets it build in', async () => {
+    const worlds = rows('SELECT id,kind,visibility,owner_agent_id FROM worlds WHERE id IN (?,?) ORDER BY id', garden, cottage);
+    expect(worlds.length === 2, 'every resident must already own a personal garden and a cottage', { expected: `rows for ${garden} and ${cottage}`, actual: describe(worlds) });
+    expect(worlds.every((world) => world.owner_agent_id === resident.id), 'both spaces must belong to the new resident', { actual: describe(worlds) });
+    expect(worlds.find((world) => world.id === garden).kind === 'home', 'the garden must be the home kind the build rules recognise', { actual: describe(worlds.map((world) => world.kind)) });
+    // The space is complimentary: it is not a land parcel, it costs nothing, and it changes no registry.
+    expect(count('SELECT COUNT(*) AS n FROM land_parcels') === parcelsBefore, 'a personal space must not add a land parcel', { actual: `${count('SELECT COUNT(*) AS n FROM land_parcels')} parcels` });
+    expect(count('SELECT COUNT(*) AS n FROM land_stewardships WHERE account_id=?', account.id) === 0, 'a personal space must not need a stewarded plot', { actual: 'a stewardship appeared' });
+    // And the server itself says this resident may build here, with the palette it will accept.
+    const view = await inPage(page, `/world?world_id=${encodeURIComponent(garden)}&agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    expect(view.status === 200 && view.body.world?.kind === 'home', 'the personal space must be readable by its owner', { expected: 'HTTP 200 for a home world', actual: `HTTP ${view.status} ${describe(view.body?.world?.kind)}` });
+    expect(Array.isArray(view.body.build_palette) && view.body.build_palette.includes('bench'), 'the server must publish a buildable object palette for the garden', { actual: describe(view.body.build_palette) });
+    return `garden ${garden} and cottage ${cottage} owned by ${resident.id}; ${view.body.build_palette.length} buildable object kinds, no parcel and no stewardship`;
+  });
+
+  await step('the resident walks into its own space and Build opens the palette there', async () => {
+    // Through the interface the player uses: the world tools drawer names the space and travels there.
+    await openGameTab(page, 'Open world');
+    if (!await page.evaluate(() => document.body.classList.contains('game-tools-open'))) {
+      await page.locator('#game-hud').getByRole('button', { name: 'More', exact: true }).click();
+    }
+    const space = page.locator('#world-my-space-card');
+    await space.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await space.getByRole('button', { name: 'Go to my space', exact: true }).click();
+    await browserShows(page, garden);
+    expect(count('SELECT COUNT(*) AS n FROM journey_visits WHERE agent_id=? AND world_id=?', resident.id, garden) >= 1, 'walking in must be recorded as the visit the server wrote', { actual: 'no visit row' });
+    // The HUD's own Build action turns on the pointer palette here, exactly as it does in the frontier.
+    await page.getByRole('button', { name: 'Close world tools', exact: true }).click();
+    await page.locator('#game-build-button').click();
+    await page.waitForFunction(() => document.body.classList.contains('game-building'), null, { timeout: PAGE_TIMEOUT_MS });
+    const host = page.locator('#game-build-host');
+    await host.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    expect(await host.locator('section.ui-hotbar').count() === 1 && await host.locator('section.ui-placement').count() === 1, 'the garden must mount the same hotbar and placement preview the frontier uses', { actual: `${await host.locator('section').count()} sections` });
+    const bench = host.locator('[data-build-type="bench"]');
+    await bench.waitFor({ state: 'visible' });
+    state.notes.push(`karma loop: the world tools drawer carried the resident into ${garden}, and the HUD's Build action opened a ${await host.locator('[data-build-type]').count()}-item object palette and one placement preview`);
+    return `resident in ${garden} with a ${await host.locator('[data-build-type]').count()}-item object palette and one placement preview, opened by the HUD's own Build action`;
+  });
+
+  await step('the resident builds an object by choosing it and naming the tile, and the server saves it', async () => {
+    const site = await gardenFarmTile(page, resident.id);
+    expect(site, 'the garden must offer a free walkable tile to build on', { actual: 'no free tile in the published window' });
+    const host = page.locator('#game-build-host');
+    await host.locator('[data-build-type="bench"]').click();
+    const preview = host.locator('section.ui-placement');
+    const fieldsX = preview.locator('input[name="x"]');
+    const fieldsY = preview.locator('input[name="y"]');
+    await fieldsX.fill(String(site.x));
+    await fieldsY.fill(String(site.y));
+    await preview.getByRole('button', { name: 'Ask the server to place the selected object at this tile', exact: true }).click();
+    placed = await waitForCondition(async () => row('SELECT type,x,y FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, site.x, site.y), 'the pointed placement to be saved', { timeout: 30_000 });
+    expect(placed.type === 'bench', 'the saved object must be the one the palette had chosen', { expected: 'bench', actual: describe(placed.type) });
+    // The same tile is one object, never two: the storage key is the tile, so a repeat either answers
+    // with that same tile or refuses, and the garden still holds exactly one object.
+    const repeat = await inPage(page, `/agents/${resident.id}/build`, { body: { type: 'bench', x: site.x, y: site.y } });
+    expect([200, 201, 409].includes(repeat.status), 'asking for the same object on the same tile is that one tile again, never a duplicate', { actual: `HTTP ${repeat.status} ${describe(repeat.body)}` });
+    expect(count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden) === 1, 'the garden must hold exactly the one object that was placed', { actual: `${count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden)} objects` });
+    state.notes.push(`karma loop: a repeat placement on ${site.x},${site.y} answered HTTP ${repeat.status} and the garden still held one world_objects row`);
+    // And a real refusal builds nothing: an object cannot stand on the tile the resident itself occupies.
+    const standing = row('SELECT x,y FROM agents WHERE id=?', resident.id);
+    const refused = await inPage(page, `/agents/${resident.id}/build`, { body: { type: 'bench', x: standing.x, y: standing.y } });
+    expect(refused.status === 409, 'placing an object on top of the resident must be refused', { expected: 'HTTP 409', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    expect(count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden) === 1, 'a refused placement must leave the garden exactly as it was', { actual: `${count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden)} objects` });
+    state.notes.push(`karma loop: the garden hotbar chose bench and the placement preview saved it at ${site.x},${site.y} - one world_objects row; a repeat on the same tile stayed one object and a placement on the resident was refused 409`);
+    return `world_objects ${placed.type} saved at ${site.x},${site.y} through the garden's own hotbar and preview; the tile stays one object and an occupied tile is refused`;
+  });
+
+  await step('the saved service settles into Karma Coins, and the shop spends them once', async () => {
+    // Three more saved acts, so the purse reaches the cheapest price. A second object goes in through
+    // the same garden preview, and two crop patches are planted through the shipped garden action.
+    // Every one of them is a row the server writes for work actually done, and nothing is credited for
+    // a claim: the faucet reads those rows and nothing else.
+    const host = page.locator('#game-build-host');
+    const second = await gardenFarmTile(page, resident.id);
+    expect(second, 'the garden must offer a second free tile to build on', { actual: 'no free tile in the published window' });
+    await host.locator('[data-build-type="lantern"]').click();
+    const preview = page.locator('#game-build-host section.ui-placement');
+    await preview.locator('input[name="x"]').fill(String(second.x));
+    await preview.locator('input[name="y"]').fill(String(second.y));
+    await preview.getByRole('button', { name: 'Ask the server to place the selected object at this tile', exact: true }).click();
+    await waitForCondition(async () => count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden) === 2 ? true : null, 'the second garden object to be saved', { timeout: 30_000 });
+    for (const kind of ['herbs', 'fiber']) {
+      const tile = await gardenFarmTile(page, resident.id);
+      expect(tile, `the garden must offer a patch tile for ${kind}`, { actual: 'no free tile in the published window' });
+      const patch = await inPage(page, `/agents/${resident.id}/build`, { body: { type: 'farm', x: tile.x, y: tile.y } });
+      expect([200, 201].includes(patch.status), `the crop patch for ${kind} must be saved`, { expected: 'HTTP 200 or 201', actual: `HTTP ${patch.status} ${describe(patch.body)}` });
+      const planted = await inPage(page, '/journey/garden', { body: { agent_id: resident.id, action: 'plant', kind, x: tile.x, y: tile.y } });
+      expect(planted.status === 200, `planting ${kind} must be saved by the garden action`, { expected: 'HTTP 200', actual: `HTTP ${planted.status} ${describe(planted.body)}` });
+    }
+    await openGameTab(page, 'Karma & shop');
+    const panel = page.locator('#shop-panel-host');
+    await panel.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    // Opening the section settles: the one earning action, and the server decides the amount.
+    const wallet = await waitForCondition(async () => {
+      const text = (await panel.textContent()) || '';
+      const match = /Karma Coins:\s*(\d+)/.exec(text);
+      return match ? Number(match[1]) : null;
+    }, 'the shop panel to state the settled purse', { timeout: 30_000 });
+    expect(wallet >= 8, 'two saved objects and two planted crops must settle into at least the cheapest price', { expected: 'at least 8 Karma Coins', actual: String(wallet) });
+    expect(count('SELECT COUNT(*) AS n FROM karma_receipts WHERE agent_id=?', resident.id) >= 4, 'settling must record one receipt per saved act the server wrote', { actual: `${count('SELECT COUNT(*) AS n FROM karma_receipts WHERE agent_id=?', resident.id)} receipts` });
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards') === coinsBefore, 'settling Karma must mint no NemoCoin', { actual: 'the NemoCoin ledger changed' });
+    // Buy the cheapest good through the panel: choose, then confirm. The first click buys nothing.
+    const good = panel.locator('[data-buy]').first();
+    const goodId = await good.getAttribute('data-buy');
+    await good.click();
+    const confirm = panel.locator(`[data-confirm-buy="${goodId}"]`);
+    await confirm.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await confirm.click();
+    const purchase = await waitForCondition(async () => row('SELECT * FROM shop_purchases WHERE account_id=?', account.id), 'the recorded purchase', { timeout: 30_000 });
+    expect(purchase.good_id === goodId, 'the recorded purchase must name the good the panel confirmed', { expected: goodId, actual: describe(purchase.good_id) });
+    const granted = JSON.parse(purchase.granted);
+    expect(granted.kind === 'herbs' && granted.quantity === 2, 'the cheapest good must grant the sealed herbs it advertises', { expected: '2 herbs', actual: describe(granted) });
+    expect(count('SELECT quantity AS n FROM journey_inventory WHERE agent_id=? AND kind=?', resident.id, 'herbs') === 2, 'the bought resource must land on the resident shelf', { actual: 'the shelf does not hold the bought resource' });
+    expect(count('SELECT COUNT(*) AS n FROM karma_purchases WHERE account_id=?', account.id) === 1, 'one purchase must record exactly one debit', { actual: `${count('SELECT COUNT(*) AS n FROM karma_purchases WHERE account_id=?', account.id)} debits` });
+    // The good is usable, not just recorded: the resident's own journey read now offers the bought
+    // resource on its shelf and counts it toward the recipes that need it.
+    const journey = await inPage(page, `/journey?agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    const shelf = (journey.body.inventory || []).find((item) => item.kind === 'herbs');
+    expect(shelf?.quantity === 2, 'the bought resource must be on the shelf the journey read returns', { expected: 'two herbs', actual: describe(journey.body.inventory) });
+    const recipe = (journey.body.recipes || []).find((entry) => Object.keys(entry.ingredients || {}).includes('herbs'));
+    expect(recipe, 'a recipe the shelf can serve must name the bought resource as an ingredient', { actual: describe((journey.body.recipes || []).map((entry) => entry.id)) });
+    expect(Number(recipe.ingredients.herbs) <= 2, 'the bought quantity must be enough for at least one recipe that uses it', { expected: 'an ingredient cost of at most 2 herbs', actual: describe(recipe.ingredients) });
+    state.notes.push(`karma loop: settled ${wallet} Karma Coins from one saved garden object, then bought ${goodId} (${purchase.price}) with key ${purchase.key} - one debit, two herbs on the shelf, no NemoCoin`);
+    return `purse ${wallet} Karma Coins, one purchase of ${goodId} for ${purchase.price}, ${granted.quantity} ${granted.kind} granted`;
+  });
+
+  await step('a real restart keeps the space, the object, the shelf and the purse', async () => {
+    const spaceBefore = rows('SELECT type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', garden);
+    const shelfBefore = rows('SELECT kind,quantity FROM journey_inventory WHERE agent_id=? ORDER BY kind', resident.id);
+    const karmaBefore = rows('SELECT id,service_id,amount FROM karma_receipts WHERE account_id=? ORDER BY seq', account.id);
+    const purchasesBefore = rows('SELECT id,good_id,amount FROM karma_purchases WHERE account_id=? ORDER BY seq', account.id);
+    await stopServer();
+    await startServer();
+    expect(describe(rows('SELECT type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', garden)) === describe(spaceBefore), 'the built object must survive the restart byte-for-byte', { expected: describe(spaceBefore), actual: describe(rows('SELECT type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', garden)) });
+    expect(describe(rows('SELECT kind,quantity FROM journey_inventory WHERE agent_id=? ORDER BY kind', resident.id)) === describe(shelfBefore), 'the bought resource must survive the restart', { expected: describe(shelfBefore), actual: describe(rows('SELECT kind,quantity FROM journey_inventory WHERE agent_id=? ORDER BY kind', resident.id)) });
+    expect(describe(rows('SELECT id,service_id,amount FROM karma_receipts WHERE account_id=? ORDER BY seq', account.id)) === describe(karmaBefore), 'the karma receipts must survive the restart', { expected: describe(karmaBefore), actual: 'the receipts changed' });
+    expect(describe(rows('SELECT id,good_id,amount FROM karma_purchases WHERE account_id=? ORDER BY seq', account.id)) === describe(purchasesBefore), 'the purchase must survive the restart', { expected: describe(purchasesBefore), actual: 'the purchase changed' });
+    // Both browsers, both currencies and the land registry are exactly as they were.
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards') === coinsBefore, 'the restart must mint no NemoCoin', { actual: 'the NemoCoin ledger changed' });
+    expect(count('SELECT COUNT(*) AS n FROM land_parcels') === parcelsBefore && count('SELECT COUNT(*) AS n FROM land_stewardships') === stewardshipsBefore, 'the finite land registry must be untouched by the whole loop', { actual: 'the land registry changed' });
+    await page.goto(baseUrl(), { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    expect(await enterTheWorld(), 'the resident must be able to return to its world after the restart', { expected: 'the world open as the resident', actual: describe(await entryState(page)) });
+    await browserShows(page, garden);
+    await openGameTab(page, 'Karma & shop');
+    const panel = page.locator('#shop-panel-host');
+    await panel.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await waitForCondition(async () => /Karma Coins:\s*\d+/.test((await panel.textContent()) || '') ? true : null, 'the restarted panel to state the purse again');
+    state.notes.push(`karma loop restart: ${garden} still holds ${spaceBefore.length} object, the shelf still holds ${shelfBefore.length} kind, the ledger still holds ${karmaBefore.length} receipt and ${purchasesBefore.length} purchase, with no NemoCoin and no land touched`);
+    return `after a real restart: the garden, the object, the shelf, ${karmaBefore.length} karma receipt and the purchase are unchanged, and the panel states the purse again`;
+  });
+
+  await step('the same purse and shop work on a phone with reduced motion', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    // Repaint the section under the new viewport and preference: a reload gives the phone a clean
+    // shell (no desktop drawer left open), and the world door is the same Continue every player uses.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    expect(await enterTheWorld(), 'the resident must be able to enter its world on a phone', { expected: 'the world open as the resident', actual: describe(await entryState(page)) });
+    await openGameTab(page, 'Karma & shop');
+    await settle(page);
+    const panel = page.locator('#shop-panel-host');
+    await panel.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const measured = await panel.evaluate((host) => {
+      const root = host.firstElementChild || host;
+      const buy = root.querySelector('.ui-shop-buy, .ui-shop-confirm-button');
+      const styles = getComputedStyle(root);
+      return {
+        viewport: window.innerWidth,
+        document: document.documentElement.scrollWidth,
+        target: buy ? Math.round(buy.getBoundingClientRect().height) : 0,
+        reduced_class: String(root.className).includes('ui-shop-reduced'),
+        transition: styles.transitionDuration,
+      };
+    });
+    expect(measured.document <= measured.viewport, 'the shop must fit a 390 px phone without horizontal scrolling', { expected: `a document ${measured.viewport} px wide or narrower`, actual: `${measured.document} px in a ${measured.viewport} px viewport` });
+    expect(measured.target >= 44, 'every shop button must meet the 44 px touch floor', { expected: 'at least 44 px', actual: `${measured.target} px` });
+    expect(measured.reduced_class && /^0s/.test(measured.transition), 'the panel must drop its transitions when the reader asks for less motion', { expected: 'the reduced class and no transition', actual: describe({ reduced_class: measured.reduced_class, transition: measured.transition }) });
+    await page.emulateMedia({ reducedMotion: null });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    state.notes.push(`karma loop phone: at 390 px the shop document was ${measured.document} px wide in a ${measured.viewport} px viewport, its buy control measured ${measured.target} px tall, and reduced motion removed the transition`);
+    return `390 px: no horizontal scroll (${measured.document} ≤ ${measured.viewport}), a ${measured.target} px buy control and no transition under reduced motion`;
+  });
+
+  return `a brand-new account signed up, created one resident, received the personal garden and cottage that come with it, built a bench there through the garden's own hotbar and placement preview, settled one saved service into Karma Coins, bought the cheapest shop good and kept the shelf, the purse and the space through a real restart - with no NemoCoin minted and no land parcel or stewardship touched`;
 });
 
 define('hero-introduction-film',async()=>{
