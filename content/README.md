@@ -166,3 +166,14 @@ a palette reference disagrees with the files on disk.
   distinguishable in the voxel scene; crop state is presented in the workshop UI instead.
 - **Skin tones** are chosen deterministically from the agent id hash and are not operator-selectable
   today; the four tones are recorded as cosmetics with that provenance stated.
+- **Two gaps found while adding the authored families** are reproduced by
+  `node --test tests/framework/known-gaps-content.mjs` — a file bare `node --test` does not collect,
+  so `npm test` stays green while each defect stays reproducible, with its command, invariant,
+  observation and owner recorded in the file. First, a seventh crop definition would fork the
+  persisted `journey_crops` schema silently: the table's `CHECK` clause is derived from the sealed
+  crop list while `PRAGMA user_version` stays 25, so a fresh database and an existing one disagree
+  while recovery reports both as current (owner: persistence/schema owner; the fix is a migration).
+  Second, the sealed furniture `rules.walkable`/`rules.footprint` and the shared table in
+  `src/footprints.js` disagree for 18 of the 31 furniture definitions — the definitions declare
+  walkable/open for types that table classes as a blocking `mass` — and no check compares them
+  (owner: content/runtime owner; either repair changes runtime behaviour).
