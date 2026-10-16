@@ -2,8 +2,70 @@
   "format": "veloren-landmarks-v1",
   "note": "Real structures of the Veloren hamlet Harr. The Veloren server resolves the same ids to world positions (see nemo-bridge/link-config.example.json). Harr has no library or pavilion, so Lyra's NemoWorld places map to its real buildings: Library = the house, Peace Pavilion = the farm field, Meeting Hall = the plaza.",
   "landmarks": [
-    { "id": "lyra-house", "name": "Harr's house", "role": "post" },
-    { "id": "lyra-field", "name": "Harr's farm field", "role": "survey" },
-    { "id": "lyra-plaza", "name": "Harr's plaza", "role": "place" }
+    {
+      "id": "lyra-house",
+      "name": "Harr's house",
+      "role": "post"
+    },
+    {
+      "id": "lyra-field",
+      "name": "Harr's farm field",
+      "role": "survey"
+    },
+    {
+      "id": "lyra-plaza",
+      "name": "Harr's plaza",
+      "role": "place"
+    },
+    {
+      "id": "disc-meadow-flowers",
+      "name": "The wildflower meadow",
+      "role": "place"
+    },
+    {
+      "id": "disc-boundary-stone",
+      "name": "The old boundary stone",
+      "role": "place"
+    },
+    {
+      "id": "disc-hidden-spring",
+      "name": "The hidden spring",
+      "role": "place"
+    },
+    {
+      "id": "disc-high-view",
+      "name": "The high view",
+      "role": "place"
+    },
+    {
+      "id": "disc-bee-hollow",
+      "name": "The bee hollow",
+      "role": "place"
+    },
+    {
+      "id": "disc-lichen-wall",
+      "name": "The lichen wall",
+      "role": "place"
+    },
+    {
+      "id": "disc-birdsong-grove",
+      "name": "The birdsong grove",
+      "role": "place"
+    },
+    {
+      "id": "disc-clay-bank",
+      "name": "The clay bank",
+      "role": "place"
+    },
+    {
+      "id": "disc-star-meadow",
+      "name": "The star meadow",
+      "role": "place"
+    },
+    {
+      "id": "disc-wind-ridge",
+      "name": "The wind ridge",
+      "role": "place"
+    }
   ]
 }

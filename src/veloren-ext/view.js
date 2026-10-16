@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { identityFor, setIdentityProvider } from './identity.js';
+import { findsFrom, libraryLines, loadDiscoveries, loadRecord, loadWorks, worksLines } from './world-life.js';
 
 // ---- The in-game interface (HUD) ---------------------------------------------------------------
 //
@@ -47,7 +48,9 @@ export const HUD_POLICY = Object.freeze({
 // instance Lyra's) is refused even though it carries the same `director` scope.
 export const GUIDE_RESIDENTS = Object.freeze(['lw-selene']);
 
-export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma']);
+export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library']);
+// Open pages: about the village, not about an account, so they need no link. They still need a player id.
+export const OPEN_PAGES = Object.freeze(['works', 'library']);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const enc = new TextEncoder();
@@ -191,6 +194,7 @@ export function helpLines() {
   return [
     'I am Selene, a scripted guide: I only read and tell. I cannot give, buy, approve or change anything for you.',
     'Say or whisper: start, passport, journal, calling, quests, next, community, karma. Add a number for more, like quests 2.',
+    'For the village itself, ask for works (what is being built) or library (places to discover). They need no account.',
     'Say track to mark your current step on your map. Say more for the next page of the last answer.',
     'My answers come to you privately by /tell. Your real progress lives in NemoWorld and only the world can change it.',
   ];
@@ -361,6 +365,16 @@ const TITLES = { help: 'Help', start: 'First ten minutes', passport: 'Passport',
  */
 export function buildView({ link, platform, player_uuid, name, page = 1 }) {
   if (!HUD_PAGES.includes(name)) throw Object.assign(new Error('Unknown page.'), { status: 404 });
+  if (OPEN_PAGES.includes(name)) {
+    const lines = name === 'works'
+      ? worksLines(loadWorks(), loadRecord(process.env.NEMO_WORLD_RECORD), link.clock())
+      : libraryLines(loadDiscoveries(), findsFrom(link.sql, loadDiscoveries()), player_uuid, (alias) => plain(alias, 24));
+    const paged = paginate(lines, page);
+    return fitResponse({
+      linked: false, open: true, command: name, title: name === 'works' ? 'Public works' : 'Harr Library', page: paged.page, pages: paged.pages,
+      lines: paged.out_of_range ? [line(`There is no page ${page}.`)] : paged.lines, more: !paged.out_of_range && paged.page < paged.pages, source: 'scripted',
+    });
+  }
   const who = resolveViewer(link, platform, player_uuid);
   if (!who.linked) {
     const paged = paginate(unlinkedLines(who.reason), 1);

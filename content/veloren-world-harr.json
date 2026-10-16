@@ -800,6 +800,2921 @@
           "depth": 2
         }
       ]
+    },
+    {
+      "id": "well-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -12,
+        "dy": -8
+      },
+      "ground_at": [
+        2,
+        2
+      ],
+      "project": "well",
+      "title": "Marking out and laying the base",
+      "release_after_minutes": 5,
+      "note": "The Plaza well, stage 1 of 3: Marking out and laying the base.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            4,
+            4,
+            4
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            4,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            4,
+            4,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        }
+      ]
+    },
+    {
+      "id": "well-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -12,
+        "dy": -8
+      },
+      "ground_at": [
+        2,
+        2
+      ],
+      "project": "well",
+      "title": "Raising the stone ring",
+      "release_after_minutes": 15,
+      "note": "The Plaza well, stage 2 of 3: Raising the stone ring.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            4,
+            0,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            4,
+            1
+          ],
+          "to": [
+            4,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            0,
+            1
+          ],
+          "to": [
+            4,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        }
+      ]
+    },
+    {
+      "id": "well-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -12,
+        "dy": -8
+      },
+      "ground_at": [
+        2,
+        2
+      ],
+      "project": "well",
+      "title": "Posts, a bucket and a lantern",
+      "release_after_minutes": 25,
+      "note": "The Plaza well, stage 3 of 3: Posts, a bucket and a lantern.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "BarrelWoodWater"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            2
+          ],
+          "sprite": "LanternpostWoodBase"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            3
+          ],
+          "sprite": "LanternpostWoodUpper"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            4
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "BucketWoodM"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -1,
+            2,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "market-hall-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 10,
+        "dy": -13
+      },
+      "ground_at": [
+        4,
+        3
+      ],
+      "project": "market-hall",
+      "title": "Levelling the ground and laying the floor",
+      "release_after_minutes": 20,
+      "note": "The market hall, stage 1 of 4: Levelling the ground and laying the floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            6,
+            6
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            10,
+            6
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            10,
+            6,
+            0
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        }
+      ]
+    },
+    {
+      "id": "market-hall-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 10,
+        "dy": -13
+      },
+      "ground_at": [
+        4,
+        3
+      ],
+      "project": "market-hall",
+      "title": "Raising the posts",
+      "release_after_minutes": 30,
+      "note": "The market hall, stage 2 of 4: Raising the posts.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            6,
+            1
+          ],
+          "to": [
+            10,
+            6,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            0,
+            1
+          ],
+          "to": [
+            5,
+            0,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            6,
+            1
+          ],
+          "to": [
+            5,
+            6,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        }
+      ]
+    },
+    {
+      "id": "market-hall-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 10,
+        "dy": -13
+      },
+      "ground_at": [
+        4,
+        3
+      ],
+      "project": "market-hall",
+      "title": "Laying the roof",
+      "release_after_minutes": 40,
+      "note": "The market hall, stage 3 of 4: Laying the roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            10,
+            6,
+            4
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            72,
+            52
+          ]
+        }
+      ]
+    },
+    {
+      "id": "market-hall-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 10,
+        "dy": -13
+      },
+      "ground_at": [
+        4,
+        3
+      ],
+      "project": "market-hall",
+      "title": "Stalls, baskets and lanterns",
+      "release_after_minutes": 50,
+      "note": "The market hall, stage 4 of 4: Stalls, baskets and lanterns.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "CounterWoodEnd"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "CounterWoodMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            1,
+            1
+          ],
+          "sprite": "CounterWoodEnd"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            1,
+            1
+          ],
+          "sprite": "CounterWoodEnd"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            1,
+            1
+          ],
+          "sprite": "CounterWoodEnd"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "BasketWovenL"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            2,
+            1
+          ],
+          "sprite": "CrateBlock"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "BarrelWoodWater"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            1
+          ],
+          "sprite": "SackLeatherM"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            5,
+            1
+          ],
+          "sprite": "Hay"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            3
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            3,
+            3
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "cottage-1-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 2
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-1",
+      "title": "Clearing the plot and laying the floor",
+      "release_after_minutes": 35,
+      "note": "Cottage 1, stage 1 of 4: Clearing the plot and laying the floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            6,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            7,
+            6
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            7,
+            6,
+            0
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-1-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 2
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-1",
+      "title": "Raising the walls",
+      "release_after_minutes": 45,
+      "note": "Cottage 1, stage 2 of 4: Raising the walls.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            7,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        }
+      ]
+    },
+    {
+      "id": "cottage-1-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 2
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-1",
+      "title": "Setting the roof",
+      "release_after_minutes": 55,
+      "note": "Cottage 1, stage 3 of 4: Setting the roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            7,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            104,
+            96,
+            86
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-1-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 2
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-1",
+      "title": "Furnishing the home",
+      "release_after_minutes": 65,
+      "note": "Cottage 1, stage 4 of 4: Furnishing the home.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            1
+          ],
+          "sprite": "Hearth"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            5,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "FlowerpotWoodWoodlandS"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "observatory-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": -26
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "project": "observatory",
+      "title": "Raising the platform",
+      "release_after_minutes": 50,
+      "note": "The star observatory, stage 1 of 3: Raising the platform.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            8,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            8,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ],
+          "depth": 6
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            8,
+            8,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        }
+      ]
+    },
+    {
+      "id": "observatory-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": -26
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "project": "observatory",
+      "title": "Parapet and steps",
+      "release_after_minutes": 60,
+      "note": "The star observatory, stage 2 of 3: Parapet and steps.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            2
+          ],
+          "to": [
+            8,
+            0,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            196,
+            188,
+            170
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            8,
+            2
+          ],
+          "to": [
+            8,
+            8,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            196,
+            188,
+            170
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            2
+          ],
+          "to": [
+            0,
+            8,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            196,
+            188,
+            170
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            0,
+            2
+          ],
+          "to": [
+            8,
+            8,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            196,
+            188,
+            170
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            0,
+            2
+          ],
+          "to": [
+            4,
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "observatory-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": -26
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "project": "observatory",
+      "title": "The star chart table",
+      "release_after_minutes": 70,
+      "note": "The star observatory, stage 3 of 3: The star chart table.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            2
+          ],
+          "sprite": "CrystalBall"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            2
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            4,
+            2
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            7,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            2
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "lantern-path-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 8,
+        "dy": -3
+      },
+      "ground_at": [
+        2,
+        0
+      ],
+      "project": "lantern-path",
+      "title": "Laying the first stretch",
+      "release_after_minutes": 65,
+      "note": "The lantern path, stage 1 of 3: Laying the first stretch.",
+      "ops": [
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            14,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            196,
+            188,
+            170
+          ],
+          "depth": 2
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            13,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lantern-path-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 8,
+        "dy": -3
+      },
+      "ground_at": [
+        2,
+        0
+      ],
+      "project": "lantern-path",
+      "title": "Laying the second stretch",
+      "release_after_minutes": 75,
+      "note": "The lantern path, stage 2 of 3: Laying the second stretch.",
+      "ops": [
+        {
+          "op": "foundation",
+          "from": [
+            15,
+            0
+          ],
+          "to": [
+            29,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            196,
+            188,
+            170
+          ],
+          "depth": 2
+        },
+        {
+          "op": "sprite",
+          "at": [
+            19,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            25,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lantern-path-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 8,
+        "dy": -3
+      },
+      "ground_at": [
+        2,
+        0
+      ],
+      "project": "lantern-path",
+      "title": "Laying the last stretch",
+      "release_after_minutes": 85,
+      "note": "The lantern path, stage 3 of 3: Laying the last stretch.",
+      "ops": [
+        {
+          "op": "foundation",
+          "from": [
+            30,
+            0
+          ],
+          "to": [
+            44,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            196,
+            188,
+            170
+          ],
+          "depth": 2
+        },
+        {
+          "op": "sprite",
+          "at": [
+            31,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            37,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            43,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "cottage-2-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 14
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-2",
+      "title": "Clearing the plot and laying the floor",
+      "release_after_minutes": 80,
+      "note": "Cottage 2, stage 1 of 4: Clearing the plot and laying the floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            6,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            7,
+            6
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            7,
+            6,
+            0
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-2-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 14
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-2",
+      "title": "Raising the walls",
+      "release_after_minutes": 90,
+      "note": "Cottage 2, stage 2 of 4: Raising the walls.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            7,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        }
+      ]
+    },
+    {
+      "id": "cottage-2-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 14
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-2",
+      "title": "Setting the roof",
+      "release_after_minutes": 100,
+      "note": "Cottage 2, stage 3 of 4: Setting the roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            7,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            104,
+            96,
+            86
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-2-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 14
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-2",
+      "title": "Furnishing the home",
+      "release_after_minutes": 110,
+      "note": "Cottage 2, stage 4 of 4: Furnishing the home.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            1
+          ],
+          "sprite": "Hearth"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            5,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "FlowerpotWoodWoodlandS"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "field-pavilion-1",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": 14,
+        "dy": 0
+      },
+      "ground_at": [
+        4,
+        3
+      ],
+      "project": "field-pavilion",
+      "title": "Laying the floor",
+      "release_after_minutes": 95,
+      "note": "The field pavilion, stage 1 of 3: Laying the floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            6,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            8,
+            6
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            8,
+            6,
+            0
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        }
+      ]
+    },
+    {
+      "id": "field-pavilion-2",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": 14,
+        "dy": 0
+      },
+      "ground_at": [
+        4,
+        3
+      ],
+      "project": "field-pavilion",
+      "title": "Posts and roof",
+      "release_after_minutes": 105,
+      "note": "The field pavilion, stage 2 of 3: Posts and roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            0,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            6,
+            1
+          ],
+          "to": [
+            8,
+            6,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            8,
+            6,
+            4
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            72,
+            52
+          ]
+        }
+      ]
+    },
+    {
+      "id": "field-pavilion-3",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": 14,
+        "dy": 0
+      },
+      "ground_at": [
+        4,
+        3
+      ],
+      "project": "field-pavilion",
+      "title": "Benches, a table and lanterns",
+      "release_after_minutes": 115,
+      "note": "The field pavilion, stage 3 of 3: Benches, a table and lanterns.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            2,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandRound"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            3
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            3,
+            3
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "library-annex-1",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 10,
+        "dy": 0
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "library-annex",
+      "title": "Foundation and floor",
+      "release_after_minutes": 110,
+      "note": "The library annex, stage 1 of 4: Foundation and floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            5,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            7,
+            5
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            7,
+            5,
+            0
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        }
+      ]
+    },
+    {
+      "id": "library-annex-2",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 10,
+        "dy": 0
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "library-annex",
+      "title": "Walls and windows",
+      "release_after_minutes": 120,
+      "note": "The library annex, stage 2 of 4: Walls and windows.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            5,
+            1
+          ],
+          "to": [
+            7,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            2,
+            2
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            2,
+            2
+          ],
+          "sprite": "Window4"
+        }
+      ]
+    },
+    {
+      "id": "library-annex-3",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 10,
+        "dy": 0
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "library-annex",
+      "title": "Roof",
+      "release_after_minutes": 130,
+      "note": "The library annex, stage 3 of 4: Roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            7,
+            5,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            104,
+            96,
+            86
+          ]
+        }
+      ]
+    },
+    {
+      "id": "library-annex-4",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 10,
+        "dy": 0
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "library-annex",
+      "title": "Shelves, desks and the reading lamp",
+      "release_after_minutes": 140,
+      "note": "The library annex, stage 4 of 4: Shelves, desks and the reading lamp.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            1
+          ],
+          "sprite": "BookshelfEnd"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            4,
+            1
+          ],
+          "sprite": "BookshelfEnd"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            2,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandBody"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "cottage-3-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -14,
+        "dy": 16
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-3",
+      "title": "Clearing the plot and laying the floor",
+      "release_after_minutes": 125,
+      "note": "Cottage 3, stage 1 of 4: Clearing the plot and laying the floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            6,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            7,
+            6
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            7,
+            6,
+            0
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-3-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -14,
+        "dy": 16
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-3",
+      "title": "Raising the walls",
+      "release_after_minutes": 135,
+      "note": "Cottage 3, stage 2 of 4: Raising the walls.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            7,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            0,
+            1
+          ],
+          "to": [
+            7,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            142,
+            128
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        }
+      ]
+    },
+    {
+      "id": "cottage-3-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -14,
+        "dy": 16
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-3",
+      "title": "Setting the roof",
+      "release_after_minutes": 145,
+      "note": "Cottage 3, stage 3 of 4: Setting the roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            7,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            104,
+            96,
+            86
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-3-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -14,
+        "dy": 16
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-3",
+      "title": "Furnishing the home",
+      "release_after_minutes": 155,
+      "note": "Cottage 3, stage 4 of 4: Furnishing the home.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            1
+          ],
+          "sprite": "Hearth"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            5,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "FlowerpotWoodWoodlandS"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "orchard-gate-1",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": 0,
+        "dy": -6
+      },
+      "ground_at": [
+        2,
+        0
+      ],
+      "project": "orchard-gate",
+      "title": "The west fence",
+      "release_after_minutes": 140,
+      "note": "The orchard fence and gate, stage 1 of 2: The west fence.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        }
+      ]
+    },
+    {
+      "id": "orchard-gate-2",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": 0,
+        "dy": -6
+      },
+      "ground_at": [
+        2,
+        0
+      ],
+      "project": "orchard-gate",
+      "title": "The east fence and the gate",
+      "release_after_minutes": 150,
+      "note": "The orchard fence and gate, stage 2 of 2: The east fence and the gate.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodGateWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            -1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            -1,
+            1
+          ],
+          "sprite": "Lantern"
+        }
+      ]
     }
   ],
   "note": "Harr's dressed world, written by the world stream: three groups of props on the square and in the workshop's yard, and one furnished interior - a surveyor's hut on the farm field where the Quiet Survey begins. Every anchor is a plot of the site (Plaza, Workshop, FarmField) that the Veloren server resolves from world generation, and every name here is one of the game's own block kinds and sprites; `nemo-world-check` and NemoWorld's own validator both have to accept the file before a server will apply it. The atmosphere block follows NemoWorld's published clock (120-minute cycle, four phases): the server pins the absolute time of day to it, so the sun never jumps and an in-game day lasts 120 real minutes rather than the settings' day_length. The four hours are not free: they are the boundaries of Veloren's own day periods (Night before 06:00, Morning to 11:00, Noon to 16:00, Evening to 19:00, Night after - common/src/time.rs), so each of NemoWorld's phases falls entirely inside the one Veloren period the bridge names the same way. That is what makes a resident's schedule follow NemoWorld's phase exactly. `weather` is false on purpose: this server sets the time, not the weather."

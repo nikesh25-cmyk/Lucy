@@ -1,0 +1,76 @@
+{
+  "format": "nemo-works-v1",
+  "stage_gap_minutes": 10,
+  "projects": [
+    {
+      "id": "well",
+      "name": "The Plaza well",
+      "purpose": "Fresh water for the square, built ring by ring.",
+      "stages": 3,
+      "first_stage_minutes": 5
+    },
+    {
+      "id": "market-hall",
+      "name": "The market hall",
+      "purpose": "A roofed hall where makers and farmers share what they have grown and made.",
+      "stages": 4,
+      "first_stage_minutes": 20
+    },
+    {
+      "id": "cottage-1",
+      "name": "Cottage 1",
+      "purpose": "A new home for the neighbours who are arriving; each cottage is built by the village together.",
+      "stages": 4,
+      "first_stage_minutes": 35
+    },
+    {
+      "id": "observatory",
+      "name": "The star observatory",
+      "purpose": "A raised stone platform where scholars chart the sky and record what they learn.",
+      "stages": 3,
+      "first_stage_minutes": 50
+    },
+    {
+      "id": "lantern-path",
+      "name": "The lantern path",
+      "purpose": "A lit path from the square to the fields so no one walks home in the dark.",
+      "stages": 3,
+      "first_stage_minutes": 65
+    },
+    {
+      "id": "cottage-2",
+      "name": "Cottage 2",
+      "purpose": "A new home for the neighbours who are arriving; each cottage is built by the village together.",
+      "stages": 4,
+      "first_stage_minutes": 80
+    },
+    {
+      "id": "field-pavilion",
+      "name": "The field pavilion",
+      "purpose": "A shaded open pavilion beside the fields for rest, reading and shared meals.",
+      "stages": 3,
+      "first_stage_minutes": 95
+    },
+    {
+      "id": "library-annex",
+      "name": "The library annex",
+      "purpose": "More shelves for the Harr Library, where every discovery is written down.",
+      "stages": 4,
+      "first_stage_minutes": 110
+    },
+    {
+      "id": "cottage-3",
+      "name": "Cottage 3",
+      "purpose": "A new home for the neighbours who are arriving; each cottage is built by the village together.",
+      "stages": 4,
+      "first_stage_minutes": 125
+    },
+    {
+      "id": "orchard-gate",
+      "name": "The orchard fence and gate",
+      "purpose": "A low fence and a welcoming gate so the orchard can grow in peace.",
+      "stages": 2,
+      "first_stage_minutes": 140
+    }
+  ]
+}

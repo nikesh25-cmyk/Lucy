@@ -92,6 +92,10 @@ export function validateManifest(manifest, places = PLACES, limits = MANIFEST_LI
       if (!inRange(value, -limits.max_extent, limits.max_extent)) bad(`${where}: anchor.${axis} must be within ±${limits.max_extent}`);
     }
     if (group.note !== undefined && typeof group.note !== 'string') bad(`${where}: note must be text`);
+    if (group.release_after_minutes !== undefined && !inRange(group.release_after_minutes, 0, 7 * 24 * 60)) bad(`${where}: release_after_minutes must be 0 to ${7 * 24 * 60}`);
+    if (group.project !== undefined && (typeof group.project !== 'string' || !SLUG.test(group.project))) bad(`${where}: project must be a short lower-case slug`);
+    if (group.title !== undefined && !isText(group.title, 80)) bad(`${where}: title must be short plain text`);
+    if ((group.release_after_minutes || 0) > 0 && !group.project) bad(`${where}: a staged group needs a project`);
     if (!Array.isArray(group.ops) || !group.ops.length) { bad(`${where}: needs ops`); continue; }
     if (group.ops.length > limits.max_ops_per_group) bad(`${where}: at most ${limits.max_ops_per_group} ops`);
     let blocks = 0;

@@ -31,7 +31,7 @@ const fail = (status, message) => { throw Object.assign(new Error(message), { st
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 export const LINK_FORMAT = 'veloren-link-v1';
-export const EVENT_KINDS = Object.freeze(['resident.met', 'landmark.together', 'command.applied', 'command.rejected']);
+export const EVENT_KINDS = Object.freeze(['resident.met', 'landmark.together', 'landmark.visited', 'command.applied', 'command.rejected']);
 // For these kinds the landmark_id field carries the id of the command being acknowledged.
 export const ACK_KINDS = Object.freeze(['command.applied', 'command.rejected']);
 // `shop` is added by the shop stream (a shopkeeper resident answers only shop talk with it; it can
@@ -368,7 +368,7 @@ export class VelorenLink {
     if (ACK_KINDS.includes(e.kind)) {
       if (typeof e.landmark_id !== 'string' || !UUID.test(e.landmark_id)) return 'bad_command_id';
     } else if (e.landmark_id != null && (typeof e.landmark_id !== 'string' || !this.landmarkById(e.landmark_id))) return 'unknown_landmark';
-    if (e.kind === 'landmark.together' && !e.landmark_id) return 'landmark_required';
+    if ((e.kind === 'landmark.together' || e.kind === 'landmark.visited') && !e.landmark_id) return 'landmark_required';
     if (!Number.isSafeInteger(e.occurred_at) || e.occurred_at <= 0 || e.occurred_at > this.clock() + LINK_POLICY.future_skew_ms) return 'bad_time';
     if (typeof e.sig !== 'string' || !/^[a-f0-9]{64}$/.test(e.sig)) return 'bad_signature';
     const expected = Buffer.from(signEvent(this.eventKey, e), 'hex');

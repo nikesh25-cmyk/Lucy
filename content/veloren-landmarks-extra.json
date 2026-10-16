@@ -1,0 +1,202 @@
+{
+  "format": "nemo-landmarks-extra-v1",
+  "landmarks": [
+    {
+      "id": "site-well",
+      "label": "Well Site",
+      "name": "The well site on the plaza",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -10,
+      "dy": -6,
+      "radius": 9
+    },
+    {
+      "id": "site-market-hall",
+      "label": "Market Hall Site",
+      "name": "The market hall site",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 15,
+      "dy": -10,
+      "radius": 10
+    },
+    {
+      "id": "site-cottage-row",
+      "label": "Cottage Row",
+      "name": "The cottage row",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -22,
+      "dy": 10,
+      "radius": 15
+    },
+    {
+      "id": "site-observatory",
+      "label": "Observatory Site",
+      "name": "The star observatory site",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 4,
+      "dy": -22,
+      "radius": 9
+    },
+    {
+      "id": "site-pavilion",
+      "label": "Pavilion Site",
+      "name": "The field pavilion site",
+      "site": "Harr",
+      "plot": "FarmField",
+      "nth": 0,
+      "dx": 18,
+      "dy": 3,
+      "radius": 9
+    },
+    {
+      "id": "site-annex",
+      "label": "Annex Site",
+      "name": "The library annex site",
+      "site": "Harr",
+      "plot": "House",
+      "nth": 0,
+      "dx": 13,
+      "dy": 2,
+      "radius": 9
+    },
+    {
+      "id": "site-orchard-gate",
+      "label": "Orchard Gate",
+      "name": "The orchard gate",
+      "site": "Harr",
+      "plot": "FarmField",
+      "nth": 1,
+      "dx": 6,
+      "dy": -6,
+      "radius": 9
+    },
+    {
+      "id": "disc-meadow-flowers",
+      "label": "The wildflower meadow",
+      "name": "The wildflower meadow",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 30,
+      "dy": 18,
+      "radius": 7,
+      "discovery": true
+    },
+    {
+      "id": "disc-boundary-stone",
+      "label": "The old boundary stone",
+      "name": "The old boundary stone",
+      "site": "Harr",
+      "plot": "House",
+      "nth": 0,
+      "dx": -22,
+      "dy": -14,
+      "radius": 7,
+      "discovery": true
+    },
+    {
+      "id": "disc-hidden-spring",
+      "label": "The hidden spring",
+      "name": "The hidden spring",
+      "site": "Harr",
+      "plot": "FarmField",
+      "nth": 1,
+      "dx": 14,
+      "dy": 12,
+      "radius": 7,
+      "discovery": true
+    },
+    {
+      "id": "disc-high-view",
+      "label": "The high view",
+      "name": "The high view",
+      "site": "Harr",
+      "plot": "Workshop",
+      "nth": 0,
+      "dx": 24,
+      "dy": -24,
+      "radius": 7,
+      "discovery": true
+    },
+    {
+      "id": "disc-bee-hollow",
+      "label": "The bee hollow",
+      "name": "The bee hollow",
+      "site": "Harr",
+      "plot": "FarmField",
+      "nth": 0,
+      "dx": -16,
+      "dy": 16,
+      "radius": 7,
+      "discovery": true
+    },
+    {
+      "id": "disc-lichen-wall",
+      "label": "The lichen wall",
+      "name": "The lichen wall",
+      "site": "Harr",
+      "plot": "Workshop",
+      "nth": 0,
+      "dx": -20,
+      "dy": 8,
+      "radius": 7,
+      "discovery": true
+    },
+    {
+      "id": "disc-birdsong-grove",
+      "label": "The birdsong grove",
+      "name": "The birdsong grove",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -4,
+      "dy": 28,
+      "radius": 7,
+      "discovery": true
+    },
+    {
+      "id": "disc-clay-bank",
+      "label": "The clay bank",
+      "name": "The clay bank",
+      "site": "Harr",
+      "plot": "FarmField",
+      "nth": 1,
+      "dx": -18,
+      "dy": 4,
+      "radius": 7,
+      "discovery": true
+    },
+    {
+      "id": "disc-star-meadow",
+      "label": "The star meadow",
+      "name": "The star meadow",
+      "site": "Harr",
+      "plot": "House",
+      "nth": 0,
+      "dx": 8,
+      "dy": -26,
+      "radius": 7,
+      "discovery": true
+    },
+    {
+      "id": "disc-wind-ridge",
+      "label": "The wind ridge",
+      "name": "The wind ridge",
+      "site": "Harr",
+      "plot": "Workshop",
+      "nth": 0,
+      "dx": 6,
+      "dy": 26,
+      "radius": 7,
+      "discovery": true
+    }
+  ]
+}
