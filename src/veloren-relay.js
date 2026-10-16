@@ -55,10 +55,16 @@ function readLines(outbox, offset) {
 /**
  * One pass over the outbox. Returns counters. Throws only for conditions that should stop a
  * one-shot run (a rejected credential); transient failures leave the offset where it was.
+ *
+ * `resident` names the resident this relay's credential is bound to. When it is set, only that
+ * resident's facts are handed in: NemoWorld refuses another resident's event with
+ * `resident_out_of_scope` and the refusal is final, so an unfiltered relay running on a credential
+ * bound to one resident would advance past - and therefore lose - every other resident's facts.
+ * Without `resident` the relay behaves exactly as before (send everything).
  */
-export async function relayOnce({ outbox, offsetFile, url, token, fetchImpl = globalThis.fetch, log = () => {} }) {
+export async function relayOnce({ outbox, offsetFile, url, token, resident = null, fetchImpl = globalThis.fetch, log = () => {} }) {
   const target = relayTarget(url);
-  const stats = { sent: 0, accepted: 0, duplicate: 0, rejected: 0, malformed: 0, failed: 0 };
+  const stats = { sent: 0, accepted: 0, duplicate: 0, rejected: 0, malformed: 0, skipped: 0, failed: 0 };
   let offset = readOffset(offsetFile);
   for (;;) {
     const { lines } = readLines(outbox, offset);
@@ -66,7 +72,12 @@ export async function relayOnce({ outbox, offsetFile, url, token, fetchImpl = gl
     const batch = lines.slice(0, RELAY_BATCH);
     const events = [];
     for (const line of batch) {
-      try { events.push(JSON.parse(line.text)); } catch { stats.malformed += 1; log(`skipping a malformed outbox line ending at ${line.end}`); }
+      try {
+        const event = JSON.parse(line.text);
+        // Another resident's fact is none of this credential's business, and asking would lose it.
+        if (resident && event.resident_id !== resident) { stats.skipped += 1; continue; }
+        events.push(event);
+      } catch { stats.malformed += 1; log(`skipping a malformed outbox line ending at ${line.end}`); }
     }
     if (events.length) {
       let response;
