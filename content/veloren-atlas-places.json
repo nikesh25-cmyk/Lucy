@@ -1,0 +1,75 @@
+{
+  "format": "veloren-atlas-server-v1",
+  "manifest_hash": "d8f625035a04d70a81b8ca402d52de9e5685e1f607fca0557af640bfa4752fb4",
+  "world_seed": 130626853,
+  "source": "Built from content/veloren-atlas-sites.json (the snapshot `nemo-bridge --list-sites` took on a server started from userdata/server/server_config/settings.ron, world_seed 130626853; its sha256 is this file's manifest_hash). The Harr places are the five plots the Veloren server resolved from world generation for that site; the NemoWorld landmark ids on them are the same ids the link's landmark file uses, so a quest objective and a travel destination are the same place.",
+  "places": [
+    {
+      "id": "commons",
+      "name": "The Commons",
+      "short": "Harr, the start. The arrival field everyone wakes on.",
+      "kind": "site",
+      "site": "Harr",
+      "arrive_radius": 12
+    },
+    {
+      "id": "library",
+      "name": "The Lantern Library",
+      "short": "Harr's house, where Lyra keeps the survey notes.",
+      "kind": "plot",
+      "site": "Harr",
+      "plot": "House",
+      "nth": 0,
+      "arrive_radius": 8,
+      "landmark_id": "lyra-house"
+    },
+    {
+      "id": "field",
+      "name": "The Peace Pavilion field",
+      "short": "Harr's farm field, where the Quiet Survey is walked.",
+      "kind": "plot",
+      "site": "Harr",
+      "plot": "FarmField",
+      "nth": 0,
+      "arrive_radius": 8,
+      "landmark_id": "lyra-field"
+    },
+    {
+      "id": "plaza",
+      "name": "The Meeting Hall plaza",
+      "short": "Harr's plaza, where Selene the guide stands.",
+      "kind": "plot",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "arrive_radius": 8,
+      "landmark_id": "lyra-plaza"
+    },
+    {
+      "id": "workshop",
+      "name": "The workshop yard",
+      "short": "Harr's workshop, where the resident builders keep their tools.",
+      "kind": "plot",
+      "site": "Harr",
+      "plot": "Workshop",
+      "nth": 0,
+      "arrive_radius": 8
+    },
+    {
+      "id": "ajakkuq",
+      "name": "Ajakkuq",
+      "short": "A distant Adlet camp, far north-east of Harr.",
+      "kind": "site",
+      "site": "Ajakkuq",
+      "arrive_radius": 12
+    },
+    {
+      "id": "kramarl",
+      "name": "Kramarl",
+      "short": "A far town on the other side of the world.",
+      "kind": "site",
+      "site": "Kramarl",
+      "arrive_radius": 12
+    }
+  ]
+}
