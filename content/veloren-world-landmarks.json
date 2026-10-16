@@ -1,0 +1,134 @@
+{
+  "format": "veloren-world-landmarks-v1",
+  "note": "Where each of the eight NemoWorld residents stands at each of the four schedule phases, expressed as real structures of the Veloren hamlet Harr. `landmarks` is exactly the array the Veloren server's link config takes (`id`, `label`, `name`, `site`, `plot`, `nth`, `radius`), so it can be copied into `veloren-link.json` unchanged; `src/veloren-ext/world-residents.js` checks it and can print it. A `plot` + `nth` is resolved by the server from world generation (server/src/sys/nemo_link.rs:214-230, which sorts a site's plots of that kind by distance from the site's origin), never by a coordinate. The three ids `lyra-house`, `lyra-field` and `lyra-plaza` are the ones the link, home, hud and atlas streams already use and the ones the Quiet Survey's post/survey landmarks name (content/veloren-landmarks.json), so they keep their exact labels and plots here. Harr has five plots (House, two FarmFields, Workshop, Plaza; origin 15216,16016, read from the live server log `site Harr (origin Vec2 { x: 15216, y: 16016 }) has 5 plots`), and no harbour, no observatory, no gateway and no second square: the roster's nine scheduled labels therefore map onto six structures, and the three labels that have no counterpart are marked unmapped below rather than invented.",
+  "site": "Harr",
+  "landmarks": [
+    {
+      "id": "lyra-house",
+      "label": "Library",
+      "name": "Harr's house",
+      "site": "Harr",
+      "plot": "House",
+      "nth": 0,
+      "radius": 9
+    },
+    {
+      "id": "lyra-field",
+      "label": "Peace Pavilion",
+      "name": "Harr's farm field",
+      "site": "Harr",
+      "plot": "FarmField",
+      "nth": 0,
+      "radius": 9
+    },
+    {
+      "id": "lyra-plaza",
+      "label": "Meeting Hall",
+      "name": "Harr's plaza",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "radius": 9
+    },
+    {
+      "id": "harr-workshop",
+      "label": "Workshop",
+      "name": "Harr's workshop",
+      "site": "Harr",
+      "plot": "Workshop",
+      "nth": 0,
+      "radius": 9
+    },
+    {
+      "id": "harr-orchard",
+      "label": "Orchard",
+      "name": "Harr's far farm field",
+      "site": "Harr",
+      "plot": "FarmField",
+      "nth": 1,
+      "radius": 9,
+      "note": "Harr has two farm fields; nth 1 is the far one, 42 blocks from nth 0, so the orchard and the Peace Pavilion are two different fields. The order is the server's own: nearest to the site's origin first (nemo_link.rs:226)."
+    },
+    {
+      "id": "harr-central-plaza",
+      "label": "Central Plaza",
+      "name": "Harr's central plaza",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "radius": 9,
+      "shared_with": "lyra-plaza",
+      "note": "NemoWorld's 'Central Plaza' and 'Meeting Hall' are two names for the one open square Harr has, and the bridge picks a landmark by its label alone (nemo-bridge/src/main.rs, `landmarks.iter().find(|l| l.label == label)`), so both names need their own entry at the same structure."
+    }
+  ],
+  "residents": {
+    "lw-aria": {
+      "dawn": { "label": "Central Plaza", "landmark": "harr-central-plaza" },
+      "day": { "label": "Orchard", "landmark": "harr-orchard" },
+      "dusk": { "label": "Peace Pavilion", "landmark": "lyra-field" },
+      "night": { "label": "Meeting Hall", "landmark": "lyra-plaza" }
+    },
+    "lw-theron": {
+      "dawn": { "label": "Meeting Hall", "landmark": "lyra-plaza" },
+      "day": { "label": "Central Plaza", "landmark": "harr-central-plaza" },
+      "dusk": { "label": "Workshop", "landmark": "harr-workshop" },
+      "night": { "label": "Meeting Hall", "landmark": "lyra-plaza" }
+    },
+    "lw-bram": {
+      "dawn": {
+        "label": "Harbor",
+        "unmapped": true,
+        "reason": "Harr is an inland hamlet with five plots and no water: the world site snapshot (wt/nemoworld-atlas/content/veloren-atlas-sites.json, 148 sites) has no Harbour, Dock or Lighthouse kind at all, and the nearest water-side structure is the Bridge of Ning 2534 blocks away.",
+        "needed": "A dock or harbour built at a Harr plot by the (not yet written) world-dressing system, or an owner decision to send him to the nearest bridge instead, which is a 2534-block walk on foot."
+      },
+      "day": { "label": "Central Plaza", "landmark": "harr-central-plaza" },
+      "dusk": {
+        "label": "Observatory",
+        "unmapped": true,
+        "reason": "No Observatory, Tower or Lookout kind exists in the world site snapshot, and the nearest raised site is Corasi Palace (a VampireCastle) 1880 blocks away - not a place residents should walk to.",
+        "needed": "A lookout or observatory built at a Harr plot by the world-dressing system, on ground high enough to see over the hamlet."
+      },
+      "night": { "label": "Meeting Hall", "landmark": "lyra-plaza" }
+    },
+    "lw-lyra": {
+      "dawn": { "label": "Meeting Hall", "landmark": "lyra-plaza" },
+      "day": { "label": "Library", "landmark": "lyra-house" },
+      "dusk": { "label": "Peace Pavilion", "landmark": "lyra-field" },
+      "night": { "label": "Library", "landmark": "lyra-house" }
+    },
+    "lw-kael": {
+      "dawn": { "label": "Central Plaza", "landmark": "harr-central-plaza" },
+      "day": { "label": "Workshop", "landmark": "harr-workshop" },
+      "dusk": { "label": "Workshop", "landmark": "harr-workshop" },
+      "night": { "label": "Meeting Hall", "landmark": "lyra-plaza" }
+    },
+    "lw-selene": {
+      "dawn": { "label": "Peace Pavilion", "landmark": "lyra-field" },
+      "day": { "label": "Peace Pavilion", "landmark": "lyra-field" },
+      "dusk": { "label": "Meeting Hall", "landmark": "lyra-plaza" },
+      "night": { "label": "Peace Pavilion", "landmark": "lyra-field" }
+    },
+    "lw-vaelen": {
+      "dawn": { "label": "Meeting Hall", "landmark": "lyra-plaza" },
+      "day": { "label": "Central Plaza", "landmark": "harr-central-plaza" },
+      "dusk": { "label": "Meeting Hall", "landmark": "lyra-plaza" },
+      "night": { "label": "Meeting Hall", "landmark": "lyra-plaza" }
+    },
+    "lw-rowan": {
+      "dawn": {
+        "label": "Gateway",
+        "unmapped": true,
+        "reason": "NemoWorld's frontier gateway (a boundary marker at 19,6 of the 2D commons) has no Veloren counterpart: Harr's five plots contain no gate, and a link-config landmark must name a site and a plot, so the site's own arrival field cannot be used as one (server/src/sys/nemo_link.rs:216-228 resolves `site` + `plot` only).",
+        "needed": "A gate or boundary marker built at a Harr plot by the world-dressing system, or a change on the Veloren side to let a landmark name a whole site rather than one of its plots."
+      },
+      "day": { "label": "Central Plaza", "landmark": "harr-central-plaza" },
+      "dusk": {
+        "label": "Harbor",
+        "unmapped": true,
+        "reason": "Same as lw-bram's dawn: Harr has no water and the world has no Harbour kind.",
+        "needed": "The same harbour structure; he and Bram would then both walk the frontier road to it."
+      },
+      "night": { "label": "Meeting Hall", "landmark": "lyra-plaza" }
+    }
+  }
+}
