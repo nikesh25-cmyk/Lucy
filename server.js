@@ -81,6 +81,10 @@ const files = new Map([
   ['/assets/fonts/dm-sans-latin-wght-normal.woff2', ['assets/fonts/dm-sans-latin-wght-normal.woff2', 'font/woff2']],
   ['/assets/fonts/space-grotesk-latin-wght-normal.woff2', ['assets/fonts/space-grotesk-latin-wght-normal.woff2', 'font/woff2']],
 ]);
+// The Veloren account-link page (src/veloren-ext/identity.js is its API): one page and its two files.
+files.set('/veloren-link', ['veloren-link.html', 'text/html; charset=utf-8']);
+files.set('/veloren-link.js', ['veloren-link.js', 'text/javascript; charset=utf-8']);
+files.set('/veloren-link.css', ['veloren-link.css', 'text/css; charset=utf-8']);
 for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout', 'book-open', 'shield-check', 'settings', 'log-in', 'menu', 'clipboard-list', 'sparkles', 'chevron-right', 'x']) {
   files.set(`/assets/icons/${name}.svg`, [`assets/icons/${name}.svg`, 'image/svg+xml']);
 }
@@ -424,6 +428,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
   if (hosting.publicOrigin && setupRequired && !hosting.setupCode) throw new Error('Set the private LUCY_SETUP_CODE before starting a public server with no administrator.');
   platform.publicMode = Boolean(hosting.publicOrigin);
+  if (velorenLink) velorenLink.platform = platform;   // the account link (veloren-ext/identity.js) reads accounts through it
   platform.setupCode = hosting.setupCode;
   // The trade board's additive tables exist before the first request, and its stored ledger is
   // re-checked as the process starts: a board that cannot balance refuses to serve rather than

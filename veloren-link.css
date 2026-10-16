@@ -1,0 +1,43 @@
+/* The Veloren account-link page. Self-contained on purpose: it shares NemoWorld's colours and fonts
+   but none of its layout, so it cannot disturb (or be disturbed by) the main application. */
+@font-face{font-family:NemoManrope;src:url('/assets/fonts/nemo-manrope.woff2') format('woff2');font-weight:200 800;font-display:swap}
+@font-face{font-family:NemoCormorant;src:url('/assets/fonts/nemo-cormorant.woff2') format('woff2');font-weight:300 700;font-display:swap}
+:root{color-scheme:dark;--bg:#051d18;--panel:#12382e;--ink:#f1f0df;--muted:#bccbc0;--line:#9fb39555;--gold:#ded6a5;--danger:#ffc1b5;--ok:#b8e3c4}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:NemoManrope,Arial,sans-serif;font-size:1rem;line-height:1.55}
+.skip{position:absolute;left:-999px;top:0;background:var(--gold);color:var(--bg);padding:10px 14px;z-index:5}
+.skip:focus{left:8px;top:8px}
+.bar{padding:14px 20px;border-bottom:1px solid var(--line);background:#06231d}
+.brand{display:inline-flex;align-items:center;gap:12px;color:var(--ink);text-decoration:none;letter-spacing:.16em;font-weight:600}
+main{max-width:46rem;margin:0 auto;padding:28px 20px 64px}
+main:focus,h1:focus,h2:focus{outline:none}
+h1,h2{font-family:NemoCormorant,Georgia,serif;font-weight:500;letter-spacing:-.01em;line-height:1.15}
+h1{font-size:clamp(2rem,6vw,3rem);margin:.2em 0 .4em}
+h2{font-size:1.6rem;margin:1.6em 0 .4em}
+a{color:var(--gold)}
+code{background:#04231c;border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.lede{color:var(--muted);max-width:40rem}
+.muted{color:var(--muted);font-size:.92rem}
+.status{border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:#0c3027;margin:18px 0}
+.status.error{border-color:#ffc1b5aa;color:var(--danger)}
+.status.ok{border-color:#b8e3c4aa;color:var(--ok)}
+.how{padding-left:1.3em}.how li{margin:.4em 0}
+label{display:block;font-weight:600;margin:1.2em 0 .4em}
+input{width:100%;max-width:22rem;min-height:48px;background:#062a22;color:var(--ink);border:1px solid #bbcea36e;border-radius:12px;padding:10px 14px;font:inherit;font-size:1.25rem;letter-spacing:.18em;text-transform:uppercase}
+input::placeholder{color:#8fa597;letter-spacing:.1em}
+button{min-height:48px;padding:10px 22px;border-radius:999px;border:1px solid var(--gold);background:var(--gold);color:var(--bg);font:inherit;font-weight:600;cursor:pointer}
+button.secondary{background:transparent;color:var(--ink);border-color:var(--line)}
+button:hover{filter:brightness(1.08)}
+button[disabled]{opacity:.6;cursor:progress}
+:focus-visible{outline:3px solid #fff6c4;outline-offset:3px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}
+.confirm{border:1px solid var(--line);border-radius:16px;padding:14px 18px;background:#0c3027;margin:16px 0}
+.facts{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}
+.facts dt{color:var(--muted)}.facts dd{margin:0;overflow-wrap:anywhere}
+.steps{list-style:none;padding:0;margin:12px 0}
+.steps li{border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:8px 0;background:#0c3027}
+.steps li[data-state=done]{border-color:#b8e3c488}
+.steps .state{font-size:.82rem;color:var(--muted);display:block}
+@media(max-width:520px){.facts{grid-template-columns:1fr}.actions button{width:100%}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+@media(forced-colors:active){button{border:2px solid ButtonText}}
