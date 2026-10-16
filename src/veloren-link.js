@@ -3,6 +3,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { LIVING_ROSTER } from './living-world.js';
+import { EXTENSIONS } from './veloren-ext/index.js';
 
 // ---- The Veloren link --------------------------------------------------------------------------
 //
@@ -137,7 +138,7 @@ export function residentDraft(value) {
 }
 
 export class VelorenLink {
-  constructor({ dbPath, eventKey, landmarks, clock = Date.now } = {}) {
+  constructor({ dbPath, eventKey, landmarks, clock = Date.now, extensions } = {}) {
     if (!(eventKey instanceof Buffer) || eventKey.length < 32) throw new Error('The Veloren event key must be at least 32 bytes.');
     if (!Array.isArray(landmarks) || !landmarks.length) throw new Error('Veloren landmarks are required.');
     if (dbPath && dbPath !== ':memory:') mkdirSync(dirname(dbPath), { recursive: true });
@@ -147,6 +148,30 @@ export class VelorenLink {
     this.clock = clock;
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=3000;');
     this.#migrate();
+    this.extensions = extensions || EXTENSIONS;
+    for (const extension of this.extensions) if (extension.schema) this.applyExtensionSchema(extension.name, extension.schema);
+  }
+
+  // Public, bound SQL for extensions. Core tables belong to the core; extensions add their own.
+  get sql() {
+    return {
+      run: (sql, ...args) => this.#run(sql, ...args),
+      get: (sql, ...args) => this.#get(sql, ...args),
+      all: (sql, ...args) => this.#all(sql, ...args),
+      tx: (work) => this.#tx(work),
+    };
+  }
+
+  applyExtensionSchema(name, { version, sql }) {
+    if (!/^[a-z][a-z0-9_]{1,30}$/.test(name) || !Number.isInteger(version) || version < 1) throw new Error('Invalid extension schema.');
+    this.db.exec('CREATE TABLE IF NOT EXISTS ext_schema(name TEXT PRIMARY KEY, version INTEGER NOT NULL)');
+    const current = this.#get('SELECT version FROM ext_schema WHERE name=?', name)?.version ?? 0;
+    if (current > version) throw new Error(`Extension ${name} database is newer than this code.`);
+    if (current === version) return;
+    this.#tx(() => {
+      this.db.exec(sql);
+      this.#run('INSERT INTO ext_schema(name,version) VALUES(?,?) ON CONFLICT(name) DO UPDATE SET version=excluded.version', name, version);
+    });
   }
 
   close() { this.db.close(); }
@@ -474,6 +499,10 @@ export class VelorenLink {
     if (route === '/veloren/status' && method === 'GET') {
       this.authenticate(token, 'director');
       return json(response, 200, this.status());
+    }
+    const context = { request, response, route, url, body, json, tokenFrom, modelCall };
+    for (const extension of this.extensions) {
+      if (await extension.handle?.(this, context) === true) return;
     }
     return json(response, 404, { error: 'Not found.' });
   }

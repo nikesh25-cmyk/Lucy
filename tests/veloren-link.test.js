@@ -295,3 +295,26 @@ test('over HTTP: the feature is absent by default, and with a key it enforces be
   assert.equal((await call('/veloren/status', {token: cred.token})).status, 401, 'revocation takes effect immediately');
   clock.now += 1;
 });
+
+test('extensions get their own versioned tables and routes without touching the core schema', async t => {
+  const calls = [];
+  const extension = {
+    name: 'demo',
+    schema: {version: 1, sql: 'CREATE TABLE demo_items(id INTEGER PRIMARY KEY, label TEXT NOT NULL)'},
+    async handle(link, ctx) {
+      if (ctx.route !== '/veloren/demo' || ctx.request.method !== 'GET') return false;
+      link.authenticate(ctx.tokenFrom(ctx.request), 'director');
+      link.sql.run('INSERT INTO demo_items(label) VALUES(?)', 'hello');
+      calls.push(link.sql.get('SELECT COUNT(*) AS n FROM demo_items').n);
+      ctx.json(ctx.response, 200, {ok: true});
+      return true;
+    },
+  };
+  const link = new VelorenLink({dbPath: ':memory:', eventKey: KEY, landmarks: LANDMARKS, extensions: [extension]});
+  t.after(() => link.close());
+  assert.equal(link.sql.get('PRAGMA user_version').user_version, 1, 'the core schema version is untouched');
+  assert.equal(link.sql.get("SELECT version FROM ext_schema WHERE name='demo'").version, 1);
+  link.applyExtensionSchema('demo', extension.schema);                 // idempotent
+  assert.throws(() => link.applyExtensionSchema('Bad Name', {version: 1, sql: ''}), /Invalid extension schema/);
+  assert.equal(link.extensions.length, 1);
+});
