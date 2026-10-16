@@ -519,7 +519,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       if (route.startsWith('/veloren/')) {
         requestRoute = route;
         if (!velorenLink) return json(response, 404, { error: 'Not found.' });
-        return await velorenLink.handle({ request, response, route, url, body, json, tokenFrom, modelCall });
+        return await velorenLink.handle({ request, response, route, url, body, json, tokenFrom, modelCall, platform, fail });
       }
       const match = /^\/agents\/([^/]+)\/(travel|build|home|heartbeat|posture|look|climb)$/.exec(route);
       let agentId;

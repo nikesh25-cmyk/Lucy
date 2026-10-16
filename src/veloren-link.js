@@ -500,7 +500,7 @@ export class VelorenLink {
 
   // ---- HTTP ------------------------------------------------------------------------------------
 
-  async handle({ request, response, route, url, body, json, tokenFrom, modelCall }) {
+  async handle({ request, response, route, url, body, json, tokenFrom, modelCall, platform, fail: failWith }) {
     const token = tokenFrom(request);
     const method = request.method;
     if (route === '/veloren/events' && method === 'POST') {
@@ -528,7 +528,8 @@ export class VelorenLink {
       this.authenticate(token, 'director');
       return json(response, 200, this.status());
     }
-    const context = { request, response, route, url, body, json, tokenFrom, modelCall };
+    // `platform` is NemoWorld's own world/accounts/economy object (read it, call its methods; do not bypass its rules).
+    const context = { request, response, route, url, body, json, tokenFrom, modelCall, platform, fail: failWith || fail };
     for (const extension of this.extensions) {
       if (await extension.handle?.(this, context) === true) return;
     }
