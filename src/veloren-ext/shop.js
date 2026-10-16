@@ -70,6 +70,7 @@ export function loadManifest(path = MANIFEST_PATH) {
   const data = JSON.parse(readFileSync(path, 'utf8'));
   if (data.format !== 'nemo-shop-manifest-v1') throw new Error('Unsupported shop manifest format.');
   if (!Number.isInteger(data.max_qty) || data.max_qty < 1 || data.max_qty > 10) throw new Error('Shop manifest max_qty must be 1 to 10.');
+  if (!Array.isArray(data.goods) || !data.goods.length) throw new Error('The shop manifest lists no goods.');
   const goods = new Map();
   for (const entry of data.goods) {
     if (!GOOD_ID.test(entry.good)) throw new Error(`Bad good id in the shop manifest: ${entry.good}`);

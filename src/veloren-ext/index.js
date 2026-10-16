@@ -9,4 +9,6 @@
 //     `link.authenticate`, `link.sql`, `link.clock`, `link.issueCommand`. `platform` is NemoWorld's own
 //     world, accounts and economy: call its methods, never bypass its rules.
 // Add new extensions below.
-export const EXTENSIONS = [];
+import { identityExtension } from './identity.js';
+import shopExtension from './shop.js';
+export const EXTENSIONS = [identityExtension, shopExtension];

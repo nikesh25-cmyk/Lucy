@@ -30,7 +30,9 @@ export const LINK_FORMAT = 'veloren-link-v1';
 export const EVENT_KINDS = Object.freeze(['resident.met', 'landmark.together', 'command.applied', 'command.rejected']);
 // For these kinds the landmark_id field carries the id of the command being acknowledged.
 export const ACK_KINDS = Object.freeze(['command.applied', 'command.rejected']);
-export const LINK_SCOPES = Object.freeze(['events', 'talk', 'director']);
+// `shop` is added by the shop stream (a shopkeeper resident answers only shop talk with it; it can
+// never ingest events, direct a resident or redeem a link).
+export const LINK_SCOPES = Object.freeze(['events', 'talk', 'director', 'shop']);
 
 export const LINK_POLICY = Object.freeze({
   future_skew_ms: 5 * 60_000,
