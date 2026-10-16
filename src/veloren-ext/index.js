@@ -10,4 +10,5 @@
 //     world, accounts and economy: call its methods, never bypass its rules.
 // Add new extensions below.
 import { identityExtension } from './identity.js';
-export const EXTENSIONS = [identityExtension];
+import shopExtension from './shop.js';
+export const EXTENSIONS = [identityExtension, shopExtension];

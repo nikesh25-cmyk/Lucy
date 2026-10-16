@@ -1,0 +1,15 @@
+{
+  "format": "nemo-shop-manifest-v1",
+  "note": "Allow-list for the grant_item command. NemoWorld good id -> existing Veloren item definition id and a fixed quantity. NemoWorld sends only the good id; it never names an item. Keepsakes map to items with no combat stats (an empty-stat headband, a flower, plain cloth) so a purchase can never buy power. Keep this file byte-identical with NemoWorld content/veloren-shop-manifest.json (both tests pin its sha256).",
+  "max_qty": 10,
+  "goods": [
+    { "good": "herbs",           "item": "common.items.food.sage",                    "qty": 2 },
+    { "good": "fiber",           "item": "common.items.flowers.plant_fiber",          "qty": 2 },
+    { "good": "wood",            "item": "common.items.log.wood",                     "qty": 2 },
+    { "good": "herb_crate",      "item": "common.items.food.sage",                    "qty": 5 },
+    { "good": "flower_crown",    "item": "common.items.armor.misc.head.headband",     "qty": 1 },
+    { "good": "herbal_wreath",   "item": "common.items.flowers.sunflower",            "qty": 1 },
+    { "good": "woven_banner",    "item": "common.items.crafting_ing.cloth.linen",     "qty": 1 },
+    { "good": "festival_banner", "item": "common.items.crafting_ing.cloth.linen_red", "qty": 1 }
+  ]
+}
