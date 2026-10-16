@@ -1,0 +1,8 @@
+{
+  "format": "veloren-landmarks-v1",
+  "note": "Placeholder names. Replace with real named Veloren sites using scripts/veloren-landmarks.md before use; the Veloren server config carries the matching positions.",
+  "landmarks": [
+    { "id": "lyra-post", "name": "Lyra's Post", "role": "post" },
+    { "id": "lyra-survey", "name": "the Survey Site", "role": "survey" }
+  ]
+}

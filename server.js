@@ -24,6 +24,7 @@ import { serveVideo } from './src/media.js';
 import { ensureTradeMarket } from './src/trade-market.js';
 import { ensureLivingWorld, livingWorldTick } from './src/living-world.js';
 import { goodsPolicyView } from './src/goods-policy.js';
+import { velorenLinkFromEnvironment } from './src/veloren-link.js';
 import { economyProvenance } from './src/economy-provenance.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -414,7 +415,7 @@ export function createEventHub({ platform, limits = EVENT_LIMITS, clock = Date.n
 }
 
 
-export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, residentRunner = runAgent, researchRunner = runResearch, researchConcurrency = 4, modelQueueWait = 8, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null, livingWorld = process.env.LUCY_LIVING_WORLD === 'true' || process.env.LUCY_LIVING_WORLD === '1' } = {}) {
+export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, residentRunner = runAgent, researchRunner = runResearch, researchConcurrency = 4, modelQueueWait = 8, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null, velorenLink = velorenLinkFromEnvironment(process.env, process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite'), join(root, 'content', 'veloren-landmarks.json')), livingWorld = process.env.LUCY_LIVING_WORLD === 'true' || process.env.LUCY_LIVING_WORLD === '1' } = {}) {
   if(!Number.isInteger(researchConcurrency)||researchConcurrency<1||researchConcurrency>8)throw new Error('Research concurrency must be between one and eight.');
   // One local model is one inference at a time. Work beyond this bound is refused instead of being
   // queued without limit, so a burst of requests cannot hold unbounded work outside the model.
@@ -513,6 +514,13 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       }
       if (!path.startsWith('/api/v1/')) return json(response, 404, { error: 'Not found.' });
       const route = path.slice(7);
+      // The Veloren link keeps its own routes, credentials and database. It is absent unless the
+      // private event key is configured, so a default install answers these paths with 404.
+      if (route.startsWith('/veloren/')) {
+        requestRoute = route;
+        if (!velorenLink) return json(response, 404, { error: 'Not found.' });
+        return await velorenLink.handle({ request, response, route, url, body, json, tokenFrom, modelCall });
+      }
       const match = /^\/agents\/([^/]+)\/(travel|build|home|heartbeat|posture|look|climb)$/.exec(route);
       let agentId;
       if (match) { try { agentId = decodeURIComponent(match[1]); } catch { fail(400, 'Invalid agent identifier.'); } }
@@ -871,7 +879,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   server.once('close',()=>{clearInterval(mayorTimer);hub.closeAll();for(const run of [...researchRuns.values(),...residentRuns.values()])run.controller.abort();});
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
-  return { server, platform, hub, stopEvents:()=>hub.closeAll(), stopWorkers:async()=>{const runs=[...researchRuns.values(),...residentRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));} };
+  return { server, platform, hub, stopEvents:()=>hub.closeAll(), stopWorkers:async()=>{const runs=[...researchRuns.values(),...residentRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));try{velorenLink?.close();}catch{/* already closed */}}, velorenLink };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
