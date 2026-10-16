@@ -197,9 +197,12 @@ test('brute force: guesses are limited per account, per peer and overall, and a 
     try { checkCode(w.link, {code: generateCode(), account_id: `sock-${i}`, peer: 'rotator'}); } catch (error) { if (error.status === 429) stopped = i; }
   }
   assert.ok(stopped !== null && stopped <= IDENTITY_POLICY.fail_peer.max, `peer stopped after ${stopped} guesses`);
-  // The lock lifts when the window passes.
+  // The lock lifts when the window passes. A code lives exactly as long as that window, so the code
+  // issued at the start has just expired: ask for a fresh one, and bob is served again.
   w.f.advance(IDENTITY_POLICY.fail_account.window_ms + 1);
-  assert.equal(checkCode(w.link, {code: issued.code, account_id: w.bob, peer: 'attacker'}).valid, false || true);
+  assert.throws(() => checkCode(w.link, {code: issued.code, account_id: w.bob, peer: 'attacker'}), refused(400, 'invalid_code'), 'the old code has expired');
+  const fresh = w.issue(P2, 'Second');
+  assert.equal(checkCode(w.link, {code: fresh.code, account_id: w.bob, peer: 'attacker'}).valid, true, 'bob is no longer locked out');
 });
 
 test('a global ceiling stops a swarm of accounts and peers', async t => {
@@ -345,7 +348,10 @@ test('over HTTP: the bridge asks for a code, the signed-in human redeems it, and
   // Who may ask for a code, or learn an identity: only a director-scope link credential.
   assert.equal((await s.call('/veloren/identity?player_uuid=' + P1)).status, 401);
   assert.equal((await s.call('/veloren/identity?player_uuid=' + P1, {token: s.relay.token})).status, 403, 'an events-only credential is not enough');
-  assert.equal((await s.call('/veloren/identity/code', {input: {player_uuid: P1, player_alias: 'Tester'}})).status, 401);
+  // A post with no credential and no Origin is refused by the hosting layer before it reaches the
+  // link; with this site's Origin it reaches the route, which then asks for a credential.
+  assert.equal((await s.call('/veloren/identity/code', {input: {player_uuid: P1, player_alias: 'Tester'}})).status, 403);
+  assert.equal((await s.call('/veloren/identity/code', {input: {player_uuid: P1, player_alias: 'Tester'}, headers: {Origin: s.origin}})).status, 401);
   assert.equal((await s.call('/veloren/identity/code', {token: s.relay.token, input: {player_uuid: P1, player_alias: 'Tester'}})).status, 403);
   assert.equal((await s.call('/veloren/identity/code', {token: s.alice_session, input: {player_uuid: P1, player_alias: 'Tester'}})).status, 401, 'a human session is not a bridge credential');
   assert.equal((await s.call('/veloren/identity?player_uuid=nope', bridge)).status, 400);
