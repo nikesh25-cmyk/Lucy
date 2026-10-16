@@ -1,8 +1,9 @@
 {
   "format": "veloren-landmarks-v1",
-  "note": "Placeholder names. Replace with real named Veloren sites using scripts/veloren-landmarks.md before use; the Veloren server config carries the matching positions.",
+  "note": "Real structures of the Veloren hamlet Harr. The Veloren server resolves the same ids to world positions (see nemo-bridge/link-config.example.json). Harr has no library or pavilion, so Lyra's NemoWorld places map to its real buildings: Library = the house, Peace Pavilion = the farm field, Meeting Hall = the plaza.",
   "landmarks": [
-    { "id": "lyra-post", "name": "Lyra's Post", "role": "post" },
-    { "id": "lyra-survey", "name": "the Survey Site", "role": "survey" }
+    { "id": "lyra-house", "name": "Harr's house", "role": "post" },
+    { "id": "lyra-field", "name": "Harr's farm field", "role": "survey" },
+    { "id": "lyra-plaza", "name": "Harr's plaza", "role": "place" }
   ]
 }

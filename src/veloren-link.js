@@ -95,7 +95,7 @@ export function loadLandmarks(path) {
   const landmarks = (data.landmarks || []).map((item) => ({ id: item.id, name: item.name, role: item.role }));
   for (const item of landmarks) {
     if (!LANDMARK_ID.test(item.id) || typeof item.name !== 'string' || !item.name || item.name.length > 80) throw new Error('Invalid landmark entry.');
-    if (!['post', 'survey'].includes(item.role)) throw new Error('Landmark role must be post or survey.');
+    if (!['post', 'survey', 'place'].includes(item.role)) throw new Error('Landmark role must be post, survey or place.');
   }
   if (!landmarks.some((item) => item.role === 'post') || !landmarks.some((item) => item.role === 'survey')) throw new Error('The landmark file needs one post and one survey landmark.');
   return landmarks;
@@ -274,7 +274,7 @@ export class VelorenLink {
     const upcoming = quest.steps[index + 1];
     if (upcoming) this.#announce(event.resident_id, event.player_uuid, `${quest.id}:${upcoming.id}`, `${alias}, ${this.#fill(upcoming.instruction)}`);
     else {
-      this.#announce(event.resident_id, event.player_uuid, `${quest.id}:complete`, `${alias}, the ${quest.title} is complete and I have written it in my notes.`);
+      this.#announce(event.resident_id, event.player_uuid, `${quest.id}:complete`, `${alias}, ${quest.title} is complete and I have written it in my notes.`);
       this.#note(event.resident_id, event.player_uuid, `Completed ${quest.title} with ${alias}: surveyed ${this.landmark('survey').name}.`, event);
     }
     return { quest_id: quest.id, step_id: step.id, complete: !upcoming };
@@ -329,7 +329,9 @@ export class VelorenLink {
   director(resident_id) {
     const quest = this.questFor(resident_id);
     const post = this.landmark('post');
-    let result = { resident_id, mode: 'post', target_landmark_id: post.id, player_uuid: null, announcements: [] };
+    // By default a resident follows her own daily schedule; the director only overrides it while a
+    // player is part-way through her quest.
+    let result = { resident_id, mode: 'schedule', target_landmark_id: null, player_uuid: null, announcements: [] };
     if (quest) {
       // The most recently active player whose quest is part-way through.
       const candidates = this.#all(`SELECT player_uuid, MAX(completed_at) AS last FROM quest_progress WHERE quest_id=? GROUP BY player_uuid ORDER BY last DESC`, quest.id);

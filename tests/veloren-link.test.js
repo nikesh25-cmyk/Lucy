@@ -132,8 +132,9 @@ test('Meet -> task -> survey together -> return: progress comes only from stored
   const progress = link.progress(P1);
   assert.equal(progress.complete, true); assert.equal(progress.coins_awarded, 0); assert.equal(progress.practice, true);
   assert.ok(progress.steps.every(step => step.state === 'done' && step.source_event_id));
-  assert.match(link.director('lw-lyra').announcements[0].text, /Quiet Survey is complete/);
-  assert.equal(link.director('lw-lyra').mode, 'post');
+  assert.equal(link.director('lw-lyra').announcements[0].text, 'Tester, The Quiet Survey is complete and I have written it in my notes.');
+  assert.equal(link.director('lw-lyra').mode, 'schedule');
+  assert.equal(link.director('lw-lyra').target_landmark_id, null);
 
   // Another player's quest is separate.
   assert.equal(link.progress(P2).next_step, 'meet');
@@ -232,7 +233,9 @@ test('model text is held to a resident\'s authority', () => {
 test('landmark files are validated', () => {
   const directory = mkdtempSync(join(tmpdir(), 'veloren-landmarks-'));
   try {
-    assert.equal(loadLandmarks(join(process.cwd(), 'content', 'veloren-landmarks.json')).length, 2);
+    const shipped = loadLandmarks(join(process.cwd(), 'content', 'veloren-landmarks.json'));
+    assert.deepEqual(shipped.map(item => item.role).sort(), ['place', 'post', 'survey']);
+    assert.ok(shipped.every(item => /^lyra-[a-z]+$/.test(item.id)));
   } finally { rmSync(directory, {recursive: true, force: true}); }
 });
 
