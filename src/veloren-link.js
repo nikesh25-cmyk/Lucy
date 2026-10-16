@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { LIVING_ROSTER } from './living-world.js';
 import { EXTENSIONS } from './veloren-ext/index.js';
+import { CommandOutbox } from './veloren-ext/commands.js';
 
 // ---- The Veloren link --------------------------------------------------------------------------
 //
@@ -26,7 +27,9 @@ const fail = (status, message) => { throw Object.assign(new Error(message), { st
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 export const LINK_FORMAT = 'veloren-link-v1';
-export const EVENT_KINDS = Object.freeze(['resident.met', 'landmark.together']);
+export const EVENT_KINDS = Object.freeze(['resident.met', 'landmark.together', 'command.applied', 'command.rejected']);
+// For these kinds the landmark_id field carries the id of the command being acknowledged.
+export const ACK_KINDS = Object.freeze(['command.applied', 'command.rejected']);
 export const LINK_SCOPES = Object.freeze(['events', 'talk', 'director']);
 
 export const LINK_POLICY = Object.freeze({
@@ -138,7 +141,7 @@ export function residentDraft(value) {
 }
 
 export class VelorenLink {
-  constructor({ dbPath, eventKey, landmarks, clock = Date.now, extensions } = {}) {
+  constructor({ dbPath, eventKey, landmarks, clock = Date.now, extensions, commandsPath } = {}) {
     if (!(eventKey instanceof Buffer) || eventKey.length < 32) throw new Error('The Veloren event key must be at least 32 bytes.');
     if (!Array.isArray(landmarks) || !landmarks.length) throw new Error('Veloren landmarks are required.');
     if (dbPath && dbPath !== ':memory:') mkdirSync(dirname(dbPath), { recursive: true });
@@ -149,6 +152,11 @@ export class VelorenLink {
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=3000;');
     this.#migrate();
     this.extensions = extensions || EXTENSIONS;
+    // Commands to the Veloren server (grant an item, teleport, ...). Needs the file the server reads.
+    this.commands = commandsPath ? new CommandOutbox({ path: commandsPath, key: eventKey, clock }) : null;
+    this.applyExtensionSchema('commands', { version: 1, sql: `CREATE TABLE link_commands(
+      cmd_id TEXT PRIMARY KEY, kind TEXT NOT NULL, player_uuid TEXT NOT NULL, issued_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL, issued_by TEXT NOT NULL DEFAULT '')` });
     for (const extension of this.extensions) if (extension.schema) this.applyExtensionSchema(extension.name, extension.schema);
   }
 
@@ -160,6 +168,24 @@ export class VelorenLink {
       all: (sql, ...args) => this.#all(sql, ...args),
       tx: (work) => this.#tx(work),
     };
+  }
+
+  // Issue a signed command and remember it. `issuedBy` names the feature or human that asked.
+  issueCommand({ kind, player_uuid, args = {}, ttl_ms = 60_000, issuedBy = '' }) {
+    if (!this.commands) fail(503, 'Commands to Veloren are not configured on this NemoWorld.');
+    const command = this.commands.issue({ kind, player_uuid, args, ttl_ms });
+    this.#run('INSERT INTO link_commands(cmd_id,kind,player_uuid,issued_at,expires_at,issued_by) VALUES(?,?,?,?,?,?)',
+      command.cmd_id, kind, player_uuid, command.issued_at, command.expires_at, String(issuedBy).slice(0, 60));
+    return command;
+  }
+
+  // What is known about a command: `applied`, `rejected`, `expired_unconfirmed` or `pending`.
+  commandStatus(cmd_id) {
+    const ack = this.#get("SELECT kind, occurred_at FROM link_events WHERE landmark_id=? AND kind IN ('command.applied','command.rejected')", cmd_id);
+    if (ack) return { status: ack.kind === 'command.applied' ? 'applied' : 'rejected', at: ack.occurred_at };
+    const issued = this.#get('SELECT expires_at FROM link_commands WHERE cmd_id=?', cmd_id);
+    if (!issued) return { status: 'unknown' };
+    return { status: issued.expires_at < this.clock() ? 'expired_unconfirmed' : 'pending' };
   }
 
   applyExtensionSchema(name, { version, sql }) {
@@ -333,7 +359,9 @@ export class VelorenLink {
     if (e.resident_id !== credential.resident_id) return 'resident_out_of_scope';
     if (typeof e.player_uuid !== 'string' || !UUID.test(e.player_uuid)) return 'bad_player';
     if (e.player_alias != null && (typeof e.player_alias !== 'string' || e.player_alias.length > 32 || !noControl(e.player_alias))) return 'bad_alias';
-    if (e.landmark_id != null && (typeof e.landmark_id !== 'string' || !this.landmarkById(e.landmark_id))) return 'unknown_landmark';
+    if (ACK_KINDS.includes(e.kind)) {
+      if (typeof e.landmark_id !== 'string' || !UUID.test(e.landmark_id)) return 'bad_command_id';
+    } else if (e.landmark_id != null && (typeof e.landmark_id !== 'string' || !this.landmarkById(e.landmark_id))) return 'unknown_landmark';
     if (e.kind === 'landmark.together' && !e.landmark_id) return 'landmark_required';
     if (!Number.isSafeInteger(e.occurred_at) || e.occurred_at <= 0 || e.occurred_at > this.clock() + LINK_POLICY.future_skew_ms) return 'bad_time';
     if (typeof e.sig !== 'string' || !/^[a-f0-9]{64}$/.test(e.sig)) return 'bad_signature';
@@ -513,5 +541,6 @@ export function velorenLinkFromEnvironment(env, mainDatabasePath, landmarksPath)
   if (!key) return null;
   const eventKey = Buffer.from(key, /^[a-f0-9]{64,}$/i.test(key) ? 'hex' : 'utf8');
   const dbPath = env.NEMO_LINK_DB || join(dirname(mainDatabasePath), 'veloren-link.sqlite');
-  return new VelorenLink({ dbPath, eventKey, landmarks: loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath) });
+  const commandsPath = env.NEMO_LINK_COMMANDS || join(dirname(dbPath), 'veloren-commands.jsonl');
+  return new VelorenLink({ dbPath, eventKey, landmarks: loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath), commandsPath });
 }
