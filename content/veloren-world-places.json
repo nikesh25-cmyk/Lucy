@@ -1,0 +1,7 @@
+{
+  "format": "nemo-world-places-v1",
+  "note": "The Veloren places NemoWorld may dress, and the plots of them it knows by name. Every name here is one the Veloren server resolved from world generation during the home and atlas streams' live runs (Harr's five plots: House, FarmField x2, Workshop, Plaza), so nothing in this file is invented. A manifest anchoring anywhere else is refused by NemoWorld before the game is asked.",
+  "sites": [
+    { "name": "Harr", "plots": ["House", "FarmField", "Workshop", "Plaza"] }
+  ]
+}
