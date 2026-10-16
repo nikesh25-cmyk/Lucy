@@ -123,6 +123,10 @@ had moved, as regenerated farmland does). Evidence: `wt/evidence/world/restart-i
 `server-log-first-application.log`, `server-log-restart-reapplication.log`,
 `world-record-before-restart.json`, `world-record-after-restart.json`.
 
+**A sentinel whose chunk is not loaded** is "cannot tell", not "gone": the system leaves that group
+alone for the pass and marks it `chunks_not_loaded` in the record, so a chunk that is briefly unloaded
+can never be recorded as a cell the game removed.
+
 **A cell the game removes again** is handled honestly. A sprite written where its adjacency
 requirement is not met is turned back into air by the game in the same tick
 (`common/state/src/state.rs:765-815`; the requirements are `common/src/terrain/sprite/mod.rs:925-945`
@@ -312,7 +316,7 @@ plain lantern on the post instead).
 ```
 # the Rust half (the pure rules, including the idempotence property)
 cd wt/veloren-world
-CARGO_TARGET_DIR=wt/target/world cargo test --release -p veloren-server --lib     # 25 pass, 0 fail
+CARGO_TARGET_DIR=wt/target/world cargo test --release -p veloren-server --lib     # 26 pass, 0 fail
 CARGO_TARGET_DIR=wt/target/world cargo test --release -p nemo-world-core --lib    # the crate's own
 # the NemoWorld half
 cd wt/nemoworld-world
@@ -320,14 +324,15 @@ node --test tests/veloren-world.test.js tests/veloren-world-residents.test.js \
             tests/veloren-world-scopes.test.js tests/veloren-relay.test.js
 ```
 
-* `server/src/nemo/world/logic.rs` (15 tests): the world section is opt-in and a broken one is refused
+* `server/src/nemo/world/logic.rs` (16 tests): the world section is opt-in and a broken one is refused
   with its reason; a manifest for another site; an unusable manifest refused with **every** reason and
   nothing applied; every name in the crate's allow-lists is a name the game can place, and a name it
   does not have refuses the manifest; what one application writes; the foundation stops at the first
   solid block; **a second application writes nothing and the world is unchanged**; **a restart converges
   on the same world**; a changed manifest is re-applied with the reason `changed`; a cell the game keeps
-  removing stops being checked after three tries and the rest of the group is kept; sentinels are
-  deterministic; a record from an unknown format is ignored rather than trusted.
+  removing stops being checked after three tries and the rest of the group is kept; a sentinel whose
+  chunk is not loaded is neither missing nor standing; sentinels are deterministic; a record from an
+  unknown format is ignored rather than trusted.
 * `tests/veloren-world.test.js` (5 tests): NemoWorld's places and budgets; a manifest that asks for
   anything else is refused whole; the game's checker agrees with NemoWorld's validator; and **the
   shipped manifest passes both**, with hours that keep the phases aligned.
