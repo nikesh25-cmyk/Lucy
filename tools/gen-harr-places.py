@@ -57,9 +57,7 @@ for id_, name, plot, nth, dx, dy, hint, finding in DISCOVERIES:
 (C / 'veloren-discoveries.json').write_text(json.dumps({'format': 'nemo-discoveries-v1', 'discoveries': cat}, indent=2) + '\n')
 
 lm = json.loads((C / 'veloren-landmarks.json').read_text())
-lm['landmarks'] = [l for l in lm['landmarks'] if not l['id'].startswith('disc-')]
-for d in cat:
-    lm['landmarks'].append({'id': d['landmark_id'], 'name': d['name'], 'role': 'place'})
+lm['landmarks'] = [l for l in lm['landmarks'] if not l['id'].startswith('disc-')]  # discoveries are added at load time
 (C / 'veloren-landmarks.json').write_text(json.dumps(lm, indent=2) + '\n')
 
 v = json.loads((C / 'veloren-villagers.json').read_text())

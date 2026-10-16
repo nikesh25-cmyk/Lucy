@@ -16,56 +16,6 @@
       "id": "lyra-plaza",
       "name": "Harr's plaza",
       "role": "place"
-    },
-    {
-      "id": "disc-meadow-flowers",
-      "name": "The wildflower meadow",
-      "role": "place"
-    },
-    {
-      "id": "disc-boundary-stone",
-      "name": "The old boundary stone",
-      "role": "place"
-    },
-    {
-      "id": "disc-hidden-spring",
-      "name": "The hidden spring",
-      "role": "place"
-    },
-    {
-      "id": "disc-high-view",
-      "name": "The high view",
-      "role": "place"
-    },
-    {
-      "id": "disc-bee-hollow",
-      "name": "The bee hollow",
-      "role": "place"
-    },
-    {
-      "id": "disc-lichen-wall",
-      "name": "The lichen wall",
-      "role": "place"
-    },
-    {
-      "id": "disc-birdsong-grove",
-      "name": "The birdsong grove",
-      "role": "place"
-    },
-    {
-      "id": "disc-clay-bank",
-      "name": "The clay bank",
-      "role": "place"
-    },
-    {
-      "id": "disc-star-meadow",
-      "name": "The star meadow",
-      "role": "place"
-    },
-    {
-      "id": "disc-wind-ridge",
-      "name": "The wind ridge",
-      "role": "place"
     }
   ]
 }

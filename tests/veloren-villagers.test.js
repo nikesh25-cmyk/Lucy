@@ -8,7 +8,10 @@ import {VelorenLink} from '../src/veloren-link.js';
 const KEY = Buffer.from('nemo-test-key-nemo-test-key-1234');
 const LANDMARKS = [{id: 'lyra-post', name: 'Post', role: 'post'}, {id: 'lyra-survey', name: 'Field', role: 'survey'}];
 const doc = () => JSON.parse(readFileSync(new URL('../content/veloren-villagers.json', import.meta.url), 'utf8'));
-const PLACES = new Set(JSON.parse(readFileSync(new URL('../content/veloren-world-landmarks.json', import.meta.url), 'utf8')).landmarks.map(l => l.label));
+const PLACES = new Set([
+  ...JSON.parse(readFileSync(new URL('../content/veloren-world-landmarks.json', import.meta.url), 'utf8')).landmarks.map(l => l.label),
+  ...JSON.parse(readFileSync(new URL('../content/veloren-landmarks-extra.json', import.meta.url), 'utf8')).landmarks.map(l => l.label),
+]);
 const place = (labels) => [...PLACES, ...labels];
 
 test('the village is 24 valid, distinct residents who do not collide with the roster', () => {

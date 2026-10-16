@@ -186,6 +186,7 @@ test('an unlinked player gets a friendly pointer to link first, and nothing is r
   for (const name of hud.HUD_PAGES) {
     const reply = hud.buildView({link: s.link, platform: spy, player_uuid: STRANGER, name, page: 1});
     assert.equal(reply.linked, false, name);
+    if (hud.OPEN_PAGES.includes(name)) { assert.equal(reply.open, true, `${name} is about the village, not an account`); continue; }
     assert.equal(reply.reason, 'not_linked');
     assert.match(reply.lines.join(' '), /link/i);
     assert.match(reply.lines.join(' '), /NemoWorld/);

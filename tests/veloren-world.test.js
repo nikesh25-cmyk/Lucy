@@ -153,6 +153,6 @@ test('the shipped Harr manifest passes NemoWorld and the game', (t) => {
     return;
   }
   const out = execFileSync(CHECKER, [shipped], { encoding: 'utf8' });
-  assert.match(out, /^OK groups=4 blocks=\d+ sprites=\d+ lit_sprites=[1-9]\d* foundation_columns=\d+/,
+  assert.match(out, new RegExp(`^OK groups=${manifest.groups.length} blocks=\\d+ sprites=\\d+ lit_sprites=[1-9]\\d* foundation_columns=\\d+`),
     `the game does not accept the shipped manifest: ${out}`);
 });

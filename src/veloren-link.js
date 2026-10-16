@@ -545,11 +545,21 @@ export class VelorenLink {
   }
 }
 
+/** The places worth discovering (content/veloren-discoveries.json) are landmarks too, so events at them are accepted. */
+export function withDiscoveries(landmarks, path = new URL('../content/veloren-discoveries.json', import.meta.url)) {
+  let list = [];
+  try { list = JSON.parse(readFileSync(path, 'utf8')).discoveries || []; } catch { return landmarks; }
+  const known = new Set(landmarks.map((item) => item.id));
+  const extra = list.filter((d) => LANDMARK_ID.test(d.landmark_id) && !known.has(d.landmark_id) && typeof d.name === 'string' && d.name.length <= 80)
+    .map((d) => ({ id: d.landmark_id, name: d.name, role: 'place' }));
+  return [...landmarks, ...extra];
+}
+
 export function velorenLinkFromEnvironment(env, mainDatabasePath, landmarksPath) {
   const key = env.NEMO_LINK_EVENT_KEY;
   if (!key) return null;
   const eventKey = Buffer.from(key, /^[a-f0-9]{64,}$/i.test(key) ? 'hex' : 'utf8');
   const dbPath = env.NEMO_LINK_DB || join(dirname(mainDatabasePath), 'veloren-link.sqlite');
   const commandsPath = env.NEMO_LINK_COMMANDS || join(dirname(dbPath), 'veloren-commands.jsonl');
-  return new VelorenLink({ dbPath, eventKey, landmarks: loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath), commandsPath });
+  return new VelorenLink({ dbPath, eventKey, landmarks: withDiscoveries(loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath)), commandsPath });
 }
