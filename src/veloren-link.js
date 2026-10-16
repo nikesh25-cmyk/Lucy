@@ -3,6 +3,10 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { LIVING_ROSTER } from './living-world.js';
+import { VILLAGERS } from './veloren-ext/villagers.js';
+
+// Everyone who can have a link credential and be talked to: the eight roster residents and the village.
+const RESIDENTS = [...LIVING_ROSTER, ...VILLAGERS];
 import { EXTENSIONS } from './veloren-ext/index.js';
 import { CommandOutbox } from './veloren-ext/commands.js';
 
@@ -246,7 +250,7 @@ export class VelorenLink {
   // ---- credentials -----------------------------------------------------------------------------
 
   issueCredential({ resident_id, scopes, days = 7, label = '' }) {
-    if (!RESIDENT_ID.test(resident_id || '') || !LIVING_ROSTER.some((r) => r.id === resident_id)) throw new Error('Unknown resident.');
+    if (!RESIDENT_ID.test(resident_id || '') || !RESIDENTS.some((r) => r.id === resident_id)) throw new Error('Unknown resident.');
     if (!Array.isArray(scopes) || !scopes.length || scopes.some((s) => !LINK_SCOPES.includes(s))) throw new Error(`Scopes must be from: ${LINK_SCOPES.join(', ')}.`);
     if (!Number.isFinite(days) || days <= 0 || days > LINK_POLICY.credential_max_days) throw new Error(`Credentials last 1–${LINK_POLICY.credential_max_days} days.`);
     const token = randomBytes(32).toString('hex');
@@ -458,7 +462,7 @@ export class VelorenLink {
   }
 
   async talk(credential, input, modelCall) {
-    const resident = LIVING_ROSTER.find((item) => item.id === credential.resident_id);
+    const resident = RESIDENTS.find((item) => item.id === credential.resident_id);
     if (!resident) fail(404, 'Unknown resident.');
     if (input.resident_id !== credential.resident_id) fail(403, 'This credential is scoped to another resident.');
     if (typeof input.player_uuid !== 'string' || !UUID.test(input.player_uuid)) fail(400, 'A Veloren player id is required.');
