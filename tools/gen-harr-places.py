@@ -15,7 +15,7 @@ SITES = [  # id, label, name, plot, nth, dx, dy, radius
     ('site-well', 'Well Site', 'the well site on the plaza', 'Plaza', 0, -10, -6, 9),
     ('site-market-hall', 'Market Hall Site', 'the market hall site', 'Plaza', 0, 15, -10, 10),
     ('site-cottage-row', 'Cottage Row', 'the cottage row', 'Plaza', 0, -22, 10, 15),
-    ('site-observatory', 'Observatory Site', 'the star observatory site', 'Plaza', 0, 4, -22, 9),
+    ('site-observatory', 'Observatory Site', 'the star observatory site', 'Plaza', 0, 0, -14, 9),
     ('site-pavilion', 'Pavilion Site', 'the field pavilion site', 'FarmField', 0, 18, 3, 9),
     ('site-annex', 'Annex Site', 'the library annex site', 'House', 0, 13, 2, 9),
     ('site-orchard-gate', 'Orchard Gate', 'the orchard gate', 'FarmField', 1, 6, -6, 9),

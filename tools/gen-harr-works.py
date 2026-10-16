@@ -61,17 +61,17 @@ projects.append(('market-hall', 'The market hall', 'A roofed hall where makers a
 cottage(1, 35, {'plot': 'Plaza', 'nth': 0, 'dx': -26, 'dy': 2})
 
 # 4. observatory (research)
-projects.append(('observatory', 'The star observatory', 'A raised stone platform where scholars chart the sky and record what they learn.', 50, {'plot': 'Plaza', 'nth': 0, 'dx': 0, 'dy': -26}, [4, 4], [
+projects.append(('observatory', 'The star observatory', 'A raised stone platform where scholars chart the sky and record what they learn.', 50, {'plot': 'Plaza', 'nth': 0, 'dx': -4, 'dy': -18}, [4, 4], [
     ('Raising the platform', [clear([0, 0, 1], [8, 8, 5]), found([0, 0], [8, 8], 'Rock', STONE, 6), fill([0, 0, 0], [8, 8, 1], 'Rock', STONE)]),
     ('Parapet and steps', [fill([0, 0, 2], [8, 0, 2], 'Rock', PALE), fill([0, 8, 2], [8, 8, 2], 'Rock', PALE), fill([0, 0, 2], [0, 8, 2], 'Rock', PALE), fill([8, 0, 2], [8, 8, 2], 'Rock', PALE), clear([4, 0, 2], [4, 0, 2])]),
     ('The star chart table', [spr([4, 4, 2], 'CrystalBall'), spr([3, 4, 2], 'BenchWoodWoodland'), spr([5, 4, 2], 'BenchWoodWoodland'), spr([1, 1, 2], 'Lantern'), spr([7, 7, 2], 'Lantern'), spr([4, -1, 2], 'Sign')]),
 ]))
 
 # 5. lantern path
-projects.append(('lantern-path', 'The lantern path', 'A lit path from the square to the fields so no one walks home in the dark.', 65, {'plot': 'Plaza', 'nth': 0, 'dx': 8, 'dy': -3}, [2, 0], [
-    ('Laying the first stretch', [found([0, 0], [14, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (1, 7, 13)]),
-    ('Laying the second stretch', [found([15, 0], [29, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (19, 25)]),
-    ('Laying the last stretch', [found([30, 0], [44, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (31, 37, 43)]),
+projects.append(('lantern-path', 'The lantern path', 'A lit path from the square to the fields so no one walks home in the dark.', 65, {'plot': 'Plaza', 'nth': 0, 'dx': 4, 'dy': -3}, [2, 0], [
+    ('Laying the first stretch', [found([0, 0], [11, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (1, 6, 11)]),
+    ('Laying the second stretch', [found([12, 0], [23, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (17, 23)]),
+    ('Laying the last stretch', [found([24, 0], [35, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (29, 35)]),
 ]))
 
 cottage(2, 80, {'plot': 'Plaza', 'nth': 0, 'dx': -26, 'dy': 14})
