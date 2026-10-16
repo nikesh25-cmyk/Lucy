@@ -1,0 +1,896 @@
+{
+ "format": "veloren-sites-snapshot-v1",
+ "world_seed": 130626853,
+ "source": "nemo-bridge --list-sites on a server started from userdata/server/server_config/settings.ron (world_seed 130626853); x,y are the map marker positions in blocks (Veloren +y is north)",
+ "count": 148,
+ "sites": [
+  {
+   "name": "Ajakkuq",
+   "kind": "Adlet",
+   "x": 18880,
+   "y": 26400
+  },
+  {
+   "name": "Ananit",
+   "kind": "Adlet",
+   "x": 14528,
+   "y": 4896
+  },
+  {
+   "name": "Igashi",
+   "kind": "Adlet",
+   "x": 26816,
+   "y": 5792
+  },
+  {
+   "name": "Iqivusi",
+   "kind": "Adlet",
+   "x": 18912,
+   "y": 22688
+  },
+  {
+   "name": "Umatsuli",
+   "kind": "Adlet",
+   "x": 3072,
+   "y": 23936
+  },
+  {
+   "name": "Bridge of Alderaven",
+   "kind": "Bridge",
+   "x": 4992,
+   "y": 22272
+  },
+  {
+   "name": "Bridge of Bedge",
+   "kind": "Bridge",
+   "x": 17440,
+   "y": 4704
+  },
+  {
+   "name": "Bridge of Dostin",
+   "kind": "Bridge",
+   "x": 22112,
+   "y": 12928
+  },
+  {
+   "name": "Bridge of Maria",
+   "kind": "Bridge",
+   "x": 15712,
+   "y": 22880
+  },
+  {
+   "name": "Bridge of Merac",
+   "kind": "Bridge",
+   "x": 19104,
+   "y": 15424
+  },
+  {
+   "name": "Bridge of Ning",
+   "kind": "Bridge",
+   "x": 17568,
+   "y": 16960
+  },
+  {
+   "name": "Bridge of Ondeareim",
+   "kind": "Bridge",
+   "x": 10368,
+   "y": 15040
+  },
+  {
+   "name": "Bridge of Orneasledge",
+   "kind": "Bridge",
+   "x": 17056,
+   "y": 10176
+  },
+  {
+   "name": "Bridge of Ornenton",
+   "kind": "Bridge",
+   "x": 22976,
+   "y": 15232
+  },
+  {
+   "name": "Bridge of Plestin",
+   "kind": "Bridge",
+   "x": 28608,
+   "y": 22880
+  },
+  {
+   "name": "Bridge of Sleau",
+   "kind": "Bridge",
+   "x": 14400,
+   "y": 23744
+  },
+  {
+   "name": "Bridge of Spelen",
+   "kind": "Bridge",
+   "x": 23200,
+   "y": 25472
+  },
+  {
+   "name": "Bridge of Straulemor",
+   "kind": "Bridge",
+   "x": 11008,
+   "y": 11936
+  },
+  {
+   "name": "Bridge of Stregralis",
+   "kind": "Bridge",
+   "x": 7424,
+   "y": 5344
+  },
+  {
+   "name": "Bridge of Wreteaux",
+   "kind": "Bridge",
+   "x": 21760,
+   "y": 8512
+  },
+  {
+   "name": "Aphaphrakos",
+   "kind": "ChapelSite",
+   "x": 896,
+   "y": 20832
+  },
+  {
+   "name": "Arakles",
+   "kind": "ChapelSite",
+   "x": 30688,
+   "y": 4416
+  },
+  {
+   "name": "Arera",
+   "kind": "ChapelSite",
+   "x": 32576,
+   "y": 26752
+  },
+  {
+   "name": "Orena",
+   "kind": "ChapelSite",
+   "x": 1888,
+   "y": 32224
+  },
+  {
+   "name": "Phrena",
+   "kind": "ChapelSite",
+   "x": 6496,
+   "y": 29728
+  },
+  {
+   "name": "Pioplatheas",
+   "kind": "ChapelSite",
+   "x": 2144,
+   "y": 30272
+  },
+  {
+   "name": "Ppora",
+   "kind": "ChapelSite",
+   "x": 27744,
+   "y": 6784
+  },
+  {
+   "name": "Theas",
+   "kind": "ChapelSite",
+   "x": 7232,
+   "y": 28512
+  },
+  {
+   "name": "Bron Catacombs",
+   "kind": "Cultist",
+   "x": 22304,
+   "y": 22432
+  },
+  {
+   "name": "Frir Lair",
+   "kind": "Cultist",
+   "x": 11456,
+   "y": 21824
+  },
+  {
+   "name": "Allosnenir Mine",
+   "kind": "DwarvenMine",
+   "x": 15552,
+   "y": 8960
+  },
+  {
+   "name": "Anathul Mine",
+   "kind": "DwarvenMine",
+   "x": 20864,
+   "y": 28672
+  },
+  {
+   "name": "Dazen Mine",
+   "kind": "DwarvenMine",
+   "x": 31520,
+   "y": 12512
+  },
+  {
+   "name": "Eldranor Mine",
+   "kind": "DwarvenMine",
+   "x": 11712,
+   "y": 2592
+  },
+  {
+   "name": "Estrendanir Mine",
+   "kind": "DwarvenMine",
+   "x": 10560,
+   "y": 13408
+  },
+  {
+   "name": "Handir Mine",
+   "kind": "DwarvenMine",
+   "x": 3168,
+   "y": 15744
+  },
+  {
+   "name": "Onetiel Mine",
+   "kind": "DwarvenMine",
+   "x": 16000,
+   "y": 21632
+  },
+  {
+   "name": "Straerweties Mine",
+   "kind": "DwarvenMine",
+   "x": 22848,
+   "y": 17248
+  },
+  {
+   "name": "Strudrazar Mine",
+   "kind": "DwarvenMine",
+   "x": 4160,
+   "y": 8352
+  },
+  {
+   "name": "Tammalen Mine",
+   "kind": "DwarvenMine",
+   "x": 16096,
+   "y": 3264
+  },
+  {
+   "name": "Acholdimore Glider Course",
+   "kind": "GliderCourse",
+   "x": 6752,
+   "y": 11808
+  },
+  {
+   "name": "Ammigrale Glider Course",
+   "kind": "GliderCourse",
+   "x": 12128,
+   "y": 6528
+  },
+  {
+   "name": "Amrach Glider Course",
+   "kind": "GliderCourse",
+   "x": 11072,
+   "y": 7776
+  },
+  {
+   "name": "Eldenberg Glider Course",
+   "kind": "GliderCourse",
+   "x": 8032,
+   "y": 21824
+  },
+  {
+   "name": "Eselen Glider Course",
+   "kind": "GliderCourse",
+   "x": 9184,
+   "y": 22912
+  },
+  {
+   "name": "Fostin Glider Course",
+   "kind": "GliderCourse",
+   "x": 12800,
+   "y": 6400
+  },
+  {
+   "name": "Pleau Glider Course",
+   "kind": "GliderCourse",
+   "x": 6560,
+   "y": 10144
+  },
+  {
+   "name": "Plosnalton Glider Course",
+   "kind": "GliderCourse",
+   "x": 8064,
+   "y": 12992
+  },
+  {
+   "name": "Rasmoria Glider Course",
+   "kind": "GliderCourse",
+   "x": 5728,
+   "y": 15296
+  },
+  {
+   "name": "Gninork",
+   "kind": "Gnarling",
+   "x": 14112,
+   "y": 21056
+  },
+  {
+   "name": "Gnittor",
+   "kind": "Gnarling",
+   "x": 21632,
+   "y": 20672
+  },
+  {
+   "name": "Grarak",
+   "kind": "Gnarling",
+   "x": 14208,
+   "y": 9344
+  },
+  {
+   "name": "Grerlek",
+   "kind": "Gnarling",
+   "x": 6176,
+   "y": 7776
+  },
+  {
+   "name": "Gretak",
+   "kind": "Gnarling",
+   "x": 30816,
+   "y": 19072
+  },
+  {
+   "name": "Grokarl",
+   "kind": "Gnarling",
+   "x": 16832,
+   "y": 8672
+  },
+  {
+   "name": "Grokatak",
+   "kind": "Gnarling",
+   "x": 13280,
+   "y": 10656
+  },
+  {
+   "name": "Karlnok",
+   "kind": "Gnarling",
+   "x": 17504,
+   "y": 11392
+  },
+  {
+   "name": "Kinor",
+   "kind": "Gnarling",
+   "x": 5152,
+   "y": 17344
+  },
+  {
+   "name": "Knalmek",
+   "kind": "Gnarling",
+   "x": 21024,
+   "y": 26016
+  },
+  {
+   "name": "Kneknok",
+   "kind": "Gnarling",
+   "x": 22176,
+   "y": 11008
+  },
+  {
+   "name": "Kramarl",
+   "kind": "Gnarling",
+   "x": 19744,
+   "y": 27424
+  },
+  {
+   "name": "Krer Knittor",
+   "kind": "Gnarling",
+   "x": 23168,
+   "y": 9664
+  },
+  {
+   "name": "Ktaarlnakarl",
+   "kind": "Gnarling",
+   "x": 26496,
+   "y": 22144
+  },
+  {
+   "name": "Ktakatak",
+   "kind": "Gnarling",
+   "x": 20352,
+   "y": 8640
+  },
+  {
+   "name": "Ktamakkor",
+   "kind": "Gnarling",
+   "x": 18624,
+   "y": 9824
+  },
+  {
+   "name": "Ktarl Kemekk",
+   "kind": "Gnarling",
+   "x": 12256,
+   "y": 4320
+  },
+  {
+   "name": "Ritmokkarl",
+   "kind": "Gnarling",
+   "x": 19616,
+   "y": 16864
+  },
+  {
+   "name": "Tak'tarlnok",
+   "kind": "Gnarling",
+   "x": 26624,
+   "y": 13888
+  },
+  {
+   "name": "Takarl",
+   "kind": "Gnarling",
+   "x": 25824,
+   "y": 7680
+  },
+  {
+   "name": "Torok",
+   "kind": "Gnarling",
+   "x": 15840,
+   "y": 4992
+  },
+  {
+   "name": "Trerl Torok",
+   "kind": "Gnarling",
+   "x": 19616,
+   "y": 11840
+  },
+  {
+   "name": "Trokarl",
+   "kind": "Gnarling",
+   "x": 28768,
+   "y": 10880
+  },
+  {
+   "name": "Bigon Tomb",
+   "kind": "Haniwa",
+   "x": 25888,
+   "y": 11808
+  },
+  {
+   "name": "Egu Catacombs",
+   "kind": "Haniwa",
+   "x": 8000,
+   "y": 13696
+  },
+  {
+   "name": "Gedate Gravemound",
+   "kind": "Haniwa",
+   "x": 16224,
+   "y": 7264
+  },
+  {
+   "name": "Gyono Vault",
+   "kind": "Haniwa",
+   "x": 29440,
+   "y": 2592
+  },
+  {
+   "name": "Hematsu Barrow",
+   "kind": "Haniwa",
+   "x": 25472,
+   "y": 20736
+  },
+  {
+   "name": "Hogomatsu Tomb",
+   "kind": "Haniwa",
+   "x": 24128,
+   "y": 26368
+  },
+  {
+   "name": "Hyahogachi Crypt",
+   "kind": "Haniwa",
+   "x": 3872,
+   "y": 18720
+  },
+  {
+   "name": "Kitami Vault",
+   "kind": "Haniwa",
+   "x": 30560,
+   "y": 15488
+  },
+  {
+   "name": "Kukuro Tumulus",
+   "kind": "Haniwa",
+   "x": 29984,
+   "y": 29152
+  },
+  {
+   "name": "Zopikyo Crypt",
+   "kind": "Haniwa",
+   "x": 25760,
+   "y": 18368
+  },
+  {
+   "name": "Metropolis of Ktainophos",
+   "kind": "Myrmidon",
+   "x": 31616,
+   "y": 25088
+  },
+  {
+   "name": "Estet Islet",
+   "kind": "Sahagin",
+   "x": 31328,
+   "y": 32576
+  },
+  {
+   "name": "Ked Islet",
+   "kind": "Sahagin",
+   "x": 30336,
+   "y": 11264
+  },
+  {
+   "name": "Osteed Cay",
+   "kind": "Sahagin",
+   "x": 31008,
+   "y": 26912
+  },
+  {
+   "name": "Sen Cay",
+   "kind": "Sahagin",
+   "x": 32544,
+   "y": 32000
+  },
+  {
+   "name": "Twen Cay",
+   "kind": "Sahagin",
+   "x": 22112,
+   "y": 32576
+  },
+  {
+   "name": "Gardens of Yangtian",
+   "kind": "Terracotta",
+   "x": 2720,
+   "y": 12000
+  },
+  {
+   "name": "Genyi Cemetery",
+   "kind": "Terracotta",
+   "x": 24736,
+   "y": 15712
+  },
+  {
+   "name": "Amrelm",
+   "kind": "Town",
+   "x": 8800,
+   "y": 18592
+  },
+  {
+   "name": "Amreric",
+   "kind": "Town",
+   "x": 21376,
+   "y": 17440
+  },
+  {
+   "name": "Aphreos",
+   "kind": "Town",
+   "x": 20256,
+   "y": 31840
+  },
+  {
+   "name": "Araepraeon",
+   "kind": "Town",
+   "x": 13088,
+   "y": 26176
+  },
+  {
+   "name": "Badoric",
+   "kind": "Town",
+   "x": 24960,
+   "y": 5696
+  },
+  {
+   "name": "Bic",
+   "kind": "Town",
+   "x": 32544,
+   "y": 14848
+  },
+  {
+   "name": "Bisserac",
+   "kind": "Town",
+   "x": 25856,
+   "y": 9920
+  },
+  {
+   "name": "Bleabrolm",
+   "kind": "Town",
+   "x": 17184,
+   "y": 10080
+  },
+  {
+   "name": "Braubrerg",
+   "kind": "Town",
+   "x": 21120,
+   "y": 12480
+  },
+  {
+   "name": "Drilm",
+   "kind": "Town",
+   "x": 12096,
+   "y": 23840
+  },
+  {
+   "name": "Endagrad",
+   "kind": "Town",
+   "x": 8288,
+   "y": 9664
+  },
+  {
+   "name": "Eriata",
+   "kind": "Town",
+   "x": 20832,
+   "y": 6560
+  },
+  {
+   "name": "Gale",
+   "kind": "Town",
+   "x": 14464,
+   "y": 31040
+  },
+  {
+   "name": "Gbeloko",
+   "kind": "Town",
+   "x": 22816,
+   "y": 15072
+  },
+  {
+   "name": "Gbeshombe",
+   "kind": "Town",
+   "x": 14400,
+   "y": 1952
+  },
+  {
+   "name": "Greastograd",
+   "kind": "Town",
+   "x": 19200,
+   "y": 15200
+  },
+  {
+   "name": "Harr",
+   "kind": "Town",
+   "x": 15200,
+   "y": 16000
+  },
+  {
+   "name": "Kreaereas",
+   "kind": "Town",
+   "x": 21792,
+   "y": 8512
+  },
+  {
+   "name": "Maswad",
+   "kind": "Town",
+   "x": 576,
+   "y": 18944
+  },
+  {
+   "name": "Mpumba",
+   "kind": "Town",
+   "x": 24288,
+   "y": 17024
+  },
+  {
+   "name": "Ngundengi",
+   "kind": "Town",
+   "x": 28128,
+   "y": 9760
+  },
+  {
+   "name": "Njoandabali",
+   "kind": "Town",
+   "x": 6208,
+   "y": 5888
+  },
+  {
+   "name": "Ntambi",
+   "kind": "Town",
+   "x": 30016,
+   "y": 13664
+  },
+  {
+   "name": "Omilios",
+   "kind": "Town",
+   "x": 24992,
+   "y": 28512
+  },
+  {
+   "name": "Onendam",
+   "kind": "Town",
+   "x": 27744,
+   "y": 2048
+  },
+  {
+   "name": "Ophentis",
+   "kind": "Town",
+   "x": 6752,
+   "y": 31968
+  },
+  {
+   "name": "Ornecowen",
+   "kind": "Town",
+   "x": 24480,
+   "y": 13120
+  },
+  {
+   "name": "Ornestin",
+   "kind": "Town",
+   "x": 17440,
+   "y": 30080
+  },
+  {
+   "name": "Plelen",
+   "kind": "Town",
+   "x": 11168,
+   "y": 11968
+  },
+  {
+   "name": "Snarac",
+   "kind": "Town",
+   "x": 27296,
+   "y": 4576
+  },
+  {
+   "name": "Sowen",
+   "kind": "Town",
+   "x": 28000,
+   "y": 24032
+  },
+  {
+   "name": "Tafir",
+   "kind": "Town",
+   "x": 29440,
+   "y": 18912
+  },
+  {
+   "name": "Tavan",
+   "kind": "Town",
+   "x": 4960,
+   "y": 13152
+  },
+  {
+   "name": "Vestach",
+   "kind": "Town",
+   "x": 24000,
+   "y": 19488
+  },
+  {
+   "name": "Ving",
+   "kind": "Town",
+   "x": 19552,
+   "y": 18272
+  },
+  {
+   "name": "Waillah",
+   "kind": "Town",
+   "x": 32096,
+   "y": 18400
+  },
+  {
+   "name": "Wric",
+   "kind": "Town",
+   "x": 23840,
+   "y": 8096
+  },
+  {
+   "name": "Wrowan",
+   "kind": "Town",
+   "x": 7360,
+   "y": 16864
+  },
+  {
+   "name": "Yazeakrad",
+   "kind": "Town",
+   "x": 1536,
+   "y": 12544
+  },
+  {
+   "name": "Zadroa",
+   "kind": "Town",
+   "x": 26784,
+   "y": 17248
+  },
+  {
+   "name": "Zaros",
+   "kind": "Town",
+   "x": 23296,
+   "y": 25376
+  },
+  {
+   "name": "Tree of Crow",
+   "kind": "Tree",
+   "x": 16160,
+   "y": 5120
+  },
+  {
+   "name": "Tree of Inor",
+   "kind": "Tree",
+   "x": 18592,
+   "y": 9824
+  },
+  {
+   "name": "Tree of Kot",
+   "kind": "Tree",
+   "x": 23488,
+   "y": 21120
+  },
+  {
+   "name": "Tree of Sheeter",
+   "kind": "Tree",
+   "x": 25600,
+   "y": 7872
+  },
+  {
+   "name": "Tree of Shred",
+   "kind": "Tree",
+   "x": 15776,
+   "y": 10336
+  },
+  {
+   "name": "Brare Keep",
+   "kind": "VampireCastle",
+   "x": 12768,
+   "y": 12768
+  },
+  {
+   "name": "Bucare Manor",
+   "kind": "VampireCastle",
+   "x": 18432,
+   "y": 27744
+  },
+  {
+   "name": "Bucautrcea Keep",
+   "kind": "VampireCastle",
+   "x": 20288,
+   "y": 20640
+  },
+  {
+   "name": "Corasi Palace",
+   "kind": "VampireCastle",
+   "x": 13952,
+   "y": 17408
+  },
+  {
+   "name": "Coraubrilau Keep",
+   "kind": "VampireCastle",
+   "x": 18656,
+   "y": 13248
+  },
+  {
+   "name": "Drialeni Keep",
+   "kind": "VampireCastle",
+   "x": 15328,
+   "y": 12288
+  },
+  {
+   "name": "Drilau Keep",
+   "kind": "VampireCastle",
+   "x": 12160,
+   "y": 20704
+  },
+  {
+   "name": "Orolilau Chateau",
+   "kind": "VampireCastle",
+   "x": 17792,
+   "y": 19936
+  },
+  {
+   "name": "Pita Chateau",
+   "kind": "VampireCastle",
+   "x": 17184,
+   "y": 18336
+  },
+  {
+   "name": "Resiva Palace",
+   "kind": "VampireCastle",
+   "x": 6304,
+   "y": 25312
+  },
+  {
+   "name": "Tarusov Palace",
+   "kind": "VampireCastle",
+   "x": 18848,
+   "y": 31616
+  },
+  {
+   "name": "Vasara Keep",
+   "kind": "VampireCastle",
+   "x": 13280,
+   "y": 19552
+  }
+ ]
+}

@@ -10,8 +10,10 @@
 //     world, accounts and economy: call its methods, never bypass its rules.
 // Add new extensions below.
 import { identityExtension } from './identity.js';
+<<<<<<< HEAD
 import shopExtension from './shop.js';
 import { hudExtension } from './view.js';
 import homeExtension from './home.js';
+import atlasExtension from './atlas.js';
 
-export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension];
+export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension];
