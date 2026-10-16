@@ -145,7 +145,9 @@ export class AtlasService {
 
   /** Where NemoWorld last *observed* this player: the newest signed landmark event, or none. */
   lastSeen(player_uuid) {
-    const row = this.sql.get("SELECT landmark_id, kind, occurred_at FROM link_events WHERE player_uuid=? AND landmark_id IS NOT NULL ORDER BY occurred_at DESC LIMIT 1", player_uuid);
+    // Only the two kinds that carry a landmark: a command's acknowledgement reuses `landmark_id` for its
+    // own command id, so it must never be read as a place.
+    const row = this.sql.get("SELECT landmark_id, kind, occurred_at FROM link_events WHERE player_uuid=? AND landmark_id IS NOT NULL AND kind IN ('resident.met','landmark.together') ORDER BY occurred_at DESC LIMIT 1", player_uuid);
     if (!row || !row.landmark_id) return null;
     const place = [...this.atlas.places.values()].find((item) => item.landmark_id === row.landmark_id) || null;
     return { landmark_id: row.landmark_id, at: row.occurred_at, place };
