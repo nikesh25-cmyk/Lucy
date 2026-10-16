@@ -5,70 +5,70 @@
       "id": "meadow-flowers",
       "landmark_id": "disc-meadow-flowers",
       "name": "The wildflower meadow",
-      "hint": "east of the plaza, past the lantern path",
+      "hint": "about 36 steps east of the plaza",
       "finding": "Seven kinds of flower grow here in bands by soil. The bees visit the yellow band first, in the cool of the morning."
     },
     {
       "id": "boundary-stone",
       "landmark_id": "disc-boundary-stone",
       "name": "The old boundary stone",
-      "hint": "northwest of the library house",
+      "hint": "about 44 steps north-west of the plaza",
       "finding": "A worn stone, older than the village. Its lichen grows only on the north face, so it also tells you which way you face."
     },
     {
       "id": "hidden-spring",
       "landmark_id": "disc-hidden-spring",
       "name": "The hidden spring",
-      "hint": "beyond the orchard field",
-      "finding": "Cold, clear water rises here all year. It fills the well by an underground seam: the well is never really empty."
+      "hint": "about 49 steps north-east of the plaza",
+      "finding": "Cold, clear water rises here all year. It feeds the well by an underground seam: the well is never really empty."
     },
     {
       "id": "high-view",
       "landmark_id": "disc-high-view",
       "name": "The high view",
-      "hint": "up the slope north of the workshop",
+      "hint": "about 52 steps north of the plaza",
       "finding": "From here the whole valley is a map: fields, the winding road, and where the next cottages could stand."
     },
     {
       "id": "bee-hollow",
       "landmark_id": "disc-bee-hollow",
       "name": "The bee hollow",
-      "hint": "south of the farm field",
-      "finding": "A hollow oak hums with a colony. Keepers note they are calm unless smoke is near; the honey feeds the whole village."
+      "hint": "about 46 steps north of the plaza",
+      "finding": "A hollow oak hums with a colony. Keepers note the bees are calm unless smoke is near; the honey feeds the whole village."
     },
     {
       "id": "lichen-wall",
       "landmark_id": "disc-lichen-wall",
       "name": "The lichen wall",
-      "hint": "west of the workshop",
+      "hint": "about 44 steps west of the plaza",
       "finding": "Lichen draws a slow map on the stone. Researchers measure its growth each season; the clean air shows in its colours."
     },
     {
       "id": "birdsong-grove",
       "landmark_id": "disc-birdsong-grove",
       "name": "The birdsong grove",
-      "hint": "south of the plaza",
+      "hint": "about 60 steps north-west of the plaza",
       "finding": "At dawn eleven species sing in turn. Scholars are keeping a score of the chorus, one new voice a week."
     },
     {
       "id": "clay-bank",
       "landmark_id": "disc-clay-bank",
       "name": "The clay bank",
-      "hint": "west of the orchard",
+      "hint": "about 30 steps north-east of the plaza",
       "finding": "Fine red clay, good for bricks and pots. Makers dig only what they need and smooth the bank behind them."
     },
     {
       "id": "star-meadow",
       "landmark_id": "disc-star-meadow",
       "name": "The star meadow",
-      "hint": "north of the house, away from the lamps",
+      "hint": "about 46 steps south-east of the plaza",
       "finding": "The darkest corner of Harr. On clear nights the observatory scholars chart the sky from here before the platform is done."
     },
     {
       "id": "wind-ridge",
       "landmark_id": "disc-wind-ridge",
       "name": "The wind ridge",
-      "hint": "a ridge south of the workshop",
+      "hint": "about 35 steps south of the plaza",
       "finding": "A steady breeze crosses this ridge. A small mill here could turn grain for the whole village; the plans are in the library."
     }
   ]
