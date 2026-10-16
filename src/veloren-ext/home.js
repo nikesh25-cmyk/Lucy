@@ -27,7 +27,7 @@ import { identityFor } from './identity.js';
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const PLOT = /^plot:-?\d+:\d+:\d+:\d+$/;
+const PLOT = /^plot:-?\d+:-?\d+:\d+:\d+$/;   // sector x and y may be negative, plot x and y may not
 const STYLE_MAX = 7;
 
 /** The residents that may answer for cottages. One keeper, one credential. */
@@ -129,13 +129,15 @@ export class HomeService {
 
   /** Counts only. `vaultRead` is deliberately never called from this module. */
   #vaultNote(account_id, agent_id) {
+    const where = 'I cannot read a note here: open NemoWorld to read or write your own notes.';
     try {
       const status = this.platform.vaultStatus(this.#readActor(account_id), { agent_id });
-      if (!status) return 'You have no vault here.';
-      if (!status.enrolled && !status.notes) return 'You have no notes in your vault yet.';
-      return `Your vault holds ${plural(status.notes || 0, 'note')} ${status.enrolled ? `(${status.bytes || 0} bytes, ${status.mode})` : '(not enrolled)'}. I cannot read them here: open NemoWorld to read or write your own notes.`;
+      const notes = Number(status?.notes) || 0;
+      if (!status) return `You have no vault here. ${where}`;
+      if (!notes) return `Your vault holds no notes yet. ${where}`;
+      return `Your vault holds ${plural(notes, 'note')} (${status.bytes || 0} bytes, ${status.mode || 'unnamed'} key). ${where}`;
     } catch {
-      return 'I cannot read your vault here. Yours is kept in NemoWorld, and its text never leaves it.';
+      return `I cannot read your vault here. ${where}`;
     }
   }
 
@@ -269,7 +271,7 @@ export class HomeService {
     const state = this.buildState(plot.id, player_uuid);
     if (state.status !== 'built') return { intent: 'enter', lines: ['No cottage stands there yet. Whisper me build my home first, and wait for my word that the world has built it.'] };
     if (!this.#mayEnter(who.account_id, who.agent_id)) {
-      return { intent: 'enter', lines: ['That cottage is closed to visitors. Only its owner can open it, in NemoWorld, with the cottage switch. Nothing was opened and nothing was sent to the game.'] };
+      return { intent: 'enter', lines: ['NemoWorld does not allow you into that cottage just now, so nothing was sent to the game. Only its owner opens it, in NemoWorld, with the cottage switch.'] };
     }
     const last = this.sql.get("SELECT issued_at FROM home_commands WHERE kind='home_enter' AND player_uuid=? ORDER BY issued_at DESC LIMIT 1", player_uuid);
     if (last && this.now - last.issued_at < this.policy.enter_gap_ms) fail(429, 'You have just stepped in or out; give it a moment.');
