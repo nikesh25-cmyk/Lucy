@@ -8,7 +8,7 @@ import {fixture, PASSWORD} from './helpers.js';
 import {VelorenLink, signEvent} from '../src/veloren-link.js';
 import {
   CODE_ALPHABET, IDENTITY_POLICY, cleanAlias, normalizeCode, generateCode, formatCode,
-  identityFor, setIdentityProvider, requireIdentity, issueCode, checkCode, redeemCode, unlinkPlayer, unlinkAccount, cancelLeakedCode,
+  identityFor, setIdentityProvider, requireIdentity, issueCode, checkCode, redeemCode, unlinkPlayer, unlinkAccount, cancelLeakedCode, takeNotices,
 } from '../src/veloren-ext/identity.js';
 
 const KEY = Buffer.from('nemo-test-key-nemo-test-key-1234');
@@ -278,6 +278,25 @@ test('unlink works from the game and from NemoWorld, and relinking needs a fresh
   assert.ok(w.f.platform.verifyAudit(), 'the audit chain stays valid');
   const events = w.f.platform.all("SELECT event FROM audit WHERE event LIKE 'veloren.%' ORDER BY seq").map(row => row.event);
   assert.deepEqual(events, ['veloren.linked', 'veloren.unlinked', 'veloren.linked', 'veloren.unlinked']);
+});
+
+test('the in-game confirmation is handed over once, to the linked player only', async t => {
+  const w = await world(t);
+  assert.deepEqual(takeNotices(w.link), [], 'nothing to say before a link');
+  w.redeem(w.alice, w.issue());
+  const first = takeNotices(w.link);
+  assert.equal(first.length, 1, 'one notice for one link');
+  assert.deepEqual([first[0].player_uuid, first[0].kind, first[0].display_name], [P1, 'linked', 'Alice Walker']);
+  assert.deepEqual(takeNotices(w.link), [], 'handed over exactly once');
+  // Only a fixed kind and a cleaned name travel; the bridge writes the words.
+  unlinkAccount(w.link, w.alice);
+  const after = takeNotices(w.link);
+  assert.deepEqual(after.map((n) => [n.player_uuid, n.kind, n.display_name]), [[P1, 'unlinked_in_nemoworld', '']]);
+  // Nobody collected it in ten minutes: it is dropped rather than delivered late.
+  w.f.advance(IDENTITY_POLICY.issue_player_gap_ms + 1);
+  w.redeem(w.bob, w.issue(P2, 'Second'));
+  w.f.advance(IDENTITY_POLICY.notice_ttl_ms + 1);
+  assert.deepEqual(takeNotices(w.link), [], 'a stale notice is dropped');
 });
 
 test('player names with markup or control characters cannot reach a human unchanged', async t => {

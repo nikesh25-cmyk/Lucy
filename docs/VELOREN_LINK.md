@@ -120,7 +120,7 @@ signing vector, credentials, forged and tampered events, replay, ordering, resta
 advance a quest, model limits and guards, relay resume, crash safety and HTTP scopes. The Veloren side pins the
 same signature vector in `nemo-link-proto`.
 
-`node --test tests/veloren-identity.test.js` (32 tests) covers account linking: code alphabet and entropy,
+`node --test tests/veloren-identity.test.js` (29 tests) covers account linking: code alphabet and entropy,
 forgiveness of case and separators, hostile player names, the whole flow, codes stored only as a keyed hash,
 replay, expiry at exactly ten minutes, replacement of an earlier code, a code spoken in public, binding someone
 else's character, one-to-one mapping, banked brute force (per account, per peer, global) with `Retry-After`,
