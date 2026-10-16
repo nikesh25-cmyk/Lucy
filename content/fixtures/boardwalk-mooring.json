@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "id": "boardwalk-mooring",
+  "kind": "fixture",
+  "label": "Boardwalk Mooring",
+  "since": "1.1.0",
+  "order": 4,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "boat",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "fixtures",
+    "object": "boat",
+    "footprint": "open",
+    "scenery_class": "mass",
+    "blocks_route": true,
+    "arrangement": {
+      "kind": "pair",
+      "axis": "x",
+      "spacing": 1,
+      "count": 2,
+      "from": {
+        "x": 30,
+        "y": 20
+      }
+    },
+    "tiles": [
+      [
+        30,
+        20
+      ],
+      [
+        31,
+        20
+      ]
+    ],
+    "owner": "channel-landing-venue",
+    "placement": {
+      "on": "water"
+    },
+    "provenance": {
+      "derived_from": "content/furniture/boat.json",
+      "reuse": "the sealed furniture builder is drawn; this fixture adds no asset and no geometry"
+    }
+  },
+  "notes": [
+    "A moored hull on the working channel at x = 30 and 31; the water placement is declared, so this solid is allowed exactly where a bench would be refused."
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "civic-building",
+  "kind": "furniture",
+  "label": "Civic building",
+  "since": "1.0.0",
+  "order": 17,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#d5c4a1",
+    "geometry": "civic-building",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "walkable": true,
+    "footprint": "open",
+    "geometry": "civic-building"
+  },
+  "notes": [
+    "house() treats this type as a large 2.5 x 2 building and paints the same wall, door, window and roof colours as a cottage; only the footprint differs.",
+    "The tile renderer draws a separate civic-building case (world.js) with a window grid; its '#d3c4a6' wall belongs to the terrain 'building' tile, not to this object."
+  ]
+}

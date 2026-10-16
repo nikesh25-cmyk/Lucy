@@ -1,0 +1,154 @@
+/* NemoWorld touch controls for small screens.
+ *
+ * Scoping rule (see docs/MOBILE_ACCESSIBILITY.md): every selector in this file begins with the
+ * container class `.nm-touch`, and every media query contains only `.nm-touch` selectors. Nothing
+ * here can reach the desktop interface it is loaded beside, so this stylesheet never edits, and can
+ * never leak into, style.css / nemo-theme.css / game-theme.css.
+ *
+ * Every size and colour below is measured by tests/mobile-styles.test.js and reported in
+ * docs/handoff/task-37-mobile-accessibility.md:
+ *   target sizes   pad key 44 (52 on a coarse pointer), action 44, all >= the project's 44 px
+ *   text contrast  pad/action label 13.26:1; pressed label 9.89:1; disabled label 9.86:1;
+ *                  status text 13.23:1; focus ring 12.09:1 against the world and 10.3:1 on a key
+ *   no leak        no selector outside `.nm-touch`; no `:hover` rule; no animation except the
+ *                  opt-in block below and its suppression
+ * There is no fixed `min-width` anywhere: the widest declared minimum is the 3-column pad
+ * (3 x 44 px + 2 x 6 px gap = 144 px plus 16 px of padding), so the controls fit a 320 px screen
+ * without horizontal scrolling.
+ */
+
+.nm-touch{
+  /* Static by default: it sits in the flow of whatever container the integration owner chooses. */
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  box-sizing:border-box;width:100%;max-width:100%;
+  padding:8px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+  margin:0;
+  font-family:NemoManrope,Arial,sans-serif;
+  color:#f6f0d8;
+  /* The world keeps its own gestures in the gaps between the controls; the controls re-enable
+     pointer events for themselves below. */
+  pointer-events:none;
+  touch-action:manipulation;
+}
+
+/* Floating placement, for a controls bar mounted over the world canvas. */
+.nm-touch.nm-touch-floating{
+  position:absolute;z-index:10;left:8px;right:8px;bottom:94px;width:auto;
+  display:grid;grid-template-columns:minmax(144px,168px) minmax(0,1fr);
+  grid-template-rows:auto auto;align-items:end;justify-items:end;gap:6px;
+  padding:0;
+}
+.nm-touch.nm-touch-floating .nm-touch-pad{grid-column:1;grid-row:1/3;justify-self:start}
+.nm-touch.nm-touch-floating .nm-touch-camera{grid-column:2;grid-row:1;justify-self:end}
+.nm-touch.nm-touch-floating .nm-touch-actions{grid-column:2;grid-row:2;justify-self:end;max-width:150px}
+.nm-touch.nm-touch-floating .nm-touch-look{min-width:64px}
+.nm-touch.nm-touch-floating .nm-touch-status{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  clip-path:inset(50%);border:0;
+}
+
+/* The mounted game HUD already owns Interact, Build, Chat, Places and More. Keep only movement
+   and looking in its companion pad; standalone and workspace controls retain all affordances. */
+.nm-touch.nm-touch-hud-owned .nm-touch-actions,
+.nm-touch.nm-touch-hud-owned [data-nm-beside="pad"]{display:none}
+.nm-touch.nm-touch-hud-owned .nm-touch-camera{grid-row:1/3;align-self:end}
+
+.nm-touch .nm-touch-pad{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(44px,52px));
+  grid-template-rows:repeat(3,minmax(44px,52px));
+  gap:6px;justify-content:center;max-width:100%;margin:0;
+}
+
+.nm-touch .nm-touch-key,
+.nm-touch .nm-touch-action{
+  pointer-events:auto;
+  box-sizing:border-box;
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:44px;min-height:44px;
+  margin:0;padding:10px 12px;
+  border:1px solid #d2d8ac75;border-radius:12px;
+  background:#0a2b25;color:#f6f0d8;
+  font-family:NemoManrope,Arial,sans-serif;font-size:.72rem;font-weight:600;line-height:1.2;
+  box-shadow:none;
+  opacity:1;
+  touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+
+.nm-touch .nm-touch-key{font-size:1rem}
+
+/* Grid placement is the pad's own geometry; the DOM order stays up, left, down, right so a screen
+   reader hears the four directions in a predictable order. */
+.nm-touch .nm-touch-up{grid-area:1/2}
+.nm-touch .nm-touch-left{grid-area:2/1}
+.nm-touch .nm-touch-right{grid-area:2/3}
+.nm-touch .nm-touch-down{grid-area:3/2}
+
+.nm-touch .nm-touch-camera,
+.nm-touch .nm-touch-actions{
+  display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:stretch;
+  max-width:100%;margin:0;
+}
+
+.nm-touch .nm-touch-look{min-width:76px}
+
+/* Even single-word affordances share one width, so the row does not reflow as the labels change
+   between Build and Finish. The row still wraps when the viewport is narrower than four of them. */
+.nm-touch .nm-touch-interact,
+.nm-touch .nm-touch-build,
+.nm-touch .nm-touch-chat,
+.nm-touch .nm-touch-tools{min-width:64px}
+
+/* Pressed state is a colour change and `aria-pressed`, never motion: a pad key that repeats while
+   it is held must stay readable without a transition. */
+.nm-touch .nm-touch-key[aria-pressed=true]{background:#e5dea8;border-color:#f0edc8;color:#133429}
+
+.nm-touch .nm-touch-key:disabled,
+.nm-touch .nm-touch-action:disabled{background:#0a2b25;border-color:#6d7f6859;color:#c4d5c4;opacity:1}
+
+.nm-touch .nm-touch-key:focus-visible,
+.nm-touch .nm-touch-action:focus-visible{outline:2px solid #ded6a5;outline-offset:2px}
+
+.nm-touch .nm-touch-status{
+  margin:0;padding:6px 10px;max-width:min(100%,420px);
+  border:1px solid #d8daad4d;border-radius:10px;background:#092a24;
+  color:#edf0dc;font-family:NemoManrope,Arial,sans-serif;font-size:.68rem;line-height:1.5;text-align:center;
+}
+
+/* Animation is opt-in, so a viewer who asks for reduced motion never receives it in the first
+   place, and the class the module sets suppresses it again for a surface whose stylesheet does not
+   honour the media query. */
+@media(prefers-reduced-motion:no-preference){
+  .nm-touch .nm-touch-key,
+  .nm-touch .nm-touch-action{transition:background-color .14s ease-out,color .14s ease-out,border-color .14s ease-out}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .nm-touch,
+  .nm-touch *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+}
+
+.nm-touch.nm-touch-reduced,
+.nm-touch.nm-touch-reduced *{transition:none!important;animation:none!important}
+
+/* A coarse pointer gets the larger end of the range at every width. The smaller end stays at the
+   project's 44 px, which is the value the tests measure. */
+@media(pointer:coarse){
+  .nm-touch .nm-touch-key{min-width:52px;min-height:52px}
+  .nm-touch .nm-touch-action{min-height:48px}
+  .nm-touch .nm-touch-pad{grid-template-columns:repeat(3,minmax(48px,56px));grid-template-rows:repeat(3,minmax(48px,56px))}
+}
+
+@media(max-width:650px){
+  .nm-touch{gap:6px;padding:6px max(6px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
+  .nm-touch .nm-touch-status{font-size:.62rem}
+}
+
+/* On a wide screen with a fine pointer the desktop controls are the better ones, so the touch
+   layer stands down unless the integration owner marks it always-on. */
+@media(min-width:901px) and (hover:hover) and (pointer:fine){
+  .nm-touch:not(.nm-touch-always){display:none}
+}

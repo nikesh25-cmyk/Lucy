@@ -1,0 +1,402 @@
+/* NemoWorld's game screen. The full workspace remains reachable from World menu. */
+#game-menu-button,.game-hud,.game-drawer-close{display:none}
+body.game-world{--game-ink:#f3f4df;--game-dim:#c4d5c4;--game-glass:#092a24da;--game-edge:#c7d6ac57;background:#071b19;color:var(--game-ink);overflow:hidden}
+body.game-world .app-shell{max-width:none;padding:0}
+body.game-world .masthead{height:66px;min-height:66px;padding:8px 22px;background:#082b25f5;border-bottom:1px solid #b6cba746;position:relative;z-index:32;box-shadow:0 8px 28px #07181475}
+body.game-world .brand{color:var(--game-ink);font-size:1rem;letter-spacing:.12em}
+body.game-world .brand small{color:#c3d5bd;font-size:.58rem;letter-spacing:.05em}
+body.game-world .brand-mark{width:37px;height:37px}
+body.game-world #session-bar{margin-left:auto}
+body.game-world #session-bar .session-profile{color:var(--game-ink)}
+body.game-world #session-bar .session-profile small{color:#c3d5bd}
+body.game-world #session-bar button:first-child{display:none}
+body.game-world #game-menu-button{display:inline-flex;align-items:center;gap:8px;margin-left:18px;background:#d9ddad14;color:var(--game-ink);border:1px solid #d9ddad62;border-radius:12px;font-size:.75rem;min-height:40px;padding:8px 15px;order:3}
+body.game-world #game-menu-button:before{content:'☰';font-size:1rem;line-height:1}
+body.game-world #game-menu-button[aria-expanded=true]{background:#e4dfb72b;border-color:#e4dfb7}
+body.game-world .workspace-layout{display:block;min-height:0;height:calc(100dvh - 66px)}
+body.game-world #content{position:relative;width:100%;height:100%;max-width:none;margin:0;padding:0;overflow:hidden}
+body.game-world #view{height:100%;padding:0!important;margin:0;overflow:hidden}
+body.game-world .world-title,body.game-world .start-here,body.game-world footer{display:none}
+body.game-world .world-layout{position:relative;display:block;width:100%;height:100%;margin:0;gap:0}
+body.game-world .world-panel{position:relative;width:100%;height:100%;padding:0;margin:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;background:linear-gradient(180deg,#9fbcc0,#80a999 55%,#305c4f)}
+body.game-world .world-panel>canvas,body.game-world .world-panel>canvas.voxel-canvas{display:block;width:100%;height:100%;min-height:0;max-height:none;aspect-ratio:auto;border:0;border-radius:0;filter:none;touch-action:none}
+/* The WebGL canvas cannot draw text; voxel-world.js keeps this sibling layer projected from the same camera. */
+.voxel-nameplates{position:absolute;inset:0;z-index:4;overflow:hidden;pointer-events:none;font-family:NemoManrope,Arial,sans-serif}
+.voxel-nameplate{position:absolute;display:grid;gap:2px;min-width:0;max-width:180px;transform:translate(-50%,-100%);padding:4px 7px;border:1px solid #d9ddad70;border-radius:6px;background:#092a24d9;color:#f3f4df;box-shadow:0 4px 12px #04161166;text-align:center;white-space:nowrap;line-height:1.08;text-shadow:0 1px 2px #041611}
+.voxel-nameplate-name{overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:700}
+.voxel-nameplate-role{overflow:hidden;text-overflow:ellipsis;color:#c4d5c4;font-size:10px}
+.voxel-nameplate-compact{padding:3px 6px;border-radius:999px;background:#092a24c7}
+.voxel-nameplate-compact .voxel-nameplate-name{font-size:12px}
+body.game-world .world-toolbar,body.game-world .world-panel>.actions,body.game-world .calling-hud{display:none}
+body.game-world .world-reticle{position:absolute;z-index:10;top:18px;left:50%;transform:translateX(-50%);width:min(570px,calc(100% - 620px));margin:0!important;padding:10px 14px;background:var(--game-glass);border:1px solid var(--game-edge);border-radius:12px;box-shadow:0 12px 28px #04161166;color:var(--game-ink);font-size:.75rem;line-height:1.45;text-align:center;overflow-wrap:anywhere;pointer-events:none;backdrop-filter:blur(12px)}
+body.game-world .sidebar{position:fixed;z-index:34;left:0;top:66px;bottom:0;width:min(345px,88vw);height:calc(100dvh - 66px);max-height:none;overflow-y:auto;padding:24px 18px;background:#0a2b25f7;border-right:1px solid #d3d8af54;box-shadow:20px 0 50px #03130f88;transform:translateX(-105%);visibility:hidden;transition:transform .24s ease,visibility .24s;scrollbar-color:#9cb39855 transparent}
+body.game-world.game-menu-open .sidebar{transform:translateX(0);visibility:visible}
+body.game-world .sidebar-intro{margin:0 0 16px;color:#d4deb3}
+body.game-world .sidebar-foot{display:none}
+body.game-world .sidebar .tabs,body.game-world .sidebar.navigation-open .tabs{display:grid;flex:none;grid-template-columns:1fr;gap:11px;padding:0!important;overflow:visible}
+body.game-world .sidebar .nav-group{display:grid;gap:4px}
+body.game-world .sidebar .nav-heading{display:block;color:#bbd0b4;font-size:.62rem;letter-spacing:.13em;margin:7px 10px 4px}
+body.game-world .sidebar .tabs button{width:100%;justify-content:flex-start;text-align:left;white-space:normal;min-height:42px;padding:10px 12px;border-radius:10px}
+body.game-world .game-audio-menu{margin-top:8px;padding:12px;border:1px solid #d3d8af45;border-radius:12px;background:#071f1acc}
+body.game-world .game-audio-menu .nav-heading{margin:0 0 8px}
+body.game-world .game-audio-controls{display:grid;gap:9px}
+body.game-world .game-audio-controls button{width:100%;min-height:40px;padding:8px 10px;border:1px solid #d9ddad62;border-radius:9px;background:#d9ddad14;color:var(--game-ink);text-align:left}
+body.game-world .game-audio-controls input[type=range]{width:100%;accent-color:#d9ddad}
+body.game-world .game-audio-controls button:disabled,body.game-world .game-audio-controls input:disabled{opacity:.6;cursor:not-allowed}
+body.game-world #toggle-navigation{display:none}
+body.game-world .game-hud{position:absolute;inset:0;z-index:9;display:block;pointer-events:none;color:var(--game-ink);font-family:NemoManrope,Arial,sans-serif}
+body.game-world.game-entry .game-hud{display:none}
+body.game-world .game-hud-top{position:absolute;top:18px;left:20px;display:flex;gap:13px;align-items:flex-start}
+body.game-world .game-place{display:grid;gap:2px;min-width:180px;max-width:min(45vw,340px);padding:13px 18px;background:var(--game-glass);border:1px solid var(--game-edge);border-radius:15px;box-shadow:0 12px 32px #04161166;backdrop-filter:blur(13px)}
+body.game-world .game-place .game-kicker{font-size:.55rem!important;letter-spacing:.19em;color:#dcdea9!important;margin:0!important;font-weight:700}
+body.game-world .game-place strong{font:500 clamp(1.1rem,2vw,1.55rem)/1.12 NemoCormorant,Georgia,serif;color:#fff9e1}
+body.game-world .game-position{color:var(--game-dim);font-size:.64rem}
+body.game-world .game-extent{color:#c4d5c4;font-size:.55rem;letter-spacing:.06em}
+body.game-world .game-live-count{display:flex;align-items:center;gap:5px;padding:10px 13px;border-radius:999px;background:var(--game-glass);border:1px solid var(--game-edge);font-size:.62rem;color:var(--game-dim);white-space:nowrap;backdrop-filter:blur(12px)}
+body.game-world .game-live-count:before{content:'';width:7px;height:7px;background:#b8d895;border-radius:50%;box-shadow:0 0 9px #b8d895}
+body.game-world .game-live-count span:first-child{font-weight:800;color:var(--game-ink)}
+body.game-world .game-hud-bottom{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 24px);display:grid;gap:8px;justify-items:center}
+body.game-world .game-control-hint{margin:0!important;padding:5px 12px;background:#092a24bb;border:1px solid #d9d8b53b;border-radius:100px;color:#edf0dc!important;font-size:.62rem!important;white-space:nowrap;text-align:center}
+body.game-world .game-quickbar{display:flex;gap:5px;max-width:100%;padding:7px;background:#092a24eb;border:1px solid #d8daad70;border-radius:17px;box-shadow:0 16px 45px #07181599;backdrop-filter:blur(16px);pointer-events:auto;overflow-x:auto;scrollbar-width:thin}
+body.game-world .game-quickbar button{min-width:65px;min-height:47px;padding:7px 10px;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--game-ink);font-size:.68rem;white-space:nowrap}
+body.game-world .game-quickbar button:hover,body.game-world .game-quickbar button:focus-visible{background:#f1edc626;border-color:#e1dfb556}
+body.game-world .game-quickbar button:disabled{color:#a3b8ac;opacity:.65}
+body.game-world .game-quickbar .game-mode{background:#d8d6a925;border-color:#d8d6a94b;color:#f3ecbd}
+body.game-world .game-target{position:absolute;right:20px;bottom:93px;max-width:270px;margin:0!important;padding:9px 12px;background:var(--game-glass);border:1px solid var(--game-edge);border-radius:11px;color:#f3f1db!important;font-size:.68rem!important;text-align:right;pointer-events:none}
+/* One line of input feedback, floating just above the bottom control band so it reads with the
+   controls it describes: the accepted step, the refusal and its reason, or the reconcile after a
+   refusal. It is `pointer-events:none`, so it can never stand between a tap and a control. */
+body.game-world .game-feedback{position:absolute;z-index:9;left:50%;bottom:152px;transform:translateX(-50%);margin:0!important;padding:6px 14px;max-width:min(560px,calc(100vw - 24px));background:#092a24eb;border:1px solid #d9d8b556;border-radius:100px;color:#f3f1db!important;font-size:.66rem!important;text-align:center;pointer-events:none}
+body.game-world .game-feedback[hidden]{display:none}
+body.game-world .game-feedback-step{color:#dbecc2!important}
+body.game-world .game-feedback-travel{border-color:#d9ddad8c;color:#f3ecbd!important}
+body.game-world .game-feedback-refused,body.game-world .game-feedback-restored{border-color:#e3b7a0a0;background:#3a1c14eb;color:#ffe6d2!important}
+/* The travel affordance: the entrances the server published for this world, the way back first. It
+   reads the same `portals` payload the world list does, so it can offer no destination the server
+   did not send. The way-back route keeps a 44px target and is marked, so a journey is reversible. */
+body.game-world .game-travel{position:absolute;z-index:9;top:150px;right:20px;display:grid;gap:6px;width:206px;padding:11px 12px;background:var(--game-glass);border:1px solid var(--game-edge);border-radius:14px;box-shadow:0 12px 30px #07151166;backdrop-filter:blur(12px);pointer-events:auto}
+body.game-world .game-travel[hidden]{display:none}
+body.game-world .game-travel-kicker{margin:0!important;color:#dcdea9!important;font-size:.55rem!important;letter-spacing:.16em;font-weight:700}
+body.game-world .game-travel-route{display:grid;gap:1px;justify-items:start;min-height:44px;padding:7px 10px;border:1px solid #d2d8ac52;border-radius:10px;background:#103a31d9;color:var(--game-ink);font-size:.7rem;line-height:1.25;text-align:left}
+body.game-world .game-travel-route small{color:#c4d5c4;font-size:.58rem}
+body.game-world .game-travel-route:hover,body.game-world .game-travel-route:focus-visible{background:#154a3e;border-color:#e4dfb7}
+body.game-world .game-travel-route:disabled{border-color:#6d7f6859;color:#c4d5c4;cursor:not-allowed}
+body.game-world .game-travel-back{border-color:#d9ddad8c;background:#123f34}
+body.game-world .world-panel>.minimap-card{position:absolute;z-index:8;top:18px;right:20px;width:172px;height:117px;margin:0;padding:7px!important;border:1px solid var(--game-edge);border-radius:14px;background:var(--game-glass);box-shadow:0 12px 30px #07151166;backdrop-filter:blur(12px)}
+body.game-world .world-panel>.minimap-card canvas{display:block;width:100%;height:100%;border:0;border-radius:8px;cursor:crosshair}
+body.game-world .world-panel>.minimap-card p{display:none}
+body.game-world .world-bottom{position:absolute;z-index:8;left:20px;bottom:18px;width:auto;margin:0;padding:0;background:none;border:0;pointer-events:none}
+/* On compact play screens the floating pad replaces these legacy arrow controls. Showing both
+   placed two sets of movement buttons on top of one another and obscured the world. */
+body.game-world.game-touch-active .world-bottom{display:none}
+/* On a phone the guide already states the next action and the aim line states the target. Keep
+   the lower band to its five actions so the touch pad never sits on top of duplicate HUD text. */
+@media(max-width:650px){
+  body.game-world.game-touch-active .game-hud-bottom .game-next,
+  body.game-world.game-touch-active .game-hud-bottom .game-control-hint,
+  body.game-world.game-touch-active .game-target{display:none}
+  /* Building gives the purpose lines and palette the phone's vertical space. The touch module
+     stands down while this mode is open; do not reveal the older arrow pad underneath it. */
+  body.game-world.game-building .world-bottom{display:none}
+}
+body.game-world .world-bottom>div:first-child{display:none}
+body.game-world .world-bottom .movement{position:relative;display:grid;grid-template-columns:repeat(3,43px);gap:5px;margin:0;pointer-events:auto}
+body.game-world .movement>button{min-width:43px;min-height:43px;padding:0;background:#0a2b25de;color:#f6f0d8;border:1px solid #d2d8ac75;border-radius:11px;box-shadow:0 6px 20px #051a1466}
+body.game-world .movement>.actions{position:absolute;left:0;bottom:96px;display:flex;gap:5px;padding:0}
+body.game-world .movement>.actions button{min-width:44px;min-height:34px;padding:4px 8px;font-size:.62rem;white-space:nowrap;background:#0a2b25de;color:#f6f0d8;border:1px solid #d2d8ac75;border-radius:9px;box-shadow:0 4px 12px #051a1466;backdrop-filter:blur(8px)}
+body.game-world .frontier-hotbar{position:absolute;z-index:8;bottom:100px;left:50%;transform:translateX(-50%);width:max-content;max-width:min(850px,calc(100vw - 370px));padding:7px;border:1px solid #d8daad70;border-radius:13px;background:#092a24eb;box-shadow:0 12px 32px #04161188;overflow-x:auto;flex-wrap:nowrap;pointer-events:auto}
+body.game-world:not(.game-building) .frontier-hotbar{display:none}
+body.game-world .frontier-hotbar button{white-space:nowrap;min-height:42px}
+body.game-world .world-aside{position:fixed;z-index:31;right:0;top:66px;bottom:0;display:block;width:min(430px,100vw);height:calc(100dvh - 66px);padding:16px 18px 28px;margin:0;overflow-y:auto;background:#092b25f8;border-left:1px solid #d5dbae5a;box-shadow:-20px 0 55px #04140f99;transform:translateX(105%);visibility:hidden;transition:transform .24s ease,visibility .24s;scrollbar-width:thin}
+body.game-world.game-tools-open .world-aside{transform:translateX(0);visibility:visible}
+body.game-world .world-aside .game-drawer-close{display:block;position:sticky;top:-16px;z-index:2;margin:0 0 16px auto;background:#d8d8ad;color:#143a2e;border:0;border-radius:10px;min-height:42px}
+body.game-world .world-aside .card{margin-bottom:12px;border-color:#d1d8ae45;box-shadow:none}
+body.game-world .world-aside #world-chat-card{scroll-margin-top:50px}
+body.game-world #notice:not([hidden]){position:fixed;z-index:48;left:50%;top:76px;transform:translateX(-50%);max-width:min(640px,calc(100vw - 32px));margin:0;padding:10px 18px;border:1px solid #d8d8ad80;border-radius:14px;background:#092b25f3;color:#f5efd5;box-shadow:0 12px 35px #04150f99;cursor:pointer;backdrop-filter:blur(14px);animation:gameToastFadeIn .22s ease-out}
+body.game-world #game-next-passage{border-color:#d9ddad8c;background:#103a31eb;color:#fdf6d8!important;box-shadow:0 4px 16px #04150f88;font-weight:600}
+body.game-world #game-next-action{border-color:#a8d59d55;background:#092a24eb;color:#ecf8e5!important}
+@keyframes gameToastFadeIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
+body.game-world.game-entry .welcome{position:absolute;inset:0;z-index:12;display:grid;grid-template-columns:minmax(0,1fr) minmax(310px,.94fr);align-items:center;gap:clamp(20px,4vw,65px);margin:0;padding:clamp(20px,5vw,80px);background:linear-gradient(90deg,#061e1bea 0%,#082b25e8 42%,#082b25ac 75%,#082b2560 100%);overflow-y:auto}
+body.game-world.game-entry .welcome-copy{max-width:680px}
+body.game-world.game-entry .welcome .eyebrow{color:#d9dfa8;font-size:.65rem;letter-spacing:.18em}
+body.game-world.game-entry .welcome h1{font:500 clamp(3.8rem,7vw,7rem)/.96 NemoCormorant,Georgia,serif;letter-spacing:-.045em;color:#faf6dd;margin:18px 0 20px}
+body.game-world.game-entry .welcome h1 em{color:#dcdfab}
+body.game-world.game-entry .welcome p:not(.eyebrow){color:#e1ebd8;font-size:clamp(.88rem,1.2vw,1.07rem);line-height:1.65;max-width:550px}
+body.game-world.game-entry #hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 10px}
+body.game-world.game-entry #hero-actions button{min-height:49px;padding:11px 18px;border-radius:11px;font-size:.82rem}
+body.game-world.game-entry #hero-actions .game-primary{background:#e5dea8;color:#133429;border:1px solid #f0edc8}
+body.game-world.game-entry #hero-actions .game-secondary{background:#103a31d9;color:#f3f0d8;border:1px solid #c8d5ab8c}
+body.game-world.game-entry #hero-actions .game-film-button{background:transparent;color:#e5ead5;border:1px solid transparent}
+body.game-world.game-entry .hero-caption{color:#ccd9c4!important;font-size:.67rem!important;letter-spacing:.08em}
+body.game-world.game-entry .hero-film{max-width:710px;overflow:hidden;border:1px solid #d3d9b568;border-radius:20px;background:#061b18;box-shadow:0 24px 65px #051710a8}
+body.game-world.game-entry .hero-film video{aspect-ratio:16/9;width:100%;object-fit:cover;background:#061b18}
+body.game-world.game-entry .hero-art-caption{background:#0b2a22;padding:15px 18px}
+body.game-world.game-entry .world-bottom,body.game-world.game-entry .world-panel>.minimap-card,body.game-world.game-entry .frontier-hotbar{visibility:hidden}
+body.game-world.game-entry .world-reticle{display:none}
+body.game-world:not(.game-entry) .welcome{display:none}
+@media(max-width:1279px){body.game-world .world-reticle{top:120px;width:min(530px,calc(100% - 40px))}}
+@media(max-width:900px){body.game-world .game-live-count{display:none}body.game-world .world-panel>.minimap-card{width:132px;height:91px}body.game-world .frontier-hotbar{max-width:calc(100vw - 40px);bottom:174px}body.game-world.game-entry .welcome{grid-template-columns:1fr;gap:24px;align-content:start;padding:clamp(22px,5vw,46px);background:#082b25e9}body.game-world.game-entry .hero-film{order:-1;width:min(100%,470px);justify-self:center}body.game-world.game-entry .welcome h1{font-size:clamp(3.3rem,8vw,5rem)}}
+@media(max-width:650px){body.game-world .masthead{height:60px;min-height:60px;padding:7px 12px;gap:7px}body.game-world .brand{font-size:.76rem;letter-spacing:.06em}body.game-world .brand small{font-size:.48rem;max-width:120px}body.game-world .brand-mark{width:30px;height:30px}body.game-world #game-menu-button{margin-left:3px;order:0;font-size:0;min-width:44px;min-height:44px;padding:7px 12px}body.game-world #game-menu-button:before{font-size:1.15rem}body.game-world #session-bar{margin-left:auto}body.game-world #session-bar button{font-size:.62rem;min-height:40px;padding:7px 9px}body.game-world #session-bar .session-profile{display:none}body.game-world .workspace-layout{height:calc(100dvh - 60px)}body.game-world .sidebar,body.game-world .world-aside{top:60px;height:calc(100dvh - 60px)}body.game-world .world-aside{padding:12px}body.game-world .game-hud-top{top:10px;left:10px}body.game-world .game-place{min-width:0;padding:9px 12px;max-width:55vw}body.game-world .game-place strong{font-size:1.16rem}body.game-world .game-position{font-size:.58rem}body.game-world .world-panel>.minimap-card{top:10px;right:10px;width:106px;height:79px;padding:5px!important}body.game-world .game-target{right:10px;bottom:154px;max-width:170px;font-size:.57rem!important}body.game-world .game-hud-bottom{bottom:10px;width:calc(100vw - 20px)}body.game-world .game-control-hint{font-size:.52rem!important}body.game-world .game-quickbar{width:100%;justify-content:space-between;gap:2px;padding:5px}body.game-world .game-quickbar button{min-width:0;flex:1;min-height:44px;padding:5px 4px;font-size:.58rem}body.game-world .world-bottom{left:10px;bottom:110px}body.game-world .world-bottom .movement{grid-template-columns:repeat(3,44px);gap:3px}body.game-world .movement>button{min-width:44px;min-height:44px}body.game-world .movement>.actions{bottom:86px;display:flex;gap:3px}body.game-world .movement>.actions button{min-width:36px;min-height:30px;font-size:.52rem}body.game-world .frontier-hotbar{bottom:166px;left:50%;max-width:calc(100vw - 20px)}body.game-world.game-entry .welcome{padding:18px 19px 25px;gap:18px}body.game-world.game-entry .hero-film{width:100%;max-width:420px;order:1}body.game-world.game-entry .welcome h1{font-size:clamp(3rem,12vw,4.3rem);margin:9px 0 10px}body.game-world.game-entry .welcome p:not(.eyebrow){font-size:.83rem;line-height:1.5}body.game-world.game-entry #hero-actions{margin:15px 0 6px}body.game-world.game-entry #hero-actions button{min-height:44px;padding:9px 11px;font-size:.68rem}body.game-world #notice:not([hidden]){top:68px;bottom:auto}}
+@media(prefers-reduced-motion:reduce){body.game-world .sidebar,body.game-world .world-aside{transition:none}body.game-world .game-guide,body.game-world .game-guide *{transition:none;animation:none}}
+@media(max-width:650px){body.game-world #session-bar{flex-wrap:nowrap;min-width:0}body.game-world:not(.signed-in) #session-bar button:last-child{display:none}body.game-world .sidebar{left:0;right:auto;width:min(345px,88vw);max-width:88vw;min-width:0;box-sizing:border-box;overflow-x:hidden}body.game-world .sidebar .tabs{width:100%;min-width:0;overflow-x:hidden}body.game-world .sidebar .nav-group{width:100%;min-width:0}body.game-world .sidebar .tabs button{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}}
+@media(max-width:650px){body.game-world .world-reticle{top:106px;width:calc(100% - 20px);padding:8px 10px;font-size:.7rem;line-height:1.35}}
+
+/* The first-ten-minutes guide: one next action, the resident beside the viewer, and the shared
+   restoration, all read from the server's own GET /api/v1/first-play payload. Its buttons keep a
+   44 px target, a visible focus ring, and an AA contrast pair: the primary label (#133429 on #e5dea8)
+   measures 9.89:1. Dismissal is a display preference only and never completes a step. */
+/* The panel is constrained to the left column between the top HUD and the bottom control band with
+   an explicit `top`/`bottom` box, never a guessed height, so its geometry can never reach the world's
+   own controls (the `.world-bottom` journey text, walk-to form and d-pad with the first person / Look
+   / Step-up toggles, the quickbar, the target line, the aim line, the minimap and the top/bottom HUD).
+   Anything that does not fit scrolls inside the panel (`overflow-y:auto`), which needs its own pointer
+   events, so the clearance is geometric rather than a `pointer-events:none` trick. */
+body.game-world .game-guide{position:fixed;z-index:11;left:20px;top:196px;bottom:272px;width:min(340px,calc(100vw - 40px));display:grid;align-content:start;gap:10px;overflow-y:auto;pointer-events:auto;color:var(--game-ink);font-family:NemoManrope,Arial,sans-serif;scrollbar-width:thin}
+body.game-world .game-guide-card{display:grid;gap:7px;padding:14px 16px;background:var(--game-glass);border:1px solid var(--game-edge);border-radius:15px;box-shadow:0 12px 32px #04161166;backdrop-filter:blur(13px)}
+body.game-world .game-guide-progress{margin:0;color:#dcdea9;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase}
+body.game-world .game-guide-meter{width:100%;height:8px;border:0;border-radius:999px;overflow:hidden;background:#0a2b25;appearance:none;-webkit-appearance:none}
+body.game-world .game-guide-meter::-webkit-progress-bar{background:#0a2b25;border-radius:999px}
+body.game-world .game-guide-meter::-webkit-progress-value{background:#d9ddad;border-radius:999px}
+body.game-world .game-guide-meter::-moz-progress-bar{background:#d9ddad;border-radius:999px}
+body.game-world .game-guide-title{margin:0;color:#fff9e1;font:600 .96rem/1.25 NemoManrope,Arial,sans-serif}
+body.game-world .game-guide-instruction{margin:0;color:var(--game-ink);font-size:.8rem;line-height:1.5}
+body.game-world .game-guide-reason,body.game-world .game-guide-alternative,body.game-world .game-guide-role{margin:0;color:var(--game-dim);font-size:.68rem;line-height:1.45}
+body.game-world .game-guide-target{margin:0;color:#d9e6c0;font-size:.68rem}
+body.game-world .game-guide-place,body.game-world .game-guide-calling{margin:0;color:var(--game-dim);font-size:.7rem;line-height:1.45}
+body.game-world .game-guide-honest,body.game-world .game-guide-limits,body.game-world .game-guide-capabilities{margin:0;color:#e7eeda;font-size:.72rem;line-height:1.5}
+body.game-world .game-guide-cannot,body.game-world .game-guide-remaining,body.game-world .game-guide-viewer{display:grid;gap:4px;color:#e7eeda;font-size:.72rem}
+body.game-world .game-guide-cannot ul,body.game-world .game-guide-remaining ul,body.game-world .game-guide-viewer ul{margin:0;padding-left:18px;display:grid;gap:2px}
+body.game-world .game-guide-blocked{margin:0;padding:8px 10px;border:1px solid #e3b7a0a0;border-radius:10px;background:#3a1c14cc;color:#ffe6d2;font-size:.7rem;line-height:1.45}
+body.game-world .game-guide-refusal{display:grid;gap:6px;padding:10px 12px;border:1px solid #e3b7a0a0;border-radius:11px;background:#3a1c14cc;color:#ffe6d2;font-size:.72rem;line-height:1.45}
+body.game-world .game-guide-buttons,body.game-world .game-guide-controls{display:flex;flex-wrap:wrap;gap:8px}
+body.game-world .game-guide-button{min-width:44px;min-height:44px;padding:10px 14px;border:1px solid #f0edc8;border-radius:11px;background:#e5dea8;color:#133429;font:600 .74rem/1.2 NemoManrope,Arial,sans-serif;cursor:pointer;transition:background-color .14s ease-out,color .14s ease-out,border-color .14s ease-out}
+body.game-world .game-guide-button:hover{background:#f0ebc0}
+body.game-world .game-guide-button:focus-visible{outline:3px solid #f6f2c8;outline-offset:2px}
+body.game-world .game-guide-button:disabled{background:#1d3a30;color:#c4d5c4;border-color:#6d7f6859;cursor:not-allowed;opacity:1}
+body.game-world .game-guide-dismiss,body.game-world .game-guide-resume,body.game-world .game-guide-recover{background:#103a31d9;color:#f3f0d8;border-color:#c8d5ab8c}
+body.game-world .game-guide-dismiss:hover,body.game-world .game-guide-resume:hover,body.game-world .game-guide-recover:hover{background:#154a3e}
+body.game-world .game-guide-table{width:100%;border-collapse:collapse;font-size:.68rem}
+body.game-world .game-guide-table caption{color:#dcdea9;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;text-align:left;margin-bottom:4px}
+body.game-world .game-guide-table th,body.game-world .game-guide-table td{padding:5px 6px;border-bottom:1px solid #c7d6ac33;text-align:left;color:#e7eeda}
+body.game-world .game-guide-table th{color:#f3f1db;font-weight:700}
+body.game-world .game-guide-confirmation{margin:0;color:#cfe6b4;font-size:.68rem}
+body.game-world .game-guide-error{margin:0;color:#ffcabd;font-size:.68rem}
+body.game-world .game-guide-note,body.game-world .game-guide-recover-note{margin:0;color:var(--game-dim);font-size:.68rem}
+body.game-world.game-entry .game-guide{display:none}
+@media(max-width:650px){body.game-world .game-guide{left:10px;right:10px;top:232px;bottom:320px;width:auto;gap:7px}body.game-world .game-guide-card{padding:10px 12px}body.game-world .game-guide-button{width:100%}body.game-world .game-guide-buttons,body.game-world .game-guide-controls{display:grid;grid-template-columns:1fr}body.game-world .game-guide-table{font-size:.62rem}}
+body.game-world .game-guide.game-guide-reduced,body.game-world .game-guide.game-guide-reduced *{transition:none;animation:none}
+
+/* Floating conversation panel for the game shell. Small, anchored, and dismissible so the world stays visible. */
+body.game-world #game-conversation-host{position:fixed;z-index:13;top:156px;right:20px;display:none;flex-direction:column;width:min(360px,calc(100vw - 40px));max-height:min(420px,calc(100dvh - 220px));pointer-events:auto}
+body.game-world.game-chat-open #game-conversation-host{display:flex}
+body.game-world .game-conversation-header{display:flex;gap:10px;align-items:center;justify-content:space-between;flex:none;padding:9px 14px;background:var(--game-glass);border:1px solid var(--game-edge);border-bottom:0;border-radius:15px 15px 0 0;color:var(--game-ink);backdrop-filter:blur(13px)}
+body.game-world .game-conversation-header span{font-weight:600;font-size:.85rem}
+body.game-world .game-conversation-close{min-height:32px;padding:5px 10px;border:0;border-radius:8px;background:#d8d8ad;color:#143a2e;font-size:.62rem}
+body.game-world #game-conversation-host #world-chat-card{display:flex;flex-direction:column;flex:1 1 auto;margin:0;overflow:hidden;border-radius:0 0 15px 15px;border-top:0;background:var(--game-glass);backdrop-filter:blur(13px)}
+body.game-world #game-conversation-host #world-chat-card .card h2{display:none}
+body.game-world #game-conversation-host #world-chat-card .message-list{overflow-y:auto;max-height:min(180px,28dvh);padding-right:4px}
+body.game-world #game-conversation-host #world-chat-card form{display:flex;flex-direction:column;gap:8px}
+body.game-world #game-conversation-host #world-chat-card textarea{min-height:52px;max-height:110px;resize:vertical}
+@media(max-width:650px){body.game-world #game-conversation-host{top:110px;right:10px;width:min(320px,calc(100vw - 20px));max-height:min(340px,calc(100dvh - 250px))}body.game-world #game-conversation-host #world-chat-card .message-list{max-height:min(140px,24dvh)}}
+@media(prefers-reduced-motion:reduce){body.game-world #game-conversation-host{transition:none}}
+
+/* Conversation is the active task while the composer has focus. Keep the server-derived guide in
+   the DOM as a one-line marker, and let Current task in the conversation header reopen its full
+   controls. The guide host is inert during chat, so clipped actions cannot receive keyboard focus. */
+body.game-world.game-chat-open .game-place,
+body.game-world.game-chat-open .game-live-count,
+body.game-world.game-chat-open .world-panel>.minimap-card,
+body.game-world.game-chat-open .world-reticle,
+body.game-world.game-chat-open .game-target,
+body.game-world.game-chat-open .game-prompt-host,
+body.game-world.game-chat-open .game-overlay-host,
+body.game-world.game-chat-open .game-travel,
+body.game-world.game-chat-open .game-feedback,
+body.game-world.game-chat-open .game-control-hint{display:none}
+body.game-world.game-chat-open .game-guide{top:84px;bottom:auto;max-height:48px;width:min(340px,calc(100vw - 40px));overflow:hidden;pointer-events:none}
+body.game-world.game-chat-open .game-guide-card:not(.game-guide-next){display:none}
+body.game-world.game-chat-open .game-guide-next{display:flex;align-items:center;gap:9px;height:46px;padding:8px 12px;overflow:hidden}
+body.game-world.game-chat-open .game-guide-next>:not(.game-guide-progress):not(.game-guide-action-line){display:none}
+body.game-world.game-chat-open .game-guide-action-line{min-width:0;overflow:hidden}
+body.game-world.game-chat-open .game-guide-action-line>:not(.game-guide-title){display:none}
+body.game-world.game-chat-open .game-guide-progress{flex:none;white-space:nowrap}
+body.game-world.game-chat-open .game-guide-title{font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.game-world #game-conversation-host{overflow:hidden}
+body.game-world .game-conversation-header{padding:7px 10px;gap:6px}
+body.game-world .game-conversation-header span{margin-right:auto;white-space:nowrap}
+body.game-world .game-conversation-guide{min-height:42px;padding:5px 8px;border:1px solid #d8d8ad80;border-radius:8px;background:#0f3a31;color:#f3f0d8;font-size:.62rem;white-space:nowrap}
+body.game-world .game-conversation-close{min-height:42px;padding:5px 9px;white-space:nowrap}
+body.game-world #game-conversation-host #world-chat-card{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:11px 13px;scrollbar-width:thin}
+body.game-world #game-conversation-host #world-chat-card .message-list{flex:0 1 auto;max-height:90px;margin:0 0 6px;padding:0}
+body.game-world #game-conversation-host #world-chat-card .message-list:empty{display:none}
+body.game-world #game-conversation-host #world-chat-card .message-list-empty{display:none}
+body.game-world #game-conversation-host #world-chat-card .message-list p{margin:2px 0}
+body.game-world #game-conversation-host #world-chat-card form{margin-top:5px;gap:5px}
+body.game-world #game-conversation-host #world-chat-card .field-grid{gap:0 8px}
+body.game-world #game-conversation-host #world-chat-card label{gap:3px;margin-bottom:7px}
+body.game-world #game-conversation-host #world-chat-card label small{font-size:.62rem}
+body.game-world #game-conversation-host #world-chat-card form>button{min-height:44px}
+@media(min-width:651px){body.game-world #game-conversation-host{max-height:min(470px,calc(100dvh - 260px))}}
+@media(max-width:650px){
+  body.game-world.game-chat-open .game-guide{top:68px;left:10px;right:10px;width:min(320px,calc(100vw - 20px));max-height:36px}
+  body.game-world.game-chat-open .game-guide-next{height:35px;padding:5px 9px}
+  /* The touch layer is *not* hidden here: it is switched off through its own control in app.js
+     (`touchControls.setEnabled(false)`), which hides it and stops a held gesture. A stylesheet rule
+     could not stop the pad's repeat timers, and the touch layer keeps its own stylesheet. */
+  body.game-world.game-chat-open .world-bottom,
+  body.game-world.game-chat-open .game-hud-bottom{display:none}
+  body.game-world #game-conversation-host{top:110px;max-height:min(340px,calc(100dvh - 250px))}
+  body.game-world #game-conversation-host #world-chat-card .field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.game-world #game-conversation-host #world-chat-card .message-list{max-height:66px}
+  body.game-world #game-conversation-host #world-chat-card>.eyebrow{display:none}
+  body.game-world .game-conversation-header span{font-size:.78rem}
+}
+
+/* The travel panel sits in the right column under the minimap. Where the aim line moves down to
+   `top:120px` it drops below the line instead of over it. A phone has no free column left — the guide
+   spans the full width and the control band reaches the d-pad — so the phone keeps the same routes in
+   the More drawer's "Your place in the world" list, which names every entrance and the way back. */
+@media(max-width:1279px){body.game-world .game-travel{top:210px}}
+@media(max-width:650px){body.game-world .game-travel{display:none}}
+/* On a phone the control band already reaches the d-pad, so the feedback line lifts above the d-pad
+   instead of into it. Measured: the pad's top edge sits 110 px + its own height above the bottom. */
+@media(max-width:650px){body.game-world .game-feedback{bottom:196px;padding:5px 11px;font-size:.56rem!important}}
+
+/* ------------------------------------------------------------------------------------------------
+   Resident art. `app.js` gives every resident it names one face and one standing figure from the
+   staged CC0 set under `assets/residents/`, so the profile, the roster, the civic and ambassador
+   views, the character picker and the first-play guide all show the same resident the same way.
+
+   Two rules the sizes below keep, both visible in a browser at 1x:
+     whole multiples   the face art is 32 x 32 and the figure art is 16 x 16, so a face is drawn at
+                       32 px and 64 px (1x, 2x) and a figure at 64 px (4x), never at a fractional
+                       scale that `image-rendering:pixelated` would have to stretch unevenly;
+     border outside    `box-sizing:content-box` keeps the 1 px frame outside that exact size, so the
+                       art is never scaled down to 30 px by a border it did not ask for.
+   The frame carries the resident's own stored agent colour when the server published one of the five
+   sealed colours (`app.js` adds one `nm-<colour>` class for a value that palette knows), and a neutral
+   forest line otherwise, so the portrait reads on both the light workspace and the dark game shell.
+   ------------------------------------------------------------------------------------------------ */
+.resident-face{display:block;flex-shrink:0;box-sizing:content-box;width:32px;height:32px;image-rendering:pixelated;background:#0d2a23;border:1px solid var(--agent-color,#6f8f7d73);border-radius:10px}
+.resident-face-lg{width:64px;height:64px;border-radius:16px}
+.resident-figure{display:block;flex-shrink:0;box-sizing:content-box;width:64px;height:64px;image-rendering:pixelated;background:#0d2a23bd;border:1px solid #6f8f7d73;border-radius:16px}
+/* The five sealed agent colours, as the frame tint only: the same five `style.css` already draws for
+   `.avatar-mark`, and no value outside this list has a class, so nothing a payload carries can become
+   an arbitrary style. */
+.resident-face.nm-blue{--agent-color:#3d5875}
+.resident-face.nm-purple{--agent-color:#8c6ab1}
+.resident-face.nm-coral{--agent-color:#cb725f}
+.resident-face.nm-teal{--agent-color:#397f79}
+.resident-face.nm-gold{--agent-color:#aa7845}
+.passport-portrait{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.resident-encounter-art{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+@media(max-width:650px){.resident-face-lg{width:32px;height:32px;border-radius:10px}.resident-figure{width:48px;height:48px;border-radius:12px}.passport-portrait{gap:9px}}
+
+/* Living world AI guild roster */
+#living-world-card .living-roster{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+#living-world-card .agent-row{display:flex;align-items:center;gap:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.06)}
+#living-world-card .living-badge{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.3)}
+#living-world-card .living-agent-info{display:flex;flex-direction:column;flex-grow:1;min-width:0}
+#living-world-card .living-agent-info strong{font-size:0.85rem;color:#f3f4df}
+#living-world-card .living-agent-info small{font-size:0.7rem;color:#a8bba8}
+
+
+/* ------------------------------------------------------------------------------------------------
+   HUD layout, first visual slice. Nothing below hides information or removes a control: it moves
+   panels that used to share pixels onto pixels of their own, and on a phone it turns the stacked
+   guide into one short strip so the world is the thing on the screen. Every rule sits after the rules
+   it refines, so deleting this block restores the previous layout exactly.
+
+   Desktop (651 px and wider)
+     - the transient #notice drops below the aim line it used to cover;
+     - the interaction prompt leaves the left column, where it sat on the Step-up, First person and
+       Look toggles, for the free right column above the target line, which it already belongs with;
+     - the move-feedback line lifts above the objective chips it used to overlap;
+     - the guide's scroll box fades at its lower edge instead of cutting a line of text in half.
+   Phone (650 px and narrower)
+     - the place card is two lines, the aim line is one line (its full text stays in the DOM for
+       assistive technology and is the live region it always was), and the minimap shrinks to fit
+       beside the card;
+     - the guide becomes a one-card-high strip you swipe sideways, with Dismiss pinned inside the first
+       card; every paragraph is still reachable by scrolling the card;
+     - the interaction prompt sits on its own band above the touch pad, not on the pad's top key.
+   ------------------------------------------------------------------------------------------------ */
+@media(min-width:651px){
+  body.game-world #notice:not([hidden]){top:152px}
+  body.game-world .game-prompt-host{left:auto;right:20px;bottom:160px;width:min(300px,34vw);max-width:none}
+  body.game-world .game-feedback{bottom:200px}
+  body.game-world.game-building .game-feedback{bottom:auto;top:152px}
+  body.game-world .game-guide{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent)}
+}
+@media(min-width:651px) and (max-width:1279px){
+  body.game-world #notice:not([hidden]){top:252px}
+}
+@media(max-width:650px){
+  body.game-world #notice:not([hidden]){top:278px;max-width:calc(100vw - 20px);padding:7px 12px;font-size:.7rem}
+  body.game-world .game-place{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:0;padding:6px 11px;max-width:calc(100vw - 126px)}
+  body.game-world .game-place .game-kicker{display:none}
+  body.game-world .game-place strong{flex:1 0 100%;font-size:1.05rem;line-height:1.15}
+  body.game-world .world-panel>.minimap-card{width:96px;height:60px;padding:4px!important}
+  body.game-world .world-reticle{top:72px;left:10px;transform:none;width:calc(100% - 20px);padding:4px 10px;font-size:.62rem;line-height:1.5;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:9px}
+  body.game-world .game-guide{top:164px;bottom:auto;left:10px;right:10px;width:auto;max-height:116px;display:flex;flex-direction:row;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-mask-image:none;mask-image:none;scrollbar-width:none}
+  body.game-world .game-guide::-webkit-scrollbar{display:none}
+  body.game-world .game-guide-card{position:relative;flex:0 0 min(86vw,330px);max-height:116px;overflow-y:auto;scroll-snap-align:start;padding:7px 11px 14px;gap:3px;scrollbar-width:thin}
+  body.game-world .game-guide-card{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 16px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 16px),transparent)}
+  body.game-world .game-guide-card .game-guide-progress{font-size:.54rem}
+  body.game-world .game-guide-card .game-guide-meter{height:5px}
+  body.game-world .game-guide-card .game-guide-title{font-size:.84rem}
+  body.game-world .game-guide-card .game-guide-instruction{font-size:.7rem;line-height:1.35}
+  body.game-world .game-guide-card .game-guide-reason,body.game-world .game-guide-card .game-guide-alternative,body.game-world .game-guide-card .game-guide-target{font-size:.62rem;line-height:1.35}
+  body.game-world .game-guide-next{padding-right:104px}
+  body.game-world .game-guide-next .game-guide-controls{position:absolute;top:6px;right:8px;display:block}
+  body.game-world .game-guide-next .game-guide-button{width:auto;min-width:88px;padding:8px 10px}
+  body.game-world .game-guide-encounter-art{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:9px}
+  body.game-world .game-guide-encounter-art .resident-encounter-art{grid-row:1/span 2;margin-bottom:0}
+  body.game-world .game-guide-encounter-art>:not(.resident-encounter-art):not(.game-guide-title):not(.game-guide-role){grid-column:1/-1}
+  body.game-world .game-guide-encounter-art .game-guide-honest,body.game-world .game-guide-encounter-art .game-guide-response,body.game-world .game-guide-encounter-art .game-guide-limits,body.game-world .game-guide-encounter-art .game-guide-capabilities,body.game-world .game-guide-encounter-art .game-guide-calling{font-size:.62rem;line-height:1.35}
+  body.game-world .game-prompt-host{bottom:284px}
+  body.game-world .game-prompt-host .interaction-prompt{padding:6px 10px;font-size:.62rem;line-height:1.35}
+}
+
+/* One useful action stays in view. Supporting people, saved progress and route details are native
+   disclosures, so keyboard and touch users can open the same information without a floating stack. */
+body.game-world .game-guide{gap:7px;scrollbar-width:thin;-webkit-mask-image:none;mask-image:none}
+body.game-world .game-guide-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0}
+body.game-world .game-guide-heading .game-guide-progress{flex:1;min-width:0}
+body.game-world .game-guide-heading .game-guide-dismiss{min-height:44px;min-width:68px;padding:7px 10px;font-size:.66rem}
+body.game-world .game-guide-next .game-guide-buttons{display:grid;grid-template-columns:1fr}
+body.game-world .game-guide-next .game-guide-buttons .game-guide-button{width:100%;text-align:left}
+body.game-world .game-guide-step-details{margin:0;border:0;background:none;padding:0;box-shadow:none}
+body.game-world .game-guide-step-details summary,
+body.game-world .game-guide-details-summary{display:list-item;min-height:44px;box-sizing:border-box;padding:12px 10px;cursor:pointer;color:#e5ead5;font-size:.7rem;line-height:1.35;list-style-position:inside}
+body.game-world .game-guide-step-details summary{padding-left:0;padding-right:0;color:#c4d5c4}
+body.game-world .game-guide-step-details[open]{display:grid;gap:7px}
+body.game-world .game-guide-step-details summary:focus-visible,
+body.game-world .game-guide-details-summary:focus-visible{outline:2px solid #f6f2c8;outline-offset:2px;border-radius:8px}
+body.game-world .game-guide-details{margin:0;padding:0;min-width:0;border:1px solid var(--game-edge);border-radius:13px;background:var(--game-glass);color:var(--game-ink);box-shadow:0 8px 24px #04161155;backdrop-filter:blur(13px)}
+body.game-world .game-guide-details-summary{padding-left:15px}
+body.game-world .game-guide-details-body{display:grid;gap:7px;padding:0 6px 6px}
+body.game-world .game-guide-details-body .game-guide-card{box-shadow:none;background:#0a2b25cc;border-color:#c7d6ac33}
+body.game-world.game-chat-open .game-guide-details{display:none}
+body.game-world .game-menu-home{display:grid;gap:4px;margin:0 0 12px;padding:13px;border:1px solid var(--game-edge);border-radius:13px;background:#113b30b3}
+body.game-world .game-menu-home p{margin:0}
+body.game-world .game-menu-resident{color:#fff9e1;font-size:.92rem;font-weight:700}
+body.game-world .game-menu-home button{min-height:44px;margin-top:5px}
+.home-resident-summary{display:flex;align-items:center;gap:12px;margin:6px 0 10px}
+.home-resident-summary .privacy{margin:3px 0 0}
+.home-purpose{padding:10px 12px;border-left:2px solid #9ebf85;background:#92b88b12;font-size:.86rem;line-height:1.5}
+@media(max-width:650px){
+  body.game-world .game-guide{top:164px;left:10px;right:10px;bottom:auto;width:auto;max-height:min(360px,calc(100dvh - 440px));display:grid;grid-template-columns:minmax(0,1fr);overflow-x:hidden;overflow-y:auto;scroll-snap-type:none;scrollbar-width:thin}
+  body.game-world .game-guide-card{flex:none;width:auto;max-height:none;overflow:visible;scroll-snap-align:none;padding:9px 12px;gap:6px;-webkit-mask-image:none;mask-image:none}
+  body.game-world .game-guide-next{padding-right:12px}
+  body.game-world .game-guide-next .game-guide-button{min-width:44px;min-height:44px}
+  body.game-world .game-guide-heading .game-guide-dismiss{width:auto;min-width:68px}
+  body.game-world .game-guide-card .game-guide-title{font-size:.88rem}
+  body.game-world .game-guide-card .game-guide-instruction{font-size:.72rem;line-height:1.4}
+  body.game-world .game-guide-details-body .game-guide-card{padding:10px}
+  body.game-world.game-chat-open .game-guide{max-height:36px;overflow:hidden}
+  body.game-world.game-chat-open .game-guide-next{padding:5px 9px}
+}
+@media(max-width:650px) and (max-height:700px){
+  body.game-world .game-guide{max-height:max(132px,calc(100dvh - 440px))}
+}

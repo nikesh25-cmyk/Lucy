@@ -1,0 +1,127 @@
+{
+  "schema": "nemoworld.mission-exemplar/v1",
+  "id": "ex-nepal-tea-production-figure",
+  "title": "Pin where Nepali tea production and harvested area are published",
+  "status": "proposal — not activated, no task claimed, no contribution submitted, no review recorded, no outreach sent",
+  "mission": {
+    "id": "ex-nepal-tea-production-figure",
+    "title": "Pin where Nepali tea production and harvested area are published",
+    "area": "Agriculture",
+    "summary": "Close the collection gap the retained country pack records for this corridor: find where the two named national bodies publish an annual tea quantity and a tea land figure, and record either the reading itself or the continuing gap in the mission's own terms.",
+    "owner": {
+      "id": "owner-slot-unassigned",
+      "name": "Mission owner — unassigned: no human owner has been named for this proposal"
+    },
+    "beneficiary": "Nepali tea producer groups and the municipal or national bodies that would read the resulting briefing; no producer group, cooperative, municipality, exporter or buyer has been selected, consented or contacted as a beneficiary",
+    "reviewer": {
+      "id": "reviewer-slot-unassigned",
+      "name": "Independent reviewer — unassigned: no human reviewer has been named for this proposal"
+    },
+    "rubric": "Every figure the deliverable reports carries its publisher, the document title, the page, table or row it sits in, the fiscal-year basis the publisher uses, the unit, the retrieval date and the checksum of the bytes captured. A figure the publisher labels an estimate, a projection, a preliminary or a revised number is recorded with that label, and a modelled or modelled-from-ILO value is never presented as a national count. Fiscal years are written exactly as the publisher writes them and are never silently converted to calendar years. A requested quantity that is not published is reported as not published, with the pages checked and the dates, and is not replaced by a figure from another publisher, another product or another year. Nothing in the deliverable states a buyer, a price, an export volume, an eligibility or a return."
+  },
+  "task": {
+    "id": "ex-nepal-tea-production-figure-task",
+    "mission_id": "ex-nepal-tea-production-figure",
+    "title": "Find and pin the annual tea quantity and tea land figure",
+    "instructions": "Work from the two named national bodies outward and record what each one publishes. For each candidate publication, record its title, the page or table, the fiscal-year basis, the unit, the retrieval date and the checksum of the captured bytes. If the quantity or the land figure is not published, record the pages checked, their dates and the statement that it is not published, and stop there rather than substituting a sector indicator. Outputs: the pinned reading or the not-published register; a short note on how the publisher's fiscal year and unit are stated; and a list of the sources named by the country pack that are still unresolved for this question.",
+    "rights": "Each cited page is paraphrased with attribution and pinned to the version read, and each publisher's reuse terms are inspected before anything is reproduced; no page, table, chart, image or logo is reproduced in full. The retained World Bank series are published under CC BY 4.0 with the original provider attributed per indicator, and that attribution is carried with any value taken from them.",
+    "allowed_domains": [
+      "www.teacoffee.gov.np",
+      "nsonepal.gov.np",
+      "api.worldbank.org"
+    ]
+  },
+  "question": "Which Nepali document states tea production quantity and harvested area for the most recent complete fiscal year, and what value, unit and fiscal-year basis does it state?",
+  "limits": "The registered series retained for Nepal in catalog/agriculture-statistics.json cover agriculture, forestry and fishing value added, employment in agriculture and arable land share. None of them is tea production or tea harvested area, and the value-added series includes forestry and fishing, so no sector indicator may stand in for the figure. A national figure is an official statement with its own coverage, revision and rounding rules; it is not a measured export, not a buyer signal and not a price. Reading a page establishes only that the text was there on the date recorded. Nothing here establishes buyer demand, supplier capacity, shipment eligibility, price, financing or an economic return, and the mission cannot establish that any producer group wants the briefing. No consenting beneficiary has been selected, so external implementation evidence and any measured outcome are blocked on that dependency; a mission owner's recorded adoption declaration is a declaration, not implementation, and this mission sends no message to any body, producer or publisher.",
+  "rights": "Cited pages are paraphrased with attribution and pinned to the version read, with each publisher's reuse terms inspected before reproduction; no page, table, chart, image or logo is reproduced in full. The retained World Bank series are CC BY 4.0 with the original provider attributed per indicator.",
+  "sources": [
+    {
+      "url": "https://www.teacoffee.gov.np/",
+      "location": "Front page of the National Tea and Coffee Development Board. The retained country pack records that the site lists tea statistics and producer pages; the statistics page itself was not read.",
+      "date": "2026-10-12",
+      "version": "no byte capture retained; the version cited is the page as read on 2026-10-12 and recorded in docs/research/country-packs/country-packs.json (Nepal pack, officialInstitutions, verifiedOn 2026-10-12). A contribution would capture the specific statistics page and pin its checksum before citing a figure from it.",
+      "publisher": "National Tea and Coffee Development Board (NTCDB), Kirtipur, Kathmandu, Government of Nepal",
+      "checked": "Re-read 2026-10-14: reachable, and the readable text carried the board's name in Nepali and English and its Kirtipur address only, with no statistics table. So the board's publication route is unresolved rather than absent."
+    },
+    {
+      "url": "https://nsonepal.gov.np/",
+      "location": "Front page of the National Statistics Office, Thapathali, Kathmandu. A national statistical yearbook or an agriculture release would be the publication that would carry the figure.",
+      "date": "2026-10-12",
+      "version": "no byte capture retained; the version cited is the page as read on 2026-10-12 and recorded in docs/research/country-packs/country-packs.json (Nepal pack, officialInstitutions, verifiedOn 2026-10-12). The specific publication to pin is the mission's first output.",
+      "publisher": "National Statistics Office (NSO), Government of Nepal",
+      "checked": "Re-read 2026-10-14: reachable, and the readable text carried the office's name and address only. Whether the office publishes a tea quantity or a tea land figure was not established."
+    },
+    {
+      "url": "https://api.worldbank.org/v2/country/NPL/indicator/NV.AGR.TOTL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+      "location": "The retained annual series in catalog/agriculture-statistics.json (Nepal, indicator NV.AGR.TOTL.ZS, dataset updated 2026-10-08, raw file catalog/statistics/NPL-NV.AGR.TOTL.ZS-97f63f8a276a8b93.json). Sector context: it includes forestry and fishing and is not tea production.",
+      "date": "2026-10-11",
+      "version": "sha256:97f63f8a276a8b93749055ea6fe8bd817d7b6d11d2d1e5bbddd0d03d741d96be",
+      "publisher": "World Bank World Development Indicators (API v2, source 2), original providers identified per indicator",
+      "checked": "Retained capture from 2026-10-11, recorded in the catalog with its checksum. Not re-read for this exemplar."
+    },
+    {
+      "url": "https://api.worldbank.org/v2/country/NPL/indicator/AG.LND.ARBL.ZS?format=json&date=2015:2026&per_page=12&source=2",
+      "location": "The retained annual series in catalog/agriculture-statistics.json (Nepal, indicator AG.LND.ARBL.ZS, dataset updated 2026-10-08, raw file catalog/statistics/NPL-AG.LND.ARBL.ZS-c7929f77eac0f746.json). It is a land classification, not tea harvested area, and is named here so that it is not mistaken for the answer.",
+      "date": "2026-10-11",
+      "version": "sha256:c7929f77eac0f7461589d5433f046f3425c97d0ca621588d62649fbe3cb5d5b1",
+      "publisher": "World Bank World Development Indicators (API v2, source 2), original providers identified per indicator",
+      "checked": "Retained capture from 2026-10-11, recorded in the catalog with its checksum. Not re-read for this exemplar."
+    }
+  ],
+  "reviewer_independence": {
+    "reviewer_distinct_from_owner": true,
+    "reviewer_distinct_from_contributor": true,
+    "note": "Both roles are unassigned slots here, so no person holds two roles. The reviewer has to be a different human from the owner and from any contributor, and a contribution that reads the national pages may not be accepted by the person who read them."
+  },
+  "evidence_criteria": "The mission's evidence criteria are the mission rubric field ('rubric'), which is the field the shipped createMission stores and the field the quality module reads.",
+  "blocked_dependency": {
+    "blocked_on": "a consenting beneficiary",
+    "blocked_stages": [
+      "externally evidenced implementation",
+      "measured outcome"
+    ],
+    "statement": "No consenting beneficiary has been selected for this mission. External implementation evidence and any measured outcome are blocked on that dependency: no producer group, cooperative or national body has consented to be measured or to receive anything, and no outreach of any kind has been made. A mission owner's recorded adoption declaration is a declaration, not implementation, and no part of this build has external implementation evidence.",
+    "adoption_declaration_is_not_implementation": true,
+    "outreach": "none"
+  },
+  "assignment": {
+    "named_owner": false,
+    "named_reviewer": false,
+    "named_contributor": false,
+    "note": "The owner and the reviewer are declared role slots, not people. The quality module reports them as present because the field carries a role label; the label itself says that no human has been named, and the module's output carries that wording through. A named human owner, a named independent reviewer and a named beneficiary are prerequisites before this proposal leaves proposed."
+  },
+  "activation_check": {
+    "note": "The shipped createMission/createTask path caps the strings it stores. These are the measured lengths of this exemplar's own text, so a human can see whether it could be created as written.",
+    "title_characters": 64,
+    "title_cap": 100,
+    "summary_characters": 259,
+    "beneficiary_characters": 226,
+    "rubric_characters": 839,
+    "task_rights_characters": 395,
+    "instructions_characters": 664,
+    "limits_characters": 1074,
+    "prose_cap": 2000,
+    "rubric_plus_limits_characters": 1913,
+    "mapping_at_activation": "The module's question field is carried in the task instructions and its limits field with the mission rubric. Rubric plus limits is 1913 characters, inside the shipped 2000-character rubric column, so nothing in this exemplar has to be shortened to create it. The quality module reads the task's rights field when a task is present, which is why the rights text is carried on the task as well as at the top level.",
+    "still_required_before_creation": "A named human owner account, a named independent reviewer account, and a beneficiary that a human has named. The role slots in this file satisfy the module's field check; they are not people."
+  },
+  "evidence_gaps": [
+    "The retained country pack records that no Nepali tea production or harvested-area figure was obtained: the bounded provider previews returned zero rows and no FAOSTAT or ITC figure was extractable (docs/research/country-packs/nepal.md, 2026-10-12, and the pack's evidenceGaps list).",
+    "Reading the National Tea and Coffee Development Board and National Statistics Office front pages on 2026-10-14 returned only site headers, so which publication carries a tea quantity or a tea land figure is unresolved. Locating the publication is the mission's first output.",
+    "Neither national page exposes a document identifier, edition or version on its front page, so the version a contribution pins will be the captured bytes of the specific publication page, identified by their checksum and the date they were read.",
+    "The national statistics publication route was not read in the retained pack either: the pack records that the national agriculture statistical yearbook and the ministry contact page were not downloaded. This mission does not assume the yearbook exists in a usable form."
+  ],
+  "not_established": [
+    "No statement about the applicable Indian tea-import directive edition, the consolidated Nepal-India treaty text, any tariff or preference, any producer, grade, packaging or border point. The retained pack records all of those as unverified, and none of them is this mission's question.",
+    "No buyer, demand, price, volume, eligibility or return, and no inference from a national production figure to any of them.",
+    "No producer or cooperative capacity, seasonality, land tenure or irrigation statement.",
+    "No external implementation and no measured outcome: blocked on a consenting beneficiary.",
+    "No contact with either national body, and no message sent."
+  ],
+  "verification": {
+    "authored_on": "2026-10-14",
+    "method": "Plain HTTPS reads of the two national front pages on 2026-10-14, plus the retained catalog series and the retained country pack already in this repository; the quality module (src/mission-quality.js) was run over this exemplar with the seeded 1015-proposal corpus as the comparison set.",
+    "reviewed_by": "Nobody. This is a proposal; no human reviewer has accepted it and no reviewer has assessed its sources.",
+    "not_claimed": "Reaching a page establishes that the page answered on that date. It does not establish that the publisher issues the figure, that a figure found is current, or that the publisher's reuse terms permit reproduction beyond the stated terms."
+  }
+}

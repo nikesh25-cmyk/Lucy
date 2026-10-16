@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "festival_banner",
+  "kind": "cosmetic",
+  "label": "Festival banner",
+  "since": "1.0.0",
+  "order": 5,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": null,
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "cosmetic_kind": "craft",
+    "earned_by": "dress a woven banner with fresh herbs at the crafting station",
+    "name": "Festival banner",
+    "ingredients": {
+      "woven_banner": 1,
+      "herbs": 2,
+      "fiber": 1
+    },
+    "output": "festival_banner"
+  },
+  "notes": [
+    "Recipe festival_banner: 1 woven_banner + 2 herbs + 1 fiber in, one festival_banner out.",
+    "A second step that consumes a crafted keepsake, so a craft can be made from a craft; the woven_banner is itself crafted from fiber and wood."
+  ]
+}

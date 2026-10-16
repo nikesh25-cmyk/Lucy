@@ -1,0 +1,757 @@
+{
+  "creator": "Pixel-boy / Sparklin Labs",
+  "license": "CC0-1.0",
+  "retrieved": "2026-10-11",
+  "repository": "https://github.com/sparklinlabs/superpowers-asset-packs",
+  "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+  "files": [
+    {
+      "file": "LICENSE.txt",
+      "sourcePath": "LICENSE.txt",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/LICENSE.txt",
+      "sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+      "bytes": 6555
+    },
+    {
+      "file": "README.md",
+      "sourcePath": "README.md",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/README.md",
+      "sha256": "210e3d9edc0530c8893d28ebc8e65f0285144aad4f0ba556f2ba5c18aa0e033e",
+      "bytes": 3743
+    },
+    {
+      "file": "PACK_README.md",
+      "sourcePath": "ninja-adventure/README.md",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/README.md",
+      "sha256": "3c2c7bd2afbe5c14bcfb884336fdd5f4012aae4259d43cfd266a3d9e34d33b60",
+      "bytes": 325
+    },
+    {
+      "file": "background-elements/tileset.png",
+      "sourcePath": "ninja-adventure/background-elements/tileset.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/background-elements/tileset.png",
+      "sha256": "aa2708aa07cabda86f02d65bf2095a6b53b96fdfd43cf191931689f517f284a4",
+      "bytes": 88026,
+      "width": 448,
+      "height": 640
+    },
+    {
+      "file": "characters/1.png",
+      "sourcePath": "ninja-adventure/characters/1.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/1.png",
+      "sha256": "b94d2fd6c4262c67478cf9bc8d696909b7a7c133c25dcd6309972a7ad101f1d5",
+      "bytes": 4980,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/1.png",
+      "sourcePath": "ninja-adventure/characters/faceset/1.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/1.png",
+      "sha256": "002df9c6f39664f8756a5f439f112a2d9a310dbf2c737538546b9acaeb9eb8ca",
+      "bytes": 3279,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/2.png",
+      "sourcePath": "ninja-adventure/characters/2.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/2.png",
+      "sha256": "89f9406aedac56686f52c1d1e910a0259864f39b9338a37509282996830edf7c",
+      "bytes": 4908,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/2.png",
+      "sourcePath": "ninja-adventure/characters/faceset/2.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/2.png",
+      "sha256": "05f75aab420396a7df000db35d8539011597601f7863a238684aba5f0409f335",
+      "bytes": 3229,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/3.png",
+      "sourcePath": "ninja-adventure/characters/3.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/3.png",
+      "sha256": "e8238ed320ebdb5423a9977d43e1737278a4f446469c388dbd7b7d2201b91326",
+      "bytes": 5220,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/3.png",
+      "sourcePath": "ninja-adventure/characters/faceset/3.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/3.png",
+      "sha256": "98baf281de5cee1683f4277b598a25ca5a4a247a892fcfea628d6c92532ebfe5",
+      "bytes": 3352,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/4.png",
+      "sourcePath": "ninja-adventure/characters/4.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/4.png",
+      "sha256": "71a418f56f64fd861d650c92837bd60ce50817a98a76d43a839b4c5c6cb4443a",
+      "bytes": 3659,
+      "width": 64,
+      "height": 32,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 2,
+        "idleRow": 0,
+        "walkRows": [
+          0
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/4.png",
+      "sourcePath": "ninja-adventure/characters/faceset/4.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/4.png",
+      "sha256": "bfd17393e61f182e28a3bb5cafbfa0c501903aa06b4eacaac875f7e0d76c32ee",
+      "bytes": 3451,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/5.png",
+      "sourcePath": "ninja-adventure/characters/5.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/5.png",
+      "sha256": "d2d4257e5d54618efe1bc1be32d480ca8356d7981de59af4e216e20de2b61c4e",
+      "bytes": 5263,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/5.png",
+      "sourcePath": "ninja-adventure/characters/faceset/5.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/5.png",
+      "sha256": "7461ab22a3e29a61daded5b1b7c8466ee7fd52a55fcc3aa1387db8946cd8ffcc",
+      "bytes": 3441,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/6.png",
+      "sourcePath": "ninja-adventure/characters/6.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/6.png",
+      "sha256": "173655715e319cf2383c189673d3c198bb5c840155120015ce4501ab5d2fdc77",
+      "bytes": 4999,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/6.png",
+      "sourcePath": "ninja-adventure/characters/faceset/6.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/6.png",
+      "sha256": "81fd73d77346e15bbd03496fe6b67a6791aa5ff8e1851fa28c37a3148dcc56ea",
+      "bytes": 3309,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/7.png",
+      "sourcePath": "ninja-adventure/characters/7.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/7.png",
+      "sha256": "81708c825b7b6ab9e9aa59e8e49915f682f2e3f4757fc0a3450d2355628c377f",
+      "bytes": 4995,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/7.png",
+      "sourcePath": "ninja-adventure/characters/faceset/7.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/7.png",
+      "sha256": "f33ff09cac53d2ac3683a39815ee180b3ea594fccb8de0044f71f27143e77437",
+      "bytes": 3231,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/8.png",
+      "sourcePath": "ninja-adventure/characters/8.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/8.png",
+      "sha256": "ec1361df4d5d90afd647e9b440cbd43f38a12e1463b2d21954908ea7fde86adf",
+      "bytes": 3762,
+      "width": 64,
+      "height": 32,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 2,
+        "idleRow": 0,
+        "walkRows": [
+          0
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/8.png",
+      "sourcePath": "ninja-adventure/characters/faceset/8.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/8.png",
+      "sha256": "9ba31bcc17a251429303a7722267020950b0d81f7d7e7868a41cf19f3308488b",
+      "bytes": 3439,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/9.png",
+      "sourcePath": "ninja-adventure/characters/9.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/9.png",
+      "sha256": "79ee75f1cf2e11f96b94d4bf102013b86ac46b5fd9ec4243e408954ade4aa2c3",
+      "bytes": 5681,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/9.png",
+      "sourcePath": "ninja-adventure/characters/faceset/9.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/9.png",
+      "sha256": "8c180f7b7a6c243cb332986108e7a8dc6ab34e1cd73691ebfa2bb1c441b9da08",
+      "bytes": 3287,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/10.png",
+      "sourcePath": "ninja-adventure/characters/10.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/10.png",
+      "sha256": "335db41df0f4c55b1b5ba4938748ae360ae4413ef1ff1049904a78074d0cb458",
+      "bytes": 5790,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/10.png",
+      "sourcePath": "ninja-adventure/characters/faceset/10.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/10.png",
+      "sha256": "0971cc9607cec50d78f6c24403d9ce937cffd6a131da015178fcafa27ea478a1",
+      "bytes": 3405,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/11.png",
+      "sourcePath": "ninja-adventure/characters/11.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/11.png",
+      "sha256": "44a3bf31d01e563fbf3800be8eb98c4955157cdb0ada767854becb504957d196",
+      "bytes": 5289,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/11.png",
+      "sourcePath": "ninja-adventure/characters/faceset/11.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/11.png",
+      "sha256": "43e94c6077a407a870ae936544f89c5de08b6cafd04c1cebf1a12ae60f1d2947",
+      "bytes": 3215,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/12.png",
+      "sourcePath": "ninja-adventure/characters/12.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/12.png",
+      "sha256": "a2acf1c4866777dedbef9d8fc07971c4f6a556fa73f5192aee9b86e385c0eae4",
+      "bytes": 5549,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/12.png",
+      "sourcePath": "ninja-adventure/characters/faceset/12.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/12.png",
+      "sha256": "eff455ec23833052e3310ca2a933c2f5ab5d4f028b35cf78f710b82a894f8c41",
+      "bytes": 3455,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/13.png",
+      "sourcePath": "ninja-adventure/characters/13.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/13.png",
+      "sha256": "937bbfb7d31b5b29a4e6e012c7e977568910180502c7a874e7f37c937280ae61",
+      "bytes": 5662,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/13.png",
+      "sourcePath": "ninja-adventure/characters/faceset/13.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/13.png",
+      "sha256": "44ac47933f0b136edfe3d8b8633c97cdafa0113b1bfcc108bbe387adb9ead54f",
+      "bytes": 3321,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/14.png",
+      "sourcePath": "ninja-adventure/characters/14.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/14.png",
+      "sha256": "10136e78185754a94b404d7d68d05af37217f0edf7a96627a361bdc27bcb0128",
+      "bytes": 5890,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/14.png",
+      "sourcePath": "ninja-adventure/characters/faceset/14.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/14.png",
+      "sha256": "b379b452adaf6586bf6c9d038cb25449b81e5c2a18ecd75f46c6ac186346af3e",
+      "bytes": 3465,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/15.png",
+      "sourcePath": "ninja-adventure/characters/15.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/15.png",
+      "sha256": "fac3c289eec4d21b19f8cc5f6ecc9e8695c63f7aeb18535cbf8d8a9041a7f8f1",
+      "bytes": 5546,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/15.png",
+      "sourcePath": "ninja-adventure/characters/faceset/15.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/15.png",
+      "sha256": "9c069cc4f22bdfe54723324d75c740e960ad02bc897eccdad74ca9cd2f618032",
+      "bytes": 3325,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/16.png",
+      "sourcePath": "ninja-adventure/characters/16.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/16.png",
+      "sha256": "50151d435a719149f6ad53369670ed8068c6dda97d96e6a0de5cf0cf6aa17095",
+      "bytes": 6081,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/16.png",
+      "sourcePath": "ninja-adventure/characters/faceset/16.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/16.png",
+      "sha256": "14bb932d1cf89e5874ba6eafecfbf0589497b5e6f9c304171e5087dfccb0f2e9",
+      "bytes": 3429,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/17.png",
+      "sourcePath": "ninja-adventure/characters/17.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/17.png",
+      "sha256": "befe5e851dc1f9e74f46042e270d00775632a13d9877c11625d9bfdbe971c74f",
+      "bytes": 5965,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/17.png",
+      "sourcePath": "ninja-adventure/characters/faceset/17.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/17.png",
+      "sha256": "4df043ea19f9110cbf1ae75e07f9b2fd37563a9a7b9746fe0a57342fa99aeed1",
+      "bytes": 3436,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/18.png",
+      "sourcePath": "ninja-adventure/characters/18.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/18.png",
+      "sha256": "1212d624d20ef3142bd9caf0cf1881dac1e5c3c9f29c5ae9d8ca5989e294d129",
+      "bytes": 5507,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/18.png",
+      "sourcePath": "ninja-adventure/characters/faceset/18.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/18.png",
+      "sha256": "b96b2f05841b01cdf7e496939ffca9aaec882d9f55909da3af3d03b4deefed01",
+      "bytes": 3329,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/19.png",
+      "sourcePath": "ninja-adventure/characters/19.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/19.png",
+      "sha256": "7d8fd847e3f9655e5e36783abf1d91230d29d9bd60d03d9ae96700bf748c8d5f",
+      "bytes": 5446,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/19.png",
+      "sourcePath": "ninja-adventure/characters/faceset/19.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/19.png",
+      "sha256": "59149975c362394976825aee16a278bca751583e6b8b3346f5858f19cfaf8cb8",
+      "bytes": 3328,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/20.png",
+      "sourcePath": "ninja-adventure/characters/20.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/20.png",
+      "sha256": "7f900561f06cb0254dce72aa5d462a5c17a889a065b86281db44563b4ac06134",
+      "bytes": 5401,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/20.png",
+      "sourcePath": "ninja-adventure/characters/faceset/20.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/20.png",
+      "sha256": "8393c5758d8e605a96a00900b8a5c6aa63ed358020a98974b83ab2d905d7f588",
+      "bytes": 3396,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/21.png",
+      "sourcePath": "ninja-adventure/characters/21.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/21.png",
+      "sha256": "dc5198ceb4433958aca0bffb89e587316bb8a98af14aca0895c9ab62cb0503f1",
+      "bytes": 5904,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/21.png",
+      "sourcePath": "ninja-adventure/characters/faceset/21.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/21.png",
+      "sha256": "01fae1bf7b10d21fc65f0c4b8a99c9e25ae5130e86b5d503285b7aa608581902",
+      "bytes": 3380,
+      "width": 38,
+      "height": 38
+    },
+    {
+      "file": "characters/22.png",
+      "sourcePath": "ninja-adventure/characters/22.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/22.png",
+      "sha256": "268e2403a50ed3c05189e6637005ad2b1715e2aaa1e9eebec07057bc3baceb86",
+      "bytes": 5492,
+      "width": 64,
+      "height": 112,
+      "frameLayout": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 7,
+        "idleRow": 0,
+        "walkRows": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "file": "characters/faceset/22.png",
+      "sourcePath": "ninja-adventure/characters/faceset/22.png",
+      "sourceUrl": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/faceset/22.png",
+      "sha256": "5301854b3d7ba8abd34c6eb97ee926829348022712663ecdbce64e033716305c",
+      "bytes": 3240,
+      "width": 38,
+      "height": 38
+    }
+  ],
+  "characterLayout": {
+    "frameWidth": 16,
+    "frameHeight": 16,
+    "columns": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "rows": {
+      "idle": 0,
+      "walk": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "note": "Rows 4-6 are additional action poses; use only rows 0-3 for peaceful movement."
+  },
+  "recommendedAnimatedRoster": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    7,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+  ]
+}

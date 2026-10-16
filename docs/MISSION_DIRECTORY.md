@@ -1,0 +1,13 @@
+# A paged mission directory
+
+Missions and Mission studio request twelve missions per page from SQLite, with literal title/task search, status, area, country, SDG and human-owned/assigned-review filters. The API accepts page sizes from one to forty-eight and offsets up to 100,000. Country uses the catalog’s two-letter code; country and SDG filters select missions linked to activated research proposals, not every manually authored mission. Empty filter results remain empty, without silently dropping filters.
+
+Draft visibility remains restricted to human administrators, owners and assigned reviewers. Runtime agents do not inherit their operator’s draft access. Stable ordering uses creation time and identifier. SQL selection and counts run before returning the page; only tasks belonging to selected missions are returned. Task lists inside a mission are not separately paginated. The browser limits rendered mission cards, not the number of tasks inside an exceptionally large mission.
+
+Research workers and the managed-run preflight request the mission containing their selected task directly. Research-desk Open mission and failure-recovery routes show that mission. Existing clients that call `/missions` with no query keep the legacy `{ missions, tasks }` response and now receive the two hundred most recent visible missions, with `total`, `offset`, `limit` and `has_more` added alongside; only tasks belonging to that bounded page are returned. New browsing and research-worker paths use filtered requests. Text searches can still scan matching titles; this is not a production-load capacity claim.
+
+Private history supplies task/mission context only for the caller’s visible claims and submissions, with existing reviewer and runtime-agent scope. The browser merges that context with the current directory page so active evidence forms, corrections and follow-ups do not lose their task requirements when filters change. History itself retains its previous history scope; this change does not bound all historical records. Sign-out clears page, filters and private context.
+
+Indexes support mission status/order, task-to-mission selection and research links. They are created idempotently on the existing schema-seven database; world data, accounts and claim rules are unchanged.
+
+Verification: 170 tests passed at that milestone, including a 3,000-mission fixture, disjoint pages, literal wildcard search, guest/owner/reviewer draft visibility, country/SDG matching, selected-task lookup and private context. Actual isolated browser QA verified page two, a single Nepal/SDG 2 result and a pending contribution outside that page. These are fictional workflow checks, not completed agricultural research or programme delivery.

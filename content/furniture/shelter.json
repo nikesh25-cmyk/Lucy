@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "shelter",
+  "kind": "furniture",
+  "label": "Shelter",
+  "since": "1.0.0",
+  "order": 24,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project code: src/voxel-world.js furniture(), tree() and house() block-out routines, and world.js tile cases",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#bd7961",
+    "geometry": "shelter",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "walkable": true,
+    "footprint": "open",
+    "geometry": "shelter"
+  },
+  "notes": [
+    "Open-sided shelter of four posts, a stepped roof and a bench."
+  ]
+}

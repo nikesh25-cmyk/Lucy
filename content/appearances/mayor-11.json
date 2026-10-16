@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "id": "mayor-11",
+  "kind": "appearance",
+  "label": "Civic guide sprite 11",
+  "since": "1.0.0",
+  "order": 8,
+  "license": {
+    "spdx": "CC0-1.0",
+    "author": "Pixel-boy / Sparklin Labs",
+    "source": "https://github.com/sparklinlabs/superpowers-asset-packs/blob/e8674a03ab4456802f71f848c4df79eccca23f7a/ninja-adventure/characters/11.png",
+    "commit": "e8674a03ab4456802f71f848c4df79eccca23f7a",
+    "notice_file": "assets/mayors/LICENSE.txt",
+    "notice_sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+    "note": "Character sheet and portrait faceset used verbatim under CC0 1.0 from the pinned Ninja Adventure pack. The roster selection, atlas route and frame mapping are project code recorded separately."
+  },
+  "appearance": {
+    "sprite": 11,
+    "color": null,
+    "geometry": "sprite-sheet",
+    "transparent": true,
+    "emissive": null,
+    "atlas": "assets/mayors/characters/11.png",
+    "faceset": "assets/mayors/facesets/11.png",
+    "served": {
+      "atlas": "/assets/mayors/characters/11.png",
+      "faceset": "/assets/mayors/facesets/11.png"
+    },
+    "frame": {
+      "width": 16,
+      "height": 16,
+      "columns": 4,
+      "rows": 7,
+      "idle_row": 0,
+      "walk_rows": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "directions": {
+        "down": 0,
+        "up": 1,
+        "left": 2,
+        "right": 3
+      }
+    }
+  },
+  "rules": {
+    "palettes": [],
+    "roster_roles": [
+      "civic-mayor",
+      "civic-ambassador"
+    ],
+    "sprite": 11,
+    "directions": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "walk_rows": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "action_rows_excluded": [
+      4,
+      5,
+      6
+    ]
+  },
+  "assets": [
+    {
+      "path": "assets/mayors/characters/11.png",
+      "sha256": "44a3bf31d01e563fbf3800be8eb98c4955157cdb0ada767854becb504957d196"
+    },
+    {
+      "path": "assets/mayors/facesets/11.png",
+      "sha256": "43e94c6077a407a870ae936544f89c5de08b6cafd04c1cebf1a12ae60f1d2947"
+    }
+  ],
+  "notes": [
+    "Assigned to the historic regional guides and the country ambassadors by position in the roster declared in src/civic-engine.js; the numeric sprite id is stored in the npc_mayors.sprite and npc_ambassadors.sprite columns.",
+    "The portrait faceset is vendored at assets/mayors/facesets/, the route the client loads; it is byte-identical to the pack layout copy at assets/mayors/characters/faceset/.",
+    "Sheets 4 and 8 from the same pack are excluded: they carry only two rows and cannot serve the four-direction walk animation.",
+    "The 20 sheets repeat across the 248 country ambassadors: several countries share one portrait. This is deliberate reuse of the sealed CC0 pack, not 248 unique portraits."
+  ]
+}

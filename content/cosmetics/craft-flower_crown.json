@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "id": "flower_crown",
+  "kind": "cosmetic",
+  "label": "Flower crown",
+  "since": "1.0.0",
+  "order": 0,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": null,
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "cosmetic_kind": "craft",
+    "earned_by": "craft a decoration at the workshop from grown resources",
+    "name": "Flower crown",
+    "ingredients": {
+      "herbs": 2,
+      "fiber": 1
+    },
+    "output": "flower_crown"
+  },
+  "notes": [
+    "Recipe flower_crown: 2 herbs + 1 fiber in, one flower_crown out."
+  ]
+}

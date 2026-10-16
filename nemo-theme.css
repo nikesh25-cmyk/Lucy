@@ -1,0 +1,279 @@
+/* NemoWorld's application of the inspected NemoEarth editorial design language. */
+@font-face{font-family:NemoManrope;src:url('/assets/fonts/nemo-manrope.woff2') format('woff2');font-weight:200 800;font-display:swap}
+@font-face{font-family:NemoCormorant;src:url('/assets/fonts/nemo-cormorant.woff2') format('woff2');font-weight:300 700;font-display:swap}
+@font-face{font-family:NemoCormorant;src:url('/assets/fonts/nemo-cormorant-italic.woff2') format('woff2');font-weight:300 700;font-style:italic;font-display:swap}
+:root{color-scheme:dark;--bg:#051d18;--panel:#12382e;--panel2:#173e34;--ink:#f1f0df;--muted:#bccbc0;--line:#9fb39538;--accent:#ded6a5;--gold:#ded6a5;--danger:#ffc1b5;--shadow:0 18px 50px #00140f30;font-family:NemoManrope,Arial,sans-serif}
+body{background:radial-gradient(ellipse at 88% 12%,#24534470,transparent 55%),radial-gradient(ellipse at 12% 80%,#1b494040,transparent 55%),var(--bg);color:var(--ink);font-family:NemoManrope,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.app-shell{max-width:1600px;background:transparent;padding:0}
+.masthead{min-height:90px;background:#06231de8;border-color:var(--line);backdrop-filter:blur(20px);padding:22px 38px;gap:20px}
+.brand{color:var(--ink);font-family:NemoManrope,Arial,sans-serif;letter-spacing:.18em;font-size:1.05rem}.brand-mark{color:var(--gold)}.brand small{color:var(--muted);font-family:NemoManrope,Arial,sans-serif;letter-spacing:.015em;font-size:.65rem}
+.workspace-layout{grid-template-columns:225px minmax(0,1fr)}.sidebar{background:linear-gradient(180deg,#0a2a23ec,#0c2c25ba);border-color:var(--line);padding:28px 18px;backdrop-filter:blur(22px)}.sidebar-intro,.nav-heading{color:#c5cba9}.sidebar-foot{color:var(--muted)}.sidebar-foot small{color:#abbfab}
+.tabs button{border:1px solid transparent;border-radius:18px;background:transparent;color:#c7d4ca;font-family:NemoManrope,Arial,sans-serif;min-height:44px;padding:11px 14px;font-size:.76rem}.tabs button:hover{background:#d5dfb30b;color:var(--ink)}.tabs button[aria-current=page]{color:var(--ink);background:#d0d9ad12;border-color:#d9d6a53b}.nav-icon,.start-path>img,.home-owner-icon{filter:grayscale(1) brightness(0) invert(.9);opacity:.85}
+main{min-width:0;padding:0 36px}.welcome{padding:56px 0 36px;gap:40px}.welcome-copy{max-width:580px}.welcome h1{font-family:NemoCormorant,Georgia,serif;font-size:clamp(54px,5.8vw,88px);font-weight:400;line-height:1.02;letter-spacing:-.035em;color:var(--ink)}.welcome h1 em{color:var(--gold)}.welcome p:not(.eyebrow){color:var(--muted);font-size:.9rem;line-height:1.9}.eyebrow{color:var(--gold);font-size:.65rem;letter-spacing:.17em}
+.hero-art{background:#092f25;border:1px solid #d5d9aa3b;border-radius:26px;box-shadow:0 30px 80px #00150f38;overflow:hidden}.hero-art canvas{filter:brightness(.82) saturate(.78)}.hero-art-caption{background:#092b23;color:var(--ink);border-color:var(--line)}.hero-art-caption small,.hero-coordinate,.hero-caption{color:var(--muted)}
+h1,h2,.section-title h2,.card h2,.brand{color:var(--ink)}h2,.section-title h2,.card h2{font-family:NemoCormorant,Georgia,serif;font-weight:400;letter-spacing:-.025em}.section-title h2{font-size:clamp(38px,4vw,52px)}.card h2{font-size:32px;line-height:1.18}.section-title p,.card p,.record p{color:var(--muted)}h3,h4{color:var(--ink);font-family:NemoManrope,Arial,sans-serif}.privacy,.muted,.hint,label small,.section-title p,.world-bottom small,.landmark-list small,.chat-message small,footer{color:var(--muted);font-size:.75rem;line-height:1.8}
+.card,.record,.progress-card,.mission-card,.project-card,.circle-card,.gathering-card,.source-field,.source-block,.brief-finding,.review-assessment,.decision-brief,.passport-cover,.minimap-card{background:linear-gradient(135deg,#aec8a60b,#acd0ba03);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);color:var(--ink);backdrop-filter:blur(16px)}.card{padding:26px}.record{padding:20px}.record+.record{margin-top:12px}.card .eyebrow{color:var(--gold)}.card .statistic-value,.progress-card>strong,.card strong,.record strong{color:var(--ink)}.progress-card{padding:20px}.progress-card>strong{font-family:NemoCormorant,Georgia,serif;font-weight:500;font-size:44px}.progress-card .privacy{color:var(--muted)}
+button{font-family:NemoManrope,Arial,sans-serif;border-radius:999px;border:1px solid var(--gold);background:var(--gold);color:var(--bg);font-size:.82rem;font-weight:600;min-height:44px;padding:12px 20px;box-shadow:none}button:hover{filter:none;background:#ece7c8;color:var(--bg)}button.secondary{background:#d7dfba05;color:var(--ink);border-color:#c5ceab50}button.secondary:hover{background:#d7dfba12;border-color:#ded6a580;color:var(--ink)}button.small{min-height:38px;padding:9px 15px;font-size:.75rem}button:disabled{opacity:.45}.actions{gap:12px;flex-wrap:wrap}:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+input,select,textarea{background:#062a22;color:var(--ink);border:1px solid #bbcea34d;border-radius:12px;font-family:NemoManrope,Arial,sans-serif;font-size:.85rem;padding:12px 14px;min-height:44px}input::placeholder,textarea::placeholder{color:#a8bbb0}label{color:var(--ink);font-size:.8rem}input[type=checkbox]{accent-color:var(--gold)}.field-grid{gap:16px}form .hint{color:var(--muted)}a,.card a{color:var(--gold)}a:hover{color:#f1edcc}.evidence-download{border-color:#c6d1b34d;background:#ded6a509;color:var(--gold)}
+.badge{background:#a3cdb817;color:#d1e7d8;border:1px solid #a3cdb82f;border-radius:999px}.badge.warning,.warning{background:#edb29b12;color:#f1c4b2;border-color:#edb29b40}.badge.demo{background:#d5d6af12;color:#ded6a5}.error{color:#ffc1b5;background:#aa483329;border-color:#c97c6c55}.empty{color:var(--muted)}
+details{border-color:var(--line)}summary{color:var(--ink);font-size:.8rem}.artifact,pre,.brief-json{background:#04231c;color:var(--ink);border-color:var(--line);border-radius:12px}.source-hash{color:#a9c4b5;overflow-wrap:anywhere}.decision-brief .card h2{font-family:NemoManrope,Arial,sans-serif;font-size:1.1rem}.decision-brief,.brief-section{color:var(--ink)}.evidence-table{color:var(--ink);background:transparent}.evidence-table caption,.evidence-table th{color:var(--gold)}.evidence-table td,.evidence-table th{border-color:var(--line)}.trade-preview,.trade-records,.trade-table-wrap{background:#0c3027;color:var(--ink);border-color:var(--line)}
+dialog,#auth-dialog,.mayor-dialog{background:linear-gradient(145deg,#12382e,#08271f);color:var(--ink);border:1px solid #bacba652;border-radius:24px;box-shadow:0 32px 100px #00140fc0}dialog::backdrop{background:#031812b8;backdrop-filter:blur(10px)}.auth-tabs{background:#051e19;border:1px solid var(--line);border-radius:999px}.auth-tabs button{background:transparent;color:var(--muted);border:0;border-radius:999px}.auth-tabs button[aria-pressed=true]{background:#ded6a515;color:var(--ink);box-shadow:none}.auth-panels>.card{background:transparent;border:0;box-shadow:none}.auth-panels>.card>p,.auth-footnote{color:var(--muted)}.auth-footnote{border-color:var(--line)}.password-reveal{background:transparent;color:var(--gold);border:0}.password-reveal:hover{background:#ded6a512;color:var(--ink)}.mayor-question{background:#ded6a510;color:var(--ink)}.mayor-answer{background:#04271f;color:var(--ink);border-color:var(--line)}
+.world-title h2{font-size:42px}.world-panel{background:#082b23;border:1px solid #c3cca850;border-radius:24px;box-shadow:0 24px 70px #00171045}.world-toolbar{background:#0c3229;color:var(--ink);padding:16px 20px;border-color:var(--line)}.world-toolbar .muted{color:var(--muted)}.world-panel>canvas{filter:saturate(.82);border-radius:0}.world-bottom{background:#0c3027;color:var(--ink);border-color:var(--line);padding:18px 20px}.world-bottom p:not(.eyebrow){color:var(--muted)}.movement button{background:#ded6a512;color:var(--gold);border-color:var(--line)}.landmark-list button{color:var(--ink);border-color:var(--line)}.chat-message{background:#12382e;border-color:var(--line);color:var(--ink)}.chat-message p{color:var(--ink)}.world-summary{color:var(--muted);border-color:var(--line)}.world-summary strong{color:var(--gold)}.minimap-card canvas{border-color:#bac8a540}.directory-search{background:#0b2e26}.directory-body{background:#0b2d25}.directory-body h2{font-family:NemoCormorant,Georgia,serif;font-size:28px}.directory-body p,.directory-owner small{color:var(--muted)}.directory-owner{border-color:var(--line)}.directory-art{background:#0b3027;border-color:var(--line)}.directory-art .badge{background:#08271fdd;color:var(--gold)}.directory-heading h3,.directory-heading span{color:var(--ink)}
+.civic-region{background:#0c3028;border-color:var(--line);border-radius:24px;box-shadow:var(--shadow)}.civic-body{background:linear-gradient(180deg,#10382e,#0b2c24);color:var(--ink)}.civic-body p,.civic-mayor small{color:var(--muted)}.civic-body h3,.civic-mayor strong{color:var(--ink)}.civic-mayor{border-color:var(--line)}.civic-scene{filter:saturate(.65) brightness(.75)}.civic-goals .badge{color:var(--gold)}.civic-pilot{background:#0d352a;border-color:var(--line);color:var(--ink)}
+.country-atlas-map{border:1px solid #c8d0a54d;border-radius:24px;background:radial-gradient(ellipse at center,#184b40,#06271f);box-shadow:inset 0 0 70px #011b1650,0 24px 60px #00170e30}.country-atlas-map>rect{fill:#092e2c}.atlas-grid{stroke:#c4cba31c;stroke-width:.6;stroke-dasharray:2 5}.atlas-outline{fill:#7da18e;stroke:#143c32;stroke-width:.8}.atlas-retained{fill:#bdd2a8}.atlas-partial{fill:#b9a779}.atlas-muted{fill:#3e6557;opacity:.8}.atlas-selected{fill:#ded6a5;stroke:#f1f0df;stroke-width:1.8}.atlas-outline:not(.atlas-background):hover{stroke:#f1f0df;stroke-width:1.5}.atlas-key:before{background:#7da18e}.atlas-key-retained:before{background:#bdd2a8}.atlas-key-partial:before{background:#b9a779}.atlas-legend{color:var(--muted)}.atlas-background{fill:#21463a;opacity:.6}
+.workflow-stage{background:#08271f66;border-color:var(--line);border-radius:16px}.workflow-stage button[aria-pressed=true],.community-tabs button[aria-pressed=true]{background:#ded6a517;border-color:#ded6a568;color:var(--ink)}.workflow-stage p{color:var(--muted)}.start-path h3{font-size:1.1rem}.start-path+.start-path{border-color:var(--line)}.start-here .privacy{color:var(--muted)}.guide-steps li::marker{color:var(--gold)}
+.passport-cover .badge{background:#ded6a512;color:var(--gold)}.quest-row,.journal-entry,.resource-row,.crop-card,.atlas-place,.skill-card{background:#10382e;color:var(--ink);border-color:var(--line)}.atlas-place.discovered{background:#ded6a50d;border-color:#ded6a55c}.community-tabs{border-color:var(--line)}.pledge-row,.project-milestone,.thanks-card{background:#0c3027;border-color:var(--line);color:var(--ink)}.profile-avatar{background:#ded6a526;color:var(--gold)}.session-label small{color:var(--muted)}.progress-card .eyebrow{color:var(--gold)}footer{border-color:var(--line);padding-bottom:28px}.skip{background:var(--gold);color:var(--bg)}
+@media(min-width:1051px){.sidebar{max-height:100vh;overflow-y:auto;position:sticky;top:0;align-self:start;scrollbar-width:thin;scrollbar-color:#8ba58a40 transparent}}
+@media(max-width:1050px){.workspace-layout{display:block}.sidebar{position:static;padding:12px 20px;border-bottom:1px solid var(--line)}.tabs button{padding:10px 14px;min-height:40px;white-space:nowrap}.masthead{padding:18px 24px}main{padding:0 24px}.welcome{padding-top:35px}}
+@media(max-width:650px){.masthead{padding:16px;min-height:76px;gap:12px}.brand{font-size:.88rem}.brand small{font-size:.57rem;max-width:170px}.masthead .small{font-size:.65rem;padding:8px 12px}.sidebar{padding:8px 12px}main{padding:0 16px}.welcome{padding:32px 0 24px;gap:28px}.welcome h1{font-size:56px}.card{padding:20px;border-radius:18px}.card h2{font-size:30px}.section-title h2{font-size:38px}.world-panel,.country-atlas-map{border-radius:18px}.progress-card{padding:16px}.progress-card>strong{font-size:36px}.actions{gap:9px}.country-atlas .actions button{white-space:normal}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+@media print{body{background:white;color:#111}.sidebar,.masthead{display:none}.card,.record{background:white;border-color:#ccc;color:#111}.card p,.privacy{color:#333}h1,h2,h3{color:#111}}
+.tabs button[aria-current=page] .nav-icon{filter:grayscale(1) brightness(0) invert(.9)}
+.session-label strong,.session-profile strong{color:var(--ink)}.session-label small{color:var(--muted)}
+
+.country-globe-map{width:min(100%,650px);aspect-ratio:1/1;margin:24px auto;background:radial-gradient(ellipse at center,#274a3530,transparent 65%);border:0;box-shadow:none;overflow:visible}.country-globe-map .atlas-grid{stroke:#d8ddb42a;stroke-dasharray:none;stroke-width:.6}.country-globe-map .atlas-outline{stroke-width:.65}.globe-halo{fill:none;stroke:#c6d4a92a;stroke-width:2}.globe-ocean{stroke:#d4dab645;stroke-width:1.2}.country-atlas button[aria-pressed=true]{background:#ded6a518;border-color:#ded6a568;color:var(--ink)}
+
+/* NemoWorld identity, readable evidence surfaces, and compact touch navigation. */
+.brand-mark{width:43px;height:43px;object-fit:contain;flex-shrink:0}.brand>span{line-height:1.4}.brand small{margin-top:3px}.brand{letter-spacing:.12em;font-size:1.12rem}
+#toggle-navigation{display:none}.tabs button[aria-current=page] img.nav-icon{filter:grayscale(1) brightness(0) invert(.9)}
+.empty,.resident-context,.crop-patch,#view>details,.brief-decision,.brief-findings,.brief-costs,.numbers>div{background:#0c3027;color:var(--ink);border-color:var(--line)}#view>details>summary,.brief-section legend,.brief-subtotal{color:var(--gold)}.empty{color:var(--muted)}.brief-findings h4,.brief-costs h4{color:var(--ink)}
+.mayor-dialog{background:linear-gradient(145deg,#12382e,#08271f);color:var(--ink);border:1px solid #bacba652}.mayor-dialog::backdrop{background:#031812b8;backdrop-filter:blur(10px)}.mayor-dialog .privacy{color:var(--muted)}.mayor-transcript{max-height:44vh}.mayor-turn{padding:12px 0;border-bottom:1px solid var(--line)}.mayor-turn:last-child{border-bottom:0}.mayor-evidence{padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:#061f1980}.mayor-evidence>summary{font-weight:600;color:var(--gold)}.mayor-sources{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}.mayor-source{padding:14px;background:#12382e;border:1px solid var(--line);border-radius:12px;min-width:0}.mayor-source h3{font-size:.8rem;line-height:1.6;margin:0 0 8px}.mayor-source p{margin:6px 0}.mayor-source .statistic-value{font:500 1.4rem/1.4 NemoCormorant,Georgia,serif;color:var(--ink)}.mayor-source a{overflow-wrap:anywhere}.mayor-source .source-hash{font-size:.66rem}
+@media(max-width:1050px){.sidebar-intro,.sidebar-foot{display:none}.sidebar{padding:12px 24px}.tabs{display:none}.navigation-open .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px;padding-top:18px}.nav-group{display:grid;border:0;padding:0}.nav-heading{display:block;margin:0 0 8px}.tabs button{width:100%;text-align:left;white-space:normal;justify-content:flex-start}.tabs .nav-icon{display:inline-block}#toggle-navigation{display:flex;align-items:center;justify-content:space-between;width:100%;border-color:var(--line);border-radius:14px;text-align:left}#toggle-navigation:after{content:'+';font-size:1.1rem}#toggle-navigation[aria-expanded=true]:after{content:'−'}}
+@media(max-width:650px){.brand-mark{width:34px;height:34px}.brand{font-size:.84rem;letter-spacing:.075em}.brand small{max-width:155px;font-size:.52rem}.sidebar{padding:10px 16px}.navigation-open .tabs{gap:12px}.nav-heading{font-size:.55rem;letter-spacing:.06em}.tabs button{font-size:.72rem;padding:10px}.mayor-sources{grid-template-columns:1fr}.mayor-dialog{width:calc(100vw - 24px);padding:16px}.mayor-transcript{max-height:42vh}.mayor-dialog h2{font-size:1.4rem}.mayor-question{margin-left:6%}.mayor-answer{margin-right:0}}
+
+/* Immersive world and accessible creative controls. */
+.world-toolbar{flex-wrap:wrap;gap:10px}.world-toolbar>.actions{margin-left:auto}.world-panel .actions{padding:12px 16px}.world-panel>canvas.voxel-canvas{display:block;image-rendering:auto;filter:none;aspect-ratio:16/10;width:100%;height:auto;min-height:320px;touch-action:none}.hero-art canvas{image-rendering:auto;filter:none}.frontier-hotbar{display:flex;gap:8px;flex-wrap:wrap;padding:16px;background:#08271f;border-top:1px solid var(--line)}.frontier-hotbar button[aria-pressed=true]{background:var(--gold);color:var(--bg);border-color:var(--gold)}.block-tool:before{content:'';display:inline-block;width:12px;height:12px;margin-right:7px;border:1px solid #f1f0df55;border-radius:2px;background:#80978b;vertical-align:middle}.block-wood:before{background:#a78354}.block-stone:before{background:#84939c}.block-glass:before{background:#8fc9cf}.block-brick:before{background:#b66f58}.block-sand:before{background:#dec98f}.block-grass:before{background:#69a56b}.block-path:before{background:#b7a575}.frontier-gates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px}.frontier-gate{border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}.frontier-gate button{display:block;max-width:100%;margin-top:8px;font-size:.7rem;padding:9px 11px;white-space:normal}.frontier-tools form{margin-top:14px}.world-panel:fullscreen{border:0;border-radius:0;display:flex;flex-direction:column;background:#051d18;overflow:auto}.world-panel:fullscreen>canvas{flex:1;min-height:260px;height:auto;max-height:calc(100vh - 210px);width:100%;aspect-ratio:auto}.world-panel:fullscreen .world-toolbar{padding:10px 16px}.world-panel:fullscreen .world-bottom{padding:8px 16px}.world-panel:fullscreen .frontier-hotbar{padding:8px 16px}.world-panel:fullscreen .movement{gap:4px}.nearby-portals{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.world-aside .card{min-width:0}.frontier-block-tally{color:var(--gold)}
+@media(max-width:650px){.world-panel>canvas.voxel-canvas{min-height:330px;aspect-ratio:1/1}.world-toolbar>.actions{margin-left:0}.world-toolbar button{font-size:.65rem;padding:9px 12px}.frontier-hotbar{padding:12px;gap:6px}.frontier-hotbar button{font-size:.66rem;padding:8px 10px;min-height:38px}.world-panel:fullscreen>canvas{max-height:none;height:45vh;flex:none}.frontier-gates{gap:8px}}
+
+/* A finite virtual land registry, with an accessible map beside the scene. */
+.plot-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;margin:18px 0 10px}
+.plot-grid .plot-cell{min-width:0;padding:7px 0;font-size:11px;border-radius:4px;background:#eef1ed;color:#697a73;border:1px solid #d7dfd9}
+.plot-grid .plot-available{background:#f2e7c8;color:#766039;border-color:#d7c08a}
+.plot-grid .plot-assigned{background:#dcebe4;color:#246853;border-color:#b4d0bf}
+.plot-grid .plot-cell[aria-pressed=true]{outline:2px solid #153d31;outline-offset:1px}
+.plot-legend{font-size:10px!important}.plot-address{font-family:monospace;font-size:11px;overflow-wrap:anywhere}
+#plot-detail{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}#plot-detail h3{font-size:19px;margin:0 0 8px}
+.land-atlas{display:grid;grid-template-columns:repeat(16,minmax(0,1fr));gap:3px;margin:22px 0;width:100%}
+.land-atlas .land-area{min-width:0;padding:7px 1px;font-size:10px;border-radius:3px;background:#eef1ed;color:#8a958b;border:1px solid #e1e7df;white-space:nowrap}
+.land-atlas .land-area.opened{background:#29614c;color:#fff;border-color:#29614c}
+.land-atlas-scroll{max-width:100%;overflow-x:auto}
+@media(max-width:600px){.land-atlas{min-width:620px;gap:3px}.land-atlas .land-area{font-size:10px;min-height:36px}.plot-grid .plot-cell{min-height:34px}}
+
+/* A resident's purpose stays visible when the world is focused or fullscreen. */
+.calling-hud{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#0b3028;color:#e7eee7;padding:14px 20px;border-top:1px solid #45675a}
+.calling-hud .eyebrow{color:#b8d7bc;margin:0 0 4px}.calling-hud p{margin:0;font-size:13px}.calling-hud progress{display:block;width:140px;height:4px;accent-color:#b7d09c;margin-top:9px}
+.calling-hud .secondary{color:#e5ebdb;border-color:#637d65}.calling-catalog{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin:24px 0}.calling-catalog .card{margin:0;display:flex;flex-direction:column}.calling-choice h2{font-size:26px}.calling-choice button{margin-top:auto}.calling-choice .privacy{font-size:11px}
+.calling-story{background:linear-gradient(120deg,#163c30,#09281f);border-color:#8ba87966}.calling-quest{padding:20px 0;border-top:1px solid var(--line)}.calling-quest h3{margin:10px 0;font-size:21px}.calling-quest.complete{opacity:.78}.calling-objective{display:flex;align-items:flex-start;gap:10px;margin:12px 0;font-size:12px}.calling-objective p{margin:0}.objective-mark{color:#77914e}.calling-objective.complete .objective-mark{color:#216744}.calling-card .actions{margin-top:15px}.guild-member{padding:18px 0;border-top:1px solid var(--line)}.guild-member>.badge{margin-left:12px}.resident-inspection{border:1px solid #b0c5a1}.resident-inspection button{margin:5px 5px 0 0}
+@media(max-width:1200px){.calling-catalog{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.calling-catalog{grid-template-columns:1fr}.calling-hud{padding:13px;gap:10px}.calling-hud button{font-size:11px}.calling-hud p{font-size:12px}.guild-member>.badge{margin-left:0;display:inline-block}}
+
+/* The guided newcomer path: six ordered steps, the receipt they produce, the review boundary and the
+   controls note. Same editorial language as the rest of the shell, no new palette. */
+.newcomer-journey .newcomer-steps{list-style:none;margin:20px 0;padding:0;display:grid;gap:14px}
+.newcomer-step{border:1px solid var(--line);border-radius:20px;padding:18px 20px;background:linear-gradient(135deg,#aec8a60b,#acd0ba03);min-width:0}
+.newcomer-step h3{margin:8px 0 4px;font-size:1.05rem}
+.newcomer-step p{margin:6px 0}
+.newcomer-step .badge{display:inline-block}
+.newcomer-step.done{border-color:#bdd2a852}
+.newcomer-step.next{border-color:#ded6a566;background:#ded6a50d}
+.newcomer-step.later{opacity:.88}
+.newcomer-step.next .badge{background:#ded6a518;color:var(--gold);border-color:#ded6a55c}
+.newcomer-journey progress{display:block;width:100%;max-width:420px;height:8px;accent-color:var(--gold);margin:14px 0 8px}
+.newcomer-lane{border:1px solid var(--line);border-radius:20px;padding:18px 20px;background:#10382e;color:var(--ink);min-width:0}
+.newcomer-lane h3{font-size:1.08rem;margin:10px 0 8px}
+.newcomer-lane p{color:var(--muted)}
+.walk-to-tile{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+.walk-to-tile form{margin-top:6px}
+.field-requirement{display:block;font-weight:400}
+#newcomer-journey,#newcomer-receipt,#newcomer-review,#newcomer-controls{scroll-margin-top:20px}
+
+/* Contrast and target corrections measured from these two stylesheets. The shipped values below the
+   marker failed WCAG 2.2 AA (4.5:1) for normal text; the ratios after each rule are recomputed from
+   the stylesheets by tests/newcomer-journey.test.js and listed in
+   docs/handoff/task-13-newcomer-journey.md. */
+.objective-mark{color:#bdd2a8}                             /* 7.51:1 on the calling story, was 3.45:1 */
+.calling-objective.complete .objective-mark{color:var(--gold)} /* 8.28:1, was 1.79:1 */
+.plot-grid .plot-cell{color:#3f5548}                       /* 7.08:1 on the light cell, was 3.98:1 */
+.land-atlas .land-area{color:#4a5c52}                      /* 6.26:1 on the light area, was 2.73:1 */
+.password-reveal{min-height:32px;min-width:36px}           /* 26px was above the 24px AA floor, below the project's 44px */
+
+/* Every control in the flow keeps a 44-pixel target: on any coarse pointer, and on the small
+   screens this release supports. Wider screens with a mouse keep the existing 38-pixel small button
+   and 40-pixel tab, which are unchanged. */
+@media(pointer:coarse){button.small{min-height:44px}
+.tabs button{min-height:44px}
+.icon-button{min-width:44px;min-height:44px}
+.frontier-hotbar button{min-height:44px}
+#session-bar button{min-height:44px;padding:10px 14px}
+.auth-tabs button{min-height:44px}
+.directory-body>.actions button{min-height:44px}
+.plot-grid .plot-cell{min-height:44px}
+.land-atlas .land-area{min-height:44px}}
+@media(max-width:1050px){.tabs button{min-height:44px}}
+@media(max-width:650px){button.small{min-height:44px}
+.frontier-hotbar button{min-height:44px}
+.icon-button{min-width:44px;min-height:44px}
+#session-bar button{min-height:44px;padding:10px 14px}
+.auth-tabs button{min-height:44px}
+.directory-body>.actions button{min-height:44px}}
+@media(max-width:600px){.plot-grid .plot-cell{min-height:44px}
+.land-atlas .land-area{min-height:44px}}
+
+/* The introduction is user-started, with native sound, seek and fullscreen controls. */
+.hero-film{align-self:center;min-width:0}.hero-film video,.introduction-dialog video{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#031710}.hero-film .hero-art-caption{position:static}.hero-film .hero-art-caption small{line-height:1.6}.introduction-dialog{width:min(1040px,94vw);max-height:92vh;overflow:auto}.introduction-dialog .dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem}.introduction-dialog p{margin-top:1rem;color:var(--muted)}
+.hero-film{transform:none}
+@media(max-width:650px){.welcome .hero-film{order:-1;width:100%}.welcome h1 em{display:block}.welcome h1{line-height:1.08}}
+
+/* ---------------------------------------------------------------------------------------------
+   The game shell, as built by task 38. These rules extend the shipped game screen; they add no new
+   colour (the tokens above are reused) and they touch no desktop surface beyond `body.game-world`.
+   The touch layer keeps its own scoped stylesheet, so nothing here reaches it.
+   --------------------------------------------------------------------------------------------- */
+
+/* Entry screen. Three controls over the drawn world, the film as a text link under them, and one
+   honest line about what an account is for. */
+body.game-world.game-entry #hero-actions .game-continue{background:#e5dea8;color:#133429;border:1px solid #f0edc8}
+body.game-world.game-entry .game-film-link{display:inline-block;margin:4px 0 0;color:var(--gold);font-size:.72rem;text-decoration:underline;text-underline-offset:3px}
+body.game-world.game-entry .game-entry-note{color:#ccd9c4;font-size:.66rem;line-height:1.7;margin:8px 0 0;max-width:520px}
+
+/* H4: one next action, never a list and never a count. Manrope, like the other HUD indicators. */
+body.game-world .game-next{margin:0!important;padding:6px 14px;background:#092a24cc;border:1px solid #d9d8b545;border-radius:100px;color:#f6f3dd!important;font-size:.66rem!important;letter-spacing:.02em;text-align:center;max-width:min(560px,calc(100vw - 40px));white-space:normal}
+body.game-world .game-next[hidden]{display:none}
+
+/* The small interaction prompt. It is a live region anchored near the aim line and it never covers
+   the world: the host is transparent to the pointer, so the canvas keeps its drag and its clicks. */
+body.game-world .game-prompt-host{position:absolute;z-index:10;left:20px;bottom:172px;max-width:min(430px,60vw);pointer-events:none}
+body.game-world .game-prompt-host[hidden]{display:none}
+body.game-world .game-prompt-host .interaction-prompt{background:var(--game-glass);border:1px solid var(--game-edge);border-radius:12px;padding:9px 12px;color:#f3f1db;font-size:.68rem;box-shadow:0 10px 28px #04150f66}
+body.game-world .game-prompt-host .interaction-prompt strong{display:block;color:#fff8dd}
+body.game-world .game-prompt-host .interaction-prompt p{margin:3px 0 0;color:#d8e2d0}
+body.game-world .game-prompt-host .interaction-prompt .interaction-prompt-key{color:var(--gold)}
+
+/* Compact overlays for a conversation or an activity. Dismissible by Escape and by their own
+   labelled Close; they are not modal, so focus is never trapped. */
+body.game-world .game-overlay-host{position:absolute;z-index:13;left:50%;bottom:120px;transform:translateX(-50%);width:min(430px,calc(100vw - 32px));pointer-events:none}
+body.game-world .game-overlay-host[hidden]{display:none}
+body.game-world .game-overlay-host .interaction-overlay{pointer-events:auto;background:linear-gradient(145deg,#12382e,#08271f);border:1px solid #bacba652;border-radius:18px;padding:16px 18px;color:var(--ink);box-shadow:0 22px 60px #00140fb0}
+body.game-world .game-overlay-host .interaction-overlay h3{margin:0 0 10px;font:500 1.2rem/1.2 NemoCormorant,Georgia,serif}
+body.game-world .game-overlay-host .interaction-overlay label{display:block;margin:8px 0 4px}
+body.game-world .game-overlay-host .interaction-overlay .interaction-overlay-note{color:var(--muted);font-size:.72rem}
+body.game-world .game-overlay-host .interaction-overlay .interaction-overlay-refusal{color:var(--danger)}
+
+/* The pointer-first build tools. They appear only while build mode is on, and the palette comes
+   from the world payload, never from a literal in this stylesheet.
+   The host is anchored to the *top* of the HUD's bottom band, never onto it: the band is bottom
+   anchored at 18px and measured 177px tall (objective line, passage line, control hint, quickbar),
+   so the top of the band sits 195px above the bottom edge of the stage. The band grew by 39px from
+   138px when the passage line joined the objective, which is what first put the tools over the next
+   action; at 1440×900 the host measured 252–796px and covered both lines. 210px is 18 + 177 + a
+   15px gap, and it keeps the ladder in this stylesheet intact: the HUD stays the lowest layer
+   (z-index 9) and the build tools stay above it (z-index 11) without lying on top of it. */
+body.game-world .game-build-host{position:absolute;z-index:11;bottom:210px;left:50%;transform:translateX(-50%);display:none;width:max-content;max-width:min(880px,calc(100vw - 60px));pointer-events:auto}
+body.game-world.game-building .game-build-host{display:block}
+body.game-world .game-build-host .ui-hotbar{border:1px solid #d8daad70;border-radius:14px;background:#092a24eb;padding:8px;box-shadow:0 12px 32px #04161188}
+body.game-world .game-build-host .game-hotbar-palette{display:flex;gap:6px;flex-wrap:wrap}
+body.game-world .game-build-host .game-hot{min-height:44px;background:#0a2b25de;color:#f6f0d8;border:1px solid #d2d8ac75;border-radius:10px;font-size:.64rem;padding:7px 10px}
+body.game-world .game-build-host .game-hot.active{background:var(--gold);color:var(--bg);border-color:var(--gold)}
+body.game-world .game-build-host .ui-placement{border:1px solid #d8daad70;border-radius:14px;background:#092a24f2;padding:10px;margin-top:6px;max-height:44vh;overflow:auto;color:var(--ink)}
+body.game-world .game-build-host .ui-placement h2{font-size:1.05rem;margin:0 0 6px}
+
+/* Observation. The observer reads; the status line says what it is, and a refusal names its rule. */
+body.game-world .game-observer{position:absolute;z-index:9;left:20px;bottom:96px;margin:0!important;padding:5px 12px;max-width:min(430px,60vw);background:#092a24cc;border:1px solid #d9d8b53b;border-radius:100px;color:#edf0dc!important;font-size:.6rem!important}
+body.game-world .game-observer-controls{position:absolute;z-index:9;right:20px;bottom:150px;display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:min(360px,50vw);pointer-events:auto}
+body.game-world .game-observer-controls button{min-height:38px;font-size:.6rem;padding:6px 9px;background:#0a2b25de;color:#f6f0d8;border:1px solid #d2d8ac75;border-radius:10px}
+body.game-world .game-observer-controls select{min-height:38px;font-size:.62rem;max-width:190px}
+
+/* The four drawers. Each is one card in the existing aside, so the shipped Close, Escape and the
+   HUD button all dismiss it. */
+body.game-world .world-aside .journal-entry{padding:10px 0;border-top:1px solid var(--line)}
+body.game-world .world-aside .journal-entry:first-child{border-top:0}
+body.game-world .world-aside .project-drawer-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+body.game-world .world-aside .project-drawer-list li{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+body.game-world .world-aside .project-drawer-list p{margin:2px 0}
+body.game-world .world-aside .ui-inventory h2,body.game-world .world-aside .ui-hotbar h2{font-size:1.2rem}
+
+/* The character overlay reuses the shipped dialog treatment; the pick list is a compact record row. */
+#character-dialog{width:min(760px,94vw);max-height:92vh;overflow:auto}
+#character-dialog .dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+#character-dialog .record+.record{margin-top:8px}
+#character-dialog .agent-row{display:flex;gap:12px;align-items:flex-start}
+
+@media(max-width:650px){
+  body.game-world .game-prompt-host{left:10px;right:10px;bottom:238px;max-width:none}
+  body.game-world .game-overlay-host{bottom:112px}
+  body.game-world .game-observer{left:10px;bottom:150px;max-width:calc(100vw - 20px)}
+  body.game-world .game-observer-controls{right:10px;bottom:196px;max-width:calc(100vw - 20px)}
+  /* The same rule at phone width, on the band's own phone geometry: the band sits at 10px and
+     measured 165px tall at 390x844, and 178px in the full acceptance run where the control hint
+     wraps to a second line, so its top is 188px above the stage bottom and the tools sit 15px above
+     that. This is deliberately the tightest of the three rules: at 390x844 the tools (573px) and the
+     band (up to 178px) already fill 776px of the 784px stage, so the host's own top lands 8px below
+     the masthead and there is no room left to spend. */
+  body.game-world .game-build-host{bottom:203px;max-width:calc(100vw - 20px)}
+}
+@media(prefers-reduced-motion:reduce){body.game-world .game-prompt-host,body.game-world .game-overlay-host{transition:none}}
+
+/* The HUD hint names four keys now, so on a narrow screen it wraps instead of forcing the whole HUD
+   bottom row wider than the viewport. The quickbar keeps its five equal controls. */
+body.game-world .game-hud-bottom .game-control-hint{white-space:normal;max-width:100%;text-wrap:balance}
+@media(max-width:900px){
+  body.game-world .game-hud-bottom{max-width:calc(100vw - 20px)}
+  body.game-world .game-hud-bottom .game-control-hint{padding:4px 10px}
+}
+
+/* The Karma Coins shop. Class hooks come from src/ui/shop-panel.js: the panel states the purse, what
+   the server pays for, and what can be bought. Every control is a real button at ≥44 px, so nothing
+   here may hide an action behind hover or shrink it below the touch floor. */
+.ui-shop-wallet,.ui-shop-earn,.ui-shop-goods,.ui-shop-ledger{display:grid;gap:8px;margin:12px 0}
+.ui-shop-head{gap:6px}
+.ui-shop-balance{font-size:1.05rem;color:var(--ink)}
+.ui-shop-sentence,.ui-shop-policy,.ui-shop-footnote,.ui-shop-good-note{font-size:.66rem;line-height:1.5;color:var(--muted)}
+.ui-service-list,.ui-shop-goods-list{display:grid;gap:8px;list-style:none;margin:6px 0 0;padding:0}
+.ui-service,.ui-shop-good{display:grid;gap:5px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#0a2b25c4}
+.ui-service-line,.ui-shop-good-label{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;justify-content:space-between}
+.ui-service-award,.ui-shop-good-price{color:var(--gold);font-size:.68rem}
+.ui-shop-good-summary,.ui-service-allowance{font-size:.68rem;line-height:1.45;color:var(--muted)}
+.ui-shop-category{display:grid;gap:8px;margin:8px 0}
+.ui-shop-good-unavailable{opacity:.62}
+.ui-shop-buy,.ui-shop-confirm-button{min-height:44px}
+.ui-shop-cancel,.ui-shop-close{min-height:44px}
+.ui-shop-confirm{display:grid;gap:8px;padding:11px 13px;border:1px solid var(--gold);border-radius:12px}
+.ui-shop-refusal{border:1px solid #c97c6c;border-radius:12px;padding:9px 12px;background:#aa483329}
+.ui-shop-refusal-words{color:var(--danger)}
+.ui-shop-saved{color:var(--gold)}
+.ui-shop-entry{display:flex;gap:10px;justify-content:space-between;font-size:.68rem;padding:6px 0;border-bottom:1px solid var(--line)}
+.ui-shop-entry-line{color:var(--muted)}
+.shop-status{margin:8px 0 0}
+.shop-status.refused{color:var(--danger)}
+.ui-shop-reduced *{transition:none!important;animation:none!important}
+.ui-shop-reduced .ui-shop-confirm,.ui-shop-reduced .ui-shop-good{transition:none}
+#world-my-space-card .actions{margin-top:8px}
+@media(max-width:650px){.ui-shop-wallet,.ui-shop-earn,.ui-shop-goods,.ui-shop-ledger{gap:6px}.ui-shop-good,.ui-service{padding:8px 10px}.ui-shop-buy,.ui-shop-confirm-button,.ui-shop-confirm .ui-shop-cancel{width:100%}.ui-shop-entry{flex-wrap:wrap}}
+
+/* --- Home & vault: private vault counts, the garden and cottage switches, the passport summary ------- */
+/* Every control is a real button at 44 px or more. A switch's state is written in its own words
+   ("On"/"Off") and in the sentence under it, never carried by colour alone, and nothing is hidden behind hover. */
+.ui-home{display:grid;gap:14px;margin:8px 0}
+.ui-home-resident{display:grid;gap:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#0a2b25c4}
+.ui-home-resident h3{margin:0}
+.ui-home-privacy,.ui-home-vault{display:grid;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
+.ui-home-privacy h4,.ui-home-vault h4{margin:0;font-size:.82rem;color:var(--ink)}
+.ui-home-privacy h4:focus,.ui-home-vault h4:focus{outline:2px solid var(--gold);outline-offset:3px}
+.ui-home-line{margin:0;font-size:.74rem;line-height:1.5;color:var(--ink)}
+.ui-home .privacy,.ui-home-summary .privacy,.ui-home-policy,.ui-home-switch-note,.ui-home-rule{margin:0;font-size:.7rem;line-height:1.5;color:var(--muted)}
+.ui-home-switch-row{display:grid;gap:4px}
+.ui-home-switch{min-height:44px;justify-content:flex-start;text-align:left;border:1px solid #c5ceab50;background:#d7dfba05;color:var(--ink)}
+.ui-home-switch[aria-checked=true]{background:var(--gold);color:var(--bg);border-color:var(--gold)}
+.ui-home-switch[aria-checked=true]:hover{background:#ece7c8;color:var(--bg)}
+.ui-home-switch[aria-checked=false]:hover{background:#d7dfba12;color:var(--ink)}
+.ui-home-erase,.ui-home-link,.ui-home-cancel{min-height:44px}
+.ui-home-confirm{display:grid;gap:8px;padding:11px 13px;border:1px solid var(--danger);border-radius:12px}
+.ui-home-confirm-question{margin:0;font-weight:600;color:var(--ink)}
+.ui-home-confirm-button{min-height:44px;background:var(--danger);border-color:var(--danger);color:#3a0f09}
+.ui-home-confirm-button:hover{background:#ffd5cc;color:#3a0f09}
+.ui-home-refusal{border:1px solid #c97c6c;border-radius:12px;padding:9px 12px;background:#aa483329}
+.ui-home-refusal-words{margin:0;color:var(--danger)}
+.ui-home-saved{margin:0;color:var(--gold);font-size:.74rem}
+.ui-home-summary{display:grid;gap:6px;margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:#0a2b25c4}
+.ui-home-summary h3{margin:0}
+.ui-home-reduced *{transition:none!important;animation:none!important}
+@media(max-width:650px){.ui-home-resident{padding:10px}.ui-home-switch,.ui-home-confirm-button,.ui-home-confirm .ui-home-cancel,.ui-home-erase,.ui-home-summary .ui-home-link{width:100%}}

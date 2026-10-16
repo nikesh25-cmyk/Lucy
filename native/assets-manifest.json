@@ -1,0 +1,76 @@
+{
+  "assets": [
+    {
+      "file": "nemoworld_game/mods/nemo/textures/nemo_cc0_wood.jpg",
+      "sha256": "fa6b603dda286865a82a93a483c341a975a7d3062dd0f291b57800f7ac4d1b66",
+      "bytes": 914353,
+      "source_file": "extracted/ambientcg-Wood096/Wood096_1K-JPG_Color.jpg",
+      "source_archive_sha256": "3aa0d5cddd866f5993c03a1a9bb036c1f7e82695cdf40f765cbea9faf91684ef",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/view?id=Wood096",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "modifications": "None. Node colour modifiers are applied at render time."
+    },
+    {
+      "file": "nemoworld_game/mods/nemo/textures/nemo_cc0_rock.jpg",
+      "sha256": "1dca8a336518ce0adca4b5cbe2ab30819c8769388f1c15278082a99f022c615a",
+      "bytes": 1483352,
+      "source_file": "extracted/ambientcg-Rock030/Rock030_1K-JPG_Color.jpg",
+      "source_archive_sha256": "2fd0bc2d214e2487c19062ed0798a85dd135b41cfc12bbaed42d5acae238f989",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/view?id=Rock030",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "modifications": "None. Node colour modifiers are applied at render time."
+    },
+    {
+      "file": "nemoworld_game/mods/nemo/textures/nemo_cc0_grass.jpg",
+      "sha256": "9e1c60da44b34a9738b1256ba827541f097dc583521b1d281e61b5f4b4217bc5",
+      "bytes": 1985561,
+      "source_file": "extracted/ambientcg-Grass004/Grass004_1K-JPG_Color.jpg",
+      "source_archive_sha256": "4b63495f459db8481f4d5144e4e9069345c81cf898cc71f2216f5dd3bb344469",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/view?id=Grass004",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "modifications": "None. Node colour modifiers are applied at render time."
+    },
+    {
+      "file": "nemoworld_game/mods/nemo/textures/nemo_cc0_soil.jpg",
+      "sha256": "d92bec8a35b9cb16ec79b421ca0f572a7400286eae109beafa266629ef49a6cf",
+      "bytes": 2187764,
+      "source_file": "extracted/ambientcg-Ground037/Ground037_1K-JPG_Color.jpg",
+      "source_archive_sha256": "4e69db2b7251b1736fa70fe6fe4ab80d64bd220117dd5dd4c7caaead51c2574e",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/view?id=Ground037",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "modifications": "None. Node colour modifiers are applied at render time."
+    },
+    {
+      "file": "nemoworld_game/mods/nemo/textures/nemo_cc0_concrete.jpg",
+      "sha256": "8ceb9186d990b31fce785e06fdc6974c160f1d27c43f6160266f164deba713aa",
+      "bytes": 269501,
+      "source_file": "extracted/ambientcg-Concrete034/Concrete034_1K-JPG_Color.jpg",
+      "source_archive_sha256": "5839d284d94ffb8d2a56df742ec522b13dd311c52dbd42b8fd33f0409ceedb81",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/view?id=Concrete034",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "modifications": "None. Node colour modifiers are applied at render time."
+    },
+    {
+      "file": "nemoworld_game/mods/nemo/textures/nemo_cc0_terracotta.jpg",
+      "sha256": "42467f643d2fe0129025b51ef4a263a48770e9329ceb18b6e1f5bcf6629f63ec",
+      "bytes": 738218,
+      "source_file": "extracted/ambientcg-GlazedTerracotta001/GlazedTerracotta001_1K-JPG_Color.jpg",
+      "source_archive_sha256": "54f921a07013a89066774f94d51837aa8258b1bfcf293c90cd652a37e3a0f66d",
+      "author": "Lennart Demes / ambientCG",
+      "source": "https://ambientcg.com/view?id=GlazedTerracotta001",
+      "license": "CC0-1.0",
+      "license_url": "https://docs.ambientcg.com/license/",
+      "modifications": "None. Node colour modifiers are applied at render time."
+    }
+  ]
+}

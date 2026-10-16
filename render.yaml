@@ -1,0 +1,80 @@
+# NemoWorld hosted deployment — Render Blueprint (one web service, one persistent disk).
+#
+# This file configures a deployment; it does not create one. Review Render's current prices, this
+# instance plan and the disk size before approving a Blueprint sync, and read
+# docs/PRODUCTION_READINESS.md first. Nothing here purchases, provisions or publishes anything by
+# itself, and no hosting account, domain or payment is created by this repository.
+#
+# Invariants this configuration must keep (they are enforced by the application, not by Render):
+#   * exactly one instance. The world is one Node process over one SQLite file in WAL mode; a second
+#     instance against the same file, or a second file, is not a supported topology. Render also
+#     refuses to scale a service that has an attached disk.
+#   * the database lives on the persistent disk, so accounts, gardens, land, coins, quests, guild
+#     projects, evidence and backups survive restarts and deploys.
+#   * LUCY_PUBLIC_ORIGIN. Render supplies RENDER_EXTERNAL_URL, which the server accepts as its
+#     canonical HTTPS origin. Set LUCY_PUBLIC_ORIGIN only to override it with a custom domain, and
+#     then set it to the exact HTTPS origin (scheme + host, no path, port, query or credentials).
+#     src/hosting.js rejects anything else and refuses to start when a public bind has no origin.
+#   * the private LUCY_SETUP_CODE. The server refuses to start an empty public database without it,
+#     and the first administrator can only be created with the matching code. 24–256 characters.
+#   * buildCommand is the syntax gate only. The application has no runtime dependencies, so no
+#     `npm install` is required to serve it; the dev dependency (playwright-core) is never installed
+#     in production and the browser suite never runs there.
+services:
+  - type: web
+    name: shared-world-seed
+    runtime: node
+    # Paid pilot baseline; review current charges before syncing this Blueprint. The persistent disk
+    # rules out the Free plan. Re-measure on this instance before widening enrollment.
+    plan: 1c-2g
+    numInstances: 1
+    # Release control: a merge to the branch does not deploy by itself. Change to `checksPass` only
+    # after the release gates in docs/RELEASE_CHECKLIST.md run in CI for that branch.
+    autoDeployTrigger: 'off'
+    # SIGTERM handling: the process stops accepting, ends event streams, aborts worker runs and
+    # releases the process lock. 60 s leaves room for an interrupted run to be recorded before the
+    # host escalates to SIGKILL.
+    maxShutdownDelaySeconds: 60
+    buildCommand: npm run check
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    # server.js validates an existing database at runtime, under its process lock, before migration
+    # or listening. Render's build/pre-deploy compute cannot access this service's persistent disk:
+    # https://render.com/docs/disks . A pre-deploy file check would silently skip the real database.
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: LUCY_BIND_HOST
+        value: 0.0.0.0
+      - key: LUCY_DATABASE
+        value: /var/data/world.sqlite
+      - key: GLOBAL_MAP
+        value: '1'
+      # New public databases start invitation-only; changing this variable later does not change
+      # an existing world's stored policy. An administrator may reopen signup deliberately.
+      - key: LUCY_INITIAL_REGISTRATION
+        value: closed
+      # Generated once by Render and shown in the dashboard. Reveal it privately to create the first
+      # administrator, then keep it out of chat, logs, screenshots, commits and shared URLs. Rotate
+      # it by deleting the variable and adding a new generated one if it is ever exposed; it is only
+      # read while the database has no account.
+      - key: LUCY_SETUP_CODE
+        generateValue: true
+      # Optional override for a custom domain. Leave unset to use RENDER_EXTERNAL_URL.
+      # - key: LUCY_PUBLIC_ORIGIN
+      #   sync: false
+      # The pilot uses an independent AI worker with a short-lived, scoped runtime credential.
+      # Keep model settings and the worker token off this web service. With no web-service model,
+      # managed resident runs are refused and country conversations use their rules fallback.
+      # - key: LUCY_MODEL_NAME
+      #   sync: false
+      # - key: LUCY_MODEL_URL
+      #   sync: false
+      # - key: LUCY_MODEL_BACKEND
+      #   value: ollama
+    disk:
+      name: shared-world-data
+      mountPath: /var/data
+      # Size is a ceiling, not a quota: a full disk makes writes fail closed. Grow it before the
+      # database, its WAL and the backup directory approach the limit (see docs/OPERATIONS.md §7).
+      sizeGB: 1

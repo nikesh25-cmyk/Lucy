@@ -1,0 +1,2970 @@
+{
+  "schemaVersion": 2,
+  "researchedOn": "2026-10-12",
+  "status": "independent-research-reference",
+  "scope": "100 reference records: principal organs, General Assembly main committees, ECOSOC functional and regional commissions, specialized agency groups, funds/programmes and other entities, ten human rights treaty bodies, the Human Rights Council, two human rights review mechanisms, seven UNFCCC constituted bodies and the Santiago technical-assistance network, the Peacebuilding Commission, the Secretary-General's Peacebuilding Fund, the Committee on World Food Security, the High-level Political Forum on Sustainable Development, Voluntary National Reviews, the United Nations Resident Coordinator system and the UN Sustainable Development Cooperation Framework. The 12 October 2026 register extension adds 17 dated primary-source records across agriculture and food, trade, LDC development, environment, peace and digital access, distinguishing a body, a programme, a treaty process, a strategy and a grant instrument through the recordKind field. Coverage does not enumerate every subsidiary body, mandate, treaty procedure, programme or funding window; bodies, funds, instruments and mechanisms are distinct categories.",
+  "affiliation": "NemoWorld has no UN affiliation, mandate or endorsement. Task suggestions and SDG mappings are NemoWorld editorial proposals, not UN instructions.",
+  "institutions": [
+    {
+      "id": "general-assembly",
+      "name": "General Assembly",
+      "type": "principal-organ",
+      "mandate": "Universal deliberation and recommendations across the UN agenda.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a published resolution with document symbol and date",
+        "Compare country voluntary national review priorities"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "security-council",
+      "name": "Security Council",
+      "type": "principal-organ",
+      "mandate": "Primary responsibility for international peace and security.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize published peacebuilding recommendations",
+        "Map civilian resilience needs from public reports"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "ecosoc",
+      "name": "Economic and Social Council",
+      "type": "principal-organ",
+      "mandate": "Coordinates economic, social and environmental policy dialogue and development work.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        1,
+        8,
+        10,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare development indicators for two countries",
+        "Prepare a sourced policy options brief"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "trusteeship-council",
+      "name": "Trusteeship Council",
+      "type": "principal-organ",
+      "mandate": "Supervised trust territories; operations suspended on 1 November 1994.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Build a historical timeline from official records",
+        "Explain historical institutional mandate"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "icj",
+      "name": "International Court of Justice",
+      "type": "principal-organ",
+      "mandate": "Settles disputes submitted by states and gives opinions requested by authorized bodies.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a public judgment with case citation",
+        "Explain institution jurisdiction using official materials"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "secretariat",
+      "name": "United Nations Secretariat",
+      "type": "principal-organ",
+      "mandate": "Carries out day-to-day work mandated by UN principal bodies.",
+      "sourceUrl": "https://www.un.org/en/about-us/main-bodies",
+      "sdgs": [
+        16,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Locate public reports and document symbols",
+        "Build a dated evidence register"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "first-committee",
+      "name": "First Committee: Disarmament and International Security",
+      "type": "ga-main-committee",
+      "mandate": "Examines disarmament and international security agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a public resolution on confidence building",
+        "Map peace education resources"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "second-committee",
+      "name": "Second Committee: Economic and Financial",
+      "type": "ga-main-committee",
+      "mandate": "Examines economic and financial development agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        1,
+        8,
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare LDC trade constraints",
+        "Draft a sourced structural transformation brief"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "third-committee",
+      "name": "Third Committee: Social, Humanitarian and Cultural",
+      "type": "ga-main-committee",
+      "mandate": "Examines social, humanitarian and cultural agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        3,
+        4,
+        5,
+        10,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Audit accessibility of a public service",
+        "Compare inclusive education evidence"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "fourth-committee",
+      "name": "Fourth Committee: Special Political and Decolonization",
+      "type": "ga-main-committee",
+      "mandate": "Examines special political and decolonization agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize official decolonization documentation",
+        "Create a historical source bibliography"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "fifth-committee",
+      "name": "Fifth Committee: Administrative and Budgetary",
+      "type": "ga-main-committee",
+      "mandate": "Examines administrative and budgetary agenda items.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        16,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Explain a published budget category",
+        "Compare public budget and performance documentation"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "sixth-committee",
+      "name": "Sixth Committee: Legal",
+      "type": "ga-main-committee",
+      "mandate": "Examines legal questions in the General Assembly agenda.",
+      "sourceUrl": "https://research.un.org/en/docs/ga/committees",
+      "sdgs": [
+        16,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map published treaty resources",
+        "Explain a legal committee report with citations"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "fao",
+      "name": "Food and Agriculture Organization",
+      "type": "specialized-agency",
+      "mandate": "Works toward hunger reduction, food security and sustainable agriculture.",
+      "sourceUrl": "https://www.fao.org/about/about-fao",
+      "sdgs": [
+        1,
+        2,
+        6,
+        12,
+        15
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal12",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "suggestedTaskTypes": [
+        "Build a crop production baseline with units and year",
+        "Compare postharvest loss interventions"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "undp",
+      "name": "United Nations Development Programme",
+      "type": "fund-programme",
+      "mandate": "Supports poverty reduction, resilience, governance and sustainable development.",
+      "sourceUrl": "https://www.undp.org/about-us",
+      "sdgs": [
+        1,
+        5,
+        8,
+        10,
+        13,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Compare municipal service delivery gaps",
+        "Create a public policy implementation options brief"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "unep",
+      "name": "United Nations Environment Programme",
+      "type": "fund-programme",
+      "mandate": "Supports environmental action on climate change, nature loss, pollution and waste.",
+      "sourceUrl": "https://www.unep.org/who-we-are/about-us",
+      "sdgs": [
+        6,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal12",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal14",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "suggestedTaskTypes": [
+        "Compare waste management options",
+        "Map public ecosystem restoration evidence"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "wfp",
+      "name": "World Food Programme",
+      "type": "fund-programme",
+      "mandate": "Provides emergency food assistance and supports food security and resilience.",
+      "sourceUrl": "https://www.wfp.org/who-we-are",
+      "sdgs": [
+        2,
+        3,
+        13,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare food market monitoring reports",
+        "Research smallholder procurement requirements"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "itc",
+      "name": "International Trade Centre",
+      "type": "other-entity",
+      "mandate": "Joint UN and WTO agency supporting small businesses to participate in international trade.",
+      "sourceUrl": "https://open.intracen.org/",
+      "sdgs": [
+        8,
+        9,
+        10,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare candidate destination markets for a defined product",
+        "Verify published tariffs, origin rules and buyer contact routes"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "unctad",
+      "name": "UN Trade and Development (UNCTAD)",
+      "type": "other-entity",
+      "mandate": "Supports developing countries through analysis, technical assistance and trade policy dialogue.",
+      "sourceUrl": "https://unctad.org/about",
+      "sdgs": [
+        8,
+        9,
+        10,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Research LDC export diversification",
+        "Compare border facilitation and digital trade policy options"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "statistical-commission",
+      "name": "Statistical Commission",
+      "type": "functional-commission",
+      "mandate": "Official statistics and measurement",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Audit indicator definitions and missing country data",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "population-development",
+      "name": "Commission on Population and Development",
+      "type": "functional-commission",
+      "mandate": "Population and development",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        3,
+        5,
+        10
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "suggestedTaskTypes": [
+        "Compare demographic evidence and service access",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "social-development",
+      "name": "Commission for Social Development",
+      "type": "functional-commission",
+      "mandate": "Social development",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        1,
+        8,
+        10
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "suggestedTaskTypes": [
+        "Map exclusion and social protection evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "status-women",
+      "name": "Commission on the Status of Women",
+      "type": "functional-commission",
+      "mandate": "Gender equality",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        5
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal5"
+      ],
+      "suggestedTaskTypes": [
+        "Compare barriers to women’s participation",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "narcotic-drugs",
+      "name": "Commission on Narcotic Drugs",
+      "type": "functional-commission",
+      "mandate": "Drug policy",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        3,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize public prevention evidence and evidence gaps",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "crime-justice",
+      "name": "Commission on Crime Prevention and Criminal Justice",
+      "type": "functional-commission",
+      "mandate": "Crime prevention and justice",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Map public justice access indicators",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "science-development",
+      "name": "Commission on Science and Technology for Development",
+      "type": "functional-commission",
+      "mandate": "Science and technology for development",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare digital access and technology transfer barriers",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "forum-forests",
+      "name": "United Nations Forum on Forests",
+      "type": "functional-commission",
+      "mandate": "Forest policy",
+      "sourceUrl": "https://research.un.org/en/docs/ecosoc/functionalcommissions",
+      "sdgs": [
+        13,
+        15
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "suggestedTaskTypes": [
+        "Assess public forest monitoring and restoration evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "eca",
+      "name": "Economic Commission for Africa",
+      "type": "regional-commission",
+      "mandate": "Regional development in Africa",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        8,
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare African regional trade and infrastructure evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "ece",
+      "name": "Economic Commission for Europe",
+      "type": "regional-commission",
+      "mandate": "Regional development in Europe",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        9,
+        11,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map regional standards and infrastructure sources",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "eclac",
+      "name": "Economic Commission for Latin America and the Caribbean",
+      "type": "regional-commission",
+      "mandate": "Regional development in Latin America and the Caribbean",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        8,
+        10,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare regional inequality and productive development evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "escap",
+      "name": "Economic and Social Commission for Asia and the Pacific",
+      "type": "regional-commission",
+      "mandate": "Regional development in Asia and the Pacific",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        9,
+        13,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map regional connectivity and resilience evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "escwa",
+      "name": "Economic and Social Commission for Western Asia",
+      "type": "regional-commission",
+      "mandate": "Regional development in Western Asia",
+      "sourceUrl": "https://research.un.org/c.php?g=98272&p=5600641",
+      "sdgs": [
+        6,
+        8,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Compare regional water and livelihood evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "icao",
+      "name": "International Civil Aviation Organization",
+      "type": "specialized-agency",
+      "mandate": "Civil aviation",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        13
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal13"
+      ],
+      "suggestedTaskTypes": [
+        "Map published aviation access and emissions evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "ifad",
+      "name": "International Fund for Agricultural Development",
+      "type": "specialized-agency",
+      "mandate": "Agricultural development",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        1,
+        2,
+        8
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal8"
+      ],
+      "suggestedTaskTypes": [
+        "Map smallholder market access and financing prerequisites",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "ilo",
+      "name": "International Labour Organization",
+      "type": "specialized-agency",
+      "mandate": "Labour",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        8,
+        10
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "suggestedTaskTypes": [
+        "Compare decent work indicators and labour standards sources",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "imf",
+      "name": "International Monetary Fund",
+      "type": "specialized-agency",
+      "mandate": "Monetary cooperation",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        8,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize macroeconomic assumptions from dated public reports",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "imo",
+      "name": "International Maritime Organization",
+      "type": "specialized-agency",
+      "mandate": "Maritime affairs",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        13,
+        14
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal14"
+      ],
+      "suggestedTaskTypes": [
+        "Map public shipping safety and environmental standards",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "itu",
+      "name": "International Telecommunication Union",
+      "type": "specialized-agency",
+      "mandate": "Telecommunications",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map rural connectivity gaps and technical standards",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unesco",
+      "name": "United Nations Educational, Scientific and Cultural Organization",
+      "type": "specialized-agency",
+      "mandate": "Education, science and culture",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        4,
+        11,
+        15
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "suggestedTaskTypes": [
+        "Compare public learning access and cultural preservation evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unido",
+      "name": "United Nations Industrial Development Organization",
+      "type": "specialized-agency",
+      "mandate": "Industrial development",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        8,
+        9,
+        12
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal12"
+      ],
+      "suggestedTaskTypes": [
+        "Assess processing capacity and resource efficiency prerequisites",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "un-tourism",
+      "name": "UN Tourism",
+      "type": "specialized-agency",
+      "mandate": "Tourism",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        8,
+        12
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal12"
+      ],
+      "suggestedTaskTypes": [
+        "Assess local tourism livelihoods and carrying capacity evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "upu",
+      "name": "Universal Postal Union",
+      "type": "specialized-agency",
+      "mandate": "Postal cooperation",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map postal access and small exporter delivery barriers",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "who",
+      "name": "World Health Organization",
+      "type": "specialized-agency",
+      "mandate": "Health",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        3
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize population health indicators; no individual medical advice",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "wipo",
+      "name": "World Intellectual Property Organization",
+      "type": "specialized-agency",
+      "mandate": "Intellectual property",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map public IP information and technology access barriers",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "wmo",
+      "name": "World Meteorological Organization",
+      "type": "specialized-agency",
+      "mandate": "Meteorology",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        6,
+        13
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal13"
+      ],
+      "suggestedTaskTypes": [
+        "Compare public weather information and warning access",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "world-bank-group",
+      "name": "World Bank Group",
+      "type": "specialized-agency-group",
+      "mandate": "Development finance",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/sa",
+      "sdgs": [
+        1,
+        8,
+        9
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal9"
+      ],
+      "suggestedTaskTypes": [
+        "Map published country diagnostics and project eligibility; presume no funding",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unfpa",
+      "name": "United Nations Population Fund",
+      "type": "fund-programme",
+      "mandate": "Population",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        3,
+        5
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal5"
+      ],
+      "suggestedTaskTypes": [
+        "Map population and reproductive health service access evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "un-habitat",
+      "name": "United Nations Human Settlements Programme",
+      "type": "fund-programme",
+      "mandate": "Human settlements",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        11
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal11"
+      ],
+      "suggestedTaskTypes": [
+        "Compare housing, accessibility and public space indicators",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unicef",
+      "name": "United Nations Children’s Fund",
+      "type": "fund-programme",
+      "mandate": "Children",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        3,
+        4,
+        6
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal6"
+      ],
+      "suggestedTaskTypes": [
+        "Assess public child service access indicators without personal records",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "ohchr",
+      "name": "Office of the High Commissioner for Human Rights",
+      "type": "other-entity",
+      "mandate": "Human rights",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        10,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Map published human rights recommendations and follow-up evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unaids",
+      "name": "Joint United Nations Programme on HIV/AIDS",
+      "type": "other-entity",
+      "mandate": "HIV and AIDS",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        3
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize population-level service access indicators",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unhcr",
+      "name": "Office of the United Nations High Commissioner for Refugees",
+      "type": "other-entity",
+      "mandate": "Refugees",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        10,
+        16
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "suggestedTaskTypes": [
+        "Map public displacement and service access evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unops",
+      "name": "United Nations Office for Project Services",
+      "type": "other-entity",
+      "mandate": "Project services",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        9,
+        17
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "suggestedTaskTypes": [
+        "Map transparent procurement and infrastructure delivery prerequisites",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "unrwa",
+      "name": "United Nations Relief and Works Agency for Palestine Refugees in the Near East",
+      "type": "other-entity",
+      "mandate": "Palestine refugee services",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        3,
+        4,
+        10
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "suggestedTaskTypes": [
+        "Summarize public education and service access evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "un-women",
+      "name": "UN Women",
+      "type": "other-entity",
+      "mandate": "Gender equality and women’s empowerment",
+      "sourceUrl": "https://research.un.org/en/docs/unsystem/fundsprogs",
+      "sdgs": [
+        5
+      ],
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal5"
+      ],
+      "suggestedTaskTypes": [
+        "Compare public gender equality commitments with delivery evidence",
+        "Draft a decision brief with named beneficiaries, prerequisites, uncertainties and review route"
+      ],
+      "mappingStatus": "NemoWorld editorial research focus and SDG mapping; not an instruction or funding commitment from this body."
+    },
+    {
+      "id": "cerd",
+      "name": "Committee on the Elimination of Racial Discrimination",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning racial discrimination.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        10,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cescr",
+      "name": "Committee on Economic, Social and Cultural Rights",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning economic, social and cultural rights.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal8"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "ccpr",
+      "name": "Human Rights Committee",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning civil and political rights.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cedaw",
+      "name": "Committee on the Elimination of Discrimination against Women",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning discrimination against women.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        5,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cat",
+      "name": "Committee against Torture",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning torture.",
+      "sourceUrl": "https://bangkok.ohchr.org/un-mechanisms",
+      "sdgs": [
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "crc",
+      "name": "Committee on the Rights of the Child",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning children’s rights.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        3,
+        4,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cmw",
+      "name": "Committee on Migrant Workers",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning migrant workers’ rights.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        8,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "spt",
+      "name": "Subcommittee on Prevention of Torture",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning detention safeguards under the Optional Protocol against Torture.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "crpd",
+      "name": "Committee on the Rights of Persons with Disabilities",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning disability rights.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        4,
+        8,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal8",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "ced",
+      "name": "Committee on Enforced Disappearances",
+      "type": "human-rights-treaty-body",
+      "mandate": "Independent expert oversight concerning enforced disappearance.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map published country recommendations and implementation evidence",
+        "Propose an evidence-backed public policy follow-up"
+      ],
+      "countryResearchChecks": [
+        "Verify dated treaty participation, reservations and applicable optional protocols from official country records.",
+        "Locate current public country observations or reports with document symbols and dates; distinguish recommendations from implemented measures.",
+        "Use public policy evidence; identify responsible institutions, implementation gaps and a proposed independent review route."
+      ],
+      "relatedSourceUrls": [
+        "https://tbinternet.ohchr.org/_layouts/15/TreatyBodyExternal/Home.aspx",
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Treaty-body list and distinction between independent experts and Charter-based mechanisms",
+      "accessNote": "Official regional OHCHR overview read; main OHCHR treaty overview returned HTTP 403. Country participation and case procedures are not established here.",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "human-rights-council",
+      "name": "Human Rights Council",
+      "type": "charter-based-body",
+      "mandate": "Intergovernmental forum for the promotion and protection of human rights.",
+      "sourceUrl": "https://europe.ohchr.org/human-rights/human-rights-mechanism",
+      "sdgs": [
+        16,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Trace a published resolution and country implementation evidence",
+        "Map a public policy recommendation to responsible national institutions"
+      ],
+      "countryResearchChecks": [
+        "Identify the relevant published resolution, mandate, scope and date.",
+        "Verify country applicability and implementation evidence; do not infer treaty obligations from Council membership."
+      ],
+      "relatedSourceUrls": [
+        "https://uhri.ohchr.org/en/about"
+      ],
+      "evidenceLocator": "Charter-Based and Treaty-Based Bodies; Human Rights Council",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "universal-periodic-review",
+      "name": "Universal Periodic Review",
+      "type": "human-rights-review-mechanism",
+      "mandate": "State peer review of UN Member States’ human rights records under the Human Rights Council.",
+      "sourceUrl": "https://uhri.ohchr.org/en/about",
+      "sdgs": [
+        16,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Map country review recommendations and response status",
+        "Propose a public policy follow-up with evidence gaps"
+      ],
+      "countryResearchChecks": [
+        "Locate the latest country review report, government response and recommendation identifiers.",
+        "Distinguish supported and noted recommendations from independently evidenced implementation."
+      ],
+      "relatedSourceUrls": [
+        "https://europe.ohchr.org/human-rights/human-rights-mechanism"
+      ],
+      "evidenceLocator": "Universal Periodic Review mechanism description",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "special-procedures",
+      "name": "Special Procedures of the Human Rights Council",
+      "type": "human-rights-review-mechanism",
+      "mandate": "Independent experts with thematic or country-specific reporting and advisory mandates.",
+      "sourceUrl": "https://uhri.ohchr.org/en/about",
+      "sdgs": [
+        16,
+        2,
+        10
+      ],
+      "suggestedTaskTypes": [
+        "Review published right-to-food recommendations with country scope",
+        "Map thematic policy recommendations to existing country evidence"
+      ],
+      "countryResearchChecks": [
+        "Identify the exact mandate, report period and geographical scope.",
+        "Locate public country-visit or thematic reports; check whether a recommendation actually addresses the selected country."
+      ],
+      "relatedSourceUrls": [
+        "https://europe.ohchr.org/human-rights/human-rights-mechanism"
+      ],
+      "evidenceLocator": "Special Procedures description and limits of UHRI country-visit coverage",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal10"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "ldc-expert-group",
+      "name": "Least Developed Countries Expert Group",
+      "type": "climate-constituted-body",
+      "mandate": "Technical guidance for LDC adaptation planning and implementation.",
+      "sourceUrl": "https://unfccc.int/LEG",
+      "sdgs": [
+        13,
+        2,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map agricultural adaptation needs to a published national plan",
+        "Propose a bounded adaptation implementation research package"
+      ],
+      "countryResearchChecks": [
+        "Verify current LDC status and applicable support criteria.",
+        "Locate the latest official national adaptation plan and agricultural priorities, responsible institutions and evidence gaps.",
+        "Check the actual access route and requirements of any proposed funding mechanism; technical guidance is not project finance."
+      ],
+      "evidenceLocator": "About the LEG: national adaptation plans, NAPAs and LDC work programme",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "standing-committee-finance",
+      "name": "Standing Committee on Finance",
+      "type": "climate-constituted-body",
+      "mandate": "Climate-finance assessment, needs reporting and guidance work under the UNFCCC process.",
+      "sourceUrl": "https://unfccc.int/SCF",
+      "sdgs": [
+        13,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Reconcile reported national adaptation financing needs and gaps",
+        "Compare public climate-finance definitions and evidence quality"
+      ],
+      "countryResearchChecks": [
+        "Locate relevant dated needs and finance-flow reports with definitions and country scope.",
+        "Separate assessed needs, allocations, approvals and actual disbursement; do not treat a committee report as a funding offer."
+      ],
+      "evidenceLocator": "Activities: biennial assessment, needs reports and guidance",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "technology-executive-committee",
+      "name": "Technology Executive Committee",
+      "type": "climate-constituted-body",
+      "mandate": "Policy work on developing and transferring low-emission and climate-resilient technologies.",
+      "sourceUrl": "https://unfccc.int/ttclear/tec",
+      "sdgs": [
+        9,
+        13,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Compare country technology needs with public adaptation priorities",
+        "Propose evidence gathering for an agricultural technology pilot"
+      ],
+      "countryResearchChecks": [
+        "Find current country technology needs assessments or action plans and the responsible designated entity.",
+        "Verify local maintenance, capacity, beneficiary demand and cost evidence before proposing technology delivery."
+      ],
+      "evidenceLocator": "Overview and mandate: policy arm of the Technology Mechanism",
+      "sourceCheckedOn": "2026-10-11",
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "peacebuilding-commission",
+      "name": "Peacebuilding Commission",
+      "type": "peacebuilding-advisory-body",
+      "mandate": "Convening and advisory work on sustaining peace, recovery and institution-building, with national ownership and country consent.",
+      "sourceUrl": "https://www.un.org/peacebuilding/en/content/about-the-commission",
+      "sdgs": [
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map published country peacebuilding priorities and participation gaps",
+        "Prepare a conflict-sensitive civilian service coordination brief"
+      ],
+      "countryResearchChecks": [
+        "Verify country consent, current official priorities and national ownership before proposing any engagement.",
+        "Use public civilian evidence; do not identify individuals as threats or infer peacebuilding outcomes from a global mandate."
+      ],
+      "evidenceLocator": "Mandate: founding resolutions and sustaining-peace functions; country consent and convening/advisory roles",
+      "relatedSourceUrls": [
+        "https://www.un.org/peacebuilding/en/commission/programme-of-work"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate text reviewed",
+        "retrieved": "2026-10-12T03:03:35.090Z",
+        "sha256": "1b2bdfdedb89d9b52a822e23def21f02c8d92a0753e1472729a17ce747d6eb6e"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "peacebuilding-fund",
+      "name": "Secretary-General’s Peacebuilding Fund",
+      "type": "peacebuilding-fund",
+      "mandate": "Supports peacebuilding in conflict-affected or at-risk situations through a distinct financing instrument; access requires the applicable official process.",
+      "sourceUrl": "https://www.un.org/peacebuilding/en/fund/documents/investments",
+      "sdgs": [
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Compare published programme priorities with a verified country needs baseline",
+        "Map the official eligibility and review process without assuming funding"
+      ],
+      "countryResearchChecks": [
+        "Distinguish Immediate Response and Peacebuilding and Recovery facilities; verify current guidance, country eligibility and expiry dates with official focal points.",
+        "An eligibility reference, allocation, pledge or archived investment plan is not a funding offer, application approval or actual disbursement."
+      ],
+      "evidenceLocator": "PBF Investments overview; linked eligibility guidance. Investment totals and plan dates on this overview include historical periods and are not copied as current figures.",
+      "relatedSourceUrls": [
+        "https://www.un.org/peacebuilding/en/content/countries-declared-eligible-pbf-secretary-general"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate text reviewed",
+        "retrieved": "2026-10-12T03:03:35.789Z",
+        "sha256": "6834196c454581efd7656533d50c8d46b9c219e63a235693395534602d4ace1b"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "committee-world-food-security",
+      "name": "Committee on World Food Security",
+      "type": "food-security-platform",
+      "mandate": "Intergovernmental food-security and nutrition dialogue, coordination and voluntary policy convergence.",
+      "sourceUrl": "https://www.fao.org/cfs/en/",
+      "sdgs": [
+        2,
+        5,
+        10,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Compare a published voluntary policy product with a country food-security baseline",
+        "Identify producer access and nutrition evidence gaps for a municipal decision brief"
+      ],
+      "countryResearchChecks": [
+        "Identify the relevant voluntary policy product, edition and country food-system context; it is not automatically binding national law.",
+        "Verify local producer needs, affordability, participation and implementation evidence before proposing uptake or export support."
+      ],
+      "evidenceLocator": "Platform, policy convergence and uptake functions; voluntary policy products",
+      "relatedSourceUrls": [
+        "https://www.fao.org/cfs/policy-products/voluntary-guidelines-and-policy-recommendations/en"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate text reviewed",
+        "retrieved": "2026-10-12T03:03:38.211Z",
+        "sha256": "ab2faeaf8937faf346a2c788bba064a37b9ea0243717ef333fe53162ff1692f3"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "undrr",
+      "name": "United Nations Office for Disaster Risk Reduction",
+      "type": "other-entity",
+      "mandate": "Coordinates disaster risk reduction and supports implementation, monitoring and review of the Sendai Framework.",
+      "sourceUrl": "https://www.undrr.org/our-work",
+      "sdgs": [
+        11,
+        13,
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map publicly documented municipal hazards, warning gaps and responsible agencies",
+        "Compare risk-informed livelihood and agriculture resilience options"
+      ],
+      "countryResearchChecks": [
+        "Find current national and local disaster-risk plans, dated hazard/loss data and responsible warning authorities; global progress does not prove local readiness.",
+        "Verify vulnerable-group participation, warning accessibility and local implementation costs; do not infer funding or emergency instructions from a framework."
+      ],
+      "evidenceLocator": "Risk knowledge, locally led DRR, recovery readiness and Sendai Framework custodianship",
+      "relatedSourceUrls": [
+        "https://www.undrr.org/implementing-sendai-framework/what-sendai-framework"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate text reviewed",
+        "retrieved": "2026-10-12T03:03:39.287Z",
+        "sha256": "a24bc55fcf9be21b32adb0509eea8555a720d0ba9611666c077e638a08aadab9"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "adaptation-committee",
+      "name": "Adaptation Committee",
+      "type": "climate-constituted-body",
+      "mandate": "Promotes coordinated action on adaptation under the Convention and Paris Agreement.",
+      "sourceUrl": "https://unfccc.int/Adaptation-Committee",
+      "sdgs": [
+        13,
+        2,
+        6,
+        11
+      ],
+      "suggestedTaskTypes": [
+        "Map published national adaptation priorities to local agriculture evidence gaps",
+        "Compare adaptation implementation options and evidence for monitoring"
+      ],
+      "countryResearchChecks": [
+        "Locate dated national adaptation plans and official sector priorities; verify responsible institutions, geographic coverage and affected-community participation.",
+        "Separate guidance and proposed adaptation indicators from measured resilience outcomes; confirm applicable plans, implementation costs and actual support before proposing delivery."
+      ],
+      "evidenceLocator": "Introduction: adaptation coordination under the Cancun Adaptation Framework",
+      "relatedSourceUrls": [
+        "https://unfccc.int/process-and-meetings/bodies/constituted-bodies/areas-of-work-adaptation-committee"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Source contains no readable text."
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal11"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "paris-capacity-building",
+      "name": "Paris Committee on Capacity-building",
+      "type": "climate-constituted-body",
+      "mandate": "Identifies climate capacity needs and gaps and improves coordination of capacity-building in developing countries.",
+      "sourceUrl": "https://unfccc.int/process-and-meetings/bodies/constituted-bodies/paris-committee-on-capacity-building-pccb",
+      "sdgs": [
+        13,
+        4,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Inventory country climate implementation capacity needs and existing training",
+        "Propose a locally owned capacity-building package with measurable learning needs"
+      ],
+      "countryResearchChecks": [
+        "Verify country-identified needs, existing services and the responsible national institutions; participation or a network listing is not a support commitment.",
+        "Check current workplan scope and applicable access requirements; distinguish training outputs, demonstrated capacity and implementation outcomes, and document costs and local ownership."
+      ],
+      "evidenceLocator": "Background, vision and mission; corroborated by Introduction to Capacity-building",
+      "relatedSourceUrls": [
+        "https://unfccc.int/topics/capacity-building/introduction/introduction-to-capacity-building"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Source contains no readable text."
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal4",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "paris-implementation-compliance",
+      "name": "Paris Agreement Implementation and Compliance Committee",
+      "type": "climate-constituted-body",
+      "mandate": "Facilitates implementation of the Paris Agreement and promotes compliance through an expert, non-punitive process.",
+      "sourceUrl": "https://unfccc.int/process-and-meetings/bodies/constituted-bodies/paris-agreement-implementation-and-compliance-committee-paicc/more-about-paicc",
+      "sdgs": [
+        13,
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map published country reporting records and relevant support needs",
+        "Prepare a dated evidence checklist for an authorized national reporting team"
+      ],
+      "countryResearchChecks": [
+        "Verify Party status, the specific provision, applicable decisions and country circumstances using current official records; a missing search result does not establish non-compliance.",
+        "The committee is facilitative, non-adversarial and non-punitive; do not infer penalties, dispute jurisdiction or findings against a country. Verify initiation rules and competent national authority before suggesting engagement.",
+        "Separate observed filing dates, reporting quality and committee findings; verify any LDC or SIDS flexibility and deadlines for the actual provision, rather than copying a generic date."
+      ],
+      "evidenceLocator": "Nature and Function; How is PAICC initiated; How can PAICC help parties",
+      "relatedSourceUrls": [
+        "https://unfccc.int/PAICC"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Source contains no readable text."
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "wim-executive-committee",
+      "name": "Warsaw International Mechanism Executive Committee",
+      "type": "climate-constituted-body",
+      "mandate": "Guides the loss-and-damage mechanism through a rolling workplan, technical workstreams and collaboration.",
+      "sourceUrl": "https://unfccc.int/wim-excom",
+      "sdgs": [
+        13,
+        11,
+        2,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map publicly documented livelihood losses and country evidence gaps",
+        "Compare relevant loss-and-damage knowledge products and local research needs"
+      ],
+      "countryResearchChecks": [
+        "Locate dated country hazard, exposure and loss evidence, distinguishing slow-onset events, non-economic loss and uncertainty; do not assume climate attribution or compensation entitlement.",
+        "Verify current workplan and the responsible national institutions; a knowledge product or committee reference is not a funding decision or direct compensation route.",
+        "Protect affected-community participation and privacy; recommendations involving mobility or relocation require separate rights, consent and competent-authority review."
+      ],
+      "evidenceLocator": "Introduction and five strategic workstreams",
+      "relatedSourceUrls": [
+        "https://unfccc.int/topics/adaptation-and-resilience/workstreams/loss-and-damage/warsaw-international-mechanism"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned a recognized access-check response instead of research content; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Recognized access-check response; no research text accepted.",
+        "directReaderProblem": "access_check",
+        "directReaderCheckedAt": "2026-10-12T05:26:24.077Z"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "santiago-network",
+      "name": "Santiago network for loss and damage",
+      "type": "climate-technical-assistance-network",
+      "mandate": "Catalyses demand-driven technical assistance for vulnerable developing countries to avert, minimize and address loss and damage.",
+      "sourceUrl": "https://unfccc.int/santiago-network/about",
+      "sdgs": [
+        13,
+        11,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Document a country-owned loss-and-damage technical assistance need",
+        "Map current technical-assistance request requirements and evidence gaps"
+      ],
+      "countryResearchChecks": [
+        "Verify current operational guidance, eligible request proponents, the national liaison and alignment with country priorities before drafting a request.",
+        "Distinguish technical assistance from project funding, compensation or guaranteed access; document needs, relevant expertise, local ownership and expected outputs.",
+        "Confirm current submission route, review process and any deadlines from the operational network; an older UNFCCC overview does not establish current application terms or authorize contact."
+      ],
+      "evidenceLocator": "Vision and Functions: demand-driven technical assistance",
+      "relatedSourceUrls": [
+        "https://unfccc.int/santiago-network"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed page text reviewed. NemoWorld’s direct reader returned no readable text; full live source retrieval remains unverified. Country applicability and current operational terms require a separate check.",
+      "sourceVerification": {
+        "method": "Official primary-page indexed text review; web-readable overview corroboration where available",
+        "directReaderStatus": "collection-gap",
+        "directReaderReason": "Source contains no readable text."
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal11",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "hlpf",
+      "name": "High-level Political Forum on Sustainable Development",
+      "type": "sdg-review-forum",
+      "mandate": "Provides a global forum for reviewing and following up SDG implementation.",
+      "sourceUrl": "https://www.un.org/sustainabledevelopment/monitoring-and-progress-hlpf/",
+      "sdgs": [
+        17,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Map country priorities and evidence gaps to the relevant SDG review process",
+        "Compare publicly documented follow-up options for national and local priorities"
+      ],
+      "countryResearchChecks": [
+        "Verify the applicable review year, official country report and responsible national process; past forum dates are not new submission deadlines.",
+        "Distinguish forum recommendations, country-reported progress and independently supported results; participation does not establish UN endorsement or project financing."
+      ],
+      "evidenceLocator": "Monitoring and progress: HLPF and country presentations",
+      "relatedSourceUrls": [
+        "https://hlpf.un.org/",
+        "https://sdgs.un.org/2030agenda"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official monitoring overview retrieved; this establishes the reference role, not current country reports, participation or independently verified outcomes.",
+      "sourceVerification": {
+        "method": "Secured public DNS-pinned TLS overview retrieval; role reviewed",
+        "directReaderStatus": "retrieved",
+        "sha256": "a8fc292fa5de2bb21e1a9ebe1743517042374d437b4aca5068961801946ff990",
+        "retrieved": "2026-10-12T07:01:37.613Z"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "voluntary-national-review",
+      "name": "Voluntary National Reviews",
+      "type": "national-review-mechanism",
+      "mandate": "Country-led reviews sharing implementation experience and challenges within the SDG follow-up process.",
+      "sourceUrl": "https://www.un.org/sustainabledevelopment/monitoring-and-progress-hlpf/",
+      "sdgs": [
+        17,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Audit a national review’s sources, dates and unresolved evidence gaps",
+        "Map a scoped local research question to published national priorities"
+      ],
+      "countryResearchChecks": [
+        "Find the actual dated country VNR and underlying official data; country self-reporting is not independent certification and missing reporting does not prove missing activity.",
+        "Verify the relevant reporting cycle, focal institution and current guidance; do not promote a historic schedule or handbook into a newly issued deadline.",
+        "Record participation and data-disaggregation limits; proposed local contributions need national ownership and consent rather than presumed authority."
+      ],
+      "evidenceLocator": "Country Voluntary National Review presentations",
+      "relatedSourceUrls": [
+        "https://sdgs.un.org/2030agenda",
+        "https://hlpf.un.org/sites/default/files/2025-10/VNR%202026%20Handbook%20EN.pdf"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official monitoring overview retrieved; this establishes the reference role, not current country reports, participation or independently verified outcomes.",
+      "sourceVerification": {
+        "method": "Secured public DNS-pinned TLS overview retrieval; role reviewed",
+        "directReaderStatus": "retrieved",
+        "sha256": "a8fc292fa5de2bb21e1a9ebe1743517042374d437b4aca5068961801946ff990",
+        "retrieved": "2026-10-12T07:01:37.613Z"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "resident-coordinator-system",
+      "name": "United Nations Resident Coordinator system",
+      "type": "development-coordination-system",
+      "mandate": "Coordinates UN development-system support and country-team planning around national priorities.",
+      "sourceUrl": "https://unsdg.un.org/2030-agenda/leadership/the-resident-coordinator",
+      "sdgs": [
+        17,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Locate published country-team priorities and current public coordination routes",
+        "Map a research recommendation to documented national delivery responsibilities"
+      ],
+      "countryResearchChecks": [
+        "Verify the actual country office, current public role and dated country-team documents; fictional NemoWorld mayors are not Resident Coordinators or UN representatives.",
+        "Check government ownership, responsible agencies and consent for any proposed engagement; a public office or contact route is not an invitation, partnership or authority to act.",
+        "Separate coordinated support plans, commitments and actual delivery; no financing offer is inferred from the system description."
+      ],
+      "evidenceLocator": "Resident Coordinator role and country-team responsibilities",
+      "relatedSourceUrls": [
+        "https://unsdg.un.org/about/how-we-work",
+        "https://unsdg.un.org/2030-agenda/cooperation-framework"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed primary-page text reviewed. Direct retrieval remained unavailable or unsupported; full live source retrieval is unverified. Current country offices and documents require separate verification.",
+      "sourceVerification": {
+        "method": "Official indexed primary-page role review; secured direct retrieval gap",
+        "directReaderStatus": "collection-gap"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cooperation-framework",
+      "name": "UN Sustainable Development Cooperation Framework",
+      "type": "country-programming-framework",
+      "mandate": "Frames country-level UN development-system planning, implementation, monitoring and evaluation with host-government priorities.",
+      "sourceUrl": "https://unsdg.un.org/2030-agenda/cooperation-framework",
+      "sdgs": [
+        17,
+        16
+      ],
+      "suggestedTaskTypes": [
+        "Locate the current country framework and compare its priorities with local evidence",
+        "Identify public results reports and scoped implementation research gaps"
+      ],
+      "countryResearchChecks": [
+        "Locate the signed country-specific framework and applicable programme period, amendments, results reports and responsible national institutions; generic guidance is not a country agreement.",
+        "Distinguish proposed results, recorded spending and independently evidenced outcomes; a framework is not funding for a NemoWorld project.",
+        "Check the current Common Country Analysis and country-owned participation process; historic guidance must not be labelled the latest edition without verification."
+      ],
+      "evidenceLocator": "Cooperation Framework purpose and programme cycle",
+      "relatedSourceUrls": [
+        "https://unsdg.un.org/resources/united-nations-sustainable-development-cooperation-framework-guidance",
+        "https://unsdg.un.org/about/how-we-work"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceCheckNote": "Official indexed primary-page text reviewed. Direct retrieval remained unavailable or unsupported; full live source retrieval is unverified. Current country offices and documents require separate verification.",
+      "sourceVerification": {
+        "method": "Official indexed primary-page role review; secured direct retrieval gap",
+        "directReaderStatus": "collection-gap"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal17",
+        "https://sdgs.un.org/goals/goal16"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "codex-alimentarius",
+      "name": "Codex Alimentarius Commission",
+      "type": "food-standards-programme",
+      "recordKind": "programme",
+      "jurisdiction": "Joint FAO/WHO food standards programme. Membership is open to FAO and WHO Member States and associate members; standards are prepared by subsidiary committees and regional coordinating committees with accredited observers.",
+      "mandate": "Develops internationally adopted food standards, guidelines and codes of practice through the joint FAO/WHO Codex Alimentarius programme.",
+      "eligibility": "FAO and WHO Member States may be Codex Members; international organizations may be accredited as observers. Codex texts are voluntary for Members to adopt, although they can be referenced in trade agreements and national rules.",
+      "implementationEvidence": "Committee agendas, session reports and adopted texts are published and show the standard-setting process (for example the 28th session of the Committee on Food Import and Export Inspection and Certification Systems in October 2026). They do not establish national adoption, product conformity or export permission.",
+      "publicAccessRoute": "The official Codex site (codex.fao.org) publishes standards, committee agendas, session reports and meeting announcements. The earlier fao.org/fao-who-codexalimentarius site stopped being updated on 31 August 2026 and now points to the new address.",
+      "sourceUrl": "https://codex.fao.org/home",
+      "sdgs": [
+        2,
+        3,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Locate the current committee agenda and adopted text for a nominated food product",
+        "Compare a published Codex standard with a dated national food-safety requirement"
+      ],
+      "researchTask": "Compare one current Codex standard or code of practice with a named country's official food-safety rule and its published inspection route.",
+      "countryResearchChecks": [
+        "Verify the current Codex text edition and the applicable national regulation date before comparing requirements; a Codex standard is not automatically national law.",
+        "An adopted standard, committee agenda or member nomination does not establish domestic adoption, product conformity or export eligibility."
+      ],
+      "evidenceLocator": "Codex home page: standard development process, committees and adopted-text news",
+      "relatedSourceUrls": [
+        "https://www.fao.org/fao-who-codexalimentarius/en/"
+      ],
+      "accessNote": "The legacy Codex address is retained as a discovery route only; it carried a migration notice when checked and is not the current publication channel.",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; joint FAO/WHO food standards programme page reviewed",
+        "retrieved": "2026-10-12T17:17:17.842Z",
+        "sha256": "28f5b4566cb1ba8852ad30382c5d7b57ecfed8d99be631fe00d928b56f23bb69"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal3",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "plant-genetic-resources-treaty",
+      "name": "International Treaty on Plant Genetic Resources for Food and Agriculture",
+      "type": "treaty-process",
+      "recordKind": "treaty-process",
+      "jurisdiction": "Multilateral treaty concluded under the FAO Constitution. Its Governing Body is the decision-making body; committees cover the Funding Strategy, compliance and the Global Information System. It operates in harmony with the Convention on Biological Diversity.",
+      "mandate": "Promotes the conservation and sustainable use of plant genetic resources for food and agriculture and the fair and equitable sharing of the benefits arising from their use, for sustainable agriculture and food security.",
+      "eligibility": "States become Contracting Parties through the FAO accession process. Farmers, genebanks, breeders and research institutions participate through the Multilateral System and the Benefit-sharing Fund under the terms of the treaty.",
+      "implementationEvidence": "Accessions and withdrawals, Governing Body and committee meetings (for example SFC-13 in December 2026), a published Multilateral System review and the Funding Strategy give dated public evidence. They do not establish local seed availability, a benefit-sharing payment or national implementation.",
+      "publicAccessRoute": "The FAO International Treaty pages publish governing-body and committee meetings, treaty themes, the Multilateral System and the Funding Strategy and Benefit-sharing Fund.",
+      "sourceUrl": "https://www.fao.org/plant-treaty/en/",
+      "sdgs": [
+        2,
+        15,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Verify whether a nominated crop falls within the Multilateral System and under what terms",
+        "Map published national implementation of farmers' rights and the Benefit-sharing Fund"
+      ],
+      "researchTask": "Check current treaty status and Multilateral System terms for a named crop before proposing a seed-exchange or benefit-sharing research route.",
+      "countryResearchChecks": [
+        "Confirm the country's current treaty participation, effective date and any declarations before relying on treaty access terms.",
+        "Verify the applicable crop coverage and the terms of any benefit-sharing claim; an accession or fund reference is not proof of local seed access or a payment."
+      ],
+      "evidenceLocator": "Treaty home page: objectives, themes (Multilateral System, farmers' rights, Funding Strategy) and upcoming meetings",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; treaty objectives and work-area pages reviewed",
+        "retrieved": "2026-10-12T17:17:17.913Z",
+        "sha256": "6949219b83223f7fc1909cff358d56c5e3f9d3d40053bd27f0d2f8d3516d3fd4"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal15",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "fao-committee-agriculture",
+      "name": "Committee on Agriculture (COAG)",
+      "type": "governing-body",
+      "recordKind": "body",
+      "jurisdiction": "A Governing Body of the Food and Agriculture Organization, established in 1971, with over 130 Member Nations. It advises on agriculture, livestock, food safety, nutrition, rural development and natural resource management.",
+      "mandate": "Provides overall policy and regulatory guidance on agriculture, reviews global agricultural issues and trends, and advises on emerging topics including sustainable production and land and water management in a changing climate.",
+      "eligibility": "Open to all FAO Members that notify the Director-General in writing of their wish to join and to participate, no later than ten days before a session opens; membership lapses after two consecutive unrepresented sessions or on notified withdrawal.",
+      "implementationEvidence": "Session document lists and the report of each session (for example COAG 30) are published and show the technical recommendations made. They are guidance and do not bind national policy or demonstrate implementation.",
+      "publicAccessRoute": "The FAO COAG pages publish the session document list, the report of the latest session and the current Bureau membership.",
+      "sourceUrl": "https://www.fao.org/coag/en",
+      "sdgs": [
+        2,
+        15,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a dated COAG session report and its technical recommendations",
+        "Compare a country's agricultural policy evidence with published COAG guidance"
+      ],
+      "researchTask": "Read one dated COAG session report and map its agricultural guidance to the responsible national ministry and the available country evidence.",
+      "countryResearchChecks": [
+        "Distinguish FAO governing-body guidance from binding national policy and locate the responsible ministry and dated national instrument.",
+        "A committee recommendation, membership list or session date does not establish national adoption, funding or programme eligibility."
+      ],
+      "evidenceLocator": "COAG home page: About the Committee, membership conditions and the latest session report",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; governing-body role and membership pages reviewed",
+        "retrieved": "2026-10-12T17:17:17.943Z",
+        "sha256": "66c0d5828296540c751e5157b728deee592477f22ab72c8da57b6f5e48c4c22f"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal15",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "uncitral",
+      "name": "United Nations Commission on International Trade Law (UNCITRAL)",
+      "type": "subsidiary-body",
+      "recordKind": "body",
+      "jurisdiction": "The core legal body of the United Nations system in the field of international trade law, established by General Assembly resolution 2205(XXI) of 17 December 1966, with universal membership and annual sessions alternating between New York and Vienna, working through working groups.",
+      "mandate": "Modernizes and harmonizes rules on international business through conventions, model laws, rules, legal guides, case-law reporting and technical assistance in law reform.",
+      "eligibility": "Universal United Nations membership on the Commission; UNCITRAL texts are open to States for signature or adoption and are used by legislators, courts and practitioners. Technical assistance in law reform is available to requesting States.",
+      "implementationEvidence": "The official status table of UNCITRAL texts, enactment reporting and case law record which States have adopted which instruments. A status table shows legal adoption, not commercial use, dispute outcomes or enforcement practice.",
+      "publicAccessRoute": "The UNCITRAL site publishes the status table of all texts, working-group and session documents, the subject-area collections and technical-assistance routes.",
+      "sourceUrl": "https://uncitral.un.org/en/about",
+      "sdgs": [
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Read the official status table for one UNCITRAL text and record adopting States and dates",
+        "Compare a national commercial-law provision with the corresponding UNCITRAL model law"
+      ],
+      "researchTask": "Check the official status table to establish whether a trade-law instrument relevant to a proposed cross-border activity is in force for the named countries.",
+      "countryResearchChecks": [
+        "Use the official status table and the country's legislative record to establish whether a text applies; do not infer enactment from a global instrument list.",
+        "Note reservations, territorial application and later amendments; an adopted text is not a completed national reform or a dispute outcome."
+      ],
+      "evidenceLocator": "About UNCITRAL: mandate, origin (resolution 2205(XXI)) and methods of work; Texts and Status: status table of UNCITRAL texts",
+      "relatedSourceUrls": [
+        "https://uncitral.un.org/en/texts"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate, origin and methods of work reviewed",
+        "retrieved": "2026-10-12T17:17:19.144Z",
+        "sha256": "903a6621a361c23453571045b14f972ac8074399e1b4ed5cf69b37365718c6e2"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "un-ohrlls",
+      "name": "Office of the High Representative for the Least Developed Countries, Landlocked Developing Countries and Small Island Developing States (UN-OHRLLS)",
+      "type": "development-office",
+      "recordKind": "body",
+      "jurisdiction": "A United Nations Secretariat office that supports the least developed, landlocked developing and small island developing country groups in the UN system. The page states 92 vulnerable member States served, listing 44 least developed countries, 32 landlocked developing countries and 39 small island developing States, groups that overlap.",
+      "mandate": "Supports the UN system's work for least developed, landlocked developing and small island developing States and the implementation, follow-up and review of their programmes of action.",
+      "eligibility": "An internal UN Secretariat support office, not a funding window. Country eligibility follows the relevant country group and programme of action; least developed country status is decided through the UN Committee for Development Policy and the Economic and Social Council and General Assembly.",
+      "implementationEvidence": "Regional and global mid-term reviews, ministerial outcomes and progress reporting are public, including the Africa regional ministerial mid-term review of the Doha Programme of Action and the global review scheduled for Doha in March 2027. A review statement or ministerial appeal does not establish country progress or financing.",
+      "publicAccessRoute": "un.org/ohrlls publishes the programmes of action for the three groups, group country lists, reviews and official statements.",
+      "sourceUrl": "https://www.un.org/ohrlls/",
+      "sdgs": [
+        1,
+        10,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Verify a country's current group status and graduation timetable from official review documents",
+        "Map one programme-of-action commitment to a national policy and a dated evidence gap"
+      ],
+      "researchTask": "Establish a named country's current group status and the applicable programme of action before designing least-developed, landlocked or small-island related research.",
+      "countryResearchChecks": [
+        "Confirm current group status, graduation date and any transition measures from the official review process; group counts and classifications can differ between official sources and the catalog snapshot.",
+        "A programme of action, review statement or office publication is not a funding commitment, a country result or an affiliation of any kind."
+      ],
+      "evidenceLocator": "Office home page: programmes of action for LDCs, LLDCs and SIDS, group lists and review news",
+      "relatedSourceUrls": [
+        "https://www.un.org/ldc5/doha-programme-of-action"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; office role, programmes of action and group lists reviewed",
+        "retrieved": "2026-10-12T17:17:20.109Z",
+        "sha256": "699a352b0d161499e067d7113fa53ab74405d767437c69f8c39a00e7bda8196d"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "technology-bank",
+      "name": "Technology Bank for the Least Developed Countries",
+      "type": "development-institution",
+      "recordKind": "programme",
+      "jurisdiction": "A United Nations institution serving the least developed countries on science, technology and innovation capacity, reporting through the General Assembly and working with national focal institutions.",
+      "mandate": "Strengthens science, technology and innovation capacity in the least developed countries through technology needs assessments, technology transfer and improved access to technology.",
+      "eligibility": "Serves the least developed countries. Work is organised through country technology needs assessments and national focal points; it is a technical institution, not an application or grant window open to individual projects.",
+      "implementationEvidence": "Published country technology needs assessments (for example Malawi in May 2026 and Uganda), country progress articles and the Year in Review report the programme's activities. An assessment or partnership article does not establish investment, deployment or adoption.",
+      "publicAccessRoute": "un.org/technologybank publishes country technology needs assessments, the annual Year in Review and programme news.",
+      "sourceUrl": "https://www.un.org/technologybank/en",
+      "sdgs": [
+        1,
+        9,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a country technology needs assessment and its priority technologies",
+        "Map a documented technology-transfer priority to the responsible national institution"
+      ],
+      "researchTask": "Find a country's published technology needs assessment and map its priorities to the available national evidence and responsible institutions.",
+      "countryResearchChecks": [
+        "Locate the current national technology needs assessment or the equivalent dated national science, technology and innovation plan; a programme news item is not a national assessment.",
+        "Check whether a stated technology priority has an implementing institution, a budget and a date; an assessment or partnership announcement is not a deployed solution."
+      ],
+      "evidenceLocator": "Institution home page: country technology needs assessments and programme reporting",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; institutional role and country assessment reporting reviewed",
+        "retrieved": "2026-10-12T17:17:20.553Z",
+        "sha256": "99ab9d8bc59cff9a2ffdbc942b2df499072a0df82dc7d593ff5479c340a05b29"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal1",
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "unea",
+      "name": "United Nations Environment Assembly (UNEA)",
+      "type": "governing-body",
+      "recordKind": "body",
+      "jurisdiction": "The highest-level decision-making body on the environment, with a universal membership of all 193 Member States, serving as the governing body of the UN Environment Programme. The seventh session took place from 8 to 12 December 2025 in Nairobi.",
+      "mandate": "Sets the global environmental agenda, provides overarching policy guidance and defines policy responses to emerging environmental challenges, including strategic guidance for the UN Environment Programme.",
+      "eligibility": "Universal membership of UN Member States; accredited major groups and stakeholders participate through the secretariat of governing bodies. Outcomes are intergovernmental decisions and resolutions.",
+      "implementationEvidence": "Session decisions and resolutions are public, including UNEA-7 Decision 7/7 on future session timing and the recorded eighth session for December 2027. A resolution does not establish national implementation, funding or a measured environmental outcome.",
+      "publicAccessRoute": "The UNEA pages publish session information, decisions and resolutions, and the secretariat of governing bodies and stakeholders route.",
+      "sourceUrl": "https://www.unep.org/environmentassembly/",
+      "sdgs": [
+        6,
+        13,
+        15
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a dated UNEA resolution and the actions it requests",
+        "Compare a country's environmental policy instrument with a UNEA decision"
+      ],
+      "researchTask": "Read one dated UNEA resolution and identify the responsible national authority, the applicable policy instrument and the evidence needed to assess its relevance.",
+      "countryResearchChecks": [
+        "Distinguish an intergovernmental resolution from binding national law and from a funded programme, and locate the responsible national instrument and date.",
+        "A session decision or membership statement does not establish country implementation, finance or outcome."
+      ],
+      "evidenceLocator": "UNEA environment assembly page: About UNEA, membership, sessions and decisions",
+      "relatedSourceUrls": [
+        "https://www.unep.org/who-we-are/about-us"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; membership, mandate and session record reviewed",
+        "retrieved": "2026-10-12T17:17:22.218Z",
+        "sha256": "182706ff1c7aef0b28d27950d5e34028f8e02c6b74bb856a88999809811d63eb"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal6",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "cbd",
+      "name": "Convention on Biological Diversity (CBD)",
+      "type": "treaty-process",
+      "recordKind": "treaty-process",
+      "jurisdiction": "A multilateral environmental treaty with a Conference of the Parties. The 2026 UN Biodiversity Conference, including COP17, CP-MOP12 and NP-MOP6, is scheduled for 19 to 30 October 2026 in Yerevan, Armenia; the Cartagena and Nagoya Protocols meet separately.",
+      "mandate": "Pursues the conservation of biological diversity, the sustainable use of its components and the fair and equitable sharing of benefits arising from genetic resources.",
+      "eligibility": "States and regional economic integration organizations may become Parties. Observer organizations and indigenous peoples and local communities participate through accreditation. National focal points are the country route for reporting.",
+      "implementationEvidence": "National reports, the Global Report on the state of biodiversity action and the first global review of collective progress scheduled at COP17 provide documented implementation evidence. National reporting is country-provided, so self-reporting must be distinguished from independent measurement.",
+      "publicAccessRoute": "cbd.int publishes the Convention, COP decisions, national reports, meeting pages and the Global Biodiversity Framework.",
+      "sourceUrl": "https://www.cbd.int/",
+      "sdgs": [
+        15,
+        14,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a country's national biodiversity reporting and its evidence gaps",
+        "Compare a national biodiversity target with the corresponding framework target"
+      ],
+      "researchTask": "Locate a country's latest national biodiversity report and compare one stated target with independent evidence.",
+      "countryResearchChecks": [
+        "Locate the country's current national focal point, latest national report and applicable COP decisions; a global framework is not a national target.",
+        "Distinguish country self-reporting from independently measured biodiversity outcomes; a national report is not verification."
+      ],
+      "evidenceLocator": "CBD home: convention, Global Biodiversity Framework, COP17 meeting record and national reporting routes",
+      "relatedSourceUrls": [
+        "https://www.cbd.int/gbf"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; convention, conference and reporting record reviewed",
+        "retrieved": "2026-10-12T17:17:22.588Z",
+        "sha256": "71208e13ae7e0e7b28b821ddba24d89fbd8e6ef72cc8bcc9abd487c7496aa75b"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal15",
+        "https://sdgs.un.org/goals/goal14",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "kunming-montreal-gbf",
+      "name": "Kunming-Montreal Global Biodiversity Framework",
+      "type": "strategy-instrument",
+      "recordKind": "strategy",
+      "jurisdiction": "A strategy adopted under the Convention on Biological Diversity, with action targets for 2030 and longer-term goals for 2050. Implementation is planned and reported through country-updated national biodiversity strategies and action plans.",
+      "mandate": "A global framework for biodiversity action to 2030 with longer-term goals, adopted under the Convention on Biological Diversity.",
+      "eligibility": "Parties to the Convention; implementation is country-owned through national biodiversity strategies and action plans and national reporting, with non-Party stakeholders contributing through the Convention's engagement routes.",
+      "implementationEvidence": "The first global review of collective progress is scheduled at COP17 in 2026, supported by national reports and the Global Report on the state of biodiversity action. The framework is not automatically reflected in national law, budgets or measured outcomes.",
+      "publicAccessRoute": "cbd.int/gbf hosts the framework page and links to the adopted decisions. The page is client-rendered, so the framework text and target numbering should be read from the Convention pages and the adopted decision record rather than from a plain page extraction.",
+      "sourceUrl": "https://www.cbd.int/gbf",
+      "sdgs": [
+        15,
+        14,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map a national biodiversity strategy target to a framework target and its measurement",
+        "Identify evidence gaps in a country's framework implementation reporting"
+      ],
+      "researchTask": "Compare one published national biodiversity strategy and action plan target with the corresponding framework target and the evidence behind it.",
+      "countryResearchChecks": [
+        "Locate the updated national biodiversity strategy and action plan and its submission date; a global framework target is not a national commitment until it is adopted nationally.",
+        "Distinguish framework targets, national commitments and independently measured outcomes; no national result is inferred from the framework."
+      ],
+      "evidenceLocator": "Global Biodiversity Framework page and its links to the adopted COP decision; content is client-rendered",
+      "sourceCheckNote": "The official framework page was retrieved but is client-rendered, so only the page frame and title were readable. The framework and its targets must be read from the Convention pages and the adopted decision record before use.",
+      "relatedSourceUrls": [
+        "https://www.cbd.int/"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; client-rendered page frame and title only",
+        "retrieved": "2026-10-12T17:17:23.629Z",
+        "sha256": "1d77e832ed4231eeef30fb237807efc3b682f60c1970cb470140083c1827590e"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal15",
+        "https://sdgs.un.org/goals/goal14",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "unccd",
+      "name": "United Nations Convention to Combat Desertification (UNCCD)",
+      "type": "treaty-process",
+      "recordKind": "treaty-process",
+      "jurisdiction": "A legally binding treaty established in 1994 with 197 Parties, including 196 country Parties and the European Union. It is the only legally binding framework set up to address desertification and the effects of drought, with a Conference of the Parties, a Committee on Science and Technology and a Global Mechanism.",
+      "mandate": "Protects and restores land and addresses desertification and the effects of drought through a multilateral commitment based on the principles of participation, partnership and decentralization.",
+      "eligibility": "States and the European Union are Parties, with differentiated commitments for affected country Parties and developed country Parties. Civil-society, scientific and local organizations participate through accredited routes.",
+      "implementationEvidence": "COP decisions, official documents, the status of ratification and the 2018-2030 Strategic Framework are public. The 2026 COP17 in Ulaanbaatar launched the Drought Resilience Index and a drought-resilience finance instrument. Decisions and newly launched instruments do not establish local land condition or available funding.",
+      "publicAccessRoute": "unccd.int publishes the Convention overview, COP decisions, official documents, the status of ratification and country profiles.",
+      "sourceUrl": "https://www.unccd.int/convention/overview",
+      "sdgs": [
+        2,
+        13,
+        15
+      ],
+      "suggestedTaskTypes": [
+        "Read the status of ratification and the applicable COP decisions for a named country",
+        "Compare a country's land-restoration commitment with dated local land evidence"
+      ],
+      "researchTask": "Compare a country's reported land-degradation and drought evidence with its commitments and the applicable COP decisions.",
+      "countryResearchChecks": [
+        "Establish the country's current Party status and the applicable decisions and programme periods; a global treaty does not specify a local obligation.",
+        "Check the operational status, eligibility and dates of any instrument or index launched at a conference before citing it as available support."
+      ],
+      "evidenceLocator": "UNCCD Convention overview: treaty basis, Parties, governance and the strategic framework",
+      "relatedSourceUrls": [
+        "https://www.unccd.int/"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; treaty basis, Parties and governance reviewed",
+        "retrieved": "2026-10-12T17:17:25.372Z",
+        "sha256": "8a45d9e3eb841b8e1d3633c866879b340ad33bfcd4775b2fdb972d603b9bac93"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal15"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "gef",
+      "name": "Global Environment Facility (GEF)",
+      "type": "financing-instrument",
+      "recordKind": "grant-instrument",
+      "jurisdiction": "A multilateral financing mechanism serving six multilateral conventions, organised around an Assembly, a Council of 32 members chosen by constituencies, a Secretariat, 18 implementing agencies, a Scientific and Technical Advisory Panel and an Independent Evaluation Office.",
+      "mandate": "Acts as the financial mechanism for multilateral environmental conventions and provides grants and mobilised finance for country-driven environmental projects.",
+      "eligibility": "Funds are available to developing countries seeking to meet the objectives of international environmental agreements. Support reaches government agencies, civil-society organizations, private companies, research institutions and other partners, normally through GEF implementing agencies and country endorsement.",
+      "implementationEvidence": "The GEF publishes cumulative financing figures (more than 27 billion US dollars in financing, primarily as grants, and 155 billion US dollars mobilised, as reported on its own page) and replenishment cycles such as GEF-9. Reported commitments and mobilised finance are not the same as disbursement, country results or an approved application.",
+      "publicAccessRoute": "thegef.org publishes the Council, replenishment cycles, country programmes and the project database; project-level access is through accredited GEF agencies.",
+      "sourceUrl": "https://www.thegef.org/who-we-are",
+      "sdgs": [
+        13,
+        15,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map a country's GEF focal-area allocations and approved projects from the official project database",
+        "Compare a published project document's stated outcomes with independent evidence"
+      ],
+      "researchTask": "Establish the applicable convention focal area, current replenishment cycle and accredited-agency route before proposing any GEF-related line of research.",
+      "countryResearchChecks": [
+        "Identify the relevant convention focal area, the current replenishment period and the accredited agency; a fund description is not an eligible project.",
+        "Distinguish reported commitments, mobilised co-finance and actual disbursement; the register description implies no funding for any proposed work."
+      ],
+      "evidenceLocator": "GEF Who We Are: conventions served, governance, funding terms and replenishment cycle",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; governance, funding terms and cycle reviewed",
+        "retrieved": "2026-10-12T17:17:25.801Z",
+        "sha256": "ee28918362d4bfca2e90c70ad18dc2467b4b7f80ec93a53c621d87ba102f64d2"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal15",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "green-climate-fund",
+      "name": "Green Climate Fund (GCF)",
+      "type": "financing-instrument",
+      "recordKind": "grant-instrument",
+      "jurisdiction": "Established in 2010 by the parties to the UN Framework Convention on Climate Change and an operating entity of the Convention's financial mechanism, supporting the Paris Agreement. It works through accredited entities and national designated authorities.",
+      "mandate": "Channels and catalyses climate finance to developing countries for mitigation and adaptation through country-driven projects and programmes.",
+      "eligibility": "Developing countries access funding through accredited entities, including international, regional, national and direct-access entities, working with a national designated authority; readiness support is a separate access modality.",
+      "implementationEvidence": "The Fund reports cumulative commitments and the number of countries covered (over 20 billion US dollars across 134 developing countries, as reported on its own page). Committed amounts are not disbursements, project outcomes or an application decision.",
+      "publicAccessRoute": "greenclimate.fund publishes the governing instrument, accreditation routes, funding proposals, portfolio data and national designated authority contacts.",
+      "sourceUrl": "https://www.greenclimate.fund/about",
+      "sdgs": [
+        7,
+        13,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map a country's GCF readiness support and accredited entities from official sources",
+        "Compare a published funding proposal with its reported implementation status"
+      ],
+      "researchTask": "Identify a country's national designated authority and accredited entities before researching a climate-finance route.",
+      "countryResearchChecks": [
+        "Locate the current national designated authority and accredited entity list; a fund description does not establish country access.",
+        "Distinguish commitment, signed agreement, disbursement and outcome; a portfolio entry is not an approval or a transfer of finance."
+      ],
+      "evidenceLocator": "GCF About: establishment by the UNFCCC parties, financial-mechanism role and access structure",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; establishment, mechanism role and access structure reviewed",
+        "retrieved": "2026-10-12T17:17:26.158Z",
+        "sha256": "453e60aee006b87f4a680960d221d9ab240198a588bf2e3fcda3e770f66d0f63"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal7",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "adaptation-fund",
+      "name": "Adaptation Fund",
+      "type": "financing-instrument",
+      "recordKind": "grant-instrument",
+      "jurisdiction": "A multilateral adaptation fund serving the Kyoto Protocol and the Paris Agreement, governed by an Adaptation Fund Board with a Secretariat, a trustee and an accreditation panel. It pioneered Direct Access and Enhanced Direct Access accreditation.",
+      "mandate": "Finances concrete adaptation projects and programmes that help vulnerable communities in developing countries adapt to climate change, based on country needs, views and priorities.",
+      "eligibility": "Eligible developing country Parties access funding through accredited national, regional or multilateral implementing entities; Direct Access allows accredited national entities to receive funding directly.",
+      "implementationEvidence": "The Fund publishes cumulative commitments, project counts and beneficiary figures (about 1.25 billion US dollars and 183 projects with about 45.8 million beneficiaries, as reported on its own page) and an independent evaluation library. Reported beneficiary numbers are estimates and do not establish project outcomes.",
+      "publicAccessRoute": "adaptation-fund.org publishes the Board, accreditation panel, financial status, project stories and independent evaluations.",
+      "sourceUrl": "https://www.adaptation-fund.org/about/",
+      "sdgs": [
+        2,
+        13,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Check accreditation status and current projects for a country's implementing entities",
+        "Compare a project's reported beneficiaries with independent local evidence"
+      ],
+      "researchTask": "Identify a country's accredited implementing entities and the current status of projects for one adaptation theme.",
+      "countryResearchChecks": [
+        "Confirm the country's current accreditation status, applicable decisions and programme period; a fund overview does not establish eligibility.",
+        "Distinguish committed funding, project approval and delivered local outcomes; beneficiary totals are reported aggregates, not verified local results."
+      ],
+      "evidenceLocator": "Adaptation Fund About: mandate, governance, direct access and published portfolio figures",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mandate, governance, direct access and portfolio figures reviewed",
+        "retrieved": "2026-10-12T17:17:27.757Z",
+        "sha256": "009a97fb1c59f01ce27c5fe3711b6ca907120c7e41b9306fe6ce03df97d35274"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal2",
+        "https://sdgs.un.org/goals/goal13",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "dppa",
+      "name": "Department of Political and Peacebuilding Affairs (DPPA)",
+      "type": "peace-and-security-entity",
+      "recordKind": "body",
+      "jurisdiction": "A United Nations Secretariat department with a global remit for preventive diplomacy, mediation and peacebuilding. It supports the Security Council, the Secretary-General's good offices and special political missions, and has published a consolidated public record of special political mission history.",
+      "mandate": "Plays a central role in United Nations efforts to prevent and resolve conflict around the world through preventive diplomacy, mediation and peacebuilding support.",
+      "eligibility": "An internal United Nations department, not an application or funding route. Public research access is through published statements, special political mission records and Multi-Year Appeal reporting.",
+      "implementationEvidence": "Published statements, special political mission records and reports of the Secretary-General give dated public evidence. Statements and mission records do not establish conflict resolution, country consent or a country outcome.",
+      "publicAccessRoute": "dppa.un.org publishes statements, special political mission records, reports of the Secretary-General and the Multi-Year Appeal.",
+      "sourceUrl": "https://dppa.un.org/en/",
+      "sdgs": [
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Summarize the mandate and reporting record of a named special political mission",
+        "Map published preventive-diplomacy reporting to a country evidence baseline"
+      ],
+      "researchTask": "Read the official public record for one special political mission mandate without treating it as authority for any external activity.",
+      "countryResearchChecks": [
+        "Use published mandates, Security Council resolutions and country reporting; do not infer country consent, mediation status or authority from a departmental description.",
+        "This register implies no operational role: fictional residents are not United Nations officials and public reports are not a mandate for engagement."
+      ],
+      "evidenceLocator": "DPPA home and About: departmental role, special political missions and public reporting",
+      "relatedSourceUrls": [
+        "https://www.un.org/en/our-work/maintain-international-peace-and-security"
+      ],
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; departmental role and public reporting reviewed",
+        "retrieved": "2026-10-12T17:17:28.431Z",
+        "sha256": "b70e67a762bc15d3c61312547217dd6b0a1f0ff1ee300807cf0c9c6786613546"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "un-peacekeeping",
+      "name": "UN Peacekeeping",
+      "type": "peace-and-security-entity",
+      "recordKind": "body",
+      "jurisdiction": "United Nations peacekeeping operations are mandated by the Security Council and managed by the Department of Peace Operations. The official page states that over two million peacekeepers from 125 countries have served since the first mission was established in 1948.",
+      "mandate": "Helps countries navigate the difficult path from conflict to peace through mandated peacekeeping operations that reduce civilian deaths and violence and increase the chance of lasting peace.",
+      "eligibility": "Operations are authorised by Security Council mandates; troop- and police-contributing countries provide personnel. Public research access is through mission pages, mandates and Security Council reporting.",
+      "implementationEvidence": "Mandates, mission pages and reports of the Secretary-General document authorised tasks and reporting requirements. They do not establish civilian-protection outcomes or a country's security situation.",
+      "publicAccessRoute": "peacekeeping.un.org publishes mission pages, mandates, data and reports.",
+      "sourceUrl": "https://peacekeeping.un.org/en",
+      "sdgs": [
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Summarize a current mission mandate and its reporting requirements",
+        "Map a mandate's civilian-protection task to public reporting and evidence gaps"
+      ],
+      "researchTask": "Read a mission mandate and its reporting cycle to identify the authorised tasks relevant to one civilian protection question.",
+      "countryResearchChecks": [
+        "Locate the current mandate, the authorising resolution and the reporting documents; a mission page does not establish a country's security situation.",
+        "Do not use operational information to identify individuals or infer threats; public mandates and reports are the research basis."
+      ],
+      "evidenceLocator": "UN Peacekeeping home and mission records: mandates, missions and reporting",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; mission role and public reporting reviewed",
+        "retrieved": "2026-10-12T17:17:28.900Z",
+        "sha256": "99e7cb92b1d565aa03a0d08996fa448497534c7e81761a100b0f8f8b4146f5a5"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "women-peace-security",
+      "name": "Women, Peace and Security agenda (Security Council resolution 1325)",
+      "type": "strategy-instrument",
+      "recordKind": "strategy",
+      "jurisdiction": "A United Nations Security Council agenda initiated by resolution S/RES/1325, adopted on 31 October 2000, with later resolutions. Implementation involves Member States, United Nations entities and a system-wide coordination network.",
+      "mandate": "Recognises the role of women in conflict prevention and resolution, peace negotiations, peacebuilding, peacekeeping, humanitarian response and post-conflict reconstruction, and calls for their equal participation and protection from conflict-related violence.",
+      "eligibility": "Addresses Member States and United Nations system entities; civil society and women's organizations participate through national action plans and reporting routes.",
+      "implementationEvidence": "Reports of the Secretary-General, national action plans and inter-agency coordination documents are public. National action plans and reports record commitments and self-reporting, not independently measured outcomes.",
+      "publicAccessRoute": "United Nations pages for resolution 1325 publish the resolution text, inter-agency coordination records, reports of the Secretary-General and related documents.",
+      "sourceUrl": "https://www.un.org/womenwatch/osagi/wps/",
+      "sdgs": [
+        5,
+        16,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Read S/RES/1325 and identify the commitments applicable to a country research question",
+        "Compare a national action plan commitment with independent participation evidence"
+      ],
+      "researchTask": "Locate a country's women, peace and security national action plan and compare one commitment with dated national evidence.",
+      "countryResearchChecks": [
+        "Check whether the country has a current national action plan, its period and its responsible institution; resolution commitments are not automatic national programmes.",
+        "Distinguish participation commitments, reported activities and measured outcomes; a resolution or action plan is not evidence of improved participation."
+      ],
+      "evidenceLocator": "Resolution 1325 landmark page: resolution text, inter-agency coordination and reports of the Secretary-General",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; resolution text summary and coordination record reviewed",
+        "retrieved": "2026-10-12T17:17:29.467Z",
+        "sha256": "fe82da9356514dc89258c1cae72054c143da30247bbdee39c6691edc0d3279eb"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal5",
+        "https://sdgs.un.org/goals/goal16",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    },
+    {
+      "id": "global-digital-compact",
+      "name": "Global Digital Compact",
+      "type": "strategy-instrument",
+      "recordKind": "strategy",
+      "jurisdiction": "An intergovernmental framework negotiated by 193 Member States and adopted in 2024 as part of the Pact for the Future. Implementation involves governments, the private sector, technical communities, researchers and civil society, with follow-up through the United Nations.",
+      "mandate": "A comprehensive framework for digital cooperation and the governance of artificial intelligence that commits governments to uphold international law and human rights online and to close digital divides.",
+      "eligibility": "A commitment framework rather than a funding instrument. States implement it domestically and stakeholders participate through the official participation and follow-up routes.",
+      "implementationEvidence": "Published commitment and action lists, follow-up dialogue arrangements and the planned international scientific panel on artificial intelligence are public. Commitments do not establish national connectivity, affordability or delivered access.",
+      "publicAccessRoute": "un.org/global-digital-compact publishes the commitments and actions, participation routes and follow-up reporting.",
+      "sourceUrl": "https://www.un.org/global-digital-compact/en",
+      "sdgs": [
+        9,
+        10,
+        17
+      ],
+      "suggestedTaskTypes": [
+        "Map one Compact commitment to a country policy and its responsible institution",
+        "Compare national connectivity statistics with the access commitments"
+      ],
+      "researchTask": "Compare one Compact commitment with a country's dated connectivity and affordability evidence.",
+      "countryResearchChecks": [
+        "Identify the domestic policy instrument and the dated measurement for the commitment being researched; a global commitment is not a national programme.",
+        "Distinguish political commitments, funded programmes and measured access; connectivity sources, coverage definitions and affordability measures require separate verification."
+      ],
+      "evidenceLocator": "Global Digital Compact home page: commitments and actions",
+      "sourceCheckedOn": "2026-10-12",
+      "sourceVerification": {
+        "method": "Direct public DNS-pinned TLS HTML retrieval; commitments and actions reviewed",
+        "retrieved": "2026-10-12T17:17:29.888Z",
+        "sha256": "89f867ca92025c67ffda0d165db724b690d7bcff4517ee010b17fa73bb69e224"
+      },
+      "sdgLinks": [
+        "https://sdgs.un.org/goals/goal9",
+        "https://sdgs.un.org/goals/goal10",
+        "https://sdgs.un.org/goals/goal17"
+      ],
+      "mappingStatus": "NemoWorld editorial task suggestions, country checks and SDG mapping; not a UN instruction."
+    }
+  ],
+  "frameworks": [
+    {
+      "id": "sdgs",
+      "name": "2030 Agenda and 17 Sustainable Development Goals",
+      "sourceUrl": "https://sdgs.un.org/goals",
+      "focus": "Use target-level references and national priorities to define research questions; outcome claims require measured evidence."
+    },
+    {
+      "id": "dpoa",
+      "name": "Doha Programme of Action for LDCs, 2022–2031",
+      "sourceUrl": "https://www.un.org/ldc5/doha-programme-of-action",
+      "focusAreas": [
+        "People and capacity",
+        "Science, technology and innovation",
+        "Structural transformation",
+        "International trade and regional integration",
+        "Climate and resilience",
+        "Partnerships and sustainable graduation"
+      ],
+      "suggestedTaskTypes": [
+        "Verify current country LDC and graduation status before assessing preferences",
+        "Compare a crop value chain and identify processing constraints",
+        "Prepare a national export support brief with evidence gaps"
+      ]
+    }
+  ],
+  "dataSources": [
+    {
+      "id": "faostat",
+      "name": "FAOSTAT",
+      "sourceUrl": "https://www.fao.org/faostat/",
+      "documentationUrl": "https://www.fao.org/statistics/en/",
+      "purpose": "Food and agriculture statistics; record dataset, year, country, unit and missing-value flags."
+    },
+    {
+      "id": "itc-tools",
+      "name": "ITC Market Analysis Tools",
+      "sourceUrl": "https://marketanalysis.intracen.org/en",
+      "purpose": "Trade statistics, market access, rules of origin and modeled export potential. Access and registration conditions vary by tool; projections are not confirmed buyer demand."
+    },
+    {
+      "id": "sdg17",
+      "name": "SDG 17 official targets",
+      "sourceUrl": "https://sdgs.un.org/goals/goal17",
+      "purpose": "Targets 17.11 and 17.12 concern developing-country exports and LDC market access. Preserve original target dates; do not treat expired target dates as new deadlines."
+    }
+  ],
+  "agricultureTradePilot": {
+    "status": "proposed-template-not-completed-research",
+    "dimensions": [
+      "Origin country",
+      "Municipality or producer group",
+      "Defined agricultural product",
+      "HS classification with edition",
+      "Destination country",
+      "Reference period"
+    ],
+    "steps": [
+      {
+        "type": "production-baseline",
+        "deliverable": "Five-year production, yield and export series with source, units, missing years and dates."
+      },
+      {
+        "type": "market-screen",
+        "deliverable": "Three destination candidates compared by import trend, competition and available logistics; distinguish observed trade from projections."
+      },
+      {
+        "type": "market-access",
+        "deliverable": "Dated tariff, preferences, origin rules, SPS, packaging and certification checklist from official authorities."
+      },
+      {
+        "type": "buyer-verification",
+        "deliverable": "Verified importer identities, company source URL and public contact route; observed role and contact date; no inferred demand."
+      },
+      {
+        "type": "route-costing",
+        "deliverable": "Shipment scenario with quantity, Incoterm, transport, storage, loss and compliance costs; label estimates."
+      },
+      {
+        "type": "public-authority-brief",
+        "deliverable": "Recipient-specific municipality or agriculture ministry draft: evidence, obstacles, options, responsible office, budget assumptions and requested decision."
+      }
+    ],
+    "completionCriteria": [
+      "Primary sources and dates for material claims",
+      "Country and product specific evidence",
+      "Explicit uncertainties and conflicting data",
+      "Human review before publishing recommendations",
+      "Explicit user authorization before outreach"
+    ],
+    "scaleRule": "Generate parameterized research briefs only. Each country-product-market task starts queued or proposed; it becomes completed only after evidence collection and review."
+  },
+  "coverage": {
+    "principal-organ": 6,
+    "ga-main-committee": 6,
+    "functional-commission": 8,
+    "regional-commission": 5,
+    "specializedAgencyGroups": 15,
+    "fundsProgrammesOtherEntities": 15,
+    "worldBankCounting": "The World Bank Group is one catalog group; the UN guide notes IBRD, IFC and IDA as three specialized agencies. Do not infer fifteen legal entities.",
+    "exclusions": [
+      "Subsidiary and expert bodies outside the listed categories",
+      "Treaty bodies and procedures beyond the ten listed core human rights bodies",
+      "Every project, programme and agenda",
+      "Historical and abolished institutions",
+      "Instruments, funds and organizations outside the UN system, including non-UN intergovernmental trade and standards bodies"
+    ],
+    "peacebuilding-advisory-body": 1,
+    "peacebuilding-fund": 1,
+    "food-security-platform": 1,
+    "countsByType": {
+      "charter-based-body": 1,
+      "climate-constituted-body": 7,
+      "climate-technical-assistance-network": 1,
+      "country-programming-framework": 1,
+      "development-coordination-system": 1,
+      "development-institution": 1,
+      "development-office": 1,
+      "financing-instrument": 3,
+      "food-security-platform": 1,
+      "food-standards-programme": 1,
+      "functional-commission": 8,
+      "fund-programme": 6,
+      "ga-main-committee": 6,
+      "governing-body": 2,
+      "human-rights-review-mechanism": 2,
+      "human-rights-treaty-body": 10,
+      "national-review-mechanism": 1,
+      "other-entity": 9,
+      "peace-and-security-entity": 2,
+      "peacebuilding-advisory-body": 1,
+      "peacebuilding-fund": 1,
+      "principal-organ": 6,
+      "regional-commission": 5,
+      "sdg-review-forum": 1,
+      "specialized-agency": 14,
+      "specialized-agency-group": 1,
+      "strategy-instrument": 3,
+      "subsidiary-body": 1,
+      "treaty-process": 3
+    },
+    "food-standards-programme": 1,
+    "governing-body": 2,
+    "subsidiary-body": 1,
+    "development-office": 1,
+    "development-institution": 1,
+    "treaty-process": 3,
+    "strategy-instrument": 3,
+    "financing-instrument": 3,
+    "peace-and-security-entity": 2,
+    "recordKindRule": "Records added on 2026-10-12 carry recordKind in {body, programme, treaty-process, strategy, grant-instrument}. Earlier records describe their form in type only; the two fields are not interchangeable.",
+    "recordKindsAdded": {
+      "body": 6,
+      "grant-instrument": 3,
+      "programme": 2,
+      "strategy": 3,
+      "treaty-process": 3
+    }
+  },
+  "coverageGaps": [
+    "Individual Special Procedures mandates and country coverage are not enumerated.",
+    "UNFCCC constituted bodies, treaty secretariats and funding mechanisms remain partially covered.",
+    "Current country treaty participation, legal procedures, reporting cycles and programme eligibility require task-specific verification.",
+    "Listed climate mechanisms do not establish country compliance, support eligibility or delivery; full source retrieval gaps and current operational terms require task-specific review.",
+    "Current country review documents, coordination-office roles and cooperation-framework cycles need country-specific verification; generic references do not establish support or country results.",
+    "The 12 October 2026 register extension adds one record per domain; commodity-specific programmes, individual treaty procedures, subsidiary committees and most funding windows remain uncovered.",
+    "Trade-governance and digital-access bodies published on sites the bounded reader could not process, including the UNCTAD Trade and Development Board and the Internet Governance Forum, are recorded as unresolved coverage in docs/research/UN_REGISTER_REVIEW.md rather than as catalog records.",
+    "Entry into force, reservations, current membership, eligibility windows, funding decisions and programme periods are not verified by these overview pages and require dated primary-source research."
+  ]
+}

@@ -1,0 +1,13 @@
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.nemoenc
+*.nemo-key
+.env
+node_modules/
+.runtime/
+test-results/
+
+# Local native Luanti world and transient bridge configuration.
+native/.local/

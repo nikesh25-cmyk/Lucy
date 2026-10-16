@@ -1,0 +1,217 @@
+{
+  "collectedOn": "2026-10-12",
+  "reader": "runtime/research-worker.js readSource - public DNS-pinned TLS, HTTPS only, HTML or plain text, one megabyte limit, redirects refused",
+  "note": "Retrieval proof for the 17 records added to catalog/programmes.json on 2026-10-12. sha256 is the hash of the original response body; retrieved is the reader timestamp. Extraction states which part of the response the reader considered readable text. Retrieval establishes accessibility, not the correctness of any substantive claim.",
+  "records": [
+    {
+      "id": "codex-alimentarius",
+      "url": "https://codex.fao.org/home",
+      "title": "Codex | Home",
+      "sha256": "28f5b4566cb1ba8852ad30382c5d7b57ecfed8d99be631fe00d928b56f23bb69",
+      "retrieved": "2026-10-12T17:17:17.842Z",
+      "extraction": "HTML main text",
+      "characters": 6273
+    },
+    {
+      "id": "plant-genetic-resources-treaty",
+      "url": "https://www.fao.org/plant-treaty/en/",
+      "title": "Home | International Treaty on Plant Genetic Resources for Food and Agriculture | FAO",
+      "sha256": "6949219b83223f7fc1909cff358d56c5e3f9d3d40053bd27f0d2f8d3516d3fd4",
+      "retrieved": "2026-10-12T17:17:17.913Z",
+      "extraction": "HTML main text",
+      "characters": 4182
+    },
+    {
+      "id": "fao-committee-agriculture",
+      "url": "https://www.fao.org/coag/en",
+      "title": "Home | Committee on Agriculture (COAG) | Food and Agriculture Organization of the United Nations",
+      "sha256": "66c0d5828296540c751e5157b728deee592477f22ab72c8da57b6f5e48c4c22f",
+      "retrieved": "2026-10-12T17:17:17.943Z",
+      "extraction": "HTML main text",
+      "characters": 1633
+    },
+    {
+      "id": "uncitral",
+      "url": "https://uncitral.un.org/en/about",
+      "title": "About UNCITRAL | United Nations Commission on International Trade Law",
+      "sha256": "903a6621a361c23453571045b14f972ac8074399e1b4ed5cf69b37365718c6e2",
+      "retrieved": "2026-10-12T17:17:19.144Z",
+      "extraction": "HTML main text",
+      "characters": 3262
+    },
+    {
+      "id": "un-ohrlls",
+      "url": "https://www.un.org/ohrlls/",
+      "title": "Office of the High Representative for the Least Developed Countries, Landlocked Developing Countries and Small Island Developing States |",
+      "sha256": "699a352b0d161499e067d7113fa53ab74405d767437c69f8c39a00e7bda8196d",
+      "retrieved": "2026-10-12T17:17:20.109Z",
+      "extraction": "HTML body text",
+      "characters": 3699
+    },
+    {
+      "id": "technology-bank",
+      "url": "https://www.un.org/technologybank/en",
+      "title": "Homepage | Technology Bank for the Least Developed Countries",
+      "sha256": "99ab9d8bc59cff9a2ffdbc942b2df499072a0df82dc7d593ff5479c340a05b29",
+      "retrieved": "2026-10-12T17:17:20.553Z",
+      "extraction": "HTML main text",
+      "characters": 8000
+    },
+    {
+      "id": "unea",
+      "url": "https://www.unep.org/environmentassembly/",
+      "title": "Environment Assembly",
+      "sha256": "182706ff1c7aef0b28d27950d5e34028f8e02c6b74bb856a88999809811d63eb",
+      "retrieved": "2026-10-12T17:17:22.218Z",
+      "extraction": "HTML body text",
+      "characters": 4209
+    },
+    {
+      "id": "cbd",
+      "url": "https://www.cbd.int/",
+      "title": "Home | Convention on Biological Diversity",
+      "sha256": "71208e13ae7e0e7b28b821ddba24d89fbd8e6ef72cc8bcc9abd487c7496aa75b",
+      "retrieved": "2026-10-12T17:17:22.588Z",
+      "extraction": "HTML body text",
+      "characters": 8000
+    },
+    {
+      "id": "kunming-montreal-gbf",
+      "url": "https://www.cbd.int/gbf",
+      "title": "Kunming-Montreal Global Biodiversity Framework",
+      "sha256": "1d77e832ed4231eeef30fb237807efc3b682f60c1970cb470140083c1827590e",
+      "retrieved": "2026-10-12T17:17:23.629Z",
+      "extraction": "HTML body text",
+      "characters": 27
+    },
+    {
+      "id": "unccd",
+      "url": "https://www.unccd.int/convention/overview",
+      "title": "Convention | UNCCD",
+      "sha256": "8a45d9e3eb841b8e1d3633c866879b340ad33bfcd4775b2fdb972d603b9bac93",
+      "retrieved": "2026-10-12T17:17:25.372Z",
+      "extraction": "HTML main text",
+      "characters": 2930
+    },
+    {
+      "id": "gef",
+      "url": "https://www.thegef.org/who-we-are",
+      "title": "Who We Are | GEF",
+      "sha256": "ee28918362d4bfca2e90c70ad18dc2467b4b7f80ec93a53c621d87ba102f64d2",
+      "retrieved": "2026-10-12T17:17:25.801Z",
+      "extraction": "HTML article text",
+      "characters": 1941
+    },
+    {
+      "id": "green-climate-fund",
+      "url": "https://www.greenclimate.fund/about",
+      "title": "The world’s climate fund for developing countries | Green Climate Fund",
+      "sha256": "453e60aee006b87f4a680960d221d9ab240198a588bf2e3fcda3e770f66d0f63",
+      "retrieved": "2026-10-12T17:17:26.158Z",
+      "extraction": "HTML main text",
+      "characters": 6287
+    },
+    {
+      "id": "adaptation-fund",
+      "url": "https://www.adaptation-fund.org/about/",
+      "title": "About",
+      "sha256": "009a97fb1c59f01ce27c5fe3711b6ca907120c7e41b9306fe6ce03df97d35274",
+      "retrieved": "2026-10-12T17:17:27.757Z",
+      "extraction": "HTML main text",
+      "characters": 2672
+    },
+    {
+      "id": "dppa",
+      "url": "https://dppa.un.org/en/",
+      "title": "Home | DPPA",
+      "sha256": "b70e67a762bc15d3c61312547217dd6b0a1f0ff1ee300807cf0c9c6786613546",
+      "retrieved": "2026-10-12T17:17:28.431Z",
+      "extraction": "HTML main text",
+      "characters": 2339
+    },
+    {
+      "id": "un-peacekeeping",
+      "url": "https://peacekeeping.un.org/en",
+      "title": "Peacekeeping | UN Peacekeeping",
+      "sha256": "99e7cb92b1d565aa03a0d08996fa448497534c7e81761a100b0f8f8b4146f5a5",
+      "retrieved": "2026-10-12T17:17:28.900Z",
+      "extraction": "HTML main text",
+      "characters": 3314
+    },
+    {
+      "id": "women-peace-security",
+      "url": "https://www.un.org/womenwatch/osagi/wps/",
+      "title": "Landmark resolution on Women, Peace and Security (Security Council resolution 1325)",
+      "sha256": "fe82da9356514dc89258c1cae72054c143da30247bbdee39c6691edc0d3279eb",
+      "retrieved": "2026-10-12T17:17:29.467Z",
+      "extraction": "HTML body text",
+      "characters": 3378
+    },
+    {
+      "id": "global-digital-compact",
+      "url": "https://www.un.org/global-digital-compact/en",
+      "title": "Homepage | Global Digital Compact",
+      "sha256": "89f867ca92025c67ffda0d165db724b690d7bcff4517ee010b17fa73bb69e224",
+      "retrieved": "2026-10-12T17:17:29.888Z",
+      "extraction": "HTML main text",
+      "characters": 2781
+    }
+  ],
+  "notRetrieved": [
+    {
+      "url": "https://unctad.org/about/trade-and-development-board",
+      "purpose": "UNCTAD Trade and Development Board (trade governing body)",
+      "error": "Source status, type or size is unsupported."
+    },
+    {
+      "url": "https://www.un.org/development/desa/dpad/committee-for-development-policy.html",
+      "purpose": "Committee for Development Policy (LDC status advice)",
+      "error": "Source status, type or size is unsupported."
+    },
+    {
+      "url": "https://www.intgovforum.org/",
+      "purpose": "Internet Governance Forum (digital-access multistakeholder forum)",
+      "error": "Source status, type or size is unsupported."
+    },
+    {
+      "url": "https://www.itu.int/en/ITU-D/Pages/default.aspx",
+      "purpose": "ITU Telecommunication Development Sector (digital development)",
+      "error": "Source contains no readable text."
+    },
+    {
+      "url": "https://unece.org/trade",
+      "purpose": "UNECE trade programme and UN/CEFACT",
+      "error": "Source status, type or size is unsupported."
+    },
+    {
+      "url": "https://minamataconvention.org/en",
+      "purpose": "Minamata Convention on Mercury",
+      "error": "Source status, type or size is unsupported."
+    },
+    {
+      "url": "https://www.brsmeas.org/",
+      "purpose": "Basel, Rotterdam and Stockholm Conventions",
+      "error": "Source contains no readable text."
+    },
+    {
+      "url": "https://www.cbd.int/convention/text/",
+      "purpose": "CBD convention text (client-rendered alternative)",
+      "error": "Source status, type or size is unsupported."
+    },
+    {
+      "url": "https://www.cbd.int/decisions/cop/15/4",
+      "purpose": "Kunming-Montreal Global Biodiversity Framework adoption decision",
+      "error": "Source contains no readable text."
+    },
+    {
+      "url": "https://www.wto.org/",
+      "purpose": "World Trade Organization (outside the UN system; excluded by design)",
+      "error": "Not requested; non-UN intergovernmental organization."
+    },
+    {
+      "url": "https://enhancedif.org/en",
+      "purpose": "Enhanced Integrated Framework (trade-capacity grant instrument, WTO-hosted site)",
+      "error": "Retrieved successfully, but the host is not a UN domain, so it was excluded from the register."
+    }
+  ]
+}

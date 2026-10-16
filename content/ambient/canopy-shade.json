@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "id": "canopy-shade",
+  "kind": "ambient",
+  "label": "Canopy shade",
+  "since": "1.1.0",
+  "order": 1,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the ambient manifests in src/content-manifest.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. An ambient profile is authored colour and time data, not sampled audio or a texture. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#8ba884",
+    "geometry": "ambient-layer",
+    "transparent": true,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "ambient",
+    "place": "grove-ring-venue",
+    "profile": "light",
+    "time_of_day": {
+      "unit": "tick",
+      "start": 60,
+      "end": 300
+    },
+    "layers": [
+      {
+        "key": "ground",
+        "color": "#8ba884",
+        "opacity": 1,
+        "motion": "none"
+      },
+      {
+        "key": "shade",
+        "color": "#5f7a5c",
+        "opacity": 0.5,
+        "motion": "none"
+      }
+    ],
+    "motion": "none",
+    "reduced_motion": "not-needed",
+    "provenance": {
+      "derived_from": "the groundColor and ambiance text of the world definition the place names",
+      "reuse": "authored colour and time data only; no sampled audio, no texture and no third-party clip"
+    }
+  },
+  "notes": [
+    "A still, shaded clearing profile. The shade layer is a flat tint with no movement."
+  ]
+}

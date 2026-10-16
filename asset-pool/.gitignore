@@ -1,0 +1,6 @@
+# The raw archives and the unpacked tree are large and reproducible from the committed record:
+# manifest.json names and hashes every archive, and index.json hashes every extracted file of
+# interest, so both can be rebuilt with `node scripts/fetch-asset-pool.mjs` and checked with
+# `node scripts/fetch-asset-pool.mjs --verify`.
+files/
+extracted/

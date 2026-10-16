@@ -1,0 +1,1494 @@
+// One shared tile map powers both server movement and the browser renderer.
+import { standableTile } from './src/footprints.js';
+import { MAP_ID, applySeams, onMap, stitchMap } from './src/global-map.js';
+export const TILE = 40;
+export const COLS = 20;
+export const ROWS = 14;
+export const start = Object.freeze({ x: 10, y: 6 });
+export const landmarks = [
+  { x: 10, y: 6, name: 'Welcome Plaza', description: 'The heart of the world. Meet visiting agents, introduce yourself, and follow the paths to a shared mission.', color: '#d9a36d', symbol: '✧' },
+  { x: 11, y: 6, name: 'Mission Board', description: 'Find a mission, claim a task, and submit evidence for human review.', color: '#637f69', symbol: '▤' },
+  { x: 4, y: 3, name: 'Climate Grove', description: 'A living garden for climate research, practical environmental learning, and careful evidence.', color: '#64a87e', symbol: '✿' },
+  { x: 15, y: 3, name: 'Peace Pavilion', description: 'A quiet meeting place for thoughtful dialogue and nonpartisan peace resources.', color: '#8b91c9', symbol: '☮' },
+  { x: 10, y: 10, name: 'Contribution Gallery', description: 'Explore contributions and evidence accepted by mission reviewers.', color: '#8dbdd1', symbol: '☆' },
+  { x: 16, y: 10, name: 'Help Point', description: 'Learn how to connect an agent, explore the world, and manage your character.', color: '#db9bb3', symbol: '?' },
+];
+
+const map = Array.from({ length: ROWS }, () => Array(COLS).fill('meadow'));
+const paint = (x, y, width, height, type) => {
+  for (let row = y; row < y + height; row++) for (let col = x; col < x + width; col++) map[row][col] = type;
+};
+// Paths form an accessible loop with short branches to every destination.
+paint(3, 3, 14, 1, 'path');
+paint(4, 3, 1, 8, 'path');
+paint(15, 3, 1, 8, 'path');
+paint(4, 6, 12, 1, 'path');
+paint(4, 10, 13, 1, 'path');
+paint(10, 6, 1, 5, 'path');
+paint(8, 4, 5, 4, 'plaza');
+paint(3, 2, 4, 1, 'garden');
+paint(3, 4, 4, 1, 'garden');
+paint(0, 0, 3, 3, 'water');
+paint(0, 3, 2, 4, 'water');
+paint(1, 5, 2, 2, 'water');
+paint(0, 7, 2, 3, 'water');
+paint(1, 10, 2, 2, 'water');
+paint(3, 5, 2, 1, 'bridge');
+// A second small pond and a wooden bridge mark the south garden.
+paint(6, 11, 3, 2, 'water');
+paint(7, 10, 1, 4, 'bridge');
+paint(14, 1, 3, 2, 'building');
+paint(9, 8, 3, 2, 'building');
+paint(16, 8, 2, 2, 'building');
+paint(9, 5, 1, 1, 'fountain');
+const trees = [[4, 0], [6, 0], [9, 0], [11, 1], [18, 0], [19, 2], [6, 1], [2, 3], [7, 4], [18, 4], [19, 6], [2, 8], [6, 8], [7, 9], [18, 10], [4, 12], [10, 12], [13, 12], [16, 12], [19, 12], [0, 13]];
+for (const [x, y] of trees) map[y][x] = 'tree';
+export const terrain = Object.freeze(map.map((row) => Object.freeze(row)));
+
+export function terrainAt(position, world) {
+  const tiles = world ? getWorldDefinition(world).terrain : terrain;
+  if (!Number.isInteger(position?.x) || !Number.isInteger(position?.y)) return undefined;
+  return tiles[position.y]?.[position.x];
+}
+
+/**
+ * A standable tile: walkable terrain without solid scenery. Terrain types come from the retained map
+ * and scenery from the definition's authored objects, resolved through the shared footprint table in
+ * src/footprints.js. Terrain tiles keep their meaning: water, trees, buildings, fountains and walls
+ * are never walkable, while paths, bridges, plazas, gardens, rugs and floors are.
+ */
+export function walkable(position, world) {
+  const definition = world === undefined || world === null ? null : world.terrain ? world : getWorldDefinition(world);
+  return standableTile(position, definition ? definition.terrain : terrain, definition ? definition.objects : undefined);
+}
+
+export function move(position, direction, world) {
+  const offsets = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  const offset = offsets[direction];
+  if (!offset || !Number.isInteger(position?.x) || !Number.isInteger(position?.y)) return position;
+  const next = { x: position.x + offset[0], y: position.y + offset[1] };
+  return walkable(next, world) ? next : position;
+}
+
+export function landmarkAt(position, world) {
+  return (world ? getWorldDefinition(world).landmarks : landmarks).find((place) => place.x === position?.x && place.y === position?.y);
+}
+
+const definitions = new Map();
+const cellNoise = (x, y, seed = 17) => ((Math.imul(x + 11, 73856093) ^ Math.imul(y + 29, 19349663) ^ seed) >>> 0) % 997;
+const makeGrid = (columns, rows, fill = 'meadow') => Array.from({ length: rows }, () => Array(columns).fill(fill));
+function paintGrid(grid, x, y, width, height, type) {
+  for (let row = y; row < y + height; row++) for (let col = x; col < x + width; col++) {
+    if (grid[row]?.[col] !== undefined) grid[row][col] = type;
+  }
+}
+function road(grid, a, b) {
+  const [left, right] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
+  const [top, bottom] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
+  for (let x = left; x <= right; x++) grid[a.y][x] = grid[a.y][x] === 'water' ? 'bridge' : 'path';
+  for (let y = top; y <= bottom; y++) grid[y][b.x] = grid[y][b.x] === 'water' ? 'bridge' : 'path';
+}
+const portal = (x, y, name, targetWorldId) => ({ x, y, name, targetWorldId });
+
+export const FRONTIER_SIZE = 48;
+export const FRONTIER_COORDINATE_LIMIT = 8;
+export const FRONTIER_MIN_COORDINATE = -8;
+export const FRONTIER_MAX_COORDINATE = 7;
+export const FRONTIER_PLOT_SIZE = 6;
+export const FRONTIER_BLOCK_COLORS = Object.freeze({ stone: '#879291', wood: '#b38b60', glass: '#9fcad0', brick: '#bc8876', sand: '#d9c99a', grass: '#91b376', path: '#d3c49c', clay: '#b47f6b', slate: '#7d8894' });
+export const FRONTIER_DIRECTIONS = Object.freeze({ up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] });
+export function frontierCoordinates(id, { allowLegacy = false } = {}) {
+  const match = /^frontier:(-?\d+):(-?\d+)$/.exec(id);
+  if (!match) return null;
+  const x = Number(match[1]), y = Number(match[2]);
+  const minimum = allowLegacy ? -64 : FRONTIER_MIN_COORDINATE, maximum = allowLegacy ? 64 : FRONTIER_MAX_COORDINATE;
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < minimum || x > maximum || y < minimum || y > maximum || id !== `frontier:${x}:${y}`) return null;
+  return { x, y };
+}
+export function frontierPlotId(worldId, x, y) {
+  const sector = frontierCoordinates(worldId);
+  if (!sector || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= FRONTIER_SIZE || y < 0 || y >= FRONTIER_SIZE) return null;
+  return `plot:${sector.x}:${sector.y}:${Math.floor(x / FRONTIER_PLOT_SIZE)}:${Math.floor(y / FRONTIER_PLOT_SIZE)}`;
+}
+export function frontierGates(id) {
+  const sector = frontierCoordinates(id, { allowLegacy: true });
+  if (!sector) return [];
+  const gates = { up: [24, 1], down: [24, 46], left: [1, 24], right: [46, 24] };
+  const finite = Boolean(frontierCoordinates(id)), minimum = finite ? FRONTIER_MIN_COORDINATE : -64, maximum = finite ? FRONTIER_MAX_COORDINATE : 64;
+  return Object.entries(FRONTIER_DIRECTIONS).filter(([, [dx, dy]]) => sector.x + dx >= minimum && sector.x + dx <= maximum && sector.y + dy >= minimum && sector.y + dy <= maximum).map(([direction, [dx, dy]]) => ({ direction, x: gates[direction][0], y: gates[direction][1], targetWorldId: `frontier:${sector.x + dx}:${sector.y + dy}`, name: `${direction[0].toUpperCase() + direction.slice(1)} frontier passage` }));
+}
+
+function makeFrontier(id) {
+  const sector = frontierCoordinates(id, { allowLegacy: true });
+  if (!sector) throw new RangeError(`Unknown world: ${id}`);
+  const columns = FRONTIER_SIZE, rows = FRONTIER_SIZE, grid = makeGrid(columns, rows), objects = [];
+  const seed = Math.imul(sector.x + 71, 853) ^ Math.imul(sector.y + 97, 1543);
+  const biome = ['Meadow', 'Woodland', 'Dryland', 'Highland'][(seed >>> 0) % 4];
+  for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
+    const n = cellNoise(x + sector.x * columns, y + sector.y * rows, seed);
+    if (n < 65) { grid[y][x] = 'tree'; objects.push({ type: biome === 'Dryland' ? 'cactus' : biome === 'Highland' ? 'mountain' : 'tree', x, y }); }
+    else if ((x - 37) ** 2 + (y - 10) ** 2 < 22 && n < 900) grid[y][x] = 'water';
+    else if (n > 930) grid[y][x] = 'garden';
+  }
+  // Wide public passages form a connected, permanent route across every sector.
+  paintGrid(grid, 23, 0, 3, rows, 'path');
+  paintGrid(grid, 0, 23, columns, 3, 'path');
+  paintGrid(grid, 22, 22, 5, 5, 'plaza');
+  for (let index = objects.length - 1; index >= 0; index--) if (grid[objects[index].y][objects[index].x] !== 'tree') objects.splice(index, 1);
+  const portals = frontierGates(id);
+  if (!frontierCoordinates(id) || sector.x === 0 && sector.y === 0) portals.push(portal(24, 27, 'Return to the Commons', 'commons'));
+  return { id, name: `${biome} Frontier (${sector.x}, ${sector.y})`, kind: 'frontier', legacy: !frontierCoordinates(id), columns, rows, start: { x: 24, y: 24 }, terrain: grid, objects, portals,
+    groundColor: biome === 'Dryland' ? '#c8bd8e' : biome === 'Highland' ? '#bdcebd' : biome === 'Woodland' ? '#86a17d' : '#a4ba8c',
+    description: 'Part of a finite virtual landscape. Steward a plot for a named purpose, follow the public passages, and open existing neighboring areas.', ambiance: `${biome} terrain and a shared horizon.`,
+    landmarks: [{ x: 24, y: 24, name: 'Frontier Crossroads', description: 'Public routes stay clear while inhabitants build and expand the surrounding world.', symbol: '✦', color: '#d9c696' }] };
+}
+
+import { REGIONS } from './src/civic.js';
+
+export const sharedWorldIds = Object.freeze(['commons', 'hall', 'pavilion', 'gallery', 'meditation', 'library', 'workshop', 'observatory', 'orchard', 'harbor', ...REGIONS.map(region => `district:${region.id}`)]);
+export const regionFacts = Object.freeze({
+  library: { name: 'The Lantern Library', columns: 28, rows: 20, kind: 'interior', door: { x: 62, y: 7 }, description: 'A warm library of reading alcoves, shared tables, and a quiet courtyard of ideas.', lore: 'Beside the river, inhabitants built a library around a simple promise: every useful idea should have a place to rest and be found again.', ambiance: 'Warm wood, amber lamps, and quiet reading nooks.' },
+  workshop: { name: 'The Makers’ Workshop', columns: 28, rows: 20, kind: 'interior', door: { x: 35, y: 24 }, description: 'An open studio for sketching, sharing experiments, and working together around large tables.', lore: 'The theatre’s old scenery shed became a workshop. Its doors stay open for patient makers, unfinished ideas, and people willing to learn together.', ambiance: 'Terracotta tiles, work tables, and green trellises.' },
+  observatory: { name: 'The Quiet Observatory', columns: 32, rows: 24, kind: 'interior', door: { x: 84, y: 53 }, description: 'A blue sky atrium with a telescope, viewing benches, and small reflection corners.', lore: 'On the eastern ridge, the world’s first inhabitants chose to build an observatory before a tower. They wanted a place to look outward and wonder.', ambiance: 'Indigo stone, a star mural, and a sky viewing platform.' },
+  orchard: { name: 'Sunmeadow Orchard', columns: 40, rows: 28, kind: 'outdoors', door: { x: 30, y: 9 }, description: 'Winding paths through fruit trees, a gathering terrace, and a gardener’s open shelter.', lore: 'The orchard began as a handful of cuttings shared between neighbours. Its paths are kept wide so every visitor can find a seat beneath the branches.', ambiance: 'Soft green shade, flowers, warm paths, and a communal picnic terrace.' },
+  harbor: { name: 'Stillwater Harbor', columns: 40, rows: 28, kind: 'outdoors', door: { x: 46, y: 36 }, description: 'A sheltered island joined by a long bridge, with waterside seats and a peaceful harbor pavilion.', lore: 'At a bend in the river, a small crossing grew into a harbor. The boats are reminders that a world is made richer by visitors arriving with their own stories.', ambiance: 'Blue water, weathered boardwalks, and a quiet island garden.' },
+});
+
+function makeRegion(id) {
+  const facts = regionFacts[id];
+  const { columns, rows, kind } = facts;
+  const grid = makeGrid(columns, rows, kind === 'interior' ? 'floor' : 'meadow');
+  const objects = [];
+  let arrival;
+  const places = [];
+  const addPlace = (x, y, name, description, symbol = '✧') => places.push({ x, y, name, description, symbol, color: '#bda79a' });
+  if (kind === 'interior') {
+    paintGrid(grid, 0, 0, columns, 1, 'wall'); paintGrid(grid, 0, rows - 1, columns, 1, 'wall');
+    paintGrid(grid, 0, 0, 1, rows, 'wall'); paintGrid(grid, columns - 1, 0, 1, rows, 'wall');
+    paintGrid(grid, 3, 3, columns - 6, rows - 7, 'rug');
+    arrival = { x: Math.floor(columns / 2), y: rows - 3 };
+    if (id === 'library') {
+      for (const y of [3, 8]) for (const left of [3, 19]) for (let x = left; x < left + 6; x += 2) {
+        grid[y][x] = 'building'; objects.push({ type: 'bookshelf', x, y });
+      }
+      for (const x of [6, 14, 22]) {
+        objects.push({ type: 'table', x, y: 12 }, { type: 'bench', x: x - 1, y: 13 }, { type: 'bench', x: x + 1, y: 13 }, { type: 'lantern', x, y: 11 });
+      }
+      objects.push({ type: 'sculpture', x: 14, y: 5 }, { type: 'cushion', x: 3, y: 15 }, { type: 'cushion', x: 24, y: 15 });
+      addPlace(14, 6, 'Shared Reading Room', 'Take a seat, read slowly, and share a useful question.', '▤');
+      addPlace(4, 15, 'Quiet Reading Nook', 'A quiet corner beside the bookshelves.', '✧');
+    } else if (id === 'workshop') {
+      for (const x of [5, 13, 21]) for (const y of [5, 11]) objects.push({ type: 'workbench', x, y }, { type: 'bench', x, y: y + 1 });
+      for (const x of [3, 24]) objects.push({ type: 'trellis', x, y: 3 }, { type: 'flowers', x, y: 15 });
+      objects.push({ type: 'display', x: 13, y: 2 }, { type: 'sculpture', x: 23, y: 14 });
+      addPlace(13, 7, 'Ideas Table', 'Share a sketch, compare approaches, or work on a mission together.', '◆');
+      addPlace(5, 14, 'Makers’ Nook', 'A seat for reflecting on what you are building.', '✿');
+    } else {
+      paintGrid(grid, 11, 4, 10, 8, 'plaza');
+      objects.push({ type: 'telescope', x: 16, y: 7 }, { type: 'sculpture', x: 16, y: 3 });
+      for (const x of [7, 24]) for (const y of [9, 14]) objects.push({ type: 'bench', x, y }, { type: 'lantern', x: x + 1, y: y - 1 });
+      for (const x of [6, 25]) objects.push({ type: 'cushion', x, y: 18 });
+      addPlace(16, 9, 'Sky Viewing Platform', 'Look outward, pause, and let a new question take shape.', '☆');
+      addPlace(6, 18, 'Reflection Corner', 'A quiet place to sit or meditate beneath the star mural.', '☮');
+    }
+    for (const x of [2, columns - 3]) for (const y of [2, rows - 4]) objects.push({ type: 'lantern', x, y });
+  } else if (id === 'orchard') {
+    arrival = { x: 20, y: 24 };
+    for (let y = 2; y <= 19; y += 3) for (let x = 3; x <= 35; x += 4) {
+      if (x >= 14 && x <= 26 && y >= 7 && y <= 15) continue;
+      grid[y][x] = 'tree'; objects.push({ type: 'fruit', x, y });
+    }
+    road(grid, arrival, { x: 20, y: 4 }); road(grid, { x: 3, y: 12 }, { x: 36, y: 12 });
+    road(grid, { x: 5, y: 22 }, { x: 34, y: 22 });
+    paintGrid(grid, 14, 8, 13, 8, 'plaza');
+    for (const x of [16, 24]) objects.push({ type: 'table', x, y: 11 }, { type: 'bench', x, y: 12 }, { type: 'trellis', x, y: 8 });
+    objects.push({ type: 'shelter', x: 31, y: 20 }, { type: 'fountain', x: 20, y: 9 });
+    for (const x of [12, 28]) for (const y of [9, 15]) objects.push({ type: 'flowers', x, y });
+    addPlace(20, 14, 'Orchard Gathering Terrace', 'A communal picnic terrace beneath the fruit trees.', '✿');
+    addPlace(31, 22, 'Gardeners’ Shelter', 'An open shelter for resting, conversations, and practical growing ideas.', '⌂');
+  } else {
+    // The approach and island are connected by a genuine walkable boardwalk.
+    for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) grid[y][x] = 'water';
+    paintGrid(grid, 0, 9, 8, 13, 'meadow'); paintGrid(grid, 18, 4, 19, 20, 'meadow');
+    paintGrid(grid, 5, 15, 18, 2, 'bridge'); paintGrid(grid, 24, 8, 9, 11, 'plaza');
+    arrival = { x: 3, y: 16 };
+    objects.push({ type: 'shelter', x: 28, y: 9 }, { type: 'boat', x: 17, y: 19 }, { type: 'boat', x: 37, y: 12 });
+    for (const [x, y] of [[20, 6], [33, 6], [20, 21], [34, 21]]) { grid[y][x] = 'tree'; objects.push({ type: 'lantern', x: x + 1, y }); }
+    for (const y of [13, 17]) objects.push({ type: 'bench', x: 26, y }, { type: 'flowers', x: 32, y });
+    objects.push({ type: 'sculpture', x: 29, y: 20 });
+    addPlace(28, 15, 'Harbor Pavilion', 'Sit beside the sheltered water and welcome arriving travellers.', '⌂');
+    addPlace(10, 16, 'The Long Crossing', 'A wooden bridge linking the riverbank to a small, quiet island.', '✧');
+  }
+  return { id, ...facts, start: arrival, terrain: grid, objects, landmarks: places, portals: [portal(arrival.x, arrival.y, 'Return to the Commons', 'commons')] };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Purposeful public places inside the existing world registry.
+//
+// Five authored venues. Each is a place a resident walks into from the Commons: one doorway on the
+// shared map, a court behind it, a stated purpose and scenery of its own. They are **data** — one
+// plan per place, expanded by one builder — so a layout can be reviewed without reading code.
+//
+// A venue is a fictional NemoWorld place and is not a real-world institution, a government body or a
+// service. It registers **no land**: no frontier sector, no parcel, no block and no stewardship, so
+// the fixed 16 x 16 area inventory, the plot registry and the assignment records are untouched
+// (tests/world-places.test.js hashes the whole land registry before and after every venue is resolved
+// and entered). Every scenery type a venue places is an existing sealed definition from
+// `content/furniture/*.json` (all `LicenseRef-NemoWorld-Project-Authored`, notice
+// `content/THIRD_PARTY.md`): this adds no asset and reuses none from a third party.
+// ---------------------------------------------------------------------------------------------
+export const VENUE_COLUMNS = 30;
+export const VENUE_ROWS = 22;
+const deepFrozen = (value) => Object.freeze(Array.isArray(value) ? value.map(deepFrozen)
+  : value && typeof value === 'object' ? Object.freeze(Object.fromEntries(Object.entries(value).map(([key, item]) => [key, deepFrozen(item)]))) : value);
+
+/**
+ * One plan per place, in code order. `door` is the doorway tile on the Commons map; `entrance` is the
+ * column the venue's wall opens on, so the arrival is the tile just inside that opening. `paint` is
+ * applied after the wall ring, in order, as `[x, y, width, height, terrain]`; `objects` is
+ * `[sealed type, x, y]`; `places` is `[x, y, name, description, symbol]`.
+ */
+export const PUBLIC_VENUE_PLANS = deepFrozen([
+  {
+    id: 'venue:workshop-annexe', name: 'The Workshop Annexe', symbol: '◆', color: '#cbb49a', groundColor: '#c9a085',
+    purpose: 'A second making floor: a row of workbenches for finishing work, away from the busy Makers’ Workshop.',
+    description: 'A working annexe to the Makers’ Workshop: six workbenches, a long table and a south hall for finishing work. A fictional NemoWorld place.',
+    lore: 'The Workshop filled up first with experiments and then with people, so a plain annexe was built behind it for the quiet, last part of the work.', ambiance: 'Terracotta floor, sawdust, warm tiles and the smell of cut timber.',
+    door: { x: 44, y: 6 }, entrance: 9, base: 'floor', walls: true,
+    paint: [[2, 3, 26, 3, 'plaza'], [2, 6, 26, 2, 'path'], [2, 8, 26, 6, 'rug'], [2, 14, 26, 2, 'plaza'], [2, 16, 26, 1, 'path'], [2, 17, 26, 4, 'rug'], [9, 16, 1, 5, 'path']],
+    objects: [['workbench', 4, 3], ['workbench', 8, 3], ['workbench', 12, 3], ['workbench', 16, 3], ['workbench', 20, 3], ['workbench', 24, 3],
+      ['bench', 6, 4], ['bench', 14, 4], ['bench', 22, 4], ['table', 12, 10], ['table', 17, 10], ['bench', 12, 12], ['bench', 17, 12],
+      ['trellis', 5, 18], ['trellis', 24, 18], ['display', 15, 18], ['bench', 11, 17], ['bench', 19, 17], ['flowers', 7, 19], ['flowers', 22, 19],
+      ['lantern', 2, 3], ['lantern', 27, 3], ['lantern', 2, 18], ['lantern', 27, 18]],
+    places: [[15, 4, 'The Making Floor', 'Six workbenches under the north bays: every bench is a crafting station.', '◆'],
+      [15, 11, 'The Long Table', 'A shared table for comparing approaches, sketches and unfinished work.', '✧'],
+      [9, 19, 'The Annexe Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+  {
+    id: 'venue:amphitheatre', name: 'The Round Amphitheatre', symbol: '▤', color: '#d3bda0', groundColor: '#bdb894',
+    purpose: 'An open bowl of terraced seating for public meetings, readings and announcements.',
+    description: 'A paved stage inside a grass bowl, ringed by two courses of benches and open to the sky. A fictional NemoWorld place.',
+    lore: 'A wide, shallow hollow was left unpaved on purpose: a world that argues in the open needs somewhere for everyone to stand at once.', ambiance: 'Warm stone underfoot, grass on the terraces, and voices that carry.',
+    door: { x: 42, y: 20 }, entrance: 15, base: 'meadow', walls: false,
+    paint: [[9, 5, 13, 13, 'garden'], [11, 7, 9, 9, 'plaza'], [13, 9, 5, 5, 'rug'], [9, 18, 13, 1, 'path'], [15, 16, 1, 6, 'plaza'], [15, 2, 1, 4, 'plaza']],
+    objects: [['bench', 11, 8], ['bench', 11, 10], ['bench', 11, 12], ['bench', 11, 14], ['bench', 19, 8], ['bench', 19, 10], ['bench', 19, 12], ['bench', 19, 14], ['bench', 13, 15], ['bench', 17, 15],
+      ['bench', 9, 6], ['bench', 9, 9], ['bench', 9, 12], ['bench', 9, 15], ['bench', 21, 6], ['bench', 21, 9], ['bench', 21, 12], ['bench', 21, 15], ['bench', 12, 17], ['bench', 18, 17],
+      ['lantern', 11, 7], ['lantern', 19, 7], ['lantern', 11, 15], ['lantern', 19, 15], ['sculpture', 12, 7], ['sculpture', 18, 7],
+      ['flowers', 10, 6], ['flowers', 20, 6], ['flowers', 10, 16], ['flowers', 20, 16], ['shelter', 18, 4]],
+    places: [[15, 11, 'The Stage', 'The paved centre of the bowl: stand here to address the whole ring.', '▤'],
+      [15, 6, 'The Standing Rim', 'The grass terrace above the paved ring, where the whole bowl is visible.', '✿'],
+      [15, 19, 'The South Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+  {
+    id: 'venue:archive', name: 'The Record Archive', symbol: '▥', color: '#c3b19a', groundColor: '#b9a98d',
+    purpose: 'Shelf rows, two reading desks and a display case of reference cards.',
+    description: 'A quiet, rug-floored hall of three shelf rows with two reading desks and a display case. A fictional NemoWorld place.',
+    lore: 'Every note a resident writes down is worth one shelf row somewhere, and this is that row — kept plain, quiet and open to anyone who wants to read.', ambiance: 'Deep shelves, lamps at the corners, and a floor that deadens footsteps.',
+    door: { x: 36, y: 50 }, entrance: 21, base: 'floor', walls: true,
+    paint: [[2, 3, 26, 11, 'rug'], [2, 14, 26, 2, 'path'], [2, 16, 26, 5, 'rug'], [21, 3, 1, 18, 'path']],
+    objects: [['bookshelf', 4, 4], ['bookshelf', 6, 4], ['bookshelf', 8, 4], ['bookshelf', 10, 4], ['bookshelf', 12, 4], ['bookshelf', 14, 4],
+      ['bookshelf', 16, 4], ['bookshelf', 18, 4], ['bookshelf', 20, 4], ['bookshelf', 22, 4], ['bookshelf', 24, 4], ['bookshelf', 26, 4],
+      ['bookshelf', 4, 7], ['bookshelf', 6, 7], ['bookshelf', 8, 7], ['bookshelf', 10, 7], ['bookshelf', 12, 7], ['bookshelf', 14, 7],
+      ['bookshelf', 16, 7], ['bookshelf', 18, 7], ['bookshelf', 20, 7], ['bookshelf', 22, 7], ['bookshelf', 24, 7], ['bookshelf', 26, 7],
+      ['bookshelf', 4, 10], ['bookshelf', 6, 10], ['bookshelf', 8, 10], ['bookshelf', 10, 10], ['bookshelf', 12, 10], ['bookshelf', 14, 10],
+      ['bookshelf', 16, 10], ['bookshelf', 18, 10], ['bookshelf', 20, 10], ['bookshelf', 22, 10], ['bookshelf', 24, 10], ['bookshelf', 26, 10],
+      ['table', 11, 14], ['table', 15, 14], ['bench', 10, 15], ['bench', 12, 15], ['bench', 14, 15], ['bench', 16, 15],
+      ['display', 5, 18], ['display', 25, 18], ['cushion', 7, 19], ['cushion', 9, 19], ['cushion', 25, 19],
+      ['lantern', 3, 3], ['lantern', 26, 3], ['lantern', 3, 19], ['lantern', 26, 19]],
+    places: [[13, 5, 'The Shelf Rows', 'Three aisles of reference shelves, read in place.', '▥'],
+      [11, 19, 'The Reading Desks', 'Two desks beside the stacks for reading a card in place.', '✧'],
+      [21, 19, 'The Archive Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+  {
+    id: 'venue:observatory-annexe', name: 'The Observatory Annexe', symbol: '☆', color: '#b3bccc', groundColor: '#9aa6bb',
+    purpose: 'Two telescopes and a chart table under the observatory ridge.',
+    description: 'An instrument deck with two telescopes above a rug-floored chart room, reached from the ridge above the Commons. A fictional NemoWorld place.',
+    lore: 'The observatory ran out of room for the patient, unglamorous half of the work — measuring, writing and comparing — so a plain annexe was cut into the ridge below it.', ambiance: 'Indigo stone, cold lamplight, and two long lenses pointed outward.',
+    door: { x: 86, y: 36 }, entrance: 6, base: 'floor', walls: true,
+    paint: [[3, 3, 24, 7, 'plaza'], [3, 10, 24, 8, 'rug'], [3, 18, 24, 3, 'plaza'], [6, 10, 1, 11, 'path']],
+    objects: [['telescope', 13, 4], ['telescope', 18, 4], ['display', 8, 4], ['display', 23, 4], ['sculpture', 4, 10],
+      ['table', 12, 12], ['table', 19, 12], ['bench', 11, 13], ['bench', 13, 13], ['bench', 18, 13], ['bench', 20, 13],
+      ['cushion', 4, 16], ['cushion', 25, 16], ['flowers', 16, 16], ['flowers', 17, 16],
+      ['lantern', 3, 3], ['lantern', 26, 3], ['lantern', 3, 19], ['lantern', 26, 19]],
+    places: [[15, 4, 'The Instrument Deck', 'Two telescopes on the open deck: look outward and record what changes.', '☆'],
+      [15, 12, 'The Chart Table', 'Where a reading is written down before it is forgotten.', '✧'],
+      [6, 19, 'The Annexe Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+  {
+    id: 'venue:seed-bank', name: 'The Seed Bank', symbol: '✿', color: '#c8d3a2', groundColor: '#a7b98c',
+    purpose: 'Rows of labelled seed beds and a sorting bench.',
+    description: 'Four rows of low seed beds either side of a central aisle, with a sorting bench and two seed cabinets. A fictional NemoWorld place.',
+    lore: 'Gardeners kept losing which variety had worked, so the beds were gathered into one hall and labelled in the open where anyone can read them.', ambiance: 'Green rows, cold frames, and the smell of dry seed.',
+    door: { x: 66, y: 20 }, entrance: 14, base: 'floor', walls: true,
+    paint: [[3, 3, 24, 14, 'rug'], [3, 3, 24, 1, 'garden'], [3, 17, 24, 4, 'plaza'], [14, 3, 2, 18, 'path']],
+    objects: [['farm', 6, 5], ['farm', 9, 5], ['farm', 12, 5], ['farm', 18, 5], ['farm', 21, 5], ['farm', 24, 5],
+      ['farm', 6, 7], ['farm', 9, 7], ['farm', 12, 7], ['farm', 18, 7], ['farm', 21, 7], ['farm', 24, 7],
+      ['farm', 6, 9], ['farm', 9, 9], ['farm', 12, 9], ['farm', 18, 9], ['farm', 21, 9], ['farm', 24, 9],
+      ['farm', 6, 11], ['farm', 9, 11], ['farm', 12, 11], ['farm', 18, 11], ['farm', 21, 11], ['farm', 24, 11],
+      ['display', 4, 15], ['display', 25, 15], ['trellis', 3, 13], ['trellis', 26, 13], ['table', 20, 18], ['bench', 19, 18], ['bench', 21, 18],
+      ['flowers', 5, 16], ['flowers', 24, 16], ['lantern', 3, 4], ['lantern', 26, 4], ['lantern', 3, 16], ['lantern', 26, 16]],
+    places: [[16, 8, 'The Seed Beds', 'Four rows of labelled seed beds, kept out in the open where they can be read.', '✿'],
+      [20, 19, 'The Sorting Bench', 'Where seed is counted, labelled and handed on.', '✧'],
+      [14, 19, 'The Seed Bank Door', 'The doorway back to the Commons, one step south of this tile.', '⌂']],
+  },
+]);
+const venuePlans = new Map(PUBLIC_VENUE_PLANS.map((plan) => [plan.id, plan]));
+export const publicVenueIds = Object.freeze(PUBLIC_VENUE_PLANS.map((plan) => plan.id));
+
+/** The one doorway each place keeps on the Commons map, in the shape the Commons landmark list uses. */
+const venueDoors = PUBLIC_VENUE_PLANS.map((plan) => ({ x: plan.door.x, y: plan.door.y, name: plan.name, description: plan.purpose, symbol: plan.symbol, color: plan.color }));
+
+/**
+ * One place, expanded from its plan. The wall ring is painted first and then opened at the entrance
+ * column, so the doorway is a walkable tile and not a painted-over wall; the arrival is the tile
+ * just inside it, and the way back to the Commons is the same doorway every other shared world uses.
+ */
+function makePublicVenue(id) {
+  const plan = venuePlans.get(id);
+  const columns = VENUE_COLUMNS, rows = VENUE_ROWS;
+  const grid = makeGrid(columns, rows, plan.base);
+  if (plan.walls) {
+    paintGrid(grid, 0, 0, columns, 1, 'wall'); paintGrid(grid, 0, rows - 1, columns, 1, 'wall');
+    paintGrid(grid, 0, 0, 1, rows, 'wall'); paintGrid(grid, columns - 1, 0, 1, rows, 'wall');
+    paintGrid(grid, plan.entrance, rows - 1, 1, 1, 'path');
+  }
+  for (const [x, y, width, height, type] of plan.paint) paintGrid(grid, x, y, width, height, type);
+  const arrival = { x: plan.entrance, y: rows - 2 };
+  return { id, name: plan.name, kind: 'venue', purpose: plan.purpose, columns, rows, start: arrival,
+    terrain: grid, objects: plan.objects.map(([type, x, y]) => ({ type, x, y })),
+    groundColor: plan.groundColor, description: plan.description, lore: plan.lore, ambiance: plan.ambiance,
+    landmarks: plan.places.map(([x, y, name, description, symbol]) => ({ x, y, name, description, symbol, color: plan.color })),
+    portals: [portal(arrival.x, arrival.y, 'Return to the Commons', 'commons')] };
+}
+
+function makeCommons() {
+  const columns = 96;
+  const rows = 64;
+  const grid = makeGrid(columns, rows);
+  for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
+    const n = cellNoise(x, y);
+    if (n < 145 && (x > 21 || y > 15)) grid[y][x] = 'tree';
+    else if (n > 932) grid[y][x] = 'garden';
+    const river = 48 + Math.round(Math.sin(y / 7) * 4);
+    if (Math.abs(x - river) < 2) grid[y][x] = 'water';
+    if ((x - 76) ** 2 / 80 + (y - 13) ** 2 / 28 < 1) grid[y][x] = 'water';
+  }
+  // Preserve the original welcoming town and existing saved arrival coordinates.
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) grid[y][x] = terrain[y][x];
+  const sites = [
+    ...landmarks,
+    { x: 30, y: 9, name: 'Orchard Square', description: 'Shared orchard and outdoor conversation tables.', symbol: '✿', color: '#95ac70' },
+    { x: 35, y: 24, name: 'Open Air Theatre', description: 'A terraced gathering place for world announcements and public meetings.', symbol: '▤', color: '#b69078' },
+    { x: 62, y: 7, name: 'Riverside Commons', description: 'A meeting district across the river, with benches and quiet paths.', symbol: '✧', color: '#7da5ae' },
+    { x: 80, y: 24, name: 'East Garden', description: 'A communal growing space surrounded by flowers and orchards.', symbol: '✿', color: '#9aac73' },
+    { x: 20, y: 44, name: 'Countryside Camp', description: 'An open countryside rest area for roaming agents and human visitors.', symbol: '▲', color: '#c6a371' },
+    { x: 63, y: 44, name: 'Reflection Garden', description: 'A peaceful outdoor meditation space beside the southern river.', symbol: '☮', color: '#ad96b6' },
+    { x: 84, y: 53, name: 'Home District', description: 'Visit personal gardens and homes created by the inhabitants.', symbol: '⌂', color: '#d1ac8b' },
+    // The five authored public places: each is a doorway on this map with a courtyard of its own
+    // behind it. Joining this list puts each doorway on the site loop below, which paves its square
+    // and lays a road to it from the shared arrival, and the landmark list puts its name on the map.
+    ...venueDoors,
+  ];
+  const outdoorObjects = Object.entries(regionFacts).map(([id, facts]) => ({ type: 'gateway', region: id, name: facts.name, x: facts.door.x, y: facts.door.y }));
+  outdoorObjects.push({ type: 'gateway', name: 'Shared Frontier', x: 19, y: 6 });
+  // A venue doorway is drawn as the same walk-through gateway the region rooms use.
+  outdoorObjects.push(...PUBLIC_VENUE_PLANS.map((plan) => ({ type: 'gateway', name: plan.name, x: plan.door.x, y: plan.door.y })));
+  for (const site of sites.slice(6)) {
+    paintGrid(grid, site.x - 3, site.y - 3, 7, 7, 'meadow');
+    paintGrid(grid, site.x - 2, site.y - 2, 5, 5, 'plaza');
+    road(grid, start, site);
+    outdoorObjects.push({ type: 'bench', x: site.x - 2, y: site.y - 1 }, { type: 'bench', x: site.x + 2, y: site.y - 1 }, { type: 'lamp', x: site.x - 2, y: site.y + 2 }, { type: 'flowers', x: site.x + 2, y: site.y + 2 });
+  }
+  // Additional roads make a navigable loop around both sides of the river.
+  for (const y of [6, 20, 36, 50]) road(grid, { x: 10, y }, { x: 87, y });
+  road(grid, { x: 25, y: 6 }, { x: 25, y: 55 });
+  road(grid, { x: 85, y: 6 }, { x: 85, y: 55 });
+  road(grid, { x: 19, y: 6 }, { x: 19, y: 55 });
+  for (let y = 6; y <= 12; y += 2) for (let x = 27; x <= 34; x += 2) {
+    if (grid[y][x] === 'meadow') outdoorObjects.push({ type: 'tree', x, y });
+  }
+  for (let y = 21; y <= 27; y += 2) for (let x = 76; x <= 83; x += 2) {
+    if (grid[y][x] === 'meadow') outdoorObjects.push({ type: 'farm', x, y });
+  }
+  // Theatre terraces leave the central route open.
+  for (let y = 22; y <= 26; y += 2) for (const x of [32, 38]) outdoorObjects.push({ type: 'bench', x, y });
+  // Decorative trees never leave isolated walkable islands.
+  const queue = [start];
+  const seen = new Set([`${start.x},${start.y}`]);
+  for (let i = 0; i < queue.length; i++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const x = queue[i].x + dx; const y = queue[i].y + dy; const type = grid[y]?.[x];
+    const key = `${x},${y}`;
+    if (type && !['water', 'tree', 'building', 'fountain'].includes(type) && !seen.has(key)) { seen.add(key); queue.push({ x, y }); }
+  }
+  for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
+    if (!['water', 'tree', 'building', 'fountain'].includes(grid[y][x]) && !seen.has(`${x},${y}`)) grid[y][x] = 'tree';
+  }
+  return { id: 'commons', name: 'The Commons', kind: 'outdoors', columns, rows, start, terrain: grid, landmarks: [...sites, ...Object.values(regionFacts).filter((facts) => !sites.some((site) => site.x === facts.door.x && site.y === facts.door.y)).map((facts) => ({ ...facts.door, name: facts.name, description: facts.description, color: '#abc2b9', symbol: '✧' }))], objects: outdoorObjects,
+    portals: [portal(11, 6, 'Meeting Hall', 'hall'), portal(15, 3, 'Peace Pavilion', 'pavilion'), portal(10, 10, 'Contribution Gallery', 'gallery'), portal(4, 3, 'Meditation Grove', 'meditation'), portal(19, 6, 'Shared Frontier', 'frontier:0:0'), ...Object.entries(regionFacts).map(([id, facts]) => portal(facts.door.x, facts.door.y, facts.name, id)), ...REGIONS.map((region,index) => portal(25, 15+index*2, region.name, `district:${region.id}`)), ...PUBLIC_VENUE_PLANS.map((plan) => portal(plan.door.x, plan.door.y, plan.name, plan.id))] };
+}
+
+function makeDistrict(id) {
+  const region = REGIONS.find(region => id === `district:${region.id}`);
+  const columns=48, rows=36, grid=makeGrid(columns,rows,'meadow'), objects=[];
+  const dry=['drylands','desert','savanna'].includes(region.id);
+  const snowy=['highlands','snowline'].includes(region.id);
+  const wet=['coast','islands','harbor','wetlands','lakes','riverlands'].includes(region.id);
+  for(let y=0;y<rows;y++)for(let x=0;x<columns;x++) {
+    if(wet && (x<5 || (region.id==='islands' && x>42)))grid[y][x]='water';
+    else if((x*17+y*31+region.order*7)%19===0 && x>7 && y>3) {grid[y][x]='tree';objects.push({type:snowy?'mountain':dry?'cactus':['coast','islands'].includes(region.id)?'palm':'tree',x,y});}
+  }
+  road(grid,{x:24,y:32},{x:24,y:5});road(grid,{x:8,y:18},{x:42,y:18});
+  paintGrid(grid,18,12,13,12,'plaza');
+  // Road and plaza construction clears scenery as well as collision tiles.
+  for (let index = objects.length - 1; index >= 0; index--) if (grid[objects[index].y][objects[index].x] !== 'tree') objects.splice(index, 1);
+  for(const [x,y] of [[18,13],[30,13],[18,22],[30,22]])objects.push({type:'lantern',x,y});
+  objects.push({type:region.id==='cities'?'civic-building':'shelter',x:24,y:10},{type:'bench',x:20,y:20},{type:'bench',x:28,y:20},{type:'flowers',x:22,y:14});
+  for(let x=10;x<40;x+=6)objects.push({type:region.id==='farmlands'||region.id==='gardens'?'farm':'cottage',x,y:27});
+  return {id,name:region.name,kind:'district',columns,rows,start:{x:24,y:24},terrain:grid,objects,
+    groundColor: snowy?'#dce8e8':dry?'#d8c692':region.id==='cities'?'#b8c1b6':region.id==='rainforest'?'#67987b':'#a4ba8c',
+    description:region.landscape+' · '+region.mayor.focus, ambiance:region.landscape,
+    landmarks:[{x:24,y:16,name:region.mayor.title+' · Civic square',description:region.mayor.focus,symbol:'✦',color:'#e9d4a1'}],
+    portals:[portal(24,31,'Return to the Commons','commons')]};
+}
+
+// One deterministic, generated venue per catalog entry, addressed as country:<iso3>.
+// It is an interior-like shared venue, never frontier land: no frontier sector, no land parcel
+// and no finite-perimeter registration is created for a country. Each venue holds one ambassador
+// stand on its own plaza, so two ambassadors never share a position.
+export const COUNTRY_VENUE_PLAZA = Object.freeze({ x: 12, y: 8, width: 16, height: 16 });
+export const COUNTRY_COLUMNS = 40;
+export const COUNTRY_ROWS = 28;
+
+// Eight reviewed venue shapes are assigned to eight catalog entries; every other entry keeps the
+// generic shape. The assignment is a frozen, authored lookup of iso3, so the server and the browser
+// agree by construction and two loads are identical: there is no hash, no clock and no database
+// read, and nothing silently re-shapes an entry that has not been reviewed. The eight variants are
+// **shared shapes**, not 248 unique venues: a variant is a fictional NemoWorld space inspired by a
+// documented ecological or cultural practice, never a representation of territory, a government or
+// a people.
+export const COUNTRY_VENUE_VARIANTS = Object.freeze(['generic', 'terraces', 'satoyama', 'andenes',
+  'chinampas', 'argan', 'kaya', 'fabod', 'reef']);
+export const COUNTRY_VENUE_ASSIGNMENT = Object.freeze({ NPL: 'terraces', JPN: 'satoyama', PER: 'andenes',
+  MEX: 'chinampas', MAR: 'argan', KEN: 'kaya', SWE: 'fabod', FJI: 'reef' });
+export function countryVenueVariant(iso3) { return COUNTRY_VENUE_ASSIGNMENT[iso3] ?? 'generic'; }
+
+const countryPlazaTile = (x, y) => x >= COUNTRY_VENUE_PLAZA.x && x < COUNTRY_VENUE_PLAZA.x + COUNTRY_VENUE_PLAZA.width
+  && y >= COUNTRY_VENUE_PLAZA.y && y < COUNTRY_VENUE_PLAZA.y + COUNTRY_VENUE_PLAZA.height;
+// The public approach every variant keeps: a road from the north edge down to the arrival, an
+// optional cross road, and the 16 × 16 plaza band painted last so a variant feature can never leave
+// a plaza tile unwalkable. `crossRoad: false` / `from: 24` leave one corridor, as the kaya shape wants.
+const countryApproach = (grid, { from = 2, crossRoad = true } = {}) => {
+  road(grid, { x: 20, y: from }, { x: 20, y: COUNTRY_ROWS - 1 });
+  if (crossRoad) road(grid, { x: 2, y: 24 }, { x: 37, y: 24 });
+  paintGrid(grid, COUNTRY_VENUE_PLAZA.x, COUNTRY_VENUE_PLAZA.y, COUNTRY_VENUE_PLAZA.width, COUNTRY_VENUE_PLAZA.height, 'plaza');
+};
+// Sealed scenery classes only, and never on a plaza tile or the arrival/exit approach: the band has
+// to hold one ambassador stand for any catalog position, and the arrival must stay walkable and clear.
+const countryScenery = (objects, type, x, y) => {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COUNTRY_COLUMNS || y < 0 || y >= COUNTRY_ROWS) return;
+  if (countryPlazaTile(x, y) || (x === 20 && y >= 24)) return;
+  objects.push({ type, x, y });
+};
+
+// A — terraces (Nepal-inspired). Stepped retaining edges with farm beds, a managed grove along the
+// west edge and a village water tank. The documented reference informs the stepped layout only.
+function venueTerraces() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  for (const y of [1, 4, 7]) paintGrid(grid, 2, y, 36, 1, 'path');
+  paintGrid(grid, 2, 2, 36, 2, 'farm');
+  paintGrid(grid, 2, 5, 36, 2, 'farm');
+  countryApproach(grid);
+  for (const [x, y] of [[1, 9], [2, 11], [3, 13], [1, 15], [2, 17], [3, 19], [1, 21], [2, 23], [1, 25], [3, 26]]) countryScenery(objects, 'tree', x, y);
+  countryScenery(objects, 'pond', 5, 10);
+  countryScenery(objects, 'shelter', 33, 10);
+  countryScenery(objects, 'bench', 34, 10);
+  return { terrain: grid, objects, groundColor: '#9fb39a', ambiance: 'Stepped terrace beds, a shared grove and a still water tank.',
+    landmarks: [{ x: 4, y: 13, name: 'The Shared Grove', description: 'A maintained shared grove and watering point beside the terrace bands. A fictional NemoWorld place.', symbol: '✦', color: '#c7d6b0' }] };
+}
+
+// B — satoyama (Japan-inspired). A managed mosaic of crop beds and walkable bunds with an irrigation
+// pond and a woodland edge. The reference shapes the mosaic pattern and the palette only.
+function venueSatoyama() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  for (let y = 1; y <= 7; y++) for (let x = 2; x <= 37; x++) grid[y][x] = x % 4 === 0 || y % 2 === 1 ? 'path' : 'farm';
+  paintGrid(grid, 29, 18, 1, 1, 'path');
+  paintGrid(grid, 31, 18, 1, 1, 'path');
+  countryApproach(grid);
+  for (const [x, y] of [[1, 3], [2, 6], [3, 9], [1, 12], [2, 15], [3, 18], [1, 21], [2, 23], [1, 26]]) countryScenery(objects, 'tree', x, y);
+  countryScenery(objects, 'pond', 30, 18);
+  countryScenery(objects, 'shelter', 24, 3);
+  countryScenery(objects, 'bench', 23, 3);
+  countryScenery(objects, 'lantern', 25, 3);
+  return { terrain: grid, objects, groundColor: '#a8bd93', ambiance: 'A working mosaic of crop beds, bunds and irrigation water.',
+    landmarks: [{ x: 12, y: 3, name: 'The Mosaic Fields', description: 'A bund beside the crop beds, where the mosaic fields meet. A fictional NemoWorld place.', symbol: '✿', color: '#d5e0b6' }] };
+}
+
+// C — andenes (Peru-inspired). Two stepped terrace flights, an open path ring around a water basin
+// and a tool-store shelter. Only the terrace geometry is borrowed in spirit.
+function venueAndenes() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 2, 1, 25, 1, 'path');
+  paintGrid(grid, 2, 2, 25, 2, 'farm');
+  paintGrid(grid, 2, 4, 25, 1, 'path');
+  paintGrid(grid, 2, 5, 25, 2, 'farm');
+  for (let y = 2; y <= 21; y++) {
+    grid[y][28] = 'path'; grid[y][29] = 'farm'; grid[y][30] = 'farm'; grid[y][31] = 'path';
+    grid[y][32] = 'farm'; grid[y][33] = 'farm'; grid[y][34] = 'path'; grid[y][35] = 'farm';
+    grid[y][36] = 'farm'; grid[y][37] = 'path';
+  }
+  paintGrid(grid, 28, 0, 10, 2, 'path');
+  for (const [x, y] of [[10, 15], [10, 17], [9, 16], [11, 16], [9, 15], [11, 15], [9, 17], [11, 17]]) paintGrid(grid, x, y, 1, 1, 'path');
+  countryApproach(grid);
+  countryScenery(objects, 'pond', 10, 16);
+  countryScenery(objects, 'shelter', 5, 20);
+  countryScenery(objects, 'bench', 6, 20);
+  return { terrain: grid, objects, groundColor: '#a89c81', ambiance: 'Stone-faced terrace flights and a still rainfall basin.',
+    landmarks: [{ x: 32, y: 0, name: 'The Terrace Flight', description: 'A path platform at the top of the terrace flight. A fictional NemoWorld place.', symbol: '▲', color: '#d8caa4' }] };
+}
+
+// D — chinampas (Mexico-inspired). Raised-field strips cut by water channels, crossed by bridges,
+// with a boardwalk landing and a moored boat. The reference gives the strip-and-channel rhythm only.
+function venueChinampas() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 28, 0, 12, COUNTRY_ROWS, 'farm');
+  paintGrid(grid, 30, 1, 1, 22, 'water');
+  paintGrid(grid, 35, 1, 1, 22, 'water');
+  paintGrid(grid, 28, 13, 12, 1, 'water');
+  paintGrid(grid, 32, 13, 1, 1, 'bridge');
+  paintGrid(grid, 37, 13, 1, 1, 'bridge');
+  paintGrid(grid, 28, 21, 4, 1, 'path');
+  countryApproach(grid);
+  for (const [x, y] of [[29, 4], [31, 3], [34, 6], [37, 4], [38, 8], [29, 17], [33, 17], [37, 18], [31, 10], [34, 10]]) countryScenery(objects, 'tree', x, y);
+  countryScenery(objects, 'boat', 31, 20);
+  return { terrain: grid, objects, groundColor: '#8fb0a4', ambiance: 'Low farmed strips divided by still channels and a plank landing.',
+    landmarks: [{ x: 29, y: 21, name: 'The Channel Landing', description: 'A boardwalk above the channel, not on a farmed strip. A fictional NemoWorld place.', symbol: '≈', color: '#bcd6cb' }] };
+}
+
+// E — argan (Morocco-inspired). A dry, sparse map of drought-tree masses with a cactus margin, one
+// stepped terrace and a cistern, beside a rest shelter. The reference sets the arid palette only.
+function venueArgan() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 2, 1, 36, 1, 'path');
+  paintGrid(grid, 2, 2, 36, 2, 'farm');
+  paintGrid(grid, 2, 4, 36, 1, 'path');
+  countryApproach(grid);
+  for (let y = 3; y <= 27; y += 4) for (let x = 3; x <= 39; x += 6) countryScenery(objects, 'fruit', x, y);
+  for (const x of [3, 6, 9, 30, 33, 36]) countryScenery(objects, 'cactus', x, 27);
+  countryScenery(objects, 'pond', 5, 22);
+  countryScenery(objects, 'shelter', 33, 6);
+  countryScenery(objects, 'bench', 34, 6);
+  countryScenery(objects, 'lantern', 35, 6);
+  return { terrain: grid, objects, groundColor: '#c9bb92', ambiance: 'Sparse drought trees, a stone terrace and a covered cistern.',
+    landmarks: [{ x: 33, y: 5, name: 'The Assembly Shelter', description: 'A rest place beside the terrace and cistern, not a depiction of any committee or community. A fictional NemoWorld place.', symbol: '⌂', color: '#e0d2a8' }] };
+}
+
+// F — kaya (Kenya-inspired). A deliberately plain protected grove around one cleared meeting area,
+// entered by a single south corridor. It depicts only trees, a clearing, a plain path and a shelter;
+// it names no practice, offering, shrine or site.
+function venueKaya() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 10, 6, 20, 20, 'garden');
+  countryApproach(grid, { from: 24, crossRoad: false });
+  for (let x = 9; x <= 30; x++) { countryScenery(objects, 'tree', x, 5); countryScenery(objects, 'tree', x, 26); }
+  for (let y = 5; y <= 26; y++) { countryScenery(objects, 'tree', 9, y); countryScenery(objects, 'tree', 30, y); }
+  for (const [x, y] of [[11, 9], [11, 22], [28, 9], [28, 22]]) countryScenery(objects, 'bench', x, y);
+  countryScenery(objects, 'shelter', 20, 7);
+  return { terrain: grid, objects, groundColor: '#8ba884', ambiance: 'A quiet clearing inside a dense, protected grove.',
+    landmarks: [{ x: 20, y: 6, name: 'The Meeting Clearing', description: 'An open clearing for quiet meeting, kept plain and unnamed. A fictional NemoWorld place.', symbol: '✧', color: '#c4d6b4' }] };
+}
+
+// G — fabod (Sweden-inspired). An open pasture with a wide, unobstructed through-route — the design
+// figure for a maintained shared route — plus a summer hut, a watering pond and edge planting.
+function venueFabod() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  for (let y = 2; y <= 26; y += 4) for (let x = 3; x <= 37; x += 5) for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+    const px = x + dx, py = y + dy;
+    if (!countryPlazaTile(px, py) && grid[py]?.[px] === 'meadow') grid[py][px] = 'farm';
+  }
+  paintGrid(grid, 19, 0, 2, COUNTRY_ROWS, 'path');
+  countryApproach(grid);
+  countryScenery(objects, 'shelter', 30, 8);
+  countryScenery(objects, 'bench', 31, 8);
+  countryScenery(objects, 'pond', 8, 12);
+  for (const [x, y] of [[3, 2], [36, 2], [3, 26], [36, 26]]) countryScenery(objects, 'flowers', x, y);
+  for (const [x, y] of [[4, 2], [35, 2]]) countryScenery(objects, 'trellis', x, y);
+  return { terrain: grid, objects, groundColor: '#b3c69b', ambiance: 'Open pasture crossed by a wide, unobstructed public route.',
+    landmarks: [{ x: 22, y: 4, name: 'The Summer Pasture', description: 'An open pasture tile beside the through-route. A fictional NemoWorld place.', symbol: '✿', color: '#d3e0b8' }] };
+}
+
+// H — reef (Fiji-inspired). A lagoon with a boardwalk, a bridge landing, moored boats and a plain
+// original marker post on land. The reference gives the shore, landing and boat elements only.
+function venueReef() {
+  const grid = makeGrid(COUNTRY_COLUMNS, COUNTRY_ROWS, 'meadow'), objects = [];
+  paintGrid(grid, 29, 0, 11, COUNTRY_ROWS, 'water');
+  paintGrid(grid, 24, 20, 16, 1, 'path');
+  paintGrid(grid, 28, 20, 2, 1, 'bridge');
+  countryApproach(grid);
+  for (const [x, y] of [[33, 21], [37, 21]]) countryScenery(objects, 'boat', x, y);
+  for (const [x, y] of [[28, 4], [28, 8], [28, 12], [28, 16], [28, 23], [28, 26], [25, 5], [26, 5]]) countryScenery(objects, 'palm', x, y);
+  countryScenery(objects, 'pond', 9, 14);
+  countryScenery(objects, 'sculpture', 8, 20);
+  return { terrain: grid, objects, groundColor: '#8fb3ad', ambiance: 'A shore landing above blue-green lagoon water.',
+    landmarks: [{ x: 33, y: 20, name: 'The Landing', description: 'A boardwalk landing above the waterline, marked by a plain original post. A fictional NemoWorld place.', symbol: '≈', color: '#b6d6da' }] };
+}
+
+const COUNTRY_VENUE_BUILDERS = Object.freeze({ terraces: venueTerraces, satoyama: venueSatoyama, andenes: venueAndenes,
+  chinampas: venueChinampas, argan: venueArgan, kaya: venueKaya, fabod: venueFabod, reef: venueReef });
+
+function makeCountry(id, label) {
+  const iso3 = id.slice('country:'.length);
+  const variant = countryVenueVariant(iso3);
+  const venueName = label || `Country venue ${iso3}`;
+  const description = `${venueName}: a NemoWorld research venue for one country or area. The ambassador here answers from registered country context only.`;
+  const builder = COUNTRY_VENUE_BUILDERS[variant];
+  if (builder) {
+    const shape = builder();
+    return { id, name: venueName, kind: 'country', variant, columns: COUNTRY_COLUMNS, rows: COUNTRY_ROWS,
+      start: { x: 20, y: 25 }, terrain: shape.terrain, objects: shape.objects, groundColor: shape.groundColor, ambiance: shape.ambiance,
+      description, landmarks: shape.landmarks, portals: [portal(20, 26, 'Return to the Commons', 'commons')] };
+  }
+  const seed = [...iso3].reduce((value, character) => (Math.imul(value + character.charCodeAt(0), 31) >>> 0), 7);
+  const columns = COUNTRY_COLUMNS, rows = COUNTRY_ROWS, grid = makeGrid(columns, rows, 'meadow'), objects = [];
+  // Public passages and a plaza: the venue is walkable in one connected piece, with no water.
+  road(grid, { x: 20, y: 2 }, { x: 20, y: 27 }); road(grid, { x: 2, y: 24 }, { x: 37, y: 24 });
+  paintGrid(grid, COUNTRY_VENUE_PLAZA.x, COUNTRY_VENUE_PLAZA.y, COUNTRY_VENUE_PLAZA.width, COUNTRY_VENUE_PLAZA.height, 'plaza');
+  // A small garden bed gives each venue the same cared-for shape without changing walkability.
+  paintGrid(grid, 24, 9, 3, 2, 'garden');
+  // Solid furnishings stay off the plaza: every plaza tile can hold one ambassador stand, so a
+  // lantern, bench or table inside COUNTRY_VENUE_PLAZA would be drawn around a resident.
+  for (const [x, y] of [[10, 8], [29, 8], [10, 22], [29, 22]]) objects.push({ type: 'lantern', x, y });
+  for (const [x, y] of [[12, 25], [27, 25]]) objects.push({ type: 'bench', x, y });
+  objects.push({ type: 'flowers', x: 19, y: 9 }, { type: 'table', x: 10, y: 12 });
+  for (let y = 3; y < rows; y += 4) for (let x = 3; x < columns; x += 5) {
+    if (x >= COUNTRY_VENUE_PLAZA.x - 2 && x <= COUNTRY_VENUE_PLAZA.x + COUNTRY_VENUE_PLAZA.width + 1
+      && y >= COUNTRY_VENUE_PLAZA.y - 2 && y <= COUNTRY_VENUE_PLAZA.y + COUNTRY_VENUE_PLAZA.height + 1) continue;
+    if ((x + y + seed) % 7 !== 0) continue;
+    objects.push({ type: 'tree', x, y });
+  }
+  return { id, name: venueName, kind: 'country', variant, columns, rows, start: { x: 20, y: 25 }, terrain: grid, objects,
+    groundColor: ['#a4ba8c', '#adbf94', '#9fb183', '#b2c09a'][seed % 4],
+    description,
+    ambiance: ['Warm morning light over the plaza.', 'Quiet paths and a listening hall.', 'A calm garden and an open research desk.', 'Long shadows and a still courtyard.'][seed % 4],
+    landmarks: [{ x: 20, y: 9, name: `${venueName} research desk`, description: 'Ask the country ambassador here for source-based next steps. Guidance is advisory.', symbol: '✦', color: '#e9d4a1' }],
+    portals: [portal(20, 26, 'Return to the Commons', 'commons')] };
+}
+
+function makeInterior(id) {
+  const names = { hall: 'Meeting Hall', pavilion: 'Peace Pavilion', gallery: 'Contribution Gallery', meditation: 'Meditation Sanctuary' };
+  const grid = makeGrid(COLS, ROWS, 'floor');
+  paintGrid(grid, 0, 0, COLS, 1, 'wall');
+  paintGrid(grid, 0, ROWS - 1, COLS, 1, 'wall');
+  paintGrid(grid, 0, 0, 1, ROWS, 'wall');
+  paintGrid(grid, COLS - 1, 0, 1, ROWS, 'wall');
+  paintGrid(grid, 4, 3, 12, 7, id === 'meditation' ? 'garden' : 'rug');
+  const roomObjects = [];
+  if (id === 'hall' || id === 'pavilion') {
+    for (const x of [4, 7, 12, 15]) for (const y of [4, 7]) roomObjects.push({ type: 'bench', x, y });
+    roomObjects.push({ type: 'table', x: 9, y: 4 }, { type: 'table', x: 10, y: 7 });
+  } else if (id === 'gallery') {
+    for (const x of [3, 7, 12, 16]) roomObjects.push({ type: 'display', x, y: 3 });
+    for (const x of [5, 14]) roomObjects.push({ type: 'bench', x, y: 8 });
+  } else {
+    for (const x of [5, 9, 13]) for (const y of [4, 7]) roomObjects.push({ type: 'cushion', x, y });
+    roomObjects.push({ type: 'fountain', x: 10, y: 2 }, { type: 'flowers', x: 3, y: 5 }, { type: 'flowers', x: 16, y: 5 });
+  }
+  for (const x of [2, 17]) for (const y of [2, 10]) roomObjects.push({ type: 'lamp', x, y });
+  const arrival = { x: 10, y: 11 };
+  return { id, name: names[id], kind: 'interior', columns: COLS, rows: ROWS, start: arrival, terrain: grid, objects: roomObjects,
+    landmarks: [{ x: 10, y: 5, name: names[id], description: id === 'meditation' ? 'A quiet sanctuary. Sit on a cushion, rest, or meditate.' : 'An indoor shared space for meetings, conversation, and cooperation.', color: '#a8a0c0', symbol: id === 'meditation' ? '☮' : '✧' }],
+    portals: [portal(10, 11, 'Return to the Commons', 'commons')] };
+}
+
+function makeHome(id) {
+  const columns = 32; const rows = 24;
+  const grid = makeGrid(columns, rows);
+  paintGrid(grid, 0, 0, columns, 1, 'tree');
+  paintGrid(grid, 0, rows - 1, columns, 1, 'tree');
+  paintGrid(grid, 0, 0, 1, rows, 'tree');
+  paintGrid(grid, columns - 1, 0, 1, rows, 'tree');
+  paintGrid(grid, 1, 11, 16, 3, 'path');
+  paintGrid(grid, 15, 2, 2, 21, 'path');
+  paintGrid(grid, 5, 6, 2, 6, 'path');
+  paintGrid(grid, 3, 2, 6, 4, 'building');
+  const arrival = { x: 6, y: 7 };
+  return { id, name: 'Personal Garden', kind: 'home', columns, rows, start: arrival, terrain: grid, objects: [],
+    landmarks: [{ x: 6, y: 6, name: 'Garden Cottage', description: 'Your personal home and garden. Build paths, plant crops, and create a place to welcome visitors.', symbol: '⌂', color: '#c29883' }],
+    portals: [portal(1, 12, 'Return to the Commons', 'commons'), portal(6, 6, 'Enter Garden Cottage', `house:${id.slice(5)}`)] };
+}
+
+function makeHouse(id) {
+  const base = makeInterior('hall');
+  return { ...base, id, name: 'Garden Cottage', kind: 'interior',
+    objects: [{ type: 'bed', x: 4, y: 4 }, { type: 'bookshelf', x: 4, y: 2 }, { type: 'table', x: 12, y: 5 }, { type: 'bench', x: 11, y: 6 }, { type: 'bench', x: 13, y: 6 }, { type: 'flowers', x: 15, y: 3 }, { type: 'lamp', x: 3, y: 9 }, { type: 'lamp', x: 16, y: 9 }, { type: 'kitchen', x: 15, y: 2 }],
+    landmarks: [{ x: 10, y: 5, name: 'Garden Cottage', description: 'A private home with a bed, library, kitchen, and room to welcome visitors.', color: '#c8a594', symbol: '⌂' }],
+    portals: [portal(10, 11, 'Return to your Garden', `home:${id.slice(6)}`)] };
+}
+
+// A world as its maker builds it, before the global map's seam pass. A neighbour's seam decisions read this.
+const rawDefinitions = new Map();
+function buildRaw(id, descriptor) {
+  if (id === 'commons') return makeCommons();
+  if (['hall', 'pavilion', 'gallery', 'meditation'].includes(id)) return makeInterior(id);
+  if (Object.hasOwn(regionFacts, id)) return makeRegion(id);
+  if (venuePlans.has(id)) return makePublicVenue(id);
+  if (id.startsWith('district:') && REGIONS.some(region => id === `district:${region.id}`)) return makeDistrict(id);
+  if (/^country:[A-Z]{3}$/.test(id)) return makeCountry(id, descriptor?.name);
+  if (id.startsWith('home:')) return makeHome(id);
+  if (id.startsWith('house:')) return makeHouse(id);
+  if (frontierCoordinates(id, { allowLegacy: true })) return makeFrontier(id);
+  throw new RangeError(`Unknown world: ${id}`);
+}
+function rawOf(id) {
+  let raw = rawDefinitions.get(id);
+  if (!raw) { raw = buildRaw(id); rawDefinitions.set(id, raw); }
+  return raw;
+}
+// Each world of the global map is built from its own raw definition (a fresh copy, so the seam pass can
+// edit it) and then joined to its neighbours by the same deterministic pass in the browser and the server.
+function buildWorld(id, descriptor) {
+  if (id === MAP_ID) return stitchMap(getWorldDefinition);
+  if (!onMap(id)) return buildRaw(id, descriptor);
+  const fresh = buildRaw(id, descriptor);
+  return applySeams(fresh, (other) => rawOf(other));
+}
+
+/** Pass either a stable world ID or its API descriptor. Unknown IDs are rejected. */
+export function getWorldDefinition(world = 'commons') {
+  const descriptor = typeof world === 'object' && world !== null ? world : undefined;
+  const id = typeof world === 'string' ? world : descriptor?.id || descriptor?.worldId || 'commons';
+  let definition = definitions.get(id);
+  if (!definition) {
+    definition = buildWorld(id, descriptor);
+    if (definitions.size >= 36) {
+      const oldestHome = [...definitions.keys()].find((key) => key.startsWith('home:') || key.startsWith('house:') || key.startsWith('frontier:') || key.startsWith('country:'));
+      if (oldestHome) definitions.delete(oldestHome);
+    }
+    definitions.set(id, definition);
+  }
+  return descriptor ? { ...definition, ...descriptor, terrain: descriptor.terrain || definition.terrain, landmarks: descriptor.landmarks || definition.landmarks, portals: descriptor.portals || definition.portals, objects: descriptor.objects || definition.objects } : definition;
+}
+
+export function cameraFor(position, world = 'commons') {
+  const definition = getWorldDefinition(world);
+  return { x: Math.max(0, Math.min(definition.columns - COLS, Math.floor((position?.x ?? definition.start.x) - COLS / 2))), y: Math.max(0, Math.min(definition.rows - ROWS, Math.floor((position?.y ?? definition.start.y) - ROWS / 2))) };
+}
+
+// All art is drawn locally, with pixel rectangles and no image dependencies.
+export function draw(canvas, position, visitorsOrOptions = [], legacySelf = {}) {
+  const options = Array.isArray(visitorsOrOptions) ? { visitors: visitorsOrOptions, self: legacySelf } : visitorsOrOptions || {};
+  const world = options.world ? getWorldDefinition(options.world) : { id: 'legacy', kind: 'outdoors', columns: COLS, rows: ROWS, start, terrain, landmarks, portals: [], objects: [] };
+  const visitors = options.visitors || [];
+  const self = options.self;
+  const chosenCamera = options.camera || cameraFor(position, world.id === 'legacy' ? { id: 'commons', columns: COLS, rows: ROWS } : world);
+  const camera = { x: Math.max(0, Math.min(world.columns - COLS, Math.floor(chosenCamera.x || 0))), y: Math.max(0, Math.min(world.rows - ROWS, Math.floor(chosenCamera.y || 0))) };
+  const tiles = world.terrain;
+  const theme = world.id === 'pavilion' ? { floor: '#d0c8b5', rug: '#a0b2b6', seam: '#82999e', border: '#dedcc8' } : world.id === 'gallery' ? { floor: '#d8c5aa', rug: '#b6ad90', seam: '#999174', border: '#eee1ba' } : world.id.startsWith('house:') ? { floor: '#dcc7a6', rug: '#a7b9ad', seam: '#8b9e92', border: '#e9dec3' } : { floor: '#d7c6ae', rug: '#baa4ae', seam: '#a58d99', border: '#eee0c0' };
+  const regionThemes = { library: { floor: '#d6c096', rug: '#a4b79e', seam: '#889979', border: '#ebe0b9', wall: '#8b806f' }, workshop: { floor: '#cfa98a', rug: '#c1b9a1', seam: '#a49b83', border: '#eadcc0', wall: '#977f70' }, observatory: { floor: '#9ca6b8', rug: '#7e8aa3', seam: '#66758e', border: '#bdc6ce', wall: '#5e6d83' } };
+  Object.assign(theme, regionThemes[world.id] || {});
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(canvas.width / (COLS * TILE), canvas.height / (ROWS * TILE));
+  ctx.translate(-camera.x * TILE, -camera.y * TILE);
+  const rect = (x, y, width, height, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(x), Math.round(y), Math.round(width), Math.round(height));
+  };
+  const pixelText = (text, x, y, color, size = 10) => {
+    ctx.font = `600 ${size}px ui-monospace, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  };
+  const blossom = (x, y, color) => {
+    rect(x + 2, y + 3, 2, 6, '#4b8b67');
+    rect(x, y, 6, 3, color);
+    rect(x + 2, y - 2, 2, 7, color);
+    rect(x + 2, y + 1, 2, 2, '#fff2bb');
+  };
+  const tree = (x, y, flowering = false) => {
+    rect(x - 12, y + 11, 33, 8, '#426f5433');
+    rect(x - 7, y + 15, 29, 5, '#426f5422');
+    rect(x - 4, y - 6, 8, 24, '#795744');
+    rect(x + 1, y - 5, 3, 22, '#a97b4f');
+    rect(x - 17, y - 24, 34, 20, '#2e674d');
+    rect(x - 12, y - 31, 25, 29, flowering ? '#ac7198' : '#3e825e');
+    rect(x - 6, y - 37, 15, 27, flowering ? '#cf99b7' : '#65a36e');
+    rect(x - 15, y - 21, 12, 7, flowering ? '#dea9c0' : '#5c9a6b');
+    rect(x + 6, y - 17, 7, 6, flowering ? '#d7a0c1' : '#4c9161');
+    if (flowering) {
+      rect(x - 7, y - 25, 3, 3, '#ffe3dd');
+      rect(x + 7, y - 10, 3, 3, '#ffe3dd');
+    }
+  };
+  const window = (x, y) => {
+    rect(x, y, 15, 18, '#4a5065');
+    rect(x + 2, y + 2, 11, 13, '#7aadb7');
+    rect(x + 3, y + 3, 4, 5, '#abd4d3');
+    rect(x + 9, y + 10, 3, 4, '#aedbd7');
+    rect(x + 7, y + 2, 2, 13, '#e4e0c7');
+    rect(x + 2, y + 8, 11, 2, '#e4e0c7');
+    rect(x - 2, y + 17, 19, 3, '#b48765');
+  };
+  const bench = (x, y) => {
+    rect(x, y + 9, 24, 6, '#54765333');
+    rect(x + 2, y, 3, 14, '#6e5b52');
+    rect(x + 19, y, 3, 14, '#6e5b52');
+    rect(x, y, 24, 4, '#bc916a');
+    rect(x, y + 6, 24, 4, '#d2a87a');
+  };
+  const lamp = (x, y) => {
+    rect(x - 11, y - 28, 22, 22, '#f7e4a810');
+    rect(x - 2, y - 18, 4, 28, '#576557');
+    rect(x - 6, y - 24, 12, 12, '#5b6859');
+    rect(x - 3, y - 22, 6, 7, '#f7e4a8');
+    rect(x - 5, y + 9, 10, 3, '#697566');
+  };
+
+  // Ground textures stay stable between frames so movement is easy to follow.
+  for (let y = camera.y; y < Math.min(world.rows, camera.y + ROWS); y++) {
+    for (let x = camera.x; x < Math.min(world.columns, camera.x + COLS); x++) {
+      const px = x * TILE;
+      const py = y * TILE;
+      const n = (x * 47 + y * 91 + x * y * 13) % 19;
+      const type = tiles[y][x];
+      // A tile of no world (the sea around the global map) is not drawn.
+      if (typeof type !== 'string') continue;
+      const ground = world.groundAt ? world.groundAt(x, y) || world.groundColor : world.groundColor;
+      rect(px, py, TILE, TILE, ground ? ground : world.kind === 'interior' && type === 'building' ? theme.floor : world.id === 'meditation' && type === 'garden' ? ['#9db09d', '#a3b6a1', '#a7bba5'][n % 3] : world.id === 'harbor' ? ['#90b5a0', '#98bba5', '#a0c2ac'][n % 3] : ['#8fb78b', '#98c193', '#a0c798'][n % 3]);
+      if (type === 'water') {
+        rect(px, py, TILE, TILE, n % 2 ? '#6baab1' : '#71b4bc');
+        rect(px + 5 + n % 8, py + 11, 12, 2, '#a6d0ca');
+        rect(px + 16, py + 29, 14, 2, '#4e95a2');
+        rect(px + 11, py + 14, 8, 1, '#bedbd2');
+        if (n === 6 || n === 12) {
+          rect(px + 22, py + 21, 10, 5, '#698e61');
+          rect(px + 25, py + 20, 5, 2, '#a5bd76');
+          if (n === 12) blossom(px + 25, py + 19, '#ebc3c6');
+        }
+        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          const adjacent = tiles[y + dy]?.[x + dx];
+          if (adjacent && adjacent !== 'water' && adjacent !== 'bridge') {
+            if (dx) {
+              rect(px + (dx > 0 ? 32 : 0), py, 8, TILE, '#5c97a177');
+              rect(px + (dx > 0 ? 36 : 0), py, 4, TILE, '#b2c995');
+            } else {
+              rect(px, py + (dy > 0 ? 32 : 0), TILE, 8, '#5c97a177');
+              rect(px, py + (dy > 0 ? 36 : 0), TILE, 4, '#b2c995');
+            }
+          }
+        }
+      } else if (type === 'wall') {
+        rect(px, py, TILE, TILE, theme.wall || '#727a89');
+        rect(px + 1, py + 3, TILE - 2, 17, '#9299a5');
+        rect(px + 1, py + 23, TILE - 2, 15, '#89919e');
+        rect(px + 19, py + 4, 2, 15, '#abb0b7');
+      } else if (type === 'floor' || type === 'rug') {
+        rect(px, py, TILE, TILE, type === 'rug' ? theme.rug : theme.floor);
+        if (type === 'rug') {
+          if (n % 4 === 0) { rect(px + 17, py + 17, 6, 6, theme.border + '55'); rect(px + 19, py + 15, 2, 10, theme.border + '55'); }
+          for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) if (tiles[y + dy]?.[x + dx] !== 'rug') {
+            if (dx) { rect(px + (dx > 0 ? 32 : 0), py, 8, TILE, theme.border); rect(px + (dx > 0 ? 30 : 8), py, 2, TILE, theme.seam); }
+            else { rect(px, py + (dy > 0 ? 32 : 0), TILE, 8, theme.border); rect(px, py + (dy > 0 ? 30 : 8), TILE, 2, theme.seam); }
+          }
+        } else {
+          rect(px + 1, py + 19, TILE - 2, 1, '#bda98e');
+          rect(px + 19, py + 1, 1, 18, '#bda98e');
+          if (tiles[y - 1]?.[x] === 'wall') rect(px, py, TILE, 5, '#56615a20');
+          if (tiles[y]?.[x - 1] === 'wall') rect(px, py, 5, TILE, '#56615a20');
+        }
+      } else if (type === 'path' || type === 'plaza') {
+        rect(px, py, TILE, TILE, type === 'plaza' ? world.id === 'observatory' ? '#b3beca' : '#ddceb0' : '#d3c49c');
+        rect(px + 2, py + 2, 35, 2, '#e7d9ba');
+        rect(px + 2, py + 22, 35, 1, '#c0af91');
+        rect(px + (y % 2 ? 11 : 26), py + 3, 1, 19, '#c5b594');
+        rect(px + (y % 2 ? 26 : 11), py + 23, 1, 16, '#c5b594');
+      } else if (type === 'bridge') {
+        rect(px, py, TILE, TILE, '#ad8560');
+        for (let plank = 0; plank < 5; plank++) rect(px + 2, py + plank * 8, TILE - 4, 2, '#d6b18a');
+        rect(px, py, 3, TILE, '#7c654f');
+        rect(px + 37, py, 3, TILE, '#7c654f');
+      } else if (type !== 'building') {
+        rect(px + 5 + n % 10, py + 9, 2, 4, '#729d76');
+        rect(px + 26, py + 28, 2, 4, '#7da67c');
+        rect(px + 28, py + 26, 2, 3, '#7da67c');
+        if (n === 8 && type === 'meadow' && !world.id.startsWith('home:')) {
+          rect(px + 13, py + 21, 9, 4, '#879983'); rect(px + 15, py + 19, 5, 2, '#c0c5a6');
+        }
+        if (n === 2 || n === 15 || (type === 'garden' && world.id !== 'meditation')) blossom(px + 11, py + 24, type === 'garden' ? '#e1b5a6' : '#f6e6b0');
+        if (type === 'garden' && world.id !== 'meditation') blossom(px + 27, py + 11, '#f2d69b');
+        if (type === 'garden' && world.id === 'meditation') {
+          if (n === 6 || n === 10) { rect(px + 14, py + 24, 11, 5, '#8b9988'); rect(px + 16, py + 21, 7, 4, '#c6cbb0'); }
+          for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) if (tiles[y + dy]?.[x + dx] !== 'garden') {
+            if (dx) rect(px + (dx > 0 ? 36 : 0), py, 4, TILE, '#c4c8ab');
+            else rect(px, py + (dy > 0 ? 36 : 0), TILE, 4, '#c4c8ab');
+          }
+        }
+      }
+    }
+  }
+
+  if (world.id === 'commons' || world.id === 'legacy') {
+  // Peace pavilion: open columns, purple roof, and a calm meeting terrace.
+  rect(557, 107, 132, 19, '#556c6330');
+  rect(566, 72, 108, 47, '#e8dfc6');
+  rect(562, 112, 117, 9, '#a6a29c');
+  rect(557, 120, 126, 7, '#c5c4b4');
+  for (const x of [568, 596, 638, 663]) {
+    rect(x, 75, 8, 37, '#cac3b8');
+    rect(x + 1, 75, 3, 35, '#f4ead5');
+  }
+  rect(550, 65, 140, 11, '#65678c');
+  rect(557, 55, 126, 12, '#8382ad');
+  rect(568, 46, 104, 11, '#9994bc');
+  rect(586, 37, 68, 11, '#b0a7cd');
+  rect(612, 31, 16, 8, '#c2b5d7');
+  pixelText('☮', 620, 59, '#f5e6cb', 16);
+
+  // Contribution gallery and help cottage both have visible doors to the path.
+  rect(359, 382, 125, 18, '#4a685e33');
+  rect(365, 338, 110, 54, '#e8d4ae');
+  rect(365, 378, 110, 13, '#bd9b78');
+  rect(356, 330, 128, 12, '#507b84');
+  rect(365, 318, 110, 13, '#67929a');
+  rect(379, 308, 82, 11, '#84aeb3');
+  rect(391, 302, 58, 8, '#a3c9cb');
+  window(377, 350); window(448, 350);
+  rect(409, 356, 23, 35, '#87674f');
+  rect(413, 360, 15, 27, '#a37e58');
+  rect(424, 372, 3, 3, '#e6d197');
+  rect(399, 392, 42, 5, '#e4d6b4');
+  pixelText('☆', 420, 335, '#fff0bf', 17);
+  rect(639, 382, 85, 16, '#4a685e33');
+  rect(645, 344, 69, 49, '#e9c3ac');
+  rect(643, 382, 74, 10, '#b9967d');
+  rect(636, 337, 90, 10, '#975e70');
+  rect(644, 327, 74, 11, '#b7808f');
+  rect(654, 317, 54, 12, '#ce9bab');
+  rect(665, 309, 31, 10, '#e3b6be');
+  window(653, 354);
+  rect(684, 359, 19, 33, '#82614f');
+  rect(688, 363, 11, 25, '#b98970');
+  pixelText('?', 681, 333, '#fff0d4', 16);
+
+  // Welcome fountain, mission board, seating, and small garden details.
+  rect(362, 228, 37, 9, '#787e7633');
+  rect(361, 210, 38, 21, '#a1a4a1');
+  rect(364, 212, 32, 14, '#78b9c2');
+  rect(359, 207, 42, 5, '#c8c7b9');
+  rect(375, 192, 10, 22, '#dbd4b9');
+  rect(369, 190, 22, 5, '#f0e4c5');
+  rect(374, 185, 12, 6, '#a4d1d2');
+  rect(378, 178, 4, 7, '#d6eeee');
+  rect(440, 241, 3, 22, '#8d6b4f');
+  rect(476, 241, 3, 22, '#8d6b4f');
+  rect(436, 225, 47, 25, '#936b4c');
+  rect(439, 229, 41, 17, '#d7c7a0');
+  rect(446, 232, 8, 11, '#fff0cf');
+  rect(459, 233, 14, 2, '#a78d73');
+  rect(459, 238, 11, 2, '#a78d73');
+  rect(433, 221, 53, 5, '#54745c');
+  bench(328, 294); bench(487, 294); bench(583, 165); bench(177, 174);
+  for (const [x, y] of [[328, 198], [514, 199], [324, 303], [515, 303], [140, 118], [660, 179], [381, 437], [722, 423]]) lamp(x, y);
+  // Grove planters, a crop patch, and quiet wildflower beds.
+  for (const [x, y] of [[125, 95], [245, 95], [125, 177], [245, 177]]) {
+    rect(x, y, 17, 10, '#a38c63');
+    rect(x - 2, y, 21, 4, '#c7aa7b');
+    blossom(x + 3, y - 3, '#e4c4ad');
+    blossom(x + 10, y - 6, '#eee3a1');
+  }
+  rect(204, 338, 34, 42, '#937f58');
+  for (let row = 0; row < 4; row++) for (let col = 0; col < 3; col++) {
+    rect(208 + col * 10, 342 + row * 9, 6, 5, '#4e8756');
+    rect(210 + col * 10, 341 + row * 9, 2, 3, '#a3bc64');
+  }
+  for (const [x, y] of [[552, 440], [586, 440], [544, 461], [578, 471], [729, 279], [743, 293]]) blossom(x, y, '#d9bac6');
+  }
+  const sceneryTiles = new Set((world.objects || []).filter(object => ['tree', 'mountain', 'cactus', 'palm'].includes(object.type)).map(object => `${object.x},${object.y}`));
+  for (let y = camera.y; y < Math.min(world.rows, camera.y + ROWS + 1); y++) for (let x = camera.x; x < Math.min(world.columns, camera.x + COLS + 1); x++) {
+    if (tiles[y][x] === 'tree' && !sceneryTiles.has(`${x},${y}`)) tree((x + 0.5) * TILE, (y + 0.5) * TILE + 6, (x + y) % 4 === 0);
+  }
+  const drawObject = (object) => {
+    if (object.x < camera.x - 2 || object.x > camera.x + COLS + 2 || object.y < camera.y - 2 || object.y > camera.y + ROWS + 2) return;
+    const x = (object.x + 0.5) * TILE;
+    const y = (object.y + 0.5) * TILE;
+    switch (object.type) {
+      case 'tree': tree(x, y + 7, true); break;
+      case 'flowers':
+        rect(x - 15, y - 10, 30, 28, '#6b966c');
+        for (const [dx, dy] of [[-9, -4], [2, -8], [8, 3], [-5, 8]]) blossom(x + dx, y + dy, (dx + dy) % 2 ? '#e8c197' : '#e8b7c5');
+        break;
+      case 'bench': bench(x - 12, y); break;
+      case 'lamp': lamp(x, y + 10); break;
+      case 'lantern':
+        rect(x - 12, y - 12, 24, 24, '#f1d99419');
+        rect(x - 7, y - 7, 14, 16, '#806f59');
+        rect(x - 4, y - 4, 8, 10, '#f4e2ac');
+        rect(x - 8, y - 10, 16, 4, '#586e5d');
+        rect(x - 5, y - 14, 10, 4, '#586e5d');
+        rect(x - 9, y + 10, 18, 3, '#665d50');
+        break;
+      case 'sculpture':
+        rect(x - 13, y + 11, 28, 6, '#436b5b33');
+        rect(x - 12, y + 5, 24, 10, '#a7a998');
+        rect(x - 8, y - 1, 16, 7, '#d1d0b9');
+        rect(x - 5, y - 16, 10, 15, '#bdc8bb');
+        rect(x - 3, y - 23, 6, 8, '#e1e0c5');
+        rect(x + 1, y - 20, 7, 5, '#d2d7c2');
+        break;
+      case 'trellis':
+        rect(x - 15, y - 24, 3, 40, '#937958');
+        rect(x + 12, y - 24, 3, 40, '#937958');
+        for (const dy of [-22, -10, 2]) rect(x - 15, y + dy, 30, 3, '#bb9e75');
+        for (const dx of [-7, 4]) rect(x + dx, y - 23, 2, 35, '#bd9c71');
+        for (const [dx, dy] of [[-12, -18], [3, -9], [-7, 1], [10, -19]]) { rect(x + dx, y + dy, 7, 6, '#63926b'); blossom(x + dx + 2, y + dy, '#e4bdc6'); }
+        break;
+      case 'fruit':
+        for (const [dx, dy] of [[-7, -19], [6, -15], [-1, -29]]) { rect(x + dx, y + dy, 4, 4, '#d6a76f'); rect(x + dx + 1, y + dy - 2, 2, 2, '#c9d09a'); }
+        break;
+      case 'workbench':
+        rect(x - 23, y + 6, 5, 15, '#86674d'); rect(x + 18, y + 6, 5, 15, '#86674d');
+        rect(x - 27, y - 7, 54, 15, '#b89870'); rect(x - 24, y - 5, 48, 3, '#d1b48b');
+        rect(x - 15, y - 5, 18, 9, '#ecdfc3'); rect(x - 11, y - 2, 10, 1, '#94a7a4');
+        rect(x + 10, y - 4, 3, 11, '#7c9ca0'); rect(x + 7, y - 5, 10, 3, '#afc3bd');
+        break;
+      case 'mountain':
+        for(let band=0;band<7;band++)rect(x-7-band*5,y-50+band*9,14+band*10,10,band<2?'#f2f6ed':band<4?'#a3b5b8':'#7d999d');
+        rect(x-28,y+11,56,6,'#617e8744');break;
+      case 'cactus':
+        rect(x-4,y-29,8,47,'#688b68');rect(x-17,y-12,13,7,'#688b68');rect(x-17,y-26,7,21,'#688b68');rect(x+4,y-3,12,7,'#75966c');rect(x+10,y-17,6,20,'#75966c');rect(x-2,y-26,2,35,'#a9b984');break;
+      case 'palm':
+        rect(x-3,y-21,7,43,'#aa8c69');rect(x-25,y-29,50,9,'#5f9575');rect(x-16,y-38,34,9,'#77aa7b');rect(x-33,y-20,20,9,'#77aa7b');rect(x+14,y-20,20,9,'#5f9575');break;
+      case 'civic-building':
+        rect(x-38,y-53,76,74,'#d3d0bd');rect(x-43,y-57,86,8,'#6f8490');for(let row=0;row<3;row++)for(let col=0;col<4;col++){rect(x-30+col*17,y-44+row*17,10,12,'#7797a0');rect(x-28+col*17,y-43+row*17,4,4,'#c0d7d2');}rect(x-8,y+3,16,18,'#526a6d');break;
+      case 'telescope':
+        rect(x - 2, y - 7, 4, 24, '#5d6f82');
+        rect(x - 13, y + 16, 11, 3, '#5d6f82'); rect(x + 2, y + 16, 11, 3, '#5d6f82');
+        rect(x - 19, y - 11, 18, 12, '#70849b'); rect(x - 7, y - 18, 18, 12, '#a4b5c5');
+        rect(x + 5, y - 24, 17, 12, '#849bb0'); rect(x + 17, y - 27, 8, 16, '#d1d9da');
+        rect(x + 22, y - 23, 4, 7, '#4c687e');
+        break;
+      case 'shelter':
+        rect(x - 35, y - 6, 4, 42, '#ab906c'); rect(x + 31, y - 6, 4, 42, '#ab906c');
+        rect(x - 39, y - 13, 78, 9, '#607f75'); rect(x - 32, y - 23, 64, 11, '#86a18b');
+        rect(x - 22, y - 30, 44, 8, '#a0b79c');
+        bench(x - 12, y + 19);
+        break;
+      case 'boat':
+        rect(x - 26, y + 4, 50, 3, '#4d8d9b66');
+        rect(x - 23, y - 5, 46, 8, '#ad825a'); rect(x - 18, y - 9, 36, 5, '#d0ac7d');
+        rect(x - 13, y - 8, 26, 5, '#80644d'); rect(x - 4, y - 25, 3, 20, '#c5b494');
+        rect(x - 1, y - 23, 14, 13, '#e1d5b7');
+        break;
+      case 'gateway':
+        rect(x - 19, y - 26, 4, 43, '#b6ac90'); rect(x + 15, y - 26, 4, 43, '#b6ac90');
+        rect(x - 24, y - 32, 48, 8, object.region === 'observatory' ? '#7887a5' : object.region === 'harbor' ? '#648d96' : '#75917b');
+        rect(x - 18, y - 39, 36, 8, '#afbfa4');
+        pixelText(({library:'▤',workshop:'◆',observatory:'☆',orchard:'✿',harbor:'≈'})[object.region] || '✧', x, y - 28, '#f4e5c3', 11);
+        break;
+      case 'farm':
+        rect(x - 17, y - 17, 34, 34, '#967a53');
+        for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
+          rect(x - 13 + col * 10, y - 12 + row * 10, 6, 6, '#548858');
+          rect(x - 11 + col * 10, y - 15 + row * 10, 2, 6, '#b3c67a');
+        }
+        break;
+      case 'pond':
+        rect(x - 17, y - 12, 34, 25, '#b1ba9b');
+        rect(x - 14, y - 9, 28, 19, '#77b5bd');
+        rect(x - 7, y - 4, 11, 2, '#c6ded5');
+        rect(x + 5, y + 2, 6, 4, '#689461');
+        break;
+      case 'path':
+        rect(x - 20, y - 20, 40, 40, '#d8c59e');
+        rect(x - 17, y - 16, 34, 2, '#eee0be');
+        rect(x - 17, y + 2, 34, 1, '#c1ac87');
+        break;
+      case 'fountain':
+        rect(x - 15, y + 7, 32, 9, '#73858155');
+        rect(x - 17, y - 1, 34, 13, '#adafa6');
+        rect(x - 13, y + 1, 26, 7, '#8bc6cd');
+        rect(x - 4, y - 17, 8, 20, '#e4d8bc');
+        rect(x - 9, y - 19, 18, 4, '#efe3c8');
+        rect(x - 2, y - 27, 4, 8, '#b7dddb');
+        break;
+      case 'cottage':
+        rect(x - 22, y - 5, 44, 27, '#e4c6a3');
+        rect(x - 26, y - 10, 52, 7, '#927785');
+        rect(x - 20, y - 18, 40, 9, '#ae8f9e');
+        rect(x - 12, y - 24, 24, 7, '#ccb0b9');
+        rect(x + 4, y + 5, 11, 17, '#987457');
+        window(x - 15, y + 1);
+        break;
+      case 'bed':
+        rect(x - 18, y - 17, 36, 45, '#957457');
+        rect(x - 16, y - 15, 32, 40, '#d8bdc8');
+        rect(x - 14, y - 13, 28, 11, '#f4e5ce');
+        rect(x - 16, y + 2, 32, 23, '#a9a8c2');
+        rect(x - 16, y + 9, 32, 3, '#c7c0d4');
+        break;
+      case 'bookshelf':
+        rect(x - 24, y - 22, 48, 39, '#a68864');
+        rect(x - 21, y - 19, 42, 31, '#756249');
+        for (let row = 0; row < 2; row++) for (let col = 0; col < 7; col++) rect(x - 19 + col * 6, y - 17 + row * 15, 4, 11, ['#99b5b0', '#c8a0ac', '#d6bd89'][col % 3]);
+        rect(x - 24, y - 3, 48, 3, '#b49a78');
+        break;
+      case 'kitchen':
+        rect(x - 28, y - 18, 56, 34, '#ae987a');
+        rect(x - 30, y - 20, 60, 7, '#e1dac5');
+        rect(x - 23, y - 11, 21, 22, '#cbb99b');
+        rect(x + 2, y - 11, 21, 22, '#cbb99b');
+        rect(x - 18, y - 3, 10, 2, '#8d7b60');
+        rect(x + 6, y - 3, 10, 2, '#8d7b60');
+        rect(x + 4, y - 19, 16, 4, '#8c9ea3');
+        break;
+      case 'table':
+        rect(x - 13, y + 5, 4, 12, '#876c51');
+        rect(x + 9, y + 5, 4, 12, '#876c51');
+        rect(x - 17, y - 6, 34, 15, '#cbaa7d');
+        rect(x - 14, y - 4, 28, 2, '#e2c9a1');
+        break;
+      case 'display':
+        rect(x - 12, y - 23, 24, 33, '#998273');
+        rect(x - 9, y - 20, 18, 25, '#e8dcc3');
+        rect(x - 6, y - 15, 12, 8, '#83a8a2');
+        rect(x - 6, y - 2, 12, 2, '#b5a78c');
+        rect(x - 15, y + 10, 30, 5, '#c7b093');
+        break;
+      case 'cushion':
+        rect(x - 13, y + 10, 28, 6, '#47645633');
+        rect(x - 12, y + 4, 24, 10, '#9b849f');
+        rect(x - 9, y + 1, 18, 11, '#c3a9c5');
+        rect(x - 6, y + 4, 12, 2, '#e0c9d8');
+        rect(x - 4, y + 7, 8, 3, '#b598ba');
+        break;
+      case 'well':
+        rect(x - 17, y + 9, 34, 8, '#436b5b33');
+        rect(x - 15, y - 4, 30, 17, '#879291');
+        rect(x - 12, y - 1, 24, 11, '#52645d');
+        rect(x - 8, y - 7, 16, 4, '#a4b9ab');
+        rect(x - 2, y - 22, 4, 15, '#665d50');
+        rect(x - 9, y - 25, 18, 4, '#937958');
+        break;
+      case 'birdbath':
+        rect(x - 14, y + 10, 28, 6, '#436b5b33');
+        rect(x - 4, y - 4, 8, 16, '#879291');
+        rect(x - 12, y - 1, 24, 5, '#a4b9ab');
+        rect(x - 16, y - 8, 32, 8, '#a4b9ab');
+        rect(x - 12, y - 6, 24, 4, '#77b5bd');
+        break;
+      case 'sundial':
+        rect(x - 13, y + 10, 26, 6, '#436b5b33');
+        rect(x - 9, y - 5, 18, 17, '#879291');
+        rect(x - 6, y - 2, 12, 4, '#a4b9ab');
+        rect(x - 1, y - 16, 3, 12, '#665d50');
+        break;
+      case 'millstone':
+        rect(x - 17, y + 10, 34, 7, '#436b5b33');
+        rect(x - 15, y - 14, 30, 27, '#879291');
+        rect(x - 12, y - 11, 24, 21, '#a4b9ab');
+        rect(x - 3, y - 3, 6, 6, '#52645d');
+        rect(x - 11, y - 1, 3, 3, '#665d50');
+        break;
+    }
+  };
+  if (world.kind === 'interior' || world.id.startsWith('house:')) {
+    for (let col = 3; col < world.columns - 2; col += 5) window(col * TILE + 12, 10);
+    const title = String(world.name).slice(0, 38);
+    ctx.font = '600 11px ui-monospace, monospace';
+    const titleWidth = Math.max(174, ctx.measureText(title).width + 24);
+    rect(world.columns * TILE / 2 - titleWidth / 2 + 2, 44, titleWidth, 28, '#344e4533');
+    rect(world.columns * TILE / 2 - titleWidth / 2, 42, titleWidth, 28, '#9a8170');
+    rect(world.columns * TILE / 2 + 3 - titleWidth / 2, 45, titleWidth - 6, 22, '#e1d5bb');
+    pixelText(title, world.columns * TILE / 2, 57, '#52645d', 11);
+    for (const [col, row] of [[2, 3], [world.columns - 3, 3], [2, world.rows - 6], [world.columns - 3, world.rows - 6]]) {
+      rect(col * TILE + 10, row * TILE + 10, 18, 15, '#b28c73');
+      blossom(col * TILE + 14, row * TILE + 4, '#e8c5b2');
+      blossom(col * TILE + 20, row * TILE, '#dbb6c4');
+    }
+  }
+  if (world.id === 'observatory') {
+    rect(8 * TILE, 2 * TILE, 16 * TILE, TILE + 12, '#657590');
+    rect(8 * TILE + 5, 2 * TILE + 5, 16 * TILE - 10, TILE + 2, '#465b78');
+    for (let col = 9; col < 24; col++) { const n = cellNoise(col, 2); rect(col * TILE + n % 23, 2 * TILE + 10 + n % 28, 2 + n % 2, 2, '#d6dccc'); }
+    rect(17 * TILE, 2 * TILE + 12, 10, 10, '#ede1bc'); rect(17 * TILE + 3, 2 * TILE + 10, 7, 8, '#465b78');
+  }
+  // Homes have a permanent cottage plus the inhabitant's own garden objects.
+  if (world.id.startsWith('home:')) {
+    rect(120, 127, 239, 111, '#e7d4b2');
+    rect(120, 221, 239, 19, '#b59a79');
+    rect(107, 119, 264, 13, '#926f7e');
+    rect(121, 103, 237, 18, '#b28b9b');
+    rect(141, 88, 196, 16, '#c29eac');
+    rect(164, 76, 150, 13, '#d5b4be');
+    for (const x of [147, 207, 317]) window(x, 166);
+    rect(244, 174, 39, 66, '#85694f');
+    rect(250, 181, 27, 51, '#ae865f');
+    rect(271, 211, 4, 4, '#ecd2a4');
+    rect(237, 240, 53, 7, '#e2cfad');
+    rect(241, 247, 45, 3, '#baa488');
+    rect(296, 100, 13, 25, '#b08b80');
+    rect(293, 96, 19, 6, '#dbc2aa');
+    for (const x of [142, 205, 315]) {
+      rect(x - 2, 187, 26, 9, '#997554');
+      rect(x - 4, 186, 30, 4, '#c89d70');
+      blossom(x + 3, 181, '#e4b5bf'); blossom(x + 12, 182, '#f0d6a7');
+    }
+  }
+  for (const object of world.objects || []) drawObject(object);
+  for (const object of options.objects || []) drawObject(object);
+  const blockColumns = new Map();
+  for (const block of (options.blocks || []).slice(0, 2048)) {
+    if (!Number.isInteger(block.x) || !Number.isInteger(block.y) || !Number.isInteger(block.z) || !Object.hasOwn(FRONTIER_BLOCK_COLORS, block.type) || block.x < camera.x || block.x >= camera.x + COLS || block.y < camera.y || block.y >= camera.y + ROWS) continue;
+    const key = `${block.x},${block.y}`, current = blockColumns.get(key);
+    if (!current || block.z > current.z) blockColumns.set(key, block);
+  }
+  for (const block of blockColumns.values()) {
+    const x = block.x * TILE, y = block.y * TILE;
+    rect(x + 2, y + 4, 36, 34, block.type === 'path' ? '#bfae8d' : '#3f514b');
+    rect(x + 4, y + 2, 32, 31, FRONTIER_BLOCK_COLORS[block.type]);
+    rect(x + 5, y + 3, 30, 3, '#f0ead777');
+    if (block.type !== 'path') pixelText(`${block.z + 1}`, x + 20, y + 20, '#263e36', 12);
+  }
+  for (const gate of options.portals || world.portals || []) {
+    if (gate.x < camera.x || gate.x >= camera.x + COLS || gate.y < camera.y || gate.y >= camera.y + ROWS) continue;
+    const x = (gate.x + 0.5) * TILE;
+    const y = (gate.y + 0.5) * TILE;
+    rect(x - 14, y - 12, 28, 25, '#d4c9ec66');
+    rect(x - 14, y + 12, 28, 3, '#a396ca');
+    rect(x - 14, y - 12, 3, 25, '#c6bde6');
+    rect(x + 11, y - 12, 3, 25, '#c6bde6');
+    pixelText('↟', x, y, '#64577c', 19);
+    if (world.id !== 'commons' && world.id !== 'legacy' && !(world.landmarks || []).some((place) => place.x === gate.x && place.y === gate.y)) {
+      const text = gate.name || 'Portal';
+      ctx.font = '600 9px ui-monospace, monospace';
+      const width = ctx.measureText(text).width + 12;
+      const labelX = Math.max(camera.x * TILE + width / 2 + 4, Math.min((camera.x + COLS) * TILE - width / 2 - 4, x));
+      rect(labelX - width / 2, y + 20, width, 16, '#eee3cded');
+      pixelText(text, labelX, y + 28, '#374f50', 9);
+    }
+  }
+
+  // Corner boundaries frame the world without adding invisible collision.
+  rect(0, 0, world.columns * TILE, 3, '#648369');
+  rect(0, world.rows * TILE - 3, world.columns * TILE, 3, '#648369');
+
+  const phase = options.dayPhase || options.atmosphere?.phase || 'day';
+  const tint = { dawn: '#e8c59916', dusk: '#a88dbe20', night: '#30466538' }[phase];
+  if (tint) rect(camera.x * TILE, camera.y * TILE, COLS * TILE, ROWS * TILE, tint);
+  const visible = visitors.filter((avatar) => avatar.x >= camera.x - 1 && avatar.x < camera.x + COLS + 1 && avatar.y >= camera.y - 1 && avatar.y < camera.y + ROWS + 1);
+  const crowd = new Map();
+  const avatars = [];
+  for (const avatar of visible) {
+    const key = `${avatar.x},${avatar.y}`;
+    const count = crowd.get(key) || 0;
+    crowd.set(key, count + 1);
+    if (count < 3) avatars.push(avatar);
+  }
+  if ((self?.id || self?.name) && position) avatars.push({ ...self, x: position.x, y: position.y, isSelf: true });
+  avatars.sort((a, b) => a.y - b.y || a.x - b.x);
+  const characterLabel = (avatar) => `${String(avatar.name || 'Agent').slice(0, 18)}${avatar.title && avatar.title !== 'Resident' ? ` · ${String(avatar.title).slice(0, 12)}` : ''}`;
+  const labelBoxes = [];
+  const avatarBoxes = avatars.flatMap((avatar) => {
+    const x = (avatar.x + 0.5) * TILE; const y = (avatar.y + 0.5) * TILE;
+    ctx.font = '600 9px ui-monospace, monospace';
+    const width = ctx.measureText(characterLabel(avatar)).width + 12;
+    return [{ x: x - width / 2, y: y - 49, width, height: 19 }, { x: x - 15, y: y - 29, width: 30, height: 46 }];
+  });
+  const overlaps = (a, b) => a.x < b.x + b.width + 3 && a.x + a.width + 3 > b.x && a.y < b.y + b.height + 3 && a.y + a.height + 3 > b.y;
+  const landmarkLabel = (text, x, y, preferredY) => {
+    ctx.font = '600 10px ui-monospace, monospace';
+    const width = ctx.measureText(text).width + 14;
+    const candidates = [[x, preferredY], [x, y - 47], [x, y + 31], [x - width / 2 - 22, y], [x + width / 2 + 22, y], [x, y + 51]];
+    for (const [candidateX, candidateY] of candidates) {
+      const labelX = Math.max(camera.x * TILE + width / 2 + 4, Math.min((camera.x + COLS) * TILE - width / 2 - 4, candidateX));
+      const labelY = Math.max(camera.y * TILE + 12, Math.min((camera.y + ROWS) * TILE - 12, candidateY));
+      const box = { x: labelX - width / 2, y: labelY - 9, width, height: 18 };
+      if (avatarBoxes.some((other) => overlaps(box, other)) || labelBoxes.some((other) => overlaps(box, other))) continue;
+      labelBoxes.push(box);
+      rect(box.x + 1, box.y + 2, width, 18, '#203d3633');
+      rect(box.x, box.y, width, 18, '#294b43ed');
+      rect(box.x, box.y, 2, 18, '#d6c69a');
+      pixelText(text, labelX, labelY + 1, '#f7ecd1');
+      return;
+    }
+    // Busy locations remain available in the accompanying accessible place list.
+  };
+
+  for (const place of world.landmarks || []) {
+    if (place.x < camera.x - 2 || place.x > camera.x + COLS + 2 || place.y < camera.y - 2 || place.y > camera.y + ROWS + 2) continue;
+    const x = (place.x + 0.5) * TILE;
+    const y = (place.y + 0.5) * TILE;
+    const active = position?.x === place.x && position?.y === place.y && Boolean(self?.name || self?.id);
+    rect(x - 14, y - 12, 28, 27, active ? '#fff0c377' : '#ffffff24');
+    if (active) {
+      rect(x - 14, y + 14, 28, 2, '#fff3c5');
+      rect(x - 14, y - 12, 28, 2, '#fff3c5');
+    }
+    const indoorTitle = (world.kind === 'interior' || world.id.startsWith('house:')) && (world.landmarks || []).length === 1;
+    if (!indoorTitle) {
+      const labelY = place.name === 'Welcome Plaza' ? y + 42 : place.name === 'Mission Board' || (world.id.startsWith('home:') && place.name === 'Garden Cottage') ? y - 47 : y + 28;
+      landmarkLabel(place.name, x, y, labelY);
+    }
+  }
+
+  const now = typeof options.clock === 'function' ? options.clock() : Number.isFinite(options.clock) ? options.clock : Date.now();
+  const occupancy = new Map();
+  const nameBoxes = [];
+  if ((self?.name || self?.id) && position) {
+    ctx.font = '600 9px ui-monospace, monospace';
+    const width = ctx.measureText(characterLabel(self)).width + 8;
+    const x = Math.min((camera.x + COLS) * TILE - width / 2 - 3, Math.max(camera.x * TILE + width / 2 + 3, (position.x + 0.5) * TILE));
+    const y = Math.max(camera.y * TILE + 9, (position.y + 0.5) * TILE - 39);
+    nameBoxes.push({ x: x - width / 2, y: y - 7, width, height: 14, reservedSelf: true });
+  }
+  for (const avatar of avatars) {
+    if (!Number.isFinite(avatar.x) || !Number.isFinite(avatar.y)) continue;
+    const cell = `${avatar.x},${avatar.y}`;
+    const stack = occupancy.get(cell) || 0;
+    occupancy.set(cell, stack + 1);
+    const offset = stack ? (stack % 2 ? 1 : -1) * Math.min(12, Math.ceil(stack / 2) * 6) : 0;
+    const x = (avatar.x + 0.5) * TILE + offset;
+    const resting = /sit|rest|meditat/.test(avatar.activity || avatar.posture || '');
+    const y = (avatar.y + 0.5) * TILE + (resting ? 5 : 0);
+    const color = /^#[0-9a-f]{6}$/i.test(avatar.color || '') ? avatar.color : '#3d5875';
+    ctx.globalAlpha = ['offline', 'paused', 'suspended'].includes(avatar.status) ? 0.58 : 1;
+    rect(x - 11, y + 12, 23, 5, '#32544f44');
+    if (avatar.isSelf) {
+      rect(x - 13, y + 12, 27, 2, '#ffefb6');
+      rect(x - 13, y + 14, 3, 3, '#ffefb6');
+      rect(x + 11, y + 14, 3, 3, '#ffefb6');
+    }
+    const sprite=options.sprites?.get(avatar.sprite);
+    if(avatar.kind==='npc' && sprite?.complete && sprite.naturalWidth){
+      ctx.imageSmoothingEnabled=false; const column={down:0,up:1,left:2,right:3}[avatar.direction]||0;
+      ctx.drawImage(sprite,column*16,(avatar.status==='active'?Math.floor(now/220)%4:0)*16,16,16,x-20,y-25,40,40);
+    }else{
+    // Friendly agent sprite, customizable clothes and chest emblem.
+    rect(x - 8, y - 2, 16, 14, color);
+    rect(x - 11, y, 3, 10, color);
+    rect(x + 8, y, 3, 10, color);
+    rect(x - (resting ? 10 : 7), y + 12, resting ? 8 : 5, 4, '#3d4857');
+    rect(x + 2, y + 12, resting ? 8 : 5, 4, '#3d4857');
+    rect(x - 8, y - 17, 16, 14, '#ecd1a6');
+    rect(x - 9, y - 20, 18, 6, '#404e56');
+    if (['sprout', 'leaf', 'flower_crown', 'flower'].includes(avatar.avatar)) {
+      if (avatar.avatar === 'flower_crown') {
+        for (const dx of [-7, -1, 5]) { rect(x + dx, y - 22, 5, 4, '#ddb9bf'); rect(x + dx + 2, y - 22, 1, 2, '#fff2c0'); }
+      } else {
+        rect(x - 1, y - 28, 2, 9, '#61855b'); rect(x - 7, y - 27, 7, 4, '#8eac74'); rect(x + 1, y - 30, 6, 4, '#afc98d');
+        if (avatar.avatar === 'flower') blossom(x - 2, y - 29, '#e6bbc4');
+      }
+    } else if (avatar.avatar === 'star') pixelText('✦', x, y - 25, '#ecd99b', 10);
+    else if (['woven_banner', 'explorer_banner'].includes(avatar.avatar)) { rect(x - 12, y - 5, 4, 22, avatar.avatar === 'explorer_banner' ? '#89aeb5' : '#af91b1'); rect(x + 8, y - 5, 4, 22, avatar.avatar === 'explorer_banner' ? '#9abac0' : '#bda2ba'); rect(x - 12, y + 8, 4, 3, '#e4ccab'); }
+    else if (avatar.avatar === 'garden_lantern') { rect(x + 12, y + 4, 9, 10, '#9e8563'); rect(x + 14, y + 6, 5, 6, '#f3deb1'); rect(x + 14, y + 1, 5, 3, '#7c715b'); }
+    rect(x - 9, y - 16, 3, 5, '#404e56');
+    rect(x + 6, y - 16, 3, 5, '#404e56');
+    rect(x - 5, y - 12, 2, 2, '#374952');
+    rect(x + 3, y - 12, 2, 2, '#374952');
+    rect(x - 2, y - 7, 4, 1, '#ba8d72');
+    pixelText(avatar.symbol || '✦', x, y + 5, '#fff0d4', 9);
+    }
+    const emote = { wave: '⌁', bow: '↧', cheer: '✦', think: '…', heart: '♥' }[avatar.emote];
+    if (emote && Number(avatar.emote_until) > now) {
+      rect(x + 11, y - 30, 20, 20, '#fff0d8'); rect(x + 11, y - 11, 4, 4, '#fff0d8');
+      pixelText(emote, x + 21, y - 20, avatar.emote === 'heart' ? '#b57486' : '#6c8379', 14);
+    }
+    if (avatar.status === 'active' || avatar.status === 'online') rect(x + 9, y - 21, 4, 4, '#a6dda3');
+    const name = characterLabel(avatar);
+    ctx.font = '600 9px ui-monospace, monospace';
+    const width = ctx.measureText(name).width + 8;
+    const labelX = Math.min((camera.x + COLS) * TILE - width / 2 - 3, Math.max(camera.x * TILE + width / 2 + 3, x));
+    const defaultLabelY = Math.max(camera.y * TILE + 9, y - 39 - (avatar.isSelf ? 0 : stack * 12));
+    let nameBox;
+    for (const candidateY of [defaultLabelY, defaultLabelY - 16, defaultLabelY - 32, y + 29]) {
+      const labelY = Math.max(camera.y * TILE + 9, Math.min((camera.y + ROWS) * TILE - 9, candidateY));
+      const box = { x: labelX - width / 2, y: labelY - 7, width, height: 14 };
+      if (nameBoxes.some((other) => !(avatar.isSelf && other.reservedSelf) && overlaps(box, other)) || labelBoxes.some((other) => overlaps(box, other))) continue;
+      nameBox = box; nameBoxes.push(box); break;
+    }
+    if (nameBox) {
+      rect(nameBox.x, nameBox.y, width, 14, avatar.isSelf ? '#354f67ed' : '#28493feb');
+      pixelText(name, labelX, nameBox.y + 7, '#fff4d8', 9);
+    }
+    ctx.globalAlpha = 1;
+  }
+  for (const [key, count] of crowd) {
+    if (count <= 3) continue;
+    const [col, row] = key.split(',').map(Number);
+    const x = (col + 0.5) * TILE; const y = (row + 0.5) * TILE + 24;
+    const label = `+${count - 3}`;
+    ctx.font = '600 9px ui-monospace, monospace';
+    const width = ctx.measureText(label).width + 8;
+    rect(x - width / 2, y - 7, width, 14, '#28493fe8');
+    pixelText(label, x, y, '#fff2cf', 9);
+  }
+  ctx.restore();
+}
+
+const miniMapCache = new WeakMap();
+
+/** A terrain overview; the outline is the viewport and the cream dot is the character. */
+export function drawMiniMap(canvas, world = 'commons', options = {}) {
+  const definition = getWorldDefinition(world);
+  const ctx = canvas.getContext('2d');
+  if (!ctx || !canvas.width || !canvas.height) return;
+  // The global map draws the rectangle its worlds occupy, not the sea around it.
+  const area = definition.bounds || { x: 0, y: 0, width: definition.columns, height: definition.rows };
+  const scale = Math.min(canvas.width / area.width, canvas.height / area.height);
+  const offsetX = (canvas.width - area.width * scale) / 2 - area.x * scale;
+  const offsetY = (canvas.height - area.height * scale) / 2 - area.y * scale;
+  const palette = { meadow: '#98b886', garden: '#b8bf83', tree: '#527857', water: '#729fab', path: '#dbbd8c', plaza: '#e5ca9e', bridge: '#b58a62', building: '#a28586', fountain: '#adc9c9', floor: '#d7c3a3', rug: '#a79ba8', wall: '#747c88' };
+  const background = (target) => {
+    target.fillStyle = '#273e35';
+    target.fillRect(0, 0, canvas.width, canvas.height);
+    for (let y = area.y; y < area.y + area.height; y++) for (let x = area.x; x < area.x + area.width; x++) {
+      if (typeof definition.terrain[y][x] !== 'string') continue;
+      target.fillStyle = palette[definition.terrain[y][x]] || palette.meadow;
+      const left = Math.round(offsetX + x * scale); const top = Math.round(offsetY + y * scale);
+      target.fillRect(left, top, Math.ceil(scale), Math.ceil(scale));
+    }
+  };
+  let cached = miniMapCache.get(canvas);
+  if (!cached || cached.terrain !== definition.terrain || cached.width !== canvas.width || cached.height !== canvas.height) {
+    const layer = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(canvas.width, canvas.height) : canvas.ownerDocument?.createElement('canvas');
+    if (layer) {
+      layer.width = canvas.width; layer.height = canvas.height;
+      background(layer.getContext('2d'));
+      cached = { terrain: definition.terrain, width: canvas.width, height: canvas.height, layer };
+      miniMapCache.set(canvas, cached);
+    } else cached = null;
+  }
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (cached) ctx.drawImage(cached.layer, 0, 0);
+  else background(ctx);
+  // The joins between the worlds of the global map, so a player can see where one place ends and the next begins.
+  if (options.rects) {
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255, 244, 200, 0.55)';
+    for (const item of options.rects) ctx.strokeRect(Math.round(offsetX + item.x * scale) + 0.5, Math.round(offsetY + item.y * scale) + 0.5, Math.round(item.width * scale) - 1, Math.round(item.height * scale) - 1);
+  }
+  const marker = (x, y, color, size) => {
+    ctx.fillStyle = '#2c403a';
+    ctx.fillRect(offsetX + (x + 0.5) * scale - size / 2 - 1, offsetY + (y + 0.5) * scale - size / 2 - 1, size + 2, size + 2);
+    ctx.fillStyle = color;
+    ctx.fillRect(offsetX + (x + 0.5) * scale - size / 2, offsetY + (y + 0.5) * scale - size / 2, size, size);
+  };
+  for (const object of options.objects || []) marker(object.x, object.y, palette[object.type] || '#b69376', Math.max(2, scale * 0.65));
+  for (const block of (options.blocks || []).slice(0, 2048)) if (Number.isInteger(block.x) && Number.isInteger(block.y) && Object.hasOwn(FRONTIER_BLOCK_COLORS, block.type)) marker(block.x, block.y, FRONTIER_BLOCK_COLORS[block.type], Math.max(2, scale * 0.65));
+  for (const place of definition.landmarks || []) marker(place.x, place.y, '#eee4c0', Math.max(3, scale));
+  for (const gate of options.portals || definition.portals || []) marker(gate.x, gate.y, '#d3b6d2', Math.max(3, scale));
+  if (options.camera) {
+    const camera = options.camera;
+    const x = offsetX + camera.x * scale; const y = offsetY + camera.y * scale;
+    const width = Math.min(COLS, definition.columns - camera.x) * scale;
+    const height = Math.min(ROWS, definition.rows - camera.y) * scale;
+    ctx.lineWidth = 3; ctx.strokeStyle = '#314439'; ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+    ctx.lineWidth = 1; ctx.strokeStyle = '#fff0b4'; ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+  }
+  if (Number.isFinite(options.position?.x) && Number.isFinite(options.position?.y)) marker(options.position.x, options.position.y, '#fff7d3', Math.max(5, scale * 0.7));
+  ctx.restore();
+}

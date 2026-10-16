@@ -1,0 +1,9 @@
+export function validateCountryAtlas(value){
+ if(value?.schemaVersion!==1||value.width!==1000||value.height!==500||!Array.isArray(value.features)||value.features.length>300||!value.features.length||value.metadata?.license!=='Public domain'||value.metadata.termsUrl!=='https://www.naturalearthdata.com/about/terms-of-use/'||!/^https:\/\/raw\.githubusercontent\.com\/nvkelso\/natural-earth-vector\/[a-f0-9]{40}\//.test(value.metadata.sourceUrl)||!/^([a-f0-9]{64})$/.test(value.metadata.sourceSha256))throw Error('Atlas data is unavailable.');
+ for(const feature of value.features){if(feature.iso2!==null&&!/^[A-Z]{2}$/.test(feature.iso2)||typeof feature.path!=='string'||feature.path.length>40000||!/^M[MLZ0-9.,\s-]+Z$/.test(feature.path))throw Error('Atlas geometry is invalid.');const pairs=[...feature.path.matchAll(/(-?[0-9]+(?:\.[0-9]+)?),(-?[0-9]+(?:\.[0-9]+)?)/g)];if(!pairs.length||pairs.some(m=>Number(m[1])<0||Number(m[1])>1000||Number(m[2])<0||Number(m[2])>500))throw Error('Atlas coordinates are invalid.');}
+ return value;
+}
+export function atlasSelection(atlas,countries,code){const country=countries.find(c=>c.iso2===code);return country?{country,hasOutline:atlas.features.some(f=>f.iso2===code)}:null;}
+export function atlasViewBox(atlas,code,zoom=false){
+ if(!zoom||!code)return [0,0,atlas.width,atlas.height];const points=atlas.features.filter(f=>f.iso2===code).flatMap(f=>[...f.path.matchAll(/(-?[0-9]+(?:\.[0-9]+)?),(-?[0-9]+(?:\.[0-9]+)?)/g)].map(m=>[Number(m[1]),Number(m[2])]));if(!points.length)return [0,0,atlas.width,atlas.height];const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]),loX=Math.min(...xs),hiX=Math.max(...xs),loY=Math.min(...ys),hiY=Math.max(...ys),width=Math.min(1000,Math.max(80,hiX-loX+20,(hiY-loY+20)*2)),height=width/2;return [Math.max(0,Math.min(1000-width,(loX+hiX-width)/2)),Math.max(0,Math.min(500-height,(loY+hiY-height)/2)),width,height];
+}

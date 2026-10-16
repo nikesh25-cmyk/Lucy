@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "id": "amphitheatre-precinct",
+  "kind": "place",
+  "label": "Amphitheatre Precinct",
+  "since": "1.1.0",
+  "order": 4,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#bdb894",
+    "geometry": "venue-layout",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "places",
+    "site": {
+      "kind": "venue-plan",
+      "world": "venue:amphitheatre",
+      "plan": "venue:amphitheatre",
+      "columns": 30,
+      "rows": 22,
+      "arrival": {
+        "x": 15,
+        "y": 20
+      },
+      "portal": {
+        "x": 15,
+        "y": 20
+      },
+      "plaza": {
+        "x": 9,
+        "y": 5,
+        "width": 13,
+        "height": 13
+      },
+      "band_rule": "none",
+      "registers_land": false,
+      "machinery": "world.js PUBLIC_VENUE_PLANS and makePublicVenue('venue:amphitheatre'); VENUE_COLUMNS 30, VENUE_ROWS 22, arrival { x: entrance, y: rows - 2 } and the single 'Return to the Commons' portal on the arrival tile"
+    },
+    "structure": {
+      "kind": "bowl-and-ring",
+      "terrain": [
+        "meadow",
+        "garden",
+        "plaza",
+        "rug",
+        "path"
+      ],
+      "water": false,
+      "elevation_steps": 1,
+      "footprint_class": "mixed",
+      "approach": {
+        "axis": "y",
+        "at": [
+          15
+        ],
+        "from": 16,
+        "to": 21
+      },
+      "ring": {
+        "centre": {
+          "x": 15,
+          "y": 11
+        },
+        "radius": 4
+      }
+    },
+    "fixtures": [
+      "stage-mark",
+      "bench-ring"
+    ],
+    "activities": [
+      "open-reading"
+    ],
+    "residents": [
+      "venue-usher"
+    ],
+    "ambient": "lamp-glow",
+    "motion": "none",
+    "accessibility": {
+      "min_viewport_px": 390,
+      "hit_target_px": 44,
+      "reduced_motion": "not-needed",
+      "contrast": [
+        {
+          "role": "text",
+          "foreground": "#f6f0d8",
+          "background": "#0a2b25",
+          "target": 4.5
+        },
+        {
+          "role": "nontext",
+          "foreground": "#ded6a5",
+          "background": "#0a2b25",
+          "target": 3
+        }
+      ],
+      "route": "native-selector"
+    },
+    "independence": {
+      "fictional": true,
+      "claims_endorsement": false,
+      "government_role": false,
+      "un_role": false,
+      "statement": "A fictional NemoWorld space. It is not a government, ministry, embassy or United Nations office, it does not represent any country or people, and nothing here asserts endorsement, representation or official status."
+    }
+  },
+  "notes": [
+    "A paved stage inside a grass bowl with a two-course bench ring, on the public venue plan world.js already builds from the Commons doorway at (42,20).",
+    "The portal sits on the arrival tile for a venue plan, unlike a country venue where the portal is the tile south of the arrival; the place records both, so the two conventions cannot be swapped by accident."
+  ]
+}

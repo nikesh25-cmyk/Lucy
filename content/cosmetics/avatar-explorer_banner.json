@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "explorer_banner",
+  "kind": "cosmetic",
+  "label": "Explorer banner",
+  "since": "1.0.0",
+  "order": 4,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project data: src/journey.js titles, avatars and recipes; src/voxel-world.js AGENT_COLORS",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": null,
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "cosmetic_kind": "avatar",
+    "earned_by": "visit three shared worlds",
+    "unlock_at_shared_visits": 3
+  },
+  "notes": [
+    "Unlocked keepsake, not part of the four default avatars."
+  ]
+}

@@ -1,0 +1,152 @@
+/* The in-game command surface: every platform section opens as a panel over the live 3D world.
+ *
+ * Loaded after game-theme.css (it refines that file's HUD, so it must follow it) and before
+ * game-mobile.css (the touch layer keeps its own `.nm-touch` scope; nothing here reaches it).
+ * Every rule begins with `body.game-world`, so the workspace presentation (/manage and
+ * ?mode=workspace) never sees any of it.
+ *
+ * Two placements, chosen by viewport width alone (src/ui/command-deck.js `panelMode`, mirrored by the
+ * media queries below):
+ *
+ *   dock   (1280 px and wider)  the panel takes the right-hand column and the world narrows to the
+ *                               rest, so the HUD, the avatar and the picks are all still in view and
+ *                               nothing is drawn under the panel. "Wider" turns the panel into a wider
+ *                               overlay and the HUD stands down, as it does for a conversation.
+ *   sheet  (narrower)           the panel lifts from the bottom edge and the world narrows to the rest
+ *                               of the height, so the avatar stays centred in what is visible. On a
+ *                               390 px phone that is about 360 px of live scene above the sheet.
+ *
+ * A panel and a conversation or the tools drawer never share the right-hand slot (app.js closes one
+ * when the other opens), and the touch pad stands down while a sheet covers the pad's place.
+ * Reduced motion removes every transition and animation this file defines.
+ */
+
+body.game-world .game-panel{display:none}
+body.game-world .game-panel:not([hidden]){
+  display:flex;flex-direction:column;position:fixed;z-index:33;box-sizing:border-box;min-height:0;
+  color:var(--game-ink);font-family:NemoManrope,Arial,sans-serif;
+  background:#092b25f8;border:1px solid #d5dbae5a;box-shadow:-20px 0 55px #04140f99;
+}
+body.game-world.game-entry .game-panel{z-index:35}
+body.game-world .game-panel-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;flex:none;padding:10px 12px 9px 16px;background:#0b3029;border-bottom:1px solid #d3d8af45}
+body.game-world .game-panel-heading{min-width:0}
+body.game-world .game-panel-kicker{margin:0;color:#dcdea9;font-size:.55rem;font-weight:700;letter-spacing:.17em}
+body.game-world .game-panel-title{margin:0;color:#fff9e1;font:500 1.25rem/1.15 NemoCormorant,Georgia,serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.game-world .game-panel-tools{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+body.game-world .game-panel-tool{min-width:44px;min-height:44px;padding:6px 11px;border:1px solid #d9ddad62;border-radius:10px;background:#d9ddad14;color:var(--game-ink);font:600 .68rem/1.2 NemoManrope,Arial,sans-serif;white-space:nowrap;cursor:pointer}
+body.game-world .game-panel-tool:hover{background:#e4dfb72b;border-color:#e4dfb7}
+body.game-world .game-panel-tool:focus-visible,body.game-world .game-panel-body :focus-visible{outline:3px solid #f6f2c8;outline-offset:2px}
+body.game-world .game-panel-close{background:#e5dea8;color:#133429;border-color:#f0edc8}
+body.game-world .game-panel-close:hover{background:#f0ebc0}
+body.game-world .game-panel-help{grid-column:1/-1;margin:0;color:var(--game-dim);font-size:.62rem;line-height:1.4}
+body.game-world .game-panel-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 16px 28px;scrollbar-width:thin;scrollbar-color:#9cb39866 transparent}
+body.game-world .game-panel-body[aria-busy=true]{opacity:.7}
+
+/* A section was written for a page; inside a panel it is one column, and nothing may force the panel
+   wider than the world allows it to be. */
+body.game-world .game-panel-body{container-type:inline-size}
+/* The game shell hides these on the world view; inside a panel they are the section's own content. */
+body.game-world .game-panel-body .start-here,body.game-world .game-panel-body .world-title{display:revert}
+body.game-world .game-panel-body>*{max-width:100%}
+body.game-world .game-panel-body .grid,body.game-world .game-panel-body .grid.two,body.game-world .game-panel-body .grid.three,body.game-world .game-panel-body .field-grid,body.game-world .game-panel-body .civic-atlas,body.game-world .game-panel-body .start-paths,body.game-world .game-panel-body .auth-panels{grid-template-columns:minmax(0,1fr)}
+body.game-world .game-panel-body table{display:block;max-width:100%;overflow-x:auto}
+body.game-world .game-panel-body img,body.game-world .game-panel-body canvas,body.game-world .game-panel-body svg,body.game-world .game-panel-body video{max-width:100%}
+body.game-world .game-panel-body pre{max-width:100%;overflow-x:auto}
+body.game-world .game-panel-body .section-heading,body.game-world .game-panel-body .heading{margin-top:0}
+body.game-world .game-panel-body h2{font-size:1.5rem;line-height:1.15}
+body.game-world .game-panel-body button,body.game-world .game-panel-body select,body.game-world .game-panel-body input:not([type=checkbox]):not([type=radio]),body.game-world .game-panel-body textarea{min-height:44px}
+
+/* --- dock: 1280 px and wider ---------------------------------------------------------------------- */
+@media(min-width:1280px){
+  body.game-world .game-panel:not([hidden]){top:66px;right:0;bottom:0;width:var(--game-panel-w,480px);border-width:0 0 0 1px}
+  /* The scene gives up exactly the panel's column, so nothing the HUD draws is under it. */
+  body.game-world.game-panel-docked #content{width:calc(100% - var(--game-panel-w))}
+  /* The world is now narrower than the viewport the HUD's width rules were written for (it is 819 px
+     wide at the smallest dock), so the HUD takes the arrangement it uses between 651 and 1279 px with
+     the three changes that arrangement needs once a panel is beside it: the aim line sits below the
+     place card, the guide steps down past the aim line, and the bottom band starts after the touch-free
+     toggles and ends before the right-hand column, so no two boxes share a pixel. */
+  body.game-world.game-panel-docked .world-reticle{top:120px;width:min(530px,calc(100% - 40px))}
+  body.game-world.game-panel-docked .game-travel{top:210px}
+  body.game-world.game-panel-docked .game-guide{top:262px}
+  body.game-world.game-panel-docked .game-hud-bottom{left:176px;transform:none;justify-items:start;max-width:calc(100% - 176px - 300px)}
+  body.game-world.game-panel-docked .game-target{max-width:240px}
+  body.game-world.game-panel-docked .game-feedback{left:120px;transform:none;max-width:calc(100% - 120px - 330px)}
+  body.game-world.game-panel-docked .game-control-hint{position:absolute;width:1px;height:1px;margin:0!important;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;pointer-events:none}
+}
+/* The notice and the aim line are centred on the world, which is no longer the whole viewport. */
+@media(min-width:1280px){
+  body.game-world.game-panel-docked #notice:not([hidden]){left:calc((100vw - var(--game-panel-w))/2)}
+  body.game-world.game-panel-wide #notice:not([hidden]){left:calc((100vw - var(--game-panel-w))/2);top:152px}
+}
+
+/* --- sheet: narrower than 1280 px ------------------------------------------------------------------ */
+@media(max-width:1279px){
+  body.game-world{--game-sheet-h:min(52dvh,560px)}
+  body.game-world.game-panel-tall{--game-sheet-h:min(86dvh,calc(100dvh - 66px))}
+  body.game-world .game-panel:not([hidden]){left:0;right:0;bottom:0;top:auto;height:var(--game-sheet-h);border-width:1px 0 0;border-radius:16px 16px 0 0;box-shadow:0 -16px 44px #04140f99}
+  /* The world narrows to the rest of the height, so the avatar stays centred in what is visible. */
+  body.game-world.game-panel-sheet #content{height:calc(100% - var(--game-sheet-h))}
+  body.game-world .game-panel-header{padding:8px 10px 6px 14px}
+  body.game-world .game-panel-help{display:none}
+  body.game-world .game-panel-title{font-size:1.1rem}
+}
+@media(max-width:650px){
+  body.game-world .game-panel-tool{padding:6px 9px;font-size:.64rem}
+  body.game-world .game-panel-tools{gap:4px}
+  body.game-world .game-panel-kicker{display:none}
+  body.game-world .game-panel-body{padding:10px 12px 24px}
+}
+
+/* --- the HUD stands down where there is no room beside the panel ----------------------------------- *
+ * Compact means a sheet, or the widened dock. Nothing is deleted: the aim line, the move feedback, the
+ * target line and the interaction prompt stay in the document as visually hidden live regions, so a
+ * screen reader still hears every refusal and every aim change; only their painted boxes go.
+ */
+body.game-world.game-panel-compact .world-reticle,
+body.game-world.game-panel-compact .game-feedback,
+body.game-world.game-panel-compact .game-target,
+body.game-world.game-panel-compact .game-prompt-host,
+body.game-world.game-panel-compact .game-overlay-host{position:absolute;left:0;top:0;width:1px;height:1px;margin:0!important;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;pointer-events:none}
+body.game-world.game-panel-compact .game-live-count,
+body.game-world.game-panel-compact .game-travel,
+body.game-world.game-panel-compact .game-control-hint,
+body.game-world.game-panel-compact .game-hud-bottom .game-next,
+body.game-world.game-panel-compact .world-bottom{display:none}
+/* The guide keeps its server-derived marker, as it does while a conversation is open, and stands inert. */
+body.game-world.game-panel-compact .game-guide{top:84px;bottom:auto;max-height:48px;width:min(340px,calc(100vw - 40px));overflow:hidden;pointer-events:none;-webkit-mask-image:none;mask-image:none}
+body.game-world.game-panel-compact .game-guide-card:not(.game-guide-next){display:none}
+body.game-world.game-panel-compact .game-guide-next{display:flex;align-items:center;gap:9px;height:46px;padding:8px 12px;overflow:hidden}
+body.game-world.game-panel-compact .game-guide-next>:not(.game-guide-progress):not(.game-guide-action-line){display:none}
+body.game-world.game-panel-compact .game-guide-action-line{min-width:0;overflow:hidden}
+body.game-world.game-panel-compact .game-guide-action-line>:not(.game-guide-title){display:none}
+body.game-world.game-panel-compact .game-guide-progress{flex:none;white-space:nowrap}
+body.game-world.game-panel-compact .game-guide-title{font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* The widened dock overlays the right of the world, where the minimap sits; the bottom band re-centres
+   on the part of the world the panel leaves uncovered. */
+body.game-world.game-panel-wide .world-panel>.minimap-card{display:none}
+body.game-world.game-panel-wide .game-hud-bottom{left:calc((100% - var(--game-panel-w))/2)}
+@media(max-width:650px){
+  body.game-world.game-panel-sheet .world-panel>.minimap-card{width:84px;height:54px}
+  body.game-world.game-panel-sheet .game-guide{top:124px;left:10px;right:auto;width:min(300px,calc(100vw - 112px));max-height:36px}
+  body.game-world.game-panel-sheet .game-guide-next{height:35px;padding:5px 9px}
+  body.game-world.game-panel-sheet .game-quickbar{padding:4px}
+  body.game-world.game-panel-sheet .game-quickbar button{min-width:56px;min-height:44px;padding:5px 7px;font-size:.62rem}
+  body.game-world.game-panel-sheet .game-hud-bottom{bottom:8px}
+}
+@media(min-width:651px) and (max-width:1279px){
+  body.game-world.game-panel-sheet .game-guide{top:196px}
+}
+
+/* --- the world menu is the launcher ----------------------------------------------------------------- */
+body.game-world .game-menu-find{gap:6px;margin-bottom:4px}
+body.game-world .game-menu-find label{margin:0 10px}
+body.game-world .game-menu-find input{width:100%;box-sizing:border-box;min-height:44px;padding:9px 12px;border:1px solid #d9ddad62;border-radius:10px;background:#071f1acc;color:var(--game-ink);font:500 .8rem NemoManrope,Arial,sans-serif}
+body.game-world .game-menu-find input::placeholder{color:#a9bda9}
+body.game-world .game-menu-status{margin:0 10px;color:var(--game-dim);font-size:.66rem;min-height:1em}
+body.game-world .sidebar [hidden]{display:none!important}
+body.game-world .sidebar .tabs button[aria-current=page]{background:#e4dfb72b;border-color:#e4dfb7}
+
+@media(prefers-reduced-motion:reduce){
+  body.game-world .game-panel,body.game-world .game-panel *,body.game-world #content{transition:none!important;animation:none!important}
+}

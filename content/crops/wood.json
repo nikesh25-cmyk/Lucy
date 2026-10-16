@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "wood",
+  "kind": "crop",
+  "label": "Wood",
+  "since": "1.0.0",
+  "order": 2,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original project game data: src/journey.js growth times, harvest yield and garden limits",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#d5c16e",
+    "geometry": "farm",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "grow_ms": 1800000,
+    "yield": {
+      "item": "wood",
+      "quantity": 2
+    },
+    "tile_object": "farm",
+    "max_growing": 20,
+    "tend_saving_ms": 300000
+  },
+  "notes": [
+    "Grown on a placed farm tile; a tile without a farm object is rejected (src/journey.js gardenAction).",
+    "A single tend shortens growth by five minutes, capped by the growth still ahead of the crop.",
+    "Seeds themselves are free and unlimited; the twenty-crop cap is the only garden constraint."
+  ]
+}

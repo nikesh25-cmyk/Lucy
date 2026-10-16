@@ -1,0 +1,702 @@
+{
+  "set": "resident-art",
+  "purpose": "One face and one standing figure per resident, for the interface layers that name a resident: the profile card, the resident roster, the civic/ambassador views and the first-play guide.",
+  "retrieved": "2026-10-14",
+  "licence_allowlist": [
+    "CC0-1.0",
+    "OFL-1.1",
+    "ISC",
+    "MIT",
+    "CC-BY-3.0",
+    "CC-BY-4.0"
+  ],
+  "sources": [
+    {
+      "id": "buch-rpg-portraits",
+      "kind": "portrait-faceset",
+      "title": "RPG portraits",
+      "author": "Buch",
+      "home": "https://opengameart.org/content/rpg-portraits",
+      "file": "https://opengameart.org/sites/default/files/rpgportraits.png",
+      "licence": "CC0-1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "notice": "NOT REQUIRED, though appreciated: credit me as Buch and link back either to my OGA profile page or to http://blog-buch.rhcloud.com",
+      "sha256": "234ccba32fcc80dbea00e6257dc29127d0e2e0f89f0336eb5c1ff691bacc4ff1",
+      "bytes": 21125,
+      "dimensions": [
+        328,
+        112
+      ],
+      "modification": "lossless crop of the source sheet into 27 cells; no resampling, no recolouring, every pixel of every staged cell is a pixel of the source",
+      "crop_grid": {
+        "cell": [
+          32,
+          32
+        ],
+        "origin": [
+          4,
+          4
+        ],
+        "stride": [
+          36,
+          36
+        ],
+        "columns": 9,
+        "rows": 3,
+        "id_rule": "id = row*9 + column + 1, row-major from the top-left cell"
+      }
+    },
+    {
+      "id": "kenney-tiny-dungeon",
+      "kind": "character-appearance",
+      "title": "Tiny Dungeon",
+      "author": "Kenney (kenney.nl)",
+      "home": "https://kenney.nl/assets/tiny-dungeon",
+      "file": "https://kenney.nl/media/pages/assets/tiny-dungeon/f8422efb44-1674742415/kenney_tiny-dungeon.zip",
+      "sha256": "c109438ab06f65fd80f9b2686a4cf9c7c11dc64444b47333ec71d602f8bb5fc7",
+      "bytes": 98530,
+      "licence": "CC0-1.0",
+      "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "notice_file": "licenses/kenney-tiny-dungeon-License.txt",
+      "notice_sha256": "9f574a2f1f636a3db8a0665ba90212f34e2b5e61ecb533d77c05237766374111",
+      "notice": "Creative Commons Zero (CC0) 1.0. This content is free to use in personal, educational and commercial projects. Written permission not required; support is voluntary.",
+      "modification": "none; each staged figure is an unmodified 16x16 transparent-background Tile from the pack",
+      "notice_source_path": "License.txt"
+    }
+  ],
+  "files": [
+    {
+      "path": "faces/01.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        4,
+        4,
+        36,
+        36
+      ],
+      "sha256": "d33025883578d42716c2964bc67bcc7cd0f3591d12ae1e393a212b7a42acfbda",
+      "bytes": 3523,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/02.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        40,
+        4,
+        72,
+        36
+      ],
+      "sha256": "40a0a031e08563155059d7ae171cfefc0b40d19d9b4864123f83450d35a382ff",
+      "bytes": 3520,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/03.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        76,
+        4,
+        108,
+        36
+      ],
+      "sha256": "aca584856bb43c6fa924056ad6e5a7da76423888864c724781766de57c02411b",
+      "bytes": 3907,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/04.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        112,
+        4,
+        144,
+        36
+      ],
+      "sha256": "5262b293767fb2c0976afe34e16d952fa4c29f812d6851a69b8443296905b6e7",
+      "bytes": 3500,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/05.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        148,
+        4,
+        180,
+        36
+      ],
+      "sha256": "a7f89b307400ee8d2331371ac543549d55efa3fb211acc99e195f8c909a6faf8",
+      "bytes": 3485,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/06.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        184,
+        4,
+        216,
+        36
+      ],
+      "sha256": "1772850b2fddc2afe5a239ac7c26ccd9c7a7052ae7eb27b0ff7e22bc12a1a742",
+      "bytes": 3540,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/07.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        220,
+        4,
+        252,
+        36
+      ],
+      "sha256": "afb540fbf7adfb3bcaace24a081cd1f373896f8155c272df76281527a2c9acf3",
+      "bytes": 3450,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/08.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        256,
+        4,
+        288,
+        36
+      ],
+      "sha256": "585aa9f1db223c7fca1dcce8fc153d2dcffa46aa3a0cefa81705ef4ba0241fe1",
+      "bytes": 3520,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/09.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        292,
+        4,
+        324,
+        36
+      ],
+      "sha256": "4c43065e23632b28b3eb5e3b40a6966f10007d15cd9e0f2e6c321db3ca5e90f7",
+      "bytes": 3768,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/10.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        4,
+        40,
+        36,
+        72
+      ],
+      "sha256": "6603e45f8cf8ebf65bc19ab77c28ce5ed0faec1adcddd8a882f39463ed375a82",
+      "bytes": 3504,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/11.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        40,
+        40,
+        72,
+        72
+      ],
+      "sha256": "1c25c49bf38a57e21ea4b18505d8ff7129b8cb7c55dedcbb685db5838a25da68",
+      "bytes": 3506,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/12.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        76,
+        40,
+        108,
+        72
+      ],
+      "sha256": "3830443f202462e3bc22ba696a607cc21c7b215430f1ebef355dd118a2a07611",
+      "bytes": 3860,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/13.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        112,
+        40,
+        144,
+        72
+      ],
+      "sha256": "756f7bd5aa5af3a38c19f722b5c8e24d37d344187ab8af7263272f28a59b3f8d",
+      "bytes": 3413,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/14.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        148,
+        40,
+        180,
+        72
+      ],
+      "sha256": "23a0d2026474d2d2f9255ae6cedcf8924ad458d95c1b17d72d3cf70bec02d461",
+      "bytes": 3484,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/15.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        184,
+        40,
+        216,
+        72
+      ],
+      "sha256": "3f2364210fc9dd1cabb6b11794ed8d35408f5ffc06c3c45f6369be767d688fcc",
+      "bytes": 3538,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/16.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        220,
+        40,
+        252,
+        72
+      ],
+      "sha256": "9bee4fd8a80edf487ffe1a1a2a979caa62271ef7a8707e6bdbdf449842488f7b",
+      "bytes": 3588,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/17.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        256,
+        40,
+        288,
+        72
+      ],
+      "sha256": "8392f4d0cf6a08317f5e760c942ac5e9fa9a20726bb350b2007e9d8715047d56",
+      "bytes": 3363,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/18.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        292,
+        40,
+        324,
+        72
+      ],
+      "sha256": "05a4ef96fab7f8f6bc1bc56191fc0ca448a03c9c96510d43cd58e22335543de7",
+      "bytes": 3836,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/19.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        4,
+        76,
+        36,
+        108
+      ],
+      "sha256": "83294e3bdcf25314a6b803d550329b41f3df7259947c8c81c6f10326133fceca",
+      "bytes": 3505,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/20.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        40,
+        76,
+        72,
+        108
+      ],
+      "sha256": "63cd619c343f1e4f2ea2e433759f6cbdb61674bf93cc68b062e28e27341a4295",
+      "bytes": 3512,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/21.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        76,
+        76,
+        108,
+        108
+      ],
+      "sha256": "671c78d2dd7a75faa9d5e2f340991e9156e042f27ee3cc4898c68bb45b74f9d7",
+      "bytes": 3884,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/22.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        112,
+        76,
+        144,
+        108
+      ],
+      "sha256": "fa964850c6a63a240723b5ee284bcc03f8638165bec329ba6e6668d2d833fe5c",
+      "bytes": 3475,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/23.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        148,
+        76,
+        180,
+        108
+      ],
+      "sha256": "7f39b5a1b837bbd085df132537b051fab106a1c43bf6e5dd8c8416ea6f561e77",
+      "bytes": 3476,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/24.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        184,
+        76,
+        216,
+        108
+      ],
+      "sha256": "620fa59d9b6981a5db148516bebc77148ad9e24cca12963fe4176b26e623869a",
+      "bytes": 3584,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/25.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        220,
+        76,
+        252,
+        108
+      ],
+      "sha256": "f24f4c40223c39b1d910c567fa59d2cec2a82d0265a7dd4bd30c55fd79943186",
+      "bytes": 3532,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/26.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        256,
+        76,
+        288,
+        108
+      ],
+      "sha256": "cf975f4f1df3d482d1ef2a295a99cc29f8b266c1044612e0d1bbddca0970de42",
+      "bytes": 3485,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "faces/27.png",
+      "kind": "face",
+      "source": "buch-rpg-portraits",
+      "source_path": "rpgportraits.png",
+      "crop": [
+        292,
+        76,
+        324,
+        108
+      ],
+      "sha256": "780bbc8ecda74b6dc8bc451a8281e1c9d7245e4d72f56b0e3b8877c5e8e6f3b3",
+      "bytes": 3805,
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "bodies/01.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0084.png",
+      "crop": null,
+      "sha256": "b3909f80a29a0f18729f96a90ebe446ecaf26a195da633f2a6c3dd31f660821e",
+      "bytes": 232,
+      "dimensions": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "bodies/02.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0085.png",
+      "crop": null,
+      "sha256": "377b35acbce5129e8167df1f5d1d0420805990962a37a30f5784b88b81a40ec2",
+      "bytes": 230,
+      "dimensions": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "bodies/03.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0086.png",
+      "crop": null,
+      "sha256": "0606653ad07e177c06c9782c9fff4b1388c7b67865b6ab0e202f76e8e6f6bec8",
+      "bytes": 224,
+      "dimensions": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "bodies/04.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0087.png",
+      "crop": null,
+      "sha256": "321ecd683c4e542e09d368709e75821b8b823b7b98b71bebb39d66cead951315",
+      "bytes": 239,
+      "dimensions": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "bodies/05.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0088.png",
+      "crop": null,
+      "sha256": "ad6715e9bcab60faed303260a21adfca2de09a7950b98384065bcc5df05634b2",
+      "bytes": 222,
+      "dimensions": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "bodies/06.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0096.png",
+      "crop": null,
+      "sha256": "b8a0a9376c1c3398a059a1e3226e8f8d6839c1d73ac53ea37425340d762055fd",
+      "bytes": 206,
+      "dimensions": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "bodies/07.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0097.png",
+      "crop": null,
+      "sha256": "20915fde756b990f5b0c86fda557a93a6c306373d7c4fc07a1991f4ace3271b4",
+      "bytes": 225,
+      "dimensions": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "bodies/08.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0098.png",
+      "crop": null,
+      "sha256": "39b7c35f414e086b9c7e0cd2b34693ae370e5382a05b4dbb9964cef20f9769c8",
+      "bytes": 238,
+      "dimensions": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "bodies/09.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0099.png",
+      "crop": null,
+      "sha256": "61af4b9f1f67aa761e89e516ac6d60371175875b78b073b7f6a8415517c66181",
+      "bytes": 238,
+      "dimensions": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "bodies/10.png",
+      "kind": "figure",
+      "source": "kenney-tiny-dungeon",
+      "source_path": "Tiles/tile_0100.png",
+      "crop": null,
+      "sha256": "e139ab1d56c599af1cea5a955b705ead18a92d41e8e635b550729383cad9de3c",
+      "bytes": 240,
+      "dimensions": [
+        16,
+        16
+      ]
+    }
+  ],
+  "counts": {
+    "faces": 27,
+    "figures": 10,
+    "files": 37
+  },
+  "field_notes": {
+    "kind": "face: an RPG portrait bust for a small round avatar. figure: a standing 16x16 pixel figure for the profile card.",
+    "source_path": "the path inside the source pack that the staged file comes from",
+    "crop": "for a cropped face, the [left, top, right, bottom] rectangle in the source sheet, half-open as Pillow reports it; null when the file is the whole source file",
+    "sha256": "digest of the staged file in this directory, not of the source file"
+  },
+  "notes": [
+    "Both sets are CC0 1.0 Universal: no attribution is required. Both authors ask for credit as good practice and are credited in NOTICE.md and assets/THIRD_PARTY.md.",
+    "Nothing here is legal advice; it records what was verified from the file actually downloaded on 2026-10-14.",
+    "No Minecraft, Luanti, Terasology or other engine asset was copied, traced or translated.",
+    "The face set is entered here under a standard SPDX identifier (CC0-1.0) because it is a third-party release, not project-authored work; the project-authored interface wiring is recorded in docs/handoff/task-character-art.md."
+  ]
+}
