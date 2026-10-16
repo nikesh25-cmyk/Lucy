@@ -331,8 +331,10 @@ node --test tests/veloren-world.test.js tests/veloren-world-residents.test.js \
 * `tests/veloren-world.test.js` (5 tests): NemoWorld's places and budgets; a manifest that asks for
   anything else is refused whole; the game's checker agrees with NemoWorld's validator; and **the
   shipped manifest passes both**, with hours that keep the phases aligned.
-* `tests/veloren-world-residents.test.js` (9) and `tests/veloren-world-scopes.test.js` (11): the
-  schedule, the landmarks against the server's own resolution of Harr, and the credential plan.
+* `tests/veloren-world-residents.test.js` (10) and `tests/veloren-world-scopes.test.js` (11): the
+  schedule, the landmarks against the server's own resolution of Harr, the credential plan, and the
+  ingest-side interlock (a fact observed at a Harr structure NemoWorld does not know is refused with
+  `unknown_landmark`).
 * `tests/veloren-relay.test.js` (6): the relay's at-least-once delivery and replay safety, the filter
   that carries one resident per relay, and the real script's `--resident` and per-resident offset.
 
