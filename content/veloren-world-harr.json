@@ -1,0 +1,121 @@
+{
+  "format": "veloren-world-v1",
+  "site": "Harr",
+  "area": { "radius": 60.0 },
+  "atmosphere": {
+    "time": true,
+    "weather": false,
+    "dawn_hour": 6.0,
+    "day_hour": 11.0,
+    "dusk_hour": 16.0,
+    "night_hour": 19.0,
+    "weather_radius": 1500.0
+  },
+  "groups": [
+    {
+      "id": "plaza-meeting-corner",
+      "anchor": { "plot": "Plaza", "nth": 0 },
+      "ground_at": [1, 0],
+      "note": "The corner of Harr's square where a player first meets a resident: two benches, a lantern beside them and a signboard. Anchored on the plaza the server resolves from world generation (Plaza[0]), never on a coordinate.",
+      "ops": [
+        { "op": "foundation", "from": [-2, 0], "to": [5, 0], "kind": "Earth", "rgb": [110, 84, 60], "depth": 2 },
+        { "op": "sprite", "at": [1, 0, 1], "sprite": "BenchWoodWoodland" },
+        { "op": "sprite", "at": [2, 0, 1], "sprite": "BenchWoodWoodland" },
+        { "op": "sprite", "at": [3, 0, 1], "sprite": "BenchWoodWoodland" },
+        { "op": "sprite", "at": [-2, 0, 1], "sprite": "Lantern" },
+        { "op": "sprite", "at": [5, 0, 1], "sprite": "Sign" }
+      ]
+    },
+    {
+      "id": "plaza-market-props",
+      "anchor": { "plot": "Plaza", "nth": 0, "dx": 0, "dy": 8 },
+      "ground_at": [2, 0],
+      "note": "The market end of the square: crates, a barrel, a bucket and a handcart, the sort of thing a trader leaves out. Eight blocks off the plaza's centre so it does not sit on the meeting corner.",
+      "ops": [
+        { "op": "foundation", "from": [0, -1], "to": [6, 1], "kind": "Earth", "rgb": [110, 84, 60], "depth": 2 },
+        { "op": "sprite", "at": [0, 0, 1], "sprite": "CrateBlock" },
+        { "op": "sprite", "at": [1, 0, 1], "sprite": "CrateBlock" },
+        { "op": "sprite", "at": [2, 0, 1], "sprite": "Barrel" },
+        { "op": "sprite", "at": [3, 0, 1], "sprite": "BarrelWoodWater" },
+        { "op": "sprite", "at": [4, 0, 1], "sprite": "BucketWoodM" },
+        { "op": "sprite", "at": [5, 0, 1], "sprite": "BasketWovenM" },
+        { "op": "sprite", "at": [6, 0, 1], "sprite": "SackLeatherM" },
+        { "op": "sprite", "at": [1, 1, 1], "sprite": "HandCartWoodMiddle" },
+        { "op": "sprite", "at": [2, 1, 1], "sprite": "HandCartWoodHead" },
+        { "op": "sprite", "at": [4, 1, 1], "sprite": "LanternpostWoodBase" },
+        { "op": "sprite", "at": [4, 1, 2], "sprite": "LanternpostWoodUpper" },
+        { "op": "sprite", "at": [4, 1, 3], "sprite": "LanternpostWoodLantern" }
+      ]
+    },
+    {
+      "id": "workshop-yard",
+      "anchor": { "plot": "Workshop", "nth": 0 },
+      "ground_at": [2, 0],
+      "note": "Kael's end of Harr: the workshop's yard, with the smith's and the carpenter's own tools set out. Anchored on Workshop[0].",
+      "ops": [
+        { "op": "foundation", "from": [0, 0], "to": [6, 1], "kind": "Earth", "rgb": [96, 92, 88], "depth": 2 },
+        { "op": "clear", "from": [0, 0, 1], "to": [6, 1, 3] },
+        { "op": "sprite", "at": [0, 0, 1], "sprite": "Forge" },
+        { "op": "sprite", "at": [1, 0, 1], "sprite": "Anvil" },
+        { "op": "sprite", "at": [2, 0, 1], "sprite": "BlacksmithBellows" },
+        { "op": "sprite", "at": [3, 0, 1], "sprite": "BarrelWoodCoal" },
+        { "op": "sprite", "at": [4, 0, 1], "sprite": "CarpenterTable" },
+        { "op": "sprite", "at": [5, 0, 1], "sprite": "CrateBlock" },
+        { "op": "sprite", "at": [6, 0, 1], "sprite": "TanningRack" },
+        { "op": "sprite", "at": [2, 1, 1], "sprite": "Cauldron" },
+        { "op": "sprite", "at": [5, 1, 1], "sprite": "Lantern" }
+      ]
+    },
+    {
+      "id": "field-hut",
+      "anchor": { "plot": "FarmField", "nth": 0 },
+      "ground_at": [4, 3],
+      "note": "A furnished interior in Harr: the surveyor's hut on the farm field where the Quiet Survey begins. A sealed room (walls, a doorway, four windows and a roof) with a bed, a table, chairs, a bookshelf, a hearth, a cooking pot, a workbench and two lanterns inside; a crate, a barrel and a lanternpost outside the door. Positions are relative to the ground measured at the hut's own centre, so the whole thing moves with the terrain.",
+      "ops": [
+        { "op": "clear", "from": [0, 0, 1], "to": [8, 6, 4] },
+        { "op": "fill", "from": [0, 0, 0], "to": [8, 6, 0], "kind": "Wood", "rgb": [120, 88, 60] },
+        { "op": "foundation", "from": [0, 0], "to": [8, 6], "kind": "Earth", "rgb": [110, 84, 60], "depth": 4 },
+
+        { "op": "fill", "from": [0, 0, 1], "to": [8, 0, 3], "kind": "Rock", "rgb": [150, 142, 128] },
+        { "op": "fill", "from": [0, 6, 1], "to": [8, 6, 3], "kind": "Rock", "rgb": [150, 142, 128] },
+        { "op": "fill", "from": [0, 0, 1], "to": [0, 6, 3], "kind": "Rock", "rgb": [150, 142, 128] },
+        { "op": "fill", "from": [8, 0, 1], "to": [8, 6, 3], "kind": "Rock", "rgb": [150, 142, 128] },
+        { "op": "clear", "from": [4, 0, 1], "to": [4, 0, 2] },
+
+        { "op": "sprite", "at": [2, 0, 2], "sprite": "Window1" },
+        { "op": "sprite", "at": [6, 0, 2], "sprite": "Window1" },
+        { "op": "sprite", "at": [0, 3, 2], "sprite": "Window1" },
+        { "op": "sprite", "at": [8, 3, 2], "sprite": "Window1" },
+
+        { "op": "fill", "from": [0, 0, 4], "to": [8, 6, 4], "kind": "Rock", "rgb": [104, 96, 86] },
+
+        { "op": "sprite", "at": [1, 1, 1], "sprite": "BedWoodWoodlandHead" },
+        { "op": "sprite", "at": [1, 2, 1], "sprite": "BedWoodWoodlandMiddle" },
+        { "op": "sprite", "at": [1, 3, 1], "sprite": "BedWoodWoodlandTail" },
+        { "op": "sprite", "at": [5, 2, 1], "sprite": "TableWoodFancyWoodlandCorner" },
+        { "op": "sprite", "at": [6, 2, 1], "sprite": "TableWoodFancyWoodlandBody" },
+        { "op": "sprite", "at": [5, 3, 1], "sprite": "ChairWoodWoodland" },
+        { "op": "sprite", "at": [6, 3, 1], "sprite": "ChairWoodWoodland" },
+        { "op": "sprite", "at": [7, 1, 1], "sprite": "BookshelfMiddle" },
+        { "op": "sprite", "at": [7, 2, 1], "sprite": "BookshelfEnd" },
+        { "op": "sprite", "at": [2, 5, 1], "sprite": "Hearth" },
+        { "op": "sprite", "at": [3, 5, 1], "sprite": "CookingPot" },
+        { "op": "sprite", "at": [7, 5, 1], "sprite": "Lantern" },
+        { "op": "sprite", "at": [4, 4, 1], "sprite": "Lantern" },
+        { "op": "sprite", "at": [6, 5, 1], "sprite": "CrateBlock" },
+        { "op": "sprite", "at": [5, 5, 1], "sprite": "Barrel" },
+        { "op": "sprite", "at": [7, 4, 1], "sprite": "DrawerWoodWoodlandM1" },
+        { "op": "sprite", "at": [4, 2, 1], "sprite": "FlowerpotWoodWoodlandS" },
+        { "op": "sprite", "at": [3, 3, 1], "sprite": "CushionArabic" },
+        { "op": "sprite", "at": [8, 2, 2], "sprite": "HangingSign" },
+
+        { "op": "sprite", "at": [4, -2, 1], "sprite": "LanternpostWoodBase" },
+        { "op": "sprite", "at": [4, -2, 2], "sprite": "LanternpostWoodUpper" },
+        { "op": "sprite", "at": [4, -2, 3], "sprite": "LanternpostWoodLantern" },
+        { "op": "sprite", "at": [6, -1, 1], "sprite": "CrateBlock" },
+        { "op": "sprite", "at": [2, -1, 1], "sprite": "BarrelWoodWater" }
+      ]
+    }
+  ],
+  "note": "Harr's dressed world, written by the world stream: three groups of props on the square and in the workshop's yard, and one furnished interior - a surveyor's hut on the farm field where the Quiet Survey begins. Every anchor is a plot of the site (Plaza, Workshop, FarmField) that the Veloren server resolves from world generation, and every name here is one of the game's own block kinds and sprites; `nemo-world-check` and NemoWorld's own validator both have to accept the file before a server will apply it. The atmosphere block follows NemoWorld's published clock (120-minute cycle, four phases): the server pins the absolute time of day to it, so the sun never jumps and an in-game day lasts 120 real minutes rather than the settings' day_length. The four hours are not free: they are the boundaries of Veloren's own day periods (Night before 06:00, Morning to 11:00, Noon to 16:00, Evening to 19:00, Night after - common/src/time.rs), so each of NemoWorld's phases falls entirely inside the one Veloren period the bridge names the same way. That is what makes a resident's schedule follow NemoWorld's phase exactly. `weather` is false on purpose: this server sets the time, not the weather."
+}

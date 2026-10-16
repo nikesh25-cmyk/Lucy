@@ -101,3 +101,58 @@ test('the game agrees: the checker accepts what NemoWorld accepts and refuses wh
     assert.match(bad.out, /REJECTED/);
   }
 });
+
+/**
+ * The manifest this stream actually ships (`content/veloren-world-harr.json`), which is the file the
+ * Veloren server is pointed at: props on Harr's square and in the workshop's yard, and one furnished
+ * interior - the surveyor's hut on the farm field. Both sides have to accept it: NemoWorld's own
+ * validator (places, budgets, ops, the anchoring plot) and the game's checker (`nemo-world-check`).
+ */
+test('the shipped Harr manifest passes NemoWorld and the game', (t) => {
+  const shipped = join(here, '..', 'content', 'veloren-world-harr.json');
+  const { manifest, errors } = checkManifestFile(shipped);
+  assert.deepEqual(errors, [], 'NemoWorld refuses the shipped manifest');
+  assert.equal(manifest.site, 'Harr');
+  assert.ok(manifest.groups.length >= 3, 'props and an interior');
+  const interior = manifest.groups.find((group) => group.id === 'field-hut');
+  assert.ok(interior, 'the furnished interior group is there');
+  // A room: walls and a roof of fills, a doorway and windows as clears and sprites, furniture inside.
+  const kinds = interior.ops.map((op) => op.op);
+  for (const kind of ['fill', 'clear', 'sprite', 'foundation']) {
+    assert.ok(kinds.includes(kind), `the interior has no ${kind} op`);
+  }
+  const furniture = interior.ops.filter((op) => op.op === 'sprite'
+    && /Bed|Table|Chair|Bookshelf|Hearth|CookingPot|Drawer|Lantern|Crate|Barrel/.test(op.sprite));
+  assert.ok(furniture.length >= 10, `the interior is not furnished: ${furniture.length} pieces`);
+  for (const group of manifest.groups) {
+    assert.ok(group.anchor && typeof group.anchor.plot === 'string',
+      `${group.id} is not anchored on a plot of the site`);
+  }
+  // NemoWorld's atmosphere block is NemoWorld's own clock: four increasing hours within the day, and
+  // each of NemoWorld's four phases must fall entirely inside the Veloren day period the bridge names
+  // the same way (`common/src/time.rs`: Night before 06:00, Morning to 11:00, Noon to 16:00, Evening
+  // to 19:00, Night after). Otherwise a resident would walk the wrong row of her schedule.
+  const hours = [manifest.atmosphere.dawn_hour, manifest.atmosphere.day_hour, manifest.atmosphere.dusk_hour, manifest.atmosphere.night_hour];
+  assert.deepEqual(hours, [...hours].sort((a, b) => a - b), 'the phase hours must increase');
+  const starts = { dawn: hours[0], day: hours[1], dusk: hours[2], night: hours[3] };
+  const velorenName = (hour) => (hour < 6 || hour >= 19 ? 'night' : hour < 11 ? 'dawn' : hour < 16 ? 'day' : 'dusk');
+  const order = ['dawn', 'day', 'dusk', 'night'];
+  order.forEach((phase, index) => {
+    const from = starts[phase];
+    const to = index === order.length - 1 ? starts.dawn + 24 : starts[order[index + 1]];
+    for (let hour = from; hour < to; hour += 0.25) {
+      assert.equal(velorenName(hour % 24), phase,
+        `NemoWorld's ${phase} reaches ${hour % 24}:00, which Veloren would name ${velorenName(hour % 24)}`);
+    }
+  });
+  assert.equal(manifest.atmosphere.time, true, 'the server pins the time of day to NemoWorld\'s clock');
+  assert.equal(manifest.atmosphere.weather, false, 'this server does not set the weather, and the manifest says so');
+
+  if (!existsSync(CHECKER)) {
+    t.skip(`the checker is not built (${CHECKER}); build it with: cd wt/veloren-world && CARGO_TARGET_DIR=wt/target/world cargo build --release -p nemo-world-core --bin nemo-world-check`);
+    return;
+  }
+  const out = execFileSync(CHECKER, [shipped], { encoding: 'utf8' });
+  assert.match(out, /^OK groups=4 blocks=\d+ sprites=\d+ lit_sprites=[1-9]\d* foundation_columns=\d+/,
+    `the game does not accept the shipped manifest: ${out}`);
+});

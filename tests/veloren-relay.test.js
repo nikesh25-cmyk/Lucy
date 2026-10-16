@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {execFile} from 'node:child_process';
+import {appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {createServer} from 'node:http';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createApp} from '../server.js';
@@ -92,4 +94,96 @@ test('the relay sends its credential only over HTTPS or to a local address', () 
   assert.doesNotThrow(() => relayTarget('https://nemo.example.org'));
   assert.throws(() => relayTarget('http://nemo.example.org'), /HTTPS or to a local address/);
   assert.throws(() => relayTarget('ftp://127.0.0.1'), /HTTPS or to a local address/);
+});
+
+/**
+ * The eight-resident case: one relay per resident, each with its own credential and `--resident`.
+ *
+ * The world stream runs eight residents in one server config, and a link credential with the
+ * `events` scope is bound to **one** resident: NemoWorld answers any other resident's fact with
+ * `resident_out_of_scope`. The relay treats that answer as final and moves its offset past the line
+ * (`src/veloren-relay.js`), so an unfiltered relay on Lyra's credential would drop the other seven
+ * residents' facts once and for ever, saying only `event <server>:<seq> rejected:
+ * resident_out_of_scope`. `--resident` makes each relay hand in only its own resident's facts (and
+ * keep its own offset), so nothing is offered up to be refused in the first place. Proven here
+ * against the real link surface, and against the real script on the command line.
+ */
+test('one relay per resident hands in every resident\'s facts, and nothing is refused', async t => {
+  const w = await world(t);
+  const residents = ['lw-aria', 'lw-theron', 'lw-lyra'];
+  const credentials = Object.fromEntries(residents.map((id) => [id, w.link.issueCredential({ resident_id: id, scopes: ['events'], days: 1 })]));
+  writeFileSync(w.outbox, residents.map((id) => line({ resident_id: id })).join(''));
+
+  const logs = [];
+  const runs = await Promise.all(residents.map((id) => relayOnce({
+    outbox: w.outbox,
+    offsetFile: `${w.outbox}.offset.${id}`,
+    url: w.url,
+    token: credentials[id].token,
+    resident: id,
+    log: (message) => logs.push(`${id}: ${message}`),
+  })));
+  assert.deepEqual(
+    runs.map((run) => [run.sent, run.accepted, run.rejected, run.skipped]),
+    [[1, 1, 0, 2], [1, 1, 0, 2], [1, 1, 0, 2]],
+    'each relay offered exactly its own resident\'s fact and skipped the others',
+  );
+  assert.equal(w.link.status().events, 3, 'every resident\'s fact reached NemoWorld');
+  assert.equal(logs.filter((message) => /resident_out_of_scope/.test(message)).length, 0, logs.join('\n'));
+
+  // Each relay has its own bookmark, so a later fact for one resident still reaches it.
+  appendFileSync(w.outbox, line({ resident_id: 'lw-theron' }));
+  const aria = await relayOnce({ outbox: w.outbox, offsetFile: `${w.outbox}.offset.lw-aria`, url: w.url, token: credentials['lw-aria'].token, resident: 'lw-aria' });
+  assert.deepEqual([aria.sent, aria.skipped], [0, 1], 'a new fact about another resident is not this relay\'s business');
+  const theron = await relayOnce({ outbox: w.outbox, offsetFile: `${w.outbox}.offset.lw-theron`, url: w.url, token: credentials['lw-theron'].token, resident: 'lw-theron' });
+  assert.deepEqual([theron.sent, theron.accepted], [1, 1]);
+  assert.equal(w.link.status().events, 4);
+});
+
+test('the relay script takes --resident and keeps one offset per resident', async t => {
+  const directory = mkdtempSync(join(tmpdir(), 'veloren-relay-cli-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const outbox = join(directory, 'outbox.jsonl');
+  writeFileSync(outbox, line({ resident_id: 'lw-aria' }) + line({ resident_id: 'lw-theron' }));
+
+  // A stand-in NemoWorld that records which resident each event it was handed belongs to.
+  const seen = [];
+  const server = createServer((request, response) => {
+    let body = '';
+    request.on('data', (chunk) => { body += chunk; });
+    request.on('end', () => {
+      const events = JSON.parse(body).events;
+      seen.push(...events.map((event) => event.resident_id));
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ results: events.map((event) => ({ event_id: `${event.server_id}:${event.seq}`, status: 'accepted' })) }));
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => { server.close(resolve); server.closeAllConnections?.(); }));
+  const url = `http://127.0.0.1:${server.address().port}`;
+
+  const script = join(import.meta.dirname, '..', 'scripts', 'veloren-relay.mjs');
+  // The stand-in NemoWorld lives in this process, so the relay must be started asynchronously: a
+  // blocking spawn would stop this process answering its own request.
+  const run = (resident) => new Promise((resolve, reject) => {
+    execFile(process.execPath, [script, '--once', '--outbox', outbox, '--url', url, '--resident', resident], {
+      env: { ...process.env, NEMO_LINK_TOKEN: 'a-test-token-that-is-never-logged' },
+      encoding: 'utf8',
+    }, (error, stdout, stderr) => (error
+      ? reject(new Error(`${error.message}: ${stderr}`))
+      : resolve(JSON.parse(stdout))));
+  });
+
+  const aria = await run('lw-aria');
+  const theron = await run('lw-theron');
+  assert.deepEqual(seen, ['lw-aria', 'lw-theron'], 'each relay handed in only its own resident\'s fact');
+  assert.deepEqual([aria.sent, aria.skipped, theron.sent, theron.skipped], [1, 1, 1, 1]);
+  assert.ok(existsSync(`${outbox}.offset.lw-aria`) && existsSync(`${outbox}.offset.lw-theron`),
+    'each filtered relay keeps its own offset, so the relays do not read over each other');
+  assert.equal(readFileSync(`${outbox}.offset.lw-aria`, 'utf8').trim(), String(readFileSync(outbox).length));
+
+  // A fact appended later is picked up by that resident's relay and by no other.
+  appendFileSync(outbox, line({ resident_id: 'lw-theron' }));
+  assert.deepEqual([(await run('lw-aria')).sent, (await run('lw-theron')).sent], [0, 1]);
+  assert.deepEqual(seen.slice(2), ['lw-theron']);
 });
