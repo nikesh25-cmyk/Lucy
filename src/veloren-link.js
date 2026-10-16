@@ -504,6 +504,7 @@ export class VelorenLink {
 
   async handle({ request, response, route, url, body, json, tokenFrom, modelCall, platform, fail: failWith }) {
     const token = tokenFrom(request);
+    this.platform = platform;   // veloren-ext/identity.js resolves accounts and avatars through it
     const method = request.method;
     this.platform = platform;   // veloren-ext/identity.js resolves accounts and avatars through it
     if (route === '/veloren/events' && method === 'POST') {

@@ -12,5 +12,6 @@
 import { identityExtension } from './identity.js';
 import shopExtension from './shop.js';
 import { hudExtension } from './view.js';
+import homeExtension from './home.js';
 
-export const EXTENSIONS = [identityExtension, shopExtension, hudExtension];
+export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension];
