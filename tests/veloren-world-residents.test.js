@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LIVING_ROSTER } from '../src/living-world.js';
+import { VelorenLink, signEvent } from '../src/veloren-link.js';
 import { PLACES } from '../src/veloren-ext/world-manifest.js';
 import {
   CONFIG_KEYS, LANDMARKS, LANDMARKS_PATH, LIMITS, PHASES, ROLES,
@@ -259,4 +260,46 @@ test('the game agrees: the plots exist, the nth is real, and no two radii overla
     }
   }
   console.log(`WORLD_RESOLVED ${resolved.map(({ landmark, at }) => `${landmark.id}=${landmark.plot}[${landmark.nth}]@(${at.x},${at.y})`).join(' ')}`);
+});
+
+/**
+ * The one interlock the eight residents expose on the *ingest* side, named so it cannot be forgotten.
+ *
+ * NemoWorld's own landmark list is exactly three `lyra-*` places and `tests/veloren-link.test.js` pins
+ * it (`assert.deepEqual(shipped.map(item => item.role).sort(), ['place', 'post', 'survey'])` and every
+ * id matching `^lyra-[a-z]+$`). The link refuses a fact whose `landmark_id` is not in that list with
+ * `unknown_landmark` (`src/veloren-link.js:364`). The eight residents walk to three structures that
+ * list does not have - the workshop, the far field and the second name for the square - so a fact
+ * observed *inside* one of them is refused, while `resident.met` still carries `lyra-plaza`, because
+ * the run config lists the legacy id first for the shared square.
+ *
+ * Fixing it means extending `content/veloren-landmarks.json` (three entries, role `place`) **and** the
+ * link stream's own test, which is a link-stream decision and not this stream's to make; this test
+ * records what happens until then, instead of leaving it to be discovered in a log.
+ */
+test('a fact observed inside a Harr structure NemoWorld does not know is refused as unknown_landmark', () => {
+  const key = Buffer.from('ab'.repeat(32), 'hex');
+  const link = new VelorenLink({ dbPath: ':memory:', eventKey: key, landmarks: ROLES });
+  const credential = link.issueCredential({ resident_id: 'lw-aria', scopes: ['events'], days: 1 });
+  const player = '11111111-1111-4111-8111-111111111111';
+  const fact = (seq, landmark_id) => {
+    const event = {
+      v: 1, server_id: 'world-residents-test', seq, kind: 'landmark.together', resident_id: 'lw-aria',
+      player_uuid: player, player_alias: 'Tester', landmark_id, occurred_at: Date.now() - 1000,
+    };
+    event.sig = signEvent(key, event);
+    return event;
+  };
+  const [known] = link.ingest(credential, [fact(1, 'lyra-plaza')]);
+  assert.equal(known.status, 'accepted', 'a place NemoWorld knows is stored');
+  const [unknown] = link.ingest(credential, [fact(2, 'harr-central-plaza')]);
+  assert.equal(unknown.status, 'rejected');
+  assert.equal(unknown.reason, 'unknown_landmark');
+
+  // Which of the places this stream's run config adds are the ones NemoWorld cannot know:
+  const knownIds = new Set(ROLES.map((item) => item.id));
+  const added = linkConfigLandmarks().map((landmark) => landmark.id).filter((id) => !knownIds.has(id)).sort();
+  assert.deepEqual(added, ['harr-central-plaza', 'harr-orchard', 'harr-workshop'],
+    'the run config adds three places; if that changes, this interlock changes with it');
+  link.close();
 });
