@@ -11,4 +11,6 @@
 // Add new extensions below.
 import { identityExtension } from './identity.js';
 import shopExtension from './shop.js';
-export const EXTENSIONS = [identityExtension, shopExtension];
+import { hudExtension } from './view.js';
+
+export const EXTENSIONS = [identityExtension, shopExtension, hudExtension];
