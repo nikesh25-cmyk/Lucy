@@ -124,6 +124,14 @@ test('the ids the other streams and the Quiet Survey already use keep their mean
     { id: 'lyra-plaza', label: 'Meeting Hall', name: "Harr's plaza", site: 'Harr', plot: 'Plaza', nth: 0, radius: 9 },
   ];
   for (const landmark of existing) assert.deepEqual(byId.get(landmark.id), landmark, `${landmark.id} changed`);
+  // Where two entries name the same structure, the server reports the FIRST of them in its
+  // `resident.met` events (server/src/sys/nemo_link.rs:554-560 takes the first match), so the legacy
+  // id must come first: a quest objective that names `harr-central-plaza` would never be credited.
+  const order = emitted.map((landmark) => landmark.id);
+  for (const landmark of LANDMARKS.landmarks) {
+    if (!landmark.shared_with) continue;
+    assert.ok(order.indexOf(landmark.shared_with) < order.indexOf(landmark.id), `${landmark.id} is listed before ${landmark.shared_with}`);
+  }
   for (const role of ROLES) {
     const landmark = byId.get(role.id);
     assert.ok(landmark, `the link's ${role.role} landmark ${role.id} is not in the manifest`);

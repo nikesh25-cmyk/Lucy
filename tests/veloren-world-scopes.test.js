@@ -14,12 +14,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LINK_SCOPES, signEvent, loadLandmarks } from '../src/veloren-link.js';
 import { VelorenLink } from '../src/veloren-link.js';
+import { relayOnce } from '../src/veloren-relay.js';
 import { LIVING_ROSTER } from '../src/living-world.js';
 import { BRIDGE_SCOPES, FORBIDDEN_SCOPE_WORDS, RELAY_SCOPES, ROLES_PATH, credentialPlan, linkConfigResidents } from '../src/veloren-ext/world-residents.js';
 
@@ -302,4 +303,44 @@ test('the real issuing command accepts the plan and refuses a scope that could m
     (error) => error.status === 1 && /Scopes must be from/.test(String(error.stderr)),
   );
   assert.equal(link.listCredentials().length, 1, 'a refused credential was stored anyway');
+});
+
+/**
+ * The eight-resident limit, proven against the real relay rather than asserted.
+ *
+ * `wt/stack.sh` starts one relay with one `events` credential. Its credential is bound to one
+ * resident, so a fact about any other resident is refused - and the relay treats a rejection as
+ * final and moves its offset past it (`src/veloren-relay.js:89-91`), so that fact is gone, not
+ * retried. This is what the world stream has to solve before eight residents run: the plan in
+ * `credentialPlan()` gives `events` per resident, which needs eight relays (or a filtered relay, or a
+ * `relay` scope the core does not have today). It is recorded in `wt/evidence/world/REMAINING.md` as a
+ * decision for the owner; this test is the evidence for it.
+ */
+test('one relay credential cannot carry eight residents, and the relay drops the rest silently', async (t) => {
+  const { link } = world(t);
+  const credential = link.issueCredential({ resident_id: 'lw-aria', scopes: [...RELAY_SCOPES], days: 1 });
+  const directory = mkdtempSync(join(tmpdir(), 'world-relay-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const outbox = join(directory, 'outbox.jsonl');
+  const offsetFile = join(directory, 'outbox.jsonl.offset');
+  const lines = [fact({ resident: 'lw-aria' }), fact({ resident: 'lw-theron', player: TALIA }), fact({ resident: 'lw-lyra', player: TALIA })];
+  writeFileSync(outbox, lines.map((line) => `${JSON.stringify(line)}\n`).join(''));
+  const logs = [];
+  const fetchImpl = async (_url, init) => {
+    const payload = JSON.parse(init.body);
+    const answer = await call(link, { route: '/veloren/events', token: init.headers.authorization.replace('Bearer ', ''), payload });
+    return { ok: answer.status < 400, status: answer.status, json: async () => answer.value };
+  };
+  const first = await relayOnce({ outbox, offsetFile, url: 'http://127.0.0.1:3206', token: credential.token, fetchImpl, log: (message) => logs.push(message) });
+  assert.deepEqual({ sent: first.sent, accepted: first.accepted, rejected: first.rejected }, { sent: 3, accepted: 1, rejected: 2 });
+  assert.equal(link.status().events, 1, 'the credential stored a fact about a resident that is not its own');
+  // The two refusals say exactly why, and it is the resident, not the key: the reason is
+  // `resident_out_of_scope`, and the log names only the event id, so an operator has to know what to
+  // look for.
+  const refusals = logs.filter((line) => /rejected: resident_out_of_scope/.test(line));
+  assert.equal(refusals.length, 2, logs.join('\n'));
+  assert.ok(refusals.every((line) => /^event \S+:\d+ rejected: resident_out_of_scope$/.test(line)), refusals.join('\n'));
+  // The relay has already moved on: the refused facts are never sent again.
+  const second = await relayOnce({ outbox, offsetFile, url: 'http://127.0.0.1:3206', token: credential.token, fetchImpl, log: (message) => logs.push(message) });
+  assert.deepEqual({ sent: second.sent, accepted: second.accepted }, { sent: 0, accepted: 0 });
 });
