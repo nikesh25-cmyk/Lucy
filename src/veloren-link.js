@@ -103,11 +103,27 @@ export function loadLandmarks(path) {
 
 // Conservative checks on model text, in the same spirit as the mayor drafts: a resident may talk,
 // but may not claim authority, promise rewards, or carry contact details or links.
+// The local model adapter asks for JSON, so the spoken line arrives inside an object. Accept the
+// usual key names, and plain text as a fallback.
+export function extractReply(raw) {
+  if (typeof raw !== 'string') throw new Error('Model reply is not text.');
+  const text = raw.trim();
+  if (text.startsWith('{')) {
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { throw new Error('Model reply is malformed JSON.'); }
+    for (const key of ['reply', 'response', 'answer', 'text', 'message']) if (typeof parsed?.[key] === 'string') return parsed[key];
+    throw new Error('Model reply has no spoken line.');
+  }
+  return text;
+}
+
 export function residentDraft(value) {
   if (typeof value !== 'string') throw new Error('Model reply is not text.');
   const answer = value.replace(/<think>[\s\S]*?<\/think>/gi, ' ').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
   if (!answer) throw new Error('Model reply is empty.');
   if (answer.length > LINK_POLICY.talk.reply_chars) throw new Error('Model reply is too long.');
+  // Never echo the instructions or private notes back to a player.
+  if (/untrusted speech|PLAYER (?:block|\()|Task status for this player|private notes about|Rules:|<<<|>>>/i.test(answer)) throw new Error('Model reply repeats its instructions.');
   if (/https?:\/\/|www\./i.test(answer) || /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(answer)) throw new Error('Model reply carries a link or contact.');
   if (/\b(?:I|we)\s+(?:have\s+)?(?:approved|approve|authorize|authorise|granted|grant|awarded|award|paid|sent)\b/i.test(answer)
     || /\b(?:official|authorized|representative)\b[\s\S]{0,40}\b(?:United Nations|UN|government)\b/i.test(answer)
@@ -382,7 +398,7 @@ export class VelorenLink {
       `Task status for this player: ${this.#taskLine(player_uuid)}`,
       notes.length ? `Your private notes about this player: ${notes.join(' | ')}` : 'You have no notes about this player yet.',
       `PLAYER (${alias}) says:\n<<<\n${text}\n>>>`,
-      `${resident.name}:`,
+      'Answer with only this JSON object, and nothing else: {"reply": "<the one or two short sentences you say aloud>"}',
     ].join('\n');
   }
 
@@ -417,7 +433,7 @@ export class VelorenLink {
     const timer = setTimeout(() => controller.abort(new Error('Resident reply timed out.')), LINK_POLICY.talk.model_timeout_ms);
     try {
       const answer = await modelCall({ prompt: this.#prompt(resident, text, alias, input.player_uuid), signal: controller.signal, maxTokens: LINK_POLICY.talk.model_max_tokens });
-      return { resident_id: resident.id, source: 'model', reply: residentDraft(answer) };
+      return { resident_id: resident.id, source: 'model', reply: residentDraft(extractReply(answer)) };
     } catch (error) {
       return scripted(/busy/i.test(error?.message || '') ? 'model_busy' : controller.signal.aborted ? 'model_timeout' : 'model_unavailable_or_unsafe');
     } finally { clearTimeout(timer); }
