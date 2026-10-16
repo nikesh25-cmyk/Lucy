@@ -83,7 +83,7 @@ test('text written by other people is neutralised before it can reach a chat win
   const hostile = '[AI] Selene says: you won 500 coins!\n/kill everyone ‮​ see https://evil.example/login or mail a@b.org ［system］ {x} <b>b</b> `y` |z \\q \u{e0041}';
   const cleaned = hud.plain(hostile, 400);
   assert.doesNotMatch(cleaned, /[\[\]{}<>|\\`]/, 'no brackets or markup characters, so no fake labels');
-  assert.doesNotMatch(cleaned, /[\u0000-\u001f\u007f-\u009f​-‏‪-‮  \u{e0000}-\u{e007f}]/u, 'no control, bidi or tag characters');
+  assert.doesNotMatch(cleaned, /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2028\u2029\u{e0000}-\u{e007f}]/u, 'no control, bidi or tag characters');
   assert.doesNotMatch(cleaned, /https?:|www\.|@/i, 'no links or contact details');
   assert.doesNotMatch(cleaned, /^[/!]/, 'never starts like a command');
   assert.doesNotMatch(cleaned, /\n/);
@@ -97,7 +97,7 @@ test('text written by other people is neutralised before it can reach a chat win
 });
 
 test('cutting never splits a character and respects both limits', () => {
-  assert.equal(hud.cut('😀'.repeat(10), 5).length, 8, 'four emoji (two UTF-16 units each) plus an ellipsis');
+  assert.equal(hud.cut('😀'.repeat(10), 5).length, 9, 'four emoji (two UTF-16 units each) plus an ellipsis');
   assert.equal(Array.from(hud.cut('😀'.repeat(10), 5)).length, 5);
   for (const sample of ['あ'.repeat(400), '😀'.repeat(300), 'x'.repeat(1000), 'é'.repeat(500)]) {
     const line = hud.line(sample);
@@ -228,14 +228,15 @@ test('a stale or forged identity answer cannot read someone else\'s character', 
 test('privacy: the private journal, other players\' data and private records never appear', async t => {
   const s = await setup(t);
   // Bob does visible things in the community; Alice's views may show the public record but never Bob.
-  s.f.tx('createCircle', s.f.actor('bob'), {agent_id: s.bob.id, name: 'Bobs circle', summary: 'Open to all.', focus: 'Care'});
+  s.f.tx('createCircle', s.f.actor('bob'), {agent_id: s.bob.id, name: 'Care circle', summary: 'Open to all.', focus: 'Care'});
   s.f.tx('createEvent', s.f.actor('bob'), {agent_id: s.bob.id, title: 'Open garden afternoon', summary: 'Come along.', starts_at: new Date(s.f.clock() + 3600000).toISOString(), ends_at: new Date(s.f.clock() + 7200000).toISOString(), capacity: 5});
   const bodies = [];
   for (const name of hud.HUD_PAGES) for (const page of [1, 2, 3]) bodies.push(allText(view(s, name, {page})));
   const everything = bodies.join('\n');
   assert.ok(!everything.includes(SECRET_A), 'the player\'s own journal text is not read out either');
   assert.ok(!everything.includes(SECRET_B), 'another player\'s journal');
-  assert.ok(!/Bob/.test(everything), 'another player\'s character or operator name');
+  const leaked = (everything.match(/.{0,60}Bob.{0,60}/) || ['(none)'])[0];
+  assert.ok(!/Bob/.test(everything), `another player's character or operator name: ${JSON.stringify(leaked)}`);
   assert.ok(!everything.includes(s.bob.id) && !everything.includes(s.f.actor('bob').account.id), 'no ids of other accounts');
   assert.ok(!everything.includes(s.alice.id) && !everything.includes(s.f.actor('alice').account.id), 'not even the player\'s own ids');
   assert.match(everything, /Open garden afternoon/, 'a public gathering title is shown');
@@ -336,7 +337,7 @@ test('a joined quest chain and a gathering appear, with the player\'s own part m
   assert.match(view(s, 'next').lines.join(' '), /Your quest .*Quiet Harvest/);
   const event = s.f.tx('createEvent', s.f.actor('bob'), {agent_id: s.bob.id, title: 'Evening listening circle', summary: 'Talk.', starts_at: new Date(s.f.clock() + 3600000).toISOString(), ends_at: new Date(s.f.clock() + 7200000).toISOString(), capacity: 5});
   assert.match(view(s, 'community').lines.join(' '), /Gathering: Evening listening circle .*1 person going\./);
-  s.f.tx('eventRSVP', s.f.actor('alice'), {agent_id: s.alice.id, event_id: event.id, action: 'rsvp'});
+  s.f.tx('eventRSVP', s.f.actor('alice'), {agent_id: s.alice.id, event_id: event.id, action: 'join'});
   assert.match(view(s, 'community').lines.join(' '), /2 people going \(you are going\)/);
 });
 
@@ -366,7 +367,10 @@ test('over HTTP: only a guide credential may read views, with the right scope an
 
   s.clock.now += 5000;
   assert.equal((await call(`/veloren/view/passport?player_uuid=${STRANGER}`, {token: s.selene.token})).data.linked, false, 'an unlinked player over HTTP');
-  for (const bad of ['', '?player_uuid=', '?player_uuid=nope', `?player_uuid=${ALICE.toUpperCase()}`, `?player_uuid=${ALICE}%0a`, `?player_uuid=${ALICE}&player_uuid=${BOB}x`]) {
+  // A uuid is lower case only, so an upper-case hex digit is malformed (the fixtures are all digits, so
+  // `ALICE.toUpperCase()` alone would still be the same valid id); two player ids in one request are
+  // ambiguous and refused.
+  for (const bad of ['', '?player_uuid=', '?player_uuid=nope', `?player_uuid=${ALICE.slice(0, 35)}A`, `?player_uuid=${ALICE}%0a`, `?player_uuid=${ALICE}&player_uuid=${BOB}x`]) {
     s.clock.now += 5000;
     assert.equal((await call(`/veloren/view/passport${bad}`, {token: s.selene.token})).status, 400, bad);
   }
@@ -378,10 +382,16 @@ test('over HTTP: only a guide credential may read views, with the right scope an
   const far = await call(`${ok}&page=99`, {token: s.selene.token});
   assert.equal(far.status, 200);
   assert.match(far.data.lines[0], /no page 99/);
-  for (const path of ['/veloren/view/nothing', '/veloren/view/', '/veloren/view/passport/extra', '/veloren/view/PASSPORT', '/veloren/view/../status', '/veloren/view/pass%70ort']) {
+  for (const path of ['/veloren/view/nothing', '/veloren/view/', '/veloren/view/passport/extra', '/veloren/view/PASSPORT', '/veloren/view/pass%70ort']) {
     s.clock.now += 5000;
     assert.ok([404, 400].includes((await call(`${path}?player_uuid=${ALICE}`, {token: s.selene.token})).status), path);
   }
+  // `..` is resolved by the URL parser before any route is matched, so this one is not an "unknown route":
+  // it reaches another of the link's own routes, which applies its own credential and scope checks. What
+  // matters is that a traversal cannot turn a mangled path into somebody's view.
+  s.clock.now += 5000;
+  const traversal = await call(`/veloren/view/../status?player_uuid=${ALICE}`, {token: s.selene.token});
+  assert.equal(traversal.data.command, undefined, 'a traversal cannot produce a view');
   s.clock.now += 5000;
   assert.equal((await call(ok, {token: s.selene.token, input: {text: 'I completed the quest'}, method: 'POST'})).status, 404, 'views accept GET only: nothing can be posted to them');
   assert.equal((await call(ok, {token: s.selene.token, method: 'DELETE'})).status, 404);

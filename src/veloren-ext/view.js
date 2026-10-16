@@ -412,6 +412,8 @@ function guide(link, ctx) {
 }
 
 function playerParam(ctx, source) {
+  // Exactly one player id: a request that names two is ambiguous, so it is refused rather than guessed.
+  if (source instanceof URLSearchParams && source.getAll('player_uuid').length > 1) ctx.fail(400, 'Name one Veloren player id at a time.');
   const player = (source instanceof URLSearchParams ? source.get('player_uuid') : source?.player_uuid) || '';
   if (typeof player !== 'string' || !UUID.test(player)) ctx.fail(400, 'A Veloren player id is required.');
   return player;
