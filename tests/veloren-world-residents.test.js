@@ -27,7 +27,6 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const SERVER_LOG = join(here, '..', '..', 'run', 'world', 'logs', 'veloren-server.log');
 
 const clone = () => JSON.parse(readFileSync(LANDMARKS_PATH, 'utf8'));
-const where = (resident, phase) => [resident, phase];
 
 test('the checked-in manifest is one NemoWorld is willing to hand to the game', () => {
   const errors = validateWorldLandmarks(clone());
