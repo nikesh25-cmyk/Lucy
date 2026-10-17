@@ -9,12 +9,12 @@ import {factsFor, replyFor} from '../src/veloren-ext/npc-logic.js';
 import {buildOverview} from '../src/veloren-ext/overview.js';
 import {VILLAGERS} from '../src/veloren-ext/villagers.js';
 import {loadDiscoveries} from '../src/veloren-ext/world-life.js';
-import {resetObserver} from '../src/veloren-ext/village.js';
+import {resetObserver, chronicleLines} from '../src/veloren-ext/village.js';
 
 const KEY = Buffer.from('nemo-test-key-nemo-test-key-1234');
 const ALICE = '11111111-1111-4111-8111-111111111111';
 const discoveries = loadDiscoveries();
-const LANDMARKS = [{id: 'lyra-post', name: 'House', role: 'post'}, {id: 'lyra-survey', name: 'Field', role: 'survey'}, ...discoveries.map((d) => ({id: d.landmark_id, name: d.name, role: 'place'}))];
+const LANDMARKS = [{id: 'lyra-post', name: 'House', role: 'post'}, {id: 'lyra-survey', name: 'Field', role: 'survey'}, {id: 'site-well', name: 'Well Site', role: 'work'}, ...discoveries.map((d) => ({id: d.landmark_id, name: d.name, role: 'place'}))];
 const T0 = new Date(2026, 9, 14, 10, 5).getTime();
 function setup(t) {
   const clock = {now: T0};
@@ -81,7 +81,8 @@ test('facts are gathered from stored events only, and the research page and pant
 test('a newcomer gets a short task list with exactly one next step, derived from facts', (t) => {
   const s = setup(t);
   let tasks = tasksFor(s.link, ALICE);
-  assert.equal(tasks.length, 6);
+  assert.equal(tasks.length, 7);
+  assert.ok(tasks.some((x) => x.id === 'help'));
   assert.equal(tasks.filter((x) => x.done).length, 0);
   assert.match(tasksLines(s.link, ALICE)[1], /^Next: Meet five villagers \(0 of 5\)/);
   for (const r of ['lw-lyra']) send(s, 'resident.met');
@@ -92,6 +93,39 @@ test('a newcomer gets a short task list with exactly one next step, derived from
   s.link.sql.run("INSERT INTO pantry_takes(cmd_id,order_id,player_uuid,player_alias,item,qty,day,created_at,state) VALUES('c','o',?,'A','apple',2,'d',?,'delivered')", ALICE, T0);
   assert.equal(tasksFor(s.link, ALICE).find((x) => x.id === 'meal').done, true);
   for (const line of tasksLines(s.link, ALICE)) assert.ok(!/coin|reward|kill|fight/i.test(line));
+});
+
+test('a helping hand: a work site is required, replays are duplicates, and the fact feeds insight, tasks, the chronicle and the board', (t) => {
+  const s = setup(t);
+  const auth = () => s.link.authenticate(s.lyra.token, 'events');
+  // No landmark at all, and a discovery landmark, are both refused: a help fact names a work site.
+  assert.equal(send(s, 'project.helped').reason, 'landmark_required');
+  assert.equal(send(s, 'project.helped', {landmark_id: discoveries[0].landmark_id}).reason, 'site_required');
+  // A site landmark is accepted; the same event again is a duplicate, never a second act of help.
+  const ev = (seqNo) => {
+    const e = {v: 1, server_id: 'purpose', seq: seqNo, kind: 'project.helped', resident_id: 'lw-lyra', player_uuid: ALICE, player_alias: 'Alice', landmark_id: 'site-well', occurred_at: s.clock.now};
+    e.sig = signEvent(KEY, e);
+    return e;
+  };
+  assert.equal(s.link.ingest(auth(), [ev(9001)])[0].status, 'accepted');
+  assert.equal(s.link.ingest(auth(), [ev(9001)])[0].status, 'duplicate');
+  // Another person, or the same person at another site, is another helper; the same person at the same site
+  // stays one act of participation, however many stages were built.
+  const other = ev(9002); other.player_uuid = '22222222-2222-4222-8222-222222222222'; other.player_alias = 'Bo'; other.sig = signEvent(KEY, other);
+  assert.equal(s.link.ingest(auth(), [other])[0].status, 'accepted');
+  assert.equal(s.link.ingest(auth(), [ev(9003)])[0].status, 'accepted');
+  assert.equal(gatherFacts(s.link).helps, 2);
+  // Insight has a bounded weight for it, and the page says where insight comes from.
+  const research = loadResearch();
+  assert.equal(research.insight.per_help, 2);
+  assert.equal(insightOf({finds: 0, stages: 0, projectsDone: new Set(), events: 0, helps: 3}, research), 6);
+  assert.throws(() => validateResearch({...research, insight: {per_find: 2, per_help: 999}}), /insight/);
+  assert.match(hud.buildView({link: s.link, platform: null, player_uuid: ALICE, name: 'research'}).lines.join(' '), /lent a hand/);
+  // The task is offered and done, the chronicle names it, the dashboard counts it.
+  assert.equal(tasksFor(s.link, ALICE).find((x) => x.id === 'help').done, true);
+  const chronicle = chronicleLines(s.link, undefined, T0).join('\n');
+  assert.match(chronicle, /stood with a building crew/);
+  assert.equal(buildOverview(s.link, T0).research.sources.helped, 2);
 });
 
 test('villagers answer about their work from live facts and the purpose from the charter', (t) => {

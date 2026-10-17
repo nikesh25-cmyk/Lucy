@@ -814,6 +814,7 @@
         2
       ],
       "project": "well",
+      "site": "site-well",
       "title": "Marking out and laying the base",
       "release_after_minutes": 5,
       "note": "The Plaza well, stage 1 of 3: Marking out and laying the base.",
@@ -883,6 +884,7 @@
         2
       ],
       "project": "well",
+      "site": "site-well",
       "title": "Raising the stone ring",
       "release_after_minutes": 15,
       "crew": 2,
@@ -979,6 +981,7 @@
         2
       ],
       "project": "well",
+      "site": "site-well",
       "title": "Posts, a bucket and a lantern",
       "release_after_minutes": 25,
       "crew": 2,
@@ -1053,6 +1056,7 @@
         3
       ],
       "project": "market-hall",
+      "site": "site-market-hall",
       "title": "Levelling the ground and laying the floor",
       "release_after_minutes": 20,
       "note": "The market hall, stage 1 of 4: Levelling the ground and laying the floor.",
@@ -1122,6 +1126,7 @@
         3
       ],
       "project": "market-hall",
+      "site": "site-market-hall",
       "title": "Raising the posts",
       "release_after_minutes": 30,
       "crew": 2,
@@ -1256,6 +1261,7 @@
         3
       ],
       "project": "market-hall",
+      "site": "site-market-hall",
       "title": "Laying the roof",
       "release_after_minutes": 40,
       "crew": 2,
@@ -1295,6 +1301,7 @@
         3
       ],
       "project": "market-hall",
+      "site": "site-market-hall",
       "title": "Stalls, baskets and lanterns",
       "release_after_minutes": 50,
       "crew": 2,
@@ -1432,6 +1439,7 @@
         0
       ],
       "project": "cottage-1",
+      "site": "site-cottage-row",
       "title": "Clearing the plot and laying the floor",
       "release_after_minutes": 35,
       "note": "Cottage 1, stage 1 of 4: Clearing the plot and laying the floor.",
@@ -1501,6 +1509,7 @@
         0
       ],
       "project": "cottage-1",
+      "site": "site-cottage-row",
       "title": "Raising the walls",
       "release_after_minutes": 45,
       "crew": 2,
@@ -1646,6 +1655,7 @@
         0
       ],
       "project": "cottage-1",
+      "site": "site-cottage-row",
       "title": "Setting the roof",
       "release_after_minutes": 55,
       "crew": 2,
@@ -1685,6 +1695,7 @@
         0
       ],
       "project": "cottage-1",
+      "site": "site-cottage-row",
       "title": "Furnishing the home",
       "release_after_minutes": 65,
       "crew": 2,
@@ -1786,6 +1797,7 @@
         4
       ],
       "project": "observatory",
+      "site": "site-observatory",
       "title": "Raising the platform",
       "release_after_minutes": 50,
       "note": "The star observatory, stage 1 of 3: Raising the platform.",
@@ -1855,6 +1867,7 @@
         4
       ],
       "project": "observatory",
+      "site": "site-observatory",
       "title": "Parapet and steps",
       "release_after_minutes": 60,
       "crew": 2,
@@ -1964,6 +1977,7 @@
         4
       ],
       "project": "observatory",
+      "site": "site-observatory",
       "title": "The star chart table",
       "release_after_minutes": 70,
       "crew": 2,
@@ -2212,6 +2226,7 @@
         0
       ],
       "project": "cottage-2",
+      "site": "site-cottage-row",
       "title": "Clearing the plot and laying the floor",
       "release_after_minutes": 80,
       "note": "Cottage 2, stage 1 of 4: Clearing the plot and laying the floor.",
@@ -2281,6 +2296,7 @@
         0
       ],
       "project": "cottage-2",
+      "site": "site-cottage-row",
       "title": "Raising the walls",
       "release_after_minutes": 90,
       "crew": 2,
@@ -2426,6 +2442,7 @@
         0
       ],
       "project": "cottage-2",
+      "site": "site-cottage-row",
       "title": "Setting the roof",
       "release_after_minutes": 100,
       "crew": 2,
@@ -2465,6 +2482,7 @@
         0
       ],
       "project": "cottage-2",
+      "site": "site-cottage-row",
       "title": "Furnishing the home",
       "release_after_minutes": 110,
       "crew": 2,
@@ -2566,6 +2584,7 @@
         3
       ],
       "project": "field-pavilion",
+      "site": "site-pavilion",
       "title": "Laying the floor",
       "release_after_minutes": 95,
       "note": "The field pavilion, stage 1 of 3: Laying the floor.",
@@ -2635,6 +2654,7 @@
         3
       ],
       "project": "field-pavilion",
+      "site": "site-pavilion",
       "title": "Posts and roof",
       "release_after_minutes": 105,
       "crew": 2,
@@ -2750,6 +2770,7 @@
         3
       ],
       "project": "field-pavilion",
+      "site": "site-pavilion",
       "title": "Benches, a table and lanterns",
       "release_after_minutes": 115,
       "crew": 2,
@@ -2842,6 +2863,7 @@
         0
       ],
       "project": "library-annex",
+      "site": "site-annex",
       "title": "Foundation and floor",
       "release_after_minutes": 110,
       "note": "The library annex, stage 1 of 4: Foundation and floor.",
@@ -2911,6 +2933,7 @@
         0
       ],
       "project": "library-annex",
+      "site": "site-annex",
       "title": "Walls and windows",
       "release_after_minutes": 120,
       "crew": 2,
@@ -3056,6 +3079,7 @@
         0
       ],
       "project": "library-annex",
+      "site": "site-annex",
       "title": "Roof",
       "release_after_minutes": 130,
       "crew": 2,
@@ -3095,6 +3119,7 @@
         0
       ],
       "project": "library-annex",
+      "site": "site-annex",
       "title": "Shelves, desks and the reading lamp",
       "release_after_minutes": 140,
       "crew": 2,
@@ -3205,6 +3230,7 @@
         0
       ],
       "project": "cottage-3",
+      "site": "site-cottage-row",
       "title": "Clearing the plot and laying the floor",
       "release_after_minutes": 125,
       "note": "Cottage 3, stage 1 of 4: Clearing the plot and laying the floor.",
@@ -3274,6 +3300,7 @@
         0
       ],
       "project": "cottage-3",
+      "site": "site-cottage-row",
       "title": "Raising the walls",
       "release_after_minutes": 135,
       "crew": 2,
@@ -3419,6 +3446,7 @@
         0
       ],
       "project": "cottage-3",
+      "site": "site-cottage-row",
       "title": "Setting the roof",
       "release_after_minutes": 145,
       "crew": 2,
@@ -3458,6 +3486,7 @@
         0
       ],
       "project": "cottage-3",
+      "site": "site-cottage-row",
       "title": "Furnishing the home",
       "release_after_minutes": 155,
       "crew": 2,
@@ -3559,6 +3588,7 @@
         0
       ],
       "project": "orchard-gate",
+      "site": "site-orchard-gate",
       "title": "The west fence",
       "release_after_minutes": 140,
       "note": "The orchard fence and gate, stage 1 of 2: The west fence.",
@@ -3632,6 +3662,7 @@
         0
       ],
       "project": "orchard-gate",
+      "site": "site-orchard-gate",
       "title": "The east fence and the gate",
       "release_after_minutes": 150,
       "crew": 2,
@@ -3742,6 +3773,7 @@
         3
       ],
       "project": "research-tower",
+      "site": "site-tower",
       "title": "Raising the platform",
       "release_after_minutes": 20,
       "note": "The research tower, stage 1 of 4: Raising the platform.",
@@ -3811,6 +3843,7 @@
         3
       ],
       "project": "research-tower",
+      "site": "site-tower",
       "title": "The lower shaft",
       "release_after_minutes": 30,
       "crew": 2,
@@ -4047,6 +4080,7 @@
         3
       ],
       "project": "research-tower",
+      "site": "site-tower",
       "title": "The upper shaft and the cap",
       "release_after_minutes": 40,
       "crew": 2,
@@ -4289,6 +4323,7 @@
         3
       ],
       "project": "research-tower",
+      "site": "site-tower",
       "title": "The crown and the star glass",
       "release_after_minutes": 50,
       "crew": 2,
@@ -4400,6 +4435,7 @@
         4
       ],
       "project": "solar-array",
+      "site": "site-solar",
       "title": "Levelling and paving",
       "release_after_minutes": 40,
       "note": "The solar array, stage 1 of 3: Levelling and paving.",
@@ -4450,6 +4486,7 @@
         4
       ],
       "project": "solar-array",
+      "site": "site-solar",
       "title": "The first two rows",
       "release_after_minutes": 50,
       "crew": 2,
@@ -4698,6 +4735,7 @@
         4
       ],
       "project": "solar-array",
+      "site": "site-solar",
       "title": "The last row and the lamps",
       "release_after_minutes": 60,
       "crew": 2,
@@ -4859,6 +4897,7 @@
         3
       ],
       "project": "vertical-farm",
+      "site": "site-vfarm",
       "title": "Foundation and the first floor",
       "release_after_minutes": 75,
       "note": "The vertical farm, stage 1 of 4: Foundation and the first floor.",
@@ -4928,6 +4967,7 @@
         3
       ],
       "project": "vertical-farm",
+      "site": "site-vfarm",
       "title": "The first two levels",
       "release_after_minutes": 85,
       "crew": 2,
@@ -5205,6 +5245,7 @@
         3
       ],
       "project": "vertical-farm",
+      "site": "site-vfarm",
       "title": "The upper levels",
       "release_after_minutes": 95,
       "crew": 2,
@@ -5383,6 +5424,7 @@
         3
       ],
       "project": "vertical-farm",
+      "site": "site-vfarm",
       "title": "Lamps, hanging gardens and the sign",
       "release_after_minutes": 105,
       "crew": 2,
@@ -5448,6 +5490,7 @@
         4
       ],
       "project": "light-fountain",
+      "site": "site-fountain",
       "title": "Laying the basin",
       "release_after_minutes": 60,
       "note": "The light fountain, stage 1 of 3: Laying the basin.",
@@ -5593,6 +5636,7 @@
         4
       ],
       "project": "light-fountain",
+      "site": "site-fountain",
       "title": "The inner ring and the pillar",
       "release_after_minutes": 70,
       "crew": 2,
@@ -5708,6 +5752,7 @@
         4
       ],
       "project": "light-fountain",
+      "site": "site-fountain",
       "title": "The crown and the lamps",
       "release_after_minutes": 80,
       "crew": 2,
@@ -5810,6 +5855,7 @@
         4
       ],
       "project": "transit-hub",
+      "site": "site-transit",
       "title": "Levelling the platform",
       "release_after_minutes": 105,
       "note": "The sky transit hub, stage 1 of 3: Levelling the platform.",
@@ -5879,6 +5925,7 @@
         4
       ],
       "project": "transit-hub",
+      "site": "site-transit",
       "title": "Pillars and the canopy",
       "release_after_minutes": 115,
       "crew": 2,
@@ -6032,6 +6079,7 @@
         4
       ],
       "project": "transit-hub",
+      "site": "site-transit",
       "title": "Benches, lamps and the landing ring",
       "release_after_minutes": 125,
       "crew": 2,
@@ -6209,6 +6257,7 @@
         3
       ],
       "project": "data-archive",
+      "site": "site-archive",
       "title": "Foundation and floor",
       "release_after_minutes": 150,
       "note": "The open archive, stage 1 of 3: Foundation and floor.",
@@ -6278,6 +6327,7 @@
         3
       ],
       "project": "data-archive",
+      "site": "site-archive",
       "title": "Glass walls and the doors",
       "release_after_minutes": 160,
       "crew": 2,
@@ -6459,6 +6509,7 @@
         3
       ],
       "project": "data-archive",
+      "site": "site-archive",
       "title": "Roof, shelves and reading lamps",
       "release_after_minutes": 170,
       "crew": 2,
@@ -6606,6 +6657,7 @@
         1
       ],
       "project": "sky-walk",
+      "site": "site-skywalk",
       "title": "The pillars",
       "release_after_minutes": 130,
       "note": "The sky walk, stage 1 of 3: The pillars.",
@@ -6777,6 +6829,7 @@
         1
       ],
       "project": "sky-walk",
+      "site": "site-skywalk",
       "title": "The deck",
       "release_after_minutes": 140,
       "crew": 2,
@@ -6816,6 +6869,7 @@
         1
       ],
       "project": "sky-walk",
+      "site": "site-skywalk",
       "title": "The rails and the lamps",
       "release_after_minutes": 150,
       "crew": 2,
@@ -6910,6 +6964,7 @@
         6
       ],
       "project": "glass-garden",
+      "site": "site-garden",
       "title": "Foundation and floor",
       "release_after_minutes": 180,
       "note": "The glass garden, stage 1 of 4: Foundation and floor.",
@@ -6979,6 +7034,7 @@
         6
       ],
       "project": "glass-garden",
+      "site": "site-garden",
       "title": "The ring wall and the door",
       "release_after_minutes": 190,
       "crew": 2,
@@ -7124,6 +7180,7 @@
         6
       ],
       "project": "glass-garden",
+      "site": "site-garden",
       "title": "The stepped dome",
       "release_after_minutes": 200,
       "crew": 2,
@@ -7239,6 +7296,7 @@
         6
       ],
       "project": "glass-garden",
+      "site": "site-garden",
       "title": "Planters, benches and lamps",
       "release_after_minutes": 210,
       "crew": 2,

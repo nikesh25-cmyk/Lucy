@@ -34,6 +34,12 @@ export function validateResearch(doc) {
     }
     seen.add(t.id);
   }
+  // The weights that turn facts into insight are bounded too: an insight block is data, and data must not be
+  // able to promise an unbounded amount of progress.
+  for (const [k, v] of Object.entries(doc.insight || {})) {
+    const max = { per_find: 20, per_stage: 10, per_project: 20, per_event: 10, per_help: 10 }[k];
+    if (max === undefined || !Number.isInteger(v) || v < 0 || v > max) throw new Error(`insight.${k} is unknown or out of bounds`);
+  }
   return doc;
 }
 export const loadResearch = () => validateResearch(readJson(RESEARCH_PATH));
@@ -53,6 +59,9 @@ export function gatherFacts(link) {
   return {
     finds: n("SELECT COUNT(*) AS n FROM (SELECT 1 FROM link_events WHERE kind='landmark.visited' AND landmark_id LIKE 'disc-%' GROUP BY player_uuid, landmark_id)"),
     places: n("SELECT COUNT(DISTINCT landmark_id) AS n FROM link_events WHERE kind='landmark.visited' AND landmark_id LIKE 'disc-%'"),
+    // Visitors who stood with a building crew, one per person per work site: helping again at the same
+    // place is the same act of participation (the signed fact names the site, not the stage).
+    helps: n("SELECT COUNT(*) AS n FROM (SELECT 1 FROM link_events WHERE kind='project.helped' GROUP BY player_uuid, landmark_id)"),
     stages: n("SELECT COUNT(*) AS n FROM village_marks WHERE kind='stage'"),
     projectsDone: done,
     events: n('SELECT COUNT(*) AS n FROM (SELECT 1 FROM village_attendance GROUP BY event_id, slot_start HAVING COUNT(*)>=2)'),
@@ -66,7 +75,8 @@ const mulEffect = (techs, key) => techs.reduce((acc, t) => acc * (t.effects?.[ke
 export function insightOf(facts, research, unlocked = []) {
   const i = research.insight;
   const perFind = i.per_find + sumEffect(unlocked, 'insight_per_find');
-  return facts.finds * perFind + facts.stages * i.per_stage + facts.projectsDone.size * i.per_project + facts.events * i.per_event;
+  return facts.finds * perFind + facts.stages * i.per_stage + facts.projectsDone.size * i.per_project
+    + (facts.helps ?? 0) * (i.per_help ?? 0) + facts.events * i.per_event;
 }
 
 /** The queue as it stands: what is learned, what is being learned and how far along. Pure. */
@@ -126,7 +136,7 @@ export function purposeLines(link, clean = (s) => s) {
 export function researchLines(link) {
   const facts = gatherFacts(link);
   const s = researchStatus(facts);
-  const out = [`Harr research: ${s.insight} insight earned from ${facts.finds} finds, ${facts.stages} building stages, ${facts.projectsDone.size} finished projects and ${facts.events} village events.`];
+  const out = [`Harr research: ${s.insight} insight earned from ${facts.finds} finds, ${facts.stages} building stages, ${facts.projectsDone.size} finished projects, ${facts.helps} people who lent a hand at a work site and ${facts.events} village events.`];
   if (s.unlocked.length) out.push(`Learned (${s.unlocked.length}): ${s.unlocked.map((t) => t.name).join(', ')}.`);
   if (s.current) out.push(`Now learning: ${s.current.name}, ${s.progress} of ${s.current.cost} insight. ${s.current.text}`);
   else out.push('Every technology in the queue has been learned. The village is ready to write the next chapter.');
