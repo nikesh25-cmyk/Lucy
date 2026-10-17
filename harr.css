@@ -746,3 +746,93 @@ footer code {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---- UX additions: hidden, scroll, welcome, activity feed, empty states, compact, print ---- */
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; scroll-padding-top: 4.5rem; }
+main > section { scroll-margin-top: 4.5rem; }
+h2:focus-visible, main:focus-visible, nav:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 4px; border-radius: var(--radius-sm); }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .map-site-marker, .goal-ring-fill, .bar i { transition: none !important; animation: none !important; }
+}
+
+.skip-link + .skip-link { left: 14rem; }
+
+.btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.btn-theme[aria-pressed="true"] { border-color: var(--color-primary); background: var(--color-primary-subtle); }
+button.btn-theme { cursor: pointer; font: inherit; font-size: 0.85rem; min-height: 2.25rem; }
+
+.updated { font-size: 0.8rem; color: var(--text-subtle); margin-top: 0.15rem; font-variant-numeric: tabular-nums; }
+.empty { color: var(--text-muted); font-style: italic; padding: 1rem; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); background: var(--bg-surface); list-style: none; }
+
+.welcome-card {
+  background: var(--color-primary-subtle);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
+.welcome-card h2 { font-size: 1.5rem; }
+.welcome-card a { color: var(--color-primary); font-weight: 600; }
+.welcome-steps { padding-left: 1.25rem; display: grid; gap: 0.4rem; }
+.welcome-card button { align-self: flex-start; }
+
+.keys-panel {
+  max-width: var(--container-max); margin: 0 auto 1.5rem; padding: 1rem 1.25rem;
+  background: var(--bg-surface-elevated); border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+}
+.keys-panel h2 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+.keys-panel ul.plain { list-style: none; display: grid; gap: 0.3rem; }
+kbd { font-family: var(--font-mono); background: var(--bg-subtle); border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: var(--radius-sm); padding: 0 0.4rem; }
+
+.feed { list-style: none; display: grid; gap: 0.5rem; }
+.feed-item { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.6rem 0.9rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.feed-item.newest { border-color: var(--color-accent); }
+.feed-dot { flex: none; width: 0.6rem; height: 0.6rem; margin-top: 0.5rem; border-radius: 50%; background: var(--color-accent); }
+.feed-text { overflow-wrap: anywhere; }
+.activity-section > button { margin-top: 0.75rem; }
+
+/* Compact view: a dense page for a second monitor. Map, library and roles are left to the full view. */
+body.compact { padding: 0 0.75rem 1rem; font-size: 0.9rem; }
+body.compact header.top { margin: 0.5rem auto; padding-bottom: 0.5rem; flex-direction: row; justify-content: space-between; }
+body.compact .top-brand h1 { font-size: 1.4rem; display: inline; }
+body.compact .top-brand .eyebrow { display: inline; margin-right: 0.5rem; }
+body.compact .top-brand .lede, body.compact .section-sub, body.compact .nav-bar, body.compact .welcome-card,
+body.compact #village-map, body.compact #library-section, body.compact #roles-section, body.compact .pantry-note, body.compact .tree-container, body.compact footer { display: none; }
+body.compact main { max-width: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; align-items: start; }
+body.compact .section-header { margin-bottom: 0.5rem; }
+body.compact .section-header h2 { font-size: 1.05rem; }
+body.compact main > section { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; }
+body.compact .actions-grid, body.compact .cards, body.compact .goals-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+body.compact .feed-item { padding: 0.35rem 0.6rem; }
+body.compact #research-summary { font-size: 0.8rem; }
+@media (min-width: 1500px) { body.compact main { grid-template-columns: repeat(4, 1fr); } }
+
+@media print {
+  :root, [data-theme="dark"], [data-theme="light"] {
+    --bg-canvas: #fff; --bg-surface: #fff; --bg-surface-elevated: #fff; --bg-subtle: #eee;
+    --border-subtle: #bbb; --border-strong: #888; --text-main: #000; --text-muted: #222; --text-subtle: #333;
+    --color-primary: #000; --color-accent: #000;
+  }
+  body { padding: 0; font-size: 11pt; background: #fff; color: #000; }
+  .skip-link, .nav-bar, .btn-row, #retry, #feed-more, .keys-panel, .welcome-card, .map-legend, .map-detail-card, .tree-legend, #village-map, footer a#welcome-again { display: none !important; }
+  header.top { margin: 0 0 1rem; }
+  header.top::after { content: "Printed from the Harr dashboard"; font-size: 9pt; color: #333; }
+  main { gap: 1.25rem; display: block; max-width: none; }
+  main > section { break-inside: avoid-page; margin-bottom: 1.25rem; }
+  .card, .action-card, .goal-card, .feed-item { break-inside: avoid; box-shadow: none; background: #fff; border: 1px solid #888; }
+  .actions-grid, .cards { grid-template-columns: repeat(2, 1fr); }
+  .feed .feed-item:nth-child(n+1) { display: flex; }
+  a { color: #000; text-decoration: underline; }
+  .research-tree { overflow: visible; }
+  .sr-only { position: static; width: auto; height: auto; margin: 0; clip: auto; overflow: visible; }
+}
+body.compact #principles { display: none; }
+body.compact .goals-grid { grid-template-columns: repeat(2, 1fr); }
+body.compact .goal-card { padding: 0.5rem; gap: 0.25rem; }
+body.compact .goal-ring-wrap { transform: scale(0.7); margin: -0.6rem 0; }
+body.compact .goal-card p { font-size: 0.75rem; }
+body.compact .goals-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+body.compact .goal-card h3 { font-size: 0.8rem; }
+body.compact .goal-card p, body.compact .goal-card .tag, body.compact .goal-card span.goal-count { font-size: 0.7rem; }

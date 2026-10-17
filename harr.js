@@ -78,22 +78,145 @@ const DISCOVERY_COORDS = {
   'The quiet pond': [-14, -46],
 };
 
-// Theme Toggle
-function setupTheme() {
-  const saved = localStorage.getItem('harr-theme');
-  if (saved) {
-    document.documentElement.setAttribute('data-theme', saved);
-  }
+// Safe browser storage: it can throw (private windows, blocked site data), so the page never depends on it.
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* the page still works without it */ } },
+};
+const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const root = document.documentElement;
+
+// Colour scheme: auto (follows the system), light or dark.
+const SCHEMES = ['auto', 'light', 'dark'];
+function applyScheme(mode) {
+  if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode);
+  else root.removeAttribute('data-theme');
+  const label = mode[0].toUpperCase() + mode.slice(1);
+  const text = $('theme-text');
+  if (text) text.textContent = label;
   const btn = $('theme-toggle');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      const current = document.documentElement.getAttribute('data-theme') ||
-        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-      const next = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('harr-theme', next);
+  if (btn) btn.setAttribute('aria-label', `Colour scheme: ${mode}. Press to change.`);
+}
+function cycleScheme() {
+  const current = SCHEMES.includes(store.get('harr-theme')) ? store.get('harr-theme') : 'auto';
+  const next = SCHEMES[(SCHEMES.indexOf(current) + 1) % SCHEMES.length];
+  store.set('harr-theme', next);
+  applyScheme(next);
+  announce(`Colour scheme ${next}`);
+}
+function setupTheme() {
+  const saved = store.get('harr-theme');
+  applyScheme(SCHEMES.includes(saved) ? saved : 'auto');
+  const btn = $('theme-toggle');
+  if (btn) btn.addEventListener('click', cycleScheme);
+}
+
+// Compact view: a dense, no-scroll layout for a second monitor. ?view=compact also switches it on.
+function applyCompact(on) {
+  document.body.classList.toggle('compact', on);
+  const btn = $('compact-toggle');
+  if (btn) btn.setAttribute('aria-pressed', String(on));
+  const text = $('compact-text');
+  if (text) text.textContent = on ? 'Full view' : 'Compact';
+}
+function toggleCompact() {
+  const on = !document.body.classList.contains('compact');
+  store.set('harr-compact', on ? '1' : '0');
+  applyCompact(on);
+  announce(on ? 'Compact view on' : 'Full view');
+}
+function setupCompact() {
+  const fromUrl = new URLSearchParams(location.search).get('view') === 'compact';
+  applyCompact(fromUrl || store.get('harr-compact') === '1');
+  const btn = $('compact-toggle');
+  if (btn) btn.addEventListener('click', toggleCompact);
+}
+
+// A polite spoken/visible status for things the keyboard just did.
+function announce(text) {
+  const n = $('stamp');
+  if (n) n.textContent = text;
+}
+
+// First-visit welcome card.
+let welcomeDismissedThisVisit = false;
+function setupWelcome() {
+  const card = $('welcome');
+  if (!card) return;
+  card.hidden = welcomeDismissedThisVisit || store.get('harr-welcomed') === '1';
+  const done = $('welcome-dismiss');
+  if (done) {
+    done.addEventListener('click', () => {
+      welcomeDismissedThisVisit = true;
+      store.set('harr-welcomed', '1');
+      card.hidden = true;
+      const next = $('action-panel');
+      if (next) { const h = next.querySelector('h2'); if (h) h.focus(); }
     });
   }
+  const again = $('welcome-again');
+  if (again) again.addEventListener('click', (e) => { e.preventDefault(); showWelcome(); });
+}
+function showWelcome() {
+  const card = $('welcome');
+  if (!card) return;
+  card.hidden = false;
+  const h = $('h-welcome');
+  if (h) { h.focus(); card.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' }); }
+}
+
+// Keyboard: j/k move between sections, c compact, t scheme, r refresh, w welcome, ? shortcuts.
+function sectionList() {
+  return Array.from(document.querySelectorAll('main > section')).filter((n) => !n.hidden && n.offsetParent !== null);
+}
+function moveSection(step) {
+  const list = sectionList();
+  if (!list.length) return;
+  const here = list.findIndex((n) => n.getBoundingClientRect().top > 8);
+  const current = document.activeElement && document.activeElement.closest ? document.activeElement.closest('main > section') : null;
+  let index = current ? list.indexOf(current) : (here === -1 ? list.length - 1 : Math.max(0, here - 1));
+  index = Math.max(0, Math.min(list.length - 1, index + step));
+  const target = list[index];
+  const heading = target.querySelector('h2');
+  if (heading) heading.focus({ preventScroll: true });
+  target.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
+}
+function toggleKeys(force) {
+  const panel = $('keys-panel');
+  const btn = $('keys-toggle');
+  if (!panel) return;
+  const open = typeof force === 'boolean' ? force : panel.hidden;
+  panel.hidden = !open;
+  if (btn) btn.setAttribute('aria-expanded', String(open));
+  if (open) panel.querySelector('h2').setAttribute('tabindex', '-1'), panel.querySelector('h2').focus();
+  else if (btn) btn.focus();
+}
+function setupKeys() {
+  const btn = $('keys-toggle');
+  if (btn) btn.addEventListener('click', () => toggleKeys());
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (e.key === 'Escape') { if ($('keys-panel') && !$('keys-panel').hidden) toggleKeys(false); return; }
+    switch (e.key) {
+      case 'j': moveSection(1); break;
+      case 'k': moveSection(-1); break;
+      case 'c': toggleCompact(); break;
+      case 't': cycleScheme(); break;
+      case 'r': announce('Refreshing…'); load(); break;
+      case 'w': showWelcome(); break;
+      case '?': toggleKeys(); break;
+      default: return;
+    }
+    e.preventDefault();
+  });
+  // Jumping from the section menu moves keyboard focus too, not only the scroll position.
+  document.querySelectorAll('.nav-links a, .welcome-steps a').forEach((a) => a.addEventListener('click', () => {
+    const target = document.getElementById((a.getAttribute('href') || '').slice(1));
+    const h = target && target.querySelector('h2');
+    if (h) setTimeout(() => h.focus({ preventScroll: true }), 0);
+  }));
 }
 
 // 1. Render "What can I do now" Action Panel
@@ -419,144 +542,165 @@ function renderResearchTree(research) {
   fill('research-tree', tierEls);
 }
 
-// Main Render Function
-function render(d, tasksData) {
+// ---- sections: each one redraws only when its own data changed, and says when -------------------
+
+const lastSig = new Map();
+const lastChanged = new Map();
+const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+function empty(text) { return el('p', 'empty', text); }
+
+function section(id, slice, draw, now) {
+  const sig = JSON.stringify(slice);
+  const first = !lastSig.has(id);
+  if (first || lastSig.get(id) !== sig) {
+    draw();
+    lastSig.set(id, sig);
+    lastChanged.set(id, now);
+  }
+  const stamp = $(`upd-${id}`);
+  if (stamp) stamp.textContent = `Updated ${clock(lastChanged.get(id))}${now - lastChanged.get(id) > 60000 ? ' (unchanged since)' : ''}`;
+}
+
+function drawFeed(chronicle) {
+  const list = $('chronicle');
+  const more = $('feed-more');
+  if (!list) return;
+  const items = Array.isArray(chronicle) ? chronicle.filter(Boolean) : [];
+  if (!items.length) {
+    list.replaceChildren(el('li', 'empty', 'Nothing has happened yet. The first visit, harvest or finished stage will appear here.'));
+    if (more) more.hidden = true;
+    return;
+  }
+  const expanded = more && more.getAttribute('aria-expanded') === 'true';
+  const shown = expanded ? items : items.slice(0, 6);
+  list.replaceChildren(...shown.map((t, i) => {
+    const li = el('li', i === 0 ? 'feed-item newest' : 'feed-item');
+    li.append(el('span', 'feed-dot'), el('span', 'feed-text', t));
+    return li;
+  }));
+  if (more) {
+    more.hidden = items.length <= 6;
+    more.textContent = expanded ? 'Show fewer' : `Show earlier activity (${items.length - 6} more)`;
+  }
+}
+
+let lastOverview = null;
+function render(d, tasksData, now = Date.now()) {
+  lastOverview = d;
   $('purpose').textContent = d.purpose.text;
-  fill(
-    'principles',
-    d.purpose.principles.map((p) => {
+  section('purpose-section', d.purpose, () => {
+    fill('principles', d.purpose.principles.map((p) => {
       const li = el('li');
       li.append(el('b', '', p.name + ' '), document.createTextNode(p.line));
       return li;
-    }),
-  );
+    }));
+    if (d.purpose.goals && d.purpose.goals.length) renderGoalRings(d.purpose.goals);
+    else fill('goals', [empty('No goals have been set yet. They will appear here once the village charter lists them.')]);
+  }, now);
 
-  // 1. "What can I do now" Panel
-  renderActionPanel(d, tasksData);
+  section('action-panel', [d.rhythm, d.works, d.pantry, d.research.current, tasksData], () => renderActionPanel(d, tasksData), now);
+  section('village-map', [d.works, d.library], () => renderSvgMap(d), now);
 
-  // 2. SVG Map
-  renderSvgMap(d);
+  section('research-section', d.research, () => {
+    const r = d.research;
+    $('research-summary').textContent = `${r.insight} insight earned from ${r.sources.finds} finds, ${r.sources.stages} building stages, ${r.sources.projects} finished projects and ${r.sources.events} village events. ${r.learned} of ${r.total} technologies learned.`;
+    fill('current', r.current
+      ? [el('h3', '', `Now learning: ${r.current.name}`), el('p', 'muted', r.current.text), bar(r.current.progress, r.current.cost), el('small', 'muted', `${r.current.progress} of ${r.current.cost} insight`)]
+      : [el('p', '', r.total ? 'Everything in the current research queue has been learned.' : 'No research is queued yet. The first find in the library starts it.')]);
+    renderResearchTree(r);
+  }, now);
 
-  // 3. Goal Rings
-  renderGoalRings(d.purpose.goals);
+  section('works-section', d.works, () => fill('works', d.works.length ? d.works.map((w) => {
+    const c = el('div', 'card');
+    c.append(
+      el('h3', '', w.name),
+      w.complete ? el('span', 'tag ok', 'finished') : w.next && w.next.waiting ? el('span', 'tag warn', 'needs a crew') : el('span', 'tag on', `${w.done} of ${w.total} stages`),
+      bar(w.done, w.total),
+      el('p', '', w.purpose),
+    );
+    if (w.next) c.append(el('p', '', `Next: ${w.next.title.toLowerCase()} — ${w.next.waiting ? `${w.next.waiting}. Join the builders to help.` : `in about ${mins(w.next.minutes)}`}.`));
+    return c;
+  }) : [empty('No public works have been planned yet. Check back once the builders have a plan.')]), now);
 
-  // 4. Research Tree
-  const r = d.research;
-  $('research-summary').textContent = `${r.insight} insight earned from ${r.sources.finds} finds, ${r.sources.stages} building stages, ${r.sources.projects} finished projects and ${r.sources.events} village events. ${r.learned} of ${r.total} technologies learned.`;
-  fill(
-    'current',
-    r.current
-      ? [
-          el('h3', '', `Now learning: ${r.current.name}`),
-          el('p', 'muted', r.current.text),
-          bar(r.current.progress, r.current.cost),
-          el('small', 'muted', `${r.current.progress} of ${r.current.cost} insight`),
-        ]
-      : [el('p', '', 'Everything in the current research queue has been learned.')],
-  );
-  renderResearchTree(r);
-
-  // 5. Public Works
-  fill(
-    'works',
-    d.works.map((w) => {
+  section('community-section', [d.rhythm, d.pantry], () => {
+    fill('rhythm', d.rhythm.length ? d.rhythm.map((e) => {
       const c = el('div', 'card');
-      c.append(
-        el('h3', '', w.name),
-        w.complete
-          ? el('span', 'tag ok', 'finished')
-          : w.next && w.next.waiting
-          ? el('span', 'tag warn', 'needs a crew')
-          : el('span', 'tag on', `${w.done} of ${w.total} stages`),
-        bar(w.done, w.total),
-        el('p', '', w.purpose),
-      );
-      if (w.next) {
-        c.append(
-          el(
-            'p',
-            '',
-            `Next: ${w.next.title.toLowerCase()} — ${
-              w.next.waiting ? `${w.next.waiting}. Join the builders to help.` : `in about ${mins(w.next.minutes)}`
-            }.`,
-          ),
-        );
-      }
+      c.append(el('h3', '', e.title), el('span', e.on_now ? 'tag on' : 'tag', e.on_now ? `on now · ${e.minutes} min left` : `in ${mins(e.minutes)}`), el('p', '', `At ${e.place}. ${e.blurb}`));
       return c;
-    }),
-  );
+    }) : [empty('No gatherings are scheduled right now.')]);
+    $('pantry').textContent = d.pantry && d.pantry.shelves ? `The village pantry holds ${d.pantry.shelves}.` : 'The pantry shelves are being restocked. Please look again soon.';
+  }, now);
 
-  // 6. Community & Pantry
-  fill(
-    'rhythm',
-    d.rhythm.map((e) => {
-      const c = el('div', 'card');
-      c.append(
-        el('h3', '', e.title),
-        el('span', e.on_now ? 'tag on' : 'tag', e.on_now ? `on now · ${e.minutes} min left` : `in ${mins(e.minutes)}`),
-        el('p', '', `At ${e.place}. ${e.blurb}`),
-      );
-      return c;
-    }),
-  );
-  $('pantry').textContent = `The village pantry holds ${d.pantry.shelves}.`;
+  section('library-section', d.library, () => fill('library', d.library.length ? d.library.map((l) => {
+    const c = el('div', 'card');
+    c.append(el('h3', '', l.name), el('span', l.found ? 'tag ok' : 'tag', l.found ? 'catalogued' : 'to find'), el('p', '', l.found ? l.finding : l.hint));
+    return c;
+  }) : [empty('The library has no catalogued places yet.')]), now);
 
-  // 7. Library
-  fill(
-    'library',
-    d.library.map((l) => {
-      const c = el('div', 'card');
-      c.append(
-        el('h3', '', l.name),
-        el('span', l.found ? 'tag ok' : 'tag', l.found ? 'catalogued' : 'to find'),
-        el('p', '', l.found ? l.finding : l.hint),
-      );
-      return c;
-    }),
-  );
+  section('roles-section', d.roles, () => fill('roles', d.roles.length ? d.roles.map((x) => {
+    const c = el('div', 'card');
+    c.append(el('h3', '', `${x.title} (${x.count})`), el('p', '', x.purpose), el('p', '', x.daily), el('p', '', x.gives));
+    return c;
+  }) : [empty('No villager roles are listed yet.')]), now);
 
-  // 8. Villager Roles
-  fill(
-    'roles',
-    d.roles.map((x) => {
-      const c = el('div', 'card');
-      c.append(el('h3', '', `${x.title} (${x.count})`), el('p', '', x.purpose), el('p', '', x.daily), el('p', '', x.gives));
-      return c;
-    }),
-  );
+  section('activity-section', d.chronicle, () => drawFeed(d.chronicle), now);
 
-  // 9. Chronicle
-  fill(
-    'chronicle',
-    d.chronicle.map((t) => el('li', '', t)),
-  );
-
-  $('stamp').textContent = `Updated ${new Date(d.generated_at).toLocaleTimeString()}`;
+  setStatus(`Checked ${clock(now)}`);
 }
 
+function setStatus(text) {
+  const n = $('stamp');
+  if (n) n.textContent = text;
+}
+
+let loaded = false;
+let failures = 0;
 async function load() {
+  const retry = $('retry');
   try {
     const [resOverview, resTasks] = await Promise.allSettled([
       fetch('/api/v1/veloren/harr/overview', { headers: { accept: 'application/json' } }),
       fetch('/api/v1/veloren/harr/tasks', { headers: { accept: 'application/json' } }),
     ]);
-
-    if (resOverview.status !== 'fulfilled' || !resOverview.value.ok) {
-      throw new Error('overview unavailable');
-    }
-
+    if (resOverview.status !== 'fulfilled' || !resOverview.value.ok) throw new Error('overview unavailable');
     const overviewData = await resOverview.value.json();
     let tasksData = null;
-    if (resTasks.status === 'fulfilled' && resTasks.value.ok) {
-      tasksData = await resTasks.value.json();
-    }
-
+    if (resTasks.status === 'fulfilled' && resTasks.value.ok) tasksData = await resTasks.value.json();
     render(overviewData, tasksData);
+    loaded = true;
+    failures = 0;
+    if (retry) retry.hidden = true;
   } catch {
-    $('stamp').textContent = 'The village is quiet just now; retrying…';
+    failures += 1;
+    if (loaded) {
+      setStatus(`The village is quiet just now; showing what was last recorded (${clock(Date.now())}). Retrying…`);
+    } else {
+      $('purpose').textContent = "Harr's records cannot be reached just now. This page will try again on its own.";
+      fill('actions-grid', [empty('Nothing to show until the village answers. You can try again now, or ask Selene in the game: tasks.')]);
+      setStatus('Waiting for Harr…');
+    }
+    if (retry) retry.hidden = false;
   }
 }
 
+function setupFeed() {
+  const more = $('feed-more');
+  if (more) more.addEventListener('click', () => {
+    more.setAttribute('aria-expanded', String(more.getAttribute('aria-expanded') !== 'true'));
+    if (lastOverview) drawFeed(lastOverview.chronicle);
+  });
+  const retry = $('retry');
+  if (retry) retry.addEventListener('click', () => { setStatus('Trying again…'); load(); });
+}
+
 setupTheme();
+setupCompact();
+setupWelcome();
+setupKeys();
+setupFeed();
 load();
-setInterval(load, 10000);
+// Refresh politely: slower while the tab is hidden, and a failing server is not hammered.
+(function tick() {
+  const wait = document.hidden ? 60000 : Math.min(60000, 10000 * (1 + Math.min(failures, 5)));
+  setTimeout(() => { if (!document.hidden || failures === 0) load(); tick(); }, wait);
+})();
