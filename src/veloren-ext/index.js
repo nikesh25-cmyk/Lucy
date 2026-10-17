@@ -23,7 +23,10 @@ import { healthExtension } from './health.js';
 
 export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension, villageExtension, npcExtension, overviewExtension, gratitudeExtension, healthExtension];
 
-// Content loaders added by the stories stream: pure readers, not extensions (nothing here handles a request).
-export { loadMissions, missionLines } from './missions.js';
+// Content loaders: pure readers, not extensions (nothing here handles a request). The missions catalogue
+// (engine stream) backs the `missions` and `tasks` pages; the stories stream's twelve daily story missions
+// live beside it in story-missions.js / content/veloren-story-missions.json.
+export { loadMissions, missionsLines } from './missions.js';
+export { loadMissions as loadStoryMissions, missionLines } from './story-missions.js';
 export { loadStories } from './stories.js';
 export { loadConversations } from './conversations.js';

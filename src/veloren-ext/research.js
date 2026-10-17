@@ -34,6 +34,12 @@ export function validateResearch(doc) {
     }
     seen.add(t.id);
   }
+  // The weights that turn facts into insight are bounded too: an insight block is data, and data must not be
+  // able to promise an unbounded amount of progress.
+  for (const [k, v] of Object.entries(doc.insight || {})) {
+    const max = { per_find: 20, per_stage: 10, per_project: 20, per_event: 10, per_help: 10 }[k];
+    if (max === undefined || !Number.isInteger(v) || v < 0 || v > max) throw new Error(`insight.${k} is unknown or out of bounds`);
+  }
   return doc;
 }
 export const loadResearch = () => validateResearch(readJson(RESEARCH_PATH));
@@ -44,15 +50,19 @@ export const loadCharter = () => {
 };
 export const loadRoles = () => readJson(ROLES_PATH).roles;
 
-/** The recorded facts the village's progress is made of. Reads stored data only. */
-export function gatherFacts(link) {
-  try { observe(link); } catch { /* the facts below are still true */ }
+/** The recorded facts the village's progress is made of. Reads stored data only. `observe: false` skips the
+ * 30-second record sweep, so a caller that runs inside `observe` cannot recurse into it. */
+export function gatherFacts(link, { observe: run = true } = {}) {
+  if (run) { try { observe(link); } catch { /* the facts below are still true */ } }
   const sql = link.sql;
   const n = (query, ...args) => Number(sql.get(query, ...args)?.n ?? 0);
   const done = new Set(sql.all("SELECT key FROM village_marks WHERE kind='done'").map((r) => r.key.slice(5)));
   return {
     finds: n("SELECT COUNT(*) AS n FROM (SELECT 1 FROM link_events WHERE kind='landmark.visited' AND landmark_id LIKE 'disc-%' GROUP BY player_uuid, landmark_id)"),
     places: n("SELECT COUNT(DISTINCT landmark_id) AS n FROM link_events WHERE kind='landmark.visited' AND landmark_id LIKE 'disc-%'"),
+    // Visitors who stood with a building crew, one per person per work site: helping again at the same
+    // place is the same act of participation (the signed fact names the site, not the stage).
+    helps: n("SELECT COUNT(*) AS n FROM (SELECT 1 FROM link_events WHERE kind='project.helped' GROUP BY player_uuid, landmark_id)"),
     stages: n("SELECT COUNT(*) AS n FROM village_marks WHERE kind='stage'"),
     projectsDone: done,
     events: n('SELECT COUNT(*) AS n FROM (SELECT 1 FROM village_attendance GROUP BY event_id, slot_start HAVING COUNT(*)>=2)'),
@@ -66,7 +76,8 @@ const mulEffect = (techs, key) => techs.reduce((acc, t) => acc * (t.effects?.[ke
 export function insightOf(facts, research, unlocked = []) {
   const i = research.insight;
   const perFind = i.per_find + sumEffect(unlocked, 'insight_per_find');
-  return facts.finds * perFind + facts.stages * i.per_stage + facts.projectsDone.size * i.per_project + facts.events * i.per_event;
+  return facts.finds * perFind + facts.stages * i.per_stage + facts.projectsDone.size * i.per_project
+    + (facts.helps ?? 0) * (i.per_help ?? 0) + facts.events * i.per_event;
 }
 
 /** The queue as it stands: what is learned, what is being learned and how far along. Pure. */
@@ -126,7 +137,7 @@ export function purposeLines(link, clean = (s) => s) {
 export function researchLines(link) {
   const facts = gatherFacts(link);
   const s = researchStatus(facts);
-  const out = [`Harr research: ${s.insight} insight earned from ${facts.finds} finds, ${facts.stages} building stages, ${facts.projectsDone.size} finished projects and ${facts.events} village events.`];
+  const out = [`Harr research: ${s.insight} insight earned from ${facts.finds} finds, ${facts.stages} building stages, ${facts.projectsDone.size} finished projects, ${facts.helps} people who lent a hand at a work site and ${facts.events} village events.`];
   if (s.unlocked.length) out.push(`Learned (${s.unlocked.length}): ${s.unlocked.map((t) => t.name).join(', ')}.`);
   if (s.current) out.push(`Now learning: ${s.current.name}, ${s.progress} of ${s.current.cost} insight. ${s.current.text}`);
   else out.push('Every technology in the queue has been learned. The village is ready to write the next chapter.');
@@ -135,3 +146,42 @@ export function researchLines(link) {
   return out;
 }
 const research_names = (ids) => { const byId = new Map(loadResearch().techs.map((t) => [t.id, t.name])); return ids.slice(0, 3).map((id) => byId.get(id) || id).join(', '); };
+
+/** The village itself, as the actor of a command that is not about one player (a research unlock). */
+export const VILLAGE_ACTOR = '00000000-0000-4000-8000-000000000000';
+
+/**
+ * Research gates works. When the queue has learned a technology, tell the game server once, with a signed
+ * `works_unlock`. The server allow-lists the technology against the manifest's own `needs_tech` values, applies
+ * it once, keeps it in its record (so a restart remembers) and acknowledges it; until that acknowledgement the
+ * stage is only "waiting for research" on the board, never built.
+ *
+ * One record per technology in `village_marks`: an unlock that expired unacknowledged is asked again, an applied
+ * one never is, and a refused one is not retried (the server said why in its log). Runs from the director poll,
+ * so at most every 30 seconds and without a model call.
+ */
+export function announceResearch(link, now = link.clock()) {
+  let unlocked;
+  try { unlocked = researchStatus(gatherFacts(link, { observe: false })).unlocked; } catch { return []; }
+  const marks = new Map(link.sql.all("SELECT key, text FROM village_marks WHERE kind='tech-issued'").map((m) => [m.key, m.text]));
+  const out = [];
+  for (const tech of unlocked) {
+    const key = `tech:${tech.id}`;
+    const previous = marks.get(key);
+    if (previous) {
+      const cmd = /\(([0-9a-f-]{36})\)/.exec(previous)?.[1];
+      const status = cmd ? link.commandStatus(cmd).status : 'unknown';
+      if (status !== 'expired_unconfirmed') continue; // pending or applied: nothing to ask again
+    }
+    let command;
+    try {
+      command = link.issueCommand({ kind: 'works_unlock', player_uuid: VILLAGE_ACTOR, args: { tech: tech.id }, ttl_ms: 120_000, issuedBy: 'research' });
+    } catch { return out; } // commands not configured: the works stay waiting, honestly
+    link.sql.run(
+      "INSERT INTO village_marks(key,kind,text,at) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET text=excluded.text, at=excluded.at",
+      key, 'tech-issued', `${tech.name} was learned; the works were told (${command.cmd_id}).`, now,
+    );
+    out.push({ tech: tech.id, cmd_id: command.cmd_id });
+  }
+  return out;
+}

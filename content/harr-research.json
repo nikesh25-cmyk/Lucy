@@ -1,11 +1,12 @@
 {
   "format": "harr-research-v1",
-  "note": "Harr's research queue. The village earns INSIGHT from recorded facts (places found, stages built, projects finished, events held). Technologies are learned in this order as insight accumulates. Effects are small, scripted and listed here; they change only the pantry today. Unlocking a technology never gives coins, items or power over anyone.",
+  "note": "Harr's research queue. The village earns INSIGHT from recorded facts (places found, stages built, projects finished, people who lent a hand at a work site, events held). Technologies are learned in this order as insight accumulates. Effects are small, scripted and listed here; they change only the pantry today. Unlocking a technology never gives coins, items or power over anyone.",
   "insight": {
     "per_find": 2,
     "per_stage": 1,
     "per_project": 3,
-    "per_event": 1
+    "per_event": 1,
+    "per_help": 2
   },
   "techs": [
     {

@@ -1,163 +1,145 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {VelorenLink, signEvent} from '../src/veloren-link.js';
 import {EXTENSIONS} from '../src/veloren-ext/index.js';
 import {setIdentityProvider} from '../src/veloren-ext/identity.js';
-import {VILLAGERS} from '../src/veloren-ext/villagers.js';
+import {dailyRotation, loadMissions, missionsFor, missionsLines, stepCount, validateMissions} from '../src/veloren-ext/missions.js';
+import {tasksFor, tasksLines} from '../src/veloren-ext/tasks.js';
 import {loadDiscoveries} from '../src/veloren-ext/world-life.js';
 import {resetObserver} from '../src/veloren-ext/village.js';
-import {PRINCIPLES, STEP_KINDS, dayNumber, evaluateMission, factsOf, loadMissions, missionLines, missionsFor, missionsForDay, validateMissions} from '../src/veloren-ext/missions.js';
 
 const KEY = Buffer.from('nemo-test-key-nemo-test-key-1234');
 const ALICE = '11111111-1111-4111-8111-111111111111';
-const BOB = '22222222-2222-4222-8222-222222222222';
+const BO = '22222222-2222-4222-8222-222222222222';
 const discoveries = loadDiscoveries();
-const LANDMARKS = [{id: 'lyra-post', name: 'House', role: 'post'}, {id: 'lyra-survey', name: 'Field', role: 'survey'}, ...discoveries.map((d) => ({id: d.landmark_id, name: d.name, role: 'place'}))];
-const at = (y, mo, d, h = 10) => new Date(y, mo - 1, d, h, 5).getTime();
-const missions = loadMissions();
-const R = VILLAGERS.slice(0, 7).map((v) => v.id);
-const raw = () => JSON.parse(readFileSync(new URL('../content/veloren-missions.json', import.meta.url), 'utf8'));
+const LANDMARKS = [
+  {id: 'lyra-post', name: 'House', role: 'post'},
+  {id: 'lyra-survey', name: 'Field', role: 'survey'},
+  {id: 'site-well', name: 'Well Site', role: 'work'},
+  ...discoveries.map((d) => ({id: d.landmark_id, name: d.name, role: 'place'})),
+];
+const T0 = new Date(2026, 9, 17, 10, 5).getTime();
 
-function setup(t, now = at(2026, 10, 14)) {
-  const clock = {now};
+function setup(t) {
+  const clock = {now: T0};
   const link = new VelorenLink({dbPath: ':memory:', eventKey: KEY, landmarks: LANDMARKS, clock: () => clock.now, extensions: EXTENSIONS});
-  t.after(() => { try { link.close(); } catch { /* closed */ } setIdentityProvider(null); });
+  t.after(() => { try { link.close(); } catch { /* closed */ } setIdentityProvider(() => null); });
   resetObserver();
-  const creds = new Map();
-  let seq = 1000;
-  const send = (resident, kind, player = ALICE, landmark = null, alias = 'Alice') => {
-    if (!creds.has(resident)) creds.set(resident, link.issueCredential({resident_id: resident, scopes: ['events'], days: 1}));
-    seq += 1;
-    const e = {v: 1, server_id: 'missions', seq, kind, resident_id: resident, player_uuid: player, player_alias: alias, landmark_id: landmark, occurred_at: clock.now, ...{}};
-    e.sig = signEvent(KEY, e);
-    return link.ingest(link.authenticate(creds.get(resident).token, 'events'), [e])[0];
-  };
-  const meal = (player, n) => link.sql.run("INSERT INTO pantry_takes(cmd_id,order_id,player_uuid,player_alias,item,qty,day,created_at,state) VALUES(?,?,?,?,?,?,?,?,'delivered')", `cmd-${player}-${n}`, `ord-${player}-${n}`, player, 'x', 'apple', 1, '2026-10-14', clock.now);
-  return {clock, link, send, meal};
+  // One credential per resident: the link is resident-scoped, so a fact about a resident can only come from
+  // that resident's own credential. "Meet five villagers" therefore needs five of them, which is the point.
+  const tokens = {};
+  for (const id of ['lw-lyra', 'lw-kael', 'lw-selene', 'lw-rowan', 'lw-vaelen']) {
+    tokens[id] = link.issueCredential({resident_id: id, scopes: ['events'], days: 1});
+  }
+  return {clock, link, tokens};
 }
+let seq = 5000;
+const send = (s, kind, extra = {}, as = 'lw-lyra') => {
+  seq += 1;
+  const e = {v: 1, server_id: 'missions', seq, kind, resident_id: as, player_uuid: ALICE, player_alias: 'Alice', landmark_id: null, occurred_at: s.clock.now, ...extra};
+  e.sig = signEvent(KEY, e);
+  return s.link.ingest(s.link.authenticate(s.tokens[as].token, 'events'), [e])[0];
+};
+const byId = (missions, id) => missions.find((m) => m.id === id);
 
-test('the catalogue is 12 valid missions, two per principle, 3-4 steps, only the allowed kinds', () => {
-  assert.equal(missions.length, 12);
-  for (const p of PRINCIPLES) assert.equal(missions.filter((m) => m.principle === p).length, 2, p);
-  for (const m of missions) {
-    assert.ok(m.steps.length >= 3 && m.steps.length <= 4, m.id);
-    for (const s of m.steps) assert.ok(STEP_KINDS.includes(s.kind), `${m.id}: ${s.kind}`);
+test('the catalogue is valid, peaceful, and every mission can be checked from a fact', () => {
+  const doc = loadMissions();
+  assert.ok(doc.missions.length >= 8);
+  assert.equal(validateMissions(doc), doc);
+  const principles = new Set(doc.missions.map((m) => m.principle));
+  assert.deepEqual([...principles].sort(), ['abundance', 'cooperation', 'discovery', 'growth', 'research', 'scholarship']);
+  const text = JSON.stringify(doc).toLowerCase();
+  for (const word of ['kill', 'fight', 'attack', 'weapon', 'enemy', 'battle', 'blood', 'dungeon', 'loot', 'raid', 'steal', 'slay']) {
+    assert.ok(!text.includes(word), word);
   }
-  assert.deepEqual([...STEP_KINDS].sort(), ['account.linked', 'landmark.together', 'landmark.visited', 'pantry.delivered', 'resident.met']);
-  const bad = (mutate) => { const doc = raw(); mutate(doc); return doc; };
-  assert.throws(() => validateMissions(bad((d) => { d.missions[0].steps[0].kind = 'command.applied'; })), /not allowed/);
-  assert.throws(() => validateMissions(bad((d) => { d.missions[0].steps.pop(); d.missions[0].steps.pop(); })), /3 or 4/);
-  assert.throws(() => validateMissions(bad((d) => { d.missions[0].steps[0].count = 99; })), /count/);
-  assert.throws(() => validateMissions(bad((d) => { d.missions[1].principle = 'scholarship'; })), /exactly two/);
-  assert.throws(() => validateMissions(bad((d) => { d.missions[1].id = d.missions[0].id; })), /repeated/);
+  const bad = (patch, what) => {
+    const copy = JSON.parse(JSON.stringify(doc));
+    patch(copy);
+    assert.throws(() => validateMissions(copy), what);
+  };
+  bad((d) => { d.missions[1].id = d.missions[0].id; }, /repeated mission id/);
+  bad((d) => { d.missions[0].principle = 'conquest'; }, /unknown principle/);
+  bad((d) => { d.missions[0].steps[0].kind = 'player.killed'; }, /unknown step kind/);
+  bad((d) => { d.missions[0].steps[0].count = 0; }, /count must be 1-20/);
+  bad((d) => { d.missions[0].steps[0].count = 21; }, /count must be 1-20/);
+  bad((d) => { d.missions[0].title = 'Fight the enemy'; }, /violent vocabulary/);
+  bad((d) => { d.missions[0].steps[0].distinct = 'player'; }, /distinct must be/);
+  bad((d) => { d.missions[1].steps[0].prefix = 'site-'; }, /takes a prefix/);
+  bad((d) => { d.missions[2].steps[0].distinct = 'resident'; }, /distinct residents/);
 });
 
-test('missions are peaceful: no violent, competitive, money or contact words', () => {
-  const text = readFileSync(new URL('../content/veloren-missions.json', import.meta.url), 'utf8').toLowerCase();
-  const banned = /\b(kill|fight|attack|slay|weapon|enemy|battle|blood|dungeon|loot|raid|war|steal|theft|hunt\w*|danger\w*|scarc\w*|debt|conquer\w*|conquest|compet\w*|rival\w*|race|beat|win|lose|coins?|money|gold|price|cost|pay|buy)\b/;
-  assert.equal(text.match(banned), null, text.match(banned)?.[0]);
-  assert.equal(text.match(/https?:|www\.|@[a-z0-9.-]+\.[a-z]{2,}/), null);
-});
-
-test('counting is by distinct targets: the same person or place twice counts once', (t) => {
+test('progress counts distinct targets, only for this player, only for its own facts', (t) => {
   const s = setup(t);
-  s.send(R[0], 'resident.met');
-  s.send(R[0], 'resident.met');
-  s.send(R[0], 'resident.met');
-  assert.equal(factsOf(s.link, ALICE)['resident.met'], 1);
-  s.send(R[1], 'resident.met');
-  s.send(R[2], 'resident.met');
-  assert.equal(factsOf(s.link, ALICE)['resident.met'], 3);
-  s.send('lw-lyra', 'landmark.visited', ALICE, 'disc-hidden-spring');
-  s.send('lw-lyra', 'landmark.visited', ALICE, 'disc-hidden-spring');
-  s.send('lw-lyra', 'landmark.visited', ALICE, 'lyra-post'); // not a discovery place: not a library find
-  assert.equal(factsOf(s.link, ALICE)['landmark.visited'], 1);
-  s.send('lw-lyra', 'landmark.visited', ALICE, 'disc-clay-bank');
-  assert.equal(factsOf(s.link, ALICE)['landmark.visited'], 2);
-  s.send('lw-lyra', 'landmark.together', ALICE, 'lyra-survey');
-  s.send('lw-lyra', 'landmark.together', ALICE, 'lyra-survey');
-  assert.equal(factsOf(s.link, ALICE)['landmark.together'], 1);
-  s.send('lw-lyra', 'landmark.together', ALICE, 'lyra-post');
-  assert.equal(factsOf(s.link, ALICE)['landmark.together'], 2);
-  s.meal(ALICE, 1);
-  s.meal(ALICE, 2);
-  assert.equal(factsOf(s.link, ALICE)['pantry.delivered'], 2);
-  assert.equal(factsOf(s.link, ALICE)['account.linked'], 0);
-  setIdentityProvider(() => ({account_id: 'acc', agent_id: null, display_name: 'Alice'}));
-  assert.equal(factsOf(s.link, ALICE)['account.linked'], 1);
+  // meet: five different people, not five meetings.
+  for (const resident of ['lw-lyra', 'lw-kael', 'lw-selene', 'lw-rowan', 'lw-vaelen']) {
+    send(s, 'resident.met', {}, resident);
+  }
+  send(s, 'resident.met', {});
+  const meet = byId(missionsFor(s.link, ALICE), 'meet');
+  assert.equal(meet.progress, 5);
+  assert.equal(meet.done, true);
+  // Another player's facts are never counted.
+  send(s, 'resident.met', {player_uuid: BO, player_alias: 'Bo'});
+  assert.equal(byId(missionsFor(s.link, ALICE), 'meet').progress, 5);
+  assert.equal(byId(missionsFor(s.link, BO), 'meet').progress, 1);
+  // A fact for the wrong target or kind credits nothing: a visit to the house is not a discovery, and
+  // walking with a resident is not a discovery either.
+  send(s, 'landmark.visited', {landmark_id: 'lyra-post'});
+  send(s, 'landmark.together', {landmark_id: discoveries[0].landmark_id});
+  const fresh = missionsFor(s.link, ALICE);
+  assert.equal(byId(fresh, 'find').progress, 0);
+  assert.equal(byId(fresh, 'together').progress, 1);
+  // The same event replayed is a duplicate, and does not count twice.
+  const replay = {v: 1, server_id: 'missions', seq: 7777, kind: 'project.helped', resident_id: 'lw-lyra', player_uuid: ALICE, player_alias: 'Alice', landmark_id: 'site-well', occurred_at: T0};
+  replay.sig = signEvent(KEY, replay);
+  const auth = () => s.link.authenticate(s.tokens['lw-lyra'].token, 'events');
+  assert.equal(s.link.ingest(auth(), [replay])[0].status, 'accepted');
+  assert.equal(s.link.ingest(auth(), [replay])[0].status, 'duplicate');
+  assert.equal(byId(missionsFor(s.link, ALICE), 'help').progress, 1);
 });
 
-test('steps are read in order: the chain stops at the first unfinished step and "next" points to it', () => {
-  const mission = {id: 'order', title: 'Order', principle: 'growth', blurb: 'b', steps: [
-    {kind: 'resident.met', count: 2, label: 'Meet two villagers please.'},
-    {kind: 'landmark.visited', count: 1, label: 'Find one place for the library.'},
-    {kind: 'resident.met', count: 5, label: 'Meet five villagers in all.'},
-  ]};
-  const none = evaluateMission(mission, {'resident.met': 0, 'landmark.visited': 0});
-  assert.equal(none.chain, 0); assert.equal(none.next.index, 0); assert.equal(none.done, false);
-  const skip = evaluateMission(mission, {'resident.met': 2, 'landmark.visited': 0});
-  assert.equal(skip.chain, 1); assert.equal(skip.next.index, 1);
-  // Step 3 is not satisfied by 2 meetings, and step 2 is the next one even if later steps were already met.
-  const later = evaluateMission({...mission, steps: [mission.steps[1], mission.steps[0]]}, {'resident.met': 2, 'landmark.visited': 0});
-  assert.equal(later.chain, 0); assert.equal(later.steps[1].done, true); assert.equal(later.next.index, 0);
-  const all = evaluateMission(mission, {'resident.met': 9, 'landmark.visited': 4});
-  assert.equal(all.done, true); assert.equal(all.next, null); assert.equal(all.chain, 3);
-  assert.equal(all.steps[0].progress, 2, 'progress is capped at the target');
+test('the account link, the pantry and the practice quest are steps, read from their own records', (t) => {
+  const s = setup(t);
+  const before = missionsFor(s.link, ALICE);
+  assert.equal(byId(before, 'link').progress, 0);
+  assert.equal(byId(before, 'meal').progress, 0);
+  assert.equal(byId(before, 'survey').progress, 0);
+  setIdentityProvider((link, uuid) => (uuid === ALICE ? {account_id: 'acct', agent_id: 'agent', display_name: 'Alice'} : null));
+  s.link.sql.run("INSERT INTO pantry_takes(cmd_id,order_id,player_uuid,player_alias,item,qty,day,created_at,state) VALUES('c','o',?,'A','apple',2,'d',?,'delivered')", ALICE, T0);
+  const after = missionsFor(s.link, ALICE);
+  assert.equal(byId(after, 'link').progress, 1);
+  assert.equal(byId(after, 'meal').progress, 1);
+  // The pantry row alone does not complete the survey: the quest is its own record.
+  assert.equal(byId(after, 'survey').progress, 0);
 });
 
-test('three missions a day rotate by the host date, cover four days of twelve and spread the principles', () => {
-  const day = (d) => missionsForDay(missions, at(2026, 10, d)).map((m) => m.id);
-  assert.equal(day(14).length, 3);
-  assert.deepEqual(day(14), day(14), 'stable within a day');
-  assert.deepEqual(missionsForDay(missions, at(2026, 10, 14, 0)).map((m) => m.id), missionsForDay(missions, new Date(2026, 9, 14, 23, 59).getTime()).map((m) => m.id), 'midnight to midnight');
-  assert.notDeepEqual(day(14), day(15));
-  assert.deepEqual(day(14), day(18), 'twelve missions, three a day: a four-day cycle');
+test('the short task list and the missions page keep their shape and stay private', (t) => {
+  const s = setup(t);
+  const tasks = tasksFor(s.link, ALICE);
+  assert.equal(tasks.length, loadMissions().missions.length);
+  assert.equal(tasksLines(s.link, ALICE)[1].startsWith('Next: Meet five villagers (0 of 5)'), true);
+  const page = missionsLines(s.link, ALICE, T0);
+  assert.match(page[0], /recorded facts/);
+  assert.match(page.join('\n'), /Today \(2026-10-17\)/);
+  // No player ids, names or aliases on any page line.
+  for (const line of [...page, ...tasksLines(s.link, ALICE)]) {
+    assert.ok(!line.includes(ALICE) && !line.includes('Alice'), line);
+  }
+  assert.ok(page.length <= 24, `page is bounded (${page.length} lines)`);
+});
+
+test('the daily rotation is stable within a day, different across days, and always three real missions', () => {
+  const doc = loadMissions();
+  const ids = new Set(doc.missions.map((m) => m.id));
+  const monday = dailyRotation(doc, '2026-10-17');
+  const mondayAgain = dailyRotation(doc, '2026-10-17');
+  const tuesday = dailyRotation(doc, '2026-10-18');
+  assert.deepEqual(monday, mondayAgain);
+  assert.equal(monday.length, 3);
+  assert.ok(monday.every((id) => ids.has(id)));
+  assert.notDeepEqual(monday, tuesday, 'the next day offers a different three');
+  // Over a week every mission appears at least once, so nothing is unreachable.
   const seen = new Set();
-  for (let d = 14; d < 18; d += 1) { const ids = day(d); ids.forEach((id) => seen.add(id)); assert.equal(new Set(ids).size, 3); }
-  assert.equal(seen.size, 12, 'every mission appears within four days');
-  for (let d = 1; d <= 28; d += 1) assert.equal(new Set(missionsForDay(missions, at(2026, 10, d)).map((m) => m.principle)).size, 3, `day ${d} offers three different principles`);
-  assert.equal(dayNumber(at(2026, 10, 15)) - dayNumber(at(2026, 10, 14)), 1);
-});
-
-test('missionLines: bounded, peaceful, shows today\'s three, and follows the clock', (t) => {
-  const s = setup(t);
-  const lines = missionLines(s.link, ALICE);
-  assert.ok(lines.length >= 4 && lines.length <= 10, `${lines.length} lines`);
-  for (const l of lines) assert.ok(l.length <= 190, `line too long: ${l}`);
-  const today = missionsFor(s.link, ALICE).map((m) => m.title);
-  assert.equal(today.length, 3);
-  for (const title of today) assert.ok(lines.some((l) => l.startsWith(title)), title);
-  assert.match(lines[0], /0 of 3 done/);
-  s.clock.now = at(2026, 10, 15);
-  const tomorrow = missionLines(s.link, ALICE);
-  assert.notDeepEqual(tomorrow, lines);
-});
-
-test('privacy: one player\'s facts never reach another, and lines carry no names, ids or aliases', (t) => {
-  const s = setup(t);
-  for (const r of R.slice(0, 6)) s.send(r, 'resident.met', BOB, null, 'Bobby-Tables');
-  s.send('lw-lyra', 'landmark.visited', BOB, 'disc-high-view', 'Bobby-Tables');
-  s.meal(BOB, 1);
-  assert.equal(factsOf(s.link, ALICE)['resident.met'], 0);
-  assert.equal(factsOf(s.link, ALICE)['pantry.delivered'], 0);
-  assert.equal(factsOf(s.link, BOB)['resident.met'], 6);
-  // Try every day of the cycle so every mission is rendered for both players.
-  for (let d = 14; d < 18; d += 1) {
-    s.clock.now = at(2026, 10, d);
-    const forAlice = missionLines(s.link, ALICE).join('\n');
-    const forBob = missionLines(s.link, BOB).join('\n');
-    for (const text of [forAlice, forBob]) {
-      assert.ok(!text.includes('Bobby'), 'no alias');
-      assert.ok(!text.includes(ALICE) && !text.includes(BOB), 'no player id');
-      assert.ok(!/lw-[a-z]+/.test(text), 'no resident id');
-      assert.ok(!/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|https?:/i.test(text));
-    }
-  }
-  assert.deepEqual(missionsFor(s.link, ALICE).map((m) => m.steps.map((x) => x.progress)).flat().filter((n) => n > 0), [], 'Alice has made no progress at all');
-});
-
-test('missions is not an HTTP/HUD page yet: tasks.js and view.js are untouched', () => {
-  const view = readFileSync(new URL('../src/veloren-ext/view.js', import.meta.url), 'utf8');
-  assert.ok(!view.includes('missionLines'), 'view.js wiring is a documented ask (docs/STORIES_ASKS.md), not part of this stream');
+  for (const day of ['17', '18', '19', '20', '21', '22', '23']) for (const id of dailyRotation(doc, `2026-10-${day}`)) seen.add(id);
+  assert.equal(seen.size, ids.size);
 });

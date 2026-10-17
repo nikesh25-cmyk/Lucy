@@ -654,13 +654,47 @@ manifest['groups'] = [g for g in manifest['groups'] if not g.get('project')]
 manifest['area']['radius'] = 110  # Encompasses all districts comfortably within 150 limit
 catalogue = []
 
+# The work-site landmark (content/veloren-landmarks-extra.json) each project's stages stand on: a signed
+# `project.helped` fact names it, and builders and makers are sent there (engine stream). The lantern path is a
+# walk along the square with no single site, so it has none.
+SITES = {
+    'well': 'site-well', 'market-hall': 'site-market-hall', 'observatory': 'site-observatory',
+    'cottage-1': 'site-cottage-row', 'cottage-2': 'site-cottage-row', 'cottage-3': 'site-cottage-row',
+    'cottage-4': 'site-cottages-north', 'cottage-5': 'site-cottages-north', 'cottage-6': 'site-cottages-north',
+    'cottage-7': 'site-cottages-east', 'cottage-8': 'site-cottages-east', 'cottage-9': 'site-cottages-east',
+    'field-pavilion': 'site-pavilion', 'library-annex': 'site-annex', 'orchard-gate': 'site-orchard-gate',
+    'research-tower': 'site-tower', 'solar-array': 'site-solar', 'vertical-farm': 'site-vfarm',
+    'light-fountain': 'site-fountain', 'transit-hub': 'site-transit', 'data-archive': 'site-archive',
+    'sky-walk': 'site-skywalk', 'glass-garden': 'site-garden', 'schoolhouse': 'site-schoolhouse',
+    'seminar-pavilion': 'site-seminar', 'workshop-hall': 'site-workshop', 'recycling-garden': 'site-recycling',
+    'guesthouse': 'site-guesthouse', 'amphitheatre': 'site-amphitheatre', 'festival-lawn': 'site-festival-lawn',
+    'water-tower': 'site-water-tower', 'solar-field-2': 'site-solar-2', 'wind-array': 'site-wind-array',
+    'canal-bridge': 'site-bridge', 'tram-halt': 'site-tram-halt',
+}
+# Research gates works: a project's FIRST stage waits until the village has learned this technology
+# (content/harr-research.json); the server allow-lists `works_unlock` against these values.
+NEEDS_TECH = {
+    'research-tower': 'field-notes', 'vertical-farm': 'vertical-farming', 'transit-hub': 'sky-transit',
+    'data-archive': 'open-archive', 'glass-garden': 'glasswork',
+}
+_extra = json.loads((root / 'content' / 'veloren-landmarks-extra.json').read_text())
+_known_sites = {l['id'] for l in _extra.get('landmarks', [])}
+_techs = {t['id'] for t in json.loads((root / 'content' / 'harr-research.json').read_text())['techs']}
+for _pid, _site in SITES.items():
+    assert _site in _known_sites, f'{_pid}: work site {_site} is not in veloren-landmarks-extra.json'
+for _pid, _tech in NEEDS_TECH.items():
+    assert _tech in _techs, f'{_pid}: needs_tech {_tech} is not a technology in harr-research.json'
+
 for pid, name, purpose, start, anchor, ground_at, stages in projects:
     catalogue.append({'id': pid, 'name': name, 'purpose': purpose, 'stages': len(stages), 'first_stage_minutes': start})
     for i, (title, ops) in enumerate(stages, 1):
         manifest['groups'].append({
-            'id': f'{pid}-{i}', 'anchor': anchor, 'ground_at': ground_at, 'project': pid, 'title': title,
+            'id': f'{pid}-{i}', 'anchor': anchor, 'ground_at': ground_at, 'project': pid,
+            **({'site': SITES[pid]} if pid in SITES else {}),
+            'title': title,
             'release_after_minutes': start + (i - 1) * GAP,
             **({'crew': CREW} if i >= 2 and pid != 'lantern-path' else {}),
+            **({'needs_tech': NEEDS_TECH[pid]} if i == 1 and pid in NEEDS_TECH else {}),
             'note': f'{name}, stage {i} of {len(stages)}: {title}.', 'ops': ops})
 
 mpath.write_text(json.dumps(manifest, indent=2) + '\n')

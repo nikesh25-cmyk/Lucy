@@ -34,7 +34,7 @@ export function loadWorks({ manifestPath = MANIFEST_PATH, projectsPath = PROJECT
   for (const group of manifest.groups || []) {
     if (!group.project) continue;
     if (!stagesOf.has(group.project)) stagesOf.set(group.project, []);
-    stagesOf.get(group.project).push({ id: group.id, title: String(group.title || group.id), release_after_minutes: Number(group.release_after_minutes) || 0 });
+    stagesOf.get(group.project).push({ id: group.id, title: String(group.title || group.id), release_after_minutes: Number(group.release_after_minutes) || 0, site: String(group.site || '') });
   }
   return (catalogue.projects || []).map((project) => ({
     id: project.id, name: project.name, purpose: project.purpose,

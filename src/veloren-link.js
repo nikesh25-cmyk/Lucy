@@ -31,7 +31,7 @@ const fail = (status, message) => { throw Object.assign(new Error(message), { st
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 export const LINK_FORMAT = 'veloren-link-v1';
-export const EVENT_KINDS = Object.freeze(['resident.met', 'landmark.together', 'landmark.visited', 'command.applied', 'command.rejected']);
+export const EVENT_KINDS = Object.freeze(['resident.met', 'landmark.together', 'landmark.visited', 'project.helped', 'command.applied', 'command.rejected']);
 // For these kinds the landmark_id field carries the id of the command being acknowledged.
 export const ACK_KINDS = Object.freeze(['command.applied', 'command.rejected']);
 // `shop` is added by the shop stream (a shopkeeper resident answers only shop talk with it; it can
@@ -373,7 +373,9 @@ export class VelorenLink {
     if (ACK_KINDS.includes(e.kind)) {
       if (typeof e.landmark_id !== 'string' || !UUID.test(e.landmark_id)) return 'bad_command_id';
     } else if (e.landmark_id != null && (typeof e.landmark_id !== 'string' || !this.landmarkById(e.landmark_id))) return 'unknown_landmark';
-    if ((e.kind === 'landmark.together' || e.kind === 'landmark.visited') && !e.landmark_id) return 'landmark_required';
+    if ((e.kind === 'landmark.together' || e.kind === 'landmark.visited' || e.kind === 'project.helped') && !e.landmark_id) return 'landmark_required';
+    // A help fact is only meaningful if it names the work site it happened at, not a discovery or a house.
+    if (e.kind === 'project.helped' && !String(e.landmark_id).startsWith('site-')) return 'site_required';
     if (!Number.isSafeInteger(e.occurred_at) || e.occurred_at <= 0 || e.occurred_at > this.clock() + LINK_POLICY.future_skew_ms) return 'bad_time';
     if (typeof e.sig !== 'string' || !/^[a-f0-9]{64}$/.test(e.sig)) return 'bad_signature';
     const expected = Buffer.from(signEvent(this.eventKey, e), 'hex');
@@ -425,12 +427,19 @@ export class VelorenLink {
         break;
       }
     }
-    // Nothing else is asking for her: the village's own rhythm (market hour, story circle...) may.
+    // The village's own rhythm (market hour, story circle...) may suggest where she should be, but a
+    // quest keeps its priority. Extensions also run their side effects (research announces works
+    // unlocks) on every poll, quest or not.
     if (result.mode === 'schedule') {
       for (const extension of this.extensions) {
         if (typeof extension.director !== 'function') continue;
         const hint = extension.director(this, resident_id);
         if (hint) { result = { ...result, ...hint }; break; }
+      }
+    } else {
+      for (const extension of this.extensions) {
+        if (typeof extension.director !== 'function') continue;
+        try { extension.director(this, resident_id); } catch { /* a side effect never breaks a walk */ }
       }
     }
     // Announcements are handed over once: delivery is recorded as they are read.
@@ -574,6 +583,19 @@ export function withDiscoveries(landmarks, path = new URL('../content/veloren-di
   return [...landmarks, ...extra];
 }
 
+/** The public work sites (content/veloren-landmarks-extra.json) are landmarks too, so a signed
+ *  `project.helped` fact names a place this NemoWorld knows. They are read, never written here:
+ *  the server resolves the same `site-*` ids from the same file. */
+export function withWorkSites(landmarks, path = new URL('../content/veloren-landmarks-extra.json', import.meta.url)) {
+  let list = [];
+  try { list = JSON.parse(readFileSync(path, 'utf8')).landmarks || []; } catch { return landmarks; }
+  const known = new Set(landmarks.map((item) => item.id));
+  const extra = list
+    .filter((l) => String(l.id || '').startsWith('site-') && !known.has(l.id) && typeof l.name === 'string' && l.name.length <= 80)
+    .map((l) => ({ id: l.id, name: l.name, role: 'work' }));
+  return [...landmarks, ...extra];
+}
+
 /**
  * Every landmark the game server's link config carries (content/veloren-world-landmarks.json and
  * veloren-landmarks-extra.json) is a place a fact may be tagged with: the server tags `resident.met` and
@@ -601,5 +623,7 @@ export function velorenLinkFromEnvironment(env, mainDatabasePath, landmarksPath)
   const eventKey = Buffer.from(key, /^[a-f0-9]{64,}$/i.test(key) ? 'hex' : 'utf8');
   const dbPath = env.NEMO_LINK_DB || join(dirname(mainDatabasePath), 'veloren-link.sqlite');
   const commandsPath = env.NEMO_LINK_COMMANDS || join(dirname(dbPath), 'veloren-commands.jsonl');
-  return new VelorenLink({ dbPath, eventKey, landmarks: withConfiguredLandmarks(withDiscoveries(loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath))), commandsPath });
+  // Work sites first, so the `site-*` ids keep their `work` role; then every other configured landmark.
+  const landmarks = withConfiguredLandmarks(withWorkSites(withDiscoveries(loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath))));
+  return new VelorenLink({ dbPath, eventKey, landmarks, commandsPath });
 }

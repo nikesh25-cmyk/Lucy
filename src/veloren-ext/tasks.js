@@ -1,28 +1,15 @@
 // A newcomer's tasks: a short, peaceful checklist with one clear next step, derived only from facts the game
 // server and NemoWorld recorded for this player. Nothing here gives coins or items; it only points the way.
-import { identityFor } from './identity.js';
-import { loadDiscoveries } from './world-life.js';
+// The list is the missions catalogue (content/veloren-missions.json) in its short form: this file keeps the
+// page's old shape and wording so the guide and its tests do not change. `short` is the one-line hint the
+// guide's recommendation uses (help, start, next, menu); a mission without one falls back to its `how`.
+import { missionsFor } from './missions.js';
 import { gameplayTaskLines } from './gameplay.js';
 
 export function tasksFor(link, player_uuid) {
-  const sql = link.sql;
-  const n = (query, ...args) => Number(sql.get(query, ...args)?.n ?? 0);
-  const met = n("SELECT COUNT(DISTINCT resident_id) AS n FROM link_events WHERE kind='resident.met' AND player_uuid=?", player_uuid);
-  const finds = n("SELECT COUNT(*) AS n FROM (SELECT 1 FROM link_events WHERE kind='landmark.visited' AND landmark_id LIKE 'disc-%' AND player_uuid=? GROUP BY landmark_id)", player_uuid);
-  const meals = n("SELECT COUNT(*) AS n FROM pantry_takes WHERE state='delivered' AND player_uuid=?", player_uuid);
-  let survey = false;
-  try { survey = Boolean(link.progress(player_uuid).complete); } catch { /* not started */ }
-  let linked = false;
-  try { linked = Boolean(identityFor(link, player_uuid)); } catch { /* not linked */ }
-  const first = loadDiscoveries()[0];
-  return [
-    { id: 'meet', title: 'Meet five villagers', short: 'Stand beside five villagers around the plaza, the workshop and the fields.', progress: Math.min(5, met), target: 5, how: 'Walk up to the people around the plaza, the workshop and the fields and stand beside them for a moment.' },
-    { id: 'meal', title: 'Share a meal', short: 'Whisper me: take apple. The pantry is free for everyone.', progress: Math.min(1, meals), target: 1, how: 'Whisper Selene: take apple. The pantry is free for everyone.' },
-    { id: 'find', title: 'Find a place for the library', short: `Whisper me: library, then walk to ${first ? first.name.toLowerCase() : 'a place on the list'} and stay a few seconds.`, progress: Math.min(1, finds), target: 1, how: `Whisper Selene: library, then walk to ${first ? first.name.toLowerCase() : 'a place on the list'} and stay a few seconds.` },
-    { id: 'survey', title: 'Take the Quiet Survey with Lyra', short: 'Stand beside Lyra at the house and she will walk the survey with you.', progress: survey ? 1 : 0, target: 1, how: 'Stand beside Lyra at the house; she will walk the field survey with you. It is a practice and awards nothing.' },
-    { id: 'discover3', title: 'Add three pages to the library', short: 'Visit places from the library list; three pages in all.', progress: Math.min(3, finds), target: 3, how: 'Every find adds insight for the whole village and brings the next technology closer.' },
-    { id: 'link', title: 'Keep your progress in NemoWorld', short: 'Whisper Lyra: link my account. She sends a private code.', progress: linked ? 1 : 0, target: 1, how: 'Whisper Lyra: link my account. She sends a private code to enter on the NemoWorld link page.' },
-  ].map((t) => ({ ...t, done: t.progress >= t.target }));
+  return missionsFor(link, player_uuid).map((m) => ({
+    id: m.id, title: m.title, short: m.short || m.how, progress: m.progress, target: m.target, how: m.how, done: m.done,
+  }));
 }
 
 /**

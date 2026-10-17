@@ -4,6 +4,7 @@ import { pantryLines } from './pantry.js';
 import { chronicleLines, loadEvents, todayLines } from './village.js';
 import { purposeLines, researchLines } from './research.js';
 import { recommendNext, tasksLines } from './tasks.js';
+import { missionsLines } from './missions.js';
 import { GAMEPLAY_PAGES, GAMEPLAY_TITLES } from './gameplay-pages.js';
 import { gameplayPageLines, seasonalBlurb, withLevel, withSeasonNote } from './gameplay.js';
 import { findsFrom, libraryLines, loadDiscoveries, loadRecord, loadWorks, worksLines } from './world-life.js';
@@ -54,10 +55,10 @@ export const HUD_POLICY = Object.freeze({
 // instance Lyra's) is refused even though it carries the same `director` scope.
 export const GUIDE_RESIDENTS = Object.freeze(['lw-selene']);
 
-export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research', 'menu', ...GAMEPLAY_PAGES]);
-const OPEN_TITLES = { ...GAMEPLAY_TITLES, menu: 'Menu', help: 'Help', works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle', tasks: 'Your tasks', purpose: 'Harr Charter', research: 'Research' };
+export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'missions', 'purpose', 'research', 'menu', ...GAMEPLAY_PAGES]);
+const OPEN_TITLES = { ...GAMEPLAY_TITLES, menu: 'Menu', help: 'Help', works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle', tasks: 'Your tasks', missions: 'Harr missions', purpose: 'Harr Charter', research: 'Research' };
 // Open pages: about the village, not about an account, so they need no link. They still need a player id.
-export const OPEN_PAGES = Object.freeze(['menu', 'help', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research', ...GAMEPLAY_PAGES]);
+export const OPEN_PAGES = Object.freeze(['menu', 'help', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'missions', 'purpose', 'research', ...GAMEPLAY_PAGES]);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const enc = new TextEncoder();
@@ -212,7 +213,7 @@ export const MENU_ENTRIES = Object.freeze([
   ['start', 'your first ten minutes'], ['help', 'what Harr is and how to ask'], ['next', 'the one best thing to do now'],
   ['passport', 'your badges and skills'], ['journal', 'how many entries you have written'], ['calling', 'your calling and today'],
   ['quests', 'your longer journeys'], ['karma', 'your Karma Coins'], ['community', 'gatherings and circles'],
-  ['tasks', 'a gentle checklist'], ['works', 'what the builders are making'], ['library', 'places to discover'],
+  ['tasks', 'a gentle checklist'], ['missions', 'peaceful missions, today\'s three first'], ['works', 'what the builders are making'], ['library', 'places to discover'],
   ['pantry', 'free food for all'], ['today', 'market hour, story circle, festival'], ['chronicle', 'what happened lately'],
   ['purpose', 'why Harr exists'], ['research', 'what the village is learning'], ['track', 'mark your current step on your map'],
   ['thanks', 'the gratitude board'], ['apprentice', 'learn a craft from a mentor'], ['survey', 'today\'s field survey'],
@@ -225,7 +226,7 @@ export function menuLines({ word, recommend } = {}) {
   if (word) out.push(guess ? `I did not catch "${plain(word, 16)}". Did you mean ${guess}?` : `I did not catch "${plain(word, 16)}". Here is everything I know.`);
   out.push('Whisper me one word. Add a number for more of a long answer, like quests 2, or say more.');
   const say = (names) => names.map((name) => `${name} (${MENU_ENTRIES.find((entry) => entry[0] === name)[1]})`).join(', ');
-  out.push(`Begin: ${say(['start', 'help', 'next', 'tasks'])}.`);
+  out.push(`Begin: ${say(['start', 'help', 'next', 'tasks', 'missions'])}.`);
   out.push(`About you, with a linked account: ${say(['passport', 'journal', 'calling'])}.`);
   out.push(`And also about you: ${say(['quests', 'karma', 'community'])}.`);
   out.push(`About Harr, for everyone: ${say(['works', 'library', 'pantry', 'today'])}.`);
@@ -237,7 +238,7 @@ export function menuLines({ word, recommend } = {}) {
 }
 
 const ALIASES = Object.freeze({
-  quest: 'quests', task: 'tasks', todo: 'tasks', pass: 'passport', profile: 'passport', hello: 'help', hi: 'help', hey: 'help', what: 'help',
+  quest: 'quests', task: 'tasks', mission: 'missions', todo: 'tasks', pass: 'passport', profile: 'passport', hello: 'help', hi: 'help', hey: 'help', what: 'help',
   commands: 'menu', command: 'menu', options: 'menu', list: 'menu', words: 'menu', coins: 'karma', coin: 'karma', work: 'works', build: 'works',
   books: 'library', book: 'library', discover: 'library', food: 'pantry', meal: 'pantry', events: 'today', event: 'today', market: 'today',
   history: 'chronicle', story: 'chronicle', learn: 'research', science: 'research', goals: 'purpose', goal: 'purpose', why: 'purpose',
@@ -298,6 +299,7 @@ export const FOOTERS = Object.freeze({
   today: 'Next: say chronicle to hear what happened lately.',
   chronicle: 'Next: say works to see what the builders are making.',
   tasks: 'Next: say library, pantry or next whenever you are ready.',
+  missions: 'Next: say tasks for your first steps, or works to lend a hand.',
   purpose: 'Next: say research to see how we learn toward it.',
   research: 'Next: say library; every find adds insight for everyone.',
 });
@@ -486,7 +488,9 @@ export function buildView({ link, platform, player_uuid, name, page = 1, word = 
             ? withLevel(chronicleLines(link, loadEvents(), link.clock(), (alias) => plain(alias, 24)), link)
             : name === 'tasks'
               ? tasksLines(link, player_uuid)
-              : name === 'purpose'
+              : name === 'missions'
+                ? missionsLines(link, player_uuid)
+                : name === 'purpose'
                 ? purposeLines(link)
                 : name === 'research'
                   ? researchLines(link)

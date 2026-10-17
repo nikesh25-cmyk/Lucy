@@ -279,14 +279,14 @@
       "id": "map-road-south",
       "name": "The south road",
       "purpose": "The south road links the districts of Harr with a lit, paved road.",
-      "stages": 6,
+      "stages": 5,
       "first_stage_minutes": 10
     },
     {
       "id": "map-road-west",
       "name": "The west road",
       "purpose": "The west road links the districts of Harr with a lit, paved road.",
-      "stages": 6,
+      "stages": 5,
       "first_stage_minutes": 12
     },
     {
@@ -300,7 +300,7 @@
       "id": "map-road-south-west",
       "name": "The south-west road",
       "purpose": "The south-west road links the districts of Harr with a lit, paved road.",
-      "stages": 6,
+      "stages": 3,
       "first_stage_minutes": 16
     },
     {
@@ -329,7 +329,7 @@
       "name": "The way to the plaza well",
       "purpose": "A paved, lit path to the plaza well, tinted for the gathering quarter.",
       "stages": 2,
-      "first_stage_minutes": 10
+      "first_stage_minutes": 13
     },
     {
       "id": "map-path-workshop-hall",
@@ -344,6 +344,13 @@
       "purpose": "A paved, lit path to the star observatory, tinted for the learning quarter.",
       "stages": 2,
       "first_stage_minutes": 45
+    },
+    {
+      "id": "map-path-market-hall",
+      "name": "The way to the market hall",
+      "purpose": "A paved, lit path to the market hall, tinted for the gathering quarter.",
+      "stages": 2,
+      "first_stage_minutes": 14
     },
     {
       "id": "map-path-vertical-farm",
@@ -493,13 +500,6 @@
       "first_stage_minutes": 160
     },
     {
-      "id": "map-path-festival-lawn",
-      "name": "The way to the festival lawn",
-      "purpose": "A paved, lit path to the festival lawn, tinted for the gathering quarter.",
-      "stages": 2,
-      "first_stage_minutes": 115
-    },
-    {
       "id": "map-path-wind-array",
       "name": "The way to the wind array",
       "purpose": "A paved, lit path to the wind array, tinted for the water and energy quarter.",
@@ -567,7 +567,7 @@
       "name": "The gate to the gathering quarter",
       "purpose": "A stone arch marks the way into the gathering quarter; its paving and its arch share one colour.",
       "stages": 2,
-      "first_stage_minutes": 22
+      "first_stage_minutes": 25
     },
     {
       "id": "map-gate-energy",
@@ -608,8 +608,8 @@
       "id": "map-land-gathering",
       "name": "The lawns of the gathering quarter",
       "purpose": "Grass mounds and a stone planter soften the gathering quarter.",
-      "stages": 2,
-      "first_stage_minutes": 30
+      "stages": 3,
+      "first_stage_minutes": 33
     },
     {
       "id": "map-land-energy",

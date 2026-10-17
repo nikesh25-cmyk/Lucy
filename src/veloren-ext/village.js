@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDiscoveries, loadRecord, loadWorks } from './world-life.js';
+import { announceResearch } from './research.js';
 import { VILLAGERS } from './villagers.js';
 import { LIVING_ROSTER } from '../living-world.js';
 
@@ -158,6 +159,9 @@ export function observe(link, now = link.clock(), recordPath = process.env.NEMO_
 /** The director hook: send a resident to a running event, and remember that it did. */
 export function directorHook(link, resident_id, events = loadEvents(), now = link.clock()) {
   try { observe(link, now); } catch { /* the chronicle must never break a resident's walk */ }
+  // Research gates works: tell the game server about a newly learned technology (once per technology; the
+  // server allow-lists it and acknowledges it, and until then the stage only waits). Never breaks a walk.
+  try { announceResearch(link, now); } catch { /* the works simply stay waiting */ }
   const hit = eventFor(events, resident_id, now);
   if (!hit) return null;
   link.sql.run('INSERT OR IGNORE INTO village_attendance(event_id,slot_start,resident_id,first_at) VALUES(?,?,?,?)', hit.event.id, hit.slot, resident_id, now);
@@ -180,6 +184,7 @@ export function chronicleLines(link, events = loadEvents(), now = link.clock(), 
   const marks = sql.all('SELECT kind, at FROM village_marks WHERE at>=?', from);
   // One row per recorded find; a person finding a place counts once per DAY (below), not once per window.
   const finds = sql.all("SELECT occurred_at AS at, player_uuid, landmark_id FROM link_events WHERE kind='landmark.visited' AND occurred_at>=? ORDER BY occurred_at LIMIT 20000", from);
+  const helps = sql.all("SELECT player_uuid, landmark_id, MIN(occurred_at) AS at FROM link_events WHERE kind='project.helped' AND occurred_at>=? GROUP BY player_uuid, landmark_id", from);
   const meals = sql.all("SELECT created_at AS at, qty FROM pantry_takes WHERE state='delivered' AND created_at>=?", from);
   const runs = sql.all('SELECT event_id, slot_start, COUNT(*) AS residents FROM village_attendance WHERE slot_start>=? GROUP BY event_id, slot_start', from);
   const titles = new Map(events.map((e) => [e.id, e.title.toLowerCase()]));
@@ -190,6 +195,7 @@ export function chronicleLines(link, events = loadEvents(), now = link.clock(), 
     const stages = marks.filter((m) => m.kind === 'stage' && within(m.at)).length;
     const done = marks.filter((m) => m.kind === 'done' && within(m.at)).length;
     const found = new Set(finds.filter((f) => within(Number(f.at))).map((f) => `${f.player_uuid}|${f.landmark_id}`)).size;
+    const helped = helps.filter((h) => within(Number(h.at))).length;
     const shared = meals.filter((m) => within(m.at)).reduce((n, m) => n + m.qty, 0);
     const held = new Map();
     for (const r of runs.filter((x) => within(x.slot_start))) held.set(r.event_id, (held.get(r.event_id) || 0) + 1);
@@ -197,6 +203,7 @@ export function chronicleLines(link, events = loadEvents(), now = link.clock(), 
     if (stages) bits.push(`${plural(stages, 'building stage')} finished`);
     if (done) bits.push(`${plural(done, 'project')} completed`);
     if (found) bits.push(`${plural(found, 'discovery', 'discoveries')} recorded`);
+    if (helped) bits.push(`${plural(helped, 'helper')} stood with a building crew`);
     if (shared) bits.push(`${plural(shared, 'portion')} of food shared`);
     for (const [id, n] of held) bits.push(`${titles.get(id) || id} held ${n === 1 ? 'once' : `${n} times`}`);
     const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : dayKey(start);
@@ -208,7 +215,7 @@ export function chronicleLines(link, events = loadEvents(), now = link.clock(), 
   const firsts = sql.all("SELECT player_alias, landmark_id, MIN(occurred_at) AS at FROM link_events WHERE kind='landmark.visited' GROUP BY landmark_id ORDER BY at DESC LIMIT 2");
   const names = new Map(loadDiscoveries().map((d) => [d.landmark_id, d.name]));
   for (const f of firsts) if (names.has(f.landmark_id)) out.push(`First page, ${dayKey(f.at)}: ${clean(f.player_alias || 'a traveller')} recorded ${names.get(f.landmark_id)}.`);
-  out.push('Residents attending events are scripted; stages come from the game server; finds and meals from signed, acknowledged facts.');
+  out.push('Residents attending events are scripted; stages come from the game server; finds, meals and helping hands from signed, acknowledged facts.');
   return out;
 }
 

@@ -82,7 +82,7 @@ test('the director sends a free resident to the event, a quest keeps priority, a
   s.link.director(maker); s.link.director(maker);
   assert.equal(s.link.sql.get('SELECT COUNT(*) AS n FROM village_attendance').n, 1);
   s.clock.now = at(2026, 10, 14, 10, 20);
-  assert.equal(s.link.director(maker).mode, 'schedule', 'after the slot the resident returns to the routine');
+  assert.equal(s.link.director(maker).mode, 'work', 'after the slot a maker returns to the active works site, then the routine');
   // Lyra with an active quest keeps her quest order even when her story circle starts
   const cred = s.link.issueCredential({resident_id: 'lw-lyra', scopes: ['events'], days: 1});
   s.clock.now = at(2026, 10, 14, 10, 31);
@@ -90,6 +90,30 @@ test('the director sends a free resident to the event, a quest keeps priority, a
   e.sig = signEvent(KEY, e);
   s.link.ingest(s.link.authenticate(cred.token, 'events'), [e]);
   assert.equal(s.link.director('lw-lyra').mode, 'escort');
+});
+
+test('research announces a works unlock even while a quest keeps the walk', (t) => {
+  const clock = {now: at(2026, 10, 14, 10, 31)};
+  const directory = mkdtempSync(join(tmpdir(), 'village-unlock-'));
+  t.after(() => rmSync(directory, {recursive: true, force: true}));
+  const link = new VelorenLink({dbPath: ':memory:', eventKey: KEY, landmarks: LANDMARKS, clock: () => clock.now, commandsPath: join(directory, 'commands.jsonl'), extensions: EXTENSIONS});
+  t.after(() => { try { link.close(); } catch { /* closed */ } });
+  const cred = link.issueCredential({resident_id: 'lw-lyra', scopes: ['events'], days: 1});
+  const auth = link.authenticate(cred.token, 'events');
+  const send = (kind, landmark_id, seq) => {
+    const e = {v: 1, server_id: 'v', seq, kind, resident_id: 'lw-lyra', player_uuid: ALICE, player_alias: 'Alice', landmark_id, occurred_at: clock.now};
+    e.sig = signEvent(KEY, e);
+    link.ingest(auth, [e]);
+  };
+  // Three distinct finds teach field-notes (3 × per_find 2 = 6 insight, exactly its cost).
+  discoveries.slice(0, 3).forEach((d, i) => send('landmark.visited', d.landmark_id, i + 1));
+  // An active quest (the survey) keeps the escort order...
+  send('resident.met', null, 10);
+  const plan = link.director('lw-lyra');
+  assert.equal(plan.mode, 'escort', 'the quest keeps its priority');
+  // ...but the research side effect still ran on the same poll.
+  assert.ok(link.sql.get("SELECT key FROM village_marks WHERE kind='tech-issued' AND key='tech:field-notes'"), 'field-notes was announced');
+  assert.equal(link.sql.get("SELECT kind FROM link_commands WHERE kind='works_unlock'")?.kind, 'works_unlock');
 });
 
 test('the chronicle is built only from stored facts and tells nothing it did not record', (t) => {

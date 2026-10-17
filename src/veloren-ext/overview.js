@@ -32,11 +32,11 @@ export function buildOverview(link, now = link.clock()) {
       insight: status.insight, learned: status.unlocked.length, total: research.techs.length,
       current: status.current ? { name: status.current.name, text: status.current.text, progress: status.progress, cost: status.current.cost } : null,
       techs: research.techs.map((t) => ({ id: t.id, name: t.name, text: t.text, cost: t.cost, state: unlockedIds.has(t.id) ? 'learned' : status.current?.id === t.id ? 'learning' : 'queued' })),
-      sources: { finds: facts.finds, stages: facts.stages, projects: facts.projectsDone.size, events: facts.events },
+      sources: { finds: facts.finds, stages: facts.stages, projects: facts.projectsDone.size, helped: facts.helps, events: facts.events },
     },
     works: works.map((w) => ({
       id: w.id, name: w.name, purpose: w.purpose, done: w.done, total: w.total, complete: w.complete,
-      next: w.next ? { title: w.next.title, minutes: w.next.minutes === null ? null : Math.ceil(w.next.minutes), waiting: w.next.waiting.startsWith('needs a crew') ? w.next.waiting : '' } : null,
+      next: w.next ? { title: w.next.title, minutes: w.next.minutes === null ? null : Math.ceil(w.next.minutes), waiting: /^(needs a crew|waiting for research)/.test(w.next.waiting) ? w.next.waiting : '' } : null,
     })),
     pantry: { shelves: shelfSummary(link) },
     rhythm: events.map((e) => {

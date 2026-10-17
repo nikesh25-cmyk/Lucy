@@ -1,110 +1,153 @@
-// Missions: small peaceful arcs of three or four steps, each step one recorded fact with a count of DISTINCT targets.
+// Harr's missions: a catalogue, checked only against facts that were recorded for that player.
 //
-// Like tasks.js this only READS facts the game server and NemoWorld already stored for one player; it never
-// writes, awards or unlocks anything. Three missions are shown per day (a rotation by the host computer's date).
-// Not wired into view.js yet: see docs/STORIES_ASKS.md for the two edits that expose it as the `missions` page.
+// A mission is a small, peaceful piece of guidance (content/veloren-missions.json). Every step names the
+// fact that proves it — a signed event kind, an acknowledged pantry delivery, the practice quest, or the
+// account link — and a `count` of DISTINCT targets, so "meet five villagers" means five different people
+// and "three pages" means three different places. Nothing here can be completed by chatting, nothing awards
+// coins or items, and another player's facts are never counted.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { identityFor } from './identity.js';
+import { loadDiscoveries } from './world-life.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const MISSIONS_PATH = join(here, '..', '..', 'content', 'veloren-missions.json');
+const CHARTER_PATH = join(here, '..', '..', 'content', 'harr-charter.json');
 
-export const STEP_KINDS = Object.freeze(['resident.met', 'landmark.visited', 'pantry.delivered', 'account.linked', 'landmark.together']);
-export const PRINCIPLES = Object.freeze(['scholarship', 'research', 'cooperation', 'growth', 'discovery', 'abundance']);
-export const MISSIONS_PER_DAY = 3;
-const SLUG = /^[a-z][a-z0-9-]{1,30}$/;
-const MAX_COUNT = { 'resident.met': 30, 'landmark.visited': 10, 'pantry.delivered': 10, 'account.linked': 1, 'landmark.together': 10 };
+/** The fact kinds a step may name. Three are signed events; the others are NemoWorld's own records. */
+export const STEP_KINDS = Object.freeze([
+  'resident.met', 'landmark.visited', 'landmark.together', 'project.helped',
+  'pantry.taken', 'linked', 'quest.quiet-survey',
+]);
+const DISTINCT = Object.freeze([null, 'resident', 'landmark']);
+const SLUG = /^[a-z][a-z0-9-]{1,31}$/;
+/** Words that must never appear in guidance about a peaceful village (word-boundary, so "shared" is fine). */
+const VIOLENT = /\b(kill|kills|killed|fight|fights|attack|attacks|slay|weapon|weapons|enemy|enemies|battle|blood|dungeon|dungeons|loot|raid|war|steal|steals)\b/i;
 
+const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
+
+export function loadMissions() {
+  return validateMissions(readJson(MISSIONS_PATH));
+}
+
+/** Reject a catalogue that is malformed, unsafe or not about this village's peaceful purposes. */
 export function validateMissions(doc) {
-  if (!doc || doc.format !== 'harr-missions-v1' || !Array.isArray(doc.missions) || doc.missions.length !== 12) throw new Error('Bad missions file: expected 12 missions.');
+  if (doc?.format !== 'veloren-missions-v1' || !Array.isArray(doc.missions)) throw new Error('Bad missions file.');
+  if (!doc.missions.length || doc.missions.length > 40) throw new Error('A missions file needs 1 to 40 missions.');
+  const principles = new Set((readJson(CHARTER_PATH).principles || []).map((p) => p.id));
   const seen = new Set();
-  const perPrinciple = new Map();
   for (const m of doc.missions) {
-    if (!SLUG.test(m.id || '') || seen.has(m.id)) throw new Error(`Bad or repeated mission ${m.id}`);
+    if (!SLUG.test(m?.id || '') || seen.has(m.id)) throw new Error(`Bad or repeated mission id ${m?.id}`);
     seen.add(m.id);
-    if (!PRINCIPLES.includes(m.principle)) throw new Error(`${m.id}: unknown principle`);
-    perPrinciple.set(m.principle, (perPrinciple.get(m.principle) || 0) + 1);
-    if (typeof m.title !== 'string' || !m.title || m.title.length > 40) throw new Error(`${m.id}: title must be 1-40 characters`);
-    if (typeof m.blurb !== 'string' || !m.blurb || m.blurb.length > 120) throw new Error(`${m.id}: blurb must be 1-120 characters`);
-    if (!Array.isArray(m.steps) || m.steps.length < 3 || m.steps.length > 4) throw new Error(`${m.id}: needs 3 or 4 steps`);
-    let last = new Map();
-    for (const s of m.steps) {
-      if (!STEP_KINDS.includes(s.kind)) throw new Error(`${m.id}: step kind ${s.kind} is not allowed`);
-      if (!Number.isInteger(s.count) || s.count < 1 || s.count > MAX_COUNT[s.kind]) throw new Error(`${m.id}: count for ${s.kind} must be 1-${MAX_COUNT[s.kind]}`);
-      if ((last.get(s.kind) ?? 0) > s.count) throw new Error(`${m.id}: counts of ${s.kind} may not go down`);
-      last.set(s.kind, s.count);
-      if (typeof s.label !== 'string' || s.label.length < 10 || s.label.length > 110) throw new Error(`${m.id}: step label must be 10-110 characters`);
+    if (!principles.has(m.principle)) throw new Error(`${m.id}: unknown principle ${m.principle}`);
+    for (const field of ['title', 'purpose', 'how']) {
+      if (typeof m[field] !== 'string' || !m[field].length || m[field].length > 240) throw new Error(`${m.id}: ${field} must be 1-240 characters`);
+      if (VIOLENT.test(m[field])) throw new Error(`${m.id}: ${field} uses violent vocabulary`);
+    }
+    // `short` is optional: the one-line hint the guide's recommendation shows (help, start, next, menu).
+    if (m.short != null) {
+      if (typeof m.short !== 'string' || !m.short.length || m.short.length > 120) throw new Error(`${m.id}: short must be 1-120 characters`);
+      if (VIOLENT.test(m.short)) throw new Error(`${m.id}: short uses violent vocabulary`);
+    }
+    if (!Array.isArray(m.steps) || !m.steps.length || m.steps.length > 6) throw new Error(`${m.id}: needs 1 to 6 steps`);
+    for (const step of m.steps) {
+      if (!STEP_KINDS.includes(step?.kind)) throw new Error(`${m.id}: unknown step kind ${step?.kind}`);
+      if (!Number.isInteger(step.count) || step.count < 1 || step.count > 20) throw new Error(`${m.id}: step count must be 1-20`);
+      if (!DISTINCT.includes(step.distinct ?? null)) throw new Error(`${m.id}: distinct must be resident, landmark or absent`);
+      if (step.prefix != null && (typeof step.prefix !== 'string' || !/^[a-z-]{2,8}$/.test(step.prefix))) throw new Error(`${m.id}: bad landmark prefix`);
+      if (step.prefix != null && step.kind !== 'landmark.visited') throw new Error(`${m.id}: only landmark.visited takes a prefix`);
+      if (step.distinct === 'resident' && step.kind !== 'resident.met') throw new Error(`${m.id}: only resident.met counts distinct residents`);
     }
   }
-  for (const p of PRINCIPLES) if (perPrinciple.get(p) !== 2) throw new Error(`Principle ${p} must have exactly two missions.`);
-  return doc.missions;
+  return doc;
 }
 
-export const loadMissions = (path = MISSIONS_PATH) => Object.freeze(validateMissions(JSON.parse(readFileSync(path, 'utf8'))));
-
 /**
- * The distinct-target counts for one player, read from stored facts (the same SQL as tasks.js). Every query is
- * bound to this player's uuid, so nothing about anyone else can leak into the answer.
+ * How many distinct facts of this step's kind this player has. Stored data only; every query is scoped to
+ * the player, so one person's progress is never another's.
  */
-export function factsOf(link, player_uuid) {
+export function stepCount(link, player_uuid, step) {
   const sql = link.sql;
   const n = (query, ...args) => Number(sql.get(query, ...args)?.n ?? 0);
-  let linked = 0;
-  try { linked = identityFor(link, player_uuid) ? 1 : 0; } catch { /* not linked */ }
-  return {
-    'resident.met': n("SELECT COUNT(DISTINCT resident_id) AS n FROM link_events WHERE kind='resident.met' AND player_uuid=?", player_uuid),
-    'landmark.visited': n("SELECT COUNT(DISTINCT landmark_id) AS n FROM link_events WHERE kind='landmark.visited' AND landmark_id LIKE 'disc-%' AND player_uuid=?", player_uuid),
-    'landmark.together': n("SELECT COUNT(DISTINCT landmark_id) AS n FROM link_events WHERE kind='landmark.together' AND landmark_id IS NOT NULL AND player_uuid=?", player_uuid),
-    'pantry.delivered': n("SELECT COUNT(*) AS n FROM pantry_takes WHERE state='delivered' AND player_uuid=?", player_uuid),
-    'account.linked': linked,
-  };
+  if (step.kind === 'linked') {
+    try { return identityFor(link, player_uuid) ? 1 : 0; } catch { return 0; }
+  }
+  if (step.kind === 'quest.quiet-survey') {
+    try { return link.progress(player_uuid).complete ? 1 : 0; } catch { return 0; }
+  }
+  if (step.kind === 'pantry.taken') {
+    return n("SELECT COUNT(*) AS n FROM pantry_takes WHERE state='delivered' AND player_uuid=?", player_uuid);
+  }
+  const where = ['kind=?', 'player_uuid=?'];
+  const args = [step.kind, player_uuid];
+  if (step.prefix) { where.push('landmark_id LIKE ?'); args.push(`${step.prefix}%`); }
+  const filter = `WHERE ${where.join(' AND ')}`;
+  if (step.distinct === 'resident') return n(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM link_events ${filter} GROUP BY resident_id)`, ...args);
+  if (step.distinct === 'landmark') return n(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM link_events ${filter} GROUP BY landmark_id)`, ...args);
+  return n(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM link_events ${filter})`, ...args);
+}
+
+/** Fill the placeholders a mission's `how` may use ({place} is the first place worth finding). */
+function fill(how, discoveries) {
+  const first = discoveries[0];
+  return how.replaceAll('{place}', first ? first.name.toLowerCase() : 'a place on the list');
 }
 
 /**
- * Pure. Steps are read in order: `chain` is how many steps from the start are done in a row, and the first step
- * not done is `next`. A later step may already be satisfied by older facts; it is shown as done but a mission is
- * complete only when every step is. Counts are lifetime totals, so a step never goes backwards.
+ * Every mission with this player's progress. Steps are independent (the page says "take them in any order"),
+ * so a fact for one step never credits another; a mission's single (progress, target) is its first unfinished
+ * step, which is what the short task list shows.
  */
-export function evaluateMission(mission, facts) {
-  const steps = mission.steps.map((s, i) => {
-    const have = Math.max(0, Number(facts[s.kind]) || 0);
-    return { index: i, kind: s.kind, label: s.label, target: s.count, progress: Math.min(s.count, have), done: have >= s.count };
+export function missionsFor(link, player_uuid, { catalogue = null, discoveries = null } = {}) {
+  const missions = catalogue || loadMissions();
+  const places = discoveries || loadDiscoveries();
+  return missions.missions.map((m) => {
+    const steps = m.steps.map((step) => ({ ...step, progress: Math.min(step.count, stepCount(link, player_uuid, step)) }));
+    const open = steps.find((s) => s.progress < s.count) || null;
+    return {
+      id: m.id, title: m.title, principle: m.principle, purpose: m.purpose, how: fill(m.how, places),
+      ...(m.short ? { short: fill(m.short, places) } : {}),
+      steps, done: !open,
+      progress: open ? open.progress : steps.reduce((a, s) => a + s.count, 0),
+      target: open ? open.count : steps.reduce((a, s) => a + s.count, 0),
+    };
   });
-  let chain = 0;
-  while (chain < steps.length && steps[chain].done) chain += 1;
-  return { id: mission.id, title: mission.title, principle: mission.principle, blurb: mission.blurb, steps, chain, done: steps.every((s) => s.done), next: steps.find((s) => !s.done) || null };
 }
 
-/** Local calendar day number of the host clock (the same day for everyone on this computer). */
-export function dayNumber(now) {
-  const d = new Date(now);
-  return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000);
+/** A tiny deterministic hash, so the same day always offers the same three missions and the next day differs. */
+const hash = (text) => {
+  let h = 2166136261;
+  for (const ch of String(text)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return h;
+};
+
+/** Today's three, drawn from the catalogue by the day key (stable within a day, different across days). */
+export function dailyRotation(missions, dayKey) {
+  return [...missions.missions]
+    .sort((a, b) => hash(`${dayKey}:${a.id}`) - hash(`${dayKey}:${b.id}`))
+    .slice(0, 3)
+    .map((m) => m.id);
 }
 
-/** Three consecutive missions from the catalogue, starting 3 further along each day. Pure. */
-export function missionsForDay(missions, now, perDay = MISSIONS_PER_DAY) {
-  const n = missions.length;
-  const start = (((dayNumber(now) * perDay) % n) + n) % n;
-  return Array.from({ length: Math.min(perDay, n) }, (_, i) => missions[(start + i) % n]);
-}
+const dayKeyOf = (ms) => {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
-/** Facts for one player, evaluated against today's three missions. */
-export function missionsFor(link, player_uuid, now = link.clock(), missions = loadMissions()) {
-  const facts = factsOf(link, player_uuid);
-  return missionsForDay(missions, now).map((m) => evaluateMission(m, facts));
-}
-
-/** The `missions` page: short lines, about ten, for the chat-sized window. Open to everyone; an account is optional. */
-export function missionLines(link, player_uuid) {
-  const today = missionsFor(link, player_uuid);
-  const done = today.filter((m) => m.done).length;
-  const out = [`Today's missions: ${done} of ${today.length} done. They change each day, are all peaceful, and nobody can miss one.`];
-  for (const m of today) {
-    out.push(`${m.title} (${m.principle}): ${m.done ? 'done, well done.' : `step ${m.chain + 1} of ${m.steps.length}.`} ${m.blurb}`);
-    if (m.next) out.push(`Next: ${m.next.label} (${m.next.progress} of ${m.next.target}).`);
+/** The guide's `missions` page: today's three, then the rest, with one honest next step. Bounded by the pager. */
+export function missionsLines(link, player_uuid, now = link.clock()) {
+  const catalogue = loadMissions();
+  const all = missionsFor(link, player_uuid, { catalogue });
+  const today = new Set(dailyRotation(catalogue, dayKeyOf(now)));
+  const out = [`Harr missions. Every one is checked from recorded facts, awards nothing, and can be taken in any order.`];
+  out.push(`Today (${dayKeyOf(now)}): ${all.filter((m) => today.has(m.id)).map((m) => `${m.done ? 'done' : 'open'} ${m.title.toLowerCase()}`).join('; ')}.`);
+  for (const m of all) {
+    const mark = today.has(m.id) ? '*' : ' ';
+    out.push(`${mark}${m.done ? 'Done' : 'Open'}: ${m.title}${m.done ? '' : `, ${m.progress} of ${m.target}`}. ${m.purpose}`);
   }
-  out.push('Say tasks for your first steps, or library and works for places to go. Missions only point the way.');
+  const next = all.find((m) => !m.done);
+  if (next) out.push(`Next: ${next.title} (${next.progress} of ${next.target}). ${next.how}`);
+  else out.push('Every mission is done. Lend a hand to the next stage, or see what the village is learning with research.');
   return out;
 }

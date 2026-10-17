@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createApp} from '../server.js';
 import {fixture} from './helpers.js';
-import {VelorenLink, canonicalEvent, signEvent, residentDraft, extractReply, loadLandmarks, LINK_POLICY} from '../src/veloren-link.js';
+import {VelorenLink, canonicalEvent, signEvent, residentDraft, extractReply, loadLandmarks, withWorkSites, LINK_POLICY} from '../src/veloren-link.js';
 
 const KEY = Buffer.from('nemo-test-key-nemo-test-key-1234');
 const LANDMARKS = [{id: 'lyra-post', name: 'the Old Library', role: 'post'}, {id: 'lyra-survey', name: 'Mill Hill', role: 'survey'}];
@@ -317,4 +317,18 @@ test('extensions get their own versioned tables and routes without touching the 
   link.applyExtensionSchema('demo', extension.schema);                 // idempotent
   assert.throws(() => link.applyExtensionSchema('Bad Name', {version: 1, sql: ''}), /Invalid extension schema/);
   assert.equal(link.extensions.length, 1);
+});
+
+test('the work sites are landmarks too, so a project.helped fact at one is accepted', () => {
+  const sites = withWorkSites(LANDMARKS);
+  const ids = sites.map((l) => l.id);
+  assert.ok(ids.includes('site-well'), 'site-* entries from veloren-landmarks-extra.json are merged');
+  assert.ok(sites.filter((l) => l.role === 'work').length >= 15, 'every work site is marked as work');
+  const link = new VelorenLink({dbPath: ':memory:', eventKey: KEY, landmarks: sites, clock: () => T0});
+  const cred = link.issueCredential({resident_id: 'lw-lyra', scopes: ['events'], days: 1});
+  const helped = {v: 1, server_id: 'local-dev', seq: 1, kind: 'project.helped', resident_id: 'lw-lyra', player_uuid: P1, player_alias: 'Tester', landmark_id: 'site-well', occurred_at: T0};
+  helped.sig = signEvent(KEY, helped);
+  const result = link.ingest(link.authenticate(cred.token, 'events'), [helped]);
+  assert.equal(result[0].status, 'accepted');
+  link.close();
 });

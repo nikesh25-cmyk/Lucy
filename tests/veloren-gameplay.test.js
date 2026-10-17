@@ -16,6 +16,7 @@ import {levelFor, levelLines, loadGrowth, validateGrowth, villageLevel, withLeve
 import {buildOverview} from '../src/veloren-ext/overview.js';
 import {replyFor} from '../src/veloren-ext/npc-logic.js';
 import {tasksFor, tasksLines} from '../src/veloren-ext/tasks.js';
+import {loadMissions} from '../src/veloren-ext/missions.js';
 
 const KEY = Buffer.from('nemo-test-key-nemo-test-key-1234');
 const ALICE = '11111111-1111-4111-8111-111111111111';
@@ -702,7 +703,13 @@ test('the level appears in the chronicle without disturbing it, and in the dashb
 
 test('the tasks page keeps its six tasks and gains two plain lines, with no mention of rewards', (t) => {
   const s = setup(t);
-  assert.equal(tasksFor(s.link, ALICE).length, 6);
+  // The list is now the missions catalogue (engine stream): the six original tasks are all still there, alongside the catalogue's additions (lend a hand, walk together).
+  const tasks = tasksFor(s.link, ALICE);
+  const ids = tasks.map((x) => x.id);
+  const original = ['meet', 'meal', 'find', 'survey', 'discover3', 'link'];
+  for (const id of original) assert.ok(ids.includes(id), id);
+  assert.equal(tasks.length, loadMissions().missions.length);
+  assert.ok(tasks.length >= 6);
   const lines = tasksLines(s.link, ALICE);
   assert.match(lines[1], /^Next: Meet five villagers/);
   assert.ok(lines.some((l) => l.startsWith('Apprenticeship:')));

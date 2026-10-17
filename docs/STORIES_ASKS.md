@@ -1,13 +1,23 @@
 # Stories stream: what is new and what other streams must edit
 
+> **Renamed at the engine merge.** The engine stream's missions v2 catalogue became the canonical
+> `content/veloren-missions.json` / `src/veloren-ext/missions.js` / `tests/veloren-missions.test.js`, and it now
+> backs the guide's `missions` page and the `tasks` list. The twelve story missions described below moved, unchanged,
+> to `content/veloren-story-missions.json`, `src/veloren-ext/story-missions.js` and
+> `tests/veloren-story-missions.test.js`; `index.js` re-exports them as `loadStoryMissions` and `missionLines`.
+> They were not folded into the engine catalogue: its daily rotation must show every mission within a week and its
+> step kinds differ (`pantry.taken`/`linked` vs `pantry.delivered`/`account.linked`). Ask 1 below (and the bridge's
+> `missions` word in Ask 2) is therefore already done with the engine catalogue; wiring the story arcs would need a
+> page name of its own.
+
 This stream added text and data only. Nothing below is wired into the running game yet; `tasks.js` is unchanged and `view.js` is untouched. Everything new is covered by `tests/veloren-missions.test.js`, `tests/veloren-stories.test.js` and `tests/veloren-conversations.test.js` (22 tests; the whole `tests/veloren-*.test.js` set is 184 passing).
 
 ## What was added
 
 | File | What it is |
 | --- | --- |
-| `content/veloren-missions.json` | 12 missions, 2 per charter principle, 3-4 steps each. Step kinds: `resident.met`, `landmark.visited`, `pantry.delivered`, `account.linked`, `landmark.together`, each with a `count` of distinct targets. |
-| `src/veloren-ext/missions.js` | Loader, validator, pure evaluator `evaluateMission`, `factsOf(link, player_uuid)` (same SQL facts as `tasks.js`), `missionsForDay` (3 a day, rotation by the host date) and the page generator `missionLines(link, player_uuid)`. |
+| `content/veloren-story-missions.json` (was `veloren-missions.json`) | 12 missions, 2 per charter principle, 3-4 steps each. Step kinds: `resident.met`, `landmark.visited`, `pantry.delivered`, `account.linked`, `landmark.together`, each with a `count` of distinct targets. |
+| `src/veloren-ext/story-missions.js` (was `missions.js`) | Loader, validator, pure evaluator `evaluateMission`, `factsOf(link, player_uuid)` (same SQL facts as `tasks.js`), `missionsForDay` (3 a day, rotation by the host date) and the page generator `missionLines(link, player_uuid)`. |
 | `content/harr-seasons.json` | 4 seasons x 3 event blurbs, 4 x 12 library field notes over the 10 places, 20 chronicle milestone phrases, a finishing line for each of the 36 projects, and 36 one-sentence building captions. |
 | `src/veloren-ext/stories.js` | Loader and validator for the file above, plus pure helpers: `seasonOf`, `seasonEventBlurb`, `notesFor` (base notes first, then the season's extras), `captionFor`, `finishedPhrase`, `milestonePhrase`. |
 | `content/harr-conversations.json` | 6 roles x 8 "ask me about" answers (48), each with 2-4 keywords and a template using only `{project}`, `{stage}`, `{insight}`, `{pantry}`. |
