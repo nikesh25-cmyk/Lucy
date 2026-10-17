@@ -1,6 +1,6 @@
 {
   "format": "harr-lighting-v1",
-  "note": "Harr's night lighting plan. Data only: tools/gen-harr-lights.py reads this file and writes the `lights-*` groups of content/veloren-world-harr.json. Coordinates are blocks in the same frame as tools/gen-harr-works.py (the Plaza is 0,0; +x east, +y north). Veloren draws a StreetLamp, a Lantern and a LanternpostWoodLantern with glow 24 (a warm pool roughly 10 blocks across on the ground) and a Candle with glow 16 (a small pool about 5 blocks across); Window sprites emit no light themselves, so a 'lit window' is a Candle set on the floor just inside the window. Peaceful lighting only: lamps, lanterns and candles.",
+  "note": "Harr's night lighting plan. Data only: tools/gen-harr-lights.py reads this file and writes the `lights-*` groups of content/veloren-world-harr.json. Coordinates are blocks in the same frame as tools/gen-harr-works.py (the Plaza is 0,0; +x east, +y north). In Veloren a StreetLamp, Lantern or LanternpostWoodLantern has glow level 24 and a Candle 16 (Block::get_glow); the level falls by one per block, so a lamp pools light about 12 blocks out and a candle about 6 (the shader shows pow(level/31.5,3)*5+pow(level/31.5,2)*2). That is why road lamps are 9-10 blocks apart: the pools overlap; Window sprites emit no light themselves, so a 'lit window' is a Candle set on the floor just inside the window. Peaceful lighting only: lamps, lanterns and candles.",
   "plot_offsets": [
     { "plot": "Plaza", "nth": 0, "x": 0, "y": 0 },
     { "plot": "House", "nth": 0, "x": 12, "y": 30 },
