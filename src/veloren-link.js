@@ -571,11 +571,25 @@ export function withDiscoveries(landmarks, path = new URL('../content/veloren-di
   return [...landmarks, ...extra];
 }
 
+/** The public work sites (content/veloren-landmarks-extra.json) are landmarks too, so a signed
+ *  `project.helped` fact names a place this NemoWorld knows. They are read, never written here:
+ *  the server resolves the same `site-*` ids from the same file. */
+export function withWorkSites(landmarks, path = new URL('../content/veloren-landmarks-extra.json', import.meta.url)) {
+  let list = [];
+  try { list = JSON.parse(readFileSync(path, 'utf8')).landmarks || []; } catch { return landmarks; }
+  const known = new Set(landmarks.map((item) => item.id));
+  const extra = list
+    .filter((l) => String(l.id || '').startsWith('site-') && !known.has(l.id) && typeof l.name === 'string' && l.name.length <= 80)
+    .map((l) => ({ id: l.id, name: l.name, role: 'work' }));
+  return [...landmarks, ...extra];
+}
+
 export function velorenLinkFromEnvironment(env, mainDatabasePath, landmarksPath) {
   const key = env.NEMO_LINK_EVENT_KEY;
   if (!key) return null;
   const eventKey = Buffer.from(key, /^[a-f0-9]{64,}$/i.test(key) ? 'hex' : 'utf8');
   const dbPath = env.NEMO_LINK_DB || join(dirname(mainDatabasePath), 'veloren-link.sqlite');
   const commandsPath = env.NEMO_LINK_COMMANDS || join(dirname(dbPath), 'veloren-commands.jsonl');
-  return new VelorenLink({ dbPath, eventKey, landmarks: withDiscoveries(loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath)), commandsPath });
+  const landmarks = withWorkSites(withDiscoveries(loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath)));
+  return new VelorenLink({ dbPath, eventKey, landmarks, commandsPath });
 }
