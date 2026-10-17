@@ -34,7 +34,7 @@ export function buildOverview(link, now = link.clock()) {
     },
     works: works.map((w) => ({
       id: w.id, name: w.name, purpose: w.purpose, done: w.done, total: w.total, complete: w.complete,
-      next: w.next ? { title: w.next.title, minutes: w.next.minutes === null ? null : Math.ceil(w.next.minutes), waiting: w.next.waiting.startsWith('needs a crew') ? w.next.waiting : '' } : null,
+      next: w.next ? { title: w.next.title, minutes: w.next.minutes === null ? null : Math.ceil(w.next.minutes), waiting: /^(needs a crew|waiting for research)/.test(w.next.waiting) ? w.next.waiting : '' } : null,
     })),
     pantry: { shelves: shelfSummary(link) },
     rhythm: events.map((e) => {

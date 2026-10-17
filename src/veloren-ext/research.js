@@ -50,9 +50,10 @@ export const loadCharter = () => {
 };
 export const loadRoles = () => readJson(ROLES_PATH).roles;
 
-/** The recorded facts the village's progress is made of. Reads stored data only. */
-export function gatherFacts(link) {
-  try { observe(link); } catch { /* the facts below are still true */ }
+/** The recorded facts the village's progress is made of. Reads stored data only. `observe: false` skips the
+ * 30-second record sweep, so a caller that runs inside `observe` cannot recurse into it. */
+export function gatherFacts(link, { observe: run = true } = {}) {
+  if (run) { try { observe(link); } catch { /* the facts below are still true */ } }
   const sql = link.sql;
   const n = (query, ...args) => Number(sql.get(query, ...args)?.n ?? 0);
   const done = new Set(sql.all("SELECT key FROM village_marks WHERE kind='done'").map((r) => r.key.slice(5)));
@@ -145,3 +146,42 @@ export function researchLines(link) {
   return out;
 }
 const research_names = (ids) => { const byId = new Map(loadResearch().techs.map((t) => [t.id, t.name])); return ids.slice(0, 3).map((id) => byId.get(id) || id).join(', '); };
+
+/** The village itself, as the actor of a command that is not about one player (a research unlock). */
+export const VILLAGE_ACTOR = '00000000-0000-4000-8000-000000000000';
+
+/**
+ * Research gates works. When the queue has learned a technology, tell the game server once, with a signed
+ * `works_unlock`. The server allow-lists the technology against the manifest's own `needs_tech` values, applies
+ * it once, keeps it in its record (so a restart remembers) and acknowledges it; until that acknowledgement the
+ * stage is only "waiting for research" on the board, never built.
+ *
+ * One record per technology in `village_marks`: an unlock that expired unacknowledged is asked again, an applied
+ * one never is, and a refused one is not retried (the server said why in its log). Runs from the director poll,
+ * so at most every 30 seconds and without a model call.
+ */
+export function announceResearch(link, now = link.clock()) {
+  let unlocked;
+  try { unlocked = researchStatus(gatherFacts(link, { observe: false })).unlocked; } catch { return []; }
+  const marks = new Map(link.sql.all("SELECT key, text FROM village_marks WHERE kind='tech-issued'").map((m) => [m.key, m.text]));
+  const out = [];
+  for (const tech of unlocked) {
+    const key = `tech:${tech.id}`;
+    const previous = marks.get(key);
+    if (previous) {
+      const cmd = /\(([0-9a-f-]{36})\)/.exec(previous)?.[1];
+      const status = cmd ? link.commandStatus(cmd).status : 'unknown';
+      if (status !== 'expired_unconfirmed') continue; // pending or applied: nothing to ask again
+    }
+    let command;
+    try {
+      command = link.issueCommand({ kind: 'works_unlock', player_uuid: VILLAGE_ACTOR, args: { tech: tech.id }, ttl_ms: 120_000, issuedBy: 'research' });
+    } catch { return out; } // commands not configured: the works stay waiting, honestly
+    link.sql.run(
+      "INSERT INTO village_marks(key,kind,text,at) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET text=excluded.text, at=excluded.at",
+      key, 'tech-issued', `${tech.name} was learned; the works were told (${command.cmd_id}).`, now,
+    );
+    out.push({ tech: tech.id, cmd_id: command.cmd_id });
+  }
+  return out;
+}

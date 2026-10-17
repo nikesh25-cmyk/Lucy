@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDiscoveries, loadRecord, loadWorks } from './world-life.js';
+import { announceResearch } from './research.js';
 import { VILLAGERS } from './villagers.js';
 import { LIVING_ROSTER } from '../living-world.js';
 
@@ -147,6 +148,9 @@ export function observe(link, now = link.clock(), recordPath = process.env.NEMO_
 /** The director hook: send a resident to a running event, and remember that it did. */
 export function directorHook(link, resident_id, events = loadEvents(), now = link.clock()) {
   try { observe(link, now); } catch { /* the chronicle must never break a resident's walk */ }
+  // Research gates works: tell the game server about a newly learned technology (once per technology; the
+  // server allow-lists it and acknowledges it, and until then the stage only waits). Never breaks a walk.
+  try { announceResearch(link, now); } catch { /* the works simply stay waiting */ }
   const hit = eventFor(events, resident_id, now);
   if (!hit) return null;
   link.sql.run('INSERT OR IGNORE INTO village_attendance(event_id,slot_start,resident_id,first_at) VALUES(?,?,?,?)', hit.event.id, hit.slot, resident_id, now);

@@ -18,8 +18,14 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const EVIDENCE = join(here, '..', '..', 'evidence', 'world');
 const FIXTURE = join(EVIDENCE, 'manifest-harr-plaza.json');
 const BAD = join(EVIDENCE, 'manifest-harr-bad.json');
-/** The checker the world stream built; absent on a fresh checkout, so the cross-check skips rather than fails. */
-const CHECKER = join(here, '..', '..', 'target', 'world', 'release', 'nemo-world-check');
+/** The checker (`nemo-world-check`, from `nemo-world-core`) from THIS stream's build first, falling back to the
+ *  older world-stream target; absent on a fresh checkout, so the cross-check skips rather than fails.
+ *  `NEMO_WORLD_CHECK` overrides both. */
+const CHECKER = [
+  process.env.NEMO_WORLD_CHECK,
+  join(here, '..', '..', 'target', 'engine', 'release', 'nemo-world-check'),
+  join(here, '..', '..', 'target', 'world', 'release', 'nemo-world-check'),
+].find((path) => path && existsSync(path)) || null;
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const fixture = () => JSON.parse(JSON.stringify(JSON.parse(execFileSync('cat', [FIXTURE], { encoding: 'utf8' }))));
@@ -82,7 +88,7 @@ test('a manifest that asks for anything else is refused, whole', () => {
 
 test('the game agrees: the checker accepts what NemoWorld accepts and refuses what it refuses', (t) => {
   if (!existsSync(CHECKER)) {
-    t.skip(`the checker is not built (${CHECKER}); build it with: cd wt/veloren-world && CARGO_TARGET_DIR=wt/target/world cargo build --release -p nemo-world-core --bin nemo-world-check`);
+    t.skip(`the checker is not built; build it with: cd wt/veloren-engine && CARGO_TARGET_DIR=wt/target/engine cargo build --release -p nemo-world-core --bin nemo-world-check`);
     return;
   }
   const run = (path) => {
@@ -149,7 +155,7 @@ test('the shipped Harr manifest passes NemoWorld and the game', (t) => {
   assert.equal(manifest.atmosphere.weather, false, 'this server does not set the weather, and the manifest says so');
 
   if (!existsSync(CHECKER)) {
-    t.skip(`the checker is not built (${CHECKER}); build it with: cd wt/veloren-world && CARGO_TARGET_DIR=wt/target/world cargo build --release -p nemo-world-core --bin nemo-world-check`);
+    t.skip(`the checker is not built; build it with: cd wt/veloren-engine && CARGO_TARGET_DIR=wt/target/engine cargo build --release -p nemo-world-core --bin nemo-world-check`);
     return;
   }
   const out = execFileSync(CHECKER, [shipped], { encoding: 'utf8' });
