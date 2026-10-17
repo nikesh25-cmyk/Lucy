@@ -38,6 +38,28 @@ test('preflight accepts only explicit loopback game, query and web sockets', t =
   const result = f.run('preflight'); assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /loopback/i);
 });
+test('start pins the server readiness log even when the parent environment requests warnings only', t => {
+  const f = fixture(t);
+  f.write('play/userdata/server/server_config/settings.ron', '(gameserver_protocols:[Tcp(address:"127.0.0.1:14004")])');
+  f.write('play/userdata/server-cli/settings.ron', '(web_address:"127.0.0.1:14005")');
+  f.write('wt/veloren-integ/.fixture', '');
+  f.write('play/bin/veloren-server-cli', '#!/bin/sh\nprintf "SERVER_FILTER=%s\\n" "$RUST_LOG"\ncase "$RUST_LOG" in *veloren_server_cli=info*) echo "Server is ready to accept connections.";; esac\n', 0o700);
+  f.write('play/bin/nemo-bridge', '#!/bin/sh\nexit 0\n', 0o700);
+  f.write('fake-node', '#!/bin/sh\nexit 0\n', 0o700);
+  for (const name of ['curl', 'lsof', 'sleep', 'seq']) {
+    const body = name === 'lsof' ? 'exit 1' : name === 'sleep' ? '/bin/sleep 0.05' : name === 'seq' ? '/usr/bin/seq 1 30' : 'exit 0';
+    f.write('tools/' + name, '#!/bin/sh\n' + body + '\n', 0o700);
+  }
+  f.write('play/secrets/event.key', 'fixture-only');
+  for (const id of ['aria', 'theron', 'bram', 'lyra', 'kael', 'selene', 'vaelen', 'rowan']) {
+    f.write(`play/secrets/events-lw-${id}.token`, 'fixture-only');
+    f.write(`play/secrets/bridge-lw-${id}.token`, 'fixture-only');
+  }
+  const result = f.run('start', { RUST_LOG: 'warn', VILLAGE: '0', NEMO_NODE: join(f.root, 'fake-node'), PATH: join(f.root, 'tools') + ':' + process.env.PATH });
+  assert.equal(result.status, 0, result.stdout + result.stderr + readFileSync(join(f.root, 'play/logs/server.log'), 'utf8'));
+  assert.match(readFileSync(join(f.root, 'play/logs/server.log'), 'utf8'), /SERVER_FILTER=warn,veloren_server_cli=info/);
+  assert.match(result.stdout, /READY/);
+});
 test('setup installs loopback-only PvE sockets on a disposable stack', t => {
   const f = fixture(t);
   f.write('nemoworld/content/veloren-villagers.json', JSON.stringify({ residents: [] }));

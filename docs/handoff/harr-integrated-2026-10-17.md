@@ -39,3 +39,17 @@ This work does not claim that arbitrary authenticated internet hosting is ready,
 - Syntax: **166 files, zero failures**; package helper additionally parsed and executed by its tests; shell launcher passes `bash -n`.
 - Seal: **136 definitions**, three support files, 42 referenced notices/assets.
 - Mac wrapper: `ops/package-harr-app.mjs` packages the existing compiled client as `play/Harr.app`, using the same assets and userdata. It introduces no engine build, world, account or credential. Existing app destinations are refused rather than overwritten.
+
+## Live acceptance and follow-up
+
+The verified release was installed across **1,640 tracked files**, preserving all stopped table counts exactly. The source install changes no schema. Database integrity passes again after restart: one account, one avatar, 111 link facts, schema 27 / link schema 1. The dashboard at `http://127.0.0.1:3100/harr` was inspected through the browser and its saved works/research/pantry/library sections were visible; a screenshot is retained in the private evidence folder.
+
+One actual restart issue was caught: this shell inherited `RUST_LOG=warn`, hiding the CLI readiness line while the server was already ticking. A read-only process sample confirmed the server's game loop. The launcher now explicitly enables the CLI readiness log; a disposable end-to-end launcher fixture verifies this even under a warning-only parent environment. Its first short fixture polling window raced process startup; the fixture now waits a bounded period for its fake child (the production 300-second limit was not loosened).
+
+The existing server was retained and its residents/relays resumed using their existing scoped credentials. All eight core residents/relays and twelve additional villagers are up; resident bridge ticks are six per second, separate from the engine's simulation. Local inference is disabled in this light run, so dialogue uses the labelled scripted fallback. Future starts default to twelve additional villagers; `VILLAGE=all` requests the full set.
+
+Socket inspection confirms TCP `127.0.0.1:14004`, TCP `[::1]:14004`, UDP `127.0.0.1:14006`, and Node `127.0.0.1:3100`. No wildcard game listener remains.
+
+The Mac application registered successfully and its actual main menu was captured/inspected. Native window control was interrupted before Multiplayer could be entered reliably, so **no in-world GUI, H-panel or mouse-building pass is claimed**. The broader visual/terrain review in the supplied summary remains pending. The client wrapper uses the same assets and userdata; it does not create a second game or require new credentials.
+
+Follow-up launcher tests: **5 passed, zero failed** (including inherited logging); app packaging tests: **3 passed**. The full 1,763-test code gate preceded this shell-only logging/tick follow-up; API/relay/recovery implementation is unchanged since that full passing run. No new Rust build or full browser suite was run in this corrective integration.

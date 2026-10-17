@@ -139,7 +139,7 @@ PY
     for _ in $(seq 1 240); do curl -s -m2 -o /dev/null "$NEMO/api/v1/health" && break; sleep 1; done
     curl -s -m3 -o /dev/null "$NEMO/api/v1/health" || { echo "NemoWorld did not start; see $P/logs/nemo.log" >&2; exit 1; }
     echo "starting the Veloren server (world generation takes about a minute)..."
-    ( cd "$SRC_V" && VELOREN_USERDATA="$P/userdata" NEMO_LINK_CONFIG="$P/veloren-link.json" NEMO_LINK_EVENT_KEY="$(cat "$P/secrets/event.key")" exec nohup "$P/bin/veloren-server-cli" --non-interactive --no-auth < /dev/null > "$P/logs/server.log" 2>&1 ) & echo $! > "$P/pids/veloren"; disown
+    ( cd "$SRC_V" && RUST_LOG="warn,veloren_server_cli=info" VELOREN_USERDATA="$P/userdata" NEMO_LINK_CONFIG="$P/veloren-link.json" NEMO_LINK_EVENT_KEY="$(cat "$P/secrets/event.key")" exec nohup "$P/bin/veloren-server-cli" --non-interactive --no-auth < /dev/null > "$P/logs/server.log" 2>&1 ) & echo $! > "$P/pids/veloren"; disown
     for _ in $(seq 1 300); do grep -q "ready to accept" "$P/logs/server.log" 2>/dev/null && break; sleep 1; done
     grep -q "ready to accept" "$P/logs/server.log" || { echo "the Veloren server did not come up; see $P/logs/server.log" >&2; exit 1; }
     LM="$P/data/veloren-outbox.jsonl.landmarks.json"
@@ -149,11 +149,11 @@ PY
       ( cd "$P/nemoworld" && NEMO_LINK_TOKEN="$(cat "$P/secrets/events-$id.token")" exec nohup "$NODE" scripts/veloren-relay.mjs --outbox "$P/data/veloren-outbox.jsonl" --url "$NEMO" --resident "$id" < /dev/null > "$P/logs/relay-$id.log" 2>&1 ) & echo $! > "$P/pids/relay-$id"; disown
     done
     for id in $ALL; do
-      ( cd "$SRC_V" && VELOREN_USERDATA="$P/userdata" RUST_LOG="warn,nemo_bridge=info" NEMO_LINK_TOKEN="$(cat "$P/secrets/bridge-$id.token")" exec nohup "$P/bin/nemo-bridge" --server "localhost:$VEL" --resident "$id" $(ROLE_FLAG "$id") --roster "$P/data/roster-all.json" --tps 12 --landmarks "$LM" --nemo-url "$NEMO" < /dev/null > "$P/logs/resident-$id.log" 2>&1 ) & echo $! > "$P/pids/res-$id"; disown
+      ( cd "$SRC_V" && VELOREN_USERDATA="$P/userdata" RUST_LOG="warn,nemo_bridge=info" NEMO_LINK_TOKEN="$(cat "$P/secrets/bridge-$id.token")" exec nohup "$P/bin/nemo-bridge" --server "localhost:$VEL" --resident "$id" $(ROLE_FLAG "$id") --roster "$P/data/roster-all.json" --tps "${HARR_RESIDENT_TPS:-6}" --landmarks "$LM" --nemo-url "$NEMO" < /dev/null > "$P/logs/resident-$id.log" 2>&1 ) & echo $! > "$P/pids/res-$id"; disown
       sleep 3
     done
     for id in $(VILLAGERS); do
-      ( cd "$SRC_V" && VELOREN_USERDATA="$P/userdata" RUST_LOG="warn,nemo_bridge=info" NEMO_LINK_TOKEN="$(cat "$P/secrets/bridge-$id.token")" exec nohup "$P/bin/nemo-bridge" --server "localhost:$VEL" --resident "$id" --roster "$P/data/roster-all.json" --tps 12 --landmarks "$LM" --nemo-url "$NEMO" < /dev/null > "$P/logs/resident-$id.log" 2>&1 ) & echo $! > "$P/pids/res-$id"; disown
+      ( cd "$SRC_V" && VELOREN_USERDATA="$P/userdata" RUST_LOG="warn,nemo_bridge=info" NEMO_LINK_TOKEN="$(cat "$P/secrets/bridge-$id.token")" exec nohup "$P/bin/nemo-bridge" --server "localhost:$VEL" --resident "$id" --roster "$P/data/roster-all.json" --tps "${HARR_RESIDENT_TPS:-6}" --landmarks "$LM" --nemo-url "$NEMO" < /dev/null > "$P/logs/resident-$id.log" 2>&1 ) & echo $! > "$P/pids/res-$id"; disown
       sleep 2
     done
     echo
