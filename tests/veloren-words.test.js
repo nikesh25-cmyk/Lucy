@@ -8,9 +8,12 @@ const FORBIDDEN_WORDS = /\b(kill|fight|attack|slay|weapon|enemy|battle|blood|dun
 const LINK_OR_CONTACT = /\b(?:https?:\/\/|www\.)\S*|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 const SPEND_MONEY = /\b(?:buy|purchase|spend|pay)\s+(?:coins?|money|tokens?|gold|silver|real)\b/i;
 
-test('villagers: 24 residents, 6 distinct barks each, no duplicates across village', () => {
+test('villagers: the 24 words residents and every newer one, 6 distinct barks each, no duplicates across village', () => {
   const doc = load('../content/veloren-villagers.json');
-  assert.equal(doc.residents.length, 24);
+  // The words stream wrote the first 24; the people stream scaled the village to 52 (tests/veloren-villagers.test.js).
+  // Every resident, old or new, must meet the same bar: 6 distinct barks, none shared with anyone else.
+  assert.ok(doc.residents.length >= 24, `${doc.residents.length} residents`);
+  assert.equal(doc.residents.length, 52);
 
   const allBarks = [];
   for (const r of doc.residents) {
@@ -31,9 +34,11 @@ test('villagers: 24 residents, 6 distinct barks each, no duplicates across villa
     }
   }
 
-  assert.equal(allBarks.length, 144);
+  assert.equal(allBarks.length, 6 * doc.residents.length);
+  assert.ok(allBarks.length >= 144);
   const uniqueBarks = new Set(allBarks);
-  assert.equal(uniqueBarks.size, 144, 'all 144 barks must be unique across the entire village');
+  assert.equal(uniqueBarks.size, allBarks.length, `all ${allBarks.length} barks must be unique across the entire village`);
+  assert.ok(!allBarks.some((b) => b.includes('todo-words')), 'no placeholder barks left');
 });
 
 test('library: 10 discoveries, each with 4 research notes (40 total notes)', () => {

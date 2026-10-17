@@ -171,7 +171,10 @@ day_sites = site_names[10:20]
 dusk_sites = site_names[20:29]
 
 night_places = ['Meeting Hall', 'Cottage Row', 'Library', 'Guesthouse Site']
-for i, r in enumerate(v['residents']):
+# Only the first 24 residents (the original village) are routed here; the people stream's newer residents carry
+# hand-written routines over Harr's places (docs/VELOREN_PEOPLE.md), which a re-run must not overwrite.
+CREW_RESIDENTS = 24
+for i, r in enumerate(v['residents'][:CREW_RESIDENTS]):
     d = r['destinations']
     d['dawn']['label'] = dawn_sites[i // 2] if i < 20 else dawn_sites[(i - 20) % len(dawn_sites)]
     d['day']['label'] = day_sites[i // 2] if i < 20 else day_sites[(i - 20) % len(day_sites)]

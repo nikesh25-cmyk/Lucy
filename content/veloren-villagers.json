@@ -961,6 +961,1126 @@
         "The sweetest music is the quiet murmur of neighbours enjoying supper together.",
         "Listen to the echo carry across the square; music fills the empty spaces with warmth."
       ]
+    },
+    {
+      "id": "lw-anselm",
+      "name": "Anselm Placeholder",
+      "calling": "builder",
+      "role": "builder",
+      "capabilities": "A peaceful builder who raises the village with others.",
+      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Well Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Market Hall Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Cottage Row"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Observatory Site"
+        }
+      },
+      "barks": [
+        "Today I am on the stone steps; slow, careful work, and a second pair of hands is always welcome.",
+        "The trick with stone steps is to check them twice and set them once.",
+        "Nobody raises stone steps alone in Harr. Stand with the crew and the stage goes up.",
+        "I measure the stone steps with the same cord my teacher used. It has never been wrong.",
+        "When the stone steps are finished, I will walk past them every evening just to look.",
+        "Mind the fresh mortar near the stone steps; by dusk it will be firm enough to lean on."
+      ]
+    },
+    {
+      "id": "lw-briony",
+      "name": "Briony Placeholder",
+      "calling": "cultivator",
+      "role": "farmer",
+      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+      "limitations": "Shares a harvest rather than selling it dear.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Observatory Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Pavilion Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Annex Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Orchard Gate"
+        }
+      },
+      "barks": [
+        "The bean rows drank well last night; the leaves stand up straight this morning.",
+        "I tend the bean rows. Pick a little if you are hungry; the pantry has plenty more.",
+        "Weeding the bean rows is quiet work. It leaves plenty of room for thinking.",
+        "Mulch the bean rows before the dry week and they will thank you all season.",
+        "We share seed from the bean rows with anyone who wants to start a bed of their own.",
+        "Sit by the bean rows a while; the bees do most of the work for us here."
+      ]
+    },
+    {
+      "id": "lw-cassian",
+      "name": "Cassian Placeholder",
+      "calling": "researcher",
+      "role": "scholar",
+      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Orchard Gate"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Research Tower Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Solar Array Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Vertical Farm Site"
+        }
+      },
+      "barks": [
+        "I am cataloguing the river stones. Every page is open for anyone to read.",
+        "The river stones tell a longer story than any of us; I only write it down.",
+        "If you find something new near the river stones, tell me and we will add a page together.",
+        "My notes on the river stones are half questions. That is how a good notebook should look.",
+        "Comparing this year's river stones with last year's is my favourite kind of afternoon.",
+        "The library keeps a whole shelf for the river stones, and it is still growing."
+      ]
+    },
+    {
+      "id": "lw-delia",
+      "name": "Delia Placeholder",
+      "calling": "explorer",
+      "role": "courier",
+      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+      "limitations": "Goes on foot; never in haste and never into danger.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Vertical Farm Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Fountain Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Transit Hub Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Archive Site"
+        }
+      },
+      "barks": [
+        "I just walked the north trail; the way is clear and the views are lovely.",
+        "Letters from the north trail are in my satchel. Good news travels on foot here.",
+        "Take the north trail at dawn if you can; the light makes the whole valley glow.",
+        "I mark the north trail with small cairns so nobody wanders off it after dark.",
+        "Someone left fresh water by the north trail for travellers. That is Harr all over.",
+        "Ask me about the north trail; I know every bend and every resting stone."
+      ]
+    },
+    {
+      "id": "lw-eamon",
+      "name": "Eamon Placeholder",
+      "calling": "steward",
+      "role": "keeper",
+      "capabilities": "A peaceful steward who keeps the library and stores open to all.",
+      "limitations": "Keeps nothing back; the stores are shared.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Archive Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Sky Walk Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Glass Garden Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The wildflower meadow"
+        }
+      },
+      "barks": [
+        "I keep the seed library. Take what you need and bring it back when you are done.",
+        "The seed library are counted every evening, not to guard them but to know what to make next.",
+        "Everything on the seed library was made or mended by someone in the village.",
+        "If the seed library run low, we tell the makers and the shelves fill again.",
+        "A tidy seed library is a kindness to whoever comes looking tomorrow.",
+        "Sign the little book by the seed library so the next person knows what is new."
+      ]
+    },
+    {
+      "id": "lw-fable",
+      "name": "Fable Placeholder",
+      "calling": "artisan",
+      "role": "maker",
+      "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
+      "limitations": "Makes for use and giving, not for hoarding.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The wildflower meadow"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The old boundary stone"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The hidden spring"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The high view"
+        }
+      },
+      "barks": [
+        "These willow baskets are for the pantry and the market hall; nobody pays for them.",
+        "Making willow baskets takes patient hands and a good story to pass the time.",
+        "I can show you how the willow baskets are made. Sit beside me and watch for a while.",
+        "Every one of these willow baskets is a little different. That is the part I love.",
+        "The willow baskets from last season are still in use. Good work lasts.",
+        "If you want to learn, start with the willow baskets; they forgive a beginner's mistakes."
+      ]
+    },
+    {
+      "id": "lw-galen",
+      "name": "Galen Placeholder",
+      "calling": "builder",
+      "role": "builder",
+      "capabilities": "A peaceful builder who raises the village with others.",
+      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The high view"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The bee hollow"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The lichen wall"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The birdsong grove"
+        }
+      },
+      "barks": [
+        "Today I am on the roof beams; slow, careful work, and a second pair of hands is always welcome.",
+        "The trick with roof beams is to check them twice and set them once.",
+        "Nobody raises roof beams alone in Harr. Stand with the crew and the stage goes up.",
+        "I measure the roof beams with the same cord my teacher used. It has never been wrong.",
+        "When the roof beams are finished, I will walk past them every evening just to look.",
+        "Mind the fresh mortar near the roof beams; by dusk it will be firm enough to lean on."
+      ]
+    },
+    {
+      "id": "lw-hana",
+      "name": "Hana Placeholder",
+      "calling": "cultivator",
+      "role": "farmer",
+      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+      "limitations": "Shares a harvest rather than selling it dear.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The birdsong grove"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The clay bank"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The star meadow"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The wind ridge"
+        }
+      },
+      "barks": [
+        "The squash beds drank well last night; the leaves stand up straight this morning.",
+        "I tend the squash beds. Pick a little if you are hungry; the pantry has plenty more.",
+        "Weeding the squash beds is quiet work. It leaves plenty of room for thinking.",
+        "Mulch the squash beds before the dry week and they will thank you all season.",
+        "We share seed from the squash beds with anyone who wants to start a bed of their own.",
+        "Sit by the squash beds a while; the bees do most of the work for us here."
+      ]
+    },
+    {
+      "id": "lw-isolde",
+      "name": "Isolde Placeholder",
+      "calling": "researcher",
+      "role": "scholar",
+      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The wind ridge"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Well Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Market Hall Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Cottage Row"
+        }
+      },
+      "barks": [
+        "I am cataloguing the old maps. Every page is open for anyone to read.",
+        "The old maps tell a longer story than any of us; I only write it down.",
+        "If you find something new near the old maps, tell me and we will add a page together.",
+        "My notes on the old maps are half questions. That is how a good notebook should look.",
+        "Comparing this year's old maps with last year's is my favourite kind of afternoon.",
+        "The library keeps a whole shelf for the old maps, and it is still growing."
+      ]
+    },
+    {
+      "id": "lw-jarek",
+      "name": "Jarek Placeholder",
+      "calling": "explorer",
+      "role": "courier",
+      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+      "limitations": "Goes on foot; never in haste and never into danger.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Cottage Row"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Observatory Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Pavilion Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Annex Site"
+        }
+      },
+      "barks": [
+        "I just walked the river ford; the way is clear and the views are lovely.",
+        "Letters from the river ford are in my satchel. Good news travels on foot here.",
+        "Take the river ford at dawn if you can; the light makes the whole valley glow.",
+        "I mark the river ford with small cairns so nobody wanders off it after dark.",
+        "Someone left fresh water by the river ford for travellers. That is Harr all over.",
+        "Ask me about the river ford; I know every bend and every resting stone."
+      ]
+    },
+    {
+      "id": "lw-kalen",
+      "name": "Kalen Placeholder",
+      "calling": "steward",
+      "role": "keeper",
+      "capabilities": "A peaceful steward who keeps the library and stores open to all.",
+      "limitations": "Keeps nothing back; the stores are shared.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Annex Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Orchard Gate"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Research Tower Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Solar Array Site"
+        }
+      },
+      "barks": [
+        "I keep the tool shelf. Take what you need and bring it back when you are done.",
+        "The tool shelf are counted every evening, not to guard them but to know what to make next.",
+        "Everything on the tool shelf was made or mended by someone in the village.",
+        "If the tool shelf run low, we tell the makers and the shelves fill again.",
+        "A tidy tool shelf is a kindness to whoever comes looking tomorrow.",
+        "Sign the little book by the tool shelf so the next person knows what is new."
+      ]
+    },
+    {
+      "id": "lw-leena",
+      "name": "Leena Placeholder",
+      "calling": "artisan",
+      "role": "maker",
+      "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
+      "limitations": "Makes for use and giving, not for hoarding.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Solar Array Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Vertical Farm Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Fountain Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Transit Hub Site"
+        }
+      },
+      "barks": [
+        "These clay cups are for the pantry and the market hall; nobody pays for them.",
+        "Making clay cups takes patient hands and a good story to pass the time.",
+        "I can show you how the clay cups are made. Sit beside me and watch for a while.",
+        "Every one of these clay cups is a little different. That is the part I love.",
+        "The clay cups from last season are still in use. Good work lasts.",
+        "If you want to learn, start with the clay cups; they forgive a beginner's mistakes."
+      ]
+    },
+    {
+      "id": "lw-maren",
+      "name": "Maren Placeholder",
+      "calling": "builder",
+      "role": "builder",
+      "capabilities": "A peaceful builder who raises the village with others.",
+      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Transit Hub Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Archive Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Sky Walk Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Glass Garden Site"
+        }
+      },
+      "barks": [
+        "Today I am on the garden walls; slow, careful work, and a second pair of hands is always welcome.",
+        "The trick with garden walls is to check them twice and set them once.",
+        "Nobody raises garden walls alone in Harr. Stand with the crew and the stage goes up.",
+        "I measure the garden walls with the same cord my teacher used. It has never been wrong.",
+        "When the garden walls are finished, I will walk past them every evening just to look.",
+        "Mind the fresh mortar near the garden walls; by dusk it will be firm enough to lean on."
+      ]
+    },
+    {
+      "id": "lw-nestor",
+      "name": "Nestor Placeholder",
+      "calling": "cultivator",
+      "role": "farmer",
+      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+      "limitations": "Shares a harvest rather than selling it dear.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Glass Garden Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The wildflower meadow"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The old boundary stone"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The hidden spring"
+        }
+      },
+      "barks": [
+        "The pear saplings drank well last night; the leaves stand up straight this morning.",
+        "I tend the pear saplings. Pick a little if you are hungry; the pantry has plenty more.",
+        "Weeding the pear saplings is quiet work. It leaves plenty of room for thinking.",
+        "Mulch the pear saplings before the dry week and they will thank you all season.",
+        "We share seed from the pear saplings with anyone who wants to start a bed of their own.",
+        "Sit by the pear saplings a while; the bees do most of the work for us here."
+      ]
+    },
+    {
+      "id": "lw-oriel",
+      "name": "Oriel Placeholder",
+      "calling": "researcher",
+      "role": "scholar",
+      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The hidden spring"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The high view"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The bee hollow"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The lichen wall"
+        }
+      },
+      "barks": [
+        "I am cataloguing the cloud records. Every page is open for anyone to read.",
+        "The cloud records tell a longer story than any of us; I only write it down.",
+        "If you find something new near the cloud records, tell me and we will add a page together.",
+        "My notes on the cloud records are half questions. That is how a good notebook should look.",
+        "Comparing this year's cloud records with last year's is my favourite kind of afternoon.",
+        "The library keeps a whole shelf for the cloud records, and it is still growing."
+      ]
+    },
+    {
+      "id": "lw-petra",
+      "name": "Petra Placeholder",
+      "calling": "explorer",
+      "role": "courier",
+      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+      "limitations": "Goes on foot; never in haste and never into danger.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The lichen wall"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The birdsong grove"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The clay bank"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The star meadow"
+        }
+      },
+      "barks": [
+        "I just walked the orchard lane; the way is clear and the views are lovely.",
+        "Letters from the orchard lane are in my satchel. Good news travels on foot here.",
+        "Take the orchard lane at dawn if you can; the light makes the whole valley glow.",
+        "I mark the orchard lane with small cairns so nobody wanders off it after dark.",
+        "Someone left fresh water by the orchard lane for travellers. That is Harr all over.",
+        "Ask me about the orchard lane; I know every bend and every resting stone."
+      ]
+    },
+    {
+      "id": "lw-quinlan",
+      "name": "Quinlan Placeholder",
+      "calling": "steward",
+      "role": "keeper",
+      "capabilities": "A peaceful steward who keeps the library and stores open to all.",
+      "limitations": "Keeps nothing back; the stores are shared.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The star meadow"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The wind ridge"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Well Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Market Hall Site"
+        }
+      },
+      "barks": [
+        "I keep the lamp oil stores. Take what you need and bring it back when you are done.",
+        "The lamp oil stores are counted every evening, not to guard them but to know what to make next.",
+        "Everything on the lamp oil stores was made or mended by someone in the village.",
+        "If the lamp oil stores run low, we tell the makers and the shelves fill again.",
+        "A tidy lamp oil stores is a kindness to whoever comes looking tomorrow.",
+        "Sign the little book by the lamp oil stores so the next person knows what is new."
+      ]
+    },
+    {
+      "id": "lw-renata",
+      "name": "Renata Placeholder",
+      "calling": "artisan",
+      "role": "maker",
+      "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
+      "limitations": "Makes for use and giving, not for hoarding.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Market Hall Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Cottage Row"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Observatory Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Pavilion Site"
+        }
+      },
+      "barks": [
+        "These wool scarves are for the pantry and the market hall; nobody pays for them.",
+        "Making wool scarves takes patient hands and a good story to pass the time.",
+        "I can show you how the wool scarves are made. Sit beside me and watch for a while.",
+        "Every one of these wool scarves is a little different. That is the part I love.",
+        "The wool scarves from last season are still in use. Good work lasts.",
+        "If you want to learn, start with the wool scarves; they forgive a beginner's mistakes."
+      ]
+    },
+    {
+      "id": "lw-soren",
+      "name": "Soren Placeholder",
+      "calling": "builder",
+      "role": "builder",
+      "capabilities": "A peaceful builder who raises the village with others.",
+      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Pavilion Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Annex Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Orchard Gate"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Research Tower Site"
+        }
+      },
+      "barks": [
+        "Today I am on the lamp posts; slow, careful work, and a second pair of hands is always welcome.",
+        "The trick with lamp posts is to check them twice and set them once.",
+        "Nobody raises lamp posts alone in Harr. Stand with the crew and the stage goes up.",
+        "I measure the lamp posts with the same cord my teacher used. It has never been wrong.",
+        "When the lamp posts are finished, I will walk past them every evening just to look.",
+        "Mind the fresh mortar near the lamp posts; by dusk it will be firm enough to lean on."
+      ]
+    },
+    {
+      "id": "lw-talia",
+      "name": "Talia Placeholder",
+      "calling": "cultivator",
+      "role": "farmer",
+      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+      "limitations": "Shares a harvest rather than selling it dear.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Research Tower Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Solar Array Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Vertical Farm Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Fountain Site"
+        }
+      },
+      "barks": [
+        "The barley strips drank well last night; the leaves stand up straight this morning.",
+        "I tend the barley strips. Pick a little if you are hungry; the pantry has plenty more.",
+        "Weeding the barley strips is quiet work. It leaves plenty of room for thinking.",
+        "Mulch the barley strips before the dry week and they will thank you all season.",
+        "We share seed from the barley strips with anyone who wants to start a bed of their own.",
+        "Sit by the barley strips a while; the bees do most of the work for us here."
+      ]
+    },
+    {
+      "id": "lw-ursa",
+      "name": "Ursa Placeholder",
+      "calling": "researcher",
+      "role": "scholar",
+      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Fountain Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Transit Hub Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Archive Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Sky Walk Site"
+        }
+      },
+      "barks": [
+        "I am cataloguing the moss samples. Every page is open for anyone to read.",
+        "The moss samples tell a longer story than any of us; I only write it down.",
+        "If you find something new near the moss samples, tell me and we will add a page together.",
+        "My notes on the moss samples are half questions. That is how a good notebook should look.",
+        "Comparing this year's moss samples with last year's is my favourite kind of afternoon.",
+        "The library keeps a whole shelf for the moss samples, and it is still growing."
+      ]
+    },
+    {
+      "id": "lw-viola",
+      "name": "Viola Placeholder",
+      "calling": "explorer",
+      "role": "courier",
+      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+      "limitations": "Goes on foot; never in haste and never into danger.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Sky Walk Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Glass Garden Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The wildflower meadow"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The old boundary stone"
+        }
+      },
+      "barks": [
+        "I just walked the hill path; the way is clear and the views are lovely.",
+        "Letters from the hill path are in my satchel. Good news travels on foot here.",
+        "Take the hill path at dawn if you can; the light makes the whole valley glow.",
+        "I mark the hill path with small cairns so nobody wanders off it after dark.",
+        "Someone left fresh water by the hill path for travellers. That is Harr all over.",
+        "Ask me about the hill path; I know every bend and every resting stone."
+      ]
+    },
+    {
+      "id": "lw-wendel",
+      "name": "Wendel Placeholder",
+      "calling": "steward",
+      "role": "keeper",
+      "capabilities": "A peaceful steward who keeps the library and stores open to all.",
+      "limitations": "Keeps nothing back; the stores are shared.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The old boundary stone"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The hidden spring"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The high view"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The bee hollow"
+        }
+      },
+      "barks": [
+        "I keep the mended blankets. Take what you need and bring it back when you are done.",
+        "The mended blankets are counted every evening, not to guard them but to know what to make next.",
+        "Everything on the mended blankets was made or mended by someone in the village.",
+        "If the mended blankets run low, we tell the makers and the shelves fill again.",
+        "A tidy mended blankets is a kindness to whoever comes looking tomorrow.",
+        "Sign the little book by the mended blankets so the next person knows what is new."
+      ]
+    },
+    {
+      "id": "lw-xanthe",
+      "name": "Xanthe Placeholder",
+      "calling": "artisan",
+      "role": "maker",
+      "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
+      "limitations": "Makes for use and giving, not for hoarding.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The bee hollow"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The lichen wall"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The birdsong grove"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "The clay bank"
+        }
+      },
+      "barks": [
+        "These wooden spoons are for the pantry and the market hall; nobody pays for them.",
+        "Making wooden spoons takes patient hands and a good story to pass the time.",
+        "I can show you how the wooden spoons are made. Sit beside me and watch for a while.",
+        "Every one of these wooden spoons is a little different. That is the part I love.",
+        "The wooden spoons from last season are still in use. Good work lasts.",
+        "If you want to learn, start with the wooden spoons; they forgive a beginner's mistakes."
+      ]
+    },
+    {
+      "id": "lw-yorick",
+      "name": "Yorick Placeholder",
+      "calling": "builder",
+      "role": "builder",
+      "capabilities": "A peaceful builder who raises the village with others.",
+      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "The clay bank"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "The star meadow"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "The wind ridge"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Well Site"
+        }
+      },
+      "barks": [
+        "Today I am on the window frames; slow, careful work, and a second pair of hands is always welcome.",
+        "The trick with window frames is to check them twice and set them once.",
+        "Nobody raises window frames alone in Harr. Stand with the crew and the stage goes up.",
+        "I measure the window frames with the same cord my teacher used. It has never been wrong.",
+        "When the window frames are finished, I will walk past them every evening just to look.",
+        "Mind the fresh mortar near the window frames; by dusk it will be firm enough to lean on."
+      ]
+    },
+    {
+      "id": "lw-zelda",
+      "name": "Zelda Placeholder",
+      "calling": "cultivator",
+      "role": "farmer",
+      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+      "limitations": "Shares a harvest rather than selling it dear.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Well Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Market Hall Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Cottage Row"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Observatory Site"
+        }
+      },
+      "barks": [
+        "The herb spirals drank well last night; the leaves stand up straight this morning.",
+        "I tend the herb spirals. Pick a little if you are hungry; the pantry has plenty more.",
+        "Weeding the herb spirals is quiet work. It leaves plenty of room for thinking.",
+        "Mulch the herb spirals before the dry week and they will thank you all season.",
+        "We share seed from the herb spirals with anyone who wants to start a bed of their own.",
+        "Sit by the herb spirals a while; the bees do most of the work for us here."
+      ]
+    },
+    {
+      "id": "lw-adair",
+      "name": "Adair Placeholder",
+      "calling": "researcher",
+      "role": "scholar",
+      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Observatory Site"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Pavilion Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Annex Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Orchard Gate"
+        }
+      },
+      "barks": [
+        "I am cataloguing the star charts. Every page is open for anyone to read.",
+        "The star charts tell a longer story than any of us; I only write it down.",
+        "If you find something new near the star charts, tell me and we will add a page together.",
+        "My notes on the star charts are half questions. That is how a good notebook should look.",
+        "Comparing this year's star charts with last year's is my favourite kind of afternoon.",
+        "The library keeps a whole shelf for the star charts, and it is still growing."
+      ]
+    },
+    {
+      "id": "lw-beatrix",
+      "name": "Beatrix Placeholder",
+      "calling": "explorer",
+      "role": "courier",
+      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+      "limitations": "Goes on foot; never in haste and never into danger.",
+      "startX": 0,
+      "startY": 0,
+      "destinations": {
+        "dawn": {
+          "x": 0,
+          "y": 0,
+          "label": "Orchard Gate"
+        },
+        "day": {
+          "x": 0,
+          "y": 0,
+          "label": "Research Tower Site"
+        },
+        "dusk": {
+          "x": 0,
+          "y": 0,
+          "label": "Solar Array Site"
+        },
+        "night": {
+          "x": 0,
+          "y": 0,
+          "label": "Vertical Farm Site"
+        }
+      },
+      "barks": [
+        "I just walked the east meadow; the way is clear and the views are lovely.",
+        "Letters from the east meadow are in my satchel. Good news travels on foot here.",
+        "Take the east meadow at dawn if you can; the light makes the whole valley glow.",
+        "I mark the east meadow with small cairns so nobody wanders off it after dark.",
+        "Someone left fresh water by the east meadow for travellers. That is Harr all over.",
+        "Ask me about the east meadow; I know every bend and every resting stone."
+      ]
     }
   ]
 }
