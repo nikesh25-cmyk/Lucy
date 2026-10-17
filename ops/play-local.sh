@@ -41,7 +41,7 @@ mkdir -p "$P"/{bin,data,logs,pids,secrets,userdata,nemoworld}; chmod 700 "$P/sec
 export PATH="$HOME/.cargo/bin:$PATH"
 alive() { [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
 stop_pid() { if alive "$1"; then kill "$(cat "$1")" 2>/dev/null; for _ in 1 2 3 4 5 6 7 8 9 10; do alive "$1" || break; sleep 1; done; fi; rm -f "$1"; }
-link_env() { export NEMO_LINK_EVENT_KEY="$(cat "$P/secrets/event.key")" NEMO_WORLD_RECORD="$P/data/veloren-outbox.jsonl.world.json" LUCY_DATABASE="$P/data/world.sqlite" NEMO_LINK_DB="$P/data/veloren-link.sqlite" NEMO_LINK_COMMANDS="$P/data/veloren-outbox.jsonl.commands.jsonl"; }
+link_env() { export NEMO_CITY_ENABLED=1 NEMO_LINK_EVENT_KEY="$(cat "$P/secrets/event.key")" NEMO_WORLD_RECORD="$P/data/veloren-outbox.jsonl.world.json" LUCY_DATABASE="$P/data/world.sqlite" NEMO_LINK_DB="$P/data/veloren-link.sqlite" NEMO_LINK_COMMANDS="$P/data/veloren-outbox.jsonl.commands.jsonl"; }
 issue() { # RESIDENT SCOPES TOKENFILE
   link_env
   (cd "$P/nemoworld" && "$NODE" scripts/veloren-link.mjs issue --resident "$1" --scopes "$2" --days 30 --label "play-$3" 2>/dev/null) | python3 -c "
@@ -84,6 +84,7 @@ PYLOCAL
     mkdir -p "$P/userdata/server/server_config" "$P/userdata/server-cli"
     sed -e "s/14004/$VEL/g" -e "s/14006/$VEL_Q/g" "$ROOT/veloren/userdata/server/server_config/settings.ron" | sed -e "s/Global(PvP)/Global(PvE)/" -e "s/0\.0\.0\.0/127.0.0.1/g" -e "s/\[::\]/[::1]/g" > "$P/userdata/server/server_config/settings.ron"
     sed -e "s/14005/$VEL_WEB/" "$ROOT/veloren/userdata/server-cli/settings.template.ron" > "$P/userdata/server-cli/settings.ron"
+    "$NODE" "$P/nemoworld/scripts/prepare-native-city.mjs" --output-dir "$P/data/city-release-$(date +%Y%m%d-%H%M%S)" > "$P/data/city-prepared.json" || exit 1
     # One merged link config: eight residents, six landmarks, home, atlas and world dressing.
     python3 - "$ROOT" "$P" <<'PY'
 import json,sys
@@ -95,11 +96,12 @@ cfg['residents']=w['residents']
 ids={l['id'] for l in a['landmarks']}
 cfg['landmarks']=a['landmarks']+[l for l in w['landmarks'] if l['id'] not in ids]
 n=p+'/nemoworld'
-extra=json.load(open(n+'/content/veloren-landmarks-extra.json'))['landmarks']
+prepared=json.load(open(p+'/data/city-prepared.json'))
+extra=json.load(open(prepared['landmarks']))['landmarks']
 have={l['id'] for l in cfg['landmarks']}
 cfg['landmarks']+= [l for l in extra if l['id'] not in have]
 cfg['atlas']={'path':n+'/content/veloren-atlas-places.json'}
-cfg['world']={'enabled':True,'site':'Harr','path':n+'/content/veloren-world-harr.json'}
+cfg['world']={'enabled':True,'site':'Harr','path':prepared['manifest']}
 json.dump(cfg,open(p+'/veloren-link.json','w'),indent=2)
 print('config: %d residents, %d landmarks'%(len(cfg['residents']),len(cfg['landmarks'])))
 PY
@@ -134,7 +136,7 @@ PY
     for port in $NEMO_PORT $VEL; do lsof -nP -iTCP:$port -sTCP:LISTEN >/dev/null 2>&1 && ! alive "$P/pids/veloren" && ! alive "$P/pids/nemo" && { echo "port $port is already in use (the older test stack?). Run dev/dev.sh stop, then try again." >&2; exit 1; }; done
     "$0" stop >/dev/null 2>&1
     [ "${2:-}" = "--no-model" ] && export NEMO_NO_MODEL=1 || export NEMO_NO_MODEL=0
-    ( cd "$ROOT" && NEMO_WORLD_RECORD="$P/data/veloren-outbox.jsonl.world.json" NEMO_ROOT="$P/nemoworld" NEMO_PORT="$NEMO_PORT" NEMO_DEV_DIR="$P" NEMO_AI_ROOT="$ROOT/../Lucy" exec nohup "$NODE" dev/start-nemo.mjs < /dev/null > "$P/logs/nemo.log" 2>&1 ) & echo $! > "$P/pids/nemo"; disown
+    ( cd "$ROOT" && NEMO_CITY_ENABLED=1 NEMO_WORLD_RECORD="$P/data/veloren-outbox.jsonl.world.json" NEMO_ROOT="$P/nemoworld" NEMO_PORT="$NEMO_PORT" NEMO_DEV_DIR="$P" NEMO_AI_ROOT="$ROOT/../Lucy" exec nohup "$NODE" dev/start-nemo.mjs < /dev/null > "$P/logs/nemo.log" 2>&1 ) & echo $! > "$P/pids/nemo"; disown
     echo "starting NemoWorld${NEMO_NO_MODEL:+ (model: $([ "$NEMO_NO_MODEL" = 1 ] && echo off || echo on))}..."
     for _ in $(seq 1 240); do curl -s -m2 -o /dev/null "$NEMO/api/v1/health" && break; sleep 1; done
     curl -s -m3 -o /dev/null "$NEMO/api/v1/health" || { echo "NemoWorld did not start; see $P/logs/nemo.log" >&2; exit 1; }

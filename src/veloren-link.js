@@ -613,7 +613,7 @@ export function withWorkSites(landmarks, path = new URL('../content/veloren-land
  * `landmark.together` with whichever configured landmark the resident stands in, so a landmark missing here
  * makes NemoWorld refuse the fact as `unknown_landmark`, and a refusal is final at the relay.
  */
-export function withConfiguredLandmarks(landmarks, files = ['veloren-world-landmarks.json', 'veloren-landmarks-extra.json'].map((name) => new URL(`../content/${name}`, import.meta.url))) {
+export function withConfiguredLandmarks(landmarks, files = ['veloren-world-landmarks.json', 'veloren-landmarks-extra.json', 'veloren-ai-city-landmarks.json'].map((name) => new URL(`../content/${name}`, import.meta.url))) {
   const known = new Set(landmarks.map((item) => item.id));
   const extra = [];
   for (const file of files) {

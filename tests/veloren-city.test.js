@@ -291,3 +291,26 @@ test('HTTP city routes: public directory, own session home, no anonymous/runtime
   assert.equal((await response.json()).home.built, 'building');
   for (const path of ['/city', '/city.js', '/city.css']) assert.equal((await fetch(base + path)).status, 200, path);
 });
+
+test('city visits use only linked guest identity and fixed public destinations', async t => {
+  const w = await world(t), actor = w.f.actor('alice');
+  assert.throws(() => w.city.visit(actor, { destination: 'city' }), refuses(503));
+  w.link.nativeCity = { enabled: true };
+  for (const bad of [{ destination: 'secret' }, { destination: 'city', player_uuid: P2 }, { destination: 'city', x: 0 }]) assert.throws(() => w.city.visit(actor,bad), refuses(400));
+  assert.throws(() => w.city.visit({...actor,kind:'runtime'},{destination:'city'}),refuses(403));
+  const result=w.city.visit(actor,{destination:'city'});
+  const cmd=w.link.sql.get('SELECT * FROM link_commands WHERE cmd_id=?',result.cmd_id);
+  assert.equal(cmd.player_uuid,P1); assert.equal(cmd.kind,'city_visit');
+  assert.deepEqual(JSON.parse(JSON.parse(readFileSync(w.link.commands.path,'utf8').trim().split('\n').find(line => JSON.parse(line).cmd_id===result.cmd_id)).args),{target:'city-arrival'});
+  assert.equal(result.status,'pending');
+  const back=w.city.visit(actor,{destination:'harr'});
+  assert.equal(w.link.sql.get('SELECT kind FROM link_commands WHERE cmd_id=?',back.cmd_id).kind,'city_return');
+});
+
+test('city travel confirmation is scoped to the current linked guest and city command kind', async t => {
+ const w=await world(t);w.link.nativeCity={enabled:true};const actor=w.f.actor('alice');
+ const cmd=w.city.visit(actor,{destination:'city'});
+ assert.equal(w.city.travelStatus(actor,cmd.cmd_id).status,'pending');
+ assert.throws(()=>w.city.travelStatus(w.f.actor('bob'),cmd.cmd_id),refuses(404));
+ assert.throws(()=>w.city.travelStatus(actor,'anything'),refuses(400));
+});

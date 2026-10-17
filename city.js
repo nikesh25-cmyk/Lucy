@@ -25,8 +25,9 @@ async function loadCity() {
     const city = await api('');
     $('offices').replaceChildren(...city.offices.map((o, i) => card(o.title, o.purpose, o.output, `0${i + 1} / ${o.residents} RESIDENTS`)));
     $('execution').textContent = city.execution;
-    const unfinished = city.works.filter(w => !w.complete);
-    const featured = [...unfinished, ...city.works.filter(w => w.complete)].slice(0, 3);
+    const works = [...(city.simulation?.construction || []), ...city.works];
+    const unfinished = works.filter(w => !w.complete);
+    const featured = [...unfinished, ...works.filter(w => w.complete)].slice(0, 8);
     $('works').replaceChildren(...featured.map(w => {
       const el = card(w.name, w.purpose, `${w.done} of ${w.total} stages saved${w.next?.waiting ? ` · ${w.next.waiting}` : ''}`, w.complete ? 'SAVED IN THE WORLD' : 'IN PROGRESS');
       const bar = document.createElement('progress'); bar.max = w.total || 1; bar.value = w.done; bar.setAttribute('aria-label', `${w.name}: ${w.done} of ${w.total} stages`); el.append(bar); return el;
@@ -42,6 +43,9 @@ async function loadCity() {
       const more = document.createElement('details'); more.className = 'more-residents';
       more.append(text('summary', `Meet ${people.length - 8} more residents`));
       const rest = text('div', '', 'people'); rest.append(...people.slice(8)); more.append(rest); $('people').append(more);
+    }
+    if (city.simulation?.enabled) {
+      $('people').prepend(...city.simulation.citizens.map(c => card(c.name, `${c.stage} · ${c.role}`, 'Native city resident · scripted')));
     }
     $('rewards').textContent = city.rewards;
     $('learning').textContent = city.learning.status;
@@ -107,3 +111,21 @@ $('leave-home').addEventListener('click', () => act('/home/action', { action: 'l
 $('refresh-home').addEventListener('click', () => { if (!busy) loadHome(); });
 document.addEventListener('visibilitychange', () => { clearTimeout(timer); if (!document.hidden && !busy) loadHome(); });
 await Promise.allSettled([loadCity(), loadHome()]);
+
+for (const [id, destination] of [['visit-city','city'],['return-harr','harr']]) $(id).addEventListener('click', async () => {
+  $(id).disabled = true;
+  try {
+    const request = await api('/visit', {destination}); $('travel-status').textContent = request.message;
+    const deadline = Date.now() + 65000;
+    while (Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await api(`/travel?cmd_id=${encodeURIComponent(request.cmd_id)}`);
+      if (result.status === 'pending') continue;
+      $('travel-status').textContent = result.status === 'applied' ? 'Arrival confirmed by the game server.' : result.status === 'rejected' ? 'The game refused travel. Keep your linked human character online and try again.' : 'Arrival was not confirmed. Check your game before retrying.';
+      return;
+    }
+    $('travel-status').textContent = 'Arrival was not confirmed. Check your game before retrying.';
+  }
+  catch (error) { $('travel-status').textContent = error.message; }
+  finally { $(id).disabled = false; }
+});

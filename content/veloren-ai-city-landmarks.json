@@ -1,0 +1,225 @@
+{
+  "format": "nemo-landmarks-extra-v1",
+  "landmarks": [
+    {
+      "id": "city-office",
+      "label": "Civic work and research office",
+      "name": "Civic work and research office",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -54,
+      "dy": 196,
+      "radius": 9
+    },
+    {
+      "id": "site-city-office",
+      "label": "Civic work and research office construction",
+      "name": "Civic work and research office construction",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -54,
+      "dy": 196,
+      "radius": 12
+    },
+    {
+      "id": "city-school",
+      "label": "City school",
+      "name": "City school",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 21,
+      "dy": 198,
+      "radius": 9
+    },
+    {
+      "id": "site-city-school",
+      "label": "City school construction",
+      "name": "City school construction",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 21,
+      "dy": 198,
+      "radius": 12
+    },
+    {
+      "id": "city-university",
+      "label": "City university",
+      "name": "City university",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 50,
+      "dy": 196,
+      "radius": 9
+    },
+    {
+      "id": "site-city-university",
+      "label": "City university construction",
+      "name": "City university construction",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 50,
+      "dy": 196,
+      "radius": 12
+    },
+    {
+      "id": "city-home-1",
+      "label": "Family home 1",
+      "name": "Family home 1",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -57,
+      "dy": 239,
+      "radius": 9
+    },
+    {
+      "id": "site-city-home-1",
+      "label": "Family home 1 construction",
+      "name": "Family home 1 construction",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -57,
+      "dy": 239,
+      "radius": 12
+    },
+    {
+      "id": "city-home-2",
+      "label": "Family home 2",
+      "name": "Family home 2",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -41,
+      "dy": 239,
+      "radius": 9
+    },
+    {
+      "id": "site-city-home-2",
+      "label": "Family home 2 construction",
+      "name": "Family home 2 construction",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -41,
+      "dy": 239,
+      "radius": 12
+    },
+    {
+      "id": "city-home-3",
+      "label": "Family home 3",
+      "name": "Family home 3",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -25,
+      "dy": 239,
+      "radius": 9
+    },
+    {
+      "id": "site-city-home-3",
+      "label": "Family home 3 construction",
+      "name": "Family home 3 construction",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -25,
+      "dy": 239,
+      "radius": 12
+    },
+    {
+      "id": "city-home-4",
+      "label": "Family home 4",
+      "name": "Family home 4",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -9,
+      "dy": 239,
+      "radius": 9
+    },
+    {
+      "id": "site-city-home-4",
+      "label": "Family home 4 construction",
+      "name": "Family home 4 construction",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -9,
+      "dy": 239,
+      "radius": 12
+    },
+    {
+      "id": "city-farm",
+      "label": "Urban farm greenhouse",
+      "name": "Urban farm greenhouse",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 50,
+      "dy": 238,
+      "radius": 9
+    },
+    {
+      "id": "site-city-farm",
+      "label": "Urban farm greenhouse construction",
+      "name": "Urban farm greenhouse construction",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 50,
+      "dy": 238,
+      "radius": 12
+    },
+    {
+      "id": "city-arrival",
+      "label": "City arrival crossing",
+      "name": "City arrival crossing",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 0,
+      "dy": 220,
+      "radius": 9
+    },
+    {
+      "id": "city-homes",
+      "label": "Family homes promenade",
+      "name": "Family homes promenade",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -25,
+      "dy": 237,
+      "radius": 9
+    },
+    {
+      "id": "city-build",
+      "label": "Public construction yard",
+      "name": "Public construction yard",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -20,
+      "dy": 212,
+      "radius": 9
+    },
+    {
+      "id": "city-park",
+      "label": "City park",
+      "name": "City park",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 25,
+      "dy": 240,
+      "radius": 9
+    }
+  ]
+}

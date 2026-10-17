@@ -20,9 +20,10 @@ import { npcExtension } from './npc-logic.js';
 import { overviewExtension } from './overview.js';
 import { gratitudeExtension } from './gratitude.js';
 import { healthExtension } from './health.js';
+import { cityLifeExtension } from './city-runtime.js';
 import { cityExtension } from './city.js';
 
-export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension, villageExtension, npcExtension, overviewExtension, gratitudeExtension, healthExtension, cityExtension];
+export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension, cityLifeExtension, villageExtension, npcExtension, overviewExtension, gratitudeExtension, healthExtension, cityExtension];
 
 // Content loaders: pure readers, not extensions (nothing here handles a request). The missions catalogue
 // (engine stream) backs the `missions` and `tasks` pages; the stories stream's twelve daily story missions

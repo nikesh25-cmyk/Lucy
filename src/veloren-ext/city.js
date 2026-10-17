@@ -51,6 +51,7 @@ export class CityService {
 
   directory() {
     const overview = buildOverview(this.link);
+    const simulation = this.link.nativeCity?.overview();
     return {
       name: 'NemoWorld', human_role: 'guest', generated_at: this.link.clock(),
       purpose: 'AI residents build, learn and care for a peaceful city. Human guests explore and talk with them.',
@@ -58,10 +59,33 @@ export class CityService {
       offices: OFFICES.map(office => ({ ...office, residents: VILLAGERS.filter(r => r.role === office.role).length })),
       residents: [...LIVING_ROSTER, ...VILLAGERS].map(r => ({ id: r.id, name: r.name, calling: r.calling, source: 'scripted' })),
       works: overview.works, research: overview.research,
-      learning: { title: 'School & university', site: 'site-schoolhouse', status: 'Existing schoolhouse, research and apprenticeship activities. Resident enrollment and qualifications are not implemented.' },
-      lifecycle: { implemented: false, status: 'Households, marriages, children and age-based education are planned; no fictional life events have been backfilled.' },
+      learning: { title: 'School & university', site: 'site-schoolhouse', status: simulation?.enabled ? `${simulation.attendance.length} recorded school visits; ${simulation.assessments.filter(a => a.passed).length} scripted source-based assessments passed. Children progress to school and apprenticeship with native simulation time and assessed visits.` : 'Native city schooling is disabled.' },
+      lifecycle: { implemented: simulation?.enabled === true, status: simulation?.enabled ? `${simulation.citizens.length} city citizens, ${simulation.marriages.length} preapproved fictional households married, ${simulation.births.length} children. Progress follows saved native activity; no offline ageing.` : 'Native city life is disabled on this server.' },
+      simulation,
       rewards: 'City activity and home requests do not issue NemoCoins. Independent acceptance of eligible evidence work uses the existing review system.',
     };
+  }
+
+  travelStatus(actor, cmdId) {
+    this.#guest(actor);
+    if (!/^[a-f0-9-]{36}$/.test(cmdId || '')) fail(400, 'Use a valid travel request.');
+    const who = this.#linked(actor);
+    const row = this.link.sql.get("SELECT player_uuid,kind FROM link_commands WHERE cmd_id=? AND issued_by='city-guest-travel'", cmdId);
+    if (!who || !row || row.player_uuid !== who.player_uuid || !['city_visit','city_return'].includes(row.kind)) fail(404, 'Travel request not found.');
+    return { cmd_id: cmdId, ...this.link.commandStatus(cmdId) };
+  }
+
+  visit(actor, input) {
+    this.#guest(actor);
+    strict(input, ['destination']);
+    if (!['city', 'harr'].includes(input.destination)) fail(400, 'Choose city or harr.');
+    if (!this.link.nativeCity?.enabled || !this.link.commands) fail(503, 'Native city travel is unavailable.');
+    if (input.destination === 'city') this.platform.active();
+    const who = this.#linked(actor);
+    if (!who) fail(409, 'Link an active Veloren human character first.');
+    const command = this.link.issueCommand({ kind: input.destination === 'city' ? 'city_visit' : 'city_return', player_uuid: who.player_uuid,
+      args: { target: input.destination === 'city' ? 'city-arrival' : 'lyra-plaza' }, ttl_ms: 60_000, issuedBy: 'city-guest-travel' });
+    return { cmd_id: command.cmd_id, status: 'pending', message: 'Travel requested. Keep your game character connected; arrival is confirmed by the native server.' };
   }
 
   home(actor) {
@@ -144,6 +168,8 @@ export const cityExtension = {
       ctx.json(ctx.response, 200, city.directory()); return true;
     }
     const actor = ctx.platform.authenticate(ctx.tokenFrom(ctx.request));
+    if (ctx.request.method === 'GET' && ctx.route === '/veloren/city/travel') { ctx.json(ctx.response, 200, city.travelStatus(actor, ctx.url.searchParams.get('cmd_id'))); return true; }
+    if (ctx.request.method === 'POST' && ctx.route === '/veloren/city/visit') { ctx.json(ctx.response, 202, city.visit(actor, await ctx.body(ctx.request))); return true; }
     if (ctx.request.method === 'GET' && ctx.route === '/veloren/city/home') { ctx.json(ctx.response, 200, city.home(actor)); return true; }
     if (ctx.request.method === 'POST' && ctx.route === '/veloren/city/home/request') { ctx.json(ctx.response, 200, city.requestHome(actor, await ctx.body(ctx.request))); return true; }
     if (ctx.request.method === 'POST' && ctx.route === '/veloren/city/home/action') { ctx.json(ctx.response, 200, city.homeAction(actor, await ctx.body(ctx.request))); return true; }

@@ -1,3 +1,4 @@
+import { cityLines } from './city-guide.js';
 import { readFileSync } from 'node:fs';
 import { identityFor, setIdentityProvider } from './identity.js';
 import { pantryLines } from './pantry.js';
@@ -55,10 +56,10 @@ export const HUD_POLICY = Object.freeze({
 // instance Lyra's) is refused even though it carries the same `director` scope.
 export const GUIDE_RESIDENTS = Object.freeze(['lw-selene']);
 
-export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'missions', 'purpose', 'research', 'menu', ...GAMEPLAY_PAGES]);
-const OPEN_TITLES = { ...GAMEPLAY_TITLES, menu: 'Menu', help: 'Help', works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle', tasks: 'Your tasks', missions: 'Harr missions', purpose: 'Harr Charter', research: 'Research' };
+export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'missions', 'purpose', 'research', 'city', 'menu', ...GAMEPLAY_PAGES]);
+const OPEN_TITLES = { ...GAMEPLAY_TITLES, menu: 'Menu', help: 'Help', works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle', tasks: 'Your tasks', missions: 'Harr missions', purpose: 'Harr Charter', research: 'Research', city: 'City life' };
 // Open pages: about the village, not about an account, so they need no link. They still need a player id.
-export const OPEN_PAGES = Object.freeze(['menu', 'help', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'missions', 'purpose', 'research', ...GAMEPLAY_PAGES]);
+export const OPEN_PAGES = Object.freeze(['menu', 'help', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'missions', 'purpose', 'research', 'city', ...GAMEPLAY_PAGES]);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const enc = new TextEncoder();
@@ -217,7 +218,7 @@ export const MENU_ENTRIES = Object.freeze([
   ['pantry', 'free food for all'], ['today', 'market hour, story circle, festival'], ['chronicle', 'what happened lately'],
   ['purpose', 'why Harr exists'], ['research', 'what the village is learning'], ['track', 'mark your current step on your map'],
   ['thanks', 'the gratitude board'], ['apprentice', 'learn a craft from a mentor'], ['survey', 'today\'s field survey'],
-  ['season', 'the time of year'], ['level', 'how far Harr has grown'],
+  ['city', 'AI homes, work, school and families'], ['season', 'the time of year'], ['level', 'how far Harr has grown'],
 ]);
 
 export function menuLines({ word, recommend } = {}) {
@@ -278,6 +279,7 @@ export function didYouMean(word) {
 
 /** One short line pointing at the next sensible command, added to the end of a page. */
 export const FOOTERS = Object.freeze({
+  city: 'Next: say works for construction; visit /city in your local browser for city travel.',
   help: 'Next: say menu to see every word I know.',
   menu: 'Next: say next, and I will name the one thing to do now.',
   start: 'Next: say next whenever you want the one best thing to do.',
@@ -474,7 +476,7 @@ export function buildView({ link, platform, player_uuid, name, page = 1, word = 
   const withFooter = (lines) => (FOOTERS[name] ? [...lines, FOOTERS[name]] : lines);
   if (OPEN_PAGES.includes(name)) {
     const recommend = name === 'help' || name === 'menu' ? safeRecommend(link, player_uuid) : null;
-    const lines = name === 'help'
+    const lines = name === 'city' ? cityLines(link) : name === 'help'
       ? helpLines({ recommend })
       : name === 'menu'
         ? menuLines({ word, recommend })

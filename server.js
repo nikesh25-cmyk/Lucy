@@ -24,6 +24,7 @@ import { serveVideo } from './src/media.js';
 import { ensureTradeMarket } from './src/trade-market.js';
 import { ensureLivingWorld, livingWorldTick } from './src/living-world.js';
 import { goodsPolicyView } from './src/goods-policy.js';
+import { startNativeCity } from './src/veloren-ext/city-runtime.js';
 import { velorenLinkFromEnvironment } from './src/veloren-link.js';
 import { economyProvenance } from './src/economy-provenance.js';
 
@@ -435,6 +436,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
   if (hosting.publicOrigin && setupRequired && !hosting.setupCode) throw new Error('Set the private LUCY_SETUP_CODE before starting a public server with no administrator.');
   platform.publicMode = Boolean(hosting.publicOrigin);
+  const stopNativeCity = velorenLink ? startNativeCity(velorenLink, platform, { enabled: process.env.NEMO_CITY_ENABLED === '1', recordPath: process.env.NEMO_WORLD_RECORD }) : () => {};
   if (velorenLink) velorenLink.platform = platform;   // the account link (veloren-ext/identity.js) reads accounts through it
   platform.setupCode = hosting.setupCode;
   // The trade board's additive tables exist before the first request, and its stored ledger is
@@ -891,7 +893,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   server.once('close',()=>{clearInterval(mayorTimer);hub.closeAll();for(const run of [...researchRuns.values(),...residentRuns.values()])run.controller.abort();});
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
-  return { server, platform, hub, stopEvents:()=>hub.closeAll(), stopWorkers:async()=>{const runs=[...researchRuns.values(),...residentRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));try{velorenLink?.close();}catch{/* already closed */}}, velorenLink };
+  return { server, platform, hub, stopEvents:()=>hub.closeAll(), stopWorkers:async()=>{stopNativeCity();const runs=[...researchRuns.values(),...residentRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));try{velorenLink?.close();}catch{/* already closed */}}, velorenLink };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

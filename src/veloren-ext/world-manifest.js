@@ -20,7 +20,8 @@ export const PLACES_PATH = join(here, '..', '..', 'content', 'veloren-world-plac
 export const FORMAT = 'veloren-world-v1';
 /** The same ceilings the Rust side enforces; NemoWorld refuses anything above them before it asks. */
 export const MANIFEST_LIMITS = Object.freeze({
-  max_area_radius: 150,
+  max_area_radius: 400,
+  max_anchor_offset: 400,
   max_groups: 600,
   max_ops_per_group: 600,
   max_extent: 48,
@@ -89,7 +90,8 @@ export function validateManifest(manifest, places = PLACES, limits = MANIFEST_LI
     if (anchor.nth !== undefined && !inRange(anchor.nth, 0, 7)) bad(`${where}: anchor.nth must be 0 to 7`);
     for (const axis of ['dx', 'dy']) {
       const value = anchor[axis] ?? 0;
-      if (!inRange(value, -limits.max_extent, limits.max_extent)) bad(`${where}: anchor.${axis} must be within ±${limits.max_extent}`);
+      const bound = Math.min(manifest.area?.radius || limits.max_anchor_offset, limits.max_anchor_offset);
+      if (!inRange(value, -bound, bound)) bad(`${where}: anchor.${axis} must be within ±${bound}`);
     }
     if (group.note !== undefined && typeof group.note !== 'string') bad(`${where}: note must be text`);
     if (group.release_after_minutes !== undefined && !inRange(group.release_after_minutes, 0, 7 * 24 * 60)) bad(`${where}: release_after_minutes must be 0 to ${7 * 24 * 60}`);
@@ -99,8 +101,15 @@ export function validateManifest(manifest, places = PLACES, limits = MANIFEST_LI
     if ((group.release_after_minutes || 0) > 0 && !group.project) bad(`${where}: a staged group needs a project`);
     if (!Array.isArray(group.ops) || !group.ops.length) { bad(`${where}: needs ops`); continue; }
     if (group.ops.length > limits.max_ops_per_group) bad(`${where}: at most ${limits.max_ops_per_group} ops`);
-    let blocks = 0;
+    const cells = new Set();
     let columns = 0;
+    const countCells = (from, to) => {
+      if (cells.size > limits.max_blocks_per_group) return;
+      for (let x = from[0]; x <= to[0]; x++) for (let y = from[1]; y <= to[1]; y++) for (let z = from[2]; z <= to[2]; z++) {
+        cells.add(`${x},${y},${z}`);
+        if (cells.size > limits.max_blocks_per_group) return;
+      }
+    };
     for (const op of group.ops) {
       if (!op || typeof op !== 'object') { bad(`${where}: an op must be an object`); continue; }
       const kind = op.op;
@@ -118,13 +127,14 @@ export function validateManifest(manifest, places = PLACES, limits = MANIFEST_LI
         const [x1, y1, z1] = op.to;
         if (x1 < x0 || y1 < y0 || z1 < z0) { bad(`${where}: ${op.op} corners are the wrong way round`); continue; }
         const volume = (x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1);
+        if (volume > limits.max_fill_volume) bad(`${where}: a ${kind} of ${volume} blocks exceeds ${limits.max_fill_volume}`);
+        else countCells(op.from, op.to);
         if (kind === 'fill') {
-          blocks += volume;
-          if (volume > limits.max_fill_volume) bad(`${where}: a fill of ${volume} blocks exceeds ${limits.max_fill_volume}`);
           if (typeof op.kind !== 'string' || !op.kind) bad(`${where}: a fill needs a block kind`);
         }
       } else if (kind === 'sprite') {
         if (!point(op.at, 'at')) continue;
+        countCells(op.at, op.at);
         if (!isText(op.sprite, limits.max_sprite_text)) bad(`${where}: a sprite needs a short name`);
       } else {
         if (!Array.isArray(op.from) || !Array.isArray(op.to) || op.from.length !== 2 || op.to.length !== 2) { bad(`${where}: foundation corners are two numbers each`); continue; }
@@ -140,6 +150,7 @@ export function validateManifest(manifest, places = PLACES, limits = MANIFEST_LI
       }
       if (op.rgb !== undefined && !(Array.isArray(op.rgb) && op.rgb.length === 3 && op.rgb.every((part) => inRange(part, 0, 255)))) bad(`${where}: rgb must be three bytes`);
     }
+    const blocks = cells.size + columns;
     if (blocks > limits.max_blocks_per_group) bad(`${where}: ${blocks} blocks exceeds ${limits.max_blocks_per_group} in one group`);
     total += blocks;
   }
