@@ -9,6 +9,7 @@ import { loadRecord, loadWorks, worksStatus } from './world-life.js';
 import { shelfSummary } from './pantry.js';
 import { chronicleLines, loadEvents, todayLines } from './village.js';
 import { VILLAGERS } from './villagers.js';
+import { conversationReply } from './conversations.js';
 
 const roleOf = (resident) => resident?.role || null;
 const cut = (text, n = 240) => (text.length <= n ? text : `${text.slice(0, n - 1).replace(/[\s,;:.-]+\S*$/, '')}…`);
@@ -56,6 +57,8 @@ export function replyFor(link, resident, lower) {
     if (has(['what are you doing', 'your work', 'what do you do', 'your job', ...roles[role].topics])) {
       return cut(`${roles[role].purpose} ${FACTS[role](link)}`);
     }
+    const talk = conversationReply(link, resident, lower); // the role's 'ask me about' answers, after its own topics
+    if (talk) return cut(talk);
   } catch { /* a villager never fails to answer */ }
   return null;
 }

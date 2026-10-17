@@ -20,3 +20,8 @@ import { npcExtension } from './npc-logic.js';
 import { overviewExtension } from './overview.js';
 
 export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension, villageExtension, npcExtension, overviewExtension];
+
+// Content loaders added by the stories stream: pure readers, not extensions (nothing here handles a request).
+export { loadMissions, missionLines } from './missions.js';
+export { loadStories } from './stories.js';
+export { loadConversations } from './conversations.js';
