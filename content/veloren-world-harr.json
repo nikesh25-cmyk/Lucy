@@ -2,7 +2,7 @@
   "format": "veloren-world-v1",
   "site": "Harr",
   "area": {
-    "radius": 100
+    "radius": 110
   },
   "atmosphere": {
     "time": true,
@@ -1054,7 +1054,7 @@
       ],
       "project": "market-hall",
       "title": "Levelling the ground and laying the floor",
-      "release_after_minutes": 20,
+      "release_after_minutes": 15,
       "note": "The market hall, stage 1 of 4: Levelling the ground and laying the floor.",
       "ops": [
         {
@@ -1123,7 +1123,7 @@
       ],
       "project": "market-hall",
       "title": "Raising the posts",
-      "release_after_minutes": 30,
+      "release_after_minutes": 25,
       "crew": 2,
       "note": "The market hall, stage 2 of 4: Raising the posts.",
       "ops": [
@@ -1257,7 +1257,7 @@
       ],
       "project": "market-hall",
       "title": "Laying the roof",
-      "release_after_minutes": 40,
+      "release_after_minutes": 35,
       "crew": 2,
       "note": "The market hall, stage 3 of 4: Laying the roof.",
       "ops": [
@@ -1296,7 +1296,7 @@
       ],
       "project": "market-hall",
       "title": "Stalls, baskets and lanterns",
-      "release_after_minutes": 50,
+      "release_after_minutes": 45,
       "crew": 2,
       "note": "The market hall, stage 4 of 4: Stalls, baskets and lanterns.",
       "ops": [
@@ -2039,7 +2039,7 @@
       ],
       "project": "lantern-path",
       "title": "Laying the first stretch",
-      "release_after_minutes": 65,
+      "release_after_minutes": 70,
       "note": "The lantern path, stage 1 of 3: Laying the first stretch.",
       "ops": [
         {
@@ -2103,7 +2103,7 @@
       ],
       "project": "lantern-path",
       "title": "Laying the second stretch",
-      "release_after_minutes": 75,
+      "release_after_minutes": 80,
       "note": "The lantern path, stage 2 of 3: Laying the second stretch.",
       "ops": [
         {
@@ -2158,7 +2158,7 @@
       ],
       "project": "lantern-path",
       "title": "Laying the last stretch",
-      "release_after_minutes": 85,
+      "release_after_minutes": 90,
       "note": "The lantern path, stage 3 of 3: Laying the last stretch.",
       "ops": [
         {
@@ -2213,7 +2213,7 @@
       ],
       "project": "cottage-2",
       "title": "Clearing the plot and laying the floor",
-      "release_after_minutes": 80,
+      "release_after_minutes": 85,
       "note": "Cottage 2, stage 1 of 4: Clearing the plot and laying the floor.",
       "ops": [
         {
@@ -2282,7 +2282,7 @@
       ],
       "project": "cottage-2",
       "title": "Raising the walls",
-      "release_after_minutes": 90,
+      "release_after_minutes": 95,
       "crew": 2,
       "note": "Cottage 2, stage 2 of 4: Raising the walls.",
       "ops": [
@@ -2427,7 +2427,7 @@
       ],
       "project": "cottage-2",
       "title": "Setting the roof",
-      "release_after_minutes": 100,
+      "release_after_minutes": 105,
       "crew": 2,
       "note": "Cottage 2, stage 3 of 4: Setting the roof.",
       "ops": [
@@ -2466,7 +2466,7 @@
       ],
       "project": "cottage-2",
       "title": "Furnishing the home",
-      "release_after_minutes": 110,
+      "release_after_minutes": 115,
       "crew": 2,
       "note": "Cottage 2, stage 4 of 4: Furnishing the home.",
       "ops": [
@@ -3095,10 +3095,10 @@
         0
       ],
       "project": "library-annex",
-      "title": "Shelves, desks and the reading lamp",
+      "title": "Shelves, desks and reading lamps",
       "release_after_minutes": 140,
       "crew": 2,
-      "note": "The library annex, stage 4 of 4: Shelves, desks and the reading lamp.",
+      "note": "The library annex, stage 4 of 4: Shelves, desks and reading lamps.",
       "ops": [
         {
           "op": "sprite",
@@ -3175,11 +3175,29 @@
         {
           "op": "sprite",
           "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
             6,
             1,
             1
           ],
           "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "CrystalBall"
         },
         {
           "op": "sprite",
@@ -3197,8 +3215,8 @@
       "anchor": {
         "plot": "Plaza",
         "nth": 0,
-        "dx": -14,
-        "dy": 16
+        "dx": -12,
+        "dy": 22
       },
       "ground_at": [
         3,
@@ -3266,8 +3284,8 @@
       "anchor": {
         "plot": "Plaza",
         "nth": 0,
-        "dx": -14,
-        "dy": 16
+        "dx": -12,
+        "dy": 22
       },
       "ground_at": [
         3,
@@ -3411,8 +3429,8 @@
       "anchor": {
         "plot": "Plaza",
         "nth": 0,
-        "dx": -14,
-        "dy": 16
+        "dx": -12,
+        "dy": 22
       },
       "ground_at": [
         3,
@@ -3450,8 +3468,8 @@
       "anchor": {
         "plot": "Plaza",
         "nth": 0,
-        "dx": -14,
-        "dy": 16
+        "dx": -12,
+        "dy": 22
       },
       "ground_at": [
         3,
@@ -3811,10 +3829,10 @@
         3
       ],
       "project": "research-tower",
-      "title": "The lower shaft",
+      "title": "The lower shaft and ground study",
       "release_after_minutes": 30,
       "crew": 2,
-      "note": "The research tower, stage 2 of 4: The lower shaft.",
+      "note": "The research tower, stage 2 of 4: The lower shaft and ground study.",
       "ops": [
         {
           "op": "fill",
@@ -4047,10 +4065,10 @@
         3
       ],
       "project": "research-tower",
-      "title": "The upper shaft and the cap",
+      "title": "The upper shaft and reading deck",
       "release_after_minutes": 40,
       "crew": 2,
-      "note": "The research tower, stage 3 of 4: The upper shaft and the cap.",
+      "note": "The research tower, stage 3 of 4: The upper shaft and reading deck.",
       "ops": [
         {
           "op": "fill",
@@ -4289,10 +4307,10 @@
         3
       ],
       "project": "research-tower",
-      "title": "The crown and the star glass",
+      "title": "The crown, telescope optics and research folios",
       "release_after_minutes": 50,
       "crew": 2,
-      "note": "The research tower, stage 4 of 4: The crown and the star glass.",
+      "note": "The research tower, stage 4 of 4: The crown, telescope optics and research folios.",
       "ops": [
         {
           "op": "fill",
@@ -4375,6 +4393,42 @@
             1
           ],
           "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandBody"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            2,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            3,
+            9
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            9
+          ],
+          "sprite": "CrystalBall"
         },
         {
           "op": "sprite",
@@ -4860,7 +4914,7 @@
       ],
       "project": "vertical-farm",
       "title": "Foundation and the first floor",
-      "release_after_minutes": 75,
+      "release_after_minutes": 80,
       "note": "The vertical farm, stage 1 of 4: Foundation and the first floor.",
       "ops": [
         {
@@ -4929,7 +4983,7 @@
       ],
       "project": "vertical-farm",
       "title": "The first two levels",
-      "release_after_minutes": 85,
+      "release_after_minutes": 90,
       "crew": 2,
       "note": "The vertical farm, stage 2 of 4: The first two levels.",
       "ops": [
@@ -5206,7 +5260,7 @@
       ],
       "project": "vertical-farm",
       "title": "The upper levels",
-      "release_after_minutes": 95,
+      "release_after_minutes": 100,
       "crew": 2,
       "note": "The vertical farm, stage 3 of 4: The upper levels.",
       "ops": [
@@ -5384,7 +5438,7 @@
       ],
       "project": "vertical-farm",
       "title": "Lamps, hanging gardens and the sign",
-      "release_after_minutes": 105,
+      "release_after_minutes": 110,
       "crew": 2,
       "note": "The vertical farm, stage 4 of 4: Lamps, hanging gardens and the sign.",
       "ops": [
@@ -5802,7 +5856,7 @@
       "anchor": {
         "plot": "Workshop",
         "nth": 0,
-        "dx": -34,
+        "dx": -36,
         "dy": -10
       },
       "ground_at": [
@@ -5871,7 +5925,7 @@
       "anchor": {
         "plot": "Workshop",
         "nth": 0,
-        "dx": -34,
+        "dx": -36,
         "dy": -10
       },
       "ground_at": [
@@ -6024,7 +6078,7 @@
       "anchor": {
         "plot": "Workshop",
         "nth": 0,
-        "dx": -34,
+        "dx": -36,
         "dy": -10
       },
       "ground_at": [
@@ -6459,10 +6513,10 @@
         3
       ],
       "project": "data-archive",
-      "title": "Roof, shelves and reading lamps",
+      "title": "Roof, shelves, archive folios and reading lamps",
       "release_after_minutes": 170,
       "crew": 2,
-      "note": "The open archive, stage 3 of 3: Roof, shelves and reading lamps.",
+      "note": "The open archive, stage 3 of 3: Roof, shelves, archive folios and reading lamps.",
       "ops": [
         {
           "op": "fill",
@@ -6508,16 +6562,7 @@
             4,
             1
           ],
-          "sprite": "BookshelfMiddle"
-        },
-        {
-          "op": "sprite",
-          "at": [
-            4,
-            4,
-            1
-          ],
-          "sprite": "BookshelfMiddle"
+          "sprite": "BookshelfEnd"
         },
         {
           "op": "sprite",
@@ -6544,16 +6589,7 @@
             4,
             1
           ],
-          "sprite": "BookshelfMiddle"
-        },
-        {
-          "op": "sprite",
-          "at": [
-            11,
-            4,
-            1
-          ],
-          "sprite": "BookshelfMiddle"
+          "sprite": "BookshelfEnd"
         },
         {
           "op": "sprite",
@@ -6567,11 +6603,47 @@
         {
           "op": "sprite",
           "at": [
-            8,
+            7,
             2,
             1
           ],
           "sprite": "TableWoodFancyWoodlandBody"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            1,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "DrawerWoodWoodlandL1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            1,
+            1
+          ],
+          "sprite": "CupboardArabic"
         },
         {
           "op": "sprite",
@@ -6599,7 +6671,7 @@
         "plot": "Plaza",
         "nth": 0,
         "dx": 8,
-        "dy": 30
+        "dy": 26
       },
       "ground_at": [
         12,
@@ -6770,7 +6842,7 @@
         "plot": "Plaza",
         "nth": 0,
         "dx": 8,
-        "dy": 30
+        "dy": 26
       },
       "ground_at": [
         12,
@@ -6809,7 +6881,7 @@
         "plot": "Plaza",
         "nth": 0,
         "dx": 8,
-        "dy": 30
+        "dy": 26
       },
       "ground_at": [
         12,
@@ -6911,7 +6983,7 @@
       ],
       "project": "glass-garden",
       "title": "Foundation and floor",
-      "release_after_minutes": 180,
+      "release_after_minutes": 175,
       "note": "The glass garden, stage 1 of 4: Foundation and floor.",
       "ops": [
         {
@@ -6980,7 +7052,7 @@
       ],
       "project": "glass-garden",
       "title": "The ring wall and the door",
-      "release_after_minutes": 190,
+      "release_after_minutes": 185,
       "crew": 2,
       "note": "The glass garden, stage 2 of 4: The ring wall and the door.",
       "ops": [
@@ -7125,7 +7197,7 @@
       ],
       "project": "glass-garden",
       "title": "The stepped dome",
-      "release_after_minutes": 200,
+      "release_after_minutes": 195,
       "crew": 2,
       "note": "The glass garden, stage 3 of 4: The stepped dome.",
       "ops": [
@@ -7240,7 +7312,7 @@
       ],
       "project": "glass-garden",
       "title": "Planters, benches and lamps",
-      "release_after_minutes": 210,
+      "release_after_minutes": 205,
       "crew": 2,
       "note": "The glass garden, stage 4 of 4: Planters, benches and lamps.",
       "ops": [
@@ -7329,6 +7401,6323 @@
           "op": "sprite",
           "at": [
             6,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "schoolhouse-1",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -20,
+        "dy": 18
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "schoolhouse",
+      "title": "Excavation and stone floor",
+      "release_after_minutes": 10,
+      "note": "The Harr schoolhouse, stage 1 of 4: Excavation and stone floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            8,
+            8
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            8,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            8,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        }
+      ]
+    },
+    {
+      "id": "schoolhouse-2",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -20,
+        "dy": 18
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "schoolhouse",
+      "title": "Composite walls and classroom windows",
+      "release_after_minutes": 20,
+      "crew": 2,
+      "note": "The Harr schoolhouse, stage 2 of 4: Composite walls and classroom windows.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            8,
+            1
+          ],
+          "to": [
+            8,
+            8,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            8,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            8,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            0,
+            1
+          ],
+          "to": [
+            4,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            4,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            4,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            4
+          ],
+          "to": [
+            7,
+            7,
+            4
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        }
+      ]
+    },
+    {
+      "id": "schoolhouse-3",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -20,
+        "dy": 18
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "schoolhouse",
+      "title": "Teal timber roof and gables",
+      "release_after_minutes": 30,
+      "crew": 2,
+      "note": "The Harr schoolhouse, stage 3 of 4: Teal timber roof and gables.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            5
+          ],
+          "to": [
+            8,
+            8,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            6
+          ],
+          "to": [
+            7,
+            7,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            7
+          ],
+          "to": [
+            6,
+            6,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "id": "schoolhouse-4",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -20,
+        "dy": 18
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "schoolhouse",
+      "title": "Study desks, botanical planters and library shelves",
+      "release_after_minutes": 40,
+      "crew": 2,
+      "note": "The Harr schoolhouse, stage 4 of 4: Study desks, botanical planters and library shelves.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            3,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            7,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            7,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            7,
+            1
+          ],
+          "sprite": "BookshelfEnd"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            6,
+            1
+          ],
+          "sprite": "CarpenterTable"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            6,
+            2
+          ],
+          "sprite": "CrystalBall"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            1,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            3
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "seminar-pavilion-1",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -34,
+        "dy": 20
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "project": "seminar-pavilion",
+      "title": "Circular stone terrace",
+      "release_after_minutes": 30,
+      "note": "The seminar pavilion, stage 1 of 3: Circular stone terrace.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            8,
+            6
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            8,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            8,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        }
+      ]
+    },
+    {
+      "id": "seminar-pavilion-2",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -34,
+        "dy": 20
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "project": "seminar-pavilion",
+      "title": "Composite columns and perimeter benches",
+      "release_after_minutes": 40,
+      "crew": 2,
+      "note": "The seminar pavilion, stage 2 of 3: Composite columns and perimeter benches.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            1,
+            1,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            1,
+            1
+          ],
+          "to": [
+            7,
+            1,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            7,
+            1
+          ],
+          "to": [
+            1,
+            7,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            7,
+            1
+          ],
+          "to": [
+            7,
+            7,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            1,
+            1
+          ],
+          "to": [
+            4,
+            1,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            7,
+            1
+          ],
+          "to": [
+            4,
+            7,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            4,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            2,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            6,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        }
+      ]
+    },
+    {
+      "id": "seminar-pavilion-3",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -34,
+        "dy": 20
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "project": "seminar-pavilion",
+      "title": "Glass skylight canopy and presentation dais",
+      "release_after_minutes": 50,
+      "crew": 2,
+      "note": "The seminar pavilion, stage 3 of 3: Glass skylight canopy and presentation dais.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            5
+          ],
+          "to": [
+            7,
+            7,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            3,
+            5
+          ],
+          "to": [
+            5,
+            5,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "workshop-hall-1",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": 14,
+        "dy": -6
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "workshop-hall",
+      "title": "Steel floor and post piers",
+      "release_after_minutes": 45,
+      "note": "The makers' workshop hall, stage 1 of 4: Steel floor and post piers.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            6,
+            6
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            10,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            10,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workshop-hall-2",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": 14,
+        "dy": -6
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "workshop-hall",
+      "title": "Timber columns and upper clerestory",
+      "release_after_minutes": 55,
+      "crew": 2,
+      "note": "The makers' workshop hall, stage 2 of 4: Timber columns and upper clerestory.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            6,
+            1
+          ],
+          "to": [
+            10,
+            6,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            0,
+            1
+          ],
+          "to": [
+            5,
+            0,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            6,
+            1
+          ],
+          "to": [
+            5,
+            6,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            3
+          ],
+          "to": [
+            10,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            3
+          ],
+          "to": [
+            9,
+            5,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workshop-hall-3",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": 14,
+        "dy": -6
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "workshop-hall",
+      "title": "Teal timber roof truss",
+      "release_after_minutes": 65,
+      "crew": 2,
+      "note": "The makers' workshop hall, stage 3 of 4: Teal timber roof truss.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            10,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            5
+          ],
+          "to": [
+            9,
+            5,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workshop-hall-4",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": 14,
+        "dy": -6
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "workshop-hall",
+      "title": "Forge-free craft benches and artisan stations",
+      "release_after_minutes": 75,
+      "crew": 2,
+      "note": "The makers' workshop hall, stage 4 of 4: Forge-free craft benches and artisan stations.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "CraftingBench"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "RepairBench"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            1,
+            1
+          ],
+          "sprite": "SpinningWheel"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            1,
+            1
+          ],
+          "sprite": "Loom"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            1
+          ],
+          "sprite": "CarpenterTable"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            5,
+            1
+          ],
+          "sprite": "CarpenterCrateWoodL"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            5,
+            1
+          ],
+          "sprite": "BarrelWoodWater"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            3,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "recycling-garden-1",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": 14,
+        "dy": -14
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "recycling-garden",
+      "title": "Paved yard and dividing curbs",
+      "release_after_minutes": 65,
+      "note": "The material recycling garden, stage 1 of 3: Paved yard and dividing curbs.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            6,
+            4
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            8,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            8,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            0,
+            1
+          ],
+          "to": [
+            4,
+            5,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "recycling-garden-2",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": 14,
+        "dy": -14
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "recycling-garden",
+      "title": "Sorting bins and storage hampers",
+      "release_after_minutes": 75,
+      "crew": 2,
+      "note": "The material recycling garden, stage 2 of 3: Sorting bins and storage hampers.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "CrateBlock"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "CrateBlock"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Barrel"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "Barrel"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            2,
+            1
+          ],
+          "sprite": "SackLeatherM"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            2,
+            1
+          ],
+          "sprite": "SackLeatherM"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            4,
+            1
+          ],
+          "sprite": "CarpenterCrateWoodS"
+        }
+      ]
+    },
+    {
+      "id": "recycling-garden-3",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": 14,
+        "dy": -14
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "recycling-garden",
+      "title": "Perimeter planters and guiding lantern",
+      "release_after_minutes": 85,
+      "crew": 2,
+      "note": "The material recycling garden, stage 3 of 3: Perimeter planters and guiding lantern.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            1,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            5,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            1,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            5,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            0,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "cottage-4-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -8
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-4",
+      "title": "Clearing the foundation terrace",
+      "release_after_minutes": 75,
+      "note": "Cottage 4, stage 1 of 4: Clearing the foundation terrace.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            6
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-4-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -8
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-4",
+      "title": "Framing split-level composite walls",
+      "release_after_minutes": 85,
+      "crew": 2,
+      "note": "Cottage 4, stage 2 of 4: Framing split-level composite walls.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            3
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            3
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            3
+          ],
+          "to": [
+            5,
+            5,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-4-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -8
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-4",
+      "title": "Pitched roof and solar skylight",
+      "release_after_minutes": 95,
+      "crew": 2,
+      "note": "Cottage 4, stage 3 of 4: Pitched roof and solar skylight.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            5
+          ],
+          "to": [
+            6,
+            6,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            5
+          ],
+          "to": [
+            4,
+            4,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-4-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -8
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-4",
+      "title": "Living amenities and balcony lamp",
+      "release_after_minutes": 105,
+      "crew": 2,
+      "note": "Cottage 4, stage 4 of 4: Living amenities and balcony lamp.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            4
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            4
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            4
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "DrawerWoodWoodlandM1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "cottage-5-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -16
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-5",
+      "title": "Clearing the foundation terrace",
+      "release_after_minutes": 100,
+      "note": "Cottage 5, stage 1 of 4: Clearing the foundation terrace.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            6
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-5-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -16
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-5",
+      "title": "Framing split-level composite walls",
+      "release_after_minutes": 110,
+      "crew": 2,
+      "note": "Cottage 5, stage 2 of 4: Framing split-level composite walls.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            3
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            3
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            3
+          ],
+          "to": [
+            5,
+            5,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-5-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -16
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-5",
+      "title": "Pitched roof and solar skylight",
+      "release_after_minutes": 120,
+      "crew": 2,
+      "note": "Cottage 5, stage 3 of 4: Pitched roof and solar skylight.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            5
+          ],
+          "to": [
+            6,
+            6,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            5
+          ],
+          "to": [
+            4,
+            4,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-5-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -16
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-5",
+      "title": "Living amenities and balcony lamp",
+      "release_after_minutes": 130,
+      "crew": 2,
+      "note": "Cottage 5, stage 4 of 4: Living amenities and balcony lamp.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            4
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            4
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            4
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "DrawerWoodWoodlandM1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "cottage-6-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -24
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-6",
+      "title": "Clearing the foundation terrace",
+      "release_after_minutes": 155,
+      "note": "Cottage 6, stage 1 of 4: Clearing the foundation terrace.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            6
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-6-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -24
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-6",
+      "title": "Framing split-level composite walls",
+      "release_after_minutes": 165,
+      "crew": 2,
+      "note": "Cottage 6, stage 2 of 4: Framing split-level composite walls.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            3
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            3
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            3
+          ],
+          "to": [
+            5,
+            5,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-6-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -24
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-6",
+      "title": "Pitched roof and solar skylight",
+      "release_after_minutes": 175,
+      "crew": 2,
+      "note": "Cottage 6, stage 3 of 4: Pitched roof and solar skylight.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            5
+          ],
+          "to": [
+            6,
+            6,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            5
+          ],
+          "to": [
+            4,
+            4,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-6-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -24
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-6",
+      "title": "Living amenities and balcony lamp",
+      "release_after_minutes": 185,
+      "crew": 2,
+      "note": "Cottage 6, stage 4 of 4: Living amenities and balcony lamp.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            4
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            4
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            4
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "DrawerWoodWoodlandM1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "cottage-7-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 22,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-7",
+      "title": "Excavating stone footing",
+      "release_after_minutes": 115,
+      "note": "Cottage 7, stage 1 of 4: Excavating stone footing.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            5,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            5,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-7-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 22,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-7",
+      "title": "Curved rock walls and viewing panes",
+      "release_after_minutes": 125,
+      "crew": 2,
+      "note": "Cottage 7, stage 2 of 4: Curved rock walls and viewing panes.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            5,
+            1
+          ],
+          "to": [
+            6,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            2,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            2,
+            2
+          ],
+          "sprite": "Window2"
+        }
+      ]
+    },
+    {
+      "id": "cottage-7-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 22,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-7",
+      "title": "Stepped glass dome roof",
+      "release_after_minutes": 135,
+      "crew": 2,
+      "note": "Cottage 7, stage 3 of 4: Stepped glass dome roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            4
+          ],
+          "to": [
+            5,
+            4,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            5
+          ],
+          "to": [
+            4,
+            3,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-7-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 22,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-7",
+      "title": "Interior furnishings and garden box",
+      "release_after_minutes": 145,
+      "crew": 2,
+      "note": "Cottage 7, stage 4 of 4: Interior furnishings and garden box.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            2,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            3,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "cottage-8-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 30,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-8",
+      "title": "Excavating stone footing",
+      "release_after_minutes": 145,
+      "note": "Cottage 8, stage 1 of 4: Excavating stone footing.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            5,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            5,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-8-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 30,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-8",
+      "title": "Curved rock walls and viewing panes",
+      "release_after_minutes": 155,
+      "crew": 2,
+      "note": "Cottage 8, stage 2 of 4: Curved rock walls and viewing panes.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            5,
+            1
+          ],
+          "to": [
+            6,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            2,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            2,
+            2
+          ],
+          "sprite": "Window2"
+        }
+      ]
+    },
+    {
+      "id": "cottage-8-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 30,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-8",
+      "title": "Stepped glass dome roof",
+      "release_after_minutes": 165,
+      "crew": 2,
+      "note": "Cottage 8, stage 3 of 4: Stepped glass dome roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            4
+          ],
+          "to": [
+            5,
+            4,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            5
+          ],
+          "to": [
+            4,
+            3,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-8-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 30,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-8",
+      "title": "Interior furnishings and garden box",
+      "release_after_minutes": 175,
+      "crew": 2,
+      "note": "Cottage 8, stage 4 of 4: Interior furnishings and garden box.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            2,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            3,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "cottage-9-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 38,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-9",
+      "title": "Excavating stone footing",
+      "release_after_minutes": 165,
+      "note": "Cottage 9, stage 1 of 4: Excavating stone footing.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            5,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            5,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-9-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 38,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-9",
+      "title": "Curved rock walls and viewing panes",
+      "release_after_minutes": 175,
+      "crew": 2,
+      "note": "Cottage 9, stage 2 of 4: Curved rock walls and viewing panes.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            5,
+            1
+          ],
+          "to": [
+            6,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            2,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            2,
+            2
+          ],
+          "sprite": "Window2"
+        }
+      ]
+    },
+    {
+      "id": "cottage-9-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 38,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-9",
+      "title": "Stepped glass dome roof",
+      "release_after_minutes": 185,
+      "crew": 2,
+      "note": "Cottage 9, stage 3 of 4: Stepped glass dome roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            4
+          ],
+          "to": [
+            5,
+            4,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            5
+          ],
+          "to": [
+            4,
+            3,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cottage-9-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 38,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "project": "cottage-9",
+      "title": "Interior furnishings and garden box",
+      "release_after_minutes": 195,
+      "crew": 2,
+      "note": "Cottage 9, stage 4 of 4: Interior furnishings and garden box.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            2,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            3,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "guesthouse-1",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": -10,
+        "dy": 14
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "guesthouse",
+      "title": "Foundation, timber floor and hearth pad",
+      "release_after_minutes": 55,
+      "note": "The travellers' guesthouse, stage 1 of 4: Foundation, timber floor and hearth pad.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            6,
+            7
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            8,
+            6
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            8,
+            6,
+            0
+          ],
+          "kind": "Wood",
+          "rgb": [
+            96,
+            108,
+            128
+          ]
+        }
+      ]
+    },
+    {
+      "id": "guesthouse-2",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": -10,
+        "dy": 14
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "guesthouse",
+      "title": "Composite walls, entrance door and guest windows",
+      "release_after_minutes": 65,
+      "crew": 2,
+      "note": "The travellers' guesthouse, stage 2 of 4: Composite walls, entrance door and guest windows.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            8,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            0,
+            1
+          ],
+          "to": [
+            4,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        }
+      ]
+    },
+    {
+      "id": "guesthouse-3",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": -10,
+        "dy": 14
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "guesthouse",
+      "title": "Teal timber roof and front porch awning",
+      "release_after_minutes": 75,
+      "crew": 2,
+      "note": "The travellers' guesthouse, stage 3 of 4: Teal timber roof and front porch awning.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            8,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            5
+          ],
+          "to": [
+            7,
+            5,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            -1,
+            3
+          ],
+          "to": [
+            5,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        }
+      ]
+    },
+    {
+      "id": "guesthouse-4",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": -10,
+        "dy": 14
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "project": "guesthouse",
+      "title": "Welcoming hearth, guest beds, dining table and warm lanterns",
+      "release_after_minutes": 85,
+      "crew": 2,
+      "note": "The travellers' guesthouse, stage 4 of 4: Welcoming hearth, guest beds, dining table and warm lanterns.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            1,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            5,
+            1
+          ],
+          "sprite": "Hearth"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            2,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            2,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            5,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            5,
+            1
+          ],
+          "sprite": "CupboardMesa"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -1,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -2,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "amphitheatre-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -20,
+        "dy": -32
+      },
+      "ground_at": [
+        5,
+        4
+      ],
+      "project": "amphitheatre",
+      "title": "Terrace grading and speaker dais",
+      "release_after_minutes": 90,
+      "note": "The hillside amphitheatre, stage 1 of 3: Terrace grading and speaker dais.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            8,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            10,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            10,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            1,
+            1
+          ],
+          "to": [
+            6,
+            2,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "amphitheatre-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -20,
+        "dy": -32
+      },
+      "ground_at": [
+        5,
+        4
+      ],
+      "project": "amphitheatre",
+      "title": "Tiered stone seating arcs",
+      "release_after_minutes": 100,
+      "crew": 2,
+      "note": "The hillside amphitheatre, stage 2 of 3: Tiered stone seating arcs.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            3,
+            1
+          ],
+          "to": [
+            9,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            5,
+            2
+          ],
+          "to": [
+            10,
+            6,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            7,
+            3
+          ],
+          "to": [
+            10,
+            8,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "amphitheatre-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -20,
+        "dy": -32
+      },
+      "ground_at": [
+        5,
+        4
+      ],
+      "project": "amphitheatre",
+      "title": "Cedar acoustic shell and ambient lanterns",
+      "release_after_minutes": 110,
+      "crew": 2,
+      "note": "The hillside amphitheatre, stage 3 of 3: Cedar acoustic shell and ambient lanterns.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            2,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            0,
+            4
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            75,
+            45
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            1,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            7,
+            4
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            7,
+            4
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "festival-lawn-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -20,
+        "dy": -44
+      },
+      "ground_at": [
+        6,
+        4
+      ],
+      "project": "festival-lawn",
+      "title": "Lawn turf and pale paving perimeter",
+      "release_after_minutes": 120,
+      "note": "The festival lawn and lamp arches, stage 1 of 3: Lawn turf and pale paving perimeter.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            8,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            12,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            0
+          ],
+          "to": [
+            11,
+            7,
+            0
+          ],
+          "kind": "Grass",
+          "rgb": [
+            110,
+            175,
+            75
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            12,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            8,
+            0
+          ],
+          "to": [
+            12,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            12,
+            0,
+            0
+          ],
+          "to": [
+            12,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        }
+      ]
+    },
+    {
+      "id": "festival-lawn-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -20,
+        "dy": -44
+      },
+      "ground_at": [
+        6,
+        4
+      ],
+      "project": "festival-lawn",
+      "title": "Raising teal lamp arches",
+      "release_after_minutes": 130,
+      "crew": 2,
+      "note": "The festival lawn and lamp arches, stage 2 of 3: Raising teal lamp arches.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            2,
+            0,
+            1
+          ],
+          "to": [
+            2,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            8,
+            1
+          ],
+          "to": [
+            2,
+            8,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            8,
+            1
+          ],
+          "to": [
+            10,
+            8,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            0,
+            4
+          ],
+          "to": [
+            10,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            8,
+            4
+          ],
+          "to": [
+            10,
+            8,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            5
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            8,
+            5
+          ],
+          "sprite": "Lantern"
+        }
+      ]
+    },
+    {
+      "id": "festival-lawn-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -20,
+        "dy": -44
+      },
+      "ground_at": [
+        6,
+        4
+      ],
+      "project": "festival-lawn",
+      "title": "Feast tables, flower planters and festival sign",
+      "release_after_minutes": 140,
+      "crew": 2,
+      "note": "The festival lawn and lamp arches, stage 3 of 3: Feast tables, flower planters and festival sign.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            1
+          ],
+          "sprite": "TableCoastalLarge"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            4,
+            1
+          ],
+          "sprite": "TableCoastalLarge"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            3,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            5,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            3,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            5,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            2,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            6,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            2,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            6,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "water-tower-1",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": -10,
+        "dy": 10
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "water-tower",
+      "title": "Reinforced stone piers and conduit core",
+      "release_after_minutes": 105,
+      "note": "The elevated water tower, stage 1 of 4: Reinforced stone piers and conduit core.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            14
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ],
+          "depth": 5
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            1,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            0,
+            0
+          ],
+          "to": [
+            5,
+            1,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            4,
+            0
+          ],
+          "to": [
+            1,
+            5,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            4,
+            0
+          ],
+          "to": [
+            5,
+            5,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            0
+          ],
+          "to": [
+            3,
+            3,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "water-tower-2",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": -10,
+        "dy": 10
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "water-tower",
+      "title": "Steel bracing and maintenance gallery",
+      "release_after_minutes": 115,
+      "crew": 2,
+      "note": "The elevated water tower, stage 2 of 4: Steel bracing and maintenance gallery.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            6
+          ],
+          "to": [
+            5,
+            5,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            7
+          ],
+          "to": [
+            5,
+            0,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            5,
+            7
+          ],
+          "to": [
+            5,
+            5,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            7
+          ],
+          "to": [
+            0,
+            5,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            0,
+            7
+          ],
+          "to": [
+            5,
+            5,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        }
+      ]
+    },
+    {
+      "id": "water-tower-3",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": -10,
+        "dy": 10
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "water-tower",
+      "title": "Enclosed reservoir cistern and teal dome",
+      "release_after_minutes": 125,
+      "crew": 2,
+      "note": "The elevated water tower, stage 3 of 4: Enclosed reservoir cistern and teal dome.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            8
+          ],
+          "to": [
+            5,
+            5,
+            12
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            9
+          ],
+          "to": [
+            4,
+            4,
+            11
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            13
+          ],
+          "to": [
+            4,
+            4,
+            13
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            14
+          ],
+          "to": [
+            3,
+            3,
+            14
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "id": "water-tower-4",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": -10,
+        "dy": 10
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "water-tower",
+      "title": "Telemetry beacon, pressure valves and inspection sign",
+      "release_after_minutes": 135,
+      "crew": 2,
+      "note": "The elevated water tower, stage 4 of 4: Telemetry beacon, pressure valves and inspection sign.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            15
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            1
+          ],
+          "sprite": "BarrelWoodWater"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "solar-field-2-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 22,
+        "dy": -42
+      },
+      "ground_at": [
+        6,
+        3
+      ],
+      "project": "solar-field-2",
+      "title": "Paving the southern terrace",
+      "release_after_minutes": 135,
+      "note": "The southern solar array, stage 1 of 3: Paving the southern terrace.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            6,
+            4
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            12,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            12,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        }
+      ]
+    },
+    {
+      "id": "solar-field-2-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 22,
+        "dy": -42
+      },
+      "ground_at": [
+        6,
+        3
+      ],
+      "project": "solar-field-2",
+      "title": "Dual rows of solar collector mounts",
+      "release_after_minutes": 145,
+      "crew": 2,
+      "note": "The southern solar array, stage 2 of 3: Dual rows of solar collector mounts.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            1,
+            1,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            1,
+            1
+          ],
+          "to": [
+            5,
+            1,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            9,
+            1,
+            1
+          ],
+          "to": [
+            9,
+            1,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            4,
+            1
+          ],
+          "to": [
+            1,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            4,
+            1
+          ],
+          "to": [
+            5,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            9,
+            4,
+            1
+          ],
+          "to": [
+            9,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            2
+          ],
+          "to": [
+            2,
+            2,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            0,
+            2
+          ],
+          "to": [
+            6,
+            2,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            0,
+            2
+          ],
+          "to": [
+            10,
+            2,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            3,
+            2
+          ],
+          "to": [
+            2,
+            5,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            3,
+            2
+          ],
+          "to": [
+            6,
+            5,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            3,
+            2
+          ],
+          "to": [
+            10,
+            5,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        }
+      ]
+    },
+    {
+      "id": "solar-field-2-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 22,
+        "dy": -42
+      },
+      "ground_at": [
+        6,
+        3
+      ],
+      "project": "solar-field-2",
+      "title": "Monitoring console and perimeter lamps",
+      "release_after_minutes": 155,
+      "crew": 2,
+      "note": "The southern solar array, stage 3 of 3: Monitoring console and perimeter lamps.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "wind-array-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 4,
+        "dy": -44
+      },
+      "ground_at": [
+        5,
+        2
+      ],
+      "project": "wind-array",
+      "title": "Foundation anchor pads on the high ridge",
+      "release_after_minutes": 160,
+      "note": "The quiet ridge wind array, stage 1 of 3: Foundation anchor pads on the high ridge.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            4,
+            12
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            10,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            10,
+            4,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wind-array-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 4,
+        "dy": -44
+      },
+      "ground_at": [
+        5,
+        2
+      ],
+      "project": "wind-array",
+      "title": "Three vertical-axis spiral turbine pylons",
+      "release_after_minutes": 170,
+      "crew": 2,
+      "note": "The quiet ridge wind array, stage 2 of 3: Three vertical-axis spiral turbine pylons.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            1
+          ],
+          "to": [
+            2,
+            2,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            2,
+            1
+          ],
+          "to": [
+            5,
+            2,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            2,
+            1
+          ],
+          "to": [
+            8,
+            2,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            2,
+            4
+          ],
+          "to": [
+            3,
+            2,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            2,
+            4
+          ],
+          "to": [
+            6,
+            2,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            2,
+            4
+          ],
+          "to": [
+            9,
+            2,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wind-array-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 4,
+        "dy": -44
+      },
+      "ground_at": [
+        5,
+        2
+      ],
+      "project": "wind-array",
+      "title": "Beacon caps, telemetry box and perimeter railing",
+      "release_after_minutes": 180,
+      "crew": 2,
+      "note": "The quiet ridge wind array, stage 3 of 3: Beacon caps, telemetry box and perimeter railing.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            9
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            9
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            2,
+            9
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            0,
+            1
+          ],
+          "sprite": "FenceWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "canal-bridge-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -8,
+        "dy": 10
+      },
+      "ground_at": [
+        3,
+        2
+      ],
+      "project": "canal-bridge",
+      "title": "Abutment footings and canal clearing",
+      "release_after_minutes": 25,
+      "note": "The canal stone bridge, stage 1 of 3: Abutment footings and canal clearing.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            4,
+            4
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            3,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            0,
+            0
+          ],
+          "to": [
+            5,
+            3,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "canal-bridge-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -8,
+        "dy": 10
+      },
+      "ground_at": [
+        3,
+        2
+      ],
+      "project": "canal-bridge",
+      "title": "Arched bridge deck and glow paving",
+      "release_after_minutes": 35,
+      "crew": 2,
+      "note": "The canal stone bridge, stage 2 of 3: Arched bridge deck and glow paving.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            4,
+            2,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            1,
+            2
+          ],
+          "to": [
+            3,
+            2,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        }
+      ]
+    },
+    {
+      "id": "canal-bridge-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -8,
+        "dy": 10
+      },
+      "ground_at": [
+        3,
+        2
+      ],
+      "project": "canal-bridge",
+      "title": "Balustrades and bridge lanterns",
+      "release_after_minutes": 45,
+      "crew": 2,
+      "note": "The canal stone bridge, stage 3 of 3: Balustrades and bridge lanterns.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            2
+          ],
+          "to": [
+            5,
+            0,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            3,
+            2
+          ],
+          "to": [
+            5,
+            3,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            3
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            3
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "tram-halt-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -3,
+        "dy": -6
+      },
+      "ground_at": [
+        3,
+        2
+      ],
+      "project": "tram-halt",
+      "title": "Passenger platform foundation",
+      "release_after_minutes": 170,
+      "note": "The valley tram halt, stage 1 of 3: Passenger platform foundation.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            4,
+            5
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            4,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tram-halt-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -3,
+        "dy": -6
+      },
+      "ground_at": [
+        3,
+        2
+      ],
+      "project": "tram-halt",
+      "title": "Steel canopy supports and curved roof",
+      "release_after_minutes": 180,
+      "crew": 2,
+      "note": "The valley tram halt, stage 2 of 3: Steel canopy supports and curved roof.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            3,
+            1
+          ],
+          "to": [
+            0,
+            3,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            3,
+            1
+          ],
+          "to": [
+            6,
+            3,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            6,
+            3,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            4
+          ],
+          "to": [
+            5,
+            2,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tram-halt-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -3,
+        "dy": -6
+      },
+      "ground_at": [
+        3,
+        2
+      ],
+      "project": "tram-halt",
+      "title": "Waiting benches, route map and timetable lantern",
+      "release_after_minutes": 190,
+      "crew": 2,
+      "note": "The valley tram halt, stage 3 of 3: Waiting benches, route map and timetable lantern.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            1,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            1,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
             -1,
             1
           ],

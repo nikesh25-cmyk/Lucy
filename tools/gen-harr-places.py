@@ -28,6 +28,26 @@ SITES = [  # id, label, name, plot, nth, dx, dy, radius
     ('site-archive', 'Archive Site', 'the open archive site', 'Workshop', 0, -2, 25, 10),
     ('site-skywalk', 'Sky Walk Site', 'the sky walk site', 'Plaza', 0, 20, 31, 13),
     ('site-garden', 'Glass Garden Site', 'the glass garden site', 'House', 0, 26, -28, 11),
+    # the learning quarter
+    ('site-schoolhouse', 'Schoolhouse Site', 'the schoolhouse site', 'Workshop', 0, -20, 18, 9),
+    ('site-seminar', 'Seminar Pavilion Site', 'the seminar pavilion site', 'Workshop', 0, -34, 20, 9),
+    # the making quarter
+    ('site-workshop', 'Workshop Hall Site', 'the makers workshop hall site', 'Workshop', 0, 14, -6, 9),
+    ('site-recycling', 'Recycling Garden Site', 'the recycling garden site', 'Workshop', 0, 14, 4, 9),
+    # the living quarter
+    ('site-cottages-north', 'North Cottage Row', 'the north cottage row', 'Plaza', 0, -38, -16, 12),
+    ('site-cottages-east', 'East Cottage Row', 'the east cottage row', 'Plaza', 0, 30, -18, 12),
+    ('site-guesthouse', 'Guesthouse Site', 'the travellers guesthouse site', 'House', 0, -10, 14, 9),
+    # the gathering quarter
+    ('site-amphitheatre', 'Amphitheatre Site', 'the hillside amphitheatre site', 'Plaza', 0, -20, -32, 10),
+    ('site-festival-lawn', 'Festival Lawn Site', 'the festival lawn site', 'Plaza', 0, -20, -44, 11),
+    # the water and energy quarter
+    ('site-water-tower', 'Water Tower Site', 'the water tower site', 'FarmField', 0, -10, 10, 9),
+    ('site-solar-2', 'Second Solar Field', 'the southern solar field site', 'Plaza', 0, 22, -42, 10),
+    ('site-wind-array', 'Wind Array Site', 'the quiet wind array site', 'Plaza', 0, 4, -44, 10),
+    # the transport quarter
+    ('site-bridge', 'Canal Bridge Site', 'the canal stone bridge site', 'Plaza', 0, -8, 10, 8),
+    ('site-tram-halt', 'Tram Halt Site', 'the valley tram halt site', 'Plaza', 0, -3, -6, 8),
 ]
 
 # Every place is an offset (east, north) from the plaza's centre; the hint is computed from it, so it is always true.
@@ -145,33 +165,17 @@ lm['landmarks'] = [l for l in lm['landmarks'] if not l['id'].startswith('disc-')
 v = json.loads((C / 'veloren-villagers.json').read_text())
 # Cooperation: every work site gets a crew of two or more at some hour of the day, so the village really builds
 # together, one site at a time. Builders rotate; makers lend a hand at the pavilion; scholars chart the sky at dusk.
-BUILDERS = {  # id -> (dawn, day, dusk)
-    'lw-ignatius': ('Market Hall Site', 'Cottage Row', 'Orchard Gate'),
-    'lw-fenwick': ('Market Hall Site', 'Cottage Row', 'Orchard Gate'),
-    'lw-casimir': ('Market Hall Site', 'Cottage Row', 'Orchard Gate'),
-    'lw-hollis': ('Well Site', 'Annex Site', 'Observatory Site'),
-    'lw-pelham': ('Well Site', 'Annex Site', 'Observatory Site'),
-}
-seen = {}
-for r in v['residents']:
+site_names = [s[1] for s in SITES]
+dawn_sites = site_names[0:10]
+day_sites = site_names[10:20]
+dusk_sites = site_names[20:29]
+
+night_places = ['Meeting Hall', 'Cottage Row', 'Library', 'Guesthouse Site']
+for i, r in enumerate(v['residents']):
     d = r['destinations']
-    k = seen.get(r['role'], 0); seen[r['role']] = k + 1
-    if r['id'] in BUILDERS:
-        for phase, label in zip(('dawn', 'day', 'dusk'), BUILDERS[r['id']]):
-            d[phase]['label'] = label
-    elif r['role'] == 'maker':
-        d['day']['label'] = 'Pavilion Site'
-    elif r['role'] == 'scholar':
-        d['dawn']['label'] = 'Research Tower Site'
-        d['dusk']['label'] = 'Observatory Site'
-    elif r['role'] == 'courier':
-        d['day']['label'] = 'Sky Walk Site'
-    elif r['role'] == 'keeper':
-        d['dawn']['label'] = 'Transit Hub Site'
-        d['day']['label'] = 'Archive Site'
-        d['dusk']['label'] = 'Fountain Site'
-    elif r['role'] == 'farmer':
-        d['dawn']['label'] = 'Vertical Farm Site' if k < 3 else 'Solar Array Site'
-        d['dusk']['label'] = 'Glass Garden Site'
+    d['dawn']['label'] = dawn_sites[i // 2] if i < 20 else dawn_sites[(i - 20) % len(dawn_sites)]
+    d['day']['label'] = day_sites[i // 2] if i < 20 else day_sites[(i - 20) % len(day_sites)]
+    d['dusk']['label'] = dusk_sites[i // 2] if i < 18 else dusk_sites[(i - 18) % len(dusk_sites)]
+    d['night']['label'] = night_places[i % len(night_places)]
 (C / 'veloren-villagers.json').write_text(json.dumps(v, indent=2) + '\n')
 print(len(SITES), 'sites,', len(cat), 'discoveries')

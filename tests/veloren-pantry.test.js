@@ -102,8 +102,22 @@ test('the works board names a stage that waits for a crew, and every crewed site
   assert.match(worksLines(projects, record, T0).join('\n'), /waits for a crew \(1 of 2 nearby\)\. Join the builders/);
   const manifest = JSON.parse(readFileSync(new URL('../content/veloren-world-harr.json', import.meta.url), 'utf8'));
   const villagers = JSON.parse(readFileSync(new URL('../content/veloren-villagers.json', import.meta.url), 'utf8')).residents;
+  const siteOf = {
+    well: 'Well Site', 'market-hall': 'Market Hall Site',
+    'cottage-1': 'Cottage Row', 'cottage-2': 'Cottage Row', 'cottage-3': 'Cottage Row',
+    observatory: 'Observatory Site', 'field-pavilion': 'Pavilion Site', 'library-annex': 'Annex Site',
+    'orchard-gate': 'Orchard Gate', 'research-tower': 'Research Tower Site', 'solar-array': 'Solar Array Site',
+    'vertical-farm': 'Vertical Farm Site', 'light-fountain': 'Fountain Site', 'transit-hub': 'Transit Hub Site',
+    'data-archive': 'Archive Site', 'sky-walk': 'Sky Walk Site', 'glass-garden': 'Glass Garden Site',
+    schoolhouse: 'Schoolhouse Site', 'seminar-pavilion': 'Seminar Pavilion Site',
+    'workshop-hall': 'Workshop Hall Site', 'recycling-garden': 'Recycling Garden Site',
+    'cottage-4': 'North Cottage Row', 'cottage-5': 'North Cottage Row', 'cottage-6': 'North Cottage Row',
+    'cottage-7': 'East Cottage Row', 'cottage-8': 'East Cottage Row', 'cottage-9': 'East Cottage Row',
+    guesthouse: 'Guesthouse Site', amphitheatre: 'Amphitheatre Site', 'festival-lawn': 'Festival Lawn Site',
+    'water-tower': 'Water Tower Site', 'solar-field-2': 'Second Solar Field', 'wind-array': 'Wind Array Site',
+    'canal-bridge': 'Canal Bridge Site', 'tram-halt': 'Tram Halt Site',
+  };
   const extra = JSON.parse(readFileSync(new URL('../content/veloren-landmarks-extra.json', import.meta.url), 'utf8')).landmarks;
-  const siteOf = {well: 'Well Site', 'market-hall': 'Market Hall Site', 'cottage-1': 'Cottage Row', 'cottage-2': 'Cottage Row', 'cottage-3': 'Cottage Row', observatory: 'Observatory Site', 'field-pavilion': 'Pavilion Site', 'library-annex': 'Annex Site', 'orchard-gate': 'Orchard Gate', 'research-tower': 'Research Tower Site', 'solar-array': 'Solar Array Site', 'vertical-farm': 'Vertical Farm Site', 'light-fountain': 'Fountain Site', 'transit-hub': 'Transit Hub Site', 'data-archive': 'Archive Site', 'sky-walk': 'Sky Walk Site', 'glass-garden': 'Glass Garden Site'};
   const crewed = new Map();
   for (const g of manifest.groups) if (g.crew) crewed.set(g.project, Math.max(crewed.get(g.project) || 0, g.crew));
   for (const [project, crew] of crewed) {

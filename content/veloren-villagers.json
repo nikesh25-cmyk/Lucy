@@ -15,17 +15,17 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Vertical Farm Site"
+          "label": "Well Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Fountain Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Glass Garden Site"
+          "label": "East Cottage Row"
         },
         "night": {
           "x": 0,
@@ -55,22 +55,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Vertical Farm Site"
+          "label": "Well Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Fountain Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Glass Garden Site"
+          "label": "East Cottage Row"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Cottage Row"
         }
       },
       "barks": [
@@ -95,22 +95,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Vertical Farm Site"
+          "label": "Market Hall Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Transit Hub Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Glass Garden Site"
+          "label": "Guesthouse Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Library"
         }
       },
       "barks": [
@@ -135,22 +135,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Solar Array Site"
+          "label": "Market Hall Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Transit Hub Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Glass Garden Site"
+          "label": "Guesthouse Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Guesthouse Site"
         }
       },
       "barks": [
@@ -175,17 +175,17 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Solar Array Site"
+          "label": "Cottage Row"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Archive Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Glass Garden Site"
+          "label": "Amphitheatre Site"
         },
         "night": {
           "x": 0,
@@ -215,22 +215,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Solar Array Site"
+          "label": "Cottage Row"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Archive Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Glass Garden Site"
+          "label": "Amphitheatre Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Cottage Row"
         }
       },
       "barks": [
@@ -255,22 +255,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Market Hall Site"
+          "label": "Observatory Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Cottage Row"
+          "label": "Sky Walk Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Orchard Gate"
+          "label": "Festival Lawn Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Library"
         }
       },
       "barks": [
@@ -295,22 +295,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Market Hall Site"
+          "label": "Observatory Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Cottage Row"
+          "label": "Sky Walk Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Orchard Gate"
+          "label": "Festival Lawn Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Guesthouse Site"
         }
       },
       "barks": [
@@ -335,17 +335,17 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Market Hall Site"
+          "label": "Pavilion Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Cottage Row"
+          "label": "Glass Garden Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Orchard Gate"
+          "label": "Water Tower Site"
         },
         "night": {
           "x": 0,
@@ -375,22 +375,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Well Site"
+          "label": "Pavilion Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Annex Site"
+          "label": "Glass Garden Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Observatory Site"
+          "label": "Water Tower Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Cottage Row"
         }
       },
       "barks": [
@@ -415,22 +415,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Well Site"
+          "label": "Annex Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Annex Site"
+          "label": "Schoolhouse Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Observatory Site"
+          "label": "Second Solar Field"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Library"
         }
       },
       "barks": [
@@ -455,22 +455,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Workshop"
+          "label": "Annex Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Pavilion Site"
+          "label": "Schoolhouse Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Second Solar Field"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Guesthouse Site"
         }
       },
       "barks": [
@@ -495,22 +495,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Workshop"
+          "label": "Orchard Gate"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Pavilion Site"
+          "label": "Seminar Pavilion Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Wind Array Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Meeting Hall"
         }
       },
       "barks": [
@@ -535,22 +535,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Workshop"
+          "label": "Orchard Gate"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Pavilion Site"
+          "label": "Seminar Pavilion Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Wind Array Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Cottage Row"
         }
       },
       "barks": [
@@ -575,17 +575,17 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Workshop"
+          "label": "Research Tower Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Pavilion Site"
+          "label": "Workshop Hall Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Canal Bridge Site"
         },
         "night": {
           "x": 0,
@@ -620,17 +620,17 @@
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Workshop Hall Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Observatory Site"
+          "label": "Canal Bridge Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Guesthouse Site"
         }
       },
       "barks": [
@@ -655,22 +655,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Research Tower Site"
+          "label": "Solar Array Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Recycling Garden Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Observatory Site"
+          "label": "Tram Halt Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Meeting Hall"
         }
       },
       "barks": [
@@ -695,22 +695,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Research Tower Site"
+          "label": "Solar Array Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Recycling Garden Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Observatory Site"
+          "label": "Tram Halt Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Cottage Row"
         }
       },
       "barks": [
@@ -735,22 +735,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Orchard"
+          "label": "Vertical Farm Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Sky Walk Site"
+          "label": "North Cottage Row"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "East Cottage Row"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Library"
         }
       },
       "barks": [
@@ -775,22 +775,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Orchard"
+          "label": "Vertical Farm Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Sky Walk Site"
+          "label": "North Cottage Row"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Guesthouse Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Guesthouse Site"
         }
       },
       "barks": [
@@ -815,22 +815,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Orchard"
+          "label": "Well Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Sky Walk Site"
+          "label": "Fountain Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Amphitheatre Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Meeting Hall"
         }
       },
       "barks": [
@@ -855,22 +855,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Transit Hub Site"
+          "label": "Market Hall Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Archive Site"
+          "label": "Transit Hub Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Fountain Site"
+          "label": "Festival Lawn Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Cottage Row"
         }
       },
       "barks": [
@@ -895,7 +895,7 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Transit Hub Site"
+          "label": "Cottage Row"
         },
         "day": {
           "x": 0,
@@ -905,12 +905,12 @@
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Fountain Site"
+          "label": "Water Tower Site"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Library"
         }
       },
       "barks": [
@@ -935,22 +935,22 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Transit Hub Site"
+          "label": "Observatory Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Archive Site"
+          "label": "Sky Walk Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Fountain Site"
+          "label": "Second Solar Field"
         },
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Guesthouse Site"
         }
       },
       "barks": [
