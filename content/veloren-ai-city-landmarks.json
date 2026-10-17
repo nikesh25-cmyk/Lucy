@@ -24,6 +24,17 @@
       "radius": 12
     },
     {
+      "id": "city-office-interior",
+      "label": "Civic work and research office interior",
+      "name": "Civic work and research office interior",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -54,
+      "dy": 186,
+      "radius": 5
+    },
+    {
       "id": "city-school",
       "label": "City school",
       "name": "City school",
@@ -44,6 +55,17 @@
       "dx": 21,
       "dy": 198,
       "radius": 12
+    },
+    {
+      "id": "city-school-interior",
+      "label": "City school interior",
+      "name": "City school interior",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 21,
+      "dy": 189,
+      "radius": 5
     },
     {
       "id": "city-university",
@@ -68,6 +90,17 @@
       "radius": 12
     },
     {
+      "id": "city-university-interior",
+      "label": "City university interior",
+      "name": "City university interior",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 50,
+      "dy": 186,
+      "radius": 5
+    },
+    {
       "id": "city-home-1",
       "label": "Family home 1",
       "name": "Family home 1",
@@ -88,6 +121,17 @@
       "dx": -57,
       "dy": 239,
       "radius": 12
+    },
+    {
+      "id": "city-home-1-interior",
+      "label": "Family home 1 interior",
+      "name": "Family home 1 interior",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -57,
+      "dy": 246,
+      "radius": 5
     },
     {
       "id": "city-home-2",
@@ -112,6 +156,17 @@
       "radius": 12
     },
     {
+      "id": "city-home-2-interior",
+      "label": "Family home 2 interior",
+      "name": "Family home 2 interior",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -41,
+      "dy": 246,
+      "radius": 5
+    },
+    {
       "id": "city-home-3",
       "label": "Family home 3",
       "name": "Family home 3",
@@ -132,6 +187,17 @@
       "dx": -25,
       "dy": 239,
       "radius": 12
+    },
+    {
+      "id": "city-home-3-interior",
+      "label": "Family home 3 interior",
+      "name": "Family home 3 interior",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -25,
+      "dy": 246,
+      "radius": 5
     },
     {
       "id": "city-home-4",
@@ -156,6 +222,17 @@
       "radius": 12
     },
     {
+      "id": "city-home-4-interior",
+      "label": "Family home 4 interior",
+      "name": "Family home 4 interior",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -9,
+      "dy": 246,
+      "radius": 5
+    },
+    {
       "id": "city-farm",
       "label": "Urban farm greenhouse",
       "name": "Urban farm greenhouse",
@@ -176,6 +253,17 @@
       "dx": 50,
       "dy": 238,
       "radius": 12
+    },
+    {
+      "id": "city-farm-interior",
+      "label": "Urban farm greenhouse interior",
+      "name": "Urban farm greenhouse interior",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 50,
+      "dy": 248,
+      "radius": 5
     },
     {
       "id": "city-arrival",

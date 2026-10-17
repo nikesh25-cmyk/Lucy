@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Real native server acceptance in an isolated world. No live database/config/credentials are used.
 import { spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, openSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, openSync, existsSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve, dirname } from 'node:path';
+import { join, resolve, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 import assert from 'node:assert/strict';
@@ -14,14 +14,27 @@ import { loadNativeCityComposition } from '../src/veloren-ext/city-composition.j
 const source = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const engine = resolve(process.env.NEMO_ENGINE_SOURCE || join(source,'../veloren-integ'));
 const binaries = resolve(process.env.NEMO_ENGINE_BIN || join(engine,'../target/integ/release'));
-const dir = mkdtempSync(join(tmpdir(),'nemo-native-city-'));
+const args=process.argv.slice(2);
+if(args.length && (args.length!==2 || args[0]!=='--resume'))throw Error('Usage: native-city-smoke.mjs [--resume DISPOSABLE_TEST_DIRECTORY]');
+let dir;
+if(args.length) {
+  dir=realpathSync(args[1]);const owner=JSON.parse(readFileSync(join(dir,'owner.json'),'utf8'));
+  const rel=relative(realpathSync(tmpdir()),dir);
+  if(rel.startsWith('..') || !basename(dir).startsWith('nemo-native-city-') || !owner.disposable || owner.source!==source)throw Error('Refusing non-probe or production directory');
+  let alive=false;try{process.kill(owner.pid,0);alive=true;}catch{}
+  if(alive)throw Error('Prior disposable probe is still running; stop it gracefully before resume');
+} else dir=mkdtempSync(join(tmpdir(),'nemo-native-city-'));
 for (const folder of ['data','logs','userdata/server/server_config','userdata/server-cli']) mkdirSync(join(dir,folder),{recursive:true});
 const log = (message) => console.log(new Date().toISOString(),message);
 const delay = ms => new Promise(r=>setTimeout(r,ms));
 const json = path => JSON.parse(readFileSync(path,'utf8'));
 const documents=loadNativeCityComposition();
 for (const [key,value] of Object.entries(documents)) writeFileSync(join(dir,`${key}.json`),JSON.stringify(value));
-const key=randomBytes(32),outbox=join(dir,'data/events.jsonl'),worldRecord=outbox+'.world.json';
+const keyPath=join(dir,'event-key.bin');
+const key=existsSync(keyPath)?readFileSync(keyPath):randomBytes(32);
+if(key.length!==32)throw Error('Invalid disposable key');
+if(!existsSync(keyPath))writeFileSync(keyPath,key,{flag:'wx',mode:0o600});
+const outbox=join(dir,'data/events.jsonl'),worldRecord=outbox+'.world.json';
 const platform=new Platform(join(dir,'data/world.sqlite'));
 const link=new VelorenLink({dbPath:join(dir,'data/link.sqlite'),eventKey:key,commandsPath:outbox+'.commands.jsonl',landmarks:withConfiguredLandmarks(loadLandmarks(join(source,'content/veloren-landmarks.json')))});
 process.env.NEMO_CITY_ENABLED='1';process.env.NEMO_WORLD_RECORD=worldRecord;
@@ -39,6 +52,8 @@ writeFileSync(join(dir,'owner.json'),JSON.stringify({pid:process.pid,source,disp
 const children=[];
 function run(name,exe,args,env={}) { const child=spawn(exe,args,{cwd:engine,stdio:['ignore',openSync(join(dir,'logs',name+'.log'),'a'),openSync(join(dir,'logs',name+'.log'),'a')],env:{...process.env,...env}});children.push(child);return child; }
 const startServer=()=>run('server',join(binaries,'veloren-server-cli'),['--non-interactive','--no-auth'],{VELOREN_USERDATA:join(dir,'userdata'),NEMO_LINK_CONFIG:join(dir,'link.json'),NEMO_LINK_EVENT_KEY:key.toString('hex'),RUST_LOG:'warn,veloren_server::sys::nemo_city=info'});
+const balances=()=>({coins:platform.get('SELECT COUNT(*) n FROM coin_rewards').n,karma:platform.get('SELECT COUNT(*) n FROM karma_receipts').n,accounts:platform.get('SELECT COUNT(*) n FROM accounts').n});
+const beforeBalances=balances();
 let native;
 try {
   native=startServer();
@@ -59,9 +74,10 @@ try {
     const view=link.nativeCity.overview();
     let record={},actors={};try{record=json(worldRecord);actors=json(outbox+'.city.json');}catch{}
     const built=Object.keys(record.groups||{}).filter(id=>id.startsWith('city-'));
-    const summary=JSON.stringify({citizens:view.citizens.length,native_actors:Object.keys(actors).length,arrived:Object.values(actors).filter(a=>a.arrived).length,city_groups:built.length,reports:view.reports.length,harvests:view.harvests.length,marriages:view.marriages.length,births:view.births.length,assessments:view.assessments.length});
+    const summary=JSON.stringify({citizens:view.citizens.length,native_actors:Object.keys(actors).length,arrived:Object.values(actors).filter(a=>a.arrived).length,city_groups:built.length,reports:view.reports.length,harvests:view.harvests.length,marriages:view.marriages.length,births:view.births.length,assessments:view.assessments.length,grown_children:view.citizens.filter(c=>c.stage==='adult'&&view.births.some(b=>b.citizen_id===c.id)).length});
     if(summary!==last){log(summary);last=summary;writeFileSync(join(dir,'progress.json'),JSON.stringify({view,actors,built},null,2));}
-    if(view.births.length && view.reports.length && view.harvests.length && built.includes('city-school-complete') && view.assessments.some(a=>a.passed)) {
+    if(view.births.length && view.reports.length && view.harvests.length && built.length===documents.manifest.groups.filter(g=>g.id.startsWith('city-')).length && view.citizens.some(c=>c.stage==='adult'&&view.births.some(b=>b.citizen_id===c.id)&&view.reports.some(r=>r.citizen_id===c.id))) {
+      assert.deepEqual(balances(),beforeBalances,'city life grants no currency or accounts');
       assert.ok(Object.keys(actors).length>=8);assert.ok(built.includes('city-home-1-complete')||built.includes('city-home-2-complete')||built.includes('city-home-3-complete')||built.includes('city-home-4-complete'));
       const before=view.citizens.map(c=>c.id).sort();
       native.kill('SIGUSR1');await new Promise(r=>native.once('exit',r));
@@ -75,7 +91,7 @@ try {
       assert.ok(rebound,'every prior citizen has a fresh observed native NPC position after restart');
       const after=link.nativeCity.overview().citizens.map(c=>c.id);
       assert.ok(before.every(id=>after.includes(id)),'restart preserves all prior citizens while allowing legitimate new births');
-      log('PASS real native build/work/family/school and restart');
+      log('PASS real native construction/work/family/birth/school/apprenticeship/adult-work and restart');
       writeFileSync(join(dir,'result.json'),JSON.stringify({passed:true,at:new Date().toISOString(),citizens:before,built}));
       process.exitCode=0;break;
     }

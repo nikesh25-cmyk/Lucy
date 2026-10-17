@@ -83,6 +83,7 @@ export class CityService {
     if (input.destination === 'city') this.platform.active();
     const who = this.#linked(actor);
     if (!who) fail(409, 'Link an active Veloren human character first.');
+    spendRate(this.link, `city-travel:${who.player_uuid}`, { gapMs: 1000, perHour: 120 });
     const command = this.link.issueCommand({ kind: input.destination === 'city' ? 'city_visit' : 'city_return', player_uuid: who.player_uuid,
       args: { target: input.destination === 'city' ? 'city-arrival' : 'lyra-plaza' }, ttl_ms: 60_000, issuedBy: 'city-guest-travel' });
     return { cmd_id: command.cmd_id, status: 'pending', message: 'Travel requested. Keep your game character connected; arrival is confirmed by the native server.' };

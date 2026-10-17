@@ -39,7 +39,7 @@ try {
   f.tx('createAgent', f.actor('alice'), { name: 'Alice Guest', kind: 'human', capabilities: 'Visit', limitations: 'Human guest', color: '#397f79', symbol: '✦' });
   await start();
   link.sql.run('INSERT INTO ident_links VALUES(?,?,?,?,?)', player, f.actor('alice').account.id, 'Alice', 'Alice Guest', f.clock());
-  browser = await chromium.launch({ channel: process.env.LUCY_BROWSER_CHANNEL || 'chrome', headless: true, args: ['--no-first-run', '--no-default-browser-check'] });
+  browser = await chromium.launch({ channel: process.env.LUCY_BROWSER_CHANNEL || 'chrome', headless: true, args: ['--no-first-run', '--no-default-browser-check', '--disable-gpu'] });
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, reducedMotion: 'reduce' });
   const page = await context.newPage();
   const errors = [];
@@ -127,6 +127,12 @@ try {
     await page.locator('#leave-home').click();
     await page.getByText('Asking the world to set you down at your doorstep.', { exact: true }).waitFor();
     assert.equal(link.sql.get("SELECT player_uuid FROM home_commands WHERE kind='home_leave'").player_uuid, player);
+  });
+  await check('public city refreshes saved citizens without a page reload', async () => {
+    link.nativeCity.enabled = true;
+    link.nativeCity.tick();
+    await page.waitForFunction(() => [...document.querySelectorAll('#people .card h3')].some(el => el.textContent === 'Ada'), null, { timeout: 20_000 });
+    assert.equal(await page.locator('#families .card').count(), 4);
   });
   await check('browser code has no unhandled errors', () => assert.deepEqual(errors, []));
   writeFileSync(join(output, 'results.json'), JSON.stringify({ passed: passes.length, failed: 0, scenarios: passes, native_acknowledgements: 'signed disposable fixtures; no actual game client driven', world_database: 'temporary, removed after run' }, null, 2));

@@ -40,7 +40,23 @@ NAME_OF() { case "$1" in lw-aria) echo Aria;; lw-theron) echo Theron;; lw-bram) 
 mkdir -p "$P"/{bin,data,logs,pids,secrets,userdata,nemoworld}; chmod 700 "$P/secrets"
 export PATH="$HOME/.cargo/bin:$PATH"
 alive() { [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
-stop_pid() { if alive "$1"; then kill "$(cat "$1")" 2>/dev/null; for _ in 1 2 3 4 5 6 7 8 9 10; do alive "$1" || break; sleep 1; done; fi; rm -f "$1"; }
+stop_pid() {
+  local file="$1" pid command name signal=TERM seconds=20 owned=0
+  [ -f "$file" ] || return 0
+  pid="$(cat "$file")"; case "$pid" in ''|*[!0-9]*) echo "Invalid pid file: $file" >&2; return 1;; esac
+  kill -0 "$pid" 2>/dev/null || { rm -f "$file"; return 0; }
+  command="$(ps -p "$pid" -o command= 2>/dev/null)"; name="$(basename "$file")"
+  case "$name" in
+    veloren) case "$command" in *"$P/bin/veloren-server-cli"*) owned=1; signal=USR1; seconds=150;; esac;;
+    nemo) case "$command" in *"$ROOT/dev/start-nemo.mjs"*) owned=1;; esac;;
+    res-*) case "$command" in *"$P/bin/nemo-bridge"*"--resident ${name#res-}"*"--nemo-url $NEMO"*) owned=1;; esac;;
+    relay-*) case "$command" in *"$P/nemoworld/scripts/veloren-relay.mjs"*"--url $NEMO"*"--resident ${name#relay-}"*) owned=1;; esac;;
+  esac
+  [ "$owned" = 1 ] || { echo "Refusing a pid that does not match this stack: $name ($pid)" >&2; return 1; }
+  kill -s "$signal" "$pid" 2>/dev/null || return 1
+  for _ in $(seq 1 "$seconds"); do kill -0 "$pid" 2>/dev/null || { rm -f "$file"; return 0; }; sleep 1; done
+  echo "Still saving or stopping: $name ($pid). No force kill was sent." >&2; return 1
+}
 link_env() { export NEMO_CITY_ENABLED=1 NEMO_LINK_EVENT_KEY="$(cat "$P/secrets/event.key")" NEMO_WORLD_RECORD="$P/data/veloren-outbox.jsonl.world.json" LUCY_DATABASE="$P/data/world.sqlite" NEMO_LINK_DB="$P/data/veloren-link.sqlite" NEMO_LINK_COMMANDS="$P/data/veloren-outbox.jsonl.commands.jsonl"; }
 issue() { # RESIDENT SCOPES TOKENFILE
   link_env
@@ -134,7 +150,7 @@ PY
     [ -x "$P/bin/veloren-server-cli" ] || { echo "run: play/play.sh setup" >&2; exit 1; }
     "$0" preflight || exit 1
     for port in $NEMO_PORT $VEL; do lsof -nP -iTCP:$port -sTCP:LISTEN >/dev/null 2>&1 && ! alive "$P/pids/veloren" && ! alive "$P/pids/nemo" && { echo "port $port is already in use (the older test stack?). Run dev/dev.sh stop, then try again." >&2; exit 1; }; done
-    "$0" stop >/dev/null 2>&1
+    "$0" stop || { echo "Previous stack did not stop safely; start cancelled." >&2; exit 1; }
     [ "${2:-}" = "--no-model" ] && export NEMO_NO_MODEL=1 || export NEMO_NO_MODEL=0
     ( cd "$ROOT" && NEMO_CITY_ENABLED=1 NEMO_WORLD_RECORD="$P/data/veloren-outbox.jsonl.world.json" NEMO_ROOT="$P/nemoworld" NEMO_PORT="$NEMO_PORT" NEMO_DEV_DIR="$P" NEMO_AI_ROOT="$ROOT/../Lucy" exec nohup "$NODE" dev/start-nemo.mjs < /dev/null > "$P/logs/nemo.log" 2>&1 ) & echo $! > "$P/pids/nemo"; disown
     echo "starting NemoWorld${NEMO_NO_MODEL:+ (model: $([ "$NEMO_NO_MODEL" = 1 ] && echo off || echo on))}..."
@@ -190,8 +206,12 @@ PY
     echo "Restart for it to take effect: play/play.sh stop && play/play.sh start"
     ;;
   stop)
-    for f in "$P"/pids/res-* "$P"/pids/relay-*; do [ -e "$f" ] && stop_pid "$f"; done
-    stop_pid "$P/pids/veloren"; stop_pid "$P/pids/nemo"; sleep 1; echo "stopped";;
+    failures=0
+    for f in "$P"/pids/res-* "$P"/pids/relay-*; do [ ! -e "$f" ] || stop_pid "$f" || failures=1; done
+    stop_pid "$P/pids/veloren" || failures=1
+    stop_pid "$P/pids/nemo" || failures=1
+    [ "$failures" = 0 ] || exit 1
+    echo "stopped safely";;
   logs)
     f="$P/logs/${2:-server}.log"; [ -f "$f" ] || { ls "$P/logs"; exit 1; }; tail -40 "$f" | sed -E 's/\x1b\[[0-9;]*m//g' | cut -c1-220;;
   reset-world)

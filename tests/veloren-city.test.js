@@ -303,6 +303,7 @@ test('city visits use only linked guest identity and fixed public destinations',
   assert.equal(cmd.player_uuid,P1); assert.equal(cmd.kind,'city_visit');
   assert.deepEqual(JSON.parse(JSON.parse(readFileSync(w.link.commands.path,'utf8').trim().split('\n').find(line => JSON.parse(line).cmd_id===result.cmd_id)).args),{target:'city-arrival'});
   assert.equal(result.status,'pending');
+  w.f.advance(1000);
   const back=w.city.visit(actor,{destination:'harr'});
   assert.equal(w.link.sql.get('SELECT kind FROM link_commands WHERE cmd_id=?',back.cmd_id).kind,'city_return');
 });
@@ -314,3 +315,10 @@ test('city travel confirmation is scoped to the current linked guest and city co
  assert.throws(()=>w.city.travelStatus(w.f.actor('bob'),cmd.cmd_id),refuses(404));
  assert.throws(()=>w.city.travelStatus(actor,'anything'),refuses(400));
 });
+
+ test('guest city travel is rate bounded before appending another native command', async t => {
+ const w=await world(t); w.link.nativeCity={enabled:true};const actor=w.f.actor('alice');
+ w.city.visit(actor,{destination:'city'});
+ assert.throws(()=>w.city.visit(actor,{destination:'city'}),refuses(429));
+ assert.equal(w.link.sql.get("SELECT COUNT(*) n FROM link_commands WHERE issued_by='city-guest-travel'").n,1);
+ });

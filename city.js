@@ -4,6 +4,8 @@ const base = '/api/v1/veloren/city';
 let savedHome = null;
 let busy = false;
 let timer;
+let cityTimer;
+let cityLoading = false;
 
 async function api(path, input) {
   const response = await fetch(base + path, { credentials: 'same-origin', ...(input === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }) });
@@ -21,6 +23,8 @@ function card(title, content, extra, number) {
 }
 
 async function loadCity() {
+  if (cityLoading) return;
+  clearTimeout(cityTimer); cityLoading = true;
   try {
     const city = await api('');
     $('offices').replaceChildren(...city.offices.map((o, i) => card(o.title, o.purpose, o.output, `0${i + 1} / ${o.residents} RESIDENTS`)));
@@ -38,11 +42,15 @@ async function loadCity() {
       const avatar = text('span', r.name.split(' ').map(s => s[0]).slice(0, 2).join(''), 'avatar'); avatar.setAttribute('aria-hidden', 'true');
       const name = text('p', r.name); name.append(text('small', `${r.calling} · scripted`)); el.append(avatar, name); return el;
     });
+    const expanded = $('people').querySelector('details')?.open;
+    const focusedSummary = document.activeElement === $('people').querySelector('summary');
     $('people').replaceChildren(...people.slice(0, 8));
     if (people.length > 8) {
       const more = document.createElement('details'); more.className = 'more-residents';
+      more.open = !!expanded;
       more.append(text('summary', `Meet ${people.length - 8} more residents`));
       const rest = text('div', '', 'people'); rest.append(...people.slice(8)); more.append(rest); $('people').append(more);
+      if (focusedSummary) more.querySelector('summary').focus({ preventScroll: true });
     }
     if (city.simulation?.enabled) {
       $('people').prepend(...city.simulation.citizens.map(c => card(c.name, `${c.stage} · ${c.role}`, 'Native city resident · scripted')));
@@ -50,8 +58,15 @@ async function loadCity() {
     $('rewards').textContent = city.rewards;
     $('learning').textContent = city.learning.status;
     $('lifecycle').textContent = city.lifecycle.status;
+    $('families').replaceChildren(...(city.simulation?.households || []).map(home => {
+      const members = city.simulation.citizens.filter(c => c.household_id === home.id);
+      const adults = members.filter(c => c.stage === 'adult').map(c => c.name).join(' & ');
+      const established = city.simulation.marriages.some(m => m.household_id === home.id);
+      return card(adults || 'City household', members.map(c => `${c.name} · ${c.stage}`).join(' / '), established ? 'Household established through recorded native visits.' : 'Preapproved fictional household; waiting for both residents to visit.');
+    }));
     $('connection').textContent = `World records checked at ${new Date(city.generated_at).toLocaleTimeString()}. Construction counts come from the game’s saved record.`;
   } catch (error) { $('connection').textContent = error.status === 404 ? 'The native city connection is not enabled on this server.' : error.message; }
+  finally { cityLoading = false; if (!document.hidden) cityTimer = setTimeout(loadCity, 15_000); }
 }
 
 function renderHome(view) {
@@ -109,7 +124,7 @@ $('home-form').addEventListener('submit', e => { e.preventDefault(); if (savedHo
 $('enter-home').addEventListener('click', () => act('/home/action', { action: 'enter' }));
 $('leave-home').addEventListener('click', () => act('/home/action', { action: 'leave' }));
 $('refresh-home').addEventListener('click', () => { if (!busy) loadHome(); });
-document.addEventListener('visibilitychange', () => { clearTimeout(timer); if (!document.hidden && !busy) loadHome(); });
+document.addEventListener('visibilitychange', () => { clearTimeout(timer); clearTimeout(cityTimer); if (!document.hidden) { loadCity(); if (!busy) loadHome(); } });
 await Promise.allSettled([loadCity(), loadHome()]);
 
 for (const [id, destination] of [['visit-city','city'],['return-harr','harr']]) $(id).addEventListener('click', async () => {

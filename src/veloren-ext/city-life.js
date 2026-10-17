@@ -51,6 +51,8 @@ const FOUNDERS = [
   ['city-lena', 'Lena', 'social', 4], ['city-oren', 'Oren', 'social', 4],
 ];
 const INTERVAL = 30_000;
+const INTERIOR_BUILDINGS = new Map(['office','school','university','farm','home-1','home-2','home-3','home-4']
+  .map(id => [`city-${id}-interior`, `city-${id}`]));
 
 function worldRecord(path, maxBytes = 4_000_000) {
   try {
@@ -142,9 +144,9 @@ export class NativeCityService {
       if (job.activity === 'school') {
         sql.run('INSERT OR IGNORE INTO city_attendance VALUES(?,?,?,?)', job.id, citizen.id, job.target, sim);
         const answer = String(sources.filter(s => s.type === 'native-world-group').length);
-        const schoolBuilt = builtGroups(record).includes(`${job.target}-complete`);
+        const schoolBuilt = builtGroups(record).includes(`${INTERIOR_BUILDINGS.get(job.target)}-complete`);
         sql.run('INSERT OR IGNORE INTO city_assessments VALUES(?,?,?,?,?,?,?,?,?)', job.id, citizen.id,
-          citizen.stage === 'apprentice' ? 'apprentice' : 'school', 'Count the observed saved city construction stages in the cited source snapshot.',
+          INTERIOR_BUILDINGS.get(job.target) === 'city-university' ? 'apprentice' : 'school', 'Count the observed saved city construction stages in the cited source snapshot.',
           answer, String(builtGroups(record).length), JSON.stringify(sources), Number(schoolBuilt && answer === String(builtGroups(record).length)), sim);
       }
       if (['social', 'home'].includes(job.activity) && citizen.stage === 'adult') sql.run(
@@ -173,7 +175,16 @@ export class NativeCityService {
         sql.run("UPDATE city_jobs SET state='arrived',arrived_sim_ms=? WHERE id=?", sim, job.id);
       }
       if (job.activity === 'build' && !built.has(job.expected_group)) continue;
-      if (['farm','office','school'].includes(job.activity) && !built.has(`${job.target}-complete`)) continue;
+      if (['farm','office','school'].includes(job.activity)) {
+        const building = INTERIOR_BUILDINGS.get(job.target);
+        if (!building) {
+          // Old exterior visits remain historical arrivals, and cannot stand in for new interior work.
+          sql.run("UPDATE city_jobs SET state='rejected',error='interior visit required' WHERE id=?", job.id);
+          sql.run('UPDATE city_citizens SET next_sim_ms=? WHERE id=?', sim, citizen.id);
+          continue;
+        }
+        if (!built.has(`${building}-complete`)) continue;
+      }
       this.#finish(job, citizen, record, sim);
     }
   }
@@ -219,14 +230,19 @@ export class NativeCityService {
   }
 
   #plan(citizen, record) {
-    if (citizen.stage === 'child') {
+    const built = new Set(builtGroups(record));
+    const park = { activity: 'social', target: 'city-park' };
+    const home = () => {
       const target = this.#homeTarget(citizen);
-      return target ? { activity: 'home', target } : null;
-    }
-    if (citizen.stage === 'student') return { activity: 'school', target: 'city-school' };
+      return target && built.has(`${target}-complete`) ? { activity: 'home', target: `${target}-interior` } : park;
+    };
+    const interior = (activity, building, fallback = park) => built.has(`${building}-complete`)
+      ? { activity, target: `${building}-interior` } : fallback;
+    if (citizen.stage === 'child') return home();
+    if (citizen.stage === 'student') return interior('school', 'city-school', home());
     if (citizen.stage === 'apprentice') {
       const assessed = this.link.sql.get("SELECT COUNT(*) n FROM city_assessments WHERE citizen_id=? AND level='apprentice' AND passed=1", citizen.id).n;
-      return assessed >= 3 ? { activity: 'office', target: 'city-office' } : { activity: 'school', target: 'city-university' };
+      return assessed >= 3 ? interior('office', 'city-office', home()) : interior('school', 'city-university', home());
     }
     if (citizen.role === 'build') {
       const built = new Set(builtGroups(record));
@@ -240,8 +256,8 @@ export class NativeCityService {
       if (group) return { activity: 'build', target: 'city-build', expected_group: group };
     }
     const activity = citizen.revision % 3 === 1 ? 'social' : citizen.revision % 3 === 2 ? 'home' : citizen.role === 'build' ? 'office' : citizen.role;
-    const target = activity === 'home' ? this.#homeTarget(citizen) : ({ social: 'city-park', farm: 'city-farm', office: 'city-office' })[activity];
-    return target ? { activity, target } : null;
+    if (activity === 'home') return home();
+    return activity === 'social' ? park : interior(activity, `city-${activity}`);
   }
 
   #issue(job, citizen) {
@@ -272,7 +288,7 @@ export class NativeCityService {
     for (const citizen of this.link.sql.all('SELECT * FROM city_citizens ORDER BY id LIMIT 16')) {
       if (citizen.next_sim_ms > sim || citizen.revision >= 0xffffffff
         || this.link.sql.get("SELECT id FROM city_jobs WHERE citizen_id=? AND state IN ('intent','issued','arrived','unknown')", citizen.id)) continue;
-      if (citizen.stage === 'child' && this.link.sql.get("SELECT id FROM city_jobs WHERE citizen_id=? AND activity='home' AND target=? AND state='completed' LIMIT 1", citizen.id, this.#homeTarget(citizen))) continue;
+      if (citizen.stage === 'child' && this.link.sql.get("SELECT id FROM city_jobs WHERE citizen_id=? AND activity='home' AND target=? AND state='completed' LIMIT 1", citizen.id, `${this.#homeTarget(citizen)}-interior`)) continue;
       const plan = this.#plan(citizen, record);
       if (!plan) continue;
       const revision = citizen.revision + 1, id = `${citizen.id}:${revision}`;

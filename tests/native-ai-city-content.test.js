@@ -135,6 +135,13 @@ test('buildings keep three-wide entrances, furnished central aisles and reachabl
     for (let y=0; y<=d; y++) assert.ok(open(base.anchor.dx+door,base.anchor.dy+y), `${p.id} aisle y${y}`);
     for (let dx=-1; dx<=1; dx++) for (const y of [0,d]) assert.ok(open(base.anchor.dx+door+dx,base.anchor.dy+y), `${p.id} door`);
     assert.ok(complete.ops.some(o => o.op==='sprite'), `${p.id} furnished`);
+    const interior = landmarks.landmarks.find(l => l.id === `${p.id}-interior`);
+    assert.ok(interior, `${p.id} has an interior activity destination`);
+    assert.deepEqual([interior.dx,interior.dy], [base.anchor.dx+w/2,base.anchor.dy+d/2]);
+    assert.equal(interior.radius,5);
+    assert.ok(open(interior.dx,interior.dy), `${p.id} centre has three-block headroom`);
+    assert.ok(interior.dx-5 >= base.anchor.dx && interior.dx+5 <= base.anchor.dx+w);
+    assert.ok(interior.dy-5 >= base.anchor.dy && interior.dy+5 <= base.anchor.dy+d);
     if (p.id.startsWith('city-home-')) assert.equal(complete.ops.filter(o => o.sprite==='BedWoodWoodlandHead').length,2);
     if (['city-office','city-university'].includes(p.id)) {
       const z = p.id === 'city-office' ? 7 : 8;
@@ -158,6 +165,8 @@ test('city district bounds and private home envelope remain separated', () => {
   }
   const ids = new Set(landmarks.landmarks.map(l => l.id));
   for (const id of ['arrival','homes','build','office','farm','school','university','park']) assert.ok(ids.has(`city-${id}`));
+  assert.equal(landmarks.landmarks.length,28);
+  assert.equal(landmarks.landmarks.filter(l=>l.id.endsWith('-interior')).length,8);
 });
 
 test('native budgets reject oversized clear boxes and clearing-only total overflow', () => {

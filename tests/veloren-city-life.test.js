@@ -89,7 +89,7 @@ test('farm and office outputs require applied visits and are separate durable si
 });
 
 test('rejected visits produce no outputs; uncertain expired visits never count as attendance', t => {
-  const w = world(t); w.service.tick(); const farm = w.pending().find(j => j.activity === 'farm');
+  const w = world(t); w.built('city-farm-complete'); w.service.tick(); const farm = w.pending().find(j => j.activity === 'farm');
   w.ack(farm, 'command.rejected'); w.service.tick();
   assert.equal(w.link.sql.get('SELECT state FROM city_jobs WHERE id=?', farm.id).state, 'rejected');
   w.offline(200_000); w.service.tick();
@@ -99,7 +99,7 @@ test('rejected visits produce no outputs; uncertain expired visits never count a
 
 test('marriage requires both preapproved adult visits; child requires an actually completed city home', t => {
   const w = world(t); w.service.tick();
-  const social = w.pending().filter(j => j.activity === 'social'); assert.equal(social.length, 2);
+  const social = w.pending().filter(j => j.activity === 'social' && j.household_id === 'city-household-4'); assert.equal(social.length, 2);
   w.ack(social[0]); w.service.tick(); assert.equal(w.service.overview().marriages.length, 0);
   w.ack(social[1]); w.service.tick(); assert.equal(w.service.overview().marriages.length, 1);
   assert.equal(w.service.overview().births.length, 0);
@@ -113,7 +113,7 @@ test('marriage requires both preapproved adult visits; child requires an actuall
 
 test('children age only with open native simulation time and need assessed school work to advance', t => {
   const w = world(t); w.service.tick();
-  for (const j of w.pending().filter(j => j.activity === 'social')) w.ack(j);
+  for (const j of w.pending().filter(j => j.activity === 'social' && j.household_id === 'city-household-4')) w.ack(j);
   w.service.tick(); const married = w.service.overview().marriages[0];
   w.built('city-school-complete'); w.built('city-university-complete');
   w.built(w.service.overview().households.find(h => h.id === married.household_id).home_group); w.service.tick();
@@ -164,8 +164,8 @@ test('paused city does not seed, age, process acknowledgements or issue commands
   let paused = true;
   const w = world(t, true, { platform: { get: () => ({ value: String(paused) }) } });
   w.service.tick(); assert.equal(w.service.overview().citizens.length, 0);
-  paused = false; w.service.tick(); const farm = w.pending().find(j => j.activity === 'farm');
   w.built('city-farm-complete');
+  paused = false; w.service.tick(); const farm = w.pending().find(j => j.activity === 'farm');
   paused = true; w.ack(farm); w.advance(600_000); w.service.tick();
   assert.equal(w.service.overview().harvests.length, 0);
   paused = false; w.service.tick();
@@ -175,12 +175,14 @@ test('paused city does not seed, age, process acknowledgements or issue commands
 
 test('attendance without a saved native school cannot pass an exercise or grant competence', t => {
   const w = world(t); w.service.tick();
-  for (const j of w.pending().filter(j => j.activity === 'social')) w.ack(j);
+  for (const j of w.pending().filter(j => j.activity === 'social' && j.household_id === 'city-household-4')) w.ack(j);
   w.service.tick(); const household = w.service.overview().marriages[0].household_id;
   w.built(w.service.overview().households.find(h => h.id === household).home_group); w.service.tick();
   const child = w.service.overview().citizens.find(c => c.stage === 'child');
   for (const j of w.pending().filter(j => j.citizen_id === child.id)) w.ack(j);
   w.service.tick(); for (let n = 0; n < 20; n++) { w.advance(); w.service.tick(); }
+  assert.equal(w.pending().find(j => j.citizen_id === child.id).target,
+    w.service.overview().households.find(h => h.id === household).home_group.replace(/-complete$/, '-interior'));
   for (const j of w.pending().filter(j => j.citizen_id === child.id)) w.ack(j);
   w.service.tick();
   const assessed = w.service.overview().assessments.filter(a => a.citizen_id === child.id);
@@ -190,7 +192,7 @@ test('attendance without a saved native school cannot pass an exercise or grant 
 
 test('native assessed university visits and a saved work report are both required for adulthood', t => {
   const w = world(t); w.service.tick();
-  for (const j of w.pending().filter(j => j.activity === 'social')) w.ack(j);
+  for (const j of w.pending().filter(j => j.activity === 'social' && j.household_id === 'city-household-4')) w.ack(j);
   w.service.tick(); const household = w.service.overview().marriages[0].household_id;
   w.built(w.service.overview().households.find(h => h.id === household).home_group);
   w.built('city-school-complete'); w.built('city-university-complete'); w.built('city-office-complete'); w.service.tick();
@@ -198,12 +200,12 @@ test('native assessed university visits and a saved work report are both require
   for (const j of w.pending().filter(j => j.citizen_id === child.id)) w.ack(j);
   w.service.tick(); for (let n = 0; n < 20; n++) { w.advance(); w.service.tick(); }
   for (let i = 0; i < 3; i++) {
-    const school = w.pending().find(j => j.citizen_id === child.id); assert.equal(school.target, 'city-school');
+    const school = w.pending().find(j => j.citizen_id === child.id); assert.equal(school.target, 'city-school-interior');
     w.ack(school); w.service.tick(); w.advance(); w.service.tick();
   }
   assert.equal(w.service.overview().citizens.find(c => c.id === child.id).stage, 'apprentice');
   for (let i = 0; i < 3; i++) {
-    const university = w.pending().find(j => j.citizen_id === child.id); assert.equal(university.target, 'city-university');
+    const university = w.pending().find(j => j.citizen_id === child.id); assert.equal(university.target, 'city-university-interior');
     w.ack(university); w.service.tick(); w.advance(); w.service.tick();
   }
   assert.equal(w.service.overview().citizens.find(c => c.id === child.id).stage, 'apprentice');
@@ -215,7 +217,7 @@ test('native assessed university visits and a saved work report are both require
 
 test('child home arrival is not repeated while waiting to become a student', t => {
   const w = world(t); w.service.tick();
-  for (const j of w.pending().filter(j => j.activity === 'social')) w.ack(j);
+  for (const j of w.pending().filter(j => j.activity === 'social' && j.household_id === 'city-household-4')) w.ack(j);
   w.service.tick(); const household = w.service.overview().marriages[0].household_id;
   w.built(w.service.overview().households.find(h => h.id === household).home_group); w.service.tick();
   const child = w.service.overview().citizens.find(c => c.stage === 'child');
@@ -226,7 +228,7 @@ test('child home arrival is not repeated while waiting to become a student', t =
 
 test('both operators policy participation is checked before marriage and births', t => {
   const w = world(t); w.service.tick();
-  const social = w.pending().filter(j => j.activity === 'social');
+  const social = w.pending().filter(j => j.activity === 'social' && j.household_id === 'city-household-4');
   const home = social[0].household_id;
   w.link.sql.run('UPDATE city_citizens SET participation=0 WHERE id=?', social[1].citizen_id);
   for (const j of social) w.ack(j); w.service.tick();
@@ -250,13 +252,17 @@ test('all founding households remain bounded to one child and do not call platfo
   assert.equal(w.link.sql.get("SELECT MAX(n) n FROM (SELECT COUNT(*) n FROM city_jobs WHERE state IN ('intent','issued','arrived','unknown') GROUP BY citizen_id)").n, 1);
 });
 
-test('farm, office and school outputs wait for their completed native venue', t => {
+test('unbuilt offices and farms send adults to the park, then built interiors need fresh arrivals', t => {
   const w = world(t); w.service.tick();
+  assert.equal(w.pending().filter(j => ['office','farm','school'].includes(j.activity)).length, 0);
+  assert.ok(w.pending().filter(j => j.activity !== 'build').every(j => j.target === 'city-park'));
+  w.built('city-farm-complete'); w.built('city-office-complete');
+  // Clear the fallback social and scheduled social/home cycles before the next career visit.
+  for (let round = 0; round < 3; round++) w.completeRound();
   const farm = w.pending().find(j => j.activity === 'farm'), office = w.pending().find(j => j.activity === 'office');
-  w.ack(farm); w.ack(office); w.service.tick();
+  assert.equal(farm.target, 'city-farm-interior'); assert.equal(office.target, 'city-office-interior');
   assert.equal(w.service.overview().harvests.length, 0); assert.equal(w.service.overview().reports.length, 0);
-  assert.equal(w.link.sql.get('SELECT state FROM city_jobs WHERE id=?', farm.id).state, 'arrived');
-  w.built('city-farm-complete'); w.built('city-office-complete'); w.service.tick();
+  w.ack(farm); w.ack(office); w.service.tick();
   assert.equal(w.service.overview().harvests.length, 1); assert.equal(w.service.overview().reports.length, 1);
 });
 
@@ -309,12 +315,12 @@ test('missing native records show unavailable construction with zero verified st
   assert.ok(projects.every(p => p.done === 0 && !p.complete && p.next.waiting === 'native record unavailable'));
 });
 
-test('adult and child home plans use their own founding household doorstep', t => {
+test('adult and child home plans use their own completed household interior', t => {
   const w = world(t); w.service.tick();
-  const social = w.pending().filter(j => j.activity === 'social');
+  const social = w.pending().filter(j => j.activity === 'social' && j.household_id === 'city-household-4');
   for (const j of social) w.ack(j); w.service.tick();
   const household = w.service.overview().households.find(h => h.id === social[0].household_id);
-  const target = household.home_group.replace(/-complete$/, '');
+  const target = household.home_group.replace(/-complete$/, '-interior');
   w.built(household.home_group); w.service.tick();
   const child = w.service.overview().citizens.find(c => c.stage === 'child');
   assert.equal(w.pending().find(j => j.citizen_id === child.id).target, target);
@@ -328,7 +334,7 @@ test('adult and child home plans use their own founding household doorstep', t =
 
 test('unrecognized household home groups cannot become arbitrary native home targets', t => {
   const w = world(t); w.service.tick();
-  const social = w.pending().filter(j => j.activity === 'social');
+  const social = w.pending().filter(j => j.activity === 'social' && j.household_id === 'city-household-4');
   const household = social[0].household_id;
   w.link.sql.run("UPDATE city_households SET home_group='city-unknown-admin-complete' WHERE id=?", household);
   for (const j of social) w.ack(j); w.service.tick(); w.advance(); w.service.tick();
@@ -337,4 +343,14 @@ test('unrecognized household home groups cannot become arbitrary native home tar
   const homeJobs = w.pending().filter(j => j.activity === 'home' && social.some(s => s.citizen_id === j.citizen_id));
   assert.equal(homeJobs.length, 0);
   assert.ok(w.service.actorPlans().every(p => p.target !== 'city-unknown-admin'));
+});
+
+test('legacy exterior work arrivals cannot produce interior work outputs', t => {
+  const w = world(t); w.built('city-office-complete'); w.service.tick();
+  const office = w.pending().find(j => j.activity === 'office');
+  // Recreate a pre-interior job persisted by the earlier city service.
+  w.link.sql.run("UPDATE city_jobs SET target='city-office' WHERE id=?", office.id);
+  w.ack(office); w.service.tick();
+  assert.equal(w.service.overview().reports.length, 0);
+  assert.equal(w.link.sql.get('SELECT state,error FROM city_jobs WHERE id=?', office.id).error, 'interior visit required');
 });

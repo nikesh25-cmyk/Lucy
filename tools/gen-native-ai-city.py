@@ -101,6 +101,7 @@ def build():
         site = f'site-{id}'
         landmark(nav, name, x+door, door_target_y)
         landmark(site, name+' construction', x+door, door_target_y, 12)
+        landmark(f'{id}-interior', name+' interior', x+door, y+d//2, 5)
         ops0 = [clear([1, 1, 1], [w-1, d-1, 3]), foundation(w, d), fill([0, 0, 0], [w, d, 0], rgb=STONE)]
         if mezzanine:
             ops0 += [clear([1, 1, mezzanine+1], [w-1, d-1, mezzanine+3])]
