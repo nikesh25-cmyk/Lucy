@@ -83,3 +83,9 @@ test('every queue-review correction has a named browser regression scenario', ()
     assert.ok(covered.length >= 1, `correction ${correction} must be encoded as a browser scenario`);
   }
 });
+
+test('CI keeps DOM traces without continuously copying software-rendered GPU frames',async()=>{
+ const {browserTraceOptions}=await import('../scripts/browser-suite.mjs');
+ assert.deepEqual(browserTraceOptions(true),{screenshots:false,snapshots:true,sources:false});
+ assert.deepEqual(browserTraceOptions(false),{screenshots:true,snapshots:true,sources:false});
+});

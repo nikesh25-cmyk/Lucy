@@ -350,6 +350,10 @@ function write(sql, ...params) {
 // Browser driver
 // ---------------------------------------------------------------------------------------------
 
+// Continuous trace screenshots force GPU readback on every animated frame.
+// CI retains DOM/network traces plus every explicit acceptance/failure screenshot.
+export function browserTraceOptions(ci=Boolean(process.env.CI)){return {screenshots:!ci,snapshots:true,sources:false};}
+
 async function launchBrowser() {
   let chromium;
   try {
@@ -386,7 +390,7 @@ async function context(key) {
     const record=state.contexts.get(key);
     if(record.frozen){await record.lifecycle.send('Page.setWebLifecycleState',{state:'active'});record.frozen=false;}
     if(!state.scenarioContexts.has(key)){
-      await record.context.tracing.start({screenshots:true,snapshots:true,sources:false});
+      await record.context.tracing.start(browserTraceOptions());
       state.scenarioContexts.add(key);
     }
     if(record.parkedUrl){const url=record.parkedUrl;record.parkedUrl=null;await record.page.goto(url,{waitUntil:'domcontentloaded'});await settle(record.page);}
@@ -394,7 +398,7 @@ async function context(key) {
   }
   const browserContext = await state.browser.newContext({ viewport: { width: 1440, height: 900 } });
   browserContext.setDefaultTimeout(PAGE_TIMEOUT_MS);
-  await browserContext.tracing.start({ screenshots: true, snapshots: true, sources: false });
+  await browserContext.tracing.start(browserTraceOptions());
   const page = await browserContext.newPage();
   attachPageLogs(page, key);
   const lifecycle=await browserContext.newCDPSession(page);
