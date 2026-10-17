@@ -34,6 +34,8 @@ export function validateEvents(doc) {
     if (w.every === 'hour') { if (!Number.isInteger(w.minute) || w.minute < 0 || w.minute > 59 || w.minute + w.length > 60) throw new Error(`${e.id}: an hourly event must fit inside its hour.`); }
     else if (w.every === 'week') {
       if (!Number.isInteger(w.weekday) || w.weekday < 0 || w.weekday > 6 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(w.start || '')) throw new Error(`${e.id}: a weekly event needs a weekday 0-6 and a start HH:MM.`);
+      // activeSlot looks at one calendar day only, so an event running past midnight would stop at midnight.
+      if (Number(w.start.slice(0, 2)) * 60 + Number(w.start.slice(3)) + w.length > 24 * 60) throw new Error(`${e.id}: a weekly event must end before midnight.`);
     } else throw new Error(`${e.id}: every must be hour or week.`);
     const who = e.who || {};
     if (!who.all && !(Array.isArray(who.roles) && who.roles.length) && !(Array.isArray(who.ids) && who.ids.length)) throw new Error(`${e.id}: says nobody goes.`);
@@ -120,26 +122,35 @@ export const villageSchema = {
         CREATE INDEX village_marks_at ON village_marks(at);`,
 };
 
-let lastObserved = 0;
-export const resetObserver = () => { lastObserved = 0; };
+// When each link last looked at the game server's record. Per link, not per process: two links (tests, a second world)
+// must not make each other skip their look.
+let observedAt = new WeakMap();
+export const resetObserver = () => { observedAt = new WeakMap(); };
 
 /** Record new facts the chronicle will tell: stages and finished projects in the game server's record. At most every 30 s. */
 export function observe(link, now = link.clock(), recordPath = process.env.NEMO_WORLD_RECORD) {
+  const lastObserved = observedAt.get(link) ?? 0;
   if (now - lastObserved < 30_000 && now >= lastObserved) return;
-  lastObserved = now;
+  observedAt.set(link, now);
   const record = loadRecord(recordPath);
   if (!record?.groups) return;
   let projects;
   try { projects = loadWorks(); } catch { return; }
   for (const project of projects) {
     let built = 0;
+    let lastBuilt = 0;
     for (const stage of project.stages) {
       if (!record.groups[stage.id]) continue;
       built += 1;
-      link.sql.run('INSERT OR IGNORE INTO village_marks(key,kind,text,at) VALUES(?,?,?,?)', `stage:${stage.id}`, 'stage', `${project.name}: ${stage.title.toLowerCase()}.`, now);
+      // Dated when the game server built it, not when this process first noticed (a restart of NemoWorld, or a new
+      // link database, must not turn a month of building into "today").
+      const builtAt = Number(record.groups[stage.id]?.applied_at);
+      const at = Number.isFinite(builtAt) && builtAt > 0 && builtAt <= now ? builtAt : now;
+      lastBuilt = Math.max(lastBuilt, at);
+      link.sql.run('INSERT OR IGNORE INTO village_marks(key,kind,text,at) VALUES(?,?,?,?)', `stage:${stage.id}`, 'stage', `${project.name}: ${stage.title.toLowerCase()}.`, at);
     }
     if (project.stages.length && built === project.stages.length) {
-      link.sql.run('INSERT OR IGNORE INTO village_marks(key,kind,text,at) VALUES(?,?,?,?)', `done:${project.id}`, 'done', `${project.name} was finished.`, now);
+      link.sql.run('INSERT OR IGNORE INTO village_marks(key,kind,text,at) VALUES(?,?,?,?)', `done:${project.id}`, 'done', `${project.name} was finished.`, lastBuilt || now);
     }
   }
 }
@@ -154,7 +165,9 @@ export function directorHook(link, resident_id, events = loadEvents(), now = lin
 }
 
 const dayKey = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-const dayStart = (ms) => { const d = new Date(ms); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
+// Local midnight `back` days before the day of `ms`. Built from the calendar date, never by subtracting 24 hours, which
+// is wrong on the two days a year the clocks change (a day is then 23 or 25 hours long).
+const dayStartBack = (ms, back = 0) => { const d = new Date(ms); return new Date(d.getFullYear(), d.getMonth(), d.getDate() - back).getTime(); };
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** The chronicle: one line per recent day, and the milestones. Built only from stored facts. */
@@ -162,20 +175,21 @@ export function chronicleLines(link, events = loadEvents(), now = link.clock(), 
   try { observe(link, now); } catch { /* ignore */ }
   const sql = link.sql;
   const days = 3;
-  const from = dayStart(now) - (days - 1) * 86_400_000;
+  const from = dayStartBack(now, days - 1);
   const out = ['The Harr chronicle, written only from what was recorded (no invented tales):'];
   const marks = sql.all('SELECT kind, at FROM village_marks WHERE at>=?', from);
-  const finds = sql.all("SELECT occurred_at AS at FROM link_events WHERE kind='landmark.visited' AND occurred_at>=? GROUP BY player_uuid, landmark_id", from);
+  // One row per recorded find; a person finding a place counts once per DAY (below), not once per window.
+  const finds = sql.all("SELECT occurred_at AS at, player_uuid, landmark_id FROM link_events WHERE kind='landmark.visited' AND occurred_at>=? ORDER BY occurred_at LIMIT 20000", from);
   const meals = sql.all("SELECT created_at AS at, qty FROM pantry_takes WHERE state='delivered' AND created_at>=?", from);
   const runs = sql.all('SELECT event_id, slot_start, COUNT(*) AS residents FROM village_attendance WHERE slot_start>=? GROUP BY event_id, slot_start', from);
   const titles = new Map(events.map((e) => [e.id, e.title.toLowerCase()]));
   for (let i = 0; i < days; i += 1) {
-    const start = dayStart(now) - i * 86_400_000;
-    const end = start + 86_400_000;
+    const start = dayStartBack(now, i);
+    const end = dayStartBack(now, i - 1);
     const within = (at) => at >= start && at < end;
     const stages = marks.filter((m) => m.kind === 'stage' && within(m.at)).length;
     const done = marks.filter((m) => m.kind === 'done' && within(m.at)).length;
-    const found = finds.filter((f) => within(Number(f.at))).length;
+    const found = new Set(finds.filter((f) => within(Number(f.at))).map((f) => `${f.player_uuid}|${f.landmark_id}`)).size;
     const shared = meals.filter((m) => within(m.at)).reduce((n, m) => n + m.qty, 0);
     const held = new Map();
     for (const r of runs.filter((x) => within(x.slot_start))) held.set(r.event_id, (held.get(r.event_id) || 0) + 1);

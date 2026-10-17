@@ -160,6 +160,10 @@ export class VelorenLink {
     this.extensions = extensions || EXTENSIONS;
     // Commands to the Veloren server (grant an item, teleport, ...). Needs the file the server reads.
     this.commands = commandsPath ? new CommandOutbox({ path: commandsPath, key: eventKey, clock }) : null;
+    // The event log is read by kind, landmark and player on every request (command acknowledgements, discoveries,
+    // tasks, the chronicle); without these indexes each of those reads scans the whole log, which only grows.
+    this.applyExtensionSchema('event_index', { version: 1, sql: `CREATE INDEX IF NOT EXISTS link_events_landmark ON link_events(landmark_id, kind);
+      CREATE INDEX IF NOT EXISTS link_events_kind ON link_events(kind, player_uuid, landmark_id, resident_id);` });
     this.applyExtensionSchema('commands', { version: 1, sql: `CREATE TABLE link_commands(
       cmd_id TEXT PRIMARY KEY, kind TEXT NOT NULL, player_uuid TEXT NOT NULL, issued_at INTEGER NOT NULL,
       expires_at INTEGER NOT NULL, issued_by TEXT NOT NULL DEFAULT '')` });
@@ -343,7 +347,8 @@ export class VelorenLink {
     if (previous !== null && event.occurred_at <= previous) return null;
     this.#run('INSERT INTO quest_progress(player_uuid,quest_id,step_id,event_id,completed_at) VALUES(?,?,?,?,?)',
       event.player_uuid, quest.id, step.id, event.event_id, event.occurred_at);
-    const alias = event.player_alias || 'traveller';
+    // The alias is spoken by a resident: never let it open a chat command or a bracketed label.
+    const alias = String(event.player_alias || '').replace(/[\[\]{}<>|\\`]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^[/!.\-\s]+/, '') || 'traveller';
     const upcoming = quest.steps[index + 1];
     if (upcoming) this.#announce(event.resident_id, event.player_uuid, `${quest.id}:${upcoming.id}`, `${alias}, ${this.#fill(upcoming.instruction)}`);
     else {
@@ -391,7 +396,7 @@ export class VelorenLink {
           return { event_id: event.event_id, status: stored?.signature === event.sig ? 'duplicate' : 'rejected', reason: stored?.signature === event.sig ? undefined : 'event_id_reused' };
         }
         this.#run(`INSERT INTO link_players(player_uuid,alias,first_seen,last_seen) VALUES(?,?,?,?)
-          ON CONFLICT(player_uuid) DO UPDATE SET alias=excluded.alias,last_seen=excluded.last_seen`,
+          ON CONFLICT(player_uuid) DO UPDATE SET alias=CASE WHEN excluded.alias<>'' THEN excluded.alias ELSE link_players.alias END,last_seen=excluded.last_seen`,
           event.player_uuid, event.player_alias, this.clock(), this.clock());
         const advanced = this.#advance(event);
         return { event_id: event.event_id, status: 'accepted', ...(advanced ? { advanced } : {}) };
@@ -569,11 +574,32 @@ export function withDiscoveries(landmarks, path = new URL('../content/veloren-di
   return [...landmarks, ...extra];
 }
 
+/**
+ * Every landmark the game server's link config carries (content/veloren-world-landmarks.json and
+ * veloren-landmarks-extra.json) is a place a fact may be tagged with: the server tags `resident.met` and
+ * `landmark.together` with whichever configured landmark the resident stands in, so a landmark missing here
+ * makes NemoWorld refuse the fact as `unknown_landmark`, and a refusal is final at the relay.
+ */
+export function withConfiguredLandmarks(landmarks, files = ['veloren-world-landmarks.json', 'veloren-landmarks-extra.json'].map((name) => new URL(`../content/${name}`, import.meta.url))) {
+  const known = new Set(landmarks.map((item) => item.id));
+  const extra = [];
+  for (const file of files) {
+    let list = [];
+    try { list = JSON.parse(readFileSync(file, 'utf8')).landmarks || []; } catch { continue; }
+    for (const item of list) {
+      if (typeof item?.id !== 'string' || !LANDMARK_ID.test(item.id) || known.has(item.id) || typeof item.name !== 'string' || !item.name || item.name.length > 80) continue;
+      known.add(item.id);
+      extra.push({ id: item.id, name: item.name, role: 'place' });
+    }
+  }
+  return [...landmarks, ...extra];
+}
+
 export function velorenLinkFromEnvironment(env, mainDatabasePath, landmarksPath) {
   const key = env.NEMO_LINK_EVENT_KEY;
   if (!key) return null;
   const eventKey = Buffer.from(key, /^[a-f0-9]{64,}$/i.test(key) ? 'hex' : 'utf8');
   const dbPath = env.NEMO_LINK_DB || join(dirname(mainDatabasePath), 'veloren-link.sqlite');
   const commandsPath = env.NEMO_LINK_COMMANDS || join(dirname(dbPath), 'veloren-commands.jsonl');
-  return new VelorenLink({ dbPath, eventKey, landmarks: withDiscoveries(loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath)), commandsPath });
+  return new VelorenLink({ dbPath, eventKey, landmarks: withConfiguredLandmarks(withDiscoveries(loadLandmarks(env.NEMO_LINK_LANDMARKS || landmarksPath))), commandsPath });
 }
