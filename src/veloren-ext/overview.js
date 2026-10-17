@@ -10,6 +10,7 @@ import { activeSlot, chronicleLines, loadEvents, minutesToNext } from './village
 import { shelfSummary } from './pantry.js';
 import { spendRate } from './view.js';
 import { VILLAGERS } from './villagers.js';
+import { tasksFor, tasksLines } from './tasks.js';
 
 export function buildOverview(link, now = link.clock()) {
   const charter = loadCharter();
@@ -53,6 +54,14 @@ export const overviewExtension = {
     if (ctx.route === '/veloren/harr/overview' && ctx.request.method === 'GET') {
       spendRate(link, '*overview', { gapMs: 0, perHour: 7200 });
       ctx.json(ctx.response, 200, buildOverview(link));
+      return true;
+    }
+    if (ctx.route === '/veloren/harr/tasks' && ctx.request.method === 'GET') {
+      spendRate(link, '*overview', { gapMs: 0, perHour: 7200 });
+      ctx.json(ctx.response, 200, {
+        tasks: tasksFor(link, 'anonymous'),
+        lines: tasksLines(link, 'anonymous'),
+      });
       return true;
     }
     return false;
