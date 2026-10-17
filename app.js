@@ -669,14 +669,16 @@ async function refresh(all = true) {
   const [world, missions, gallery] = await Promise.all([api(worldURL()), api('/missions?'+new URLSearchParams({limit:'12',...state.missionQuery})), api('/gallery')]);
   state.world = normalizeWorld(world); state.worldLoads++; state.missionPage=missions;mergeMissionContext(); state.gallery = Array.isArray(gallery) ? gallery : gallery.submissions || [];
   seedPresence(state.world.participants);
-  await loadDirectory();
-  if(!state.assembly){const [countries,assembly]=await Promise.all([api('/countries?limit=248'),api('/assembly')]);state.countries=countries.entries;state.assembly=assembly;}
-  await loadResearch();state.mayors=(await api('/mayors')).mayors;await loadAmbassadors();
-  await Promise.all([loadCommunity(),loadJourney(),loadCallings(),loadGuilds(),loadQuests(),loadGuildProjects(),loadRestoration(),loadFirstPlay()]);
-  if (state.account && all) {
-    state.history = await api('/history');mergeMissionContext(); state.workers=await api('/workers'); state.safety = await api('/safety');
-    if (state.account.role === 'admin') state.operations = await api('/operations');
+  // These reads depend on the confirmed account/world above, but not on each other.
+  // Start them together so an unrelated directory or research read cannot serialize sign-in.
+  const reads=[loadDirectory(),loadResearch(),loadAmbassadors(),loadCommunity(),loadJourney(),loadCallings(),loadGuilds(),loadQuests(),loadGuildProjects(),loadRestoration(),loadFirstPlay(),
+    api('/mayors').then(result=>{state.mayors=result.mayors;})];
+  if(!state.assembly)reads.push(Promise.all([api('/countries?limit=248'),api('/assembly')]).then(([countries,assembly])=>{state.countries=countries.entries;state.assembly=assembly;}));
+  if(state.account&&all){
+    reads.push(api('/history').then(result=>{state.history=result;mergeMissionContext();}),api('/workers').then(result=>{state.workers=result;}),api('/safety').then(result=>{state.safety=result;}));
+    if(state.account.role==='admin')reads.push(api('/operations').then(result=>{state.operations=result;}));
   }
+  await Promise.all(reads);
 }
 function mergeMissionContext(){
  state.missions=[...new Map([...(state.history?.missions||[]),...(state.missionPage.missions||[])].map(item=>[item.id,item])).values()];
