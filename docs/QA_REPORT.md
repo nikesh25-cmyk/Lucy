@@ -3,7 +3,7 @@
 Reviewer: skeptical read of the merged `integration/all` (nemoworld `50d4ce2`, veloren `e273dba`), on branch `qa/main`
 of each repo (worktrees `wt/nemoworld-qa`, `wt/veloren-qa`). Nothing was compiled or run in-game: cargo was off limits,
 so **every Rust change below is uncompiled and untested** and must be built by the owner. Node tests were run:
-162 passing before, 175 after (13 new in `tests/veloren-qa.test.js`; they were written failing first, see commit order).
+162 passing before, 174 after (12 new in `tests/veloren-qa.test.js`; they were written failing first, see commit order).
 
 "Confirmed" means shown by reading the code and, where noted, by running the algorithm or the live record
 (`play/data/veloren-outbox.jsonl.world.json`, `play/logs/server.log`). "Suspected" means plausible from the code but
@@ -42,7 +42,7 @@ Ranked. "Confirmed" = shown from the code or data; "Suspected" = needs a running
    as the resident (their presence is excluded from visitors and they can be the witness of meets). Fine on a closed
    LAN, wrong on any public server. Check against the character name or require auth.
 3. **Medium, confirmed by arithmetic. Several sites depend on exactly two bodies.** Using the real plot positions from the
-   server log and the landmark offsets, 23 of 35 crew-gated projects have at least one phase (dawn/day/dusk/night) in
+   server log and the landmark offsets, 22 of 35 crew-gated projects have at least one phase (dawn/day/dusk/night) in
    which fewer than two of the 32 scripted residents are within the 20-block crew radius; none has zero phases.
    Worst: cottage-4 and cottage-5 have exactly two, in `day` only. Full gaps: research-tower (dusk, night), solar-array
    (day, night), glass-garden (dusk, night), schoolhouse, seminar-pavilion, cottage-4/5/6 (only day, and 6 also dusk),
