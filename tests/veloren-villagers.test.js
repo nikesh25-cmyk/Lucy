@@ -14,8 +14,8 @@ const PLACES = new Set([
 ]);
 const place = (labels) => [...PLACES, ...labels];
 
-test('the village is 24 valid, distinct residents who do not collide with the roster', () => {
-  assert.equal(VILLAGERS.length, 24);
+test('the village is 52 valid, distinct residents who do not collide with the roster', () => {
+  assert.equal(VILLAGERS.length, 52);
   const everyone = [...LIVING_ROSTER, ...VILLAGERS];
   assert.equal(new Set(everyone.map(r => r.id)).size, everyone.length, 'ids are unique');
   assert.equal(new Set(everyone.map(r => r.name.split(' ')[0].toLowerCase())).size, everyone.length, 'first names (Veloren names) are unique');

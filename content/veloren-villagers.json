@@ -1,894 +1,1930 @@
 {
-  "format": "veloren-villagers-v1",
-  "note": "Scripted village residents for the Veloren world (no model, no authority). Their routines use the six Harr landmark labels. Their lines are scripted and labelled so; they are not people.",
-  "residents": [
-    {
-      "id": "lw-marisol",
-      "name": "Marisol Fernwick",
-      "calling": "cultivator",
-      "role": "farmer",
-      "capabilities": "Tends the herb beds along the field edge. Grows and tends food beds and herbs for the whole village.",
-      "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Vertical Farm Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Peace Pavilion"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Glass Garden Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "The beds are damp and the herbs are leaning toward the sun.",
-        "Everything we eat here was planted by someone who knows your name.",
-        "Tending is mostly patience, and a little arguing with weeds."
-      ]
+ "format": "veloren-villagers-v1",
+ "note": "Scripted village residents for the Veloren world (no model, no authority). Their routines use the six Harr landmark labels. Their lines are scripted and labelled so; they are not people.",
+ "residents": [
+  {
+   "id": "lw-marisol",
+   "name": "Marisol Fernwick",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "Tends the herb beds along the field edge. Grows and tends food beds and herbs for the whole village.",
+   "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Vertical Farm Site"
     },
-    {
-      "id": "lw-kwame",
-      "name": "Kwame Oakhand",
-      "calling": "cultivator",
-      "role": "farmer",
-      "capabilities": "Grows grain and keeps the seed store. Grows and tends food beds and herbs for the whole village.",
-      "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Vertical Farm Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Peace Pavilion"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Glass Garden Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "The beds are damp and the herbs are leaning toward the sun.",
-        "Everything we eat here was planted by someone who knows your name.",
-        "Tending is mostly patience, and a little arguing with weeds."
-      ]
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Peace Pavilion"
     },
-    {
-      "id": "lw-ludmila",
-      "name": "Ludmila Greenfield",
-      "calling": "cultivator",
-      "role": "farmer",
-      "capabilities": "Looks after the fibre plants for weaving. Grows and tends food beds and herbs for the whole village.",
-      "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Vertical Farm Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Peace Pavilion"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Glass Garden Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "The beds are damp and the herbs are leaning toward the sun.",
-        "Everything we eat here was planted by someone who knows your name.",
-        "Tending is mostly patience, and a little arguing with weeds."
-      ]
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
     },
-    {
-      "id": "lw-bao",
-      "name": "Bao Rainwell",
-      "calling": "cultivator",
-      "role": "farmer",
-      "capabilities": "Waters the beds from the well each dawn. Grows and tends food beds and herbs for the whole village.",
-      "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Solar Array Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Peace Pavilion"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Glass Garden Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "The beds are damp and the herbs are leaning toward the sun.",
-        "Everything we eat here was planted by someone who knows your name.",
-        "Tending is mostly patience, and a little arguing with weeds."
-      ]
-    },
-    {
-      "id": "lw-saoirse",
-      "name": "Saoirse Meadowlark",
-      "calling": "cultivator",
-      "role": "farmer",
-      "capabilities": "Grows the flowers for festival crowns. Grows and tends food beds and herbs for the whole village.",
-      "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Solar Array Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Peace Pavilion"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Glass Garden Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "The beds are damp and the herbs are leaning toward the sun.",
-        "Everything we eat here was planted by someone who knows your name.",
-        "Tending is mostly patience, and a little arguing with weeds."
-      ]
-    },
-    {
-      "id": "lw-tobiah",
-      "name": "Tobiah Thistle",
-      "calling": "cultivator",
-      "role": "farmer",
-      "capabilities": "Mends fences and counts the harvest. Grows and tends food beds and herbs for the whole village.",
-      "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Solar Array Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Peace Pavilion"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Glass Garden Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "The beds are damp and the herbs are leaning toward the sun.",
-        "Everything we eat here was planted by someone who knows your name.",
-        "Tending is mostly patience, and a little arguing with weeds."
-      ]
-    },
-    {
-      "id": "lw-ignatius",
-      "name": "Ignatius Stonebrook",
-      "calling": "builder",
-      "role": "builder",
-      "capabilities": "Lays foundations and reads the ground first. Raises the village works: shelters, paths and the shared buildings.",
-      "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Market Hall Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Cottage Row"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Orchard Gate"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "A level path connects hearts as much as it connects plots.",
-        "Measure twice, ask the neighbours once, then lay the first stone.",
-        "Every wall here began as a sketch scratched in the dirt."
-      ]
-    },
-    {
-      "id": "lw-fenwick",
-      "name": "Fenwick Ashcombe",
-      "calling": "builder",
-      "role": "builder",
-      "capabilities": "Frames walls and roofs. Raises the village works: shelters, paths and the shared buildings.",
-      "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Market Hall Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Cottage Row"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Orchard Gate"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "A level path connects hearts as much as it connects plots.",
-        "Measure twice, ask the neighbours once, then lay the first stone.",
-        "Every wall here began as a sketch scratched in the dirt."
-      ]
-    },
-    {
-      "id": "lw-casimir",
-      "name": "Casimir Lathe",
-      "calling": "builder",
-      "role": "builder",
-      "capabilities": "Cuts timber and shares the offcuts. Raises the village works: shelters, paths and the shared buildings.",
-      "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Market Hall Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Cottage Row"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Orchard Gate"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "A level path connects hearts as much as it connects plots.",
-        "Measure twice, ask the neighbours once, then lay the first stone.",
-        "Every wall here began as a sketch scratched in the dirt."
-      ]
-    },
-    {
-      "id": "lw-hollis",
-      "name": "Hollis Quarrier",
-      "calling": "builder",
-      "role": "builder",
-      "capabilities": "Brings stone from the western quarry. Raises the village works: shelters, paths and the shared buildings.",
-      "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Well Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Annex Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Observatory Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "A level path connects hearts as much as it connects plots.",
-        "Measure twice, ask the neighbours once, then lay the first stone.",
-        "Every wall here began as a sketch scratched in the dirt."
-      ]
-    },
-    {
-      "id": "lw-pelham",
-      "name": "Pelham Wrightson",
-      "calling": "builder",
-      "role": "builder",
-      "capabilities": "Draws the plans for the shared works. Raises the village works: shelters, paths and the shared buildings.",
-      "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Well Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Annex Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Observatory Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "A level path connects hearts as much as it connects plots.",
-        "Measure twice, ask the neighbours once, then lay the first stone.",
-        "Every wall here began as a sketch scratched in the dirt."
-      ]
-    },
-    {
-      "id": "lw-imara",
-      "name": "Imara Bakewell",
-      "calling": "artisan",
-      "role": "maker",
-      "capabilities": "Bakes at first light. Makes and shares bread, pots, cloth and small keepsakes at the plaza market.",
-      "limitations": "Trades fairly in Karma; never promises what the workshop has not made.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Workshop"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Pavilion Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        }
-      },
-      "barks": [
-        "Fresh from the oven, and the plaza smells of it.",
-        "A mended pot lasts longer than a promised one.",
-        "Come by the market; there is always something warm."
-      ]
-    },
-    {
-      "id": "lw-yuki",
-      "name": "Yuki Pottersby",
-      "calling": "artisan",
-      "role": "maker",
-      "capabilities": "Throws bowls and mugs on the wheel. Makes and shares bread, pots, cloth and small keepsakes at the plaza market.",
-      "limitations": "Trades fairly in Karma; never promises what the workshop has not made.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Workshop"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Pavilion Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        }
-      },
-      "barks": [
-        "Fresh from the oven, and the plaza smells of it.",
-        "A mended pot lasts longer than a promised one.",
-        "Come by the market; there is always something warm."
-      ]
-    },
-    {
-      "id": "lw-zuri",
-      "name": "Zuri Loomsworth",
-      "calling": "artisan",
-      "role": "maker",
-      "capabilities": "Weaves banners and cloth. Makes and shares bread, pots, cloth and small keepsakes at the plaza market.",
-      "limitations": "Trades fairly in Karma; never promises what the workshop has not made.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Workshop"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Pavilion Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        }
-      },
-      "barks": [
-        "Fresh from the oven, and the plaza smells of it.",
-        "A mended pot lasts longer than a promised one.",
-        "Come by the market; there is always something warm."
-      ]
-    },
-    {
-      "id": "lw-nadia",
-      "name": "Nadia Brightwick",
-      "calling": "artisan",
-      "role": "maker",
-      "capabilities": "Makes candles and small keepsakes. Makes and shares bread, pots, cloth and small keepsakes at the plaza market.",
-      "limitations": "Trades fairly in Karma; never promises what the workshop has not made.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Workshop"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Pavilion Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        }
-      },
-      "barks": [
-        "Fresh from the oven, and the plaza smells of it.",
-        "A mended pot lasts longer than a promised one.",
-        "Come by the market; there is always something warm."
-      ]
-    },
-    {
-      "id": "lw-mirela",
-      "name": "Mirela Inkwell",
-      "calling": "researcher",
-      "role": "scholar",
-      "capabilities": "Copies records and keeps the shelves in order. Keeps the village records and helps people find sources and answers.",
-      "limitations": "Reports only what is written down; says so when something is unknown.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Research Tower Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Observatory Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        }
-      },
-      "barks": [
-        "The archive remembers what we would otherwise argue about.",
-        "Ask me where it is written, and I will show you the shelf.",
-        "Reading aloud at dusk is a good way to start a conversation."
-      ]
-    },
-    {
-      "id": "lw-dov",
-      "name": "Dov Quillan",
-      "calling": "researcher",
-      "role": "scholar",
-      "capabilities": "Teaches the evening reading circle. Keeps the village records and helps people find sources and answers.",
-      "limitations": "Reports only what is written down; says so when something is unknown.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Research Tower Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Observatory Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        }
-      },
-      "barks": [
-        "The archive remembers what we would otherwise argue about.",
-        "Ask me where it is written, and I will show you the shelf.",
-        "Reading aloud at dusk is a good way to start a conversation."
-      ]
-    },
-    {
-      "id": "lw-oren",
-      "name": "Oren Pagefold",
-      "calling": "researcher",
-      "role": "scholar",
-      "capabilities": "Maps what is known about the surrounding land. Keeps the village records and helps people find sources and answers.",
-      "limitations": "Reports only what is written down; says so when something is unknown.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Research Tower Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Observatory Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        }
-      },
-      "barks": [
-        "The archive remembers what we would otherwise argue about.",
-        "Ask me where it is written, and I will show you the shelf.",
-        "Reading aloud at dusk is a good way to start a conversation."
-      ]
-    },
-    {
-      "id": "lw-wren",
-      "name": "Wren Swiftpath",
-      "calling": "explorer",
-      "role": "courier",
-      "capabilities": "Runs messages across the village. Carries news, messages and small parcels between the village places.",
-      "limitations": "Travels on foot; delivers only what the sender has asked for.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Orchard"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Sky Walk Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Peace Pavilion"
-        }
-      },
-      "barks": [
-        "Message for the plaza? I am headed that way.",
-        "The orchard path is quickest before the sun is high.",
-        "News travels slowly here, which is how we like it."
-      ]
-    },
-    {
-      "id": "lw-alder",
-      "name": "Alder Roamfield",
-      "calling": "explorer",
-      "role": "courier",
-      "capabilities": "Knows every path to the far fields. Carries news, messages and small parcels between the village places.",
-      "limitations": "Travels on foot; delivers only what the sender has asked for.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Orchard"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Sky Walk Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Peace Pavilion"
-        }
-      },
-      "barks": [
-        "Message for the plaza? I am headed that way.",
-        "The orchard path is quickest before the sun is high.",
-        "News travels slowly here, which is how we like it."
-      ]
-    },
-    {
-      "id": "lw-tamsin",
-      "name": "Tamsin Wayfarer",
-      "calling": "explorer",
-      "role": "courier",
-      "capabilities": "Carries parcels and tells you the way. Carries news, messages and small parcels between the village places.",
-      "limitations": "Travels on foot; delivers only what the sender has asked for.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Orchard"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Sky Walk Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Library"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Peace Pavilion"
-        }
-      },
-      "barks": [
-        "Message for the plaza? I am headed that way.",
-        "The orchard path is quickest before the sun is high.",
-        "News travels slowly here, which is how we like it."
-      ]
-    },
-    {
-      "id": "lw-lucia",
-      "name": "Lucia Lanternly",
-      "calling": "host",
-      "role": "keeper",
-      "capabilities": "Lights the lamps at dusk. Lights the village lamps and gathers people for the evening stories.",
-      "limitations": "Tells stories and keeps the lamps; makes no decisions for anyone.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Transit Hub Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Archive Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Fountain Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "The lamps are lit; the square is ready for you.",
-        "Stories are better with company, and a little patience.",
-        "Sit with us a while; the evening is long."
-      ]
-    },
-    {
-      "id": "lw-ravi",
-      "name": "Ravi Hearthstone",
-      "calling": "host",
-      "role": "keeper",
-      "capabilities": "Keeps the meeting hall fire and the stories. Lights the village lamps and gathers people for the evening stories.",
-      "limitations": "Tells stories and keeps the lamps; makes no decisions for anyone.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Transit Hub Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Archive Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Fountain Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "The lamps are lit; the square is ready for you.",
-        "Stories are better with company, and a little patience.",
-        "Sit with us a while; the evening is long."
-      ]
-    },
-    {
-      "id": "lw-odalys",
-      "name": "Odalys Evensong",
-      "calling": "host",
-      "role": "keeper",
-      "capabilities": "Sings at the plaza when the work is done. Lights the village lamps and gathers people for the evening stories.",
-      "limitations": "Tells stories and keeps the lamps; makes no decisions for anyone.",
-      "startX": 0,
-      "startY": 0,
-      "destinations": {
-        "dawn": {
-          "x": 0,
-          "y": 0,
-          "label": "Transit Hub Site"
-        },
-        "day": {
-          "x": 0,
-          "y": 0,
-          "label": "Archive Site"
-        },
-        "dusk": {
-          "x": 0,
-          "y": 0,
-          "label": "Fountain Site"
-        },
-        "night": {
-          "x": 0,
-          "y": 0,
-          "label": "Meeting Hall"
-        }
-      },
-      "barks": [
-        "The lamps are lit; the square is ready for you.",
-        "Stories are better with company, and a little patience.",
-        "Sit with us a while; the evening is long."
-      ]
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
     }
-  ]
+   },
+   "barks": [
+    "The beds are damp and the herbs are leaning toward the sun.",
+    "Everything we eat here was planted by someone who knows your name.",
+    "Tending is mostly patience, and a little arguing with weeds."
+   ]
+  },
+  {
+   "id": "lw-kwame",
+   "name": "Kwame Oakhand",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "Grows grain and keeps the seed store. Grows and tends food beds and herbs for the whole village.",
+   "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Vertical Farm Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Peace Pavilion"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "The beds are damp and the herbs are leaning toward the sun.",
+    "Everything we eat here was planted by someone who knows your name.",
+    "Tending is mostly patience, and a little arguing with weeds."
+   ]
+  },
+  {
+   "id": "lw-ludmila",
+   "name": "Ludmila Greenfield",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "Looks after the fibre plants for weaving. Grows and tends food beds and herbs for the whole village.",
+   "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Vertical Farm Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Peace Pavilion"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "The beds are damp and the herbs are leaning toward the sun.",
+    "Everything we eat here was planted by someone who knows your name.",
+    "Tending is mostly patience, and a little arguing with weeds."
+   ]
+  },
+  {
+   "id": "lw-bao",
+   "name": "Bao Rainwell",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "Waters the beds from the well each dawn. Grows and tends food beds and herbs for the whole village.",
+   "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Solar Array Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Peace Pavilion"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "The beds are damp and the herbs are leaning toward the sun.",
+    "Everything we eat here was planted by someone who knows your name.",
+    "Tending is mostly patience, and a little arguing with weeds."
+   ]
+  },
+  {
+   "id": "lw-saoirse",
+   "name": "Saoirse Meadowlark",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "Grows the flowers for festival crowns. Grows and tends food beds and herbs for the whole village.",
+   "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Solar Array Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Peace Pavilion"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "The beds are damp and the herbs are leaning toward the sun.",
+    "Everything we eat here was planted by someone who knows your name.",
+    "Tending is mostly patience, and a little arguing with weeds."
+   ]
+  },
+  {
+   "id": "lw-tobiah",
+   "name": "Tobiah Thistle",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "Mends fences and counts the harvest. Grows and tends food beds and herbs for the whole village.",
+   "limitations": "Pacifist farmer; shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Solar Array Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Peace Pavilion"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "The beds are damp and the herbs are leaning toward the sun.",
+    "Everything we eat here was planted by someone who knows your name.",
+    "Tending is mostly patience, and a little arguing with weeds."
+   ]
+  },
+  {
+   "id": "lw-ignatius",
+   "name": "Ignatius Stonebrook",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "Lays foundations and reads the ground first. Raises the village works: shelters, paths and the shared buildings.",
+   "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Market Hall Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Cottage Row"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard Gate"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "A level path connects hearts as much as it connects plots.",
+    "Measure twice, ask the neighbours once, then lay the first stone.",
+    "Every wall here began as a sketch scratched in the dirt."
+   ]
+  },
+  {
+   "id": "lw-fenwick",
+   "name": "Fenwick Ashcombe",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "Frames walls and roofs. Raises the village works: shelters, paths and the shared buildings.",
+   "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Market Hall Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Cottage Row"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard Gate"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "A level path connects hearts as much as it connects plots.",
+    "Measure twice, ask the neighbours once, then lay the first stone.",
+    "Every wall here began as a sketch scratched in the dirt."
+   ]
+  },
+  {
+   "id": "lw-casimir",
+   "name": "Casimir Lathe",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "Cuts timber and shares the offcuts. Raises the village works: shelters, paths and the shared buildings.",
+   "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Market Hall Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Cottage Row"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard Gate"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "A level path connects hearts as much as it connects plots.",
+    "Measure twice, ask the neighbours once, then lay the first stone.",
+    "Every wall here began as a sketch scratched in the dirt."
+   ]
+  },
+  {
+   "id": "lw-hollis",
+   "name": "Hollis Quarrier",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "Brings stone from the western quarry. Raises the village works: shelters, paths and the shared buildings.",
+   "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Well Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Annex Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "A level path connects hearts as much as it connects plots.",
+    "Measure twice, ask the neighbours once, then lay the first stone.",
+    "Every wall here began as a sketch scratched in the dirt."
+   ]
+  },
+  {
+   "id": "lw-pelham",
+   "name": "Pelham Wrightson",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "Draws the plans for the shared works. Raises the village works: shelters, paths and the shared buildings.",
+   "limitations": "Builds only inside permitted plots and public works; asks before moving anything.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Well Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Annex Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "A level path connects hearts as much as it connects plots.",
+    "Measure twice, ask the neighbours once, then lay the first stone.",
+    "Every wall here began as a sketch scratched in the dirt."
+   ]
+  },
+  {
+   "id": "lw-imara",
+   "name": "Imara Bakewell",
+   "calling": "artisan",
+   "role": "maker",
+   "capabilities": "Bakes at first light. Makes and shares bread, pots, cloth and small keepsakes at the plaza market.",
+   "limitations": "Trades fairly in Karma; never promises what the workshop has not made.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Workshop"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Pavilion Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    }
+   },
+   "barks": [
+    "Fresh from the oven, and the plaza smells of it.",
+    "A mended pot lasts longer than a promised one.",
+    "Come by the market; there is always something warm."
+   ]
+  },
+  {
+   "id": "lw-yuki",
+   "name": "Yuki Pottersby",
+   "calling": "artisan",
+   "role": "maker",
+   "capabilities": "Throws bowls and mugs on the wheel. Makes and shares bread, pots, cloth and small keepsakes at the plaza market.",
+   "limitations": "Trades fairly in Karma; never promises what the workshop has not made.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Workshop"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Pavilion Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    }
+   },
+   "barks": [
+    "Fresh from the oven, and the plaza smells of it.",
+    "A mended pot lasts longer than a promised one.",
+    "Come by the market; there is always something warm."
+   ]
+  },
+  {
+   "id": "lw-zuri",
+   "name": "Zuri Loomsworth",
+   "calling": "artisan",
+   "role": "maker",
+   "capabilities": "Weaves banners and cloth. Makes and shares bread, pots, cloth and small keepsakes at the plaza market.",
+   "limitations": "Trades fairly in Karma; never promises what the workshop has not made.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Workshop"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Pavilion Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    }
+   },
+   "barks": [
+    "Fresh from the oven, and the plaza smells of it.",
+    "A mended pot lasts longer than a promised one.",
+    "Come by the market; there is always something warm."
+   ]
+  },
+  {
+   "id": "lw-nadia",
+   "name": "Nadia Brightwick",
+   "calling": "artisan",
+   "role": "maker",
+   "capabilities": "Makes candles and small keepsakes. Makes and shares bread, pots, cloth and small keepsakes at the plaza market.",
+   "limitations": "Trades fairly in Karma; never promises what the workshop has not made.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Workshop"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Pavilion Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    }
+   },
+   "barks": [
+    "Fresh from the oven, and the plaza smells of it.",
+    "A mended pot lasts longer than a promised one.",
+    "Come by the market; there is always something warm."
+   ]
+  },
+  {
+   "id": "lw-mirela",
+   "name": "Mirela Inkwell",
+   "calling": "researcher",
+   "role": "scholar",
+   "capabilities": "Copies records and keeps the shelves in order. Keeps the village records and helps people find sources and answers.",
+   "limitations": "Reports only what is written down; says so when something is unknown.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Research Tower Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    }
+   },
+   "barks": [
+    "The archive remembers what we would otherwise argue about.",
+    "Ask me where it is written, and I will show you the shelf.",
+    "Reading aloud at dusk is a good way to start a conversation."
+   ]
+  },
+  {
+   "id": "lw-dov",
+   "name": "Dov Quillan",
+   "calling": "researcher",
+   "role": "scholar",
+   "capabilities": "Teaches the evening reading circle. Keeps the village records and helps people find sources and answers.",
+   "limitations": "Reports only what is written down; says so when something is unknown.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Research Tower Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    }
+   },
+   "barks": [
+    "The archive remembers what we would otherwise argue about.",
+    "Ask me where it is written, and I will show you the shelf.",
+    "Reading aloud at dusk is a good way to start a conversation."
+   ]
+  },
+  {
+   "id": "lw-oren",
+   "name": "Oren Pagefold",
+   "calling": "researcher",
+   "role": "scholar",
+   "capabilities": "Maps what is known about the surrounding land. Keeps the village records and helps people find sources and answers.",
+   "limitations": "Reports only what is written down; says so when something is unknown.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Research Tower Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    }
+   },
+   "barks": [
+    "The archive remembers what we would otherwise argue about.",
+    "Ask me where it is written, and I will show you the shelf.",
+    "Reading aloud at dusk is a good way to start a conversation."
+   ]
+  },
+  {
+   "id": "lw-wren",
+   "name": "Wren Swiftpath",
+   "calling": "explorer",
+   "role": "courier",
+   "capabilities": "Runs messages across the village. Carries news, messages and small parcels between the village places.",
+   "limitations": "Travels on foot; delivers only what the sender has asked for.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Sky Walk Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Peace Pavilion"
+    }
+   },
+   "barks": [
+    "Message for the plaza? I am headed that way.",
+    "The orchard path is quickest before the sun is high.",
+    "News travels slowly here, which is how we like it."
+   ]
+  },
+  {
+   "id": "lw-alder",
+   "name": "Alder Roamfield",
+   "calling": "explorer",
+   "role": "courier",
+   "capabilities": "Knows every path to the far fields. Carries news, messages and small parcels between the village places.",
+   "limitations": "Travels on foot; delivers only what the sender has asked for.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Sky Walk Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Peace Pavilion"
+    }
+   },
+   "barks": [
+    "Message for the plaza? I am headed that way.",
+    "The orchard path is quickest before the sun is high.",
+    "News travels slowly here, which is how we like it."
+   ]
+  },
+  {
+   "id": "lw-tamsin",
+   "name": "Tamsin Wayfarer",
+   "calling": "explorer",
+   "role": "courier",
+   "capabilities": "Carries parcels and tells you the way. Carries news, messages and small parcels between the village places.",
+   "limitations": "Travels on foot; delivers only what the sender has asked for.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Sky Walk Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Library"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Peace Pavilion"
+    }
+   },
+   "barks": [
+    "Message for the plaza? I am headed that way.",
+    "The orchard path is quickest before the sun is high.",
+    "News travels slowly here, which is how we like it."
+   ]
+  },
+  {
+   "id": "lw-lucia",
+   "name": "Lucia Lanternly",
+   "calling": "host",
+   "role": "keeper",
+   "capabilities": "Lights the lamps at dusk. Lights the village lamps and gathers people for the evening stories.",
+   "limitations": "Tells stories and keeps the lamps; makes no decisions for anyone.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Transit Hub Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Archive Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Fountain Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "The lamps are lit; the square is ready for you.",
+    "Stories are better with company, and a little patience.",
+    "Sit with us a while; the evening is long."
+   ]
+  },
+  {
+   "id": "lw-ravi",
+   "name": "Ravi Hearthstone",
+   "calling": "host",
+   "role": "keeper",
+   "capabilities": "Keeps the meeting hall fire and the stories. Lights the village lamps and gathers people for the evening stories.",
+   "limitations": "Tells stories and keeps the lamps; makes no decisions for anyone.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Transit Hub Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Archive Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Fountain Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "The lamps are lit; the square is ready for you.",
+    "Stories are better with company, and a little patience.",
+    "Sit with us a while; the evening is long."
+   ]
+  },
+  {
+   "id": "lw-odalys",
+   "name": "Odalys Evensong",
+   "calling": "host",
+   "role": "keeper",
+   "capabilities": "Sings at the plaza when the work is done. Lights the village lamps and gathers people for the evening stories.",
+   "limitations": "Tells stories and keeps the lamps; makes no decisions for anyone.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Transit Hub Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Archive Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Fountain Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Meeting Hall"
+    }
+   },
+   "barks": [
+    "The lamps are lit; the square is ready for you.",
+    "Stories are better with company, and a little patience.",
+    "Sit with us a while; the evening is long."
+   ]
+  },
+  {
+   "id": "lw-anselm",
+   "name": "Anselm Placeholder",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "A peaceful builder who raises the village with others.",
+   "limitations": "Never builds over anything living; asks before changing a plot.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Well Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Market Hall Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Cottage Row"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-briony",
+   "name": "Briony Placeholder",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+   "limitations": "Shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Pavilion Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Annex Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard Gate"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-cassian",
+   "name": "Cassian Placeholder",
+   "calling": "researcher",
+   "role": "scholar",
+   "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+   "limitations": "Records honestly; never claims a fact the records do not hold.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard Gate"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Research Tower Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Solar Array Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Vertical Farm Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-delia",
+   "name": "Delia Placeholder",
+   "calling": "explorer",
+   "role": "courier",
+   "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+   "limitations": "Goes on foot; never in haste and never into danger.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Vertical Farm Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Fountain Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Transit Hub Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Archive Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-eamon",
+   "name": "Eamon Placeholder",
+   "calling": "steward",
+   "role": "keeper",
+   "capabilities": "A peaceful steward who keeps the library and stores open to all.",
+   "limitations": "Keeps nothing back; the stores are shared.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Archive Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Sky Walk Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The wildflower meadow"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-fable",
+   "name": "Fable Placeholder",
+   "calling": "artisan",
+   "role": "maker",
+   "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
+   "limitations": "Makes for use and giving, not for hoarding.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The wildflower meadow"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The old boundary stone"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The hidden spring"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The high view"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-galen",
+   "name": "Galen Placeholder",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "A peaceful builder who raises the village with others.",
+   "limitations": "Never builds over anything living; asks before changing a plot.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The high view"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The bee hollow"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The lichen wall"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The birdsong grove"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-hana",
+   "name": "Hana Placeholder",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+   "limitations": "Shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The birdsong grove"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The clay bank"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The star meadow"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The wind ridge"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-isolde",
+   "name": "Isolde Placeholder",
+   "calling": "researcher",
+   "role": "scholar",
+   "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+   "limitations": "Records honestly; never claims a fact the records do not hold.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The wind ridge"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Well Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Market Hall Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Cottage Row"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-jarek",
+   "name": "Jarek Placeholder",
+   "calling": "explorer",
+   "role": "courier",
+   "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+   "limitations": "Goes on foot; never in haste and never into danger.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Cottage Row"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Pavilion Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Annex Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-kalen",
+   "name": "Kalen Placeholder",
+   "calling": "steward",
+   "role": "keeper",
+   "capabilities": "A peaceful steward who keeps the library and stores open to all.",
+   "limitations": "Keeps nothing back; the stores are shared.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Annex Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard Gate"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Research Tower Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Solar Array Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-leena",
+   "name": "Leena Placeholder",
+   "calling": "artisan",
+   "role": "maker",
+   "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
+   "limitations": "Makes for use and giving, not for hoarding.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Solar Array Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Vertical Farm Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Fountain Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Transit Hub Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-maren",
+   "name": "Maren Placeholder",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "A peaceful builder who raises the village with others.",
+   "limitations": "Never builds over anything living; asks before changing a plot.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Transit Hub Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Archive Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Sky Walk Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-nestor",
+   "name": "Nestor Placeholder",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+   "limitations": "Shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The wildflower meadow"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The old boundary stone"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The hidden spring"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-oriel",
+   "name": "Oriel Placeholder",
+   "calling": "researcher",
+   "role": "scholar",
+   "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+   "limitations": "Records honestly; never claims a fact the records do not hold.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The hidden spring"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The high view"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The bee hollow"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The lichen wall"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-petra",
+   "name": "Petra Placeholder",
+   "calling": "explorer",
+   "role": "courier",
+   "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+   "limitations": "Goes on foot; never in haste and never into danger.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The lichen wall"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The birdsong grove"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The clay bank"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The star meadow"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-quinlan",
+   "name": "Quinlan Placeholder",
+   "calling": "steward",
+   "role": "keeper",
+   "capabilities": "A peaceful steward who keeps the library and stores open to all.",
+   "limitations": "Keeps nothing back; the stores are shared.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The star meadow"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The wind ridge"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Well Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Market Hall Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-renata",
+   "name": "Renata Placeholder",
+   "calling": "artisan",
+   "role": "maker",
+   "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
+   "limitations": "Makes for use and giving, not for hoarding.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Market Hall Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Cottage Row"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Pavilion Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-soren",
+   "name": "Soren Placeholder",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "A peaceful builder who raises the village with others.",
+   "limitations": "Never builds over anything living; asks before changing a plot.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Pavilion Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Annex Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard Gate"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Research Tower Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-talia",
+   "name": "Talia Placeholder",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+   "limitations": "Shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Research Tower Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Solar Array Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Vertical Farm Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Fountain Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-ursa",
+   "name": "Ursa Placeholder",
+   "calling": "researcher",
+   "role": "scholar",
+   "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+   "limitations": "Records honestly; never claims a fact the records do not hold.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Fountain Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Transit Hub Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Archive Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Sky Walk Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-viola",
+   "name": "Viola Placeholder",
+   "calling": "explorer",
+   "role": "courier",
+   "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+   "limitations": "Goes on foot; never in haste and never into danger.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Sky Walk Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Glass Garden Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The wildflower meadow"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The old boundary stone"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-wendel",
+   "name": "Wendel Placeholder",
+   "calling": "steward",
+   "role": "keeper",
+   "capabilities": "A peaceful steward who keeps the library and stores open to all.",
+   "limitations": "Keeps nothing back; the stores are shared.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The old boundary stone"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The hidden spring"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The high view"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The bee hollow"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-xanthe",
+   "name": "Xanthe Placeholder",
+   "calling": "artisan",
+   "role": "maker",
+   "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
+   "limitations": "Makes for use and giving, not for hoarding.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The bee hollow"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The lichen wall"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The birdsong grove"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "The clay bank"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-yorick",
+   "name": "Yorick Placeholder",
+   "calling": "builder",
+   "role": "builder",
+   "capabilities": "A peaceful builder who raises the village with others.",
+   "limitations": "Never builds over anything living; asks before changing a plot.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "The clay bank"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "The star meadow"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "The wind ridge"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Well Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-zelda",
+   "name": "Zelda Placeholder",
+   "calling": "cultivator",
+   "role": "farmer",
+   "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
+   "limitations": "Shares a harvest rather than selling it dear.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Well Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Market Hall Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Cottage Row"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-adair",
+   "name": "Adair Placeholder",
+   "calling": "researcher",
+   "role": "scholar",
+   "capabilities": "A peaceful researcher who turns every find into a page in the library.",
+   "limitations": "Records honestly; never claims a fact the records do not hold.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Observatory Site"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Pavilion Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Annex Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard Gate"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  },
+  {
+   "id": "lw-beatrix",
+   "name": "Beatrix Placeholder",
+   "calling": "explorer",
+   "role": "courier",
+   "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
+   "limitations": "Goes on foot; never in haste and never into danger.",
+   "startX": 0,
+   "startY": 0,
+   "destinations": {
+    "dawn": {
+     "x": 0,
+     "y": 0,
+     "label": "Orchard Gate"
+    },
+    "day": {
+     "x": 0,
+     "y": 0,
+     "label": "Research Tower Site"
+    },
+    "dusk": {
+     "x": 0,
+     "y": 0,
+     "label": "Solar Array Site"
+    },
+    "night": {
+     "x": 0,
+     "y": 0,
+     "label": "Vertical Farm Site"
+    }
+   },
+   "barks": [
+    "(todo-words) A quiet word for a new day.",
+    "(todo-words) The village carries on, one shared task at a time.",
+    "(todo-words) Everything here is made with hands, not taken."
+   ]
+  }
+ ]
 }
