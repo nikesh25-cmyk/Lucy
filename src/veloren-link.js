@@ -422,12 +422,19 @@ export class VelorenLink {
         break;
       }
     }
-    // Nothing else is asking for her: the village's own rhythm (market hour, story circle...) may.
+    // The village's own rhythm (market hour, story circle...) may suggest where she should be, but a
+    // quest keeps its priority. Extensions also run their side effects (research announces works
+    // unlocks) on every poll, quest or not.
     if (result.mode === 'schedule') {
       for (const extension of this.extensions) {
         if (typeof extension.director !== 'function') continue;
         const hint = extension.director(this, resident_id);
         if (hint) { result = { ...result, ...hint }; break; }
+      }
+    } else {
+      for (const extension of this.extensions) {
+        if (typeof extension.director !== 'function') continue;
+        try { extension.director(this, resident_id); } catch { /* a side effect never breaks a walk */ }
       }
     }
     // Announcements are handed over once: delivery is recorded as they are read.
