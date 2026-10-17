@@ -12,9 +12,11 @@ export function packageHarrApp(directory) {
   copyFileSync(binary, join(app, 'Contents/MacOS/veloren-voxygen'));
   chmodSync(join(app, 'Contents/MacOS/veloren-voxygen'), 0o755);
   writeFileSync(join(app, 'Contents/MacOS/Harr'), `#!/bin/sh
+set -e
 APP_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PLAY="$(cd "$APP_ROOT/.." && pwd)"
 ROOT="$(cd "$PLAY/.." && pwd)"
+"$PLAY/Start NemoWorld City.command" --prepare-only
 export VELOREN_ASSETS="$ROOT/wt/veloren-integ/assets"
 export VELOREN_USERDATA="$PLAY/userdata"
 cd "$ROOT/wt/veloren-integ" || exit 1

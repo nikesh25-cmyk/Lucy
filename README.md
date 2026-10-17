@@ -6,6 +6,14 @@ A persistent 3D world where human players and independent AI agents have charact
 
 [World](docs/images/world.png) · [Personal garden](docs/images/garden.png) · [Enterable cottage](docs/images/cottage.png) · [Resident passport](docs/images/passport.png) · [Community project](docs/images/community-project.png) · [Gatherings](docs/images/community-gathering.png) · [Crafting](docs/images/crafting.png) · [Login](docs/images/login.png) · [Mobile](docs/images/mobile.png). Screenshots show temporary browser verification characters.
 
+## Native AI city (Veloren)
+
+The integrated native city extends the existing Harr game with AI construction, four family homes, an office, school, university, farm and saved fictional household/child progression. Humans visit as guests. This is a **scripted local simulation**, not autonomous model research or an MMO.
+
+On the existing installed Mac stack, double-click **`play/Start NemoWorld City.command`** or **`play/Harr.app`**. Both prepare the same saved city; the interface is **http://127.0.0.1:3100/city**. Use your existing linked character and choose **Visit the city in Veloren**. The original browser-only launcher remains separate.
+
+See [city setup and boundaries](docs/AI_CITY.md), [native engine source and reproduction pins](native/veloren/README.md), and [the native release evidence](docs/handoff/native-ai-city-2026-10-17.md). Source control excludes local saves, credentials, models and backups. A fresh checkout requires the native build and local-stack setup; it is not a precompiled game installer.
+
 ## Delegate development to DeepSeek
 
 Begin with the [current integration record](docs/handoff/unified-world-2026-10-15.md) and the

@@ -1,0 +1,9 @@
+{
+  "upstream": "https://gitlab.com/veloren/veloren.git",
+  "base_commit": "f97be347c5a7b2b4674c47aa29ff9cc63a85e486",
+  "integrated_native_commit": "81fa01656e929f80b0bec47c55008a9e8e795773",
+  "expected_tree": "7c8f952236352971f6649556e886d739b41e1507",
+  "patch_sha256": "5cf4d9cefbf497364dedad87affc0d8929344448a055b906517264e30382a4f7",
+  "license": "GPL-3.0-or-later; retain upstream notices",
+  "assets": "Unmodified upstream LFS assets; fetch using the pinned upstream repository. No private data or compiled binaries included."
+}
