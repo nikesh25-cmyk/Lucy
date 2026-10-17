@@ -19,8 +19,9 @@ import { villageExtension } from './village.js';
 import { npcExtension } from './npc-logic.js';
 import { overviewExtension } from './overview.js';
 import { gratitudeExtension } from './gratitude.js';
+import { healthExtension } from './health.js';
 
-export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension, villageExtension, npcExtension, overviewExtension, gratitudeExtension];
+export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension, villageExtension, npcExtension, overviewExtension, gratitudeExtension, healthExtension];
 
 // Content loaders added by the stories stream: pure readers, not extensions (nothing here handles a request).
 export { loadMissions, missionLines } from './missions.js';

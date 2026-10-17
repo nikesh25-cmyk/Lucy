@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Daily log rotation and secrets hygiene (ops/hygiene.sh: fix permissions, rotate logs over the size limit, check for tokens
+     in logs and git). Runs at 04:50, after the backup. launchd itself never rotates the files named in StandardOutPath, so this
+     agent rotates those too (they are play/logs/launchd-*.log). Settings: HARR_LOG_MAX_MB and HARR_LOG_KEEP below. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harr.hygiene</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__OPS_DIR__/launchd/harr-hygiene.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HARR_ROOT</key><string>__ROOT__</string>
+    <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HARR_LOG_MAX_MB</key><string>20</string>
+    <key>HARR_LOG_KEEP</key><string>5</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>4</integer>
+    <key>Minute</key><integer>50</integer>
+  </dict>
+  <key>RunAtLoad</key><false/>
+  <key>Nice</key><integer>10</integer>
+  <key>LowPriorityIO</key><true/>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardOutPath</key><string>__ROOT__/play/logs/launchd-hygiene.out.log</string>
+  <key>StandardErrorPath</key><string>__ROOT__/play/logs/launchd-hygiene.err.log</string>
+</dict>
+</plist>

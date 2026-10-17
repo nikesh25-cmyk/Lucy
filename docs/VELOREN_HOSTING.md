@@ -25,3 +25,5 @@ Today Harr runs only on the owner's Mac, on `127.0.0.1`. This is what must chang
 * Whether residents may keep joining without accounts on a private listener, or get accounts.
 * Whether to use the DeepSeek API for residents (cost, privacy notice, key kept in a file, never in chat).
 * A backup destination outside the machine.
+
+Operating the world day to day (start, stop, backup, resource budget, failures, upgrades): see [HARR_OPERATIONS.md](HARR_OPERATIONS.md).
