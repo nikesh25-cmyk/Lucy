@@ -5,7 +5,7 @@ import {EXTENSIONS} from '../src/veloren-ext/index.js';
 import * as hud from '../src/veloren-ext/view.js';
 import {gatherFacts, goalStatus, insightOf, loadCharter, loadResearch, loadRoles, researchStatus, validateResearch} from '../src/veloren-ext/research.js';
 import {tasksFor, tasksLines} from '../src/veloren-ext/tasks.js';
-import {factsFor, replyFor} from '../src/veloren-ext/npc-logic.js';
+import {factsFor, replyFor, workOrder} from '../src/veloren-ext/npc-logic.js';
 import {buildOverview} from '../src/veloren-ext/overview.js';
 import {VILLAGERS} from '../src/veloren-ext/villagers.js';
 import {loadDiscoveries} from '../src/veloren-ext/world-life.js';
@@ -126,6 +126,18 @@ test('a helping hand: a work site is required, replays are duplicates, and the f
   const chronicle = chronicleLines(s.link, undefined, T0).join('\n');
   assert.match(chronicle, /stood with a building crew/);
   assert.equal(buildOverview(s.link, T0).research.sources.helped, 2);
+});
+
+test('builders and makers are sent to the active work site; other roles are not', (t) => {
+  const s = setup(t);
+  const by = (role) => VILLAGERS.find((v) => v.role === role);
+  for (const role of ['builder', 'maker']) {
+    const order = workOrder(s.link, by(role).id);
+    assert.equal(order.mode, 'work');
+    assert.match(order.target_landmark_id, /^site-/);
+  }
+  for (const role of ['farmer', 'scholar', 'courier', 'keeper']) assert.equal(workOrder(s.link, by(role).id), null);
+  assert.equal(workOrder(s.link, 'lw-nobody'), null);
 });
 
 test('villagers answer about their work from live facts and the purpose from the charter', (t) => {

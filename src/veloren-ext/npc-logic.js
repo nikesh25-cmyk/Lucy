@@ -60,10 +60,22 @@ export function replyFor(link, resident, lower) {
   return null;
 }
 
+/** Where a builder or maker should be while a public work is going up: the site its next stage stands on.
+ *  Scripted and small — the site id comes from the same works board the dashboard shows. */
+export function workOrder(link, resident_id) {
+  const resident = VILLAGERS.find((r) => r.id === resident_id);
+  if (!resident || (resident.role !== 'builder' && resident.role !== 'maker')) return null;
+  const status = worksStatus(loadWorks(), loadRecord(process.env.NEMO_WORLD_RECORD), link.clock());
+  const active = status.find((p) => !p.complete && p.next?.site) || status.find((p) => !p.complete);
+  const site = active?.next?.site;
+  return site ? { mode: 'work', target_landmark_id: site } : null;
+}
+
 export const npcExtension = {
   name: 'npc',
   reply: (link, resident, lower) => replyFor(link, resident, lower),
   facts: (link, resident) => factsFor(link, resident),
+  director: (link, resident_id) => workOrder(link, resident_id),
   async handle() { return false; },
 };
 
