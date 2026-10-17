@@ -18,5 +18,6 @@ import { pantryExtension } from './pantry.js';
 import { villageExtension } from './village.js';
 import { npcExtension } from './npc-logic.js';
 import { overviewExtension } from './overview.js';
+import { healthExtension } from './health.js';
 
-export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension, villageExtension, npcExtension, overviewExtension];
+export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension, villageExtension, npcExtension, overviewExtension, healthExtension];
