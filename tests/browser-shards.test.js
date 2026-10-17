@@ -12,3 +12,8 @@ test('CI browser shards retain every scenario, order and real signup in every fr
 test('CI shard selection refuses invalid or missing indices',()=>{
  for(const input of ['',undefined,'0/4','5/4','1/0','one','1/2/3'])assert.throws(()=>browserShard(input));
 });
+test('plot-dependent UI scenarios share the world where stewardship was earned',()=>{
+ const groups=[1,2,3,4].map(n=>browserShard(`${n}/4`));
+ const cluster=['plot-and-blueprints','character-switch-clears-preview','hud-visible-while-building','signout-privacy'];
+ assert.ok(groups.some(g=>cluster.every(id=>g.includes(id))),'plot assignment and dependent previews/privacy must stay in one saved world');
+});
