@@ -4711,9 +4711,12 @@ define('shared-build-and-restart', async () => {
     runtime = await apiExpect(fixtures().owner, 'POST', '/runtime/start', { agent_id:ai.id, minutes:10,max_calls:20,scopes:['read','build'] });
     await openApp(owner.page,ACTORS.owner); await openWorldAs(owner.page,host.id);
     await openApp(admin.page,ACTORS.admin); await openWorldAs(admin.page,guest.id);
-    for (const page of [owner.page,admin.page]) await waitForClient(page, w => {
-      const view=window.__nemoworld?.world?.();return view?.world?.id===w&&view.participants.some(p=>p.kind==='human')&&view.participants.some(p=>p.kind==='agent')?true:null;
-    },world,'both browsers to see the shared humans and AI');
+    // The host loaded before the guest selected its avatar. Refresh its real world view
+    // before using the nearby directory; a kind-only check could count just the host and AI.
+    await openWorldAs(owner.page,host.id);
+    for (const page of [owner.page,admin.page]) await waitForClient(page, expected => {
+      const view=window.__nemoworld?.world?.();return view?.world?.id===expected.world&&expected.ids.every(id=>view.participants.some(p=>p.id===id))?true:null;
+    },{world,ids:[host.id,guest.id,ai.id]},'both browsers to see each specific shared human and AI');
     return 'two human browser sessions and one AI resident in frontier:0:0; three fixture herbs';
   });
   await step('the host previews without writing, keeps the form, and confirms narrow guest access',async()=>{
