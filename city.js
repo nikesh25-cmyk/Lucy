@@ -60,7 +60,7 @@ async function loadCity() {
     $('lifecycle').textContent = city.lifecycle.status;
     $('families').replaceChildren(...(city.simulation?.households || []).map(home => {
       const members = city.simulation.citizens.filter(c => c.household_id === home.id);
-      const adults = members.filter(c => c.stage === 'adult').map(c => c.name).join(' & ');
+      const adults = [home.adult_a, home.adult_b].map(id => members.find(c => c.id === id)?.name).filter(Boolean).join(' & ');
       const established = city.simulation.marriages.some(m => m.household_id === home.id);
       return card(adults || 'City household', members.map(c => `${c.name} · ${c.stage}`).join(' / '), established ? 'Household established through recorded native visits.' : 'Preapproved fictional household; waiting for both residents to visit.');
     }));

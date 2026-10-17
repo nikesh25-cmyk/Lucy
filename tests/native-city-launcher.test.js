@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,existsSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {join,resolve,dirname,basename} from 'node:path';
 import {spawn,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 const exec=promisify(execFile),delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -18,4 +18,25 @@ test('local stop refuses a stale pid file that points at an unrelated process',a
  const root=setup(t),child=spawn('sleep',['30'],{stdio:'ignore'});t.after(()=>{try{child.kill();}catch{}});writeFileSync(join(root,'play/pids/veloren'),String(child.pid));
  await assert.rejects(exec('bash',[resolve('ops/play-local.sh'),'stop'],{env:{...process.env,HARR_ROOT:root},timeout:15000}));
  assert.doesNotThrow(()=>process.kill(child.pid,0));assert.ok(existsSync(join(root,'play/pids/veloren')));
+});
+test('local stop recognizes its relative-script relay using its exact outbox and destination',async t=>{
+ const root=setup(t),cwd=join(root,'play/nemoworld');mkdirSync(join(cwd,'scripts'));
+ writeFileSync(join(cwd,'scripts/veloren-relay.mjs'),'setInterval(()=>{},1000);');
+ const child=spawn(process.execPath,['scripts/veloren-relay.mjs','--outbox',join(root,'play/data/veloren-outbox.jsonl'),'--url','http://127.0.0.1:3100','--resident','lw-aria'],{cwd,stdio:'ignore'});
+ t.after(()=>{try{child.kill();}catch{}});await delay(200);writeFileSync(join(root,'play/pids/relay-lw-aria'),String(child.pid));
+ await exec('bash',[resolve('ops/play-local.sh'),'stop'],{env:{...process.env,HARR_ROOT:root,NEMO_NODE:process.execPath},timeout:15000});
+ assert.equal(existsSync(join(root,'play/pids/relay-lw-aria')),false);
+});
+test('local stop recognizes the relative Node wrapper only in this stack root',async t=>{
+ const root=setup(t);mkdirSync(join(root,'dev'));writeFileSync(join(root,'dev/start-nemo.mjs'),'setInterval(()=>{},1000);');
+ const nodeWithParent=`${dirname(process.execPath)}/../${basename(dirname(process.execPath))}/${basename(process.execPath)}`;
+ const child=spawn(process.execPath,['dev/start-nemo.mjs'],{cwd:root,stdio:'ignore'});
+ t.after(()=>{try{child.kill();}catch{}});await delay(200);writeFileSync(join(root,'play/pids/nemo'),String(child.pid));
+ await exec('bash',[resolve('ops/play-local.sh'),'stop'],{env:{...process.env,HARR_ROOT:root,NEMO_NODE:nodeWithParent},timeout:15000});
+ assert.equal(existsSync(join(root,'play/pids/nemo')),false);
+ const foreign=join(root,'another-stack');mkdirSync(join(foreign,'dev'),{recursive:true});writeFileSync(join(foreign,'dev/start-nemo.mjs'),'setInterval(()=>{},1000);');
+ const other=spawn(process.execPath,['dev/start-nemo.mjs'],{cwd:foreign,stdio:'ignore'});t.after(()=>{try{other.kill();}catch{}});await delay(200);
+ writeFileSync(join(root,'play/pids/nemo'),String(other.pid));
+ await assert.rejects(exec('bash',[resolve('ops/play-local.sh'),'stop'],{env:{...process.env,HARR_ROOT:root,NEMO_NODE:process.execPath},timeout:15000}));
+ assert.doesNotThrow(()=>process.kill(other.pid,0),'the identical command in another stack must remain alive');
 });

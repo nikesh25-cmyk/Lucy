@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Real native server acceptance in an isolated world. No live database/config/credentials are used.
 import { spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, openSync, existsSync, realpathSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, openSync, existsSync, realpathSync, statSync } from 'node:fs';
+import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -53,17 +54,38 @@ const children=[];
 function run(name,exe,args,env={}) { const child=spawn(exe,args,{cwd:engine,stdio:['ignore',openSync(join(dir,'logs',name+'.log'),'a'),openSync(join(dir,'logs',name+'.log'),'a')],env:{...process.env,...env}});children.push(child);return child; }
 const startServer=()=>run('server',join(binaries,'veloren-server-cli'),['--non-interactive','--no-auth'],{VELOREN_USERDATA:join(dir,'userdata'),NEMO_LINK_CONFIG:join(dir,'link.json'),NEMO_LINK_EVENT_KEY:key.toString('hex'),RUST_LOG:'warn,veloren_server::sys::nemo_city=info'});
 const balances=()=>({coins:platform.get('SELECT COUNT(*) n FROM coin_rewards').n,karma:platform.get('SELECT COUNT(*) n FROM karma_receipts').n,accounts:platform.get('SELECT COUNT(*) n FROM accounts').n});
+const listening=()=>new Promise(resolve=>{const socket=createConnection({host:'127.0.0.1',port:gamePort});let done=false;const finish=value=>{if(done)return;done=true;socket.destroy();resolve(value);};socket.setTimeout(1000);socket.once('connect',()=>finish(true));socket.once('error',()=>finish(false));socket.once('timeout',()=>finish(false));});
 const beforeBalances=balances();
 let native;
 try {
-  native=startServer();
+  const startedAt=Date.now(); native=startServer();
   log(`EVIDENCE ${dir}`);
   const relay=link.issueCredential({resident_id:'lw-lyra',scopes:['events'],days:1});
   run('relay',process.execPath,[join(source,'scripts/veloren-relay.mjs'),'--outbox',outbox,'--url',url,'--resident','lw-lyra'],{NEMO_LINK_TOKEN:relay.token});
   const deadline=Date.now()+180_000;
-  while(!existsSync(outbox+'.landmarks.json')) { if(interrupted)throw Error('Probe interrupted'); if(native.exitCode!==null)throw Error('Native server exited; inspect evidence logs');if(Date.now()>deadline)throw Error('Native startup timed out');await delay(1000); }
+  while(!existsSync(outbox+'.landmarks.json') || statSync(outbox+'.landmarks.json').mtimeMs<startedAt || !await listening()) { if(interrupted)throw Error('Probe interrupted'); if(native.exitCode!==null)throw Error('Native server exited; inspect evidence logs');if(Date.now()>deadline)throw Error('Native startup timed out');await delay(1000); }
   const credential=link.issueCredential({resident_id:'lw-theron',scopes:['talk','director'],days:1});
   run('bridge',join(binaries,'nemo-bridge'),['--server',`127.0.0.1:${gamePort}`,'--resident','lw-theron','--roster',join(engine,'nemo-bridge/roster.json'),'--landmarks',outbox+'.landmarks.json','--nemo-url',url],{NEMO_LINK_TOKEN:credential.token,RUST_LOG:'warn,nemo_bridge=info'});
+  // A stand-in human client verifies the native travel half; guest-session ownership is
+  // separately exercised by the HTTP/browser tests. This probe creates no web account.
+  const guestName='NativeCityGuest';
+  const arrival=json(outbox+'.landmarks.json').landmarks.find(l=>l.id==='city-arrival');
+  assert.ok(arrival,'native city arrival landmark resolves');
+  const guestLog=join(dir,'logs/guest.log'),guestOffset=existsSync(guestLog)?statSync(guestLog).size:0;
+  run('guest',join(binaries,'nemo-bridge'),['--server',`127.0.0.1:${gamePort}`,'--probe',guestName,'--goto',`${arrival.x},${arrival.y}`],{RUST_LOG:'warn,nemo_bridge=info'});
+  let ready=false;
+  for(let i=0;i<60;i++) { await delay(1000);if(interrupted)throw Error('Probe interrupted');if(readFileSync(guestLog).subarray(guestOffset).toString().includes('PROBE going to')){ready=true;break;} }
+  assert.ok(ready,'stand-in human enters the real native world');
+  let guestUuid=144066263297769815596495629667062367629n;
+  for(const byte of Buffer.from(guestName))guestUuid=((guestUuid^BigInt(byte))*309485009821345068724781371n)%(1n<<128n);
+  const hex=guestUuid.toString(16).padStart(32,'0'),playerUuid=`${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+  const travel=[];
+  for(const [kind,target] of [['city_visit','city-arrival'],['city_return','lyra-plaza']]) {
+    const command=link.issueCommand({kind,player_uuid:playerUuid,args:{target},ttl_ms:60_000,issuedBy:'disposable-native-city-travel'});
+    let status='pending';for(let i=0;i<30 && status==='pending';i++){await delay(2000);if(interrupted)throw Error('Probe interrupted');status=link.commandStatus(command.cmd_id).status;}
+    assert.equal(status,'applied',`${kind} confirms the real human's observed destination`);travel.push({kind,cmd_id:command.cmd_id,status});
+  }
+  log('PASS native human city visit and return with observed arrival acknowledgements');
   let last='';
   const until=Date.now()+Number(process.env.NEMO_CITY_TEST_TIMEOUT_MS||2_700_000);
   while(Date.now()<until) {
@@ -80,19 +102,27 @@ try {
       assert.deepEqual(balances(),beforeBalances,'city life grants no currency or accounts');
       assert.ok(Object.keys(actors).length>=8);assert.ok(built.includes('city-home-1-complete')||built.includes('city-home-2-complete')||built.includes('city-home-3-complete')||built.includes('city-home-4-complete'));
       const before=view.citizens.map(c=>c.id).sort();
+      const grown=view.citizens.filter(c=>c.stage==='adult'&&view.births.some(b=>b.citizen_id===c.id)).map(c=>c.id);
+      const geometry=Object.fromEntries(built.map(id=>[id,{digest:record.groups[id].digest,ground:record.groups[id].ground,anchor:record.groups[id].anchor}]));
       native.kill('SIGUSR1');await new Promise(r=>native.once('exit',r));
       const restartedAt=Date.now(); native=startServer();
-      let rebound=false;
-      for(let attempt=0;attempt<30;attempt++) {
+      let rebound=false,resumedWork=false;
+      for(let attempt=0;attempt<60;attempt++) {
         await delay(5000);
         let restored={};try{restored=json(outbox+'.city.json');}catch{}
-        if(before.every(id=>restored[id]?.observed_at>restartedAt)) { rebound=true;break; }
+        rebound=before.every(id=>restored[id]?.observed_at>restartedAt);
+        const completed=new Set(link.sql.all("SELECT DISTINCT j.citizen_id FROM city_jobs j JOIN link_events e ON e.landmark_id=j.cmd_id WHERE j.state='completed' AND e.kind='command.applied' AND e.occurred_at>?",restartedAt).map(j=>j.citizen_id));
+        resumedWork=grown.every(id=>completed.has(id));
+        if(rebound&&resumedWork)break;
       }
       assert.ok(rebound,'every prior citizen has a fresh observed native NPC position after restart');
+      assert.ok(resumedWork,'every grown child completes another real job after restart, rather than remaining stranded');
+      const restoredRecord=json(worldRecord);
+      assert.deepEqual(Object.fromEntries(built.map(id=>[id,{digest:restoredRecord.groups[id].digest,ground:restoredRecord.groups[id].ground,anchor:restoredRecord.groups[id].anchor}])),geometry,'restart preserves city geometry and base heights');
       const after=link.nativeCity.overview().citizens.map(c=>c.id);
       assert.ok(before.every(id=>after.includes(id)),'restart preserves all prior citizens while allowing legitimate new births');
       log('PASS real native construction/work/family/birth/school/apprenticeship/adult-work and restart');
-      writeFileSync(join(dir,'result.json'),JSON.stringify({passed:true,at:new Date().toISOString(),citizens:before,built}));
+      writeFileSync(join(dir,'result.json'),JSON.stringify({passed:true,at:new Date().toISOString(),citizens:before,built,travel}));
       process.exitCode=0;break;
     }
   }

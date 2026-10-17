@@ -20,6 +20,7 @@ SRC_V="$ROOT/wt/veloren-integ"          # merged Veloren tree (assets, roster, c
 SRC_N="$ROOT/wt/nemoworld-integ"        # merged NemoWorld tree (branch integration/all)
 BUILD="$ROOT/wt/target/integ/release"   # merged builds
 NODE="${NEMO_NODE:-$ROOT/../Lucy/.runtime/node-v24.19.0-darwin-arm64/node}"
+NODE="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$NODE")"
 NEMO_PORT=3100; VEL=14004; VEL_WEB=14005; VEL_Q=14006
 NEMO="http://127.0.0.1:$NEMO_PORT"
 # Laptop default: eight core residents plus twelve villagers. VILLAGE=all loads the full roster.
@@ -41,16 +42,24 @@ mkdir -p "$P"/{bin,data,logs,pids,secrets,userdata,nemoworld}; chmod 700 "$P/sec
 export PATH="$HOME/.cargo/bin:$PATH"
 alive() { [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
 stop_pid() {
-  local file="$1" pid command name signal=TERM seconds=20 owned=0
+  local file="$1" pid command name wrapper_cwd signal=TERM seconds=20 owned=0
   [ -f "$file" ] || return 0
   pid="$(cat "$file")"; case "$pid" in ''|*[!0-9]*) echo "Invalid pid file: $file" >&2; return 1;; esac
   kill -0 "$pid" 2>/dev/null || { rm -f "$file"; return 0; }
   command="$(ps -p "$pid" -o command= 2>/dev/null)"; name="$(basename "$file")"
   case "$name" in
     veloren) case "$command" in *"$P/bin/veloren-server-cli"*) owned=1; signal=USR1; seconds=150;; esac;;
-    nemo) case "$command" in *"$ROOT/dev/start-nemo.mjs"*) owned=1;; esac;;
+    nemo) case "$command" in
+      *"$ROOT/dev/start-nemo.mjs"*) owned=1;;
+      "$NODE dev/start-nemo.mjs")
+        wrapper_cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+        [ "$wrapper_cwd" = "$(cd "$ROOT" && pwd -P)" ] && owned=1;;
+    esac;;
     res-*) case "$command" in *"$P/bin/nemo-bridge"*"--resident ${name#res-}"*"--nemo-url $NEMO"*) owned=1;; esac;;
-    relay-*) case "$command" in *"$P/nemoworld/scripts/veloren-relay.mjs"*"--url $NEMO"*"--resident ${name#relay-}"*) owned=1;; esac;;
+    relay-*) case "$command" in
+      *"$P/nemoworld/scripts/veloren-relay.mjs"*"--url $NEMO"*"--resident ${name#relay-}"*) owned=1;;
+      *"$NODE scripts/veloren-relay.mjs --outbox $P/data/veloren-outbox.jsonl"*"--url $NEMO"*"--resident ${name#relay-}"*) owned=1;;
+    esac;;
   esac
   [ "$owned" = 1 ] || { echo "Refusing a pid that does not match this stack: $name ($pid)" >&2; return 1; }
   kill -s "$signal" "$pid" 2>/dev/null || return 1

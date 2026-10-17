@@ -10,6 +10,17 @@ Open `/city` on the Harr web service (local installation: `http://127.0.0.1:3100
 2. Sign into your existing NemoWorld account. If needed, use the existing `/veloren-link` flow to associate your current human game character once.
 3. In **My home**, choose a supported available Commons plot and a roof style. **Ask Rowan to build my home** explicitly requests the free plot and cottage.
 4. The page distinguishes a saved request from confirmed construction. A native `command.applied` acknowledgement establishes that the cottage stands. Use the confirmed home's enter/leave buttons or whisper Rowan in game.
+5. Keep the linked human character connected in Veloren, then choose **Visit the city in Veloren**. The page waits for the game server to confirm arrival. **Return to Harr** uses the same checked travel flow. `/tell Selene city` opens the public city guide in game.
+
+## Native city life
+
+With `NEMO_CITY_ENABLED=1`, eight peaceful native NPCs start a new district north of Harr. Two builders construct four family homes, an office, a school, a university and an urban farm. Each building has native-recorded foundation, shell and opening stages. The crew must physically reach its site; human guests do not satisfy its crew requirement. Streets follow measured terrain, and saved grades and building bases survive restart.
+
+Residents go inside completed buildings for work and study. Office reports cite saved public city records and are labelled scripted simulation reports. Farm visits save virtual harvests separately from currencies and the legacy pantry. These outputs are not real research, agricultural goods or independently reviewed contributions.
+
+Four fictional households are preapproved for this simulation. Marriage requires recorded visits by both adults. Each household may admit one child only after its home is completed. Children become students after ten accumulated simulation minutes; three assessed school visits permit apprenticeship, then three university assessments and a saved office report permit an adult career. The exercises are deterministic game tasks. Downtime grants no ageing. Population is capped at16; no birth starts a model process, account or credential, and family relationships grant no authority or money.
+
+The directory refreshes visible saved city progress every15seconds and suspends polling in a hidden tab. It distinguishes configured residents from actual connected players and native simulation citizens. Family cards describe recorded events, rather than filling in fictional past history.
 
 Rowan currently uses a scripted cottage blueprint with eight roof styles. The service does not run a model or charge compute. An existing matching claim can be reused; it is not an existing built home merely because the account owns land. New cottages are made private through the existing platform visiting settings. Already requested/confirmed homes keep the owner's chosen visiting settings.
 
@@ -45,6 +56,8 @@ All routes use the existing `/api/v1` prefix and origin checks.
 | `GET /veloren/city/home` | Current human session | That account's own supported choices, claim/construction status, metrics and recovery instructions |
 | `POST /veloren/city/home/request` | Current human session | `{plot_id, style}`; validate, reuse/assign a free plot and ask the existing keeper to build |
 | `POST /veloren/city/home/action` | Current human session | `{action: "enter"}` or `{action: "leave"}`; target derived only from the current linked account |
+| `POST /veloren/city/visit` | Current human session | `{destination: "city"}` or `{destination: "harr"}`; only fixed public destinations for that account's linked human |
+| `GET /veloren/city/travel?cmd_id=…` | Same human session | Status of that human's own guest-travel command; an accepted request is not arrival |
 
 AI runtime and bridge credentials cannot use these guest-session home routes. The existing native keeper's scoped route remains the AI courier path for construction; it cannot claim land or change account visiting settings. Its build path now checks pause, supported native layout, saved occupancy and configured ground estimates too.
 
@@ -54,6 +67,10 @@ Real Chrome exercises the guest page with temporary accounts/databases, keyboard
 
 No main database migration, new reward ledger, new resident credential or external asset is introduced. The city illustration is authored CSS and clearly labelled a vision illustration.
 
-## Remaining city work
+The additional `city_actor` command uses the reserved city-service principal and exact bounded arguments. No browser may supply raw positions, an arbitrary human UUID, items or authority. Native actors walk and use checked one-block steps; construction credit and arrival come from observed native entities. City history uses the additive link extension `city_life` version1, with no main-schema change.
 
-The design is in `superpowers/specs/2026-10-17-ai-city-design.md`. Freeform AI-authored native homes, office execution of useful artifacts, a connected modern streetscape and persistent resident households/schooling/age/marriage/children remain subsequent releases. The current roster and buildings do not establish those features. Native pantry restocking is still scripted. The legacy browser game's human work flows remain for compatibility; this release adds the guest city flow rather than claiming a completed global role migration.
+`node scripts/native-city-smoke.mjs` runs a separate real native server, a bridge, temporary databases and original city NPCs. It requires all city geometry, saved office/farm activity, a child's assessed career progression, unchanged currency/account counts and fresh observed NPC positions after a real restart. It does not drive the GUI. Failure artifacts are retained, and a failed probe must not be reported as a pass.
+
+## Remaining boundaries
+
+The design is in `superpowers/specs/2026-10-17-ai-city-design.md`. Freeform AI-authored private homes, useful model-produced office artifacts, richer curricula and unrestricted multi-generation families remain future work. The new district uses authored buildings and scripted residents; it is a local city simulation rather than an MMO or autonomous civilization. Native pantry restocking remains scripted. The legacy browser game's human work flows remain for compatibility; city work is AI-controlled, while a complete global role migration is not claimed. Native GUI visual verification is separate from server acceptance and must be recorded honestly when the Mac is locked.
