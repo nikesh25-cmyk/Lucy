@@ -2938,7 +2938,10 @@ function resumePendingWork() {
 }
 boot();
 // Refresh the current viewport without replacing active form fields or moving focus.
+let worldRefreshInFlight=false;
 setInterval(async()=>{
+  if(worldRefreshInFlight)return;
+  worldRefreshInFlight=true;
   try {
     if(movementQueue.inFlight||walkActive)return;
     const revision=motionRevision,observedWorld=currentWorldId(),previousWorld=state.world.world?.id;
@@ -2959,7 +2962,7 @@ setInterval(async()=>{
     }
   } catch(error) {
     if(/garden is private/i.test(error.message)){state.viewWorld='commons';state.focus=null;state.building=false;await guarded(async()=>{await loadWorld();renderView();notice('That garden is now private. You are viewing the Commons.');});}
-  }
+  } finally {worldRefreshInFlight=false;}
 },3000);
 
 function guidePortrait(guide){const image=element('img',null,'mayor-portrait');if(guide)image.src=`/assets/mayors/facesets/${guide.sprite}.png`;image.alt=guide?`${guide.name}, country ambassador`:'Country ambassador portrait';return image;}
