@@ -18,6 +18,27 @@ export function planWalk(definition,start,target,{objects=[],blocks=[],maxSteps=
  return null;
 }
 
+/** Steps of a journey walked before the route is planned again from where the resident now stands. */
+export const JOURNEY_LEG_STEPS = 64;
+/** The longest journey on the global map, in steps: a corner of the map to the opposite one with room to spare. */
+export const JOURNEY_MAX_STEPS = 900;
+
+/**
+ * A route that may cross many worlds of the global map. `planWalk` is limited to one viewport's worth of
+ * route (192 steps, 8,192 tiles searched); a journey searches the whole stitched map and returns the whole
+ * route, which the caller walks in legs of `JOURNEY_LEG_STEPS`, planning again between legs so a route that
+ * crossed a stretch known only from terrain is corrected by what the next window shows.
+ * Returns `{route, legs}` (legs are consecutive slices of the route), or null when there is no known route.
+ */
+export function planJourney(definition,start,target,{objects=[],blocks=[],legSteps=JOURNEY_LEG_STEPS,maxSteps=JOURNEY_MAX_STEPS}={}){
+ if(!Number.isInteger(legSteps)||legSteps<1)return null;
+ const maxVisited=Math.max(8192,(definition?.columns||0)*(definition?.rows||0)+1);
+ const route=planWalk(definition,start,target,{objects,blocks,maxSteps,maxVisited});
+ if(!route)return null;
+ const legs=[];for(let index=0;index<route.length;index+=legSteps)legs.push(route.slice(index,index+legSteps));
+ return {route,legs};
+}
+
 /**
  * The tiles a walking resident can leave: every column whose resident has a legal route back to the
  * world's shared arrival, following one-layer step-up and descent through authored columns. Edges are

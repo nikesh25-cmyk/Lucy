@@ -1,0 +1,7571 @@
+{
+  "format": "veloren-world-v1",
+  "site": "Harr",
+  "area": {
+    "radius": 400
+  },
+  "groups": [
+    {
+      "id": "city-approach-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 54
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Protected walking approach; keep centre x=-1..1 clear. Terrain joins require native survey.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            -2,
+            1
+          ],
+          "to": [
+            0,
+            -1,
+            4
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            -2,
+            0
+          ],
+          "to": [
+            0,
+            -1,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            0,
+            1
+          ],
+          "to": [
+            1,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            0
+          ],
+          "to": [
+            1,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            17,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-approach-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 72
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Protected walking approach; keep centre x=-1..1 clear. Terrain joins require native survey.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            0,
+            1
+          ],
+          "to": [
+            1,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            0
+          ],
+          "to": [
+            1,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            17,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-approach-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 90
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Protected walking approach; keep centre x=-1..1 clear. Terrain joins require native survey.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            0,
+            1
+          ],
+          "to": [
+            1,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            0
+          ],
+          "to": [
+            1,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            17,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-approach-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 108
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Protected walking approach; keep centre x=-1..1 clear. Terrain joins require native survey.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            0,
+            1
+          ],
+          "to": [
+            1,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            0
+          ],
+          "to": [
+            1,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            17,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-approach-5",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 126
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Protected walking approach; keep centre x=-1..1 clear. Terrain joins require native survey.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            0,
+            1
+          ],
+          "to": [
+            1,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            0
+          ],
+          "to": [
+            1,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            17,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-approach-6",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 144
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Protected walking approach; keep centre x=-1..1 clear. Terrain joins require native survey.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            0,
+            1
+          ],
+          "to": [
+            1,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            0
+          ],
+          "to": [
+            1,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            17,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-approach-7",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 162
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Protected walking approach; keep centre x=-1..1 clear. Terrain joins require native survey.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            0,
+            1
+          ],
+          "to": [
+            1,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            0
+          ],
+          "to": [
+            1,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            17,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-approach-8",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 180
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Protected walking approach; keep centre x=-1..1 clear. Terrain joins require native survey.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            0,
+            1
+          ],
+          "to": [
+            1,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            0
+          ],
+          "to": [
+            1,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            17,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-approach-9",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 198
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Protected walking approach; keep centre x=-1..1 clear. Terrain joins require native survey.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            0,
+            1
+          ],
+          "to": [
+            1,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            0
+          ],
+          "to": [
+            1,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            17,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-avenue-0-0",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -68,
+        "dy": 216
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public avenue with two clear sidewalks.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            31,
+            0,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            4,
+            1
+          ],
+          "to": [
+            31,
+            4,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            8,
+            1
+          ],
+          "to": [
+            31,
+            8,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            4
+          ],
+          "to": [
+            31,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            31,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            2,
+            0
+          ],
+          "to": [
+            31,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            56,
+            68,
+            78
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-avenue-0-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -36,
+        "dy": 216
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public avenue with two clear sidewalks.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            31,
+            0,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            4,
+            1
+          ],
+          "to": [
+            31,
+            4,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            8,
+            1
+          ],
+          "to": [
+            31,
+            8,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            4
+          ],
+          "to": [
+            31,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            31,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            2,
+            0
+          ],
+          "to": [
+            31,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            56,
+            68,
+            78
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-avenue-0-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -4,
+        "dy": 216
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public avenue with two clear sidewalks.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            4,
+            1
+          ],
+          "to": [
+            0,
+            4,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            8,
+            1
+          ],
+          "to": [
+            0,
+            8,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            2,
+            0
+          ],
+          "to": [
+            0,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            56,
+            68,
+            78
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-avenue-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -3,
+        "dy": 174
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public avenue with two clear sidewalks.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            41,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            41,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            41,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            3,
+            0
+          ],
+          "to": [
+            3,
+            41
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            41,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            0,
+            0
+          ],
+          "to": [
+            4,
+            41,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            56,
+            68,
+            78
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-avenue-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -3,
+        "dy": 225
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public avenue with two clear sidewalks.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            41,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            41,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            41,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            3,
+            0
+          ],
+          "to": [
+            3,
+            41
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            41,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            0,
+            0
+          ],
+          "to": [
+            4,
+            41,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            56,
+            68,
+            78
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-avenue-3-0",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 0,
+        "dy": 216
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public avenue with two clear sidewalks.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            31,
+            0,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            4,
+            1
+          ],
+          "to": [
+            31,
+            4,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            8,
+            1
+          ],
+          "to": [
+            31,
+            8,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            4
+          ],
+          "to": [
+            31,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            31,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            2,
+            0
+          ],
+          "to": [
+            31,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            56,
+            68,
+            78
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-avenue-3-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 32,
+        "dy": 216
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public avenue with two clear sidewalks.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            31,
+            0,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            4,
+            1
+          ],
+          "to": [
+            31,
+            4,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            8,
+            1
+          ],
+          "to": [
+            31,
+            8,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            4
+          ],
+          "to": [
+            31,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            31,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            2,
+            0
+          ],
+          "to": [
+            31,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            56,
+            68,
+            78
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-avenue-3-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 64,
+        "dy": 216
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public avenue with two clear sidewalks.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            4,
+            0,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            4,
+            1
+          ],
+          "to": [
+            4,
+            4,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            8,
+            1
+          ],
+          "to": [
+            4,
+            8,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            2,
+            0
+          ],
+          "to": [
+            2,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            4,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            2,
+            0
+          ],
+          "to": [
+            4,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            56,
+            68,
+            78
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-crossing",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -3,
+        "dy": 216
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Clear central crossing joining both streets.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            2,
+            0,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            4,
+            1
+          ],
+          "to": [
+            2,
+            4,
+            3
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            0,
+            8,
+            1
+          ],
+          "to": [
+            2,
+            8,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            1,
+            0
+          ],
+          "to": [
+            1,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            2,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-office-path",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -62,
+        "dy": 177
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public approach before construction; native city surface projection follows checked terrain columns. Building remains flat.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            7,
+            19,
+            1
+          ],
+          "to": [
+            9,
+            38,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            19,
+            0
+          ],
+          "to": [
+            9,
+            38,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-office-foundation",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -62,
+        "dy": 177
+      },
+      "ground_at": [
+        8,
+        18
+      ],
+      "project": "city-office",
+      "title": "Civic work and research office: Foundation and access",
+      "site": "site-city-office",
+      "crew": 2,
+      "release_after_minutes": 1,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            15,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            8,
+            0
+          ],
+          "to": [
+            8,
+            18
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            16,
+            18,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            8
+          ],
+          "to": [
+            15,
+            17,
+            10
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-office-shell",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -62,
+        "dy": 177
+      },
+      "ground_at": [
+        8,
+        18
+      ],
+      "project": "city-office",
+      "title": "Civic work and research office: Frame, glazing and roof",
+      "site": "site-city-office",
+      "crew": 2,
+      "release_after_minutes": 3,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            16,
+            0,
+            18
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            1
+          ],
+          "to": [
+            16,
+            18,
+            18
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            1,
+            1
+          ],
+          "to": [
+            0,
+            17,
+            18
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            1,
+            1
+          ],
+          "to": [
+            16,
+            17,
+            18
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            18
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            1
+          ],
+          "to": [
+            0,
+            18,
+            18
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            0,
+            1
+          ],
+          "to": [
+            16,
+            0,
+            18
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            18,
+            1
+          ],
+          "to": [
+            16,
+            18,
+            18
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            16,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            4
+          ],
+          "to": [
+            16,
+            18,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            9
+          ],
+          "to": [
+            16,
+            0,
+            9
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            9
+          ],
+          "to": [
+            16,
+            18,
+            9
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            14
+          ],
+          "to": [
+            16,
+            0,
+            14
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            14
+          ],
+          "to": [
+            16,
+            18,
+            14
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "clear",
+          "from": [
+            7,
+            0,
+            1
+          ],
+          "to": [
+            9,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            7,
+            18,
+            1
+          ],
+          "to": [
+            9,
+            18,
+            4
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            19
+          ],
+          "to": [
+            16,
+            18,
+            19
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            7
+          ],
+          "to": [
+            15,
+            17,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            2,
+            3,
+            1
+          ],
+          "to": [
+            3,
+            11,
+            10
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            4,
+            1
+          ],
+          "to": [
+            3,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            5,
+            1
+          ],
+          "to": [
+            3,
+            5,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            6,
+            1
+          ],
+          "to": [
+            3,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            7,
+            1
+          ],
+          "to": [
+            3,
+            7,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            8,
+            1
+          ],
+          "to": [
+            3,
+            8,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            9,
+            1
+          ],
+          "to": [
+            3,
+            9,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            10,
+            1
+          ],
+          "to": [
+            3,
+            10,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-office-complete",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -62,
+        "dy": 177
+      },
+      "ground_at": [
+        8,
+        18
+      ],
+      "project": "city-office",
+      "title": "Civic work and research office: Furniture and opening",
+      "site": "site-city-office",
+      "crew": 2,
+      "release_after_minutes": 5,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            15,
+            17,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            19,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            15,
+            8
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            3,
+            8
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            4,
+            8
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            16,
+            8
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            5,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            6,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            10,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            11,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            13,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            14,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            5,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            6,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            10,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            11,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            13,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            14,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            2,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            3,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            4,
+            1
+          ],
+          "sprite": "Shelf"
+        }
+      ]
+    },
+    {
+      "id": "city-school-path",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 14,
+        "dy": 181
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public approach before construction; native city surface projection follows checked terrain columns. Building remains flat.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            6,
+            17,
+            1
+          ],
+          "to": [
+            8,
+            34,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            17,
+            0
+          ],
+          "to": [
+            8,
+            34,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-school-foundation",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 14,
+        "dy": 181
+      },
+      "ground_at": [
+        7,
+        16
+      ],
+      "project": "city-school",
+      "title": "City school: Foundation and access",
+      "site": "site-city-school",
+      "crew": 2,
+      "release_after_minutes": 1,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            13,
+            15,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            7,
+            0
+          ],
+          "to": [
+            7,
+            16
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            14,
+            16,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-school-shell",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 14,
+        "dy": 181
+      },
+      "ground_at": [
+        7,
+        16
+      ],
+      "project": "city-school",
+      "title": "City school: Frame, glazing and roof",
+      "site": "site-city-school",
+      "crew": 2,
+      "release_after_minutes": 3,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            14,
+            0,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            16,
+            1
+          ],
+          "to": [
+            14,
+            16,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            1,
+            1
+          ],
+          "to": [
+            0,
+            15,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            14,
+            1,
+            1
+          ],
+          "to": [
+            14,
+            15,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            16,
+            1
+          ],
+          "to": [
+            0,
+            16,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            14,
+            0,
+            1
+          ],
+          "to": [
+            14,
+            0,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            14,
+            16,
+            1
+          ],
+          "to": [
+            14,
+            16,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            14,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            16,
+            4
+          ],
+          "to": [
+            14,
+            16,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            16,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            16,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            16,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "clear",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            6,
+            16,
+            1
+          ],
+          "to": [
+            8,
+            16,
+            4
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            8
+          ],
+          "to": [
+            14,
+            16,
+            8
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-school-complete",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 14,
+        "dy": 181
+      },
+      "ground_at": [
+        7,
+        16
+      ],
+      "project": "city-school",
+      "title": "City school: Furniture and opening",
+      "site": "site-city-school",
+      "crew": 2,
+      "release_after_minutes": 5,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            13,
+            15,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            17,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            5,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            6,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            10,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            11,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            11,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            12,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            5,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            6,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            10,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            11,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            11,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            12,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            2,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            3,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            4,
+            1
+          ],
+          "sprite": "Shelf"
+        }
+      ]
+    },
+    {
+      "id": "city-university-path",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 42,
+        "dy": 177
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public approach before construction; native city surface projection follows checked terrain columns. Building remains flat.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            7,
+            19,
+            1
+          ],
+          "to": [
+            9,
+            38,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            19,
+            0
+          ],
+          "to": [
+            9,
+            38,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-university-foundation",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 42,
+        "dy": 177
+      },
+      "ground_at": [
+        8,
+        18
+      ],
+      "project": "city-university",
+      "title": "City university: Foundation and access",
+      "site": "site-city-university",
+      "crew": 2,
+      "release_after_minutes": 1,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            15,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            8,
+            0
+          ],
+          "to": [
+            8,
+            18
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            16,
+            18,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            9
+          ],
+          "to": [
+            15,
+            17,
+            11
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-university-shell",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 42,
+        "dy": 177
+      },
+      "ground_at": [
+        8,
+        18
+      ],
+      "project": "city-university",
+      "title": "City university: Frame, glazing and roof",
+      "site": "site-city-university",
+      "crew": 2,
+      "release_after_minutes": 3,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            16,
+            0,
+            15
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            1
+          ],
+          "to": [
+            16,
+            18,
+            15
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            1,
+            1
+          ],
+          "to": [
+            0,
+            17,
+            15
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            1,
+            1
+          ],
+          "to": [
+            16,
+            17,
+            15
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            15
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            1
+          ],
+          "to": [
+            0,
+            18,
+            15
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            0,
+            1
+          ],
+          "to": [
+            16,
+            0,
+            15
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            18,
+            1
+          ],
+          "to": [
+            16,
+            18,
+            15
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            16,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            4
+          ],
+          "to": [
+            16,
+            18,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            9
+          ],
+          "to": [
+            16,
+            0,
+            9
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            9
+          ],
+          "to": [
+            16,
+            18,
+            9
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            14
+          ],
+          "to": [
+            16,
+            0,
+            14
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            14
+          ],
+          "to": [
+            16,
+            18,
+            14
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "clear",
+          "from": [
+            7,
+            0,
+            1
+          ],
+          "to": [
+            9,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            7,
+            18,
+            1
+          ],
+          "to": [
+            9,
+            18,
+            4
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            16
+          ],
+          "to": [
+            16,
+            18,
+            16
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            8
+          ],
+          "to": [
+            15,
+            17,
+            8
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            2,
+            3,
+            1
+          ],
+          "to": [
+            3,
+            12,
+            11
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            4,
+            1
+          ],
+          "to": [
+            3,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            5,
+            1
+          ],
+          "to": [
+            3,
+            5,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            6,
+            1
+          ],
+          "to": [
+            3,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            7,
+            1
+          ],
+          "to": [
+            3,
+            7,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            8,
+            1
+          ],
+          "to": [
+            3,
+            8,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            9,
+            1
+          ],
+          "to": [
+            3,
+            9,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            10,
+            1
+          ],
+          "to": [
+            3,
+            10,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            11,
+            1
+          ],
+          "to": [
+            3,
+            11,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-university-complete",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 42,
+        "dy": 177
+      },
+      "ground_at": [
+        8,
+        18
+      ],
+      "project": "city-university",
+      "title": "City university: Furniture and opening",
+      "site": "site-city-university",
+      "crew": 2,
+      "release_after_minutes": 5,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            15,
+            17,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            19,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            15,
+            9
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            3,
+            9
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            4,
+            9
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            16,
+            9
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            5,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            6,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            10,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            11,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            13,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            14,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            5,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            6,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            10,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            11,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            13,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandCorner"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            14,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            2,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            3,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            4,
+            1
+          ],
+          "sprite": "Shelf"
+        }
+      ]
+    },
+    {
+      "id": "city-home-1-path",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -62,
+        "dy": 240
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public approach before construction; native city surface projection follows checked terrain columns. Building remains flat.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            4,
+            -15,
+            1
+          ],
+          "to": [
+            6,
+            -1,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            -15,
+            0
+          ],
+          "to": [
+            6,
+            -1,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-1-foundation",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -62,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-1",
+      "title": "Family home 1: Foundation and access",
+      "site": "site-city-home-1",
+      "crew": 2,
+      "release_after_minutes": 1,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            9,
+            11,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            5,
+            0
+          ],
+          "to": [
+            5,
+            12
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            10,
+            12,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-1-shell",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -62,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-1",
+      "title": "Family home 1: Frame, glazing and roof",
+      "site": "site-city-home-1",
+      "crew": 2,
+      "release_after_minutes": 3,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            1
+          ],
+          "to": [
+            10,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            1,
+            1
+          ],
+          "to": [
+            0,
+            11,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            1,
+            1
+          ],
+          "to": [
+            10,
+            11,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            1
+          ],
+          "to": [
+            0,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            12,
+            1
+          ],
+          "to": [
+            10,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            10,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            4
+          ],
+          "to": [
+            10,
+            12,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            12,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            12,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            12,
+            1
+          ],
+          "to": [
+            6,
+            12,
+            4
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            6
+          ],
+          "to": [
+            10,
+            12,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-1-complete",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -62,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-1",
+      "title": "Family home 1: Furniture and opening",
+      "site": "site-city-home-1",
+      "crew": 2,
+      "release_after_minutes": 5,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            11,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            4,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            9,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            9,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            10,
+            1
+          ],
+          "sprite": "DrawerWoodWoodlandM1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            10,
+            1
+          ],
+          "sprite": "CookingPot"
+        }
+      ]
+    },
+    {
+      "id": "city-home-2-path",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -46,
+        "dy": 240
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public approach before construction; native city surface projection follows checked terrain columns. Building remains flat.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            4,
+            -15,
+            1
+          ],
+          "to": [
+            6,
+            -1,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            -15,
+            0
+          ],
+          "to": [
+            6,
+            -1,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-2-foundation",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -46,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-2",
+      "title": "Family home 2: Foundation and access",
+      "site": "site-city-home-2",
+      "crew": 2,
+      "release_after_minutes": 1,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            9,
+            11,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            5,
+            0
+          ],
+          "to": [
+            5,
+            12
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            10,
+            12,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-2-shell",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -46,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-2",
+      "title": "Family home 2: Frame, glazing and roof",
+      "site": "site-city-home-2",
+      "crew": 2,
+      "release_after_minutes": 3,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            1
+          ],
+          "to": [
+            10,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            1,
+            1
+          ],
+          "to": [
+            0,
+            11,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            1,
+            1
+          ],
+          "to": [
+            10,
+            11,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            1
+          ],
+          "to": [
+            0,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            12,
+            1
+          ],
+          "to": [
+            10,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            10,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            4
+          ],
+          "to": [
+            10,
+            12,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            12,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            12,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            12,
+            1
+          ],
+          "to": [
+            6,
+            12,
+            4
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            6
+          ],
+          "to": [
+            10,
+            12,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-2-complete",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -46,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-2",
+      "title": "Family home 2: Furniture and opening",
+      "site": "site-city-home-2",
+      "crew": 2,
+      "release_after_minutes": 5,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            11,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            4,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            9,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            9,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            10,
+            1
+          ],
+          "sprite": "DrawerWoodWoodlandM1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            10,
+            1
+          ],
+          "sprite": "CookingPot"
+        }
+      ]
+    },
+    {
+      "id": "city-home-3-path",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -30,
+        "dy": 240
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public approach before construction; native city surface projection follows checked terrain columns. Building remains flat.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            4,
+            -15,
+            1
+          ],
+          "to": [
+            6,
+            -1,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            -15,
+            0
+          ],
+          "to": [
+            6,
+            -1,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-3-foundation",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -30,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-3",
+      "title": "Family home 3: Foundation and access",
+      "site": "site-city-home-3",
+      "crew": 2,
+      "release_after_minutes": 1,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            9,
+            11,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            5,
+            0
+          ],
+          "to": [
+            5,
+            12
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            10,
+            12,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-3-shell",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -30,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-3",
+      "title": "Family home 3: Frame, glazing and roof",
+      "site": "site-city-home-3",
+      "crew": 2,
+      "release_after_minutes": 3,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            1
+          ],
+          "to": [
+            10,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            1,
+            1
+          ],
+          "to": [
+            0,
+            11,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            1,
+            1
+          ],
+          "to": [
+            10,
+            11,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            1
+          ],
+          "to": [
+            0,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            12,
+            1
+          ],
+          "to": [
+            10,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            10,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            4
+          ],
+          "to": [
+            10,
+            12,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            12,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            12,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            12,
+            1
+          ],
+          "to": [
+            6,
+            12,
+            4
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            6
+          ],
+          "to": [
+            10,
+            12,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-3-complete",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -30,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-3",
+      "title": "Family home 3: Furniture and opening",
+      "site": "site-city-home-3",
+      "crew": 2,
+      "release_after_minutes": 5,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            11,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            4,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            9,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            9,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            10,
+            1
+          ],
+          "sprite": "DrawerWoodWoodlandM1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            10,
+            1
+          ],
+          "sprite": "CookingPot"
+        }
+      ]
+    },
+    {
+      "id": "city-home-4-path",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -14,
+        "dy": 240
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public approach before construction; native city surface projection follows checked terrain columns. Building remains flat.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            4,
+            -15,
+            1
+          ],
+          "to": [
+            6,
+            -1,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            -15,
+            0
+          ],
+          "to": [
+            6,
+            -1,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-4-foundation",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -14,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-4",
+      "title": "Family home 4: Foundation and access",
+      "site": "site-city-home-4",
+      "crew": 2,
+      "release_after_minutes": 1,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            9,
+            11,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            5,
+            0
+          ],
+          "to": [
+            5,
+            12
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            10,
+            12,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-4-shell",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -14,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-4",
+      "title": "Family home 4: Frame, glazing and roof",
+      "site": "site-city-home-4",
+      "crew": 2,
+      "release_after_minutes": 3,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            1
+          ],
+          "to": [
+            10,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            1,
+            1
+          ],
+          "to": [
+            0,
+            11,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            1,
+            1
+          ],
+          "to": [
+            10,
+            11,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            1
+          ],
+          "to": [
+            0,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            0,
+            1
+          ],
+          "to": [
+            10,
+            0,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            12,
+            1
+          ],
+          "to": [
+            10,
+            12,
+            5
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            10,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            4
+          ],
+          "to": [
+            10,
+            12,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            12,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            12,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            12,
+            1
+          ],
+          "to": [
+            6,
+            12,
+            4
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            6
+          ],
+          "to": [
+            10,
+            12,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-4-complete",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -14,
+        "dy": 240
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "project": "city-home-4",
+      "title": "Family home 4: Furniture and opening",
+      "site": "site-city-home-4",
+      "crew": 2,
+      "release_after_minutes": 5,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            11,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            2,
+            1
+          ],
+          "sprite": "BedWoodWoodlandHead"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            3,
+            1
+          ],
+          "sprite": "BedWoodWoodlandMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            4,
+            1
+          ],
+          "sprite": "BedWoodWoodlandTail"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            9,
+            1
+          ],
+          "sprite": "DiningtableWoodWoodlandSquare"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            9,
+            1
+          ],
+          "sprite": "ChairWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            10,
+            1
+          ],
+          "sprite": "DrawerWoodWoodlandM1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            10,
+            1
+          ],
+          "sprite": "CookingPot"
+        }
+      ]
+    },
+    {
+      "id": "city-farm-path",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 42,
+        "dy": 239
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public approach before construction; native city surface projection follows checked terrain columns. Building remains flat.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            7,
+            -14,
+            1
+          ],
+          "to": [
+            9,
+            -1,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            -14,
+            0
+          ],
+          "to": [
+            9,
+            -1,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-farm-foundation",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 42,
+        "dy": 239
+      },
+      "ground_at": [
+        8,
+        0
+      ],
+      "project": "city-farm",
+      "title": "Urban farm greenhouse: Foundation and access",
+      "site": "site-city-farm",
+      "crew": 2,
+      "release_after_minutes": 1,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            15,
+            17,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            8,
+            0
+          ],
+          "to": [
+            8,
+            18
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            16,
+            18,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-farm-shell",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 42,
+        "dy": 239
+      },
+      "ground_at": [
+        8,
+        0
+      ],
+      "project": "city-farm",
+      "title": "Urban farm greenhouse: Frame, glazing and roof",
+      "site": "site-city-farm",
+      "crew": 2,
+      "release_after_minutes": 3,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            16,
+            0,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            1
+          ],
+          "to": [
+            16,
+            18,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            1,
+            1
+          ],
+          "to": [
+            0,
+            17,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            1,
+            1
+          ],
+          "to": [
+            16,
+            17,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            115,
+            190,
+            212
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            1
+          ],
+          "to": [
+            0,
+            18,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            0,
+            1
+          ],
+          "to": [
+            16,
+            0,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            18,
+            1
+          ],
+          "to": [
+            16,
+            18,
+            6
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            16,
+            0,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            18,
+            4
+          ],
+          "to": [
+            16,
+            18,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            218,
+            224,
+            230
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            0,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            18,
+            3
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "clear",
+          "from": [
+            7,
+            0,
+            1
+          ],
+          "to": [
+            9,
+            0,
+            4
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            7,
+            18,
+            1
+          ],
+          "to": [
+            9,
+            18,
+            4
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            7
+          ],
+          "to": [
+            16,
+            18,
+            7
+          ],
+          "kind": "Misc",
+          "rgb": [
+            85,
+            102,
+            118
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-farm-complete",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 42,
+        "dy": 239
+      },
+      "ground_at": [
+        8,
+        0
+      ],
+      "project": "city-farm",
+      "title": "Urban farm greenhouse: Furniture and opening",
+      "site": "site-city-farm",
+      "crew": 2,
+      "release_after_minutes": 5,
+      "note": "City AI crew only. Door and central walking aisle stay open at every construction stage.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            15,
+            17,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            3,
+            1
+          ],
+          "to": [
+            3,
+            15,
+            1
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            83,
+            57
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            3,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            6,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            9,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            12,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            15,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            3,
+            1
+          ],
+          "to": [
+            6,
+            15,
+            1
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            83,
+            57
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            6,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            9,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            12,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            15,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            3,
+            1
+          ],
+          "to": [
+            10,
+            15,
+            1
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            83,
+            57
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            3,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            6,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            9,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            12,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            15,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "fill",
+          "from": [
+            13,
+            3,
+            1
+          ],
+          "to": [
+            13,
+            15,
+            1
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            83,
+            57
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            13,
+            3,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            13,
+            6,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            13,
+            9,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            13,
+            12,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            13,
+            15,
+            2
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            14,
+            2,
+            1
+          ],
+          "sprite": "BarrelWoodWater"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            16,
+            1
+          ],
+          "sprite": "CrateBlock"
+        }
+      ]
+    },
+    {
+      "id": "city-park-garden",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 14,
+        "dy": 239
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Public park; clear five-block central promenade connects directly to the avenue.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            9,
+            0,
+            1
+          ],
+          "to": [
+            13,
+            26,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            11,
+            0
+          ],
+          "to": [
+            11,
+            26
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            22,
+            26,
+            0
+          ],
+          "kind": "Grass",
+          "rgb": [
+            62,
+            128,
+            81
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            9,
+            0,
+            0
+          ],
+          "to": [
+            13,
+            26,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            9,
+            -14,
+            0
+          ],
+          "to": [
+            13,
+            -1,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            9,
+            -14,
+            1
+          ],
+          "to": [
+            13,
+            -1,
+            3
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            7,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            17,
+            7,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            3,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            19,
+            3,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            23,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            19,
+            23,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            18,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            18,
+            18,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-build-yard",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -30,
+        "dy": 205
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Shared construction yard; individual builds use their own site-city-* doorstep crew location.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            8,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            10,
+            3
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            5
+          ],
+          "to": [
+            20,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            85,
+            102,
+            118
+          ],
+          "depth": 8
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            20,
+            10,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "CarpenterTable"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "CrateBlock"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            18,
+            1,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            19,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        }
+      ]
+    },
+    {
+      "id": "city-arrival-signs",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -6,
+        "dy": 226
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "Signs flank the arrival promenade.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            0,
+            1
+          ],
+          "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "city-home-promenade",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -64,
+        "dy": 236
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "West family sidewalk.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            31,
+            2,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            31,
+            2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    },
+    {
+      "id": "city-home-promenade-east",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -32,
+        "dy": 236
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "East family sidewalk.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            28,
+            2,
+            3
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            28,
+            2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            182,
+            192,
+            201
+          ]
+        }
+      ]
+    }
+  ]
+}

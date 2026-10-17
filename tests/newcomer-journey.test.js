@@ -93,9 +93,10 @@ test('the guided newcomer flow states each of the six steps and keeps every cont
   assert.match(app, /element\('ol', null, 'newcomer-steps'\)/, 'the journey is an ordered list');
   assert.match(app, /newcomer-step \$\{standing\}/, 'each step carries a machine-readable state');
   assert.match(app, /item\.setAttribute\('aria-label', `Step \$\{index \+ 1\} of \$\{steps\.length\}/, 'each step is named for assistive technology');
-  assert.match(app, /const views = \{ start: renderStartJourney,/, 'the guided start is a rendered section');
-  assert.match(app, /\[\['start','Start here','◇'\]/, 'the navigation lists the guided start');
-  assert.match(app, /names=\{[\s\S]*?start:'book-open'\}/, 'the navigation entry borrows an existing shipped icon');
+  assert.match(app, /function sectionViews\(\)\{return \{ start: renderStartJourney,/, 'the guided start is a rendered section');
+  // The navigation entry and its borrowed shipped icon live in the one section catalogue.
+  const deck = readFileSync(fileURLToPath(new URL('../src/ui/command-deck.js', import.meta.url)), 'utf8');
+  assert.match(deck, /\['start', 'Start here', 'world', 'book-open'/, 'the navigation lists the guided start and borrows an existing shipped icon');
   assert.doesNotMatch(app, /innerHTML/, 'app.js must never inject markup');
   assert.doesNotMatch(app, /\$\([^)]*\)\.html\s*=/, 'app.js must never assign markup');
   // Every step offers at least one labelled button and one paragraph of honest explanation.

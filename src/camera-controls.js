@@ -100,24 +100,27 @@ const KINDS = { terrain: 'ground', object: 'scenery', block: 'block', participan
  * which fixture that pick can be used with, and which keys walk or turn. Text only, so the interface
  * never injects markup.
  */
-export function reticleText({ firstPerson = false, facing = {}, position = null, selection = null, blocked = null, fixture = null } = {}) {
+export function reticleText({ firstPerson = false, facing = {}, position = null, selection = null, blocked = null, fixture = null, compact = false } = {}) {
   const parts = [];
   parts.push(firstPerson ? 'First person' : 'Orbiting view');
   parts.push(`facing ${facingLabel(facing.yaw)}`);
-  if (Number.isInteger(position?.x) && Number.isInteger(position?.y)) parts.push(`at ${position.x}, ${position.y}${Number.isInteger(position?.z) ? `, layer ${position.z}` : ''}`);
-  if (selection && Number.isInteger(selection.x) && Number.isInteger(selection.y)) {
+  if (Number.isInteger(position?.x) && Number.isInteger(position?.y)) parts.push(`at ${position.x}, ${position.y}${Number.isInteger(position?.z) && (!compact || position.z !== 0) ? `, layer ${position.z}` : ''}`);
+  if (selection && Number.isInteger(selection.x) && Number.isInteger(selection.y) && !(compact && fixture)) {
     const kind = KINDS[selection.type] || 'tile';
     const detail = typeof blocked === 'boolean' ? blocked ? 'solid, walk around it' : 'walkable' : null;
     parts.push(`aimed at ${kind} ${selection.x}, ${selection.y}${selection.z ? `, layer ${selection.z}` : ''}${detail ? ` · ${detail}` : ''}`);
-  } else parts.push('no tile picked yet');
+  } else if (!compact) parts.push('no tile picked yet');
   // The picked fixture and how to use it, in plain text, so the hint is never only graphical.
   if (fixture && Number.isInteger(fixture.x) && Number.isInteger(fixture.y)) {
     const label = String(fixture.label || 'fixture').toLowerCase();
     parts.push(fixture.in_range
       ? `${fixture.action?.label || 'Use it'} with ${INTERACTION_KEY_LABEL}`
-      : `stand within ${fixture.required_distance || INTERACTION_DISTANCE} tile of the ${label} at ${fixture.x}, ${fixture.y}`);
+      : compact ? `Move closer to ${fixture.name || label}` : `stand within ${fixture.required_distance || INTERACTION_DISTANCE} tile of the ${label} at ${fixture.x}, ${fixture.y}`);
   }
-  parts.push(firstPerson ? 'WASD walks the way you face · Q/E turn · R/F tilt · arrow keys also walk' : 'drag to orbit · click open ground to walk · arrow keys or WASD walk');
+  // The zoom wording has one home too: the wheel, a pinch and the panel's buttons all drive the one
+  // documented distance, so the hint may name them together.
+  if (!compact) parts.push(firstPerson ? 'WASD walks the way you face · Q/E turn · R/F tilt · arrow keys also walk · wheel or pinch to zoom'
+    : 'drag to orbit, level or up · click open ground to walk · arrow keys or WASD walk · wheel or pinch to zoom');
   return parts.join(' · ');
 }
 
@@ -209,7 +212,7 @@ export function createViewBlocker({ isSolid = () => false, layerAt = () => 0, ma
 // ---------------------------------------------------------------------------------------------
 
 export const SUSPEND_REASONS = Object.freeze(['typing', 'dialog', 'menu', 'chat', 'custom']);
-export const SHORTCUT_EXEMPT_TAGS = Object.freeze(['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON']);
+export const SHORTCUT_EXEMPT_TAGS = Object.freeze(['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'SUMMARY']);
 
 export function shortcutSuspended({ tagName = '', isContentEditable = false, dialogOpen = false, modifier = false } = {}) {
   return Boolean(modifier) || Boolean(dialogOpen) || Boolean(isContentEditable)
@@ -229,6 +232,36 @@ export function createSuspension(initial = []) {
   };
 }
 
+/**
+ * A zoom gesture the shipped panels own: a wheel or a pinch is inert while a menu, drawer or dialog
+ * is open, while a text field holds focus, or while the shell has switched the camera's capture off
+ * with `setEnabled(false)`. It is the pointer counterpart of `shortcutSuspended`, and it
+ * deliberately ignores modifier keys, because a trackpad pinch arrives as a Ctrl-wheel.
+ */
+export function zoomSuspended({ enabled = true, tagName = '', isContentEditable = false, dialogOpen = false, menuOpen = false } = {}) {
+  return !enabled || Boolean(menuOpen) || shortcutSuspended({ tagName, isContentEditable, dialogOpen });
+}
+
+// ---------------------------------------------------------------------------------------------
+// The hover channel. Pointing at a tile is a reading, not a command: it costs no network request and
+// it is allowed to be dropped. A pointer that moves faster than this rate simply reports less often,
+// and a pointer that leaves the canvas drops its reading immediately (`drop()`), so an aim line can
+// never be left showing a tile the pointer is no longer over.
+// ---------------------------------------------------------------------------------------------
+export const HOVER_INTERVAL_MS = 75;
+
+export function createHoverThrottle({ interval = HOVER_INTERVAL_MS, now = () => Date.now() } = {}) {
+  const wait = Number.isFinite(interval) && interval >= 0 ? interval : HOVER_INTERVAL_MS;
+  let last = -Infinity;
+  return {
+    /** True when a hover may be emitted now; a hit starts the next window. */
+    claim() { const at = now(); if (at - last < wait) return false; last = at; return true; },
+    /** The pointer left the canvas: the reading is dropped and the next claim is immediate. */
+    drop() { last = -Infinity; return true; },
+    get waiting() { return Number.isFinite(last) && last > -Infinity; },
+  };
+}
+
 // The wording the shell must print. One source for both the key set and its label, so the hint can
 // never advertise a key that does not work. The interaction label is INTERACTION_KEY_LABEL above.
 export const CONTROL_HINTS = Object.freeze({
@@ -236,8 +269,9 @@ export const CONTROL_HINTS = Object.freeze({
   observing: 'Drag to look · Click the map to explore',
   firstPerson: `WASD walks the way you face · Q/E turn · R/F tilt · arrow keys also walk · V switches view · ${INTERACTION_KEY_LABEL} to interact`,
 });
-export function controlHint({ playing = true, mode = DEFAULT_CAMERA_MODE } = {}) {
+export function controlHint({ playing = true, mode = DEFAULT_CAMERA_MODE, compact = false } = {}) {
   if (!playing) return CONTROL_HINTS.observing;
+  if (compact) return 'WASD to walk · Drag to look · More for controls';
   return normalizeCameraMode(mode) === 'first-person' ? CONTROL_HINTS.firstPerson : CONTROL_HINTS.playing;
 }
 export function targetHint(fixture) { return fixture ? `${fixture.label} · ${INTERACTION_KEY_LABEL} to interact` : 'Aim at a place or object to interact'; }

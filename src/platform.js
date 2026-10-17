@@ -9,12 +9,21 @@ import { randomBytes, randomUUID, createHash, scrypt as scryptCallback, timingSa
 import { promisify } from 'node:util';
 import { openDatabase } from './database.js';
 import { start } from '../world.js';
+import { mapDistance, mapEnabled, nearbyWorlds } from './global-map.js';
 import { spaceMethods } from './spaces.js';
+import { karmaMethods } from './karma.js';
+import { shopMethods } from './shop.js';
+import { viewportMethods } from './map-viewport.js';
+import { goodsMethods, goodsPolicyExport } from './goods-policy.js';
+import { provenanceMethods } from './economy-provenance.js';
 import { communityMethods } from './community.js';
 import { vocationMethods } from './vocations.js';
+import { vaultMethods } from './vault.js';
+import { residentFrameworkMethods } from './resident-framework.js';
 import { firstPlayMethods } from './firstplay.js';
 import { questMethods } from './quests.js';
 import { guildMethods } from './guilds.js';
+import { activityMethods } from './activity-pipeline.js';
 import { journeyMethods } from './journey.js';
 import { civicMethods } from './civic-engine.js';
 import { REGIONS } from './civic.js';
@@ -91,7 +100,7 @@ export class Platform {
     // The file-level integrity scan is the one expensive diagnostic read, so its result is reused
     // for a short window. `checked_at` reports when it actually ran, never when it was served.
     this.integrityCache = { at: Number.NEGATIVE_INFINITY, value: null };
-    this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); this.initQuests(); this.initGuilds(); this.initEvidence();
+    this.seed(); this.seedSpaces(); this.initCommunity(); this.initJourney(); this.initCivic(); this.initVocations(); this.initQuests(); this.initGuilds(); this.initEvidence(); this.initKarma(); this.initShop();
   }
   get(sql, ...args) { return this.db.prepare(sql).get(...args); }
   all(sql, ...args) { return this.db.prepare(sql).all(...args); }
@@ -305,7 +314,7 @@ export class Platform {
     const duration = Number(input.minutes ?? 10), maxCalls = Number(input.max_calls ?? 100);
     if (!Number.isInteger(duration) || duration < 1 || duration > 20 || !Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > 500) fail(400, 'Sessions allow 1–20 minutes and 1–500 API calls.');
     const scopes = input.scopes || ['read', 'move', 'chat', 'contribute'];
-    if (!Array.isArray(scopes) || !scopes.length || scopes.some((item) => !['read', 'move', 'chat', 'contribute', 'build'].includes(item))) fail(400, 'Invalid action scopes.');
+    if (!Array.isArray(scopes) || !scopes.length || scopes.some((item) => !['read', 'move', 'chat', 'contribute', 'build', 'vault'].includes(item))) fail(400, 'Invalid action scopes.');
     this.run('UPDATE tokens SET revoked=1 WHERE agent_id=?', agentId);
     const token = randomBytes(32).toString('hex');
     const expires = this.clock() + duration * 60_000;
@@ -386,9 +395,14 @@ export class Platform {
       // A reply is not a fresh encounter: only a human-initiated private message can prove an
       // in-world meeting, so a resident's answer never satisfies another operator's meet step.
       privateEncounter = input.reply_to === undefined && actor.account.status === 'active' && target.kind === 'agent' && target.operator_id !== agent.operator_id && target.operator_status === 'active'
-        && target.world_id === agent.world_id && Math.abs(target.x - agent.x) + Math.abs(target.y - agent.y) <= 6;
+        && (target.world_id === agent.world_id ? Math.abs(target.x - agent.x) + Math.abs(target.y - agent.y) : mapEnabled() ? mapDistance(target, agent) ?? Infinity : Infinity) <= 6;
     }
-    if (channel === 'nearby') recipients = this.all("SELECT a.id FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.status='active' AND o.status='active' AND a.world_id=? AND ABS(a.x-?)+ABS(a.y-?)<=3", worldId, agent.x, agent.y).map((item) => item.id);
+    if (channel === 'nearby') {
+      // Within three tiles, counted across a seam of the global map as well as inside one world.
+      const worlds = [worldId, ...(mapEnabled() ? nearbyWorlds(worldId, agent.x, agent.y, 3) : [])];
+      recipients = this.all(`SELECT a.id,a.world_id,a.x,a.y FROM agents a JOIN accounts o ON o.id=a.operator_id WHERE a.status='active' AND o.status='active' AND a.world_id IN (${worlds.map(() => '?').join(',')})`, ...worlds)
+        .filter((item) => (item.world_id === worldId ? Math.abs(item.x - agent.x) + Math.abs(item.y - agent.y) : mapDistance({ world_id: worldId, x: agent.x, y: agent.y }, item) ?? Infinity) <= 3).map((item) => item.id);
+    }
     if (channel === 'mission') { missionId = text(input.mission_id, 'Mission', 80); if (!this.get('SELECT id FROM missions WHERE id=?', missionId)) fail(404, 'Mission not found.'); }
     const id = randomUUID();
     this.run('INSERT INTO messages(id,agent_id,account_id,channel,mission_id,recipients,text,created_at,world_id) VALUES(?,?,?,?,?,?,?,?,?)', id, agent?.id || null, actor.account.id, channel, missionId, JSON.stringify(recipients), content, new Date(this.clock()).toISOString(), worldId);
@@ -543,7 +557,7 @@ export class Platform {
     const citations = normalized.map((source, index) => { const cite = this.attachEvidence(source, index + 1); return { ...cite, submission_id: id, created_at: now() }; });
     for (const cite of citations) this.run('INSERT INTO submission_evidence(submission_id,source_number,capture_id,url,locator,cited_date,state,created_at) VALUES(?,?,?,?,?,?,?,?)', cite.submission_id, cite.source_number, cite.capture_id, cite.url, cite.locator, cite.cited_date, cite.state, cite.created_at);
     this.run("UPDATE claims SET status='submitted' WHERE id=?", claim.id);
-    this.run('UPDATE claim_drafts SET archived=1 WHERE claim_id=?',claim.id);
+    this.archiveDraft(claim.id);
     this.run("UPDATE tasks SET status='under_review' WHERE id=?", claim.task_id);
     this.audit(actor.account.id, 'submission.created', id);
     return { id, version, status: 'pending_review',...(brief?{brief}:{} ) };
@@ -563,7 +577,7 @@ export class Platform {
     this.run('INSERT INTO reviews VALUES(?,?,?,?,?,?)', id, submission.id, actor.account.id, input.decision, changes.reason, now());
     this.run('UPDATE submissions SET status=? WHERE id=?', input.decision, submission.id);
     this.run('UPDATE claims SET status=?,expires_at=? WHERE id=?', input.decision, this.clock() + 20 * 60_000, submission.claim_id);
-    if(input.decision==='changes_requested')this.run('UPDATE claim_drafts SET archived=0 WHERE claim_id=?',submission.claim_id);
+    if(input.decision==='changes_requested')this.archiveDraft(submission.claim_id,false);
     this.run('UPDATE tasks SET status=? WHERE id=?', input.decision === 'rejected' ? 'open' : input.decision, submission.task_id);
     // Reopening a rejected task must not present its research lead as freshly activated.
     if(input.decision==='rejected')this.run("UPDATE research_leads SET status='rejected' WHERE task_id=?",submission.task_id);
@@ -875,7 +889,16 @@ export class Platform {
     // counters are then assembled only after the administrator check above has passed.
     const runtime = typeof live === 'function' ? live() : live;
     const audit_valid = this.verifyAudit(), coin_ledger_valid = verifyCoinLedger(this.db);
-    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts'), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100'), audit_valid, coin_ledger_valid, coin_receipts:this.get('SELECT COUNT(*) AS n FROM coin_rewards').n, credit_units: UNIT_SEPARATION_POLICY, audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100'), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100"),
+    // Two of these lists carry text a *caller* supplied: an account name from registration, and a job's
+    // own run summary, which a runtime credential writes through POST /jobs. Both are published to every
+    // administrator, so both are passed through the same value scrub the diagnostics payload uses —
+    // otherwise a resident's runtime credential could print its own session token, or any contact
+    // address it was handed, straight onto the administrator dashboard. Redaction is applied per row
+    // rather than to the whole array, because `redactDiagnostics` bounds an array at 200 entries and an
+    // account listing must not silently truncate. The sealed unit-separation policy is deliberately not
+    // passed through that scrub: it is authored rather than caller-supplied, and its `token: false` is a
+    // published declaration, not a secret.
+    return { paused: this.get("SELECT value FROM settings WHERE key='paused'").value === 'true', accounts: this.all('SELECT id,name,role,status,created_at FROM accounts').map((row) => redactDiagnostics(row)), jobs: this.all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100').map((row) => redactDiagnostics(row)), audit_valid, coin_ledger_valid, coin_receipts:this.get('SELECT COUNT(*) AS n FROM coin_rewards').n, credit_units: UNIT_SEPARATION_POLICY, audit: this.all('SELECT seq,actor,event,record_id,created_at FROM audit ORDER BY seq DESC LIMIT 100').map((row) => redactDiagnostics(row)), runtime_budgets: this.all("SELECT agent_id,expires_at,max_calls,used_calls,revoked FROM tokens WHERE kind='runtime' ORDER BY expires_at DESC LIMIT 100"),
       diagnostics: this.diagnostics({ ...runtime, integrity: { audit_chain_valid: audit_valid, coin_ledger_valid } }) };
   }
   // The administrator dashboard. Every number here is read from this process or from the database;
@@ -908,6 +931,13 @@ export class Platform {
       backups,
       model: live.model || { configured: false, backend: null, state: 'unconfigured', state_note: 'No local model name is configured; resident runs and country conversations use their rules fallback.', queue: { active: 0, waiting: 0, max_waiting: 0, saturation: 0, full: false }, inference: { in_flight: 0, oldest_started_at: null, elapsed_ms: null }, since_process_start: null },
       workers: live.workers || { research: { active: 0, limit: 0, available: 0 }, resident: { active: 0, limit: 1, available: 1 }, interrupted: 0, capacity_refusals_since_start: 0 },
+      // A process running without a caller-supplied incident log (a test, an embedded use) still
+      // publishes the section, so an operator never has to guess whether the surface is absent
+      // because nothing failed or because nothing counts.
+      incidents: live.incidents || { recorded_since_start: 0, last_at: null, last_route: null, recent: [], redaction: 'No process-level incident log was supplied to this instance.' },
+      // The event channel's own counters. They are live process state and the only way an operator can
+      // see the held-subscription count, so they are published rather than left to the channel's log.
+      events: live.events || null,
       records: {
         accounts: count('SELECT COUNT(*) AS n FROM accounts'), agents: count('SELECT COUNT(*) AS n FROM agents'), worlds: count('SELECT COUNT(*) AS n FROM worlds'),
         world_objects: count('SELECT COUNT(*) AS n FROM world_objects'), land_stewardships: count('SELECT COUNT(*) AS n FROM land_stewardships'),
@@ -972,7 +1002,7 @@ export class Platform {
     const messages = this.all(`SELECT m.id,m.agent_id,m.account_id,m.channel,m.mission_id,m.text,m.status,m.created_at,m.world_id FROM messages m WHERE m.account_id=? OR (m.status='visible' AND m.channel='private' AND EXISTS(SELECT 1 FROM json_each(m.recipients) r JOIN agents a ON a.id=r.value WHERE a.operator_id=?)) ORDER BY m.created_at DESC,m.rowid DESC LIMIT ?`, actor.account.id, actor.account.id, EXPORT_LIMIT);
     const worlds = this.all('SELECT w.* FROM worlds w JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=? ORDER BY w.created_at DESC LIMIT ?', actor.account.id, EXPORT_LIMIT);
     const world_objects = this.all('SELECT b.* FROM world_objects b JOIN worlds w ON w.id=b.world_id JOIN agents a ON a.id=w.owner_agent_id WHERE a.operator_id=? ORDER BY b.created_at DESC LIMIT ?', actor.account.id, EXPORT_LIMIT);
-    return { format: 'shared-world-account-v18', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, frontier:this.frontierExport(actor), coins:this.coinExport(actor), callings:this.vocationExport(actor), quests:this.questExport(actor), guilds:this.guildExport(actor), offers:this.offerExport(actor), trade:this.tradeExport?.(actor,EXPORT_LIMIT) ?? {posted:[],claimed:[],posted_total:0,claimed_total:0,truncated:false}, ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=? ORDER BY f.created_at DESC LIMIT ?',actor.account.id,EXPORT_LIMIT).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, memory: this.memoryExport(actor), community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
+    return { format: 'shared-world-account-v18', exported_at: now(), account: { ...publicAccount(actor.account), email: actor.account.email }, agents, worlds, world_objects, frontier:this.frontierExport(actor), coins:this.coinExport(actor), callings:this.vocationExport(actor), quests:this.questExport(actor), guilds:this.guildExport(actor), offers:this.offerExport(actor), trade:this.tradeExport?.(actor,EXPORT_LIMIT) ?? {posted:[],claimed:[],posted_total:0,claimed_total:0,truncated:false}, ...history,followups:this.all('SELECT f.task_id,f.submission_id,f.created_at,t.mission_id,t.title,t.instructions,t.rights,t.allowed_domains FROM task_followups f JOIN tasks t ON t.id=f.task_id WHERE f.creator_id=? ORDER BY f.created_at DESC LIMIT ?',actor.account.id,EXPORT_LIMIT).map(record=>({...record,allowed_domains:parse(record.allowed_domains)})),drafts:this.drafts(actor,{archived:true,all:true}), messages, memory: this.memoryExport(actor), vault: this.vaultExport(actor), karma: this.karmaExport(actor), shop: this.shopExport(actor), goods: goodsPolicyExport(this, actor), community: this.communityExport(actor), journey: this.journeyExport(actor), civic: this.civicExport(actor), moderation: this.safety({ ...actor, account: { ...actor.account, role: 'member' } }) };
   }
   deleteAccount(actor) {
     role(actor, ['admin', 'member', 'reviewer', 'moderator']);
@@ -980,6 +1010,7 @@ export class Platform {
     this.run('DELETE FROM claim_drafts WHERE claim_id IN (SELECT id FROM claims WHERE account_id=?)',actor.account.id);
     this.deleteVocations(actor);
     this.deleteMemory(actor);
+    this.deleteVault(actor);
     this.deleteQuests(actor);
     this.deleteCommunity(actor);
     this.deleteGuilds(actor);
@@ -1336,7 +1367,8 @@ export class Platform {
   logout(actor) { this.run('UPDATE tokens SET revoked=1 WHERE hash=?', actor.credential.hash); return { logged_out: true }; }
   close() { this.db.close(); }
 }
-Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, questMethods, guildMethods, firstPlayMethods);
+Object.assign(Platform.prototype, spaceMethods, communityMethods, journeyMethods, civicMethods, vocationMethods, vaultMethods, questMethods, guildMethods, activityMethods, firstPlayMethods, karmaMethods, shopMethods, viewportMethods, goodsMethods, provenanceMethods);
+Object.assign(Platform.prototype, residentFrameworkMethods);
 
 Object.assign(Platform.prototype,draftMethods);
 

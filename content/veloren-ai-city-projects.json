@@ -1,0 +1,62 @@
+{
+  "format": "nemo-works-v1",
+  "stage_gap_minutes": 2,
+  "projects": [
+    {
+      "id": "city-office",
+      "name": "Civic work and research office",
+      "purpose": "City office: furnished native space with street access.",
+      "stages": 3,
+      "first_stage_minutes": 1
+    },
+    {
+      "id": "city-school",
+      "name": "City school",
+      "purpose": "City school: furnished native space with street access.",
+      "stages": 3,
+      "first_stage_minutes": 1
+    },
+    {
+      "id": "city-university",
+      "name": "City university",
+      "purpose": "City university: furnished native space with street access.",
+      "stages": 3,
+      "first_stage_minutes": 1
+    },
+    {
+      "id": "city-home-1",
+      "name": "Family home 1",
+      "purpose": "City home: furnished native space with street access.",
+      "stages": 3,
+      "first_stage_minutes": 1
+    },
+    {
+      "id": "city-home-2",
+      "name": "Family home 2",
+      "purpose": "City home: furnished native space with street access.",
+      "stages": 3,
+      "first_stage_minutes": 1
+    },
+    {
+      "id": "city-home-3",
+      "name": "Family home 3",
+      "purpose": "City home: furnished native space with street access.",
+      "stages": 3,
+      "first_stage_minutes": 1
+    },
+    {
+      "id": "city-home-4",
+      "name": "Family home 4",
+      "purpose": "City home: furnished native space with street access.",
+      "stages": 3,
+      "first_stage_minutes": 1
+    },
+    {
+      "id": "city-farm",
+      "name": "Urban farm greenhouse",
+      "purpose": "City farm: furnished native space with street access.",
+      "stages": 3,
+      "first_stage_minutes": 1
+    }
+  ]
+}

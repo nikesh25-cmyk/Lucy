@@ -1,0 +1,629 @@
+{
+  "format": "nemo-works-v1",
+  "stage_gap_minutes": 10,
+  "projects": [
+    {
+      "id": "well",
+      "name": "The Plaza well",
+      "purpose": "Fresh water for the square, built ring by ring.",
+      "stages": 3,
+      "first_stage_minutes": 5
+    },
+    {
+      "id": "market-hall",
+      "name": "The market hall",
+      "purpose": "A roofed hall where makers and farmers share what they have grown and made.",
+      "stages": 4,
+      "first_stage_minutes": 15
+    },
+    {
+      "id": "cottage-1",
+      "name": "Cottage 1",
+      "purpose": "A new home for the neighbours who are arriving; each cottage is built by the village together.",
+      "stages": 4,
+      "first_stage_minutes": 35
+    },
+    {
+      "id": "observatory",
+      "name": "The star observatory",
+      "purpose": "A raised stone platform where scholars chart the sky and record what they learn.",
+      "stages": 3,
+      "first_stage_minutes": 50
+    },
+    {
+      "id": "lantern-path",
+      "name": "The lantern path",
+      "purpose": "A lit path from the square to the fields so no one walks home in the dark.",
+      "stages": 3,
+      "first_stage_minutes": 70
+    },
+    {
+      "id": "cottage-2",
+      "name": "Cottage 2",
+      "purpose": "A new home for the neighbours who are arriving; each cottage is built by the village together.",
+      "stages": 4,
+      "first_stage_minutes": 85
+    },
+    {
+      "id": "field-pavilion",
+      "name": "The field pavilion",
+      "purpose": "A shaded open pavilion beside the fields for rest, reading and shared meals.",
+      "stages": 3,
+      "first_stage_minutes": 95
+    },
+    {
+      "id": "library-annex",
+      "name": "The library annex",
+      "purpose": "More shelves for the Harr Library, where every discovery is written down.",
+      "stages": 4,
+      "first_stage_minutes": 110
+    },
+    {
+      "id": "cottage-3",
+      "name": "Cottage 3",
+      "purpose": "A new home for the neighbours who are arriving; each cottage is built by the village together.",
+      "stages": 4,
+      "first_stage_minutes": 125
+    },
+    {
+      "id": "orchard-gate",
+      "name": "The orchard fence and gate",
+      "purpose": "A low fence and a welcoming gate so the orchard can grow in peace.",
+      "stages": 2,
+      "first_stage_minutes": 140
+    },
+    {
+      "id": "research-tower",
+      "name": "The research tower",
+      "purpose": "A slim glass-banded tower where scholars gather the village's findings into one view.",
+      "stages": 4,
+      "first_stage_minutes": 20
+    },
+    {
+      "id": "solar-array",
+      "name": "The solar array",
+      "purpose": "Rows of solar glass that charge the village lamps by day and light the paths all night.",
+      "stages": 3,
+      "first_stage_minutes": 40
+    },
+    {
+      "id": "vertical-farm",
+      "name": "The vertical farm",
+      "purpose": "A stacked greenhouse tower where crops grow in bright rooms, feeding more people from less land.",
+      "stages": 4,
+      "first_stage_minutes": 80
+    },
+    {
+      "id": "light-fountain",
+      "name": "The light fountain",
+      "purpose": "A basin of light and lamps where neighbours rest after a day of work.",
+      "stages": 3,
+      "first_stage_minutes": 60
+    },
+    {
+      "id": "transit-hub",
+      "name": "The sky transit hub",
+      "purpose": "A pale platform with a canopy and lamps, ready for the quiet light-rail and landing pads of the future.",
+      "stages": 3,
+      "first_stage_minutes": 105
+    },
+    {
+      "id": "data-archive",
+      "name": "The open archive",
+      "purpose": "A long glass hall where every finding, plan and story is kept for anyone to read, and for other villages to learn from.",
+      "stages": 3,
+      "first_stage_minutes": 150
+    },
+    {
+      "id": "sky-walk",
+      "name": "The sky walk",
+      "purpose": "A raised promenade with lamps, so neighbours can cross the square and see the whole village.",
+      "stages": 3,
+      "first_stage_minutes": 130
+    },
+    {
+      "id": "glass-garden",
+      "name": "The glass garden",
+      "purpose": "A stepped glass dome over a garden of planters and benches, warm in every season.",
+      "stages": 4,
+      "first_stage_minutes": 175
+    },
+    {
+      "id": "schoolhouse",
+      "name": "The Harr schoolhouse",
+      "purpose": "A two-storey house of study where young and old villagers learn reading, history and botany together.",
+      "stages": 4,
+      "first_stage_minutes": 10
+    },
+    {
+      "id": "seminar-pavilion",
+      "name": "The seminar pavilion",
+      "purpose": "An open circular colonnade for philosophical discussion and research presentations.",
+      "stages": 3,
+      "first_stage_minutes": 30
+    },
+    {
+      "id": "workshop-hall",
+      "name": "The makers' workshop hall",
+      "purpose": "A spacious open hall with visible forge-free craft benches for textile, wood, and ceramic artisans.",
+      "stages": 4,
+      "first_stage_minutes": 45
+    },
+    {
+      "id": "recycling-garden",
+      "name": "The material recycling garden",
+      "purpose": "Tidy stone sorting bays where unused clay, timber trimmings and metal offcuts are sorted for reuse.",
+      "stages": 3,
+      "first_stage_minutes": 65
+    },
+    {
+      "id": "cottage-4",
+      "name": "Cottage 4",
+      "purpose": "A modern split-level eco-cottage with solar skylights for Harr residents.",
+      "stages": 4,
+      "first_stage_minutes": 75
+    },
+    {
+      "id": "cottage-5",
+      "name": "Cottage 5",
+      "purpose": "A modern split-level eco-cottage with solar skylights for Harr residents.",
+      "stages": 4,
+      "first_stage_minutes": 100
+    },
+    {
+      "id": "cottage-6",
+      "name": "Cottage 6",
+      "purpose": "A modern split-level eco-cottage with solar skylights for Harr residents.",
+      "stages": 4,
+      "first_stage_minutes": 155
+    },
+    {
+      "id": "cottage-7",
+      "name": "Cottage 7",
+      "purpose": "A sun-warmed stepped dome cottage surrounded by flowering planters.",
+      "stages": 4,
+      "first_stage_minutes": 115
+    },
+    {
+      "id": "cottage-8",
+      "name": "Cottage 8",
+      "purpose": "A sun-warmed stepped dome cottage surrounded by flowering planters.",
+      "stages": 4,
+      "first_stage_minutes": 145
+    },
+    {
+      "id": "cottage-9",
+      "name": "Cottage 9",
+      "purpose": "A sun-warmed stepped dome cottage surrounded by flowering planters.",
+      "stages": 4,
+      "first_stage_minutes": 165
+    },
+    {
+      "id": "guesthouse",
+      "name": "The travellers' guesthouse",
+      "purpose": "A warm and restful lodge welcoming newcomers with clean beds, hot tea and quiet reading rooms.",
+      "stages": 4,
+      "first_stage_minutes": 55
+    },
+    {
+      "id": "amphitheatre",
+      "name": "The hillside amphitheatre",
+      "purpose": "A tiered open-air stone bowl facing the valley where residents gather for story circle.",
+      "stages": 3,
+      "first_stage_minutes": 90
+    },
+    {
+      "id": "festival-lawn",
+      "name": "The festival lawn and lamp arches",
+      "purpose": "A wide grass commons framed by glowing lamp arches for communal feasts and holiday round dances.",
+      "stages": 3,
+      "first_stage_minutes": 120
+    },
+    {
+      "id": "water-tower",
+      "name": "The elevated water tower",
+      "purpose": "A stone and steel reservoir tower providing hydrostatic pressure to Harr's irrigation network.",
+      "stages": 4,
+      "first_stage_minutes": 105
+    },
+    {
+      "id": "solar-field-2",
+      "name": "The southern solar array",
+      "purpose": "An expanded field of high-efficiency solar glass charging the nocturnal grid.",
+      "stages": 3,
+      "first_stage_minutes": 135
+    },
+    {
+      "id": "wind-array",
+      "name": "The quiet ridge wind array",
+      "purpose": "Three vertical-axis spiral turbines that harness gentle ridge winds without noise.",
+      "stages": 3,
+      "first_stage_minutes": 160
+    },
+    {
+      "id": "canal-bridge",
+      "name": "The canal stone bridge",
+      "purpose": "An arched stone footbridge connecting the central plaza to the western workshops.",
+      "stages": 3,
+      "first_stage_minutes": 25
+    },
+    {
+      "id": "tram-halt",
+      "name": "The valley tram halt",
+      "purpose": "A passenger halt with canopy and timetable for the future light-rail connection.",
+      "stages": 3,
+      "first_stage_minutes": 170
+    },
+    {
+      "id": "map-plaza",
+      "name": "The Harr plaza paving",
+      "purpose": "The square at the heart of Harr is paved in pale stone, with a lilac ring and a compass cross.",
+      "stages": 6,
+      "first_stage_minutes": 2
+    },
+    {
+      "id": "map-road-east",
+      "name": "The east road",
+      "purpose": "The east road links the districts of Harr with a lit, paved road.",
+      "stages": 2,
+      "first_stage_minutes": 6
+    },
+    {
+      "id": "map-road-north",
+      "name": "The north road",
+      "purpose": "The north road links the districts of Harr with a lit, paved road.",
+      "stages": 5,
+      "first_stage_minutes": 8
+    },
+    {
+      "id": "map-road-south",
+      "name": "The south road",
+      "purpose": "The south road links the districts of Harr with a lit, paved road.",
+      "stages": 5,
+      "first_stage_minutes": 10
+    },
+    {
+      "id": "map-road-west",
+      "name": "The west road",
+      "purpose": "The west road links the districts of Harr with a lit, paved road.",
+      "stages": 5,
+      "first_stage_minutes": 12
+    },
+    {
+      "id": "map-road-north-west",
+      "name": "The north-west road",
+      "purpose": "The north-west road links the districts of Harr with a lit, paved road.",
+      "stages": 9,
+      "first_stage_minutes": 14
+    },
+    {
+      "id": "map-road-south-west",
+      "name": "The south-west road",
+      "purpose": "The south-west road links the districts of Harr with a lit, paved road.",
+      "stages": 3,
+      "first_stage_minutes": 16
+    },
+    {
+      "id": "map-road-east-spine",
+      "name": "The east spine",
+      "purpose": "The east spine links the districts of Harr with a lit, paved road.",
+      "stages": 5,
+      "first_stage_minutes": 18
+    },
+    {
+      "id": "map-path-tram-halt",
+      "name": "The way to the tram halt",
+      "purpose": "A paved, lit path to the tram halt, tinted for the transport quarter.",
+      "stages": 2,
+      "first_stage_minutes": 165
+    },
+    {
+      "id": "map-path-canal-bridge",
+      "name": "The way to the canal bridge",
+      "purpose": "A paved, lit path to the canal bridge, tinted for the transport quarter.",
+      "stages": 2,
+      "first_stage_minutes": 20
+    },
+    {
+      "id": "map-path-well",
+      "name": "The way to the plaza well",
+      "purpose": "A paved, lit path to the plaza well, tinted for the gathering quarter.",
+      "stages": 2,
+      "first_stage_minutes": 13
+    },
+    {
+      "id": "map-path-workshop-hall",
+      "name": "The way to the makers workshop hall",
+      "purpose": "A paved, lit path to the makers workshop hall, tinted for the making quarter.",
+      "stages": 2,
+      "first_stage_minutes": 40
+    },
+    {
+      "id": "map-path-observatory",
+      "name": "The way to the star observatory",
+      "purpose": "A paved, lit path to the star observatory, tinted for the learning quarter.",
+      "stages": 2,
+      "first_stage_minutes": 45
+    },
+    {
+      "id": "map-path-market-hall",
+      "name": "The way to the market hall",
+      "purpose": "A paved, lit path to the market hall, tinted for the gathering quarter.",
+      "stages": 2,
+      "first_stage_minutes": 14
+    },
+    {
+      "id": "map-path-vertical-farm",
+      "name": "The way to the vertical farm",
+      "purpose": "A paved, lit path to the vertical farm, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 75
+    },
+    {
+      "id": "map-path-cottage-1",
+      "name": "The way to the cottage 1",
+      "purpose": "A paved, lit path to the cottage 1, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 30
+    },
+    {
+      "id": "map-path-cottage-3",
+      "name": "The way to the cottage 3",
+      "purpose": "A paved, lit path to the cottage 3, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 120
+    },
+    {
+      "id": "map-path-cottage-2",
+      "name": "The way to the cottage 2",
+      "purpose": "A paved, lit path to the cottage 2, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 80
+    },
+    {
+      "id": "map-path-light-fountain",
+      "name": "The way to the light fountain",
+      "purpose": "A paved, lit path to the light fountain, tinted for the gathering quarter.",
+      "stages": 2,
+      "first_stage_minutes": 55
+    },
+    {
+      "id": "map-path-sky-walk",
+      "name": "The way to the sky walk",
+      "purpose": "A paved, lit path to the sky walk, tinted for the transport quarter.",
+      "stages": 2,
+      "first_stage_minutes": 125
+    },
+    {
+      "id": "map-path-cottage-7",
+      "name": "The way to the cottage 7",
+      "purpose": "A paved, lit path to the cottage 7, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 110
+    },
+    {
+      "id": "map-path-amphitheatre",
+      "name": "The way to the amphitheatre",
+      "purpose": "A paved, lit path to the amphitheatre, tinted for the gathering quarter.",
+      "stages": 2,
+      "first_stage_minutes": 85
+    },
+    {
+      "id": "map-path-cottage-4",
+      "name": "The way to the cottage 4",
+      "purpose": "A paved, lit path to the cottage 4, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 70
+    },
+    {
+      "id": "map-path-transit-hub",
+      "name": "The way to the sky transit hub",
+      "purpose": "A paved, lit path to the sky transit hub, tinted for the transport quarter.",
+      "stages": 2,
+      "first_stage_minutes": 100
+    },
+    {
+      "id": "map-path-glass-garden",
+      "name": "The way to the glass garden",
+      "purpose": "A paved, lit path to the glass garden, tinted for the gathering quarter.",
+      "stages": 2,
+      "first_stage_minutes": 170
+    },
+    {
+      "id": "map-path-cottage-8",
+      "name": "The way to the cottage 8",
+      "purpose": "A paved, lit path to the cottage 8, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 140
+    },
+    {
+      "id": "map-path-library-annex",
+      "name": "The way to the library annex",
+      "purpose": "A paved, lit path to the library annex, tinted for the learning quarter.",
+      "stages": 2,
+      "first_stage_minutes": 105
+    },
+    {
+      "id": "map-path-cottage-5",
+      "name": "The way to the cottage 5",
+      "purpose": "A paved, lit path to the cottage 5, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 95
+    },
+    {
+      "id": "map-path-data-archive",
+      "name": "The way to the open archive",
+      "purpose": "A paved, lit path to the open archive, tinted for the learning quarter.",
+      "stages": 2,
+      "first_stage_minutes": 145
+    },
+    {
+      "id": "map-path-research-tower",
+      "name": "The way to the research tower",
+      "purpose": "A paved, lit path to the research tower, tinted for the learning quarter.",
+      "stages": 2,
+      "first_stage_minutes": 22
+    },
+    {
+      "id": "map-path-solar-array",
+      "name": "The way to the solar array",
+      "purpose": "A paved, lit path to the solar array, tinted for the water and energy quarter.",
+      "stages": 2,
+      "first_stage_minutes": 35
+    },
+    {
+      "id": "map-path-schoolhouse",
+      "name": "The way to the schoolhouse",
+      "purpose": "A paved, lit path to the schoolhouse, tinted for the learning quarter.",
+      "stages": 2,
+      "first_stage_minutes": 21
+    },
+    {
+      "id": "map-path-cottage-6",
+      "name": "The way to the cottage 6",
+      "purpose": "A paved, lit path to the cottage 6, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 150
+    },
+    {
+      "id": "map-path-guesthouse",
+      "name": "The way to the guesthouse",
+      "purpose": "A paved, lit path to the guesthouse, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 50
+    },
+    {
+      "id": "map-path-cottage-9",
+      "name": "The way to the cottage 9",
+      "purpose": "A paved, lit path to the cottage 9, tinted for the living quarter.",
+      "stages": 2,
+      "first_stage_minutes": 160
+    },
+    {
+      "id": "map-path-wind-array",
+      "name": "The way to the wind array",
+      "purpose": "A paved, lit path to the wind array, tinted for the water and energy quarter.",
+      "stages": 2,
+      "first_stage_minutes": 155
+    },
+    {
+      "id": "map-path-solar-field-2",
+      "name": "The way to the southern solar field",
+      "purpose": "A paved, lit path to the southern solar field, tinted for the water and energy quarter.",
+      "stages": 2,
+      "first_stage_minutes": 130
+    },
+    {
+      "id": "map-path-field-hut",
+      "name": "The way to the field hut",
+      "purpose": "A paved, lit path to the field hut, tinted for the gathering quarter.",
+      "stages": 2,
+      "first_stage_minutes": 55
+    },
+    {
+      "id": "map-path-seminar-pavilion",
+      "name": "The way to the seminar pavilion",
+      "purpose": "A paved, lit path to the seminar pavilion, tinted for the learning quarter.",
+      "stages": 2,
+      "first_stage_minutes": 25
+    },
+    {
+      "id": "map-path-water-tower",
+      "name": "The way to the water tower",
+      "purpose": "A paved, lit path to the water tower, tinted for the water and energy quarter.",
+      "stages": 2,
+      "first_stage_minutes": 100
+    },
+    {
+      "id": "map-path-field-pavilion",
+      "name": "The way to the field pavilion",
+      "purpose": "A paved, lit path to the field pavilion, tinted for the gathering quarter.",
+      "stages": 2,
+      "first_stage_minutes": 87
+    },
+    {
+      "id": "map-gate-learning",
+      "name": "The gate to the learning quarter",
+      "purpose": "A stone arch marks the way into the learning quarter; its paving and its arch share one colour.",
+      "stages": 2,
+      "first_stage_minutes": 33
+    },
+    {
+      "id": "map-gate-making",
+      "name": "The gate to the making quarter",
+      "purpose": "A stone arch marks the way into the making quarter; its paving and its arch share one colour.",
+      "stages": 2,
+      "first_stage_minutes": 52
+    },
+    {
+      "id": "map-gate-living",
+      "name": "The gate to the living quarter",
+      "purpose": "A stone arch marks the way into the living quarter; its paving and its arch share one colour.",
+      "stages": 2,
+      "first_stage_minutes": 42
+    },
+    {
+      "id": "map-gate-gathering",
+      "name": "The gate to the gathering quarter",
+      "purpose": "A stone arch marks the way into the gathering quarter; its paving and its arch share one colour.",
+      "stages": 2,
+      "first_stage_minutes": 25
+    },
+    {
+      "id": "map-gate-energy",
+      "name": "The gate to the water and energy quarter",
+      "purpose": "A stone arch marks the way into the water and energy quarter; its paving and its arch share one colour.",
+      "stages": 2,
+      "first_stage_minutes": 47
+    },
+    {
+      "id": "map-gate-transport",
+      "name": "The gate to the transport quarter",
+      "purpose": "A stone arch marks the way into the transport quarter; its paving and its arch share one colour.",
+      "stages": 2,
+      "first_stage_minutes": 32
+    },
+    {
+      "id": "map-land-learning",
+      "name": "The lawns of the learning quarter",
+      "purpose": "Grass mounds and a stone planter soften the learning quarter.",
+      "stages": 3,
+      "first_stage_minutes": 41
+    },
+    {
+      "id": "map-land-making",
+      "name": "The lawns of the making quarter",
+      "purpose": "Grass mounds and a stone planter soften the making quarter.",
+      "stages": 3,
+      "first_stage_minutes": 60
+    },
+    {
+      "id": "map-land-living",
+      "name": "The lawns of the living quarter",
+      "purpose": "Grass mounds and a stone planter soften the living quarter.",
+      "stages": 3,
+      "first_stage_minutes": 50
+    },
+    {
+      "id": "map-land-gathering",
+      "name": "The lawns of the gathering quarter",
+      "purpose": "Grass mounds and a stone planter soften the gathering quarter.",
+      "stages": 3,
+      "first_stage_minutes": 33
+    },
+    {
+      "id": "map-land-energy",
+      "name": "The lawns of the water and energy quarter",
+      "purpose": "Grass mounds and a stone planter soften the water and energy quarter.",
+      "stages": 3,
+      "first_stage_minutes": 55
+    },
+    {
+      "id": "map-land-transport",
+      "name": "The lawns of the transport quarter",
+      "purpose": "Grass mounds and a stone planter soften the transport quarter.",
+      "stages": 2,
+      "first_stage_minutes": 40
+    }
+  ]
+}

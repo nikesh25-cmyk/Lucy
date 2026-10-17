@@ -1,0 +1,11 @@
+{
+  "format": "nemo-pantry-manifest-v1",
+  "note": "Allow-list for the pantry_give command: the village pantry offers plain food and nothing else. NemoWorld sends only the key; it never names an item. Keep this file byte-identical with NemoWorld content/veloren-pantry.json (both tests pin it).",
+  "max_qty": 3,
+  "items": [
+    { "key": "apple", "item": "common.items.food.apple", "qty": 2 },
+    { "key": "carrot", "item": "common.items.food.carrot", "qty": 2 },
+    { "key": "cheese", "item": "common.items.food.cheese", "qty": 1 },
+    { "key": "lettuce", "item": "common.items.food.lettuce", "qty": 2 }
+  ]
+}

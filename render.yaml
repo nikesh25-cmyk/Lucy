@@ -48,6 +48,8 @@ services:
         value: 0.0.0.0
       - key: LUCY_DATABASE
         value: /var/data/world.sqlite
+      - key: GLOBAL_MAP
+        value: '1'
       # New public databases start invitation-only; changing this variable later does not change
       # an existing world's stored policy. An administrator may reopen signup deliberately.
       - key: LUCY_INITIAL_REGISTRATION

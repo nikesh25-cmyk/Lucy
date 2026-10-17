@@ -7,6 +7,7 @@
 // src/voxel-world.js, passed in as `builders`, so a terrain tree and an authored tree look the same.
 import { cellOccludedBelow, cellTypeAt, inDetail, inVoxelWindow } from '../voxel-geometry.js';
 import { accountLayer, variant } from './batch.js';
+import { interiorContext, interiorFloor, interiorWall, isInterior, openSides } from './interiors.js';
 import { shoreSides, waterDepth, waterTile } from './water.js';
 import { buildingTile, wallTile } from './buildings.js';
 
@@ -17,10 +18,13 @@ export const layer = (batch, layers, name, run) => { const before = batch.size; 
 const TREES = new Set(['tree', 'fruit', 'palm', 'cactus', 'mountain']);
 
 /** The ground: a base cube (culled whole when enclosed), a surface slab, and each type's own detail. */
-export function groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers }) {
+export function groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers, style = null }) {
   // The tile type a neighbour has, resolved exactly as the plan resolved this cell: an observed tile
   // wins over the retained map, so the water depth and the shoreline are read from what is drawn.
   const typeAt = (x, y) => cellTypeAt(definition, snapshot, x, y);
+  // A room is drawn with its own wall, floor and window grammar (src/scene/interiors.js); every other
+  // world keeps the boundary wall and the flat slab it always had.
+  const room = isInterior(definition) ? interiorContext(definition) : null;
   for (const item of plan.cells) {
     const { x, y, type } = item, pick = { x, y, z: 0, type: 'terrain', terrain: type, ...(item.parcel ? { parcel: item.parcel } : {}) };
     // The detail tier decides only how the ground *reads*: the slab, the base cube and every type's
@@ -28,9 +32,11 @@ export function groundPass({ batch, definition, snapshot, plan, cullHidden, scen
     // tile is still exactly what the server says it is. Only the water reads below its surface follow
     // the tier, and those carry no pick. See `LOD_LIMITS` in src/voxel-geometry.js.
     const detail = inDetail(x, y, plan.anchor, plan.detailRadius);
-    const base = ['water', 'bridge'].includes(type) ? colors.dirt
-      : type === 'building' || type === 'tree' || type === 'fountain' ? definition.groundColor || colors.grass
-        : colors[type] || definition.groundColor || colors.grass;
+    // On the global map the ground colour belongs to the world that owns the tile, not to the whole map.
+    const ground = definition.groundAt ? definition.groundAt(x, y) || definition.groundColor : definition.groundColor;
+    const base = room && type === 'rug' ? room.style.rug : ['water', 'bridge'].includes(type) ? colors.dirt
+      : type === 'building' || type === 'tree' || type === 'fountain' ? ground || colors.grass
+        : colors[type] || ground || colors.grass;
     const before = batch.size;
     if (type === 'water') {
       waterTile(batch, { x, y, pick, dirt: colors.dirt, depth: waterDepth(typeAt, x, y), sides: shoreSides(typeAt, x, y), detail });
@@ -39,10 +45,13 @@ export function groundPass({ batch, definition, snapshot, plan, cullHidden, scen
       if (!cullHidden || !cellOccludedBelow(definition, snapshot, plan, x, y)) batch.add(x + .5, -.5, y + .5, 1, 1, 1, variant(colors.dirt, x, y), pick);
       batch.add(x + .5, -.04, y + .5, 1, .08, 1, variant(base, x, y), pick);
       if (type === 'bridge') for (let index = 0; index < 4; index++) batch.add(x + .5, .03, y + .125 + index * .25, 1, .13, .22, colors.wood, pick);
-      if (type === 'wall') wallTile(batch, { x, y, pick });
-      if (type === 'building' && definition.kind === 'interior') builders.furniture(batch, { x, y, type: 'bookshelf' });
+      if (type === 'wall' && room) interiorWall(batch, { x, y, pick, style: room.style, sides: openSides(typeAt, x, y, room.columns, room.rows),
+        glass: colors.glass, stars: definition.id === 'observatory' });
+      else if (type === 'wall') wallTile(batch, { x, y, pick });
+      if (room && detail && type !== 'wall') interiorFloor(batch, { x, y, type, base: variant(base, x, y), style: room.style, context: room, typeAt });
+      if (type === 'building' && room) builders.furniture(batch, { x, y, type: 'bookshelf' });
       else if (type === 'building') buildingTile(batch, { x, y, pick, openFront: definition.terrain?.[y + 1]?.[x] !== 'building',
-        colors: { ...colors, body: '#d3c4a6' } });
+        colors: { ...colors, body: '#d3c4a6' }, style });
       if (type === 'tree' && !TREES.has(scenery.get(`${x},${y}`))) builders.tree(batch, x, y, 'tree', pick);
       if (type === 'fountain') builders.furniture(batch, { x, y, type: 'fountain' });
       if (type === 'garden' && (x + y) % 2 === 0) builders.furniture(batch, { x, y, type: 'flowers' });

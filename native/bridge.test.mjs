@@ -77,7 +77,7 @@ test('one-time pairing, native callback build, web projection, revocation and mo
   const state = await post('/native/state',{player:'Builder'},true);
   assert.equal(state.status,200);
   assert.deepEqual(state.body.blocks, [{id:'block-1',x:25,y:24,z:0,type:'stone'}]);
-  assert.equal(calls.filter(c=>c.path==='/world').length,12);
+  assert.equal(calls.filter(c=>c.path==='/world').length,1);
   const placed = await post('/native/action',{player:'Builder',action:'place',type:'wood',pos:{x:25,y:0,z:24}},true);
   assert.equal(placed.status,200);
   assert.deepEqual(calls.at(-1), {path:'/frontier/build',method:'POST',payload:{agent_id:'human-1',world_id:'frontier:0:0',x:25,y:24,z:0,type:'wood'}});

@@ -1,0 +1,120 @@
+HARR MAP (plaza-relative blocks: x east, y north; the Plaza centre is 0,0 and the site origin is 3,39)
+Paving: L learning, M making, V living, G gathering, E water+energy, T transport, c civic/plaza
+Other: - teal kerb   i street lamp   S sign   P planter   A gate arch   m grass mound   ~ fountain basin   w basin rim / planter base   # building/work   o other prop
+
+        5         4         3         2         1         0         1         2         3         4         5 
+ +66                                                                                                          
+ +65                                                                                                          
+ +64                                                                                                          
+ +63                                                              ######                                      
+ +62                                                              ######                                      
+ +61                                                              ######                                      
+ +60                                                              ##i###                                      
+ +59                                                              ######                                      
+ +58                                                              ######                                      
+ +57                                                                 S-----                                   
+ +56                                                                 -ccccc-                                  
+ +55                                                                 -cEEEc-                                  
+ +54                                                   m             -cE-Ec-#########     #########           
+ +53                                           m     mmmmm           -cEEEc-#######i#     #########           
+ +52                              m          mmmmm   mmmmm           -ccccc-####i####     #########           
+ +51                            mmmmm        mmmmm  mmmmmmm           -VVG- #########     i#######i           
+ +50                            mmmmm       mmmmmmm Pmmmmm  ######### -VVG- #########     #########           
+ +49                           mmmmmmm       mmmmm   mmmmm  ######### iVVG- #########     #########           
+ +48                            mmmmm        mmmmm     m    ######### -VVG- #########     #########           
+ +47                            mmmmm          m            #########P-VVG-S  o   o P-----P   S               
+ +46              #########       m                         #########-ccccc-i---i-S--ccccc-                   
+ +45              #########                 #############   ####i####-cGGGcc=G=GGGGGGcGGGc-                   
+ +44              #########     #########   #############   #########-cG-Gcc=G=GGGGGGcG-Gc-                   
+ +43              #########     #########   ######i######      #i#   -cGGGcc=G=GGGGGGcGGGc-                   
+ +42              ####i####     #########   #############       S   S-cccccc------i--ccccc-                   
+ +41              #########     #########   #############           -ccccccc-       P-----P                   
+ +40              #########     ####i####   #############           -cVVVci-S                                 
+ +39              #########---  #########         S     S----i-------cV-Vc- -----                             
+ +38              #########LLL- #########               -cccccVVVVVVVcVVVc--LLLLL-                            
+ +37                  S   -LLLi #P#####P#               -cLLLcVVVVVVVccccc--LLLLL-                            
+ +36                     -ccccc-#########               -cL-LcLVVVVVVVVVVV--LLLLL-                            
+ +35                     -cLLLcc----S--i---------------i-cLLLcL-----i----- -LLL-########                      
+ +34                     -cL-LccLLLLLLLLLLLLLLLLLLLLLLLLLcccccL-           -LLLi########                      
+ +33                     -cLLLccLLLLLLLLLcccccVVVVVVVVVVVVVLLTT-          -ccccc########                      
+ +32                     -ccccccLLLLLLLLLcVVVcVVVVVVVVVVVVVVTTT-          -cTTTc########        m             
+ +31                      -ccccci--------cV-Vc-i-----------VTT-           -cT-Tc######i#      mmmmm           
+ +30                      -LLL--        -cVVVc-           -VTT-           -cTTTc########      mmmmm           
+ +29             m      SAAAAAAAS       -ccccc-           -VTTi           -ccccc-   S        mmmmmmm          
+ +28           mmmmm      iLLL-         S-----########    -VTT-   #########################   mmmmm           
+ +27           mmmmm      -VVV-               ######i#    -VTT-   ##i#######i#######i#####i   mmmmm           
+ +26          mmmmmmm P   -VVV-     m         ########    -VTT-   #########################     m             
+ +25           mmmmm      -VVV-    mmm        ########    -VTT-           -cLLLcTT----i--                     
+ +24           mmmmm      -VVV-   mmmmm       ########    -VMT-           -cccccTTTTTTTTT-  i#####i           
+ +23             m        -VVV-    mmm        ########    -VMM-            ---iTTTTTTTTTT-  #######           
+ +22                      -VVV--S   m         ########    -VMM-               -MMTTTTTTTL-  #######           
+ +21        --------i-----iccccc-                oS       iVMM-                -------TLL-  #######           
+ +20       -TTTTTTTTTTTTTTTcVVVc###############         SAAAAAAAS                    -LLL-  #######           
+ +19       -TTTTTTTTTTTTTTTcV-Vc######i######i#       o  i-VMM-                      -LLL-  #######           
+ +18       iTTTTTTTTTTTTTTTcVVVc##########PPP##     oooooo-TTM-   ###########        -LLL-  i#####i    m      
+ +17       -TTT------------ccccc###############           -TTM-   ###########        -LLL---P  S     mmmmm    
+ +16       -TTT-###############-##########PPP##           -TTM-   ###########        iLccccc-        mmmmm    
+ +15       -TTT-#i###########i# #########i#####           -TTM-   #i#######i#        -LcLLLc-       mmmmmmm   
+ +14       -TTT-############### ###############           -TTMi---###########        -LcL-Lc-        mmmmm    
+ +13       -TTT-###############    oS      SS-----######  -TTccccc###########        -GcLLLc-        mmmmm    
+ +12       -TTT-###############             -ccccc######  -TTcMMMc###########   P    -Gccccc-          m      
+ +11       -TTTi###############             -cVVVc######  -TTcM-Mc-    S             -GGG---S                 
+ +10       -TTT-###############             -cV-Vci####i---TTcMMMc#########     m    -GGG-                    
+  +9       -TTT-#i###########i#             -cVVVccccSccccccccicccP#######P   mmmmm  -GGG-                    
+  +8       -TTT-############### ########    -cccPwcccccccccccccccc#########   mmmmm  -GGGi#############       
+  +7     SAAAAAAAS     S        ######i#    -cTTwcGwwwcwwwGGGGGGGG#########  mmmmmmm -GGG-#############       
+  +6      -ccccc-               ########    -cT-Tccw~~~~~wcccccccc#########   mmmmm  -GGG-######i######       
+  +5      -cTTTc-               ########    -cTTTccw~~~~~wcGccccccP#######P   mmmmm  -GGG-###P#####P###       
+  +4      -cT-Tc----i---------- ########    -ccccccc~~i~~cGGGccccc####i####     m    -GGG-#############       
+  +3      -cTTTcTTTTTTTTTTccccc-########    -VTccGcw~~~~~wcGccMMMccccGSc-            -GGG-#############       
+  +2      -cccccVVVVVVVVVVcVVVc-########-----VGccGcw~~~~~wccccM-MccccGcc-            -GGG-######P######       
+  +1       -TTVVVVVVVVVVVVcV-Vci----S--icccccGGcwGcwwwcwwwGGGcMMMcGGGGcc-            -GGG-#############       
+  +0        --i-----------cVVVccVVVVVVVVcGGGcGGcPwcTTTcciccccccScccccccc-oooooo-----P-GGG-#############       
+  -1                     -ccccccVVVVVVVVcG-GcGGccccT-Tcccccccccicccciccc-i-iSi-icccc-iccci###P#####P###       
+  -2                #######cV-VcVVVVVVVVcGGGcGGG--cTTTc#######--TTM---MMMMMMMMMcVVVcGcGGGc######i######       
+  -3          m     #######cVVVc--------ccccci-- -ccccc####### -TGG- -GGGGGGGGGcV-VcGcG-Gc#############       
+  -4        mmmmm   #######ccccc-       ----- #####---i####### -TGG- -GGGGGGGGGcVVVcGcGGGc#############       
+  -5        mmmmm   #######-VVV-              #####    i#####i -TGG-  ---------ccccc-ccccc-     S             
+  -6       mmmmmmm  #######-VVV-    m        S#####o   #######AAAAAAAS        S-GGG-P-----                    
+  -7        mmmmm   #####i#iVVV-  mmmmm       #####       S    -LLGi###########-GGGi----S P-----P             
+  -8        mmmmm   #######-VVV-  mmmmm       i####            -LLG-###########ccccccccc-i-ccccc-             
+  -9          m        S   -VVV- mmmmmmm P                     -LLG-###########cVVVcVVVcV=VcVVVc-             
+ -10                #######-VVV-  mmmmm               #########-LLG-i#########icV-VcV-VcV=VcV-Vc-             
+ -11                #######-VVV-  mmmmm          m    #######i#-LLG-###########cVVVcVVVcV=VcVVVc-             
+ -12                #######-VVV-    m          mmmmm  #########-LLG-###########ccccccccc---ccccc-             
+ -13                #######-VVV-               mmmmm  #########iLLG-###########-#######-#######-#######       
+ -14                #######-VVV-              mmmmmmm #########-LLG-     S      ##i#### ##i#### ##i####       
+ -15                #####i#-VVVi         m     mmmmm  #########ccccc-           ####### ####### #######       
+ -16                #######-VVV-       mmmmm   mmmmm  #########cGGGc-           ####### ####### #######       
+ -17                   S SAAAAAAAS     mmmmm     m    #i#######cG-Gc-           #####P# #####P# #####P#       
+ -18                #######ccccc-     mmmmmmm         #########cGGGc-           ####### ####### #######       
+ -19                #######cVVVc-      mmmmm          o   o   -ccccc-     m        S       S       S          
+ -20                #######cV-Vc-      mmmmm        i#######i -ccccc-   mmmmm                                 
+ -21                #######cVVVc-        m          ######### -cLLLc-   mmmmm                                 
+ -22                #######ccccc-                   ######### -cL-Lc-  mmmmmmm P  ### ### ###                 
+ -23                #####i#iVVV-                    ######### -cLLLc-   mmmmm     ### ### ###                 
+ -24                #######-VVV--i--  ###########   ####i#### -ccccc-   mmmmm     ### ### ###                 
+ -25                   S  -VVVVVVGGG- i#########i   #########  -GGL-      m       ### ### ###                 
+ -26                      -cccccVGGG- ###########   #########  -GGG-              ### ### ###                 
+ -27                      -cVVVcVGGG- ###########   #########  -GGG-              ### ### ###       m         
+ -28                      -cV-Vc-GGG- ###########   i#######i---GGG-              ### ### ###     mmmmm       
+ -29                      -cVVVc-GGG- ###########           -cccccGi S            ### ### ###     mmmmm       
+ -30                      -ccccc-GGG- ###########           -cGGGcG- A     -------i## ### ### i  mmmmmmm      
+ -31                       -VVV--GGG--#i#######i#           -cG-GcG--A----iccccccc------S-        mmmmm       
+ -32                       -VVVi-ccccc###########           -cGGGcGGGAEEEEEcEEEcEcEEEEEEEE-       mmmmm       
+ -33                       -VVVGGcGGGc-    S           m    -cccccGGEAEEEEEcE-EcEcEEEEEEEE-      P  m         
+ -34                       -VVGGGcG-Gc-              mmmmm  S---GGGEEAEEEEEcEEEcEcEEEEEEEE-                   
+ -35                       -VGGGGcGGGc-              mmmmm    -ccccciA-----ccccccc-----EEE-      m            
+ -36                        -----ccccc######i###### mmmmmmm   -cEEEc-A     -----#############  mmmmm          
+ -37                            S-----#############  mmmmm    -cE-Ec-S          #############  mmmmm          
+ -38                                  P###########P  mmmmm    -cEEEc-       m   ############# mmmmmmm         
+ -39                                  #############    m      -ccccc-      mmm  ######i######  mmmmm          
+ -40                                  #############           ########### mmmmm #############  mmmmm          
+ -41                                  #############           ###########  mmm  #############    m            
+ -42                                  P###########P           ##i##i##i##   m   i###########i                 
+ -43                                  #############           ###########             S                       
+ -44                                  ######i######           ###########                                     
+ -45                                        S                      S                                          
+ -46                                                                                                          
+ -47                                                                                                          
+ -48                                                                                                          

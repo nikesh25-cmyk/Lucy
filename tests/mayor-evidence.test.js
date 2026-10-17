@@ -49,12 +49,12 @@ test('country context preserves zero, all-null and uncollected series as differe
 
 test('stored country snapshots survive restart and backup; schema eight guide conversations migrate and stay readable',async t=>{
   const f=await fixture(t),aliceId=f.actor('alice').account.id,reply=f.tx('mayorTalk',f.actor('alice'),{...question,country_code:'NP'}),backup=join(f.directory,'country-backup.sqlite');
-  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version, 24);
+  backupDatabase(f.platform.db,backup);assert.equal(validateDatabase(backup).schema_version, 27);
   f.platform.close();const reopened=new Platform(f.database);t.after(()=>{try{reopened.close();}catch{/* Closed again before testing migration. */}});
   assert.deepEqual(reopened.mayors(reopened.authenticate(f.credentials.alice.token)).conversations[0].country_context,reply.country_context);
   // Recreate the schema eight guide store and record one historic conversation in it. The migration is
   // additive: the old row keeps its exact question and answer and gains no fabricated context.
-  reopened.db.exec('ALTER TABLE mayor_conversations DROP COLUMN country_context; ALTER TABLE mayor_conversations DROP COLUMN source_numbers; PRAGMA user_version=8');
+  reopened.db.exec('DROP VIEW IF EXISTS karma_service_rules; DROP VIEW IF EXISTS karma_source_events; DROP TABLE IF EXISTS karma_receipts; DROP TABLE IF EXISTS karma_purchases; DROP TABLE IF EXISTS shop_purchases; ALTER TABLE mayor_conversations DROP COLUMN country_context; ALTER TABLE mayor_conversations DROP COLUMN source_numbers; PRAGMA user_version=8');
   reopened.db.prepare("INSERT INTO mayor_conversations(id,account_id,npc_id,question,answer,created_at,mode) VALUES('historic-1',?,'mayor-highlands','Historic question','Historic answer','2026-09-01T00:00:00.000Z','rules')").run(aliceId);
   assert.equal(validateDatabase(f.database).schema_version,8);reopened.close();
   const migrated=new Platform(f.database);t.after(()=>migrated.close());const actor=migrated.authenticate(f.credentials.alice.token);
@@ -65,7 +65,7 @@ test('stored country snapshots survive restart and backup; schema eight guide co
   const profile=migrated.ambassador(actor,{id:mapped});assert.equal(profile.legacy.guide_id,'mayor-highlands');
   assert.deepEqual(profile.legacy_conversations.map(conversation=>conversation.question),['Historic question']);
   assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_ambassadors').n,248);assert.equal(migrated.get('SELECT COUNT(*) AS n FROM npc_mayors').n,20);
-  assert.equal(validateDatabase(f.database).schema_version, 24);assert.equal(migrated.verifyAudit(),true);
+  assert.equal(validateDatabase(f.database).schema_version, 27);assert.equal(migrated.verifyAudit(),true);
   migrated.db.exec('ALTER TABLE mayor_conversations DROP COLUMN country_context');assert.throws(()=>validateDatabase(f.database),/mayor evidence schema/);
 });
 

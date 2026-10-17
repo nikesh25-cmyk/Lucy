@@ -14,10 +14,22 @@ implements recommendation 3 of [the voxel engine reuse decision](VOXEL_ENGINE_RE
 | `crop` | 6 | `content/crops/*.json` | `rules.grow_ms`, `yield` (`item`, `quantity`), `tile_object`, `max_growing`, `tend_saving_ms` |
 | `appearance` | 20 | `content/appearances/*.json` | `rules.roster_roles`, `sprite`, `directions`, `walk_rows`, `action_rows_excluded`; CC0-1.0 art |
 | `cosmetic` | 32 | `content/cosmetics/*.json` | `rules.cosmetic_kind`, `earned_by`, and for crafts `name`/`ingredients`/`output` |
+| `place` | 6 | `content/places/*.json` | `rules.family`, `site` (the grid, arrival, portal, plaza band and the venue machinery reused), `structure`, and the fixtures, activities, residents and ambient profile it wires |
+| `fixture` | 12 | `content/fixtures/*.json` | `rules.family`, `object` (a sealed furniture id), `footprint`, `scenery_class`, `blocks_route`, `arrangement`, `tiles`, `owner`, `placement`, `provenance` |
+| `activity` | 8 | `content/activities/*.json` | `rules.family`, `place`, `residents`, `participants`, `cadence`, `duration_ticks`, `relates_to`, `motion`, `reduced_motion`, `clock`, `implements` |
+| `resident` | 6 | `content/residents/*.json` | `rules.family`, `place`, `role`, `appearance` (a sealed appearance id), `schedule`, `dialogue_topics`, `remit`, `independence` |
+| `ambient` | 6 | `content/ambient/*.json` | `rules.family`, `place`, `profile`, `time_of_day`, `layers`, `motion`, `reduced_motion`, `provenance` |
 
-`content/content-manifest.json` indexes all **98** entries (9 + 31 + 6 + 20 + 32) by file, digest,
-license and asset. The counts above, the manifest and the drift guards are recomputed and asserted
-by `tests/content.test.js`, so this table cannot silently diverge from the definitions.
+`content/content-manifest.json` indexes all **136** entries (9 + 31 + 6 + 20 + 32 + 6 + 12 + 8 + 6 + 6)
+by file, digest, license and asset. The counts above, the manifest and the drift guards are recomputed
+and asserted by `tests/content.test.js`, so this table cannot silently diverge from the definitions.
+
+The last five kinds are the authored content families added by
+[the content manifest slice](CONTENT_MANIFEST.md). None of them draws new geometry: a fixture repeats
+the sealed furniture builder in `appearance.geometry` and a resident repeats a sealed appearance id,
+so neither can introduce an asset. Their rules — reference resolution, footprint and collision,
+accessibility, determinism and independence — live in `src/content-manifest.js` and are described
+there.
 
 The six crops are one family that shares one garden cap and one five-minute tend, and differs in
 everything a resident chooses between: growth time, harvest amount and the care window that decides
@@ -34,7 +46,7 @@ build palettes, and `src/footprints.js` classifies each one. Adding a definition
 therefore makes it buildable, grantable and storable without a second copy of the list.
 
 Two content files are deliberately **not** touched by an additive change: `content/THIRD_PARTY.md`
-is the shared notice file whose SHA-256 every definition records, so editing it would change all 98
+is the shared notice file whose SHA-256 every definition records, so editing it would change all 136
 `license.notice_sha256` values (including the frozen appearance and cosmetic entries); its per-group
 counts are therefore descriptive, and the executable counts are the ones in `tests/content.test.js`.
 
@@ -43,7 +55,7 @@ and `house` from `src/spaces.js`, `frontier` from `src/frontier.js`), `content/n
 notice file and asset a definition references), `content/index.js` (a generated ESM bundle for static
 import) and `content/THIRD_PARTY.md` (the provenance and license notice referenced by every
 definition). The full envelope and the per-kind rules table are documented in
-[`content/README.md`](../content/README.md) (read-only; not edited by the docs layer).
+[`content/README.md`](../content/README.md), which also lists the five authored families.
 
 ## Provenance and licenses
 
@@ -96,7 +108,7 @@ the same object as `manifest()`:
 {
   "schema_version": 1,
   "generated_by": "scripts/seal-content.mjs",
-  "kinds": { "appearance": 20, "block": 9, "cosmetic": 32, "crop": 6, "furniture": 31 },
+  "kinds": { "activity": 8, "ambient": 6, "appearance": 20, "block": 9, "cosmetic": 32, "crop": 6, "fixture": 12, "furniture": 31, "place": 6, "resident": 6 },
   "entries": [{ "id": "…", "kind": "…", "file": "content/…", "sha256": "…", "license": { "…": "…" }, "assets": [] }],
   "support": [{ "path": "content/palettes.json", "sha256": "…" }, { "path": "content/notices.json", "sha256": "…" }, { "path": "content/index.js", "sha256": "…" }]
 }
@@ -104,3 +116,26 @@ the same object as `manifest()`:
 
 Each definition file, `content/index.js` and `content/content-manifest.json` are also served as
 static browser modules, so the client module graph can import `src/content.js` directly.
+
+## Authored content families
+
+Five kinds were added on top of the artwork vocabulary — `place`, `fixture`, `activity`, `resident`
+and `ambient`. They carry no new art and no new geometry: a place reuses an existing venue builder in
+`world.js`, a fixture repeats a sealed furniture builder, and a resident repeats a sealed appearance
+id. Their schema, their validator and every refusal rule are in
+[the content manifest slice](CONTENT_MANIFEST.md); the definitions themselves are sealed exactly like
+the artwork ones, so this page's counts include them.
+
+## Known gaps, recorded rather than hidden
+
+The four renderer, sprite, crop-art and skin-tone gaps are recorded with the definitions in
+[`content/README.md`](../content/README.md). Two further gaps found while adding the authored
+families are reproduced by `node --test tests/framework/known-gaps-content.mjs` — a file bare
+`node --test` does not collect, so `npm test` stays green while each stays reproducible, with its
+command, invariant, observation and owner recorded in the file:
+
+- a seventh crop definition would fork the persisted `journey_crops` schema silently, because the
+  table's `CHECK` clause is derived from the sealed crop list while `PRAGMA user_version` stays 25
+  (owner: persistence/schema owner; the fix is a migration);
+- the sealed furniture rules and the shared footprint table in `src/footprints.js` disagree for 18 of
+  31 furniture definitions, and nothing compares them (owner: content/runtime owner).

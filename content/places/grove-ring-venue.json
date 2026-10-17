@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "id": "grove-ring-venue",
+  "kind": "place",
+  "label": "Grove Ring Venue",
+  "since": "1.1.0",
+  "order": 1,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#8ba884",
+    "geometry": "venue-layout",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "places",
+    "site": {
+      "kind": "country-variant",
+      "world": "country:KEN",
+      "venue": "kaya",
+      "iso3": "KEN",
+      "columns": 40,
+      "rows": 28,
+      "arrival": {
+        "x": 20,
+        "y": 25
+      },
+      "portal": {
+        "x": 20,
+        "y": 26
+      },
+      "plaza": {
+        "x": 12,
+        "y": 8,
+        "width": 16,
+        "height": 16
+      },
+      "band_rule": "clear-of-mass",
+      "registers_land": false,
+      "machinery": "world.js makeCountry(iso3) with COUNTRY_VENUE_ASSIGNMENT.KEN === 'kaya'; one south corridor (crossRoad false) into a tree ring around a garden and plaza clearing"
+    },
+    "structure": {
+      "kind": "grove-ring",
+      "terrain": [
+        "meadow",
+        "garden",
+        "path",
+        "plaza"
+      ],
+      "water": false,
+      "elevation_steps": 1,
+      "footprint_class": "mixed",
+      "approach": {
+        "axis": "y",
+        "at": [
+          20
+        ],
+        "from": 20,
+        "to": 27
+      },
+      "corridor": {
+        "axis": "y",
+        "at": [
+          20
+        ],
+        "from": 20,
+        "to": 27
+      }
+    },
+    "fixtures": [
+      "ring-bench",
+      "open-shelter"
+    ],
+    "activities": [
+      "grove-round"
+    ],
+    "residents": [
+      "grove-host"
+    ],
+    "ambient": "canopy-shade",
+    "motion": "none",
+    "accessibility": {
+      "min_viewport_px": 390,
+      "hit_target_px": 44,
+      "reduced_motion": "not-needed",
+      "contrast": [
+        {
+          "role": "text",
+          "foreground": "#edf0dc",
+          "background": "#092a24",
+          "target": 4.5
+        },
+        {
+          "role": "nontext",
+          "foreground": "#ded6a5",
+          "background": "#071b19",
+          "target": 3
+        }
+      ],
+      "route": "native-selector"
+    },
+    "independence": {
+      "fictional": true,
+      "claims_endorsement": false,
+      "government_role": false,
+      "un_role": false,
+      "statement": "A fictional NemoWorld space. It is not a government, ministry, embassy or United Nations office, it does not represent any country or people, and nothing here asserts endorsement, representation or official status."
+    }
+  },
+  "notes": [
+    "A dense tree ring with a single south corridor, inside it a garden and plaza clearing with an open shelter.",
+    "The corridor is the one gap in the ring, which is the kaya shape's distinguishing structure; the place records it so a ring that closes the corridor is refused as a walkability refusal rather than shipped."
+  ]
+}

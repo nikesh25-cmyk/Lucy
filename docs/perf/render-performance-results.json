@@ -1,0 +1,294 @@
+{
+  "timestamp": "2026-10-15T08:25:56.655Z",
+  "hardware": {
+    "platform": "darwin",
+    "release": "25.6.0",
+    "arch": "arm64",
+    "cpus": 10,
+    "cpuModel": "Apple M5",
+    "totalMemoryGB": 16
+  },
+  "targetCommit": "2428bc51a873be38d9dfa4729a5f79e72acd7ed9",
+  "results": [
+    {
+      "configId": "desktop-normal-motion",
+      "configName": "Desktop (1280x800) - Normal Motion",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "reducedMotion": "no-preference",
+      "timeToEnterWorldMs": 3370,
+      "frames": {
+        "sampled": 120,
+        "medianDeltaMs": 16.7,
+        "p95DeltaMs": 16.8,
+        "minDeltaMs": 16.5,
+        "maxDeltaMs": 16.8,
+        "meanDeltaMs": 16.67,
+        "intervalsOver50ms": 0,
+        "observedRafHz": 60
+      },
+      "longTasks": {
+        "count": 0,
+        "medianDurationMs": 0,
+        "p95DurationMs": 0,
+        "maxDurationMs": 0
+      },
+      "movementLatency": {
+        "samples": [
+          {
+            "step": 1,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 37,
+            "inputToReticleMs": 83
+          },
+          {
+            "step": 2,
+            "direction": "ArrowLeft",
+            "inputToServerDbMs": 13,
+            "inputToReticleMs": 78
+          },
+          {
+            "step": 3,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 199,
+            "inputToReticleMs": 341
+          },
+          {
+            "step": 4,
+            "direction": "ArrowLeft",
+            "inputToServerDbMs": 22,
+            "inputToReticleMs": 105
+          },
+          {
+            "step": 5,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 13,
+            "inputToReticleMs": 80
+          }
+        ],
+        "inputToServerDbMedianMs": 22,
+        "inputToServerDbP95Ms": 199,
+        "inputToReticleMedianMs": 83,
+        "inputToReticleP95Ms": 341
+      },
+      "secondClientObservedUpdateMs": 40,
+      "memory": {
+        "usedJSHeapSizeMB": 15.68,
+        "totalJSHeapSizeMB": 30.59
+      },
+      "screenshot": "docs/perf/screenshots/perf-desktop-normal-motion.png"
+    },
+    {
+      "configId": "desktop-reduced-motion",
+      "configName": "Desktop (1280x800) - Reduced Motion",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "reducedMotion": "reduce",
+      "timeToEnterWorldMs": 2008,
+      "frames": {
+        "sampled": 120,
+        "medianDeltaMs": 16.7,
+        "p95DeltaMs": 16.8,
+        "minDeltaMs": 16.5,
+        "maxDeltaMs": 16.8,
+        "meanDeltaMs": 16.66,
+        "intervalsOver50ms": 0,
+        "observedRafHz": 60
+      },
+      "longTasks": {
+        "count": 0,
+        "medianDurationMs": 0,
+        "p95DurationMs": 0,
+        "maxDurationMs": 0
+      },
+      "movementLatency": {
+        "samples": [
+          {
+            "step": 1,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 16,
+            "inputToReticleMs": 40
+          },
+          {
+            "step": 2,
+            "direction": "ArrowLeft",
+            "inputToServerDbMs": 16,
+            "inputToReticleMs": 33
+          },
+          {
+            "step": 3,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 16,
+            "inputToReticleMs": 40
+          },
+          {
+            "step": 4,
+            "direction": "ArrowLeft",
+            "inputToServerDbMs": 15,
+            "inputToReticleMs": 37
+          },
+          {
+            "step": 5,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 15,
+            "inputToReticleMs": 44
+          }
+        ],
+        "inputToServerDbMedianMs": 16,
+        "inputToServerDbP95Ms": 16,
+        "inputToReticleMedianMs": 40,
+        "inputToReticleP95Ms": 44
+      },
+      "secondClientObservedUpdateMs": 223,
+      "memory": {
+        "usedJSHeapSizeMB": 11.93,
+        "totalJSHeapSizeMB": 30.49
+      },
+      "screenshot": "docs/perf/screenshots/perf-desktop-reduced-motion.png"
+    },
+    {
+      "configId": "phone-normal-motion",
+      "configName": "Phone (390x844) - Normal Motion",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "reducedMotion": "no-preference",
+      "timeToEnterWorldMs": 2119,
+      "frames": {
+        "sampled": 120,
+        "medianDeltaMs": 16.7,
+        "p95DeltaMs": 16.7,
+        "minDeltaMs": 16.5,
+        "maxDeltaMs": 16.8,
+        "meanDeltaMs": 16.66,
+        "intervalsOver50ms": 0,
+        "observedRafHz": 60
+      },
+      "longTasks": {
+        "count": 0,
+        "medianDurationMs": 0,
+        "p95DurationMs": 0,
+        "maxDurationMs": 0
+      },
+      "movementLatency": {
+        "samples": [
+          {
+            "step": 1,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 23,
+            "inputToReticleMs": 41
+          },
+          {
+            "step": 2,
+            "direction": "ArrowLeft",
+            "inputToServerDbMs": 19,
+            "inputToReticleMs": 56
+          },
+          {
+            "step": 3,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 10,
+            "inputToReticleMs": 61
+          },
+          {
+            "step": 4,
+            "direction": "ArrowLeft",
+            "inputToServerDbMs": 61,
+            "inputToReticleMs": 80
+          },
+          {
+            "step": 5,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 16,
+            "inputToReticleMs": 165
+          }
+        ],
+        "inputToServerDbMedianMs": 19,
+        "inputToServerDbP95Ms": 61,
+        "inputToReticleMedianMs": 61,
+        "inputToReticleP95Ms": 165
+      },
+      "secondClientObservedUpdateMs": 118,
+      "memory": {
+        "usedJSHeapSizeMB": 12.2,
+        "totalJSHeapSizeMB": 32.5
+      },
+      "screenshot": "docs/perf/screenshots/perf-phone-normal-motion.png"
+    },
+    {
+      "configId": "phone-reduced-motion",
+      "configName": "Phone (390x844) - Reduced Motion",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "reducedMotion": "reduce",
+      "timeToEnterWorldMs": 7713,
+      "frames": {
+        "sampled": 120,
+        "medianDeltaMs": 16.7,
+        "p95DeltaMs": 16.8,
+        "minDeltaMs": 16.5,
+        "maxDeltaMs": 16.8,
+        "meanDeltaMs": 16.67,
+        "intervalsOver50ms": 0,
+        "observedRafHz": 60
+      },
+      "longTasks": {
+        "count": 0,
+        "medianDurationMs": 0,
+        "p95DurationMs": 0,
+        "maxDurationMs": 0
+      },
+      "movementLatency": {
+        "samples": [
+          {
+            "step": 1,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 17,
+            "inputToReticleMs": 41
+          },
+          {
+            "step": 2,
+            "direction": "ArrowLeft",
+            "inputToServerDbMs": 16,
+            "inputToReticleMs": 30
+          },
+          {
+            "step": 3,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 14,
+            "inputToReticleMs": 24
+          },
+          {
+            "step": 4,
+            "direction": "ArrowLeft",
+            "inputToServerDbMs": 13,
+            "inputToReticleMs": 28
+          },
+          {
+            "step": 5,
+            "direction": "ArrowRight",
+            "inputToServerDbMs": 14,
+            "inputToReticleMs": 31
+          }
+        ],
+        "inputToServerDbMedianMs": 14,
+        "inputToServerDbP95Ms": 17,
+        "inputToReticleMedianMs": 30,
+        "inputToReticleP95Ms": 41
+      },
+      "secondClientObservedUpdateMs": 42,
+      "memory": {
+        "usedJSHeapSizeMB": 12.15,
+        "totalJSHeapSizeMB": 32.25
+      },
+      "screenshot": "docs/perf/screenshots/perf-phone-reduced-motion.png"
+    }
+  ]
+}

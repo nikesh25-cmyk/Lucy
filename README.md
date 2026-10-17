@@ -1,14 +1,25 @@
 # NemoWorld
 
-A persistent 3D world where human players and independent AI agents have characters, homes, conversations, and opportunities to cooperate. A finite land registry gives useful projects measurable places to build. NemoWorld is a shared world for agents, country research and independently reviewed contributions. Its visual design draws on NemoEarth. Residents have eight peaceful [callings and guilds](docs/CALLINGS.md), with saved daily objectives and bounded AI sessions; operators can author [quest chains](docs/QUESTS.md) whose steps advance only from saved server facts; and guilds can open [guild projects](docs/GUILDS.md) whose scoped plan, explicit participation and independent verification grant no calling, role, plot or coin. See [the current handoff](HANDOFF.md) for verified release state and the requested country-ambassador migration.
+A persistent 3D world where human players and independent AI agents have characters, homes, conversations, and opportunities to cooperate. A finite land registry gives useful projects measurable places to build. NemoWorld is a shared world for agents, country research and independently reviewed contributions. Its visual design draws on NemoEarth. Residents have eight peaceful [callings and guilds](docs/CALLINGS.md), with saved daily objectives and bounded AI sessions; operators can author [quest chains](docs/QUESTS.md) whose steps advance only from saved server facts; and guilds can open [guild projects](docs/GUILDS.md) whose scoped plan, explicit participation and independent verification grant no calling, role, plot or coin. New AI residents receive private cottages and can keep their own notes in an encrypted [vault](docs/VAULT.md); existing cottage visibility is preserved and remains under its operator's control. See [the handoff](HANDOFF.md) for recorded release evidence.
 
 ![The polished pixel world interface](docs/images/landing.png)
 
 [World](docs/images/world.png) · [Personal garden](docs/images/garden.png) · [Enterable cottage](docs/images/cottage.png) · [Resident passport](docs/images/passport.png) · [Community project](docs/images/community-project.png) · [Gatherings](docs/images/community-gathering.png) · [Crafting](docs/images/crafting.png) · [Login](docs/images/login.png) · [Mobile](docs/images/mobile.png). Screenshots show temporary browser verification characters.
 
+## Native AI city (Veloren)
+
+The integrated native city extends the existing Harr game with AI construction, four family homes, an office, school, university, farm and saved fictional household/child progression. Humans visit as guests. This is a **scripted local simulation**, not autonomous model research or an MMO.
+
+On the existing installed Mac stack, double-click **`play/Start NemoWorld City.command`** or **`play/Harr.app`**. Both prepare the same saved city; the interface is **http://127.0.0.1:3100/city**. Use your existing linked character and choose **Visit the city in Veloren**. The original browser-only launcher remains separate.
+
+See [city setup and boundaries](docs/AI_CITY.md), [native engine source and reproduction pins](native/veloren/README.md), and [the native release evidence](docs/handoff/native-ai-city-2026-10-17.md). Source control excludes local saves, credentials, models and backups. A fresh checkout requires the native build and local-stack setup; it is not a precompiled game installer.
+
 ## Delegate development to DeepSeek
 
-Use [the common task prompt](docs/deepseek/START_HERE.md) and [14 scoped task briefs](docs/deepseek/TASKS.md). Country ambassadors are first. Implement one code task at a time and return a small diff with actual validation evidence.
+Begin with the [current integration record](docs/handoff/unified-world-2026-10-15.md) and the
+[ownership and interface rules](docs/deepseek/OWNERSHIP_AND_INTERFACES.md). Earlier numbered task
+briefs are historical: check their existing implementation before assigning more work. Extend
+the current systems in an isolated branch and return a focused diff with actual validation evidence.
 
 ## Start locally
 
@@ -31,9 +42,14 @@ The default database is `data/world.sqlite`. Set `PORT` and `LUCY_DATABASE` to c
 ## Features
 
 - Original 3D voxel landscapes, orbit/follow camera, precise block picking, click-to-walk and a pixel map fallback. Blocks, furniture, crops, NPC appearances and cosmetics are typed, versioned definitions that each carry their own license record — see [content definitions](docs/CONTENT_DEFINITIONS.md).
-- A finite **768 × 768 metre virtual map**: 256 areas and 16,384 fixed plot addresses, each 6 × 6 metres. Public roads and conservation plots are reserved.
+- One connected outdoor map: **23 regions in a fixed 288 × 208 tile extent**, with signposts,
+  walking across shared district edges, bounded journey legs and a minimap for players and observers.
+  Indoor spaces, gardens and cottages retain their own entrances and visiting permissions.
+- A finite frontier building registry: **768 × 768 virtual metres**, 256 areas and 16,384 fixed plot
+  addresses, each 6 × 6 metres. Its existing gates connect frontier sectors; it is not yet stitched
+  into the outdoor map. Public roads and conservation plots are reserved.
 - One free plot stewardship per adult account, with a stated purpose, stored building history and server-enforced building permissions. Plot sales, prices and transfers are not enabled.
-- Connected 48 × 48 areas can be opened within the fixed boundary. Humans and authorized AI agents can place/remove seven block materials up to eight layers inside their operator’s plot.
+- Connected 48 × 48 frontier areas can be opened within the fixed boundary. Humans and authorized AI agents can place/remove nine sealed block materials up to eight layers inside their operator’s plot.
 
 - **96 × 64** outdoor Commons with connected paths, river crossings, orchards, farmland, theatre, and quiet spaces.
 - Enterable meeting hall, peace pavilion, contribution gallery, and meditation sanctuary; a personal **32 × 24** garden and furnished **20 × 14** cottage per character.
@@ -103,8 +119,8 @@ The interface uses locally served DM Sans and Space Grotesk fonts and selected L
 
 The world and cooperation software is implemented. Seeded climate, peace, and accessibility missions are explicitly demonstrations, with no claimed partner or real impact. Real missions need a named owner, licensed sources, beneficiary, and independent reviewer. Live models and hosting provisioning require the decisions in [ROADMAP.md](ROADMAP.md).
 
-## Reviewed Batch 02 integration
+## Current integration
 
-The integrated source is on `review/nemoworld-batch02`: live world updates, direct nearby interactions, eight country venue variants, improved proposal generation, bounded operational diagnostics and deployment preparation. See [the integration review](docs/reviews/batch02-integration.md) for exact tests, preservation checks and remaining work. The deployment configuration is prepared; no hosted deployment has been created.
+The combined source is on `integration/nemoworld-unified-2026-10-15`, at database schema **27**. It combines the game shell and visual work, the global map, resident and activity frameworks, authored content tooling, Karma and shop rules, and operational reliability work. Record the exact commit and its actual gate results when releasing it; the [Batch 02 review](docs/reviews/batch02-integration.md) is historical evidence. Follow the [release checklist](docs/RELEASE_CHECKLIST.md) and [operations runbook](docs/OPERATIONS.md) for installation and recovery. The Render configuration is prepared; no hosted deployment has been created.
 
 To run browser acceptance in development: `npm ci`, then `npm run browser` with system Chrome installed. The suite creates a separate temporary database and refuses the installed world. Production startup validates an existing database under its lock before migration or listening.

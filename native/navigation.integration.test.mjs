@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fixture} from '../tests/helpers.js';
+import {createApp} from '../server.js';
+import {createBridge} from './bridge.mjs';
+import {getWorldDefinition} from '../world.js';
+
+test('native reads once, walks to usable land, builds, and visits Commons through real doorway authority',async t=>{
+ const f=await fixture(t),actor=f.actor('alice');
+ const human=f.tx('createAgent',actor,{kind:'human',name:'Native traveller',capabilities:'Build and explore',limitations:'Human controlled'});
+ f.platform.run('UPDATE agents SET world_id=?,x=24,y=24,z=0,grounded=1 WHERE id=?','frontier:0:0',human.id);
+ const app=createApp({platform:f.platform});await new Promise(r=>app.server.listen(0,'127.0.0.1',r));
+ t.after(async()=>{await app.stopWorkers();await new Promise(r=>{app.server.close(r);app.server.closeAllConnections()})});
+ let reads=0;const key='d'.repeat(64),bridge=createBridge({api:`http://127.0.0.1:${app.server.address().port}`,modKey:key,fetcher:(url,options)=>{if(new URL(url).pathname==='/api/v1/world')reads++;return fetch(url,options)}});
+ await new Promise(r=>bridge.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>bridge.close(r)));
+ const base=`http://127.0.0.1:${bridge.address().port}`;let pair_id;
+ const post=async(path,body={})=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json','X-Nemo-Mod-Key':key},body:JSON.stringify({player:'Traveller',pair_id,...body})});return{status:r.status,data:await r.json()}};
+ const issued=await post('/pair/start',{token:f.credentials.alice.token,agent_id:human.id});pair_id=(await post('/native/pair',{code:issued.data.code})).data.pair_id;
+ const state=await post('/native/state');assert.equal(state.status,200);assert.equal(reads,1,'a scene refresh must use one bounded world read, not twelve');
+ const claim=await post('/native/plot',{plot_id:'plot:0:0:5:5',purpose:'Creative workshop'});assert.equal(claim.status,200);
+ const route=await post('/native/navigation',{kind:'plot'});assert.equal(route.status,200,JSON.stringify(route.data));assert.ok(route.data.directions.length>0);
+ for(const direction of route.data.directions){f.advance(200);assert.equal((await post('/native/action',{action:'move',direction})).status,200)}
+ const standing=f.platform.get('SELECT x,y FROM agents WHERE id=?',human.id);assert.ok(standing.x>=30&&standing.x<36&&standing.y>=30&&standing.y<36);
+ f.advance(250);const cell=route.data.build_target;
+ const built=await post('/native/action',{action:'place',type:'wood',pos:{x:cell.x,y:0,z:cell.y}});assert.equal(built.status,200,JSON.stringify(built.data));
+ assert.equal(f.platform.get('SELECT COUNT(*) n FROM frontier_blocks').n,1);
+ assert.equal((await post('/native/action',{action:'travel',world_id:'commons'})).status,409,'being far from a doorway must not teleport the player');
+ f.platform.run('UPDATE agents SET x=24,y=27,z=0,grounded=1 WHERE id=?',human.id);f.advance(250);
+ const entered=await post('/native/action',{action:'travel',world_id:'commons'});assert.equal(entered.status,200,JSON.stringify(entered.data));
+ const commons=await post('/native/state');assert.equal(commons.status,200,JSON.stringify(commons.data));assert.equal(commons.data.world_id,'commons');
+ assert.equal(commons.data.bounds.columns,getWorldDefinition('commons').columns);assert.equal(commons.data.bounds.rows,getWorldDefinition('commons').rows);
+ assert.ok(commons.data.portals.some(p=>p.target_world_id==='frontier:0:0'));
+ assert.ok(commons.data.terrain.length>48*48);
+ const ownHome=commons.data.own_home.id;
+ assert.equal((await post('/native/navigation',{kind:'home',world_id:ownHome})).status,200);
+ f.advance(250);assert.equal((await post('/native/action',{action:'travel',world_id:ownHome})).status,200);
+ const home=await post('/native/state');assert.equal(home.status,200);assert.equal(home.data.world_id,ownHome);
+ f.advance(250);assert.equal((await post('/native/action',{action:'travel',world_id:'commons'})).status,200);
+ const bob=f.agent('bob','Private host');f.tx('homeSettings',f.actor('bob'),bob.id,{visibility:'private'});
+ assert.notEqual((await post('/native/action',{action:'travel',world_id:`home:${bob.id}`})).status,200);
+ assert.equal(f.platform.get('SELECT COUNT(*) n FROM coin_rewards').n,0);
+});

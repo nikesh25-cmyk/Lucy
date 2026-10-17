@@ -230,7 +230,7 @@ test('one orbit input owner emits applied drag look state and programmatic camer
   assert.ok(Math.abs(after.yaw - (before.yaw - .08)) < 1e-12); assert.ok(Math.abs(after.pitch - (before.pitch + .03)) < 1e-12);
   calls[0].yaw = 999; assert.deepEqual(input.orbit, after, 'callbacks cannot mutate camera state');
   input.drag(0, 0); assert.equal(calls.length, 1);
-  input.drag(Infinity, NaN); assert.equal(calls.length, 1); input.drag(0, 10000); assert.equal(input.orbit.pitch, 1.22);
+  input.drag(Infinity, NaN); assert.equal(calls.length, 1); input.drag(0, 10000); assert.equal(input.orbit.pitch, 1.4);
 });
 
 test('first-person input keeps a level or upward view and mode switches preserve yaw without extra look events', () => {
@@ -238,7 +238,7 @@ test('first-person input keeps a level or upward view and mode switches preserve
   assert.equal(input.mode, 'first-person'); assert.equal(input.orbit.pitch, 0);
   input.set({ pitch: -.8 }); assert.equal(input.orbit.pitch, -.8); assert.equal(calls.length, 0);
   input.drag(0, -10000); assert.equal(input.orbit.pitch, -1.4); assert.equal(calls.length, 1);
-  input.setMode('orbit'); assert.equal(input.orbit.pitch, .3); assert.equal(input.orbit.yaw, .7); assert.equal(calls.length, 1);
+  input.setMode('orbit'); assert.equal(input.orbit.pitch, -.9); assert.equal(input.orbit.yaw, .7); assert.equal(calls.length, 1);
   input.setMode('first-person'); input.set({ pitch: 0 }); assert.equal(input.orbit.pitch, 0); assert.equal(calls.length, 1);
   const level = firstPersonCamera({ x: 16, y: 16, z: 2 }, { yaw: 0, pitch: 0 });
   assert.deepEqual(level.eye, { x: 16.5, y: 3.35, z: 16.5 }); assert.deepEqual(level.target, { x: 16.5, y: 3.35, z: 15.5 });
@@ -360,7 +360,7 @@ test('real parcel raycasts retain stewardship data while selection overlays reus
 test('camera follows its target with finite constrained orbit and projects that target to the center', () => {
   const result = orbitCamera({ x: 12, y: 19, z: 0 }, { yaw: 100000, pitch: Infinity, distance: -10 });
   assert.equal(result.orbit.distance, 6); assert.ok(result.orbit.yaw >= -Math.PI && result.orbit.yaw <= Math.PI);
-  assert.deepEqual(normalizeOrbit({ pitch: 0, distance: 400 }), { yaw: Math.PI / 4, pitch: .3, distance: 32 });
+  assert.deepEqual(normalizeOrbit({ pitch: 0, distance: 400 }), { yaw: Math.PI / 4, pitch: 0, distance: 32 });
   const camera = new THREE.PerspectiveCamera(48, 16 / 9, .1, 100), { eye, target } = result;
   camera.position.set(eye.x, eye.y, eye.z); camera.lookAt(target.x, target.y, target.z); camera.updateMatrixWorld();
   const projected = new THREE.Vector3(target.x, target.y, target.z).project(camera);

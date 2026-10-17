@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "id": "mosaic-field-venue",
+  "kind": "place",
+  "label": "Mosaic Field Venue",
+  "since": "1.1.0",
+  "order": 5,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": "#a8bd93",
+    "geometry": "venue-layout",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "places",
+    "site": {
+      "kind": "country-variant",
+      "world": "country:JPN",
+      "venue": "satoyama",
+      "iso3": "JPN",
+      "columns": 40,
+      "rows": 28,
+      "arrival": {
+        "x": 20,
+        "y": 25
+      },
+      "portal": {
+        "x": 20,
+        "y": 26
+      },
+      "plaza": {
+        "x": 12,
+        "y": 8,
+        "width": 16,
+        "height": 16
+      },
+      "band_rule": "clear-of-mass",
+      "registers_land": false,
+      "machinery": "world.js makeCountry(iso3) with COUNTRY_VENUE_ASSIGNMENT.JPN === 'satoyama'; a mosaic of farm beds on path bunds across the north, a pond with a path on two sides, a west woodland edge and a shelter meeting place"
+    },
+    "structure": {
+      "kind": "field-mosaic",
+      "terrain": [
+        "meadow",
+        "path",
+        "farm",
+        "plaza"
+      ],
+      "water": false,
+      "elevation_steps": 1,
+      "footprint_class": "mixed",
+      "approach": {
+        "axis": "y",
+        "at": [
+          20
+        ],
+        "from": 2,
+        "to": 27
+      },
+      "bunds": [
+        2,
+        5,
+        8
+      ]
+    },
+    "fixtures": [
+      "bund-bench-row",
+      "bund-lantern-line"
+    ],
+    "activities": [
+      "bund-survey"
+    ],
+    "residents": [
+      "field-guide"
+    ],
+    "ambient": "bund-light",
+    "motion": "none",
+    "accessibility": {
+      "min_viewport_px": 390,
+      "hit_target_px": 44,
+      "reduced_motion": "not-needed",
+      "route": "native-selector",
+      "contrast": [
+        {
+          "role": "text",
+          "foreground": "#edf0dc",
+          "background": "#092a24",
+          "target": 4.5
+        },
+        {
+          "role": "nontext",
+          "foreground": "#ded6a5",
+          "background": "#071b19",
+          "target": 3
+        }
+      ]
+    },
+    "independence": {
+      "fictional": true,
+      "claims_endorsement": false,
+      "government_role": false,
+      "un_role": false,
+      "statement": "A fictional NemoWorld space. It is not a government, ministry, embassy or United Nations office, it does not represent any country or people, and nothing here asserts endorsement, representation or official status."
+    }
+  },
+  "notes": [
+    "Three raised beds on path bunds, a pond margin and a lantern line along the eastern field edge.",
+    "The publication path staged this file, refused nothing, sealed a mirror of content/ and compared the mirror to the tree before moving a byte.",
+    "First published through scripts/content-publish.mjs: previewed against a sealed mirror, then sealed, then verified with --check before the journal was kept."
+  ]
+}

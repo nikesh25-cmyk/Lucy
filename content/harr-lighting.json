@@ -1,0 +1,57 @@
+{
+  "format": "harr-lighting-v1",
+  "note": "Harr's night lighting plan. Data only: tools/gen-harr-lights.py reads this file and writes the `lights-*` groups of content/veloren-world-harr.json. Coordinates are blocks in the same frame as tools/gen-harr-works.py (the Plaza is 0,0; +x east, +y north). In Veloren a StreetLamp, Lantern or LanternpostWoodLantern has glow level 24 and a Candle 16 (Block::get_glow); the level falls by one per block, so a lamp pools light about 12 blocks out and a candle about 6 (the shader shows pow(level/31.5,3)*5+pow(level/31.5,2)*2). That is why road lamps are 9-10 blocks apart: the pools overlap; Window sprites emit no light themselves, so a 'lit window' is a Candle set on the floor just inside the window. Peaceful lighting only: lamps, lanterns and candles.",
+  "plot_offsets": [
+    { "plot": "Plaza", "nth": 0, "x": 0, "y": 0 },
+    { "plot": "House", "nth": 0, "x": 12, "y": 30 },
+    { "plot": "FarmField", "nth": 0, "x": 18, "y": 48 },
+    { "plot": "FarmField", "nth": 1, "x": 12, "y": 6 },
+    { "plot": "Workshop", "nth": 0, "x": -6, "y": 18 }
+  ],
+  "area_radius": 105,
+  "lamp": {
+    "sprite": "StreetLamp",
+    "pad": { "kind": "Rock", "rgb": [205, 220, 236], "foundation_depth": 2 },
+    "clear_height": 2
+  },
+  "limits": {
+    "max_lamps_per_group": 3,
+    "group_reach": 16,
+    "min_gap_to_existing_light": 4,
+    "wall_margin": 1,
+    "side_offsets_tried": [0, 1, -1, 2, -2, 3, -3],
+    "along_offsets_tried": [0, 1, -1, 2, -2]
+  },
+  "roads": [
+    { "id": "avenue-west", "name": "The west avenue", "spacing": 9, "side_offset": 2, "points": [[4, -1], [-40, -1]] },
+    { "id": "north-road", "name": "The north road", "spacing": 10, "side_offset": 2, "points": [[0, 3], [0, 36], [0, 58]] },
+    { "id": "south-road", "name": "The south road", "spacing": 10, "side_offset": 2, "points": [[6, -3], [6, -44]] },
+    { "id": "west-lane", "name": "The cottage lane", "spacing": 10, "side_offset": 2, "points": [[-30, -26], [-30, 22]] },
+    { "id": "east-lane", "name": "The east cottage lane", "spacing": 10, "side_offset": 2, "points": [[21, -11], [46, -11]] },
+    { "id": "field-road", "name": "The field road", "spacing": 10, "side_offset": 2, "points": [[12, 26], [14, 40], [20, 46], [24, 56], [42, 56]] },
+    { "id": "workshop-lane", "name": "The workshop lane", "spacing": 10, "side_offset": 2, "points": [[-8, 8], [-8, 38]] },
+    { "id": "transit-lane", "name": "The transit lane", "spacing": 10, "side_offset": 2, "points": [[-6, 12], [-27, 12]] },
+    { "id": "library-lane", "name": "The library lane", "spacing": 10, "side_offset": 2, "points": [[10, 23], [34, 23]] },
+    { "id": "solar-lane", "name": "The solar lane", "spacing": 10, "side_offset": 2, "points": [[21, -14], [21, -44]] }
+  ],
+  "sites": {
+    "note": "Every finished building and public work gets one StreetLamp at its entrance (the signboard side) unless a light already stands within porch_radius of that spot.",
+    "porch_radius": 6,
+    "porch_gap_out": 2
+  },
+  "windows": {
+    "note": "Lit windows: a Candle on the floor just inside a Window sprite, added to the LAST stage of the project (so it appears when the building is finished, and never before its walls). The first rule whose pattern matches a project id decides which share of its windows is lit (at most `cap`, at least `min`).",
+    "sprite": "Candle",
+    "rules": [
+      { "match": "^(cottage-\\d+|guesthouse|field-hut)$", "fraction": 1.0, "min": 2, "cap": 8, "why": "homes: every window shows a lamp-lit room" },
+      { "match": "^(research-tower|data-archive)$", "fraction": 0.5, "min": 4, "cap": 12, "why": "towers and archives: half the windows, spread out" },
+      { "match": ".*", "fraction": 0.75, "min": 1, "cap": 8, "why": "everything else" }
+    ]
+  },
+  "targets": {
+    "note": "The generator prints these and fails if a target is missed.",
+    "road_sample_max_distance_to_light": 8,
+    "road_min_coverage": 0.8,
+    "min_lit_windows_total": 40
+  }
+}

@@ -171,7 +171,7 @@ body.game-world .game-build-host{position:absolute;z-index:11;bottom:210px;left:
 body.game-world.game-building .game-build-host{display:block}
 body.game-world .game-build-host .ui-hotbar{border:1px solid #d8daad70;border-radius:14px;background:#092a24eb;padding:8px;box-shadow:0 12px 32px #04161188}
 body.game-world .game-build-host .game-hotbar-palette{display:flex;gap:6px;flex-wrap:wrap}
-body.game-world .game-build-host .game-hot{min-height:42px;background:#0a2b25de;color:#f6f0d8;border:1px solid #d2d8ac75;border-radius:10px;font-size:.64rem;padding:7px 10px}
+body.game-world .game-build-host .game-hot{min-height:44px;background:#0a2b25de;color:#f6f0d8;border:1px solid #d2d8ac75;border-radius:10px;font-size:.64rem;padding:7px 10px}
 body.game-world .game-build-host .game-hot.active{background:var(--gold);color:var(--bg);border-color:var(--gold)}
 body.game-world .game-build-host .ui-placement{border:1px solid #d8daad70;border-radius:14px;background:#092a24f2;padding:10px;margin-top:6px;max-height:44vh;overflow:auto;color:var(--ink)}
 body.game-world .game-build-host .ui-placement h2{font-size:1.05rem;margin:0 0 6px}
@@ -219,3 +219,61 @@ body.game-world .game-hud-bottom .game-control-hint{white-space:normal;max-width
   body.game-world .game-hud-bottom{max-width:calc(100vw - 20px)}
   body.game-world .game-hud-bottom .game-control-hint{padding:4px 10px}
 }
+
+/* The Karma Coins shop. Class hooks come from src/ui/shop-panel.js: the panel states the purse, what
+   the server pays for, and what can be bought. Every control is a real button at ≥44 px, so nothing
+   here may hide an action behind hover or shrink it below the touch floor. */
+.ui-shop-wallet,.ui-shop-earn,.ui-shop-goods,.ui-shop-ledger{display:grid;gap:8px;margin:12px 0}
+.ui-shop-head{gap:6px}
+.ui-shop-balance{font-size:1.05rem;color:var(--ink)}
+.ui-shop-sentence,.ui-shop-policy,.ui-shop-footnote,.ui-shop-good-note{font-size:.66rem;line-height:1.5;color:var(--muted)}
+.ui-service-list,.ui-shop-goods-list{display:grid;gap:8px;list-style:none;margin:6px 0 0;padding:0}
+.ui-service,.ui-shop-good{display:grid;gap:5px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#0a2b25c4}
+.ui-service-line,.ui-shop-good-label{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;justify-content:space-between}
+.ui-service-award,.ui-shop-good-price{color:var(--gold);font-size:.68rem}
+.ui-shop-good-summary,.ui-service-allowance{font-size:.68rem;line-height:1.45;color:var(--muted)}
+.ui-shop-category{display:grid;gap:8px;margin:8px 0}
+.ui-shop-good-unavailable{opacity:.62}
+.ui-shop-buy,.ui-shop-confirm-button{min-height:44px}
+.ui-shop-cancel,.ui-shop-close{min-height:44px}
+.ui-shop-confirm{display:grid;gap:8px;padding:11px 13px;border:1px solid var(--gold);border-radius:12px}
+.ui-shop-refusal{border:1px solid #c97c6c;border-radius:12px;padding:9px 12px;background:#aa483329}
+.ui-shop-refusal-words{color:var(--danger)}
+.ui-shop-saved{color:var(--gold)}
+.ui-shop-entry{display:flex;gap:10px;justify-content:space-between;font-size:.68rem;padding:6px 0;border-bottom:1px solid var(--line)}
+.ui-shop-entry-line{color:var(--muted)}
+.shop-status{margin:8px 0 0}
+.shop-status.refused{color:var(--danger)}
+.ui-shop-reduced *{transition:none!important;animation:none!important}
+.ui-shop-reduced .ui-shop-confirm,.ui-shop-reduced .ui-shop-good{transition:none}
+#world-my-space-card .actions{margin-top:8px}
+@media(max-width:650px){.ui-shop-wallet,.ui-shop-earn,.ui-shop-goods,.ui-shop-ledger{gap:6px}.ui-shop-good,.ui-service{padding:8px 10px}.ui-shop-buy,.ui-shop-confirm-button,.ui-shop-confirm .ui-shop-cancel{width:100%}.ui-shop-entry{flex-wrap:wrap}}
+
+/* --- Home & vault: private vault counts, the garden and cottage switches, the passport summary ------- */
+/* Every control is a real button at 44 px or more. A switch's state is written in its own words
+   ("On"/"Off") and in the sentence under it, never carried by colour alone, and nothing is hidden behind hover. */
+.ui-home{display:grid;gap:14px;margin:8px 0}
+.ui-home-resident{display:grid;gap:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#0a2b25c4}
+.ui-home-resident h3{margin:0}
+.ui-home-privacy,.ui-home-vault{display:grid;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
+.ui-home-privacy h4,.ui-home-vault h4{margin:0;font-size:.82rem;color:var(--ink)}
+.ui-home-privacy h4:focus,.ui-home-vault h4:focus{outline:2px solid var(--gold);outline-offset:3px}
+.ui-home-line{margin:0;font-size:.74rem;line-height:1.5;color:var(--ink)}
+.ui-home .privacy,.ui-home-summary .privacy,.ui-home-policy,.ui-home-switch-note,.ui-home-rule{margin:0;font-size:.7rem;line-height:1.5;color:var(--muted)}
+.ui-home-switch-row{display:grid;gap:4px}
+.ui-home-switch{min-height:44px;justify-content:flex-start;text-align:left;border:1px solid #c5ceab50;background:#d7dfba05;color:var(--ink)}
+.ui-home-switch[aria-checked=true]{background:var(--gold);color:var(--bg);border-color:var(--gold)}
+.ui-home-switch[aria-checked=true]:hover{background:#ece7c8;color:var(--bg)}
+.ui-home-switch[aria-checked=false]:hover{background:#d7dfba12;color:var(--ink)}
+.ui-home-erase,.ui-home-link,.ui-home-cancel{min-height:44px}
+.ui-home-confirm{display:grid;gap:8px;padding:11px 13px;border:1px solid var(--danger);border-radius:12px}
+.ui-home-confirm-question{margin:0;font-weight:600;color:var(--ink)}
+.ui-home-confirm-button{min-height:44px;background:var(--danger);border-color:var(--danger);color:#3a0f09}
+.ui-home-confirm-button:hover{background:#ffd5cc;color:#3a0f09}
+.ui-home-refusal{border:1px solid #c97c6c;border-radius:12px;padding:9px 12px;background:#aa483329}
+.ui-home-refusal-words{margin:0;color:var(--danger)}
+.ui-home-saved{margin:0;color:var(--gold);font-size:.74rem}
+.ui-home-summary{display:grid;gap:6px;margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:#0a2b25c4}
+.ui-home-summary h3{margin:0}
+.ui-home-reduced *{transition:none!important;animation:none!important}
+@media(max-width:650px){.ui-home-resident{padding:10px}.ui-home-switch,.ui-home-confirm-button,.ui-home-confirm .ui-home-cancel,.ui-home-erase,.ui-home-summary .ui-home-link{width:100%}}

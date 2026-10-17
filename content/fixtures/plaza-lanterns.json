@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "id": "plaza-lanterns",
+  "kind": "fixture",
+  "label": "Plaza Lanterns",
+  "since": "1.1.0",
+  "order": 6,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "lantern",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "fixtures",
+    "object": "lantern",
+    "footprint": "open",
+    "scenery_class": "mass",
+    "blocks_route": true,
+    "arrangement": {
+      "kind": "corners",
+      "axis": null,
+      "spacing": 0,
+      "count": 4,
+      "from": {
+        "x": 19,
+        "y": 13
+      }
+    },
+    "tiles": [
+      [
+        19,
+        13
+      ],
+      [
+        30,
+        13
+      ],
+      [
+        19,
+        22
+      ],
+      [
+        30,
+        22
+      ]
+    ],
+    "owner": "coast-landing-district",
+    "placement": {
+      "on": "ground"
+    },
+    "provenance": {
+      "derived_from": "content/furniture/lantern.json",
+      "reuse": "the sealed furniture builder is drawn; this fixture adds no asset and no geometry"
+    }
+  },
+  "notes": [
+    "Four lamps at the plaza corners, the way makeDistrict places them; a district does not keep its band clear of solid scenery."
+  ]
+}

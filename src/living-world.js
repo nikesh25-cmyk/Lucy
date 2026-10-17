@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { worldAtmosphere } from './atmosphere.js';
 import { ensureTradeMarket } from './trade-market.js';
 import content from './content.js';
+import { seedLivingCommunity } from './living-community.js';
 
 const blossomRules = content.rules('crop').find((entry) => entry.id === 'blossom')?.rules;
 
@@ -64,12 +65,12 @@ export const LIVING_ROSTER = Object.freeze([
     symbol: '✦',
     capabilities: 'Wayfinder charting frontier passages and distant portals.',
     limitations: 'Travels only on foot; respects frontier boundaries.',
-    startX: 50,
-    startY: 40,
+    startX: 46,
+    startY: 36,
     destinations: {
-      dawn: { x: 50, y: 40, label: 'Harbor' },
+      dawn: { x: 46, y: 36, label: 'Harbor' },
       day: { x: 20, y: 18, label: 'Central Plaza' },
-      dusk: { x: 60, y: 12, label: 'Observatory' },
+      dusk: { x: 84, y: 53, label: 'Observatory' },
       night: { x: 11, y: 7, label: 'Meeting Hall' },
     },
     barks: [
@@ -189,7 +190,7 @@ export const LIVING_ROSTER = Object.freeze([
     destinations: {
       dawn: { x: 19, y: 6, label: 'Gateway' },
       day: { x: 20, y: 18, label: 'Central Plaza' },
-      dusk: { x: 50, y: 40, label: 'Harbor' },
+      dusk: { x: 46, y: 36, label: 'Harbor' },
       night: { x: 11, y: 7, label: 'Meeting Hall' },
     },
     barks: [
@@ -263,6 +264,15 @@ export function ensureLivingWorld(platform, { bootstrap = false } = {}) {
       platform.createHome(resident.id, resident.name);
       platform.recordVisit?.({ account: operator, kind: 'session' }, resident.id, 'commons');
       agent = platform.get('SELECT * FROM agents WHERE id=?', resident.id);
+    }
+
+    // The first seeded Bram stood on a Commons tree at (50,40). Repair only that
+    // impossible legacy position; any position he has since reached stays saved.
+    if (resident.id === 'lw-bram' && agent.world_id === 'commons' && agent.x === 50 && agent.y === 40) {
+      platform.run('UPDATE agents SET x=?,y=? WHERE id=? AND world_id=? AND x=? AND y=?',
+        resident.startX, resident.startY, agent.id, 'commons', 50, 40);
+      platform.audit(operator.id, 'resident.position_repaired', agent.id);
+      agent = platform.get('SELECT * FROM agents WHERE id=?', agent.id);
     }
 
     // Ensure calling
@@ -489,6 +499,11 @@ export function livingWorldTick(platform, { verbose = false, bootstrap = false }
       } catch {}
     }
   }
+
+  // The cooperative layer: circles, one upcoming gathering per host and a public guild project, all
+  // created through the ordinary community methods so a newcomer always has something to join.
+  try { report.community = seedLivingCommunity(platform, { accounts, roster: LIVING_ROSTER, now }); }
+  catch (err) { if (verbose) console.error('Living world community error:', err.message); }
 
   // 6. Autonomous Trade Market Activity (WoW Auction House Style)
   // Check if open trade listings exist; if so, claim them. If low on listings, post new ones!

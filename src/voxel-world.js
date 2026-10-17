@@ -1,14 +1,21 @@
 import * as THREE from '../assets/vendor/three-voxel.js';
 import { getWorldDefinition } from '../world.js';
-import { VOXEL_LIMITS, LOD_LIMITS, inDetail, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, voxelParcelAddress, voxelParcelSelection, createOrbitInput, reducedMotionPreference } from './voxel-geometry.js';
+import { VOXEL_LIMITS, LOD_LIMITS, DIORAMA_BUDGET, inDetail, voxelPlan, voxelPick, orbitCamera, firstPersonCamera, voxelParcelAddress, voxelParcelSelection, createOrbitInput, reducedMotionPreference,
+  clampOrbitDistance, normalizedWheelDelta, wheelZoom, pinchDistance, fovForDistance, approachOrbit, easeRate, FOV_LIMITS, hoverKey } from './voxel-geometry.js';
+import { createHoverThrottle, zoomSuspended } from './camera-controls.js';
 import content from './content.js';
 import { createResources, cubeBatch, disposeBatch, hash, variant, validColor, shade } from './scene/batch.js';
 import { gateFrames, groundPass, landmarkPennants, layer, portalFrames } from './scene/terrain.js';
+import { isInterior } from './scene/interiors.js';
 import { groundCoverPass } from './scene/vegetation.js';
 import { blocksScene } from './scene/blocks.js';
 import { parcelScene } from './scene/parcels.js';
 import { WATER_TINTS, waterBasin } from './scene/water.js';
-import { SHADOW_LIMITS, applyPhase, phaseLighting, resolvedPhase, skyScene } from './scene/sky.js';
+import { INTERIOR_LIGHTING, SHADOW_LIMITS, applyPhase, cloudShadow, createSkyDome, phaseLighting, resolvedPhase, skyScene } from './scene/sky.js';
+import { disposeWeather, resolveWeather, weatherScene } from './scene/weather.js';
+import { lampGlowScene, litLamps } from './scene/lights.js';
+import { districtStyle } from './scene/districts.js';
+import { civic, cottage, pavilion } from './scene/architecture.js';
 import { charactersScene, charactersVisualKey, renderableCharacters, characterNameplates, createMotionTracker } from './characters.js';
 import { confirmedExpression } from './character-animation.js';
 
@@ -24,14 +31,21 @@ const COLORS = Object.freeze({ ...LOCAL_COLORS, ...Object.fromEntries(content.pa
 // change what a tile looks like, never how large the frame or the shadow map may be.
 export const RENDER_CAPS = Object.freeze({ pixel_ratio: 1.5, render_width: 1440, render_height: 900 });
 
+/** Only a non-passive wheel may keep the page still while the world zooms under the pointer. */
+const WHEEL_LISTENER_OPTIONS = Object.freeze({ passive: false });
+
 // One finite, render-only backdrop closes the authored world's horizon behind the bounded voxel
 // window. It sits below the deepest water bed and owns no pick or movement surface.
+/** The ambient loop's frame interval, 15 frames a second when the device can keep up. */
+export const AMBIENT_FRAME_MS = 66;
+/** The slowest the ambient loop ever repaints, and how many paint-times it waits between paints: nine, so the loop takes at most a tenth of the time. */
+export const AMBIENT_SLOWEST_MS = 1000, AMBIENT_DUTY = 9;
 export const DISTANT_GROUND_LIMITS = Object.freeze({ y: -1.36, draw_calls: 1, vertices: 24 });
 
 function distantGround(definition) {
   const columns = Number.isInteger(definition?.columns) ? definition.columns : 0;
   const rows = Number.isInteger(definition?.rows) ? definition.rows : 0;
-  if (definition?.kind === 'interior' || columns < 1 || rows < 1) return null;
+  if (isInterior(definition) || columns < 1 || rows < 1) return null;
   // The retained Three.js bundle intentionally exposes only BoxGeometry. A very thin box keeps the
   // same single-surface role while providing a stable, bounded renderable in the GPU-independent
   // test bundle; its top is the documented backdrop height.
@@ -68,7 +82,42 @@ function disposeDistantGround(mesh) {
 // Every dimension below stays inside its own tile, and every cross member clears the drawn
 // resident's height, so a neighbouring resident is never drawn inside scenery. A canopy may cross
 // into a neighbouring tile only above 1.52 m, where no standing resident can be.
-function tree(batch, x, y, type, pick) {
+// A plain `tree` takes the species its district grows (src/scene/districts.js `species`), chosen by the tile's
+// own hash so a grove is mixed. Every crown starts above 1.52 m, so what overhangs a neighbour is over a
+// resident's head; the trunk and the lowest crown keep to the tile, so the mass is exactly the tile it was.
+function species(batch, x, y, kind, height, pick) {
+  const cx = x + .5, cz = y + .5, add = (dx, h, dz, w, d, l, color) => batch.add(cx + dx, h, cz + dz, w, d, l, color, pick);
+  if (kind === 'conifer') {
+    for (let i = 0; i < 5; i++) add(0, height + .1 + i * .4, 0, 1.55 - i * .27, .46, 1.55 - i * .27, i % 2 ? '#2f6b55' : '#3a7a60');
+    add(0, height + 2.2, 0, .1, .3, .1, '#cfe3d6'); return;
+  }
+  if (kind === 'birch') {
+    for (let i = 0; i < 4; i++) add(0, .3 + i * .45, 0, .3, .06, .3, '#2f2b28');
+    add(0, height + .35, 0, 1.3, .6, 1.3, '#86b36f'); add(.18, height + .85, -.1, 1.0, .6, 1.0, '#9cc482'); add(-.15, height + 1.3, .1, .6, .45, .6, '#b4d495'); return;
+  }
+  if (kind === 'willow') {
+    add(0, height + .3, 0, 1.7, .5, 1.7, '#6f9d62');
+    for (const [dx, dz] of [[-.78, -.5], [-.78, .35], [.78, -.35], [.78, .5], [-.4, .8], [.45, -.8], [-.4, -.8], [.4, .8]]) add(dx, height - .1, dz, .1, 1.05 + (hash(`${x},${y},${dx}`) % 3) * .08, .1, '#86b073');
+    return;
+  }
+  if (kind === 'jungle') {
+    add(0, height + .75, 0, .22, 1.5, .22, COLORS.trunk);
+    add(0, height + 1.6, 0, 1.9, .5, 1.9, '#2f7a4a'); add(0, height + 1.95, 0, 1.4, .4, 1.4, '#3f8c58');
+    for (const [dx, dz] of [[-.8, -.6], [.8, .6], [.6, -.8], [-.5, .8]]) add(dx, height + .6, dz, .06, 1.9, .06, '#4e9a62');
+    return;
+  }
+  if (kind === 'acacia') {
+    add(.06, height + .5, 0, .2, 1.0, .2, COLORS.trunk);
+    add(0, height + 1.12, 0, 2.0, .26, 1.7, '#7f9a4c'); add(0, height + 1.38, 0, 1.4, .24, 1.2, '#93ad5a'); return;
+  }
+  // orchard and oak: the family crown, the oak wider and the orchard lower with fruit.
+  const lowCrown = kind === 'orchard' ? .85 : 1;
+  add(0, height + .45, 0, 1.6 * lowCrown, .7, 1.6 * lowCrown, shade('#438367', .92)); add(0, height + .78, 0, 1.4 * lowCrown, 1.15, 1.4 * lowCrown, variant('#438367', x, y));
+  add(0, height + 1.47, 0, .95, .55, .95, variant('#6a9f73', x, y)); add(0, height + 1.82, 0, .5, .24, .5, variant('#8eb189', x, y));
+  if (kind === 'orchard') for (const dx of [-.4, .3, 0]) add(dx, height + .95, .62, .17, .17, .17, '#d7905d');
+}
+
+function tree(batch, x, y, type, pick, style) {
   const n = hash(`${x},${y}`), height = type === 'palm' ? 2.3 + n % 3 * .08 : 1.7 + n % 3 * 0.15;
   if (type === 'mountain') {
     batch.add(x + .5, .32, y + .5, 1.06, .64, 1.06, shade('#929e9d', .92), pick);
@@ -83,7 +132,9 @@ function tree(batch, x, y, type, pick) {
     batch.add(x + .5, 1.97, y + .5, .2, .18, .2, '#e1b6a2', pick);
     return;
   }
-  batch.add(x + .5, height / 2, y + .5, .28, height, .28, COLORS.trunk, pick);
+  const kind = type === 'tree' && style?.species ? style.species[(n >>> 5) % style.species.length] : null;
+  batch.add(x + .5, height / 2, y + .5, .28, height, .28, kind === 'birch' ? '#e8e4d8' : kind === 'conifer' ? shade(COLORS.trunk, .8) : kind === 'acacia' || kind === 'jungle' ? shade(COLORS.trunk, .9) : COLORS.trunk, pick);
+  if (kind && kind !== 'oak') return species(batch, x, y, kind, height, pick);
   if (type === 'palm') {
     batch.add(x + .5, height + .22, y + .5, 2.2, .22, .5, COLORS.leaf, pick);
     batch.add(x + .5, height + .22, y + .5, .5, .22, 2.2, COLORS.leaf, pick);
@@ -102,47 +153,23 @@ function tree(batch, x, y, type, pick) {
   else if (n % 4 === 0) batch.add(x + .5 + (n % 3) * .1 - .1, height + 1.96, y + .5, .2, .2, .2, '#d7905d', pick);
 }
 
-function house(batch, x, y, pick, type = 'cottage') {
-  if (type === 'shelter') {
-    // An open pavilion: corner posts in the tile-edge bands and a roof above the drawn head.
-    for (const dx of [-.5, .5]) for (const dy of [-.5, .5]) batch.add(x + .5 + dx, .8, y + .5 + dy, .16, 1.6, .16, COLORS.trunk, pick);
-    for (let step = 0; step < 3; step++) batch.add(x + .5, 1.82 + step * .2, y + .5, 1.5 - step * .35, .2, 1.5 - step * .35, COLORS.roof, pick);
-    return;
-  }
-  if (type === 'civic-building') {
-    // A civic anchor rather than a cottage: a stone plinth, a taller body, a double door, a window
-    // pair, a sign board and a wide eave with a lantern finial. One tile, one mass, 2.60 m tall.
-    batch.add(x + .5, .17, y + .5, 1.04, .34, 1.04, shade('#d5c4a1', .84), pick);
-    batch.add(x + .5, .94, y + .5, .99, 1.2, .99, '#d5c4a1', pick);
-    batch.add(x + .5, 1.66, y + .5, 1.06, .32, 1.06, COLORS.roof, pick);
-    batch.add(x + .5, 1.92, y + .5, .84, .16, .84, shade(COLORS.roof, .92), pick);
-    batch.add(x + .5, 2.1, y + .5, .6, .16, .6, COLORS.roof, pick);
-    batch.add(x + .5, 2.28, y + .5, .42, .16, .42, shade(COLORS.roof, .92), pick);
-    batch.add(x + .5, 2.48, y + .5, .3, .24, .3, COLORS.gold, pick, 'glow');
-    batch.add(x + .5, .58, y + .5 + .508, .62, .96, .05, COLORS.dark, pick);
-    batch.add(x + .5, 1.05, y + .5 + .512, .72, .1, .06, shade('#d5c4a1', 1.06), pick);
-    for (const dx of [-.2, .2]) batch.add(x + .5 + dx, .58, y + .5 + .522, .04, .84, .03, COLORS.glass, pick, 'glow');
-    for (const dx of [-.27, .27]) batch.add(x + .5 + dx, 1.33, y + .5 + .512, .28, .42, .04, COLORS.glass, pick, 'glow');
-    batch.add(x + .5, 1.78, y + .5 + .524, .46, .26, .05, COLORS.cream, pick);
-    return;
-  }
-  // The cottage: a plinth, a body, a door with a lintel, two windows with sills, a stepped roof and
-  // a chimney — the same 2.60 m silhouette the entry records, with the ground floor detailed.
-  batch.add(x + .5, .15, y + .5, 1.02, .3, 1.02, shade('#d5c4a1', .88), pick);
-  batch.add(x + .5, .8, y + .5, .99, 1.6, .99, '#d5c4a1', pick);
-  batch.add(x + .5, .6, y + .5 + .512, .38, 1.2, .035, COLORS.dark, pick);
-  batch.add(x + .5, 1.26, y + .5 + .518, .5, .12, .05, COLORS.cream, pick);
-  for (const dx of [-.3, .3]) batch.add(x + .5 + dx, 1.05, y + .5 + .52, .3, .42, .04, COLORS.glass, pick, 'glow');
-  for (const dx of [-.3, .3]) batch.add(x + .5 + dx, .8, y + .5 + .524, .34, .06, .05, COLORS.cream, pick);
-  for (let step = 0; step < 3; step++) batch.add(x + .5, 1.7 + step * .22, y + .5, 1.05 - step * .25, .23, 1.05 - step * .25, COLORS.roof, pick);
-  batch.add(x + .7, 2.2, y + .3, .22, .8, .25, '#968b79', pick);
+function house(batch, x, y, pick, type = 'cottage', style = districtStyle()) {
+  // The sealed house tones: the cottage wall, the civic wall, the roof, the glass, the door, the trim and the
+  // chimney stone. A district style (src/scene/districts.js) chooses among its own tones tile by tile, and
+  // src/scene/architecture.js composes the house, the civic building or the pavilion from boxes; the
+  // sealed tones below stay the default a style without a list of its own keeps.
+  const colors = { wall: '#d5c4a1', roof: COLORS.roof, glass: COLORS.glass, dark: COLORS.dark, cream: COLORS.cream, trim: COLORS.cream,
+    stone: '#968b79', gold: COLORS.gold, wood: COLORS.trunk, leaf: COLORS.leaf };
+  if (type === 'shelter') return pavilion(batch, { x, y, pick, style, colors });
+  if (type === 'civic-building') return civic(batch, { x, y, pick, style, colors });
+  return cottage(batch, { x, y, pick, style, colors });
 }
 
-function furniture(batch, item) {
+function furniture(batch, item, style = districtStyle()) {
   const { x, y } = item, type = item.type || item.kind, pick = { x, y, type: 'object', object: item };
   const add = (dx, h, dy, w, d, l, color, style) => batch.add(x + .5 + dx, h, y + .5 + dy, w, d, l, color, pick, style);
-  if (['tree', 'fruit', 'palm', 'cactus', 'mountain'].includes(type)) return tree(batch, x, y, type, pick);
-  if (['cottage', 'shelter', 'civic-building'].includes(type)) return house(batch, x, y, pick, type);
+  if (['tree', 'fruit', 'palm', 'cactus', 'mountain'].includes(type)) return tree(batch, x, y, type, pick, style);
+  if (['cottage', 'shelter', 'civic-building'].includes(type)) return house(batch, x, y, pick, type, style);
   // A garden path object is the same thin surface the frontier block draws: flat, walkable ground.
   if (type === 'path') add(0, .04, 0, .99, .08, .99, COLORS[type] || COLORS.stone);
   // A pond is water you walk around, not a pedestal: a stone rim above knee height with the sealed
@@ -173,6 +200,16 @@ function furniture(batch, item) {
   } else if (type === 'boat') { add(0, -.02, 0, .99, .3, .65, COLORS.wood); add(0, .8, 0, .08, 1.5, .08, COLORS.dark); add(.26, 1.02, 0, .48, .6, .05, COLORS.cream); }
   else if (type === 'bed') { add(0, .23, 0, .9, .45, .99, COLORS.wood); add(0, .48, .18, .85, .13, .7, '#8bafa2'); add(0, .5, -.3, .7, .18, .3, COLORS.cream); }
   else if (type === 'cushion') add(0, .1, 0, .7, .2, .7, '#bfa4a4');
+  else if (type === 'kitchen') {
+    // A cottage kitchen: a cabinet run against the wall, a worktop, a two-burner hob with one ring alight,
+    // a kettle and a wall cupboard above. One tile, one mass, 1.80 m tall; the cabinet carries the sealed
+    // kitchen tone.
+    add(0, .44, -.14, .96, .88, .66, '#ae987a'); add(0, .92, -.14, .99, .08, .72, shade('#ae987a', 1.14));
+    for (const dx of [-.2, .2]) add(dx, .975, -.1, .22, .03, .22, COLORS.dark);
+    add(.2, .995, -.1, .14, .02, .14, COLORS.gold, 'glow');
+    add(-.2, 1.07, -.1, .14, .12, .14, '#9aa7a6'); add(-.2, 1.16, -.1, .06, .06, .06, COLORS.dark);
+    add(0, 1.6, -.33, .92, .46, .3, shade('#ae987a', .9)); add(0, 1.6, -.17, .8, .38, .03, COLORS.cream);
+  }
   else if (type === 'telescope') { add(0, .55, 0, .14, 1.1, .14, COLORS.stone); add(0, 1.07, 0, .99, .28, .3, '#526f82'); }
   else if (type !== 'gateway') { add(0, .22, 0, .7, .44, .7, COLORS.stone); add(0, .8, 0, .45, .7, .45, type === 'display' ? COLORS.gold : '#a4b9ab'); }
 }
@@ -190,12 +227,12 @@ const parcelAttacher = (definition, plan) => {
  * landmark pennants and the ground cover, composed from the scene modules. The pass order is also
  * the layer order the benchmark reports (`result.layers`).
  */
-function terrainScene(resources, definition, snapshot, plan, cullHidden = true) {
-  const batch = cubeBatch(resources), layers = {}, withParcel = parcelAttacher(definition, plan);
+function terrainScene(resources, definition, snapshot, plan, cullHidden = true, instanceSolidColors = false) {
+  const batch = cubeBatch(resources, { instanceSolidColors }), layers = {}, withParcel = parcelAttacher(definition, plan);
   const scenery = new Map(plan.objects.map(item => [`${item.x},${item.y}`, item.type || item.kind]));
-  const colors = COLORS, builders = { tree, furniture };
-  groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers });
-  layer(batch, layers, 'furniture', () => { for (const item of plan.objects) furniture(batch, item); });
+  const colors = COLORS, style = districtStyle(definition), builders = { tree: (target, tx, ty, type, pick) => tree(target, tx, ty, type, pick, style), furniture: (target, item) => furniture(target, item, style) };
+  groundPass({ batch, definition, snapshot, plan, cullHidden, scenery, colors, builders, layers, style });
+  layer(batch, layers, 'furniture', () => { for (const item of plan.objects) furniture(batch, item, style); });
   portalFrames({ batch, plan, colors, layers });
   gateFrames({ batch, plan, colors, layers });
   landmarkPennants({ batch, definition, plan, colors, layers, validColor });
@@ -242,10 +279,12 @@ function peopleScene(resources, participants, self, options = {}) {
  *   `time`, `cameraMode`, `dayPhase`, `parcelSelection`, `parcelHover`, `definition`, `self`.
  */
 export function createVoxelScene() {
-  const resources = createResources(), root = new THREE.Group(), motionTracker = createMotionTracker(); let staticBatch, blockBatch, peopleBatch, parcelBatch, skyBatch, groundMesh, key = '', blockKey = '', peopleKey = '', parcelKey = '', skyKey = '', groundKey = '', lastPlan, destroyed = false, animating = false;
+  const resources = createResources(), root = new THREE.Group(), motionTracker = createMotionTracker(); let staticBatch, blockBatch, peopleBatch, parcelBatch, lightBatch, skyBatch, weatherBatch, groundMesh, weatherKey = '', clock = 0, key = '', blockKey = '', peopleKey = '', parcelKey = '', lightKey = '', skyKey = '', groundKey = '', lastPlan, destroyed = false, animating = false;
+  let lastMotion = { reduced: false, interior: false, weather: 'clear', phase: 'day' };
   let stats = { cells: 0, blocks: 0, participants: 0, cubes: 0, drawBatches: 0, layers: {} }, pickables = [];
-  // The one child order for both the tests and the renderer: terrain, characters, blocks, plots, sky.
-  const managed = () => [staticBatch, peopleBatch, blockBatch, parcelBatch, skyBatch].filter(Boolean);
+  // The one child order for both the tests and the renderer: terrain, characters, blocks, plots, lamp light, sky, weather.
+  const managed = () => [staticBatch, peopleBatch, blockBatch, parcelBatch, lightBatch, skyBatch, weatherBatch].filter(Boolean);
+  const batchCount = () => [staticBatch, blockBatch, peopleBatch, parcelBatch, lightBatch, skyBatch, weatherBatch].reduce((total, batch) => total + (batch?.batches || 0), 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0);
   const settle = () => { for (const batch of managed()) root.add(batch.group); if (groundMesh) root.add(groundMesh); };
   return { root,
     update(definition, snapshot = {}, options = {}) {
@@ -254,13 +293,14 @@ export function createVoxelScene() {
       // `options.lod === false` is the documented escape hatch: it rebuilds the pre-LOD view (every
       // tile at full detail), which is how the benchmark and the tests produce their "before" column.
       const detailRadius = options.lod === false ? Infinity : LOD_LIMITS.detail_radius;
-      const plan = voxelPlan(definition, snapshot, position, detailRadius);
+      let plan = voxelPlan(definition, snapshot, position, detailRadius);
       const cullHidden = options.cullHidden !== false;
-      const nextKey = JSON.stringify([definition.id, definition.kind, definition.groundColor, plan.cells, plan.objects, plan.portals, plan.gates, cullHidden, detailRadius]);
-      if (nextKey !== key) {
-        if (staticBatch) root.remove(staticBatch.group); disposeBatch(staticBatch);
-        staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden); staticBatch.group.name = 'voxel-terrain'; root.add(staticBatch.group); key = nextKey;
-      }
+      // Which tiles are read closely depends on where the viewer stands, not only on which tiles are in the
+      // window: a room smaller than the window is the same window from every tile in it. So the anchor is
+      // part of the key exactly when some tile is coarse (it decides which decals exist), and is left out
+      // when every tile is fine, where it decides nothing and a step must not rebuild the room.
+      const tier = plan.cells.some((cell) => !inDetail(cell.x, cell.y, plan.anchor, plan.detailRadius)) ? [plan.anchor?.x, plan.anchor?.y] : 0;
+      const nextKey = JSON.stringify([definition.id, definition.kind, definition.groundColor, plan.cells, plan.objects, plan.portals, plan.gates, cullHidden, detailRadius, tier]);
       const firstPerson = options.cameraMode === 'first-person', drawnSelf = firstPerson ? null : options.self;
       const drawnPeople = firstPerson ? plan.participants.filter(item => item.id !== options.self?.id) : plan.participants;
       // The projected key ignores volatile roster fields; `rebuildPeople` restores the raw payload key.
@@ -290,13 +330,35 @@ export function createVoxelScene() {
       // The sky is its own small batch, so a phase change never touches the diorama: only the phase
       // markers and the cloud tint are rebuilt, and an unchanged phase reuses every existing mesh.
       const phase = resolvedPhase(options.dayPhase || snapshot.atmosphere?.phase);
+      // Lamp light follows the same phase and rebuilds only with it: an interior is lit at every phase,
+      // the sun lights the outdoors by day, and the glow strength of lamps and windows is a material
+      // property moved here, so it never costs a rebuild.
+      const interior = isInterior(definition), lightPhase = interior ? 'interior' : phase;
+      resources.setGlow((interior ? INTERIOR_LIGHTING : phaseLighting(phase)).glow);
+      const nextLightKey = JSON.stringify([definition.id, definition.kind, lightPhase, litLamps(plan)]);
+      if (nextLightKey !== lightKey) {
+        if (lightBatch) root.remove(lightBatch.group); disposeBatch(lightBatch);
+        lightBatch = lampGlowScene({ resources, cubeBatch, plan, phase: lightPhase });
+        root.add(lightBatch.group); lightKey = nextLightKey;
+      }
       const nextSkyKey = JSON.stringify([definition.id, definition.kind, phase, plan.window]);
       if (nextSkyKey !== skyKey) {
         if (skyBatch) root.remove(skyBatch.group); disposeBatch(skyBatch);
-        skyBatch = definition.kind === 'interior' ? null : skyScene({ resources, cubeBatch, plan, phase });
+        skyBatch = isInterior(definition) ? null : skyScene({ resources, cubeBatch, plan, phase });
         if (skyBatch) root.add(skyBatch.group);
         skyKey = nextSkyKey;
       }
+      // Weather is a second reading on top of the phase (src/scene/weather.js): explicit, published or taken
+      // from the shared clock, never inside a room. It rebuilds only its own small batch, and only when the
+      // kind changes; a resident walking never rebuilds it because the streaks wrap around the centre.
+      const weather = resolveWeather({ weather: options.weather, atmosphere: snapshot.atmosphere, interior });
+      if (weather !== weatherKey) {
+        if (weatherBatch) root.remove(weatherBatch.group); disposeWeather(weatherBatch);
+        weatherBatch = weather === 'clear' ? null : weatherScene({ resources, kind: weather });
+        weatherKey = weather;
+      }
+      resources.setMotion({ time: clock, reduced: reducedMotion, cloud: cloudShadow(phase, weather, interior), center: plan.anchor || position });
+      weatherBatch?.follow(plan.anchor || position);
       // The backdrop is keyed to the authored world, not the moving 37 x 37 window. It is a single
       // non-pickable plane below every tile and is rebuilt only when a world switch changes its bounds
       // or tint; its geometry never participates in occupancy, collision, or interaction.
@@ -307,22 +369,55 @@ export function createVoxelScene() {
         if (groundMesh) root.add(groundMesh);
         groundKey = nextGroundKey;
       }
+      // A stitched window can contain a denser grove or shoreline than either region's standalone
+      // view. Keep every picked surface, obstacle and fixture, and spend the remaining static budget
+      // on the nearest unpicked ground/water decoration. The requested twelve-tile detail stays in
+      // sparse windows; only a dense window's outer decorative ring becomes coarse. Use the actual
+      // sky and lamp batches so a night phase cannot silently push the same scene over its ceiling.
+      // Draw calls also include the real resident, block, weather and other scene batches: a crowd's
+      // distinct colours must not silently turn an otherwise bounded landscape into excess draws.
+      const terrainBudget = DIORAMA_BUDGET.instances - (lightBatch?.cubes || 0) - (skyBatch?.cubes || 0);
+      const terrainDrawBudget = DIORAMA_BUDGET.draw_calls - (batchCount() - (staticBatch?.batches || 0));
+      const overTerrainBudget = (batch) => batch.cubes > terrainBudget || batch.batches > terrainDrawBudget;
+      if (nextKey !== key || (options.lod !== false && staticBatch && overTerrainBudget(staticBatch))) {
+        if (staticBatch) root.remove(staticBatch.group); disposeBatch(staticBatch);
+        staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden);
+        let instanceSolidColors = false;
+        if (options.lod !== false && staticBatch.batches > terrainDrawBudget) {
+          // Nearby regions can own many ground/roof colours and a mixed crowd adds its own. Combine
+          // only compatible opaque solid materials using exact per-instance albedo, keeping every
+          // original matrix and pick. Glass, lights, water and emissive panes retain their materials.
+          disposeBatch(staticBatch);
+          instanceSolidColors = true;
+          staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden, instanceSolidColors);
+        }
+        while (options.lod !== false && overTerrainBudget(staticBatch) && plan.detailRadius > 0) {
+          disposeBatch(staticBatch);
+          plan = { ...plan, detailRadius: plan.detailRadius - 1 };
+          staticBatch = terrainScene(resources, definition, snapshot, plan, cullHidden, instanceSolidColors);
+        }
+        staticBatch.detailRadius = plan.detailRadius;
+        staticBatch.group.name = 'voxel-terrain'; root.add(staticBatch.group); key = nextKey;
+      } else if (staticBatch.detailRadius !== plan.detailRadius) {
+        // A repaint reuses the chosen detail tier as well as the meshes it describes.
+        plan = { ...plan, detailRadius: staticBatch.detailRadius };
+      }
       settle();
-      lastPlan = plan;
+      lastPlan = plan; lastMotion = { reduced: reducedMotion, interior, weather, phase };
       this.highlightParcel(options.parcelSelection, options.parcelHover);
       pickables = [...staticBatch.pickables, ...peopleBatch.pickables, ...(blockBatch?.pickables || [])];
       animating = !reducedMotion && (motionTracker.isSettling(now) || renderableCharacters(drawnPeople, drawnSelf).some((person) => confirmedExpression(person, now)));
       const fine = plan.cells.reduce((count, cell) => count + (inDetail(cell.x, cell.y, plan.anchor, plan.detailRadius) ? 1 : 0), 0);
       stats = { cells: plan.cells.length, blocks: plan.blocks.length, participants: renderablePeople(drawnPeople, drawnSelf).length,
-        cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0) + (skyBatch?.cubes || 0),
-        parcelCubes: parcelBatch?.cubes || 0, skyCubes: skyBatch?.cubes || 0,
-        drawBatches: staticBatch.batches + (blockBatch?.batches || 0) + peopleBatch.batches + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0),
+        cubes: staticBatch.cubes + (blockBatch?.cubes || 0) + peopleBatch.cubes + (parcelBatch?.cubes || 0) + (lightBatch?.cubes || 0) + (skyBatch?.cubes || 0),
+        parcelCubes: parcelBatch?.cubes || 0, skyCubes: skyBatch?.cubes || 0, lightCubes: lightBatch?.cubes || 0,
+        drawBatches: batchCount(), weather, weatherCubes: weatherBatch?.cubes || 0,
         distantGround: groundMesh ? 1 : 0,
         parcels: plan.parcels.length, selectedParcel: parcelBatch?.group.userData.selectedParcel || null, window: plan.window,
         // The detail report: the radius in force, and the cells inside and beyond it. `Infinity` means
         // the escape hatch is on and every cell is read at full detail.
-        detail: { radius: plan.detailRadius, fine, coarse: plan.cells.length - fine },
-        layers: { ...staticBatch.layers, sky: skyBatch?.cubes || 0 } };
+        detail: { radius: plan.detailRadius, requestedRadius: detailRadius, adapted: plan.detailRadius < detailRadius, fine, coarse: plan.cells.length - fine },
+        layers: { ...staticBatch.layers, lights: lightBatch?.cubes || 0, sky: skyBatch?.cubes || 0 } };
       root.updateMatrixWorld(true); return stats;
     },
     /** Public label projection for the live renderer; positions use the same confirmed tracker as bodies. */
@@ -343,14 +438,30 @@ export function createVoxelScene() {
       if (parcelBatch) root.add(parcelBatch.group); parcelKey = nextKey; settle(); root.updateMatrixWorld(true);
       stats.selectedParcel = selected?.id || null;
       stats.parcelCubes = parcelBatch?.cubes || 0;
-      stats.cubes = (staticBatch?.cubes || 0) + (blockBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0) + (skyBatch?.cubes || 0);
-      stats.drawBatches = (staticBatch?.batches || 0) + (blockBatch?.batches || 0) + (peopleBatch?.batches || 0) + (parcelBatch?.batches || 0) + (skyBatch?.batches || 0) + (groundMesh ? DISTANT_GROUND_LIMITS.draw_calls : 0);
-      stats.layers = { ...(staticBatch?.layers || {}), sky: skyBatch?.cubes || 0 };
+      stats.cubes = (staticBatch?.cubes || 0) + (blockBatch?.cubes || 0) + (peopleBatch?.cubes || 0) + (parcelBatch?.cubes || 0) + (lightBatch?.cubes || 0) + (skyBatch?.cubes || 0);
+      stats.drawBatches = batchCount();
+      stats.layers = { ...(staticBatch?.layers || {}), lights: lightBatch?.cubes || 0, sky: skyBatch?.cubes || 0 };
     },
+    /**
+     * Advances the ambient clock: water waves, shore foam, shimmer, the drifting cloud shadow, rain and mist.
+     * It touches uniforms and one group offset only, so a tick rebuilds nothing. Under reduced motion the
+     * clock stays at zero and every one of those is drawn as a still frame.
+     */
+    tick(seconds, center = null) {
+      if (destroyed) return;
+      clock = Number.isFinite(seconds) ? seconds : clock;
+      resources.setMotion({ time: clock, reduced: lastMotion.reduced, cloud: cloudShadow(lastMotion.phase, lastMotion.weather, lastMotion.interior), center });
+      weatherBatch?.follow(center || lastPlan?.anchor || { x: 0, y: 0 });
+      if (skyBatch) for (const mesh of skyBatch.group.children) if (mesh.userData.style === 'cloud') mesh.position.x = lastMotion.reduced ? 0 : Math.sin(clock * .035) * 4;
+    },
+    /** True while something in view drifts on its own: any outdoor scene (water, cloud shadow, weather). A room and a reduced-motion visitor have none. */
+    get ambient() { return !destroyed && !lastMotion.reduced && !lastMotion.interior && !!lastPlan; },
+    get resources() { return resources; },
+    get weather() { return weatherKey || 'clear'; },
     get pickables() { return pickables; }, get stats() { return stats; }, get animating() { return animating; },
     isAnimating() { return animating; },
     reconcileCharacter(id) { return motionTracker.reconcile(id); },
-    destroy() { if (destroyed) return; destroyed = true; motionTracker.clear(); animating = false; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(skyBatch); disposeDistantGround(groundMesh); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; skyKey = ''; groundKey = ''; lastPlan = null; }
+    destroy() { if (destroyed) return; destroyed = true; motionTracker.clear(); animating = false; disposeBatch(staticBatch); disposeBatch(blockBatch); disposeBatch(peopleBatch); disposeBatch(parcelBatch); disposeBatch(lightBatch); disposeBatch(skyBatch); disposeWeather(weatherBatch); disposeDistantGround(groundMesh); resources.dispose(); root.clear(); pickables = []; key = ''; blockKey = ''; lightKey = ''; skyKey = ''; groundKey = ''; weatherKey = ''; weatherBatch = null; lastPlan = null; }
   };
 }
 
@@ -370,13 +481,17 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
   renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, RENDER_CAPS.pixel_ratio)); renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = phaseLighting('day').exposure;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+  // Shadows are refreshed when something that casts one changed (an update, a repaint for a step); the ambient
+  // repaints that only move water, cloud shadow and weather leave them be, which is most of their cost.
+  renderer.shadowMap.autoUpdate = false;
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(48, 1, .1, 100), contents = createVoxelScene(); scene.add(contents.root);
+  const dome = createSkyDome(contents.resources); scene.add(dome.mesh);
   const opening = phaseLighting('day');
   scene.background = new THREE.Color(opening.sky); scene.fog = new THREE.Fog(opening.fog, 4, 34);
   const sky = new THREE.HemisphereLight(opening.zenith, opening.ground, opening.skyLight);
   const sun = new THREE.DirectionalLight(opening.sun, opening.sunLight);
   sun.castShadow = true; sun.shadow.mapSize.set(SHADOW_LIMITS.map_size, SHADOW_LIMITS.map_size);
-  sun.shadow.bias = -.001; sun.shadow.normalBias = .03; scene.add(sky, sun, sun.target);
+  sun.shadow.bias = -.001; sun.shadow.normalBias = .03; sun.shadow.radius = 2.2; scene.add(sky, sun, sun.target);
   const selectionBox = new THREE.BoxGeometry(1.025, 1.025, 1.025), selectionGeometry = new THREE.EdgesGeometry(selectionBox); selectionBox.dispose();
   const selectionMaterial = new THREE.LineBasicMaterial({ color: '#fff0b0', depthTest: false });
   const selection = new THREE.LineSegments(selectionGeometry, selectionMaterial); selection.visible = false; selection.renderOrder = 10; scene.add(selection);
@@ -394,9 +509,38 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     overlayParent.appendChild(nameplateLayer);
   }
   const projected = new THREE.Vector3();
-  const orbitInput = createOrbitInput({ onLook });
-  let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, lastAtmosphere = null, hoveredParcel = null, lastHoverAt = -Infinity, animationTimer = null;
+  const orbitInput = createOrbitInput({ onLook }), hover = createHoverThrottle();
+  const clockOrigin = globalThis.performance?.now?.() ?? Date.now(); let paintMs = 0, ambientTimer = null;
+  let target = { x: 10, y: 6 }, destroyed = false, lost = false, drag = null, lastSnapshot, lastOptions, lastAtmosphere = null, hoveredParcel = null, hoveredTile = '', animationTimer = null;
+  // `view` is the presented orbit and `orbitInput.orbit` is the stored one. The camera glides from
+  // the first to the second over a few frames, which is presentation only: the stored facing and
+  // distance are what the shell sent, they are what the server stores, and no position is derived
+  // from an eased number anywhere in this module.
+  let view = { ...orbitInput.orbit }, enabled = true, easeHandle = null, easeAt = 0;
+  const frame = typeof globalThis.requestAnimationFrame === 'function' ? globalThis.requestAnimationFrame.bind(globalThis) : null;
+  const settle = () => { view = { ...orbitInput.orbit }; };
   const previousTouchAction = canvas.style.touchAction; canvas.style.touchAction = 'pan-y';
+  function step() {
+    easeHandle = null;
+    if (destroyed) return;
+    const now = globalThis.performance?.now?.() ?? Date.now(), rate = motion ? 1 : easeRate(now - easeAt);
+    easeAt = now;
+    const next = approachOrbit(view, orbitInput.orbit, rate);
+    view = { yaw: next.yaw, pitch: next.pitch, distance: next.distance };
+    paint();
+    if (!next.settled) scheduleEase();
+  }
+  function scheduleEase() {
+    if (destroyed) return;
+    // No animation frame available (or the player asked for less motion): apply the stored value
+    // once, so a camera is never left stale because it could not animate.
+    if (!frame || motion) { settle(); return; }
+    if (easeHandle !== null) return;
+    easeAt = globalThis.performance?.now?.() ?? Date.now();
+    easeHandle = frame(step);
+  }
+  /** One stored value, applied: a camera-mode switch reaches for the new eye instead of panning to it. */
+  function applyMode(value) { const previous = orbitInput.mode; orbitInput.setMode(value); if (orbitInput.mode !== previous) settle(); return orbitInput.mode; }
   function resize() {
     const bounds = canvas.getBoundingClientRect(), width = Math.max(1, bounds.width || canvas.width || 800), height = Math.max(1, bounds.height || canvas.height || 560);
     const scale = Math.min(1, RENDER_CAPS.render_width / width, RENDER_CAPS.render_height / height), renderWidth = Math.round(width * scale), renderHeight = Math.round(height * scale);
@@ -404,19 +548,34 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     if (size.x !== renderWidth || size.y !== renderHeight) renderer.setSize(renderWidth, renderHeight, false);
     camera.aspect = width / height; camera.updateProjectionMatrix();
   }
-  function paint() {
+  // `ambient` repaints move only the clock: no nameplate projection and no shadow-map refresh.
+  function paint(ambient = false) {
     if (destroyed || lost || !lastSnapshot) return;
-    resize(); const placement = orbitInput.mode === 'first-person' ? firstPersonCamera(target, orbitInput.orbit) : orbitCamera(target, orbitInput.orbit);
-    camera.position.set(placement.eye.x, placement.eye.y, placement.eye.z); camera.lookAt(placement.target.x, placement.target.y, placement.target.z); camera.updateMatrixWorld();
+    const started = globalThis.performance?.now?.() ?? Date.now();
+    const firstPerson = orbitInput.mode === 'first-person';
+    // The first-person eye narrows its field of view with the same one distance the boom uses, so a
+    // zoom means "closer" in either view and the value survives a switch between them.
+    camera.fov = firstPerson ? fovForDistance(view.distance) : FOV_LIMITS.base;
+    resize(); const placement = firstPerson ? firstPersonCamera(target, view) : orbitCamera(target, view);
+    const aim = placement.look || placement.target;
+    camera.position.set(placement.eye.x, placement.eye.y, placement.eye.z); camera.lookAt(aim.x, aim.y, aim.z); camera.updateMatrixWorld();
+    const definition = lastOptions?.definition || getWorldDefinition(lastSnapshot.world || 'commons');
     // One phase model, one owner: src/scene/sky.js resolves the named phase (with the legacy
-    // `evening` alias), places the key light and its shadow frustum, and sets the depth cue.
+    // `evening` alias), places the key light and its shadow frustum, and sets the depth cue. The weather
+    // and the sky gradient ride on it; a room has neither.
     lastAtmosphere = applyPhase({ scene, sky, sun, renderer, phase: lastOptions?.dayPhase || lastSnapshot.atmosphere?.phase,
-      position: target, distance: orbitInput.orbit.distance, plan: { window: contents.stats.window } });
+      position: target, distance: view.distance, plan: { window: contents.stats.window },
+      interior: isInterior(definition), weather: contents.weather, dome, firstPerson });
+    dome.follow(camera);
+    // The ambient clock runs from the first paint, in seconds; a visitor who reduced motion keeps it at zero.
+    contents.tick(motion ? 0 : (started - clockOrigin) / 1000, target);
+    if (!ambient) renderer.shadowMap.needsUpdate = true;
     const selected = lastOptions?.selection;
     selection.visible = !!selected && Number.isInteger(selected.x) && Number.isInteger(selected.y);
     if (selection.visible) selection.position.set(selected.x + .5, Math.max(0, selected.z || 0) + .5, selected.y + .5);
-    updateNameplates();
+    if (!ambient) updateNameplates();
     renderer.render(scene, camera);
+    paintMs = (globalThis.performance?.now?.() ?? Date.now()) - started;
   }
   function updateNameplates() {
     if (!nameplateLayer || !lastSnapshot || !lastOptions) return;
@@ -446,18 +605,43 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
       paint(); scheduleAnimation();
     }, 100);
   }
+  // Pointing at the world is a reading, not a command: the hovered tile is reported through the same
+  // `onHover` callback the renderer always had, at a bounded rate, and only when the thing under the
+  // pointer actually changed. It never issues a request, it never becomes a pick, and a click still
+  // selects and walks exactly as it did.
+  const emitHover = pick => {
+    const key = hoverKey(pick);
+    if (key === hoveredTile) return;
+    hoveredTile = key;
+    onHover?.(pick || null);
+  };
+  // The ambient loop: water, cloud shadow, rain and mist move on their own clock. It is the only repaint a
+  // still outdoor scene schedules, it never runs for a visitor who prefers reduced motion or inside a room,
+  // it pauses while the page is hidden, and it backs off to nine times the cost of a paint (a tenth of the time, down
+  // to one frame a second) so a slow device is never asked for more than it can give.
+  function scheduleAmbient() {
+    if (motion || ambientTimer !== null || destroyed || lost || !lastSnapshot || !contents.ambient) return;
+    ambientTimer = setTimeout(() => {
+      ambientTimer = null;
+      if (destroyed || lost || !lastSnapshot) return;
+      if (!ownerDocument || ownerDocument.visibilityState !== 'hidden') paint(true);
+      scheduleAmbient();
+    }, Math.min(AMBIENT_SLOWEST_MS, Math.max(AMBIENT_FRAME_MS, paintMs * AMBIENT_DUTY)));
+  }
   const movePointer = event => {
     if (!drag) {
+      // A finger that is not dragging has no hover: the touch layer owns that gesture.
       if (destroyed || lost || !lastSnapshot || event.pointerType === 'touch') return;
-      const now = globalThis.performance?.now?.() ?? Date.now();
-      if (now - lastHoverAt < 75) return; lastHoverAt = now;
+      if (!hover.claim()) return;
       const pick = pickPointer(event), parcel = pick?.parcel || null;
-      if (parcel?.id !== hoveredParcel?.id) { hoveredParcel = parcel; contents.highlightParcel(lastOptions?.parcelSelection, hoveredParcel); paint(); onHover?.(pick || null); }
+      if (parcel?.id !== hoveredParcel?.id) { hoveredParcel = parcel; contents.highlightParcel(lastOptions?.parcelSelection, hoveredParcel); paint(); }
+      emitHover(pick);
       return;
     }
     if (event.pointerId !== drag.id) return;
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y; drag.distance += Math.abs(dx) + Math.abs(dy);
-    if (drag.distance > 6) { orbitInput.drag(dx, dy); paint(); }
+    // A drag is direct manipulation: the camera follows the pointer one to one, with no glide.
+    if (drag.distance > 6) { orbitInput.drag(dx, dy); settle(); paint(); }
     drag.x = event.clientX; drag.y = event.clientY;
   };
   const down = event => { if (event.button !== 0 || destroyed || lost) return; drag = { id: event.pointerId, x: event.clientX, y: event.clientY, distance: 0 }; canvas.setPointerCapture?.(event.pointerId); };
@@ -475,48 +659,81 @@ export function createVoxelWorld(canvas, { onPick, onHover, onLook, onUnavailabl
     return raycaster.intersectObjects(contents.pickables, false).map(voxelPick).find(Boolean) || null;
   }
   const cancel = () => { drag = null; };
-  const leave = () => { if (destroyed || !hoveredParcel) return; hoveredParcel = null; contents.highlightParcel(lastOptions?.parcelSelection, null); paint(); onHover?.(null); };
+  // Leaving the canvas drops the reading outright, however long the pointer has been away, so the aim
+  // line can never be left showing a tile the pointer is not over.
+  const leave = () => {
+    if (destroyed) return;
+    hover.drop();
+    if (hoveredParcel) { hoveredParcel = null; contents.highlightParcel(lastOptions?.parcelSelection, null); paint(); }
+    emitHover(null);
+  };
+  // What makes a wheel or a pinch inert: the shell's own switch, a menu or drawer, an open dialog, or
+  // a focused field. A suspended zoom leaves the event alone, so the panel keeps its own scrolling.
+  const zoomState = () => {
+    const active = ownerDocument?.activeElement;
+    return { enabled, tagName: active?.tagName || '', isContentEditable: Boolean(active?.isContentEditable), dialogOpen: Boolean(ownerDocument?.querySelector?.('dialog[open]')) };
+  };
+  const wheel = event => {
+    if (destroyed || lost || !lastSnapshot || zoomSuspended(zoomState())) return;
+    const distance = wheelZoom(orbitInput.orbit.distance, normalizedWheelDelta(event.deltaY, event.deltaMode));
+    event.preventDefault?.();
+    if (distance === orbitInput.orbit.distance) return;
+    orbitInput.set({ distance }); scheduleEase(); paint();
+  };
   const contextLost = event => { event.preventDefault(); lost = true; drag = null; onUnavailable?.('The 3D view lost its graphics context. Switch to the map view.'); };
   const contextRestored = () => { if (destroyed) return; lost = false; paint(); };
-  const wheel = event => {
-    if (destroyed || lost) return;
-    if (event.preventDefault) event.preventDefault();
-    const delta = Math.sign(event.deltaY || 0) * 1.5;
-    if (delta) { orbitInput.zoom(delta); paint(); }
-  };
-  const listeners = [['pointerdown', down], ['pointermove', movePointer], ['pointerup', up], ['pointerleave', leave], ['pointercancel', cancel], ['lostpointercapture', cancel], ['wheel', wheel], ['webglcontextlost', contextLost], ['webglcontextrestored', contextRestored]];
+  const listeners = [['pointerdown', down], ['pointermove', movePointer], ['pointerup', up], ['pointerleave', leave], ['pointercancel', cancel], ['lostpointercapture', cancel], ['webglcontextlost', contextLost], ['webglcontextrestored', contextRestored]];
   for (const [name, handler] of listeners) canvas.addEventListener(name, handler);
-  const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(paint) : null; observer?.observe(canvas);
+  // Only a non-passive wheel may keep the page still while the world zooms.
+  canvas.addEventListener('wheel', wheel, WHEEL_LISTENER_OPTIONS);
+  const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => paint()) : null; observer?.observe(canvas);
   return {
     render(snapshot, options = {}) {
       if (destroyed) return;
       const definition = options.definition || getWorldDefinition(snapshot.world || 'commons');
-      orbitInput.setMode(options.cameraMode ?? orbitInput.mode);
+      applyMode(options.cameraMode ?? orbitInput.mode);
       if (options.facing) orbitInput.set(options.facing);
       target = options.position || options.self || definition.start; lastSnapshot = snapshot; lastOptions = options;
-      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); paint(); scheduleAnimation(); return contents.stats;
+      contents.update(definition, snapshot, { ...options, cameraMode: orbitInput.mode, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); scheduleEase(); paint(); scheduleAnimation(); scheduleAmbient(); return contents.stats;
     },
-    rotate(deltaYaw = 0, deltaPitch = 0) { if (destroyed) return; orbitInput.rotate(deltaYaw, deltaPitch); paint(); },
-    zoom(delta = 0) { if (destroyed) return; orbitInput.zoom(delta); paint(); },
-    setOrbit(value = {}) { if (destroyed) return; orbitInput.set(value); paint(); },
+    rotate(deltaYaw = 0, deltaPitch = 0) { if (destroyed) return orbitInput.rotate(deltaYaw, deltaPitch); scheduleEase(); paint(); return orbitInput.orbit; },
+    zoom(delta = 0) { if (destroyed) return orbitInput.orbit.distance; orbitInput.zoom(delta); scheduleEase(); paint(); return orbitInput.orbit.distance; },
+    setOrbit(value = {}) { if (destroyed) return orbitInput.orbit; orbitInput.set(value); scheduleEase(); paint(); return orbitInput.orbit; },
+    /** The absolute zoom the panel buttons, a slider or a restore can ask for. */
+    setDistance(value) { if (destroyed) return view.distance; orbitInput.set({ distance: clampOrbitDistance(value) }); scheduleEase(); paint(); return orbitInput.orbit.distance; },
+    /**
+     * A two-finger pinch: `scale` is the current span over the span the gesture started with, and
+     * `from` the distance it started from. Inert whenever the wheel is, so a drawer that is open
+     * cannot be zoomed through.
+     */
+    pinch(scale = 1, { from } = {}) { if (destroyed || zoomSuspended(zoomState())) return view.distance; orbitInput.set({ distance: pinchDistance(Number.isFinite(from) ? from : orbitInput.orbit.distance, scale) }); scheduleEase(); paint(); return orbitInput.orbit.distance; },
+    /** The shell's switch: false makes the wheel and the pinch inert without touching the camera. */
+    setEnabled(value = true) { enabled = value !== false; if (!enabled) hover.drop(); return enabled; },
     setCameraMode(value) {
-      if (destroyed) return; orbitInput.setMode(value);
+      if (destroyed) return orbitInput.mode;
+      applyMode(value);
       if (lastSnapshot) {
         lastOptions = { ...lastOptions, cameraMode: orbitInput.mode };
         const definition = lastOptions.definition || getWorldDefinition(lastSnapshot.world || 'commons');
-        contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); scheduleAnimation();
+        contents.update(definition, lastSnapshot, { ...lastOptions, time: Date.now(), parcelHover: hoveredParcel, reducedMotion: motion }); scheduleAnimation(); scheduleAmbient();
       }
-      paint();
+      paint(); return orbitInput.mode;
     },
     get cameraMode() { return orbitInput.mode; },
+    get enabled() { return enabled; },
+    /** The field of view the last paint applied: the base angle, or the first-person zoom. */
+    get fov() { return camera.fov; },
     get orbit() { return orbitInput.orbit; }, get stats() { return contents.stats; },
     isAnimating() { return contents.isAnimating(); },
     reconcileCharacter(id) { const changed = contents.reconcileCharacter(id); if (changed) paint(); return changed; },
     /** What the last paint actually applied: the phase light, the fog band and the shadow frustum. */
     get atmosphere() { return lastAtmosphere; },
     destroy() {
-      if (destroyed) return; destroyed = true; if (animationTimer !== null) clearTimeout(animationTimer); animationTimer = null; observer?.disconnect(); drag = null;
+      if (destroyed) return; destroyed = true; if (animationTimer !== null) clearTimeout(animationTimer); animationTimer = null; if (ambientTimer !== null) clearTimeout(ambientTimer); ambientTimer = null; dome.dispose(); observer?.disconnect(); drag = null;
+      if (easeHandle !== null && typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(easeHandle);
+      easeHandle = null; hoveredTile = ''; hover.drop();
       for (const [name, handler] of listeners) canvas.removeEventListener(name, handler);
+      canvas.removeEventListener('wheel', wheel, WHEEL_LISTENER_OPTIONS);
       canvas.style.touchAction = previousTouchAction; contents.destroy(); selectionGeometry.dispose(); selectionMaterial.dispose();
       nameplateLayer?.remove();
       sun.shadow.map?.dispose(); renderer.dispose(); renderer.forceContextLoss(); lastSnapshot = null; lastOptions = null;

@@ -148,16 +148,17 @@ const normalizeResidents = (list) => Array.isArray(list)
  * The small, readable prompt: one line naming the fixture and its action with the distance
  * requirement, as plain text. `role="status"` with `aria-live="polite"` makes it a live region, and
  * `tabIndex` 0 makes it focusable; a refusal turns it into a `role="alert"`. The text is the server's
- * own `hint`, so the requirement it names is the requirement the server enforces.
+ * own `hint` by default. The game shell can opt into an action-sized ordinary hint; the complete
+ * server hint remains in the workspace, and blocked states and refusals retain their exact text.
  */
-export function promptModel(view, { focused = null, focusKind = 'fixture', keys = INTERACTION_KEYS, refusal = null } = {}) {
+export function promptModel(view, { focused = null, focusKind = 'fixture', keys = INTERACTION_KEYS, refusal = null, compact = false } = {}) {
   const base = { role: 'status', ariaLive: 'polite', tabIndex: 0, placement: placement(), keys: [...keys], refusal: null };
   if (refusal) return { ...base, visible: true, kind: refusal.kind || 'fixture', role: 'alert', ariaLive: 'assertive', refusal, in_range: false, blocked_by: 'refused', next_step: refusal.next_step, action: null, fixture: refusal.fixture || null, text: [refusal.hint, refusal.next_step].filter(Boolean).join(' ') };
   if (focusKind === 'resident' && focused) {
     const keysLabel = keys.join(', ');
     return {
       ...base, visible: true, kind: 'resident', in_range: true, blocked_by: null, next_step: '',
-      text: `Resident ${focused.name} at ${focused.x}, ${focused.y} · ${focused.distance} tile${focused.distance === 1 ? '' : 's'} away · speak with ${keysLabel}`,
+      text: compact ? `Speak to ${focused.name} · Interact` : `Resident ${focused.name} at ${focused.x}, ${focused.y} · ${focused.distance} tile${focused.distance === 1 ? '' : 's'} away · speak with ${keysLabel}`,
       action: { id: 'message', label: `Speak to ${focused.name}`, route: FIXTURE_KEYBOARD.resident.route, scope: 'chat', options: [] },
       fixture: { kind: 'resident', label: 'Resident', name: focused.name, x: focused.x, y: focused.y, distance: focused.distance },
       requirement: 'stand near the resident',
@@ -167,9 +168,13 @@ export function promptModel(view, { focused = null, focusKind = 'fixture', keys 
   if (!fixture) {
     return { ...base, visible: false, kind: 'none', in_range: false, blocked_by: null, next_step: '', action: null, fixture: null, text: view?.hint || 'Pick a tile in the world to read what it offers.' };
   }
+  const ordinary = fixture.can_act && fixture.in_range && !fixture.blocked_by;
+  const approach = fixture.blocked_by === 'out_of_range';
+  const text = compact && fixture.action?.label && (ordinary || approach)
+    ? `${fixture.action.label} · ${approach ? 'Move closer' : 'Interact'}` : fixture.hint || '';
   return {
     ...base, visible: true, kind: fixture.kind, in_range: Boolean(fixture.in_range), blocked_by: fixture.blocked_by || null,
-    text: fixture.hint || '', next_step: fixture.next_step || '',
+    text, next_step: fixture.next_step || '',
     action: fixture.action ? { id: fixture.action.id, label: fixture.action.label, route: fixture.action.route, scope: fixture.action.scope, options: fixture.action.options || [] } : null,
     fixture: { kind: fixture.kind, label: fixture.label, name: fixture.name, x: fixture.x, y: fixture.y, distance: fixture.distance },
     requirement: fixture.requirement || '',
@@ -256,7 +261,7 @@ export function confirmationMessage(confirmed) {
  * A `query` carries only the fields the caller has: `{ world_id, x?, y?, agent_id? }`.
  */
 export function createInteractionPrompt({
-  transport, world = 'commons', agent = null, keys = INTERACTION_KEYS, residents = [], position = null,
+  transport, world = 'commons', agent = null, keys = INTERACTION_KEYS, residents = [], position = null, compact = false,
   clock = () => Date.now(), coalesceMs = COALESCE_MS, randomKey = defaultRandomKey,
 } = {}) {
   if (!transport || typeof transport.interactRead !== 'function' || typeof transport.interactWrite !== 'function') {
@@ -401,7 +406,7 @@ export function createInteractionPrompt({
       return controller.focus(list[index]);
     },
 
-    prompt: () => promptModel(state.view, { focused: focused(), focusKind: state.residentFocus ? 'resident' : 'fixture', keys: state.keys, refusal: state.refusal }),
+    prompt: () => promptModel(state.view, { focused: focused(), focusKind: state.residentFocus ? 'resident' : 'fixture', keys: state.keys, refusal: state.refusal, compact: typeof compact === 'function' ? compact() : compact }),
     get refusal() { return state.refusal; },
     get confirmed() { return state.confirmed; },
     overlay: () => state.overlay,

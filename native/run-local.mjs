@@ -17,9 +17,9 @@ await cp(join(source,'nemoworld_game'),game,{recursive:true,force:true});
 await writeFile(join(world,'world.mt'),'gameid = nemoworld\nbackend = sqlite3\nmg_name = singlenode\n',{flag:'wx'}).catch(error=>{if(error.code!=='EEXIST')throw error});
 const key=randomBytes(32).toString('hex');
 await writeFile(config,`secure.enable_security = true\nsecure.http_mods = nemo\nnemo_bridge_url = http://127.0.0.1:${bridgePort}\nnemo_bridge_key = ${key}\nmg_name = singlenode\nbind_address = 127.0.0.1\nport = ${luantiPort}\nserver_announce = false\n`,{mode:0o600});
-const bridge=spawn(process.execPath,[join(source,'bridge.mjs')],{env:{...process.env,NEMO_MOD_KEY:key,NEMO_BRIDGE_PORT:String(bridgePort)},stdio:'inherit'});
+const bridge=spawn(process.execPath,[join(source,'bridge.mjs')],{env:{...process.env,NEMO_MOD_KEY:key,NEMO_NATIVE_SESSION_DIR:join(data,'private','native-session'),NEMO_BRIDGE_PORT:String(bridgePort)},stdio:'inherit'});
 const engine=spawn(binary,['--server','--world',world,'--config',config,'--logfile',''],{env:{...process.env,LUANTI_USER_PATH:user},stdio:'inherit'});
-process.stdout.write(`Pair locally at http://127.0.0.1:${bridgePort}/; connect Luanti 5.17.0 to 127.0.0.1:${luantiPort}.\nNative world: ${world}\n`);
+process.stdout.write(`Connect Luanti 5.17.0 to 127.0.0.1:${luantiPort}, then sign in inside the game. Returning players reconnect automatically.\nNative world: ${world}\n`);
 let stopping=false;
 async function stop(){
   if(stopping)return;stopping=true;

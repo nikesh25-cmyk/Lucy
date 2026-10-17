@@ -1,0 +1,66 @@
+{
+  "format": "harr-conversations-v1",
+  "note": "Eight 'ask me about' answers for each of the six roles. A villager whose own work-topics did not match the question tries these: if the question contains one of an answer's keywords (lower-case), the villager replies with the template. Placeholders, filled from recorded facts: {project} (the work being built now), {stage} (its next stage), {insight} (the village's insight so far) and {pantry} (what is on the pantry shelves). All answers are scripted and peaceful.",
+  "roles": {
+    "builder": [
+      { "id": "roofs", "keywords": ["roof", "timber", "beam"], "answer": "Roofs go on last, once the posts are true. A good beam is oiled, lifted by many hands and never hurried." },
+      { "id": "stone", "keywords": ["stone", "mortar", "mason"], "answer": "Stone is laid dry first, to find where it wants to sit, and only then set. The spring water we mix it with is so cold it makes your hands tingle." },
+      { "id": "plans", "keywords": ["plan", "blueprint", "drawing"], "answer": "The plans for {project} hang in the library for anyone to read. Right now we are on {stage}, and every drawing is open for questions." },
+      { "id": "safety", "keywords": ["safe", "ladder", "helmet"], "answer": "We check each ladder together before we climb. Safe work is happy work, so ask if you want to see how we lash a post." },
+      { "id": "rest", "keywords": ["tea break", "teatime", "rest"], "answer": "Tea break comes at the sound of the bell. Everyone sits down together, builders, scholars and visitors alike, and the work waits." },
+      { "id": "teaching", "keywords": ["apprentice", "teach", "learn"], "answer": "Anyone can learn to build here. Stand beside a crew, hand over a tool when asked, and by the end of the week you will be setting posts." },
+      { "id": "materials", "keywords": ["clay", "brick", "material"], "answer": "Our clay comes from the bank by the plaza and the timber from careful thinning, and what is left over goes to the recycling garden." },
+      { "id": "progress", "keywords": ["next", "finished", "done"], "answer": "We are raising {project}, and the stage ahead is {stage}. It begins as soon as two or more people are standing at the site." }
+    ],
+    "farmer": [
+      { "id": "soil", "keywords": ["compost", "soil", "earth"], "answer": "Healthy soil smells like the forest after rain. We feed it with compost from the kitchens and it feeds the whole village back." },
+      { "id": "seeds", "keywords": ["seed", "sprout", "sapling"], "answer": "Every autumn we save seed from the best plants and keep it on the heirloom shelf. Ask for a few and plant them in your own window." },
+      { "id": "weather", "keywords": ["rain", "forecast", "frost"], "answer": "I read the sky at dawn. Low cloud means a gentle day for the beds, and a clear cold night means the frost cloths come out." },
+      { "id": "bees", "keywords": ["bees", "pollen", "honey"], "answer": "The bees are our best workers and ask for nothing but flowers. The hollow oak colony is calm, and the honey is shared with everyone." },
+      { "id": "orchard", "keywords": ["orchard", "apple", "tree"], "answer": "The orchard is young, so the gate keeps the saplings safe while they grow. In a few years we will pick more apples than we can eat." },
+      { "id": "glass", "keywords": ["greenhouse", "glass", "vertical"], "answer": "The glass garden and the vertical farm grow food all year in bright rooms, so more people can eat from less land." },
+      { "id": "water", "keywords": ["water", "irrigation", "thirsty"], "answer": "Water comes from the hidden spring, cold and clear, and it runs to the fields along stone channels the builders laid for us." },
+      { "id": "recipes", "keywords": ["recipe", "cook", "taste"], "answer": "Nothing beats a crisp apple, a little cheese and a carrot straight from the soil. Today the pantry holds {pantry}, free for anyone." }
+    ],
+    "maker": [
+      { "id": "clay", "keywords": ["clay", "pottery", "kiln"], "answer": "The red clay from the bank throws well and fires to a warm terracotta. We dig only what we need and smooth the bank behind us." },
+      { "id": "wood", "keywords": ["wood", "carving", "chair"], "answer": "Wood has its own grain and tells you where it wants to bend. A chair made slowly will hold three generations." },
+      { "id": "cloth", "keywords": ["cloth", "weave", "scarf"], "answer": "I weave scarves from plant fibre on the loom in the workshop hall. Come and add a row; every scarf is a little bit everyone's." },
+      { "id": "lanterns", "keywords": ["lantern", "glow", "light"], "answer": "The glass lanterns charge by day from the solar glass and glow all night. Hang one by your door and the path will always be lit." },
+      { "id": "dyes", "keywords": ["dyes", "colour", "color"], "answer": "Our dyes come from leaves, bark and the clay bank's iron red. A dyer's patience is the secret ingredient." },
+      { "id": "gifts", "keywords": ["gift", "present", "share"], "answer": "Whatever a maker makes is for the village. Pick something you like at market hour and tell me what you would like to learn to make next." },
+      { "id": "workshop", "keywords": ["workshop", "bench", "hall"], "answer": "The workshop hall has benches for cloth, wood and clay. There is always a free seat, and a pair of hands is always welcome." },
+      { "id": "mending", "keywords": ["mend", "reuse", "recycle"], "answer": "Nothing is wasted in Harr. Offcuts go to the recycling garden, and a cracked bowl is mended, not thrown away." }
+    ],
+    "scholar": [
+      { "id": "library", "keywords": ["library", "shelf", "book"], "answer": "The library is where every find is written down, and the village has {insight} insight so far. Add a page and the next reader starts further on." },
+      { "id": "stars", "keywords": ["stars", "telescope", "observatory"], "answer": "The star meadow is the darkest corner of Harr. On clear nights we chart the sky from there until the observatory platform is ready." },
+      { "id": "notes", "keywords": ["notes", "notebook", "journal"], "answer": "Write what you saw, not what you hoped to see. A clear note with the date and the weather is worth ten clever guesses." },
+      { "id": "questions", "keywords": ["question", "curious", "wonder"], "answer": "Questions are our favourite currency. Bring one to story circle and the whole circle will help you turn it into a small experiment." },
+      { "id": "maps", "keywords": ["chart", "survey", "mapping"], "answer": "The high view shows the valley like a map. Every place walked and written down adds a line to the valley survey." },
+      { "id": "plants", "keywords": ["plants", "botany", "lichen"], "answer": "The lichen wall draws a slow map on the stone. We measure its growth each season, and its bright colours tell us the air is clean." },
+      { "id": "seasons", "keywords": ["season", "climate", "weather"], "answer": "We keep the same notes every season, so a spring page can sit beside its autumn partner and show what changed." },
+      { "id": "school", "keywords": ["school", "lesson", "teach"], "answer": "The schoolhouse teaches reading, history and botany to young and old together. {insight} insight so far is only the beginning." }
+    ],
+    "courier": [
+      { "id": "routes", "keywords": ["route", "shortcut", "path"], "answer": "The quickest way across is the sky walk, and the loveliest is the lantern path at dusk. I take both depending on the news." },
+      { "id": "parcels", "keywords": ["parcel", "deliver", "package"], "answer": "I carry notes, seed packets and good wishes between places. Everything is delivered the same day, and nothing is ever left behind." },
+      { "id": "visitors", "keywords": ["visitor", "guest", "arrive"], "answer": "Visitors are welcome at the guesthouse, where there is tea on the table. I walk newcomers to the plaza and introduce them to everyone." },
+      { "id": "bridge", "keywords": ["bridge", "canal", "crossing"], "answer": "The canal bridge joins the plaza to the western workshops. I can cross it in a minute, and I stop to wave at the ducks." },
+      { "id": "welcome", "keywords": ["newcomer", "welcome", "lost"], "answer": "If you are lost, ask me. The plaza is the middle of Harr, and everything else is a short walk from there." },
+      { "id": "tidings", "keywords": ["tidings", "anything new", "hear anything"], "answer": "The newest news: we are raising {project}, and the village has {insight} insight to its name." },
+      { "id": "speed", "keywords": ["hurry", "quick", "fast"], "answer": "I walk briskly, but I am never in a hurry to talk. News is better when it is shared slowly and listened to carefully." },
+      { "id": "evening", "keywords": ["evening", "dusk", "lantern"], "answer": "At dusk I walk the lantern path, and the lamps come on one by one. Everyone is talking about {project} now." }
+    ],
+    "keeper": [
+      { "id": "archive", "keywords": ["archive", "shelves", "catalogue"], "answer": "The open archive keeps every finding, plan and story, and anyone, even another village, may read it. Ask me to find a page for you." },
+      { "id": "guests", "keywords": ["guest", "guesthouse", "visitor"], "answer": "The guesthouse has clean beds, hot tea and quiet reading rooms. A guest who arrives tonight will be asked how the journey was." },
+      { "id": "reading", "keywords": ["quiet", "reading", "silence"], "answer": "There are quiet corners in the archive and the pavilion. Take a book, take a seat and take as long as you like." },
+      { "id": "music", "keywords": ["music", "dance", "song"], "answer": "The festival lawn has lamp arches and a wide stretch of grass for round dances. Bring a song, or just your feet." },
+      { "id": "history", "keywords": ["ancient", "legend", "tales"], "answer": "The valley's oldest tale is about the boundary stone, which was here before the village. Ask at story circle and someone will tell it." },
+      { "id": "tour", "keywords": ["tour", "show me around", "first visit"], "answer": "A good first tour: the plaza, the well, the market hall and the library. The building going up right now is {project}." },
+      { "id": "tidy", "keywords": ["clean", "tidy", "sweep"], "answer": "A shared place stays lovely because everyone leaves it a little tidier. I only keep it open; the village does the rest." },
+      { "id": "fountain", "keywords": ["fountain", "lights", "rest here"], "answer": "The light fountain is where neighbours sit at the end of a day. It is the best place to watch the lamps come on." }
+    ]
+  }
+}

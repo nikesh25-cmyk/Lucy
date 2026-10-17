@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "id": "ring-bench",
+  "kind": "fixture",
+  "label": "Ring Bench",
+  "since": "1.1.0",
+  "order": 2,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "bench",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "fixtures",
+    "object": "bench",
+    "footprint": "open",
+    "scenery_class": "mass",
+    "blocks_route": true,
+    "arrangement": {
+      "kind": "ring",
+      "axis": null,
+      "spacing": 1,
+      "count": 8,
+      "from": {
+        "x": 6,
+        "y": 16
+      }
+    },
+    "tiles": [
+      [
+        5,
+        15
+      ],
+      [
+        6,
+        15
+      ],
+      [
+        7,
+        15
+      ],
+      [
+        7,
+        16
+      ],
+      [
+        7,
+        17
+      ],
+      [
+        6,
+        17
+      ],
+      [
+        5,
+        17
+      ],
+      [
+        5,
+        16
+      ]
+    ],
+    "owner": "grove-ring-venue",
+    "placement": {
+      "on": "ground"
+    },
+    "provenance": {
+      "derived_from": "content/furniture/bench.json",
+      "reuse": "the sealed furniture builder is drawn; this fixture adds no asset and no geometry"
+    }
+  },
+  "notes": [
+    "Eight seats around the clearing centre, kept clear of the plaza band and of the single south corridor at x = 20."
+  ]
+}

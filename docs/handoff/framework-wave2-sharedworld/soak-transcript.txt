@@ -1,0 +1,252 @@
+{
+  "generated_at": "2026-10-15T10:27:59.398Z",
+  "hardware": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M5",
+    "cpus": 10,
+    "memory_bytes": 17179869184,
+    "node": "v24.15.0"
+  },
+  "limits": {
+    "accounts": 8,
+    "subscriptions_per_account": 4,
+    "phase_ms": 6000,
+    "move_pace_ms": 145,
+    "chat_every_moves": 12,
+    "emote_every_moves": 40,
+    "quiesce_ms": 400,
+    "client_buffer_frames": 512,
+    "process_subscription_ceiling": 64
+  },
+  "concurrency": {
+    "writer_accounts": 8,
+    "observer_accounts": 8,
+    "subscriptions": 32,
+    "process_ceiling": 64
+  },
+  "workload_ms": 6000,
+  "requests": {
+    "attempts": 356,
+    "accepted": 354,
+    "throttled": 0,
+    "refused": 2,
+    "latency_p50_ms": 2.69,
+    "latency_p95_ms": 9.31,
+    "latency_max_ms": 65.73,
+    "by_route": {
+      "POST /move": {
+        "attempts": 312,
+        "accepted": 312,
+        "throttled": 0,
+        "p50_ms": 2.64,
+        "p95_ms": 8.28
+      },
+      "POST /messages": {
+        "attempts": 21,
+        "accepted": 21,
+        "throttled": 0,
+        "p50_ms": 2.09,
+        "p95_ms": 5.68
+      },
+      "POST /emotes": {
+        "attempts": 2,
+        "accepted": 2,
+        "throttled": 0,
+        "p50_ms": 4.72,
+        "p95_ms": 5.1
+      },
+      "POST /agents/:id/travel": {
+        "attempts": 4,
+        "accepted": 4,
+        "throttled": 0,
+        "p50_ms": 3.6,
+        "p95_ms": 27.1
+      },
+      "POST /agents/:id/build": {
+        "attempts": 13,
+        "accepted": 11,
+        "throttled": 0,
+        "p50_ms": 4.37,
+        "p95_ms": 42.47
+      },
+      "PATCH /agents/:id/home": {
+        "attempts": 1,
+        "accepted": 1,
+        "throttled": 0,
+        "p50_ms": 9.7,
+        "p95_ms": 9.7
+      },
+      "GET /world": {
+        "attempts": 2,
+        "accepted": 2,
+        "throttled": 0,
+        "p50_ms": 11.62,
+        "p95_ms": 12.61
+      },
+      "POST /runtime/start": {
+        "attempts": 1,
+        "accepted": 1,
+        "throttled": 0,
+        "p50_ms": 35.1,
+        "p95_ms": 35.1
+      }
+    }
+  },
+  "events": {
+    "subscriptions": 32,
+    "opens": 106,
+    "snapshots_applied": 42,
+    "frames_total": 4368,
+    "frames_per_client": {
+      "min": 116,
+      "max": 143
+    },
+    "update_entries_total": 10775,
+    "bytes_total": 1894077,
+    "heartbeats": 18,
+    "foreign_frames": 0,
+    "wire_duplicate_messages": 0,
+    "parse_errors": 0,
+    "client_buffer_overflows": 0,
+    "delivery_latency_ms": {
+      "samples": 4368,
+      "p50": 1,
+      "p95": 7,
+      "p99": 24,
+      "max": 29
+    },
+    "live_at_quiescence": 32,
+    "residents_observed_to_leave_the_world": 32
+  },
+  "shared_world": {
+    "note": "Two humans and one AI resident crossed the Commons/Highlands seam with no portal, spoke across it, built in the AI resident's own garden and were found again after the restart. Every claim was checked against the stored row.",
+    "crossings": [
+      {
+        "who": "human_a",
+        "from": "commons",
+        "to": "district:highlands",
+        "tile": [
+          25,
+          35
+        ]
+      },
+      {
+        "who": "human_b",
+        "to": "district:highlands",
+        "tile": [
+          25,
+          35
+        ]
+      },
+      {
+        "who": "ai",
+        "from": "commons",
+        "to": "district:highlands",
+        "tile": [
+          25,
+          35
+        ]
+      }
+    ],
+    "nearby_message": [
+      {
+        "id": "2906cd98-577f-4176-ae06-fd609dfbf4c3",
+        "reached": 2,
+        "ai": true,
+        "far": false
+      }
+    ],
+    "refused_placements": {
+      "across_the_seam": 403,
+      "on_the_map": 403
+    },
+    "garden": {
+      "world_id": "home:9cb0d7e4-985d-495e-9423-a42df90e76ba",
+      "placements": 3
+    },
+    "stranded_after_restart": [
+      {
+        "world_id": "district:highlands",
+        "x": 25,
+        "y": 35
+      },
+      {
+        "world_id": "district:highlands",
+        "x": 25,
+        "y": 31
+      },
+      {
+        "world_id": "district:highlands",
+        "x": 10,
+        "y": 35
+      }
+    ],
+    "limits": {
+      "anchor_world": "commons",
+      "neighbour_world": "district:highlands",
+      "landing": {
+        "x": 25,
+        "y": 35
+      }
+    }
+  },
+  "writes": {
+    "accepted_steps": 292,
+    "public_messages": 20,
+    "garden_builds": 8,
+    "phase_ms": 6157.2,
+    "per_second": 50.7,
+    "storage_before_bytes": {
+      "main": 8740864,
+      "-wal": 1178352,
+      "-shm": 32768
+    },
+    "storage_after_bytes": {
+      "main": 8773632,
+      "-wal": null,
+      "-shm": null
+    },
+    "stored": {
+      "agents": 11,
+      "objects": 10,
+      "commit_messages": 17
+    }
+  },
+  "correctness": {
+    "subscribers_compared": 32,
+    "residents_that_left_the_world": 32,
+    "ordering_violations": 0,
+    "message_delivery": "every open subscriber received every stored public message once, in stored order",
+    "reconnect_divergence": 0,
+    "checks_passed": 70
+  },
+  "server_event_counters": "not exposed: `/operations` builds the hub counters but `diagnostics()` does not include them, so they are read on the client side instead",
+  "storage_bytes": {
+    "main": 8773632,
+    "-wal": 0,
+    "-shm": 32768
+  },
+  "result": "PASS",
+  "failures": [],
+  "defects": [],
+  "scope": "One Node process and one SQLite writer on loopback. Correctness and load of this workload at this client count only; no supported-user, capacity or model claim.",
+  "not_measured": [
+    "model throughput and the model queue (no model is configured, so no model call is made)",
+    "real network latency, TLS, a reverse proxy or packet loss",
+    "multiple server processes or multiple SQLite writers",
+    "memory growth and disk exhaustion over hours"
+  ]
+}
+
+PASS  32 subscribers 4/account, 8 writing avatars, 6000 ms write phase
+  frames      4368 total, 116-143 per client, 10775 update entries, 18 heartbeats, 0 duplicate messages
+  latency     frames p50 1 ms · p95 7 ms · max 29 ms · requests p95 9.31 ms
+  requests    356 attempts · 354 accepted · 0 throttled · 2 refused
+  writes      292 accepted steps, 20 public messages, 8 garden builds over 6157.2 ms = 50.7 row-writing requests/s
+  channel     server-side hub counters are not exposed on /operations; delivery is counted on the client side
+  shared      3 seam crossings (human_a, human_b, ai), 1 nearby message(s), 3 placements in the AI resident's garden
+  restart     the three residents were left on {"world_id":"district:highlands","x":25,"y":35} and the restart preserved them
+  checks      70 passed, 0 failed
+  wrote       /tmp/w2-soak-report.json
+EXIT=0

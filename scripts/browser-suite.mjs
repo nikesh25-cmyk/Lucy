@@ -25,6 +25,8 @@ import { request as httpRequest } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { cameraWalkDirection, facingLabel } from '../src/camera-controls.js';
 import { RESTORATION_PLAN } from '../src/community.js';
+import { onMap } from '../src/global-map.js';
+import { LIVING_ROSTER } from '../src/living-world.js';
 import { validateDatabase } from '../src/recovery.js';
 import { planWalk } from '../src/world-walk.js';
 import { frontierGates, getWorldDefinition, walkable } from '../world.js';
@@ -38,6 +40,9 @@ const READY_TIMEOUT_MS = 180_000;
 const STEP_TIMEOUT_MS = 120_000;
 const SCENARIO_TIMEOUT_MS = 300_000;
 const PAGE_TIMEOUT_MS = 25_000;
+// These operators deliberately keep browser-local state between scenarios. Every other key owns
+// a single scenario; unload its finished scene instead of retaining dozens of WebGL worlds.
+const REUSABLE_ACTORS=new Set(['admin','owner','stranger','reviewer','contributor']);
 
 class BrowserSuiteFailure extends Error {
   constructor(message, evidence = {}) {
@@ -134,6 +139,8 @@ export const SCENARIOS = Object.freeze([
   { id: 'consolidated-proposal-history', title: 'Retired research templates remain readable but cannot become missions', regression: 'batch 02 integration correction' },
   { id: 'shared-build-and-restart', title: 'Two humans and an AI runtime build together, exchange items and keep progress after restart', regression: 'shared integration' },
   { id: 'wave-b-two-gates', title: 'Two humans and an active AI cross two connected frontier gates, choose their callings, raise one shared saved path in the sector they reached, and return to it after a restart', regression: 'wave B acceptance' },
+  { id: 'karma-closed-loop', title: 'A brand-new account builds in its own free personal space, earns Karma Coins from that saved service, buys a shop good and keeps all of it through a restart', regression: 'the closed in-world economy loop' },
+  { id: 'home-vault-interface', title: 'An operator opens Home & vault: vault counts and the server’s privacy statement, independent garden and cottage switches, a confirmed erase, a passport summary and a 44 px phone layout', regression: null },
   { id: 'cooperative-restoration-two-operators', title: 'Two operators restore a shared garden and the finished garden survives a restart', regression: null },
   { id: 'reviewer-workbench', title: 'A reviewer assesses each criterion, compares source versions, requests changes and the mission owner records an adoption', regression: null },
   { id: 'review-states-and-refusals', title: 'Accepted, held and refused states stay distinct while a simultaneous acceptance issues one receipt', regression: null },
@@ -147,6 +154,8 @@ export const SCENARIOS = Object.freeze([
   { id: 'first-play-solo-ambassador', title: 'A new solo operator follows the guide through the Commons, asks a nearby scripted ambassador, and retains that saved meeting', regression: null },
   { id: 'restoration-two-clients', title: 'Two browsers restore one shared garden and the attributed result survives a reload in both', regression: null },
   { id: 'phone-conversation', title: 'The game conversation panel is compact, preserves drafts, and respects reduced motion on phones', regression: null },
+  { id: 'in-game-command-surface', title: 'Every platform section opens as a panel over the running 3D world, with keyboard, phone and reduced-motion access, and the avatar stays controllable', regression: null },
+  { id: 'shared-world-seam-crossing', title: 'Two humans and one AI resident cross a global-map seam with no portal, speak across it, build in a garden and return after a restart', regression: 'wave 2 shared-world coherence' },
   // Last: signing out ends the administrator session this scenario shares with the ones above.
   { id: 'signout-privacy', title: 'Sign-out clears cached private quests, guilds, blueprints and land state', regression: 'queue review correction 1' },
 ]);
@@ -219,6 +228,40 @@ async function apiPatch(ticket, path, payload, statuses = [200]) {
     throw new BrowserSuiteFailure(`fixture request PATCH ${path} was refused`, { expected: `HTTP ${allowed.join(' or ')}`, actual: `HTTP ${response.status} ${response.raw}` });
   }
   return response.body;
+}
+
+/**
+ * The server's own interval between two saved conversation lines from one account. `POST /messages`
+ * compares the newest stored line of `actor.account.id` and answers `429 Please wait before sending
+ * another message.` inside 1500 ms (`src/platform.js message()`). A runtime credential posts as the
+ * account that issued it, so a human's line and its own resident's answer share one interval: a
+ * conversation that alternates between them is paced by this rule, not by luck.
+ */
+const MESSAGE_INTERVAL_MS = 1500;
+
+/**
+ * One saved conversation line, paced past that interval. The account whose interval the line is
+ * charged to is named by the caller, because a runtime credential has no account id of its own. Only
+ * the documented interval refusal is ever resumed — and every resume is printed — so a refusal for
+ * any other reason is the failure it looks like. The wait reads the stored row rather than sleeping a
+ * fixed time, so a line costs nothing when its account has been quiet for longer than the interval
+ * already.
+ */
+async function sendLine(ticket, accountId, body, { attempts = 3 } = {}) {
+  const quiet = () => {
+    const last = row('SELECT created_at FROM messages WHERE account_id=? ORDER BY created_at DESC,id DESC LIMIT 1', accountId);
+    return !last || Date.parse(last.created_at) + MESSAGE_INTERVAL_MS <= Date.now() ? true : null;
+  };
+  let refusal = '';
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await waitForCondition(quiet, `the server’s own ${MESSAGE_INTERVAL_MS} ms interval between two lines from account ${accountId}`, { timeout: 10_000, interval: 100 });
+    const response = await api(ticket, 'POST', '/messages', body);
+    if (response.status === 200 || response.status === 201) return response.body;
+    refusal = `HTTP ${response.status} ${response.raw}`;
+    if (response.status !== 429 || !/another message/i.test(response.raw || '')) break;
+    console.log(`        message pacing   the server’s own per-account message interval refused a line for account ${accountId}; waiting it out and sending again`);
+  }
+  throw new BrowserSuiteFailure('POST /messages was refused', { expected: 'HTTP 200 or 201 from POST /messages', actual: refusal });
 }
 
 function freePort() {
@@ -307,6 +350,11 @@ function write(sql, ...params) {
 // Browser driver
 // ---------------------------------------------------------------------------------------------
 
+// Continuous trace screenshots force GPU readback on every animated frame.
+// CI keeps action traces and explicit acceptance/failure screenshots. Set
+// LUCY_BROWSER_TRACE=1 for full DOM/network/frame diagnostics in a disposable rerun.
+export function browserTraceOptions(ci=Boolean(process.env.CI),full=process.env.LUCY_BROWSER_TRACE==='1'){return {screenshots:!ci||full,snapshots:!ci||full,sources:false};}
+
 async function launchBrowser() {
   let chromium;
   try {
@@ -339,13 +387,23 @@ function attachPageLogs(page, key) {
 }
 
 async function context(key) {
-  if (state.contexts.has(key)) return state.contexts.get(key);
+  if (state.contexts.has(key)) {
+    const record=state.contexts.get(key);
+    if(record.frozen){await record.lifecycle.send('Page.setWebLifecycleState',{state:'active'});record.frozen=false;}
+    if(!state.scenarioContexts.has(key)){
+      await record.context.tracing.start(browserTraceOptions());
+      state.scenarioContexts.add(key);
+    }
+    if(record.parkedUrl){const url=record.parkedUrl;record.parkedUrl=null;await record.page.goto(url,{waitUntil:'domcontentloaded'});await settle(record.page);}
+    return record;
+  }
   const browserContext = await state.browser.newContext({ viewport: { width: 1440, height: 900 } });
   browserContext.setDefaultTimeout(PAGE_TIMEOUT_MS);
-  await browserContext.tracing.start({ screenshots: true, snapshots: true, sources: false });
+  await browserContext.tracing.start(browserTraceOptions());
   const page = await browserContext.newPage();
   attachPageLogs(page, key);
-  const record = { key, context: browserContext, page };
+  const lifecycle=await browserContext.newCDPSession(page);
+  const record = { key, context: browserContext, page, lifecycle, frozen:false };
   state.contexts.set(key, record);
   state.scenarioContexts.add(key);
   return record;
@@ -374,7 +432,23 @@ const ACTORS = {
   // central sector, because an operator may steward one plot and both scenarios need their own.
   'wave-b-host': { email: 'wave-b-host@browser.test', password: PASSWORD, name: 'Wave B host' },
   'wave-b-guest': { email: 'wave-b-guest@browser.test', password: PASSWORD, name: 'Wave B guest' },
+  // The shared-world scenario creates its own two operators and three residents, so nothing it leaves
+  // on the far side of a seam is a shared resident another scenario depends on.
+  'shared-world-host': { email: 'shared-world-host@browser.test', password: PASSWORD, name: 'Shared world host' },
+  'shared-world-guest': { email: 'shared-world-guest@browser.test', password: PASSWORD, name: 'Shared world guest' },
 };
+
+/**
+ * The one seam the shared-world scenario crosses: the Commons' north edge into Highlands. Every tile
+ * here is a plain tile of the two worlds; the avenue through the join is the one `src/global-map.js`
+ * opens, so a step off the north edge stores the resident in the neighbour without a portal.
+ */
+const SHARED_SEAM = Object.freeze({
+  anchor: 'commons', neighbour: 'district:highlands',
+  stand: { x: 25, y: 0 }, landing: { x: 25, y: 35 }, out_of_range: { x: 25, y: 31 },
+  line: 'One tile away, across the border.',
+  answer: 'Both sides of the border, one world.',
+});
 
 /**
  * Opens the application. When operator credentials are supplied the session is restored if the
@@ -399,6 +473,14 @@ async function settle(page) {
 const nav = (page, label) => page.locator(`#navigation button[aria-label="${label}"]`);
 
 async function openTab(page, label) {
+  // In the game the section list lives in the World menu, which closes once a section is chosen; open it again
+  // when the entry is not on screen, exactly as a visitor would.
+  const menu = page.locator('#game-menu-button');
+  for (let attempt = 0; attempt < 2 && !await nav(page, label).isVisible().catch(() => false); attempt++) {
+    if (!await menu.isVisible().catch(() => false)) break;
+    await menu.click();
+    await nav(page, label).waitFor({ state: 'visible', timeout: 2500 }).catch(() => {});
+  }
   await nav(page, label).click();
   await settle(page);
   await page.waitForTimeout(150);
@@ -426,7 +508,7 @@ async function signIn(page, { email, password }) {
         return { signedIn: document.body.classList.contains('signed-in'), notice: notice?.textContent || '', failed: Boolean(notice && !notice.hidden && notice.classList.contains('error')) };
       });
       if (observed.signedIn) { outcome = 'signed-in'; break; }
-      if (/Too many authentication attempts/i.test(observed.notice)) { outcome = 'rate-limited'; break; }
+      if (observed.failed && /Too many authentication attempts/i.test(observed.notice)) { outcome = 'rate-limited'; break; }
       if (observed.failed) { outcome = `refused: ${observed.notice}`; break; }
       await sleep(200);
     }
@@ -555,6 +637,7 @@ async function runScenario(definition) {
   console.log(`SCENARIO ${definition.id} — ${definition.title}${definition.regression ? `  [regression: ${definition.regression}]` : ''}`);
   const started = Date.now();
   const errors = [];
+  let failed=false;
   try {
     await withTimeout(runImplementation(definition), SCENARIO_TIMEOUT_MS, `scenario "${definition.id}"`);
     await discardTraces();
@@ -562,6 +645,7 @@ async function runScenario(definition) {
     console.log(`PASS  ${definition.id} — ${definition.title} (${Date.now() - started} ms)`);
     return true;
   } catch (error) {
+    failed=true;
     errors.push(error);
     const saved = await captureFailure(definition.id, errors);
     state.results.push({ id: definition.id, ok: false, ms: Date.now() - started, error });
@@ -572,9 +656,20 @@ async function runScenario(definition) {
     if (error.detail) console.log(`        detail    ${String(error.detail).split('\n').slice(0, 12).join('\n                  ')}`);
     if (saved.length) console.log(`        evidence  ${saved.join(', ')}`);
     const pageLog = state.scenarioLogs || [];
-    for (const line of pageLog.slice(0, 6)) console.log(`        page      ${line}`);
+    for (const line of [...pageLog.slice(0,2),...pageLog.slice(-10)]) console.log(`        page      ${line}`);
     return false;
   } finally {
+    // Keep reusable operators' exact DOM and browser-local choices; unload one-off scenes, keeping
+    // their browsing context/storage available if reused. Freezing alone retains their WebGL memory.
+    // The clients participating in one scenario stay active together for its entire duration.
+    for(const key of state.scenarioContexts){
+      const record=state.contexts.get(key);
+      if(record&&!record.page.isClosed()){
+        if(failed){await record.context.close();state.contexts.delete(key);}
+        else if(REUSABLE_ACTORS.has(key)){await record.lifecycle.send('Page.setWebLifecycleState',{state:'frozen'});record.frozen=true;}
+        else{record.parkedUrl=record.page.url();await record.page.goto('about:blank',{waitUntil:'load'});}
+      }
+    }
     state.scenario = null;
     state.scenarioContexts = new Set();
   }
@@ -862,7 +957,21 @@ define('accounts-and-switching', async () => {
     expect(await inviteField.count() === 1, 'ordinary signup must offer the optional invitation field', { actual: 'no invitation field was rendered' });
     await form.locator('input[name="consent"]').check();
     await form.getByRole('button', { name: 'Create account', exact: true }).click();
-    await owner.page.waitForFunction(() => document.body.classList.contains('signed-in'), null, { timeout: PAGE_TIMEOUT_MS });
+    try {
+      await owner.page.waitForFunction(() => document.body.classList.contains('signed-in'), null, { timeout: PAGE_TIMEOUT_MS });
+    } catch (error) {
+      const diagnostic = await owner.page.evaluate(() => ({
+        visibility: document.visibilityState,
+        signedIn: document.body.classList.contains('signed-in'),
+        notice: document.querySelector('#auth-notice')?.textContent?.slice(0, 240),
+        globalNotice: document.querySelector('#notice')?.textContent?.slice(0,240),
+        dialogOpen: document.querySelector('#auth-dialog')?.open,
+        profile: document.querySelector('.session-profile')?.textContent?.slice(0,80),
+        invalidFields: [...document.querySelectorAll('#auth-area input, #auth-area select')].filter(e => !e.validity.valid).map(e => ({name:e.name, type:e.type, missing:e.validity.valueMissing, mismatch:e.validity.typeMismatch})),
+      })).catch(e => ({evaluationFailed:e.message}));
+      console.log('  signup diagnostic '+JSON.stringify({...diagnostic, storedOwner: Boolean(row('SELECT id FROM accounts WHERE email=?', ACTORS.owner.email))}));
+      throw error;
+    }
     await settle(owner.page);
     const account = row('SELECT id,role FROM accounts WHERE email=?', ACTORS.owner.email);
     expect(account?.role === 'member', 'open signup must create an ordinary member', { expected: 'a stored member account', actual: describe(account) });
@@ -1597,6 +1706,8 @@ export const throttleRefusal = (notice) => MOVEMENT_THROTTLE.test(String(notice 
  * by the documented movement throttle is resumed from where the resident stands, instead of letting
  * the whole scenario collapse because one step was refused.
  */
+export function walkHasSavedProgress(before,after){return Boolean(before&&after&&before.world_id===after.world_id&&[before.x,before.y,after.x,after.y].every(Number.isFinite)&&(before.x!==after.x||before.y!==after.y));}
+
 async function walkIntoPlot(page, agentId, plotId, parcel, { timeout = 100_000 } = {}) {
   const deadline = Date.now() + timeout;
   const inside = (position) => Boolean(position) && position.x >= parcel.x && position.x < parcel.x + parcel.width && position.y >= parcel.y && position.y < parcel.y + parcel.height;
@@ -1618,10 +1729,17 @@ async function walkIntoPlot(page, agentId, plotId, parcel, { timeout = 100_000 }
       }
       movementThrottle = false;
       await page.locator('#plot-detail').getByRole('button', { name: 'Walk to plot', exact: true }).click();
-      const reached = await waitForCondition(() => {
-        if (movementThrottle) return 'movement-throttle';
-        return inside(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId)) ? 'inside' : null;
-      }, 'the resident to step into the plot', { timeout: Math.min(30_000, Math.max(2000, deadline - Date.now())) }).catch(() => null);
+      let reached=null,observed=row('SELECT x,y,world_id FROM agents WHERE id=?',agentId);
+      do {
+        reached=await waitForCondition(()=>{
+          if(movementThrottle)return 'movement-throttle';
+          return inside(row('SELECT x,y,world_id FROM agents WHERE id=?',agentId))?'inside':null;
+        },'the resident to step into the plot',{timeout:Math.min(30_000,Math.max(2000,deadline-Date.now()))}).catch(()=>null);
+        if(reached||Date.now()>=deadline)break;
+        const latest=row('SELECT x,y,world_id FROM agents WHERE id=?',agentId);
+        if(!walkHasSavedProgress(observed,latest))break;
+        observed=latest; // Still walking: observe within the existing deadline; do not click again.
+      } while(Date.now()<deadline);
       if (reached === 'inside') {
         const position = await waitForResidentToSettle(agentId);
         if (inside(position)) {
@@ -2216,6 +2334,167 @@ define('phone-conversation', async () => {
   });
 });
 
+// The in-game command surface. A section is a panel over (desktop: beside) the running world, never a
+// replacement for it: the same WebGL canvas element survives every section, the avatar still answers
+// the keyboard while a panel is open, Escape closes the panel, and a phone gets a sheet that leaves
+// the scene on screen. The catalogue is read from the page so a section added later is covered too.
+define('in-game-command-surface', async () => {
+  const admin = await actor('admin');
+  const page = admin.page;
+  const player = fixtures().characters.player;
+  await mkdir(join(RESULTS, 'in-game-command-surface'), { recursive: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+  await settle(page);
+  if (!await page.evaluate(() => document.body.classList.contains('signed-in'))) await signIn(page, ACTORS.admin);
+  // Establish this scenario's own selected character through the entry control. A focused run or
+  // a recreated context after a failed case must not depend on another scenario's local selection.
+  await enterWorldAs(page, player.id, player.name);
+  await page.waitForFunction((id) => window.__nemoworld?.selected?.() === id && document.querySelector('#world'), player.id, { timeout: PAGE_TIMEOUT_MS });
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => { document.querySelector('#world').dataset.surfaceMark = 'kept'; });
+  const facts = () => page.evaluate(() => {
+    const canvas = document.querySelector('#world'), box = canvas?.getBoundingClientRect(), panel = document.querySelector('#game-panel'), body = document.querySelector('#game-panel-body');
+    const ids = [...document.querySelectorAll('[id]')].map((node) => node.id);
+    return {
+      panel: window.__nemoworld.panel(), kept: canvas?.dataset.surfaceMark === 'kept', share: box ? (box.width * box.height) / (innerWidth * innerHeight) : 0, bottom: box?.bottom ?? 0,
+      panelHidden: panel.hidden, panelTop: panel.getBoundingClientRect().top, panelLeft: panel.getBoundingClientRect().left, overflow: body.scrollWidth - body.clientWidth, textLength: body.textContent.trim().length,
+      duplicates: [...new Set(ids.filter((value, index) => ids.indexOf(value) !== index))], focusInPanel: panel.contains(document.activeElement), focusId: document.activeElement?.id || document.activeElement?.tagName,
+      current: document.querySelector('#navigation [aria-current="page"]')?.getAttribute('aria-label') || null, menuOpen: document.body.classList.contains('game-menu-open'),
+      pad: Boolean(document.querySelector('.nm-touch') && getComputedStyle(document.querySelector('.nm-touch')).display !== 'none'),
+    };
+  });
+
+  await step('the menu finds a section by a few words and Enter opens it beside the running world', async () => {
+    await page.locator('#game-menu-button').click();
+    const search = page.getByRole('searchbox', { name: 'Find a section' });
+    await search.waitFor({ state: 'visible' });
+    await search.fill('wallet');
+    const shown = await page.locator('#navigation [data-section]:not([hidden])').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label')));
+    expect(shown.length === 1 && shown[0] === 'Coin wallet', 'a search for wallet must leave exactly the Coin wallet', { expected: 'Coin wallet', actual: describe(shown) });
+    expect(/1 section matches/.test(await page.locator('#game-menu-status').textContent()), 'the match count must be announced in a status region');
+    await search.press('Enter');
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'coins', null, { timeout: PAGE_TIMEOUT_MS });
+    await page.waitForTimeout(500);
+    const seen = await facts();
+    expect(seen.kept && !seen.panelHidden, 'the panel must be open on the same 3D canvas', { actual: describe(seen) });
+    expect(!seen.menuOpen && seen.current === 'Coin wallet', 'choosing a section closes the menu and marks it current', { actual: describe(seen) });
+    expect(seen.share >= 0.5 && seen.panelLeft >= 900, 'on a desktop the world keeps at least half the screen and the panel sits beside it', { actual: describe(seen) });
+    expect(seen.focusInPanel, 'keyboard focus must move into the panel', { actual: describe(seen.focusId) });
+    await page.screenshot({ path: join(RESULTS, 'in-game-command-surface', 'desktop-wallet.png') });
+    return `Coin wallet opened beside the world; the world keeps ${(seen.share * 100).toFixed(0)}% of the screen`;
+  });
+
+  await step('the resident still walks while the panel is open, from the keyboard and from the Focus world control', async () => {
+    await page.locator('#game-panel-world').click();
+    const before = row('SELECT x,y FROM agents WHERE id=?', player.id);
+    let moved = null;
+    for (const key of ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown']) {
+      await page.keyboard.press(key);
+      moved = await waitForCondition(() => { const now = row('SELECT x,y FROM agents WHERE id=?', player.id); return Math.abs(now.x - before.x) + Math.abs(now.y - before.y) === 1 ? now : null; }, `a ${key} step to be saved`, { timeout: 1800, interval: 100 }).catch(() => null);
+      if (moved) break;
+    }
+    expect(moved, 'a walking key must move the resident one stored tile with the panel open', { expected: `one step from ${before.x},${before.y}`, actual: describe(row('SELECT x,y FROM agents WHERE id=?', player.id)) });
+    expect((await facts()).panel === 'coins', 'walking must not close the panel');
+    return `${before.x},${before.y} → ${moved.x},${moved.y} with the Coin wallet open`;
+  });
+
+  await step('Escape closes the panel, focus returns to the control that opened it, and the canvas never changed', async () => {
+    await page.locator('#game-panel-body').locator('button, a[href], input, select').first().focus().catch(() => {});
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => window.__nemoworld.panel() === '', null, { timeout: PAGE_TIMEOUT_MS });
+    const seen = await facts();
+    expect(seen.panelHidden && seen.kept, 'the panel must be hidden and the canvas the same one', { actual: describe(seen) });
+    expect(await page.evaluate(() => !document.querySelector('#game-panel').contains(document.activeElement)), 'focus must leave the hidden panel');
+    return 'Escape closed the panel; focus is on ' + seen.focusId;
+  });
+
+  await step('every section in the catalogue opens as a panel and none replaces the world', async () => {
+    const ids = await page.evaluate(() => window.__nemoworld.sections().filter((id) => id !== 'world'));
+    expect(ids.length >= 24, 'the catalogue must list every section', { actual: String(ids.length) });
+    const broken = [];
+    for (const id of ids) {
+      const inMenu = await page.evaluate((target) => Boolean([...document.querySelectorAll('#navigation [data-section]')].find((node) => node.dataset.section === target)), id);
+      if (inMenu) { await page.locator('#game-menu-button').click(); await page.locator(`#navigation [data-section="${id}"]`).click(); }
+      else await page.evaluate((target) => window.__nemoworld.openSection(target), id);
+      await page.waitForFunction((target) => window.__nemoworld.panel() === target, id, { timeout: PAGE_TIMEOUT_MS });
+      await page.waitForTimeout(450);
+      const seen = await facts();
+      const problems = [];
+      if (!seen.kept) problems.push('canvas replaced');
+      if (seen.share < 0.5) problems.push(`world share ${seen.share.toFixed(2)}`);
+      if (seen.panelHidden) problems.push('panel hidden');
+      if (seen.overflow > 2) problems.push(`sideways overflow ${seen.overflow}`);
+      if (seen.duplicates.length) problems.push(`duplicate ids ${seen.duplicates.join(',')}`);
+      if (seen.textLength < 40) problems.push('empty');
+      if (inMenu && seen.current !== await page.evaluate((target) => [...document.querySelectorAll('#navigation [data-section]')].find((node) => node.dataset.section === target)?.getAttribute('aria-label'), id)) problems.push(`menu marks ${seen.current}`);
+      if (problems.length) broken.push(`${id}: ${problems.join('; ')}`);
+    }
+    expect(!broken.length, 'every section must open as a clean panel over the same world', { actual: describe(broken) });
+    await page.keyboard.press('Escape');
+    return `${ids.length} sections opened beside the same canvas`;
+  });
+
+  await step('the shell keeps one right-hand slot: Chat and Places swap with the panel instead of stacking', async () => {
+    const hud = page.locator('#game-hud');
+    await hud.getByRole('button', { name: 'Places', exact: true }).click();
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'explore', null, { timeout: PAGE_TIMEOUT_MS });
+    await hud.getByRole('button', { name: 'Chat', exact: true }).waitFor({ state: 'visible' });
+    await page.evaluate(() => document.querySelector('#game-hud .game-quickbar button:nth-child(3)').click());
+    await page.waitForFunction(() => document.body.dataset.gameDrawer === 'chat' && window.__nemoworld.panel() === '', null, { timeout: PAGE_TIMEOUT_MS });
+    expect(await page.locator('#game-panel').isHidden(), 'opening the conversation must close the panel');
+    await page.evaluate(() => document.querySelector('#game-hud .game-quickbar button:nth-child(4)').click());
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'explore' && !window.__nemoworld.drawer(), null, { timeout: PAGE_TIMEOUT_MS });
+    await page.evaluate(() => document.querySelector('#game-hud .game-quickbar button:nth-child(4)').click());
+    await page.waitForFunction(() => window.__nemoworld.panel() === '', null, { timeout: PAGE_TIMEOUT_MS });
+    return 'Chat closed the panel, Places reopened it and a second press closed it';
+  });
+
+  await step('the world menu key M opens the launcher from the scene', async () => {
+    await page.locator('#world').focus();
+    await page.keyboard.press('m');
+    await page.waitForFunction(() => document.body.classList.contains('game-menu-open'), null, { timeout: PAGE_TIMEOUT_MS });
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.body.classList.contains('game-menu-open'), null, { timeout: PAGE_TIMEOUT_MS });
+    return 'M opened the menu and Escape closed it';
+  });
+
+  await step('a phone gets a sheet: the scene stays above it, the touch pad stands down, and Close brings it back', async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(500);
+    await page.locator('#game-menu-button').click();
+    await page.locator('#navigation [data-section="missions"]').click();
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'missions', null, { timeout: PAGE_TIMEOUT_MS });
+    await page.waitForTimeout(700);
+    const seen = await facts();
+    expect(seen.kept && !seen.panelHidden, 'the sheet must open over the same canvas', { actual: describe(seen) });
+    expect(seen.bottom <= seen.panelTop + 2 && seen.share >= 0.28, 'the world must stay above the sheet and keep at least 28% of the screen', { actual: describe({ share: seen.share, canvasBottom: seen.bottom, sheetTop: seen.panelTop }) });
+    expect(seen.overflow <= 2 && !seen.pad, 'the sheet must not scroll sideways and the touch pad must stand down while it covers the pad', { actual: describe({ overflow: seen.overflow, pad: seen.pad }) });
+    await page.screenshot({ path: join(RESULTS, 'in-game-command-surface', 'phone-missions.png') });
+    await page.locator('#game-panel-close').click();
+    await page.waitForFunction(() => window.__nemoworld.panel() === '', null, { timeout: PAGE_TIMEOUT_MS });
+    await page.waitForTimeout(500);
+    const after = await facts();
+    expect(after.pad, 'closing the sheet must bring the touch pad back', { actual: describe(after) });
+    return `sheet top ${Math.round(seen.panelTop)}px, world ${(seen.share * 100).toFixed(0)}% of the screen, pad back after Close`;
+  });
+
+  await step('reduced motion: the panel and menu define no transition', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.locator('#game-menu-button').click();
+    await page.locator('#navigation [data-section="community"]').click();
+    await page.waitForFunction(() => window.__nemoworld.panel() === 'community', null, { timeout: PAGE_TIMEOUT_MS });
+    const motion = await page.evaluate(() => ({ panel: getComputedStyle(document.querySelector('#game-panel')).transitionDuration, content: getComputedStyle(document.querySelector('#content')).transitionDuration, sidebar: getComputedStyle(document.querySelector('.sidebar')).transitionDuration }));
+    expect(Object.values(motion).every((value) => value.split(',').every((part) => parseFloat(part) === 0)), 'no transition may run under prefers-reduced-motion', { actual: describe(motion) });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.keyboard.press('Escape');
+    return 'transition durations are all 0s under reduced motion';
+  });
+
+  return 'every section opens as a panel over the running world, with keyboard, phone and reduced-motion access, and the resident keeps walking';
+});
+
 define('signout-privacy', async () => {
   const admin = await actor('admin');
   const page = admin.page;
@@ -2442,7 +2721,9 @@ const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.l
 async function openWorldAs(page, agentId) {
   await openTab(page, 'Open world');
   const select = page.locator('#view select[name="agent"]');
-  if (await select.count()) { await select.selectOption(agentId); await settle(page); await page.waitForTimeout(500); }
+  // Re-selecting also returns an operator from Look around to its resident. Preserve the trailing
+  // world refresh before the next helper reads local permissions or the nearby guest directory.
+  if(await select.count()){await select.selectOption(agentId);await settle(page);await page.waitForTimeout(500);}
 }
 
 /**
@@ -4447,9 +4728,12 @@ define('shared-build-and-restart', async () => {
     runtime = await apiExpect(fixtures().owner, 'POST', '/runtime/start', { agent_id:ai.id, minutes:10,max_calls:20,scopes:['read','build'] });
     await openApp(owner.page,ACTORS.owner); await openWorldAs(owner.page,host.id);
     await openApp(admin.page,ACTORS.admin); await openWorldAs(admin.page,guest.id);
-    for (const page of [owner.page,admin.page]) await waitForClient(page, w => {
-      const view=window.__nemoworld?.world?.();return view?.world?.id===w&&view.participants.some(p=>p.kind==='human')&&view.participants.some(p=>p.kind==='agent')?true:null;
-    },world,'both browsers to see the shared humans and AI');
+    // The host loaded before the guest selected its avatar. Refresh its real world view
+    // before using the nearby directory; a kind-only check could count just the host and AI.
+    await openWorldAs(owner.page,host.id);
+    for (const page of [owner.page,admin.page]) await waitForClient(page, expected => {
+      const view=window.__nemoworld?.world?.();return view?.world?.id===expected.world&&expected.ids.every(id=>view.participants.some(p=>p.id===id))?true:null;
+    },{world,ids:[host.id,guest.id,ai.id]},'both browsers to see each specific shared human and AI');
     return 'two human browser sessions and one AI resident in frontier:0:0; three fixture herbs';
   });
   await step('the host previews without writing, keeps the form, and confirms narrow guest access',async()=>{
@@ -5084,6 +5368,705 @@ define('wave-b-two-gates', async () => {
   return `two independent humans and one active AI resident entered ${WAVE_B_FIRST} through the Commons, crossed the connected ${firstGate.direction} and ${secondGate.direction} gates into ${WAVE_B_SECOND} and ${WAVE_B_THIRD} with every crossing read back from the stored world and arrival tile, talked in saved attributed text, chose one calling each, stewarded a plot in the sector they reached and left three attributed path blocks standing there under one narrow collaboration grant, and returned after a restart to the same sector, the same recorded purpose and the same saved path`;
 });
 
+/**
+ * The free personal space every account's resident already owns, played as a closed loop: sign up,
+ * create a character, walk into the space, build an object by pointing at it, settle the service into
+ * Karma Coins, buy a good in the shop, and restart. Every claim below is read back from the temporary
+ * database or the server's own payload, and the scenario leaves no shared fixture behind.
+ */
+define('karma-closed-loop', async () => {
+  const player = await context('karma-loop');
+  const page = player.page;
+  const EMAIL = 'tester.karma-loop@browser.test';
+  const NAME = 'Karma loop tester';
+  const RESIDENT = 'Loop resident';
+  let account = null, resident = null, garden = null, cottage = null, placed = null;
+  const coinsBefore = count('SELECT COUNT(*) AS n FROM coin_rewards');
+  const parcelsBefore = count('SELECT COUNT(*) AS n FROM land_parcels');
+  const stewardshipsBefore = count('SELECT COUNT(*) AS n FROM land_stewardships');
+  /** The world door, tried a bounded number of times: the ship writes its own game mode asynchronously,
+   *  which can race the entry helper's reload, so every attempt is the real documented door. */
+  const enterTheWorld = async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try { await enterWorldAs(page, resident.id, RESIDENT); return true; }
+      catch { await page.waitForTimeout(600); }
+    }
+    return false;
+  };
+
+  await step('a brand-new operator signs up and creates its first resident through the interface', async () => {
+    await page.goto(baseUrl(), { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await signUp(page, { name: NAME, email: EMAIL, password: PASSWORD });
+    account = row('SELECT id,name,role FROM accounts WHERE email=?', EMAIL);
+    expect(account && account.role === 'member', 'the dialog must create a disposable member account', { expected: 'a stored member account', actual: describe(account) });
+    expect(count('SELECT COUNT(*) AS n FROM agents WHERE operator_id=?', account.id) === 0, 'the new operator must start with no resident', { actual: `${count('SELECT COUNT(*) AS n FROM agents WHERE operator_id=?', account.id)} residents` });
+    resident = await createResidentThroughInterface(page, RESIDENT);
+    garden = `home:${resident.id}`;
+    cottage = `house:${resident.id}`;
+    expect(resident.status === 'active', 'the created character must be an active resident', { actual: describe(resident) });
+    // Creating a character leaves the app on the characters section, so the world door is the entry
+    // screen's own Continue.
+    expect(await enterTheWorld(), 'the new resident must be able to enter the world from the entry screen', { expected: 'the world open as the resident', actual: describe(await entryState(page)) });
+    state.notes.push(`karma loop: ${EMAIL} signed up through the dialog and created ${RESIDENT} (${resident.kind} ${resident.id}) through the character overlay`);
+    return `account ${account.id} with one ${resident.kind} resident ${resident.id}`;
+  });
+
+  await step('the new resident already owns a personal space the server lets it build in', async () => {
+    const worlds = rows('SELECT id,kind,visibility,owner_agent_id FROM worlds WHERE id IN (?,?) ORDER BY id', garden, cottage);
+    expect(worlds.length === 2, 'every resident must already own a personal garden and a cottage', { expected: `rows for ${garden} and ${cottage}`, actual: describe(worlds) });
+    expect(worlds.every((world) => world.owner_agent_id === resident.id), 'both spaces must belong to the new resident', { actual: describe(worlds) });
+    expect(worlds.find((world) => world.id === garden).kind === 'home', 'the garden must be the home kind the build rules recognise', { actual: describe(worlds.map((world) => world.kind)) });
+    // The space is complimentary: it is not a land parcel, it costs nothing, and it changes no registry.
+    expect(count('SELECT COUNT(*) AS n FROM land_parcels') === parcelsBefore, 'a personal space must not add a land parcel', { actual: `${count('SELECT COUNT(*) AS n FROM land_parcels')} parcels` });
+    expect(count('SELECT COUNT(*) AS n FROM land_stewardships WHERE account_id=?', account.id) === 0, 'a personal space must not need a stewarded plot', { actual: 'a stewardship appeared' });
+    // And the server itself says this resident may build here, with the palette it will accept.
+    const view = await inPage(page, `/world?world_id=${encodeURIComponent(garden)}&agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    expect(view.status === 200 && view.body.world?.kind === 'home', 'the personal space must be readable by its owner', { expected: 'HTTP 200 for a home world', actual: `HTTP ${view.status} ${describe(view.body?.world?.kind)}` });
+    expect(Array.isArray(view.body.build_palette) && view.body.build_palette.includes('bench'), 'the server must publish a buildable object palette for the garden', { actual: describe(view.body.build_palette) });
+    return `garden ${garden} and cottage ${cottage} owned by ${resident.id}; ${view.body.build_palette.length} buildable object kinds, no parcel and no stewardship`;
+  });
+
+  await step('the resident walks into its own space and Build opens the palette there', async () => {
+    // Through the interface the player uses: the world tools drawer names the space and travels there.
+    await openGameTab(page, 'Open world');
+    if (!await page.evaluate(() => document.body.classList.contains('game-tools-open'))) {
+      await page.locator('#game-hud').getByRole('button', { name: 'More', exact: true }).click();
+    }
+    const space = page.locator('#world-my-space-card');
+    await space.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await space.getByRole('button', { name: 'Go to my space', exact: true }).click();
+    await browserShows(page, garden);
+    expect(count('SELECT COUNT(*) AS n FROM journey_visits WHERE agent_id=? AND world_id=?', resident.id, garden) >= 1, 'walking in must be recorded as the visit the server wrote', { actual: 'no visit row' });
+    // Home returns to the playable scene after confirmed travel. The drawer must
+    // close as part of that action, so there is no second dismissal to perform.
+    await page.waitForFunction(() => !document.body.classList.contains('game-tools-open'), null, { timeout: PAGE_TIMEOUT_MS });
+    await page.getByRole('button', { name: 'Close world tools', exact: true }).waitFor({state:'hidden',timeout:PAGE_TIMEOUT_MS});
+    await page.locator('#game-build-button').click();
+    await page.waitForFunction(() => document.body.classList.contains('game-building'), null, { timeout: PAGE_TIMEOUT_MS });
+    const host = page.locator('#game-build-host');
+    await host.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    expect(await host.locator('section.ui-hotbar').count() === 1 && await host.locator('section.ui-placement').count() === 1, 'the garden must mount the same hotbar and placement preview the frontier uses', { actual: `${await host.locator('section').count()} sections` });
+    const bench = host.locator('[data-build-type="bench"]');
+    await bench.waitFor({ state: 'visible' });
+    state.notes.push(`karma loop: the world tools drawer carried the resident into ${garden}, and the HUD's Build action opened a ${await host.locator('[data-build-type]').count()}-item object palette and one placement preview`);
+    return `resident in ${garden} with a ${await host.locator('[data-build-type]').count()}-item object palette and one placement preview, opened by the HUD's own Build action`;
+  });
+
+  await step('the resident builds an object by choosing it and naming the tile, and the server saves it', async () => {
+    const site = await gardenFarmTile(page, resident.id);
+    expect(site, 'the garden must offer a free walkable tile to build on', { actual: 'no free tile in the published window' });
+    const host = page.locator('#game-build-host');
+    await host.locator('[data-build-type="bench"]').click();
+    const preview = host.locator('section.ui-placement');
+    const fieldsX = preview.locator('input[name="x"]');
+    const fieldsY = preview.locator('input[name="y"]');
+    await fieldsX.fill(String(site.x));
+    await fieldsY.fill(String(site.y));
+    await preview.getByRole('button', { name: 'Ask the server to place the selected object at this tile', exact: true }).click();
+    placed = await waitForCondition(async () => row('SELECT type,x,y FROM world_objects WHERE world_id=? AND x=? AND y=?', garden, site.x, site.y), 'the pointed placement to be saved', { timeout: 30_000 });
+    expect(placed.type === 'bench', 'the saved object must be the one the palette had chosen', { expected: 'bench', actual: describe(placed.type) });
+    // The same tile is one object, never two: the storage key is the tile, so a repeat either answers
+    // with that same tile or refuses, and the garden still holds exactly one object.
+    const repeat = await inPage(page, `/agents/${resident.id}/build`, { body: { type: 'bench', x: site.x, y: site.y } });
+    expect([200, 201, 409].includes(repeat.status), 'asking for the same object on the same tile is that one tile again, never a duplicate', { actual: `HTTP ${repeat.status} ${describe(repeat.body)}` });
+    expect(count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden) === 1, 'the garden must hold exactly the one object that was placed', { actual: `${count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden)} objects` });
+    state.notes.push(`karma loop: a repeat placement on ${site.x},${site.y} answered HTTP ${repeat.status} and the garden still held one world_objects row`);
+    // And a real refusal builds nothing: an object cannot stand on the tile the resident itself occupies.
+    const standing = row('SELECT x,y FROM agents WHERE id=?', resident.id);
+    const refused = await inPage(page, `/agents/${resident.id}/build`, { body: { type: 'bench', x: standing.x, y: standing.y } });
+    expect(refused.status === 409, 'placing an object on top of the resident must be refused', { expected: 'HTTP 409', actual: `HTTP ${refused.status} ${describe(refused.body)}` });
+    expect(count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden) === 1, 'a refused placement must leave the garden exactly as it was', { actual: `${count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden)} objects` });
+    state.notes.push(`karma loop: the garden hotbar chose bench and the placement preview saved it at ${site.x},${site.y} - one world_objects row; a repeat on the same tile stayed one object and a placement on the resident was refused 409`);
+    return `world_objects ${placed.type} saved at ${site.x},${site.y} through the garden's own hotbar and preview; the tile stays one object and an occupied tile is refused`;
+  });
+
+  await step('the saved service settles into Karma Coins, and the shop spends them once', async () => {
+    // Three more saved acts, so the purse reaches the cheapest price. A second object goes in through
+    // the same garden preview, and two crop patches are planted through the shipped garden action.
+    // Every one of them is a row the server writes for work actually done, and nothing is credited for
+    // a claim: the faucet reads those rows and nothing else.
+    const host = page.locator('#game-build-host');
+    const second = await gardenFarmTile(page, resident.id);
+    expect(second, 'the garden must offer a second free tile to build on', { actual: 'no free tile in the published window' });
+    await host.locator('[data-build-type="lantern"]').click();
+    const preview = page.locator('#game-build-host section.ui-placement');
+    await preview.locator('input[name="x"]').fill(String(second.x));
+    await preview.locator('input[name="y"]').fill(String(second.y));
+    await preview.getByRole('button', { name: 'Ask the server to place the selected object at this tile', exact: true }).click();
+    await waitForCondition(async () => count('SELECT COUNT(*) AS n FROM world_objects WHERE world_id=?', garden) === 2 ? true : null, 'the second garden object to be saved', { timeout: 30_000 });
+    for (const kind of ['herbs', 'fiber']) {
+      const tile = await gardenFarmTile(page, resident.id);
+      expect(tile, `the garden must offer a patch tile for ${kind}`, { actual: 'no free tile in the published window' });
+      const patch = await inPage(page, `/agents/${resident.id}/build`, { body: { type: 'farm', x: tile.x, y: tile.y } });
+      expect([200, 201].includes(patch.status), `the crop patch for ${kind} must be saved`, { expected: 'HTTP 200 or 201', actual: `HTTP ${patch.status} ${describe(patch.body)}` });
+      const planted = await inPage(page, '/journey/garden', { body: { agent_id: resident.id, action: 'plant', kind, x: tile.x, y: tile.y } });
+      expect(planted.status === 200, `planting ${kind} must be saved by the garden action`, { expected: 'HTTP 200', actual: `HTTP ${planted.status} ${describe(planted.body)}` });
+    }
+    await openGameTab(page, 'Karma & shop');
+    const panel = page.locator('#shop-panel-host');
+    await panel.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    // Opening the section settles: the one earning action, and the server decides the amount.
+    const wallet = await waitForCondition(async () => {
+      const text = (await panel.textContent()) || '';
+      const match = /Karma Coins:\s*(\d+)/.exec(text);
+      return match ? Number(match[1]) : null;
+    }, 'the shop panel to state the settled purse', { timeout: 30_000 });
+    expect(wallet >= 8, 'two saved objects and two planted crops must settle into at least the cheapest price', { expected: 'at least 8 Karma Coins', actual: String(wallet) });
+    expect(count('SELECT COUNT(*) AS n FROM karma_receipts WHERE agent_id=?', resident.id) >= 4, 'settling must record one receipt per saved act the server wrote', { actual: `${count('SELECT COUNT(*) AS n FROM karma_receipts WHERE agent_id=?', resident.id)} receipts` });
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards') === coinsBefore, 'settling Karma must mint no NemoCoin', { actual: 'the NemoCoin ledger changed' });
+    // Buy the cheapest good through the panel: choose, then confirm. The first click buys nothing.
+    const good = panel.locator('[data-buy]').first();
+    const goodId = await good.getAttribute('data-buy');
+    await good.click();
+    const confirm = panel.locator(`[data-confirm-buy="${goodId}"]`);
+    await confirm.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await confirm.click();
+    const purchase = await waitForCondition(async () => row('SELECT * FROM shop_purchases WHERE account_id=?', account.id), 'the recorded purchase', { timeout: 30_000 });
+    expect(purchase.good_id === goodId, 'the recorded purchase must name the good the panel confirmed', { expected: goodId, actual: describe(purchase.good_id) });
+    const granted = JSON.parse(purchase.granted);
+    expect(granted.kind === 'herbs' && granted.quantity === 2, 'the cheapest good must grant the sealed herbs it advertises', { expected: '2 herbs', actual: describe(granted) });
+    expect(count('SELECT quantity AS n FROM journey_inventory WHERE agent_id=? AND kind=?', resident.id, 'herbs') === 2, 'the bought resource must land on the resident shelf', { actual: 'the shelf does not hold the bought resource' });
+    expect(count('SELECT COUNT(*) AS n FROM karma_purchases WHERE account_id=?', account.id) === 1, 'one purchase must record exactly one debit', { actual: `${count('SELECT COUNT(*) AS n FROM karma_purchases WHERE account_id=?', account.id)} debits` });
+    // The good is usable, not just recorded: the resident's own journey read now offers the bought
+    // resource on its shelf and counts it toward the recipes that need it.
+    const journey = await inPage(page, `/journey?agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    const shelf = (journey.body.inventory || []).find((item) => item.kind === 'herbs');
+    expect(shelf?.quantity === 2, 'the bought resource must be on the shelf the journey read returns', { expected: 'two herbs', actual: describe(journey.body.inventory) });
+    const recipe = (journey.body.recipes || []).find((entry) => Object.keys(entry.ingredients || {}).includes('herbs'));
+    expect(recipe, 'a recipe the shelf can serve must name the bought resource as an ingredient', { actual: describe((journey.body.recipes || []).map((entry) => entry.id)) });
+    expect(Number(recipe.ingredients.herbs) <= 2, 'the bought quantity must be enough for at least one recipe that uses it', { expected: 'an ingredient cost of at most 2 herbs', actual: describe(recipe.ingredients) });
+    state.notes.push(`karma loop: settled ${wallet} Karma Coins from one saved garden object, then bought ${goodId} (${purchase.price}) with key ${purchase.key} - one debit, two herbs on the shelf, no NemoCoin`);
+    return `purse ${wallet} Karma Coins, one purchase of ${goodId} for ${purchase.price}, ${granted.quantity} ${granted.kind} granted`;
+  });
+
+  await step('a real restart keeps the space, the object, the shelf and the purse', async () => {
+    const spaceBefore = rows('SELECT type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', garden);
+    const shelfBefore = rows('SELECT kind,quantity FROM journey_inventory WHERE agent_id=? ORDER BY kind', resident.id);
+    const karmaBefore = rows('SELECT id,service_id,amount FROM karma_receipts WHERE account_id=? ORDER BY seq', account.id);
+    const purchasesBefore = rows('SELECT id,good_id,amount FROM karma_purchases WHERE account_id=? ORDER BY seq', account.id);
+    await stopServer();
+    await startServer();
+    expect(describe(rows('SELECT type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', garden)) === describe(spaceBefore), 'the built object must survive the restart byte-for-byte', { expected: describe(spaceBefore), actual: describe(rows('SELECT type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', garden)) });
+    expect(describe(rows('SELECT kind,quantity FROM journey_inventory WHERE agent_id=? ORDER BY kind', resident.id)) === describe(shelfBefore), 'the bought resource must survive the restart', { expected: describe(shelfBefore), actual: describe(rows('SELECT kind,quantity FROM journey_inventory WHERE agent_id=? ORDER BY kind', resident.id)) });
+    expect(describe(rows('SELECT id,service_id,amount FROM karma_receipts WHERE account_id=? ORDER BY seq', account.id)) === describe(karmaBefore), 'the karma receipts must survive the restart', { expected: describe(karmaBefore), actual: 'the receipts changed' });
+    expect(describe(rows('SELECT id,good_id,amount FROM karma_purchases WHERE account_id=? ORDER BY seq', account.id)) === describe(purchasesBefore), 'the purchase must survive the restart', { expected: describe(purchasesBefore), actual: 'the purchase changed' });
+    // Both browsers, both currencies and the land registry are exactly as they were.
+    expect(count('SELECT COUNT(*) AS n FROM coin_rewards') === coinsBefore, 'the restart must mint no NemoCoin', { actual: 'the NemoCoin ledger changed' });
+    expect(count('SELECT COUNT(*) AS n FROM land_parcels') === parcelsBefore && count('SELECT COUNT(*) AS n FROM land_stewardships') === stewardshipsBefore, 'the finite land registry must be untouched by the whole loop', { actual: 'the land registry changed' });
+    await page.goto(baseUrl(), { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    expect(await enterTheWorld(), 'the resident must be able to return to its world after the restart', { expected: 'the world open as the resident', actual: describe(await entryState(page)) });
+    await browserShows(page, garden);
+    await openGameTab(page, 'Karma & shop');
+    const panel = page.locator('#shop-panel-host');
+    await panel.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await waitForCondition(async () => /Karma Coins:\s*\d+/.test((await panel.textContent()) || '') ? true : null, 'the restarted panel to state the purse again');
+    state.notes.push(`karma loop restart: ${garden} still holds ${spaceBefore.length} object, the shelf still holds ${shelfBefore.length} kind, the ledger still holds ${karmaBefore.length} receipt and ${purchasesBefore.length} purchase, with no NemoCoin and no land touched`);
+    return `after a real restart: the garden, the object, the shelf, ${karmaBefore.length} karma receipt and the purchase are unchanged, and the panel states the purse again`;
+  });
+
+  await step('Home opens the cottage through its real garden doorway from the Commons',async()=>{
+    const returned=await inPage(page,`/agents/${resident.id}/travel`,{body:{world_id:'commons'}});
+    expect(returned.status===200,'the cottage check starts in the Commons',{actual:describe(returned)});
+    await page.reload({waitUntil:'domcontentloaded'});await settle(page);
+    expect(await enterTheWorld(),'the saved resident re-enters the Commons');
+    await openGameTab(page,'Open world');
+    if(!await page.evaluate(()=>document.body.classList.contains('game-tools-open')))await page.locator('#game-hud').getByRole('button',{name:'More',exact:true}).click();
+    await page.locator('#world-my-space-card').getByRole('button',{name:'Open my cottage',exact:true}).click();
+    await browserShows(page,cottage);
+    expect(row('SELECT world_id FROM agents WHERE id=?',resident.id)?.world_id===cottage,'the cottage arrival must be stored by the server');
+    expect(count('SELECT COUNT(*) FROM journey_visits WHERE agent_id=? AND world_id=?',resident.id,cottage)>=1,'the physical cottage entry must leave a saved visit');
+    await page.getByRole('button',{name:'Close world tools',exact:true}).waitFor({state:'hidden',timeout:PAGE_TIMEOUT_MS});
+    return 'one Home action travelled to the garden, walked to its real door and saved entry into the cottage; the playable scene resumed';
+  });
+
+  await step('the same purse and shop work on a phone with reduced motion', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    // Repaint the section under the new viewport and preference: a reload gives the phone a clean
+    // shell (no desktop drawer left open), and the world door is the same Continue every player uses.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    expect(await enterTheWorld(), 'the resident must be able to enter its world on a phone', { expected: 'the world open as the resident', actual: describe(await entryState(page)) });
+    await openGameTab(page, 'Karma & shop');
+    await settle(page);
+    const panel = page.locator('#shop-panel-host');
+    await panel.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    const measured = await panel.evaluate((host) => {
+      const root = host.firstElementChild || host;
+      const buy = root.querySelector('.ui-shop-buy, .ui-shop-confirm-button');
+      const styles = getComputedStyle(root);
+      return {
+        viewport: window.innerWidth,
+        document: document.documentElement.scrollWidth,
+        target: buy ? Math.round(buy.getBoundingClientRect().height) : 0,
+        reduced_class: String(root.className).includes('ui-shop-reduced'),
+        transition: styles.transitionDuration,
+      };
+    });
+    expect(measured.document <= measured.viewport, 'the shop must fit a 390 px phone without horizontal scrolling', { expected: `a document ${measured.viewport} px wide or narrower`, actual: `${measured.document} px in a ${measured.viewport} px viewport` });
+    expect(measured.target >= 44, 'every shop button must meet the 44 px touch floor', { expected: 'at least 44 px', actual: `${measured.target} px` });
+    expect(measured.reduced_class && /^0s/.test(measured.transition), 'the panel must drop its transitions when the reader asks for less motion', { expected: 'the reduced class and no transition', actual: describe({ reduced_class: measured.reduced_class, transition: measured.transition }) });
+    await page.emulateMedia({ reducedMotion: null });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    state.notes.push(`karma loop phone: at 390 px the shop document was ${measured.document} px wide in a ${measured.viewport} px viewport, its buy control measured ${measured.target} px tall, and reduced motion removed the transition`);
+    return `390 px: no horizontal scroll (${measured.document} ≤ ${measured.viewport}), a ${measured.target} px buy control and no transition under reduced motion`;
+  });
+
+  return `a brand-new account signed up, created one resident, received the personal garden and cottage that come with it, built a bench there through the garden's own hotbar and placement preview, settled one saved service into Karma Coins, bought the cheapest shop good and kept the shelf, the purse and the space through a real restart - with no NemoCoin minted and no land parcel or stewardship touched`;
+});
+
+/** One crossing of the shared seam through the browser, from the edge tile the fixture left it on. */
+async function browserCrossSeam(page, agentId, controlFor, who) {
+  const standing = residentAt(agentId);
+  expect(standing.world_id === SHARED_SEAM.anchor && standing.x === SHARED_SEAM.stand.x && standing.y === SHARED_SEAM.stand.y, `${who} must stand on the edge tile before crossing`, { expected: `${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} in ${SHARED_SEAM.anchor}`, actual: describe(standing) });
+  const crossed = await pressMoveUntil(page, agentId, controlFor.up, () => { const now = residentAt(agentId); return now.world_id === SHARED_SEAM.neighbour ? now : null; }, `${who} to walk across the seam into ${SHARED_SEAM.neighbour}`);
+  expect(crossed.x === SHARED_SEAM.landing.x && crossed.y === SHARED_SEAM.landing.y, `${who} must be stored in the neighbour's own coordinates for the tile above the seam`, { expected: `${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} in ${SHARED_SEAM.neighbour}`, actual: describe(crossed) });
+  return crossed;
+}
+
+define('shared-world-seam-crossing', async () => {
+  const host = await actor('shared-world-host'), guest = await actor('shared-world-guest');
+  const hostTicket = await ensureAccount(fixtures().admin, ACTORS['shared-world-host']);
+  const guestTicket = await ensureAccount(fixtures().admin, ACTORS['shared-world-guest']);
+  const resident = (ticket, body) => apiExpect(ticket, 'POST', '/agents', { color: '#397f79', symbol: '✦', capabilities: 'Walks the shared world in the browser acceptance run', limitations: 'No external tools and no real-world claims', ...body });
+  const humanOne = await resident(hostTicket, { kind: 'human', name: 'Seam walker one', symbol: '◆' });
+  const humanTwo = await resident(guestTicket, { kind: 'human', name: 'Seam walker two', symbol: '▲' });
+  const aide = await resident(hostTicket, { kind: 'agent', name: 'Seam AI resident' });
+  let runtime = null, controlOne = null, controlTwo = null, garden = null, built = [];
+
+  await step('two humans and one AI resident walk off the Commons edge into Highlands with no portal', async () => {
+    const created = rows('SELECT id,kind,world_id FROM agents WHERE id IN (?,?,?)', humanOne.id, humanTwo.id, aide.id);
+    expect(created.length === 3 && created.every((item) => item.world_id === 'commons' && item.kind !== undefined), 'the three residents must start in the Commons', { expected: 'three residents in commons', actual: describe(created) });
+    const worldsBefore = new Set(rows('SELECT id FROM worlds').map((world) => world.id));
+    const sectorsBefore = count('SELECT COUNT(*) AS n FROM frontier_sectors');
+    // The AI resident is issued its own runtime credential by the operator that owns it: that is what
+    // makes every later AI step the AI's own action and not a human's.
+    runtime = await apiExpect(hostTicket, 'POST', '/runtime/start', { agent_id: aide.id, minutes: 20, max_calls: 500, scopes: ['read', 'move', 'chat', 'build'] });
+    for (const [page, account, human] of [[host.page, ACTORS['shared-world-host'], humanOne], [guest.page, ACTORS['shared-world-guest'], humanTwo]]) {
+      await openApp(page, account);
+      await selectResidentAndSettle(page, human.id, human.name);
+      await openWorldAs(page, human.id);
+    }
+    // The walk to the edge is the interface's own route planner, one tile in from the crossing tile so
+    // the movement controls can be measured without crossing a seam while they are being measured.
+    await walkResidentTo(host.page, humanOne.id, SHARED_SEAM.stand.x, SHARED_SEAM.stand.y + 1);
+    await walkResidentTo(guest.page, humanTwo.id, SHARED_SEAM.stand.x, SHARED_SEAM.stand.y + 1);
+    controlOne = await learnMovementControls(host.page, humanOne.id);
+    controlTwo = await learnMovementControls(guest.page, humanTwo.id);
+    await walkResidentTo(host.page, humanOne.id, SHARED_SEAM.stand.x, SHARED_SEAM.stand.y);
+    await walkResidentTo(guest.page, humanTwo.id, SHARED_SEAM.stand.x, SHARED_SEAM.stand.y);
+    const first = await browserCrossSeam(host.page, humanOne.id, controlOne, 'Seam walker one');
+    const second = await browserCrossSeam(guest.page, humanTwo.id, controlTwo, 'Seam walker two');
+    // The AI resident walks the same edge over its own credential, one documented step at a time.
+    await runtimeWalk(runtime, aide.id, SHARED_SEAM.anchor, SHARED_SEAM.stand, 'the AI resident');
+    await runtimeStep(runtime, aide.id, 'up');
+    const third = residentAt(aide.id);
+    expect(third.world_id === SHARED_SEAM.neighbour && third.x === SHARED_SEAM.landing.x && third.y === SHARED_SEAM.landing.y, 'the AI resident must cross the seam with the same rule as a human', { expected: `${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} in ${SHARED_SEAM.neighbour}`, actual: describe(third) });
+    for (const [who, human] of [['Seam walker one', humanOne], ['Seam walker two', humanTwo], ['Seam AI resident', aide]]) {
+      const stored = residentAt(human.id);
+      expect(stored.world_id === SHARED_SEAM.neighbour, `${who} must be stored in the neighbouring world`, { expected: SHARED_SEAM.neighbour, actual: describe(stored) });
+      expect(stored.status === 'active', `${who} must still be an active resident`, { expected: 'active', actual: stored.status });
+    }
+    // Crossing a seam is a step into land that already exists — not a travel and not a land claim. The
+    // *count* of every `worlds` row cannot witness that: the living-world loop seeds its eight scripted
+    // residents (and each one's garden and cottage) once the first administrator exists, so it adds
+    // sixteen rows of its own at some point while this step is running, whether or not anyone crosses
+    // anything. The invariant asserted is therefore the causal one: the world crossed into was already
+    // stored before the crossing, no region of the global map appeared, and none of the three residents
+    // that crossed owns one more world than it did before.
+    const appeared = rows('SELECT id,kind FROM worlds').map((world) => world.id).filter((id) => !worldsBefore.has(id));
+    expect(worldsBefore.has(SHARED_SEAM.neighbour), 'the world across the seam must already be stored before the crossing, so that a crossing is a step into existing land and never the creation of a world', { expected: `${SHARED_SEAM.neighbour} among the ${worldsBefore.size} worlds stored before the crossing`, actual: `${SHARED_SEAM.neighbour} was not stored before the crossing; the worlds stored then were ${describe([...worldsBefore].filter((id) => id.includes('district') || id === 'commons'))}` });
+    expect(appeared.filter((id) => onMap(id)).length === 0, 'crossing a seam must create no region of the global map', { expected: 'no new world that is a rectangle of the map', actual: `worlds that appeared during the step: ${describe(appeared)}` });
+    expect(count('SELECT COUNT(*) AS n FROM worlds WHERE owner_agent_id IN (?,?,?)', humanOne.id, humanTwo.id, aide.id) === 6, 'crossing a seam must create no world of the crossing residents\u2019 own', { expected: 'the six worlds (one garden and one cottage each) the three who crossed already owned', actual: `${count('SELECT COUNT(*) AS n FROM worlds WHERE owner_agent_id IN (?,?,?)', humanOne.id, humanTwo.id, aide.id)} owned by the three who crossed` });
+    state.notes.push(`shared world registry: the crossing step saw ${appeared.length} new worlds rows, none of them a map region (${appeared.slice(0, 4).join(', ')}${appeared.length > 4 ? ', …' : ''}), none owned by a resident that crossed; this is the living-world roster being seeded, counted as a note rather than asserted`);
+    // The finite land registry is a different table, written by a different path, and nothing else in
+    // the process touches it while this step runs: its count can be compared exactly.
+    expect(count('SELECT COUNT(*) AS n FROM frontier_sectors') === sectorsBefore, 'crossing a seam must not touch the finite land registry', { expected: `${sectorsBefore} sectors`, actual: `${count('SELECT COUNT(*) AS n FROM frontier_sectors')}` });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='world.entered' AND actor IN (?,?)", hostTicket.account.id, guestTicket.account.id) === 3, 'each crossing must be the server\u2019s own recorded entry of the new world, once per resident', { expected: 'three world.entered rows for the two operators', actual: describe(rows("SELECT actor,record_id FROM audit WHERE event='world.entered'")) });
+    // Both browsers are drawing the world the residents are stored in.
+    await browserShows(host.page, SHARED_SEAM.neighbour);
+    await browserShows(guest.page, SHARED_SEAM.neighbour);
+    state.notes.push(`shared world: Seam walker one (browser, ${hostTicket.account.id}), Seam walker two (browser, ${guestTicket.account.id}) and the AI resident crossed ${SHARED_SEAM.anchor} ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} into ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} with no portal; three world.entered audit rows, the world crossed into already stored, no new map region, no world of the crossing residents' own and no sector touched`);
+    return `${SHARED_SEAM.anchor} ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} \u2192 ${SHARED_SEAM.neighbour} ${first.x},${first.y} for two browser-driven humans and one runtime credential, both browsers drawing ${SHARED_SEAM.neighbour}`;
+  });
+
+  await step('a bounded viewport read answers for every region the window crosses, and the AI resident reads it on its own credential', async () => {
+    const view = await apiRequest('/map?world_id=' + encodeURIComponent(SHARED_SEAM.anchor) + '&agent_id=' + encodeURIComponent(aide.id), { token: runtime.token });
+    expect(view.status === 200, 'the AI resident must be able to read a viewport across the seam', { expected: 'HTTP 200', actual: `HTTP ${view.status} ${view.raw}` });
+    const regions = (view.body.regions || []).map((item) => item.world_id);
+    expect(regions.includes(SHARED_SEAM.anchor) && regions.includes(SHARED_SEAM.neighbour), 'a window straddling the seam must report both regions', { expected: `${SHARED_SEAM.anchor} and ${SHARED_SEAM.neighbour}`, actual: describe(regions) });
+    expect(view.body.work.regions <= view.body.bounds.max_regions && view.body.work.statements <= view.body.bounds.max_statements, 'the read must stay inside the bound it states', { expected: `at most ${view.body.bounds.max_regions} regions and ${view.body.bounds.max_statements} statements`, actual: describe(view.body.work) });
+    const stored = residentAt(aide.id);
+    const seen = (view.body.participants || []).find((item) => item.id === aide.id);
+    expect(seen && seen.world_id === stored.world_id && seen.x === stored.x && seen.y === stored.y, 'the viewport read must report the stored world and the stored tile, not the world the client draws', { expected: `${stored.world_id} ${stored.x},${stored.y}`, actual: describe(seen) });
+    expect(JSON.stringify(view.body).includes('home:') === false, 'no garden may ever be a region of a viewport', { actual: 'a garden id appeared in the payload' });
+    state.notes.push(`shared world viewport: /api/v1/map over ${SHARED_SEAM.anchor} reported regions ${regions.join(', ')} in ${view.body.work.statements} statements of a stated ${view.body.bounds.max_statements}, with the AI resident at ${seen.x},${seen.y} in ${seen.world_id}`);
+    return `${regions.length} regions (${regions.join(', ')}), ${view.body.work.statements}/${view.body.bounds.max_statements} statements, the AI resident reported in ${seen.world_id}`;
+  });
+
+  await step('a nearby message crosses the seam and reaches the neighbour on the other side only', async () => {
+    // Human one stays on the landing tile; the AI resident steps back across the seam, so the two stand
+    // one world-space tile apart with the boundary between them; human two walks four tiles away.
+    await runtimeStep(runtime, aide.id, 'down');
+    const aideTile = residentAt(aide.id);
+    expect(aideTile.world_id === SHARED_SEAM.anchor && aideTile.x === SHARED_SEAM.stand.x && aideTile.y === SHARED_SEAM.stand.y, 'the AI resident must be back on the Commons side of the seam', { expected: `${SHARED_SEAM.anchor} ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y}`, actual: describe(aideTile) });
+    const far = planWalk(getWorldDefinition(SHARED_SEAM.neighbour), { x: SHARED_SEAM.landing.x, y: SHARED_SEAM.landing.y }, SHARED_SEAM.out_of_range, { objects: [], maxSteps: 64, maxVisited: 4096 });
+    expect(far, 'the neighbouring world must offer a route four tiles off the landing tile', { expected: 'a route to ' + SHARED_SEAM.out_of_range.x + ',' + SHARED_SEAM.out_of_range.y, actual: 'no route' });
+    for (const step_ of far) await runtimeStep(guestTicket, humanTwo.id, step_);
+    const farTile = residentAt(humanTwo.id);
+    expect(farTile.world_id === SHARED_SEAM.neighbour && farTile.x === SHARED_SEAM.out_of_range.x && farTile.y === SHARED_SEAM.out_of_range.y, 'Seam walker two must stand four tiles off the landing tile, still in the neighbouring world', { expected: `${SHARED_SEAM.out_of_range.x},${SHARED_SEAM.out_of_range.y} in ${SHARED_SEAM.neighbour}`, actual: describe(farTile) });
+    const sent = await sendLine(hostTicket, hostTicket.account.id, { agent_id: humanOne.id, channel: 'nearby', text: SHARED_SEAM.line });
+    const stored = await waitForCondition(async () => row('SELECT * FROM messages WHERE id=?', sent.id) || null, 'the nearby line to be stored');
+    const recipients = JSON.parse(stored.recipients);
+    expect(stored.world_id === SHARED_SEAM.neighbour, 'the saved line must belong to the world its sender crossed into', { expected: SHARED_SEAM.neighbour, actual: stored.world_id });
+    expect(recipients.includes(aide.id), 'a nearby message must reach a resident one world-space tile away across the seam', { expected: `the AI resident ${aide.id} among the recipients`, actual: describe(recipients) });
+    expect(!recipients.includes(humanTwo.id), 'and must not reach a resident four world-space tiles away, whatever the two regions\u2019 local coordinates say', { expected: `${humanTwo.id} absent`, actual: describe(recipients) });
+    // The neighbour reads it from its own world, through the credential it crossed with.
+    const read = await apiRequest('/world?world_id=' + encodeURIComponent(SHARED_SEAM.anchor) + '&x=' + SHARED_SEAM.stand.x + '&y=' + SHARED_SEAM.stand.y, { token: runtime.token });
+    expect(read.status === 200 && (read.body.messages || []).some((message) => message.id === sent.id), 'the neighbour must read the line from its own world', { expected: `HTTP 200 holding ${sent.id}`, actual: `HTTP ${read.status}` });
+    // And the answer crosses the other way: the AI resident speaks, and the human on the far side hears
+    // it. The runtime credential posts as the account that issued it — the same account as the human's
+    // line above — so the answer is paced past the server's own per-account message interval instead of
+    // racing it, and the stored row proves both lines share that account.
+    const answer = await sendLine(runtime, stored.account_id, { channel: 'nearby', text: SHARED_SEAM.answer });
+    const answered = await waitForCondition(async () => row('SELECT * FROM messages WHERE id=?', answer.id) || null, 'the AI resident\u2019s answer to be stored');
+    expect(answered.account_id === stored.account_id, 'the AI resident\u2019s line must be stored under the account that issued its credential', { expected: stored.account_id, actual: describe(answered.account_id) });
+    expect(JSON.parse(answered.recipients).includes(humanOne.id), 'the AI resident\u2019s answer must reach the human one tile away across the same seam', { expected: `${humanOne.id} among the recipients`, actual: describe(JSON.parse(answered.recipients)) });
+    state.notes.push(`shared world conversation: ${sent.id} sent from ${SHARED_SEAM.neighbour} reached the AI resident one world-space tile away on the other side and was withheld from the resident four tiles away; the AI resident answered with ${answer.id}, which reached the human across the seam`);
+    return `both directions crossed the seam: ${recipients.length + 1} recipients for ${sent.id} (with the far resident excluded) and the AI answer ${answer.id} reaching the far-side human`;
+  });
+
+  await step('the AI resident builds in its own garden and the same placement is refused on the map', async () => {
+    const refusedOnTheMap = await api(runtime, 'POST', `/agents/${aide.id}/build`, { type: 'flowers', x: SHARED_SEAM.landing.x, y: SHARED_SEAM.landing.y - 2 });
+    expect(refusedOnTheMap.status >= 400, 'a placement outside the resident\u2019s own plot must be refused, on the far side of a seam', { expected: 'a refusal', actual: `HTTP ${refusedOnTheMap.status} ${refusedOnTheMap.raw}` });
+    const gardenId = `home:${aide.id}`;
+    garden = await travelTo(runtime, aide.id, gardenId);
+    const definition = getWorldDefinition(gardenId);
+    built = [];
+    for (let y = 0; y < definition.rows && built.length < 3; y++) for (let x = 0; x < definition.columns && built.length < 3; x++) {
+      if (!walkable({ x, y }, definition)) continue;
+      if (Math.abs(x - definition.start.x) + Math.abs(y - definition.start.y) <= 1) continue;
+      if ((definition.portals || []).some((portal) => Math.abs(portal.x - x) + Math.abs(portal.y - y) <= 1)) continue;
+      built.push({ x, y });
+    }
+    expect(built.length === 3, 'the AI resident\u2019s garden must offer buildable tiles', { expected: 'three buildable tiles', actual: describe(built) });
+    for (const [index, tile] of built.entries()) await apiExpect(runtime, 'POST', `/agents/${aide.id}/build`, { type: index === 1 ? 'bench' : 'flowers', x: tile.x, y: tile.y }, [201]);
+    const stored = rows('SELECT type,x,y FROM world_objects WHERE world_id=? ORDER BY y,x', gardenId);
+    expect(stored.length === 3, 'the garden must hold exactly the three placements the AI resident made', { expected: 'three saved placements', actual: describe(stored) });
+    // Out of the garden the same placement is out of reach: rights follow the stored plot.
+    await travelTo(runtime, aide.id, SHARED_SEAM.anchor);
+    const refusedAtHome = await api(runtime, 'POST', `/agents/${aide.id}/build`, { type: 'flowers', x: built[0].x, y: built[0].y });
+    expect(refusedAtHome.status >= 400, 'the same placement must be refused once the resident is back on the map', { expected: 'a refusal', actual: `HTTP ${refusedAtHome.status} ${refusedAtHome.raw}` });
+    state.notes.push(`shared world build: three attributed placements saved in ${gardenId} by the AI resident on its own credential (${built.map((tile, index) => (index === 1 ? 'bench' : 'flowers') + ' ' + tile.x + ',' + tile.y).join(' \u00b7 ')}), refused at ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y - 2} in ${SHARED_SEAM.neighbour} and refused again from the Commons`);
+    return `three placements saved in ${gardenId} and two placements refused outside the resident's own plot`;
+  });
+
+  await step('a real restart keeps the crossing, the conversation and the garden byte for byte', async () => {
+    // Leave all three on the far side of the seam again, so the restart has a crossing to preserve.
+    const home = planWalk(getWorldDefinition(SHARED_SEAM.anchor), { x: residentAt(aide.id).x, y: residentAt(aide.id).y }, SHARED_SEAM.stand, { objects: rows('SELECT type,x,y FROM world_objects WHERE world_id=?', SHARED_SEAM.anchor), maxSteps: 256, maxVisited: 16_384 });
+    expect(home, 'the AI resident must have a route back to the edge tile', { expected: `a route to ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y}`, actual: describe(residentAt(aide.id)) });
+    for (const direction of home) await runtimeStep(runtime, aide.id, direction);
+    await runtimeStep(runtime, aide.id, 'up');
+    // The humans never left the far side: they crossed in the first step and have stayed there.
+    const placement = () => Object.fromEntries([humanOne, humanTwo, aide].map((human) => [human.id, residentAt(human.id)]));
+    const before = placement();
+    expect(Object.values(before).every((item) => item.world_id === SHARED_SEAM.neighbour), 'all three residents must be on the far side of the seam before the restart', { expected: `three residents in ${SHARED_SEAM.neighbour}`, actual: describe(before) });
+    const objectsBefore = rows('SELECT id,world_id,type,x,y,created_at FROM world_objects WHERE world_id=? ORDER BY x,y', `home:${aide.id}`);
+    const conversationBefore = rows("SELECT id,agent_id,account_id,channel,world_id,created_at FROM messages WHERE text IN (?,?) ORDER BY id", SHARED_SEAM.line, SHARED_SEAM.answer);
+    expect(conversationBefore.length === 2, 'the crossing conversation must be saved before the restart', { expected: 'two saved lines', actual: describe(conversationBefore) });
+    await stopServer();
+    await startServer();
+    expect(describe(placement()) === describe(before), 'a restart against the same database must not move any of the three residents', { expected: describe(before), actual: describe(placement()) });
+    expect(Object.values(placement()).every((item) => item.world_id === SHARED_SEAM.neighbour), 'all three must still be stored in the world they crossed into', { expected: SHARED_SEAM.neighbour, actual: describe(placement()) });
+    const objectsAfter = rows('SELECT id,world_id,type,x,y,created_at FROM world_objects WHERE world_id=? ORDER BY x,y', `home:${aide.id}`);
+    expect(describe(objectsAfter) === describe(objectsBefore), 'the garden must survive the restart byte-for-byte', { expected: describe(objectsBefore), actual: describe(objectsAfter) });
+    const conversationAfter = rows("SELECT id,agent_id,account_id,channel,world_id,created_at FROM messages WHERE text IN (?,?) ORDER BY id", SHARED_SEAM.line, SHARED_SEAM.answer);
+    expect(describe(conversationAfter) === describe(conversationBefore), 'both saved lines must survive the restart unchanged', { expected: describe(conversationBefore), actual: describe(conversationAfter) });
+    // The credential the AI resident crossed with still works, and both browsers reload into the world
+    // the party is stored in.
+    const read = await apiRequest('/world?world_id=' + encodeURIComponent(SHARED_SEAM.anchor) + '&x=' + SHARED_SEAM.stand.x + '&y=' + SHARED_SEAM.stand.y, { token: runtime.token });
+    expect(read.status === 200, 'the AI resident\u2019s credential must still read after the restart', { expected: 'HTTP 200', actual: `HTTP ${read.status} ${read.raw}` });
+    for (const [page, account, human] of [[host.page, ACTORS['shared-world-host'], humanOne], [guest.page, ACTORS['shared-world-guest'], humanTwo]]) {
+      await openApp(page, account);
+      await openWorldAs(page, human.id);
+      await browserShows(page, SHARED_SEAM.neighbour);
+    }
+    await waitForClient(host.page, (party) => {
+      const held = (window.__nemoworld?.world?.()?.participants || []).map((item) => item.id);
+      return party.every((id) => held.includes(id)) ? true : null;
+    }, [humanOne.id, humanTwo.id, aide.id], 'the reloaded browser to show the whole party in the world it crossed into', 20_000);
+    state.notes.push(`shared world restart: after a real restart all three residents are still stored in ${SHARED_SEAM.neighbour} at ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y}, ${objectsAfter.length} garden placements and both crossing lines are byte-for-byte unchanged, the runtime credential still reads and both browsers show ${SHARED_SEAM.neighbour} with the party in it`);
+    return `after a real restart: three residents still in ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y}, ${objectsAfter.length} placements and 2 saved lines unchanged, both browsers back in ${SHARED_SEAM.neighbour}`;
+  });
+
+  await step('Chrome draws the dense four-region junction with mixed residents by day and night', async () => {
+    // Render-only fixture: these three appearances do not create accounts, move residents or claim
+    // saved progress. This corner exercises the exact per-instance colour GPU path which the sparse
+    // Commons entry does not need. Module tests separately compare every matrix, colour and pick.
+    const {page}=await context('map-gpu-budget'),errors=[];
+    page.on('console',message=>{if(message.type()==='error'&&/THREE|shader|WebGL/i.test(message.text()))errors.push(message.text());});
+    page.on('pageerror',error=>errors.push(error.message));
+    await page.goto(baseUrl(),{waitUntil:'domcontentloaded'});
+    try{
+      const result=await page.evaluate(async()=>{
+        const [{createVoxelWorld},{getWorldDefinition,walkable},{MAP_ID}]=await Promise.all([import('/src/voxel-world.js'),import('/world.js'),import('/src/global-map.js')]);
+        const definition=getWorldDefinition(MAP_ID),position={x:95,y:71},participants=[];
+        const colors=['#397f79','#3d5875','#cb725f'],callings=['cultivator','builder','steward'];
+        for(let x=90;x<=100&&participants.length<3;x++)for(let y=66;y<=76&&participants.length<3;y++)if(walkable({x,y},definition)){
+          const index=participants.length;participants.push({id:`gpu-resident-${index}`,name:`Render fixture ${index+1}`,world_id:MAP_ID,x,y,z:0,kind:index%2?'agent':'human',status:'active',color:colors[index],calling:{id:callings[index],name:callings[index]},avatar:index%2?'star':'sprout'});
+        }
+        const canvas=document.createElement('canvas');canvas.id='gpu-junction-fixture';canvas.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;z-index:2147483647';document.body.append(canvas);
+        let unavailable=null;const view=createVoxelWorld(canvas,{reducedMotion:true,onUnavailable:text=>{unavailable=text;}});
+        if(!view)throw new Error(unavailable||'WebGL renderer unavailable');
+        window.__nemoGpuProbe={view,canvas};
+        const options={definition,position,self:participants[0],weather:'clear',dayPhase:'day'},snapshot={participants};
+        const unbounded=view.render(snapshot,{...options,lod:false});
+        const day=view.render(snapshot,options),night=view.render(snapshot,{...options,dayPhase:'night'});
+        return{unbounded:unbounded.drawBatches,day:day.drawBatches,night:night.drawBatches,participants:participants.length,width:canvas.width,height:canvas.height};
+      });
+      expect(result.participants===3&&result.unbounded>130,'the GPU fixture must actually need the new colour batching',{actual:describe(result)});
+      expect(result.day<=130&&result.night<=130,'both GPU views keep the existing total draw-call ceiling',{actual:describe(result)});
+      await page.waitForTimeout(100);
+      expect(errors.length===0,'the real WebGL renderer must compile and draw without shader errors',{actual:describe(errors)});
+      const shots=join(RESULTS,'shared-world-seam-crossing');await mkdir(shots,{recursive:true});
+      await page.locator('#gpu-junction-fixture').screenshot({path:join(shots,'mixed-residents-night.png')});
+      return `real Chrome WebGL: ${result.unbounded} unbatched calls, ${result.day} by day and ${result.night} at night, three appearances and no shader error`;
+    }finally{await page.evaluate(()=>{window.__nemoGpuProbe?.view.destroy();window.__nemoGpuProbe?.canvas.remove();delete window.__nemoGpuProbe;}).catch(()=>{});}
+  });
+
+  return `two independent humans drove two browsers and one AI resident drove its own runtime credential from the Commons edge ${SHARED_SEAM.stand.x},${SHARED_SEAM.stand.y} into ${SHARED_SEAM.neighbour} ${SHARED_SEAM.landing.x},${SHARED_SEAM.landing.y} with no portal and no new world, read a bounded viewport that reported both sides of the seam, spoke across the join with the far resident excluded and the neighbour included, built three placements in the AI resident's own garden with the same call refused on the map, and returned after a real restart to the same stored rows, the same conversation and the same garden`;
+
+});
+
+define('home-vault-interface', async () => {
+  const player = await context('home-vault');
+  const page = player.page;
+  const EMAIL = 'tester.home-vault@browser.test';
+  const NAME = 'Home vault tester';
+  const RESIDENT = 'Vault resident';
+  const SECRET = 'the orchard gate code is moonlight';
+  let account = null, resident = null, runtime = null;
+  const vaultRequests = [];
+  page.on('request', (request) => { if (/\/api\/v1\/vault/.test(request.url())) vaultRequests.push(`${request.method()} ${new URL(request.url()).pathname}${new URL(request.url()).search ? '?…' : ''}`); });
+  const shots = join(RESULTS, 'home-vault-interface');
+  await mkdir(shots, { recursive: true });
+  const spaces = () => Object.fromEntries(rows('SELECT kind,visibility FROM worlds WHERE owner_agent_id=?', resident.id).map((world) => [world.kind, world.visibility]));
+  const enterTheWorld = async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try { await enterWorldAs(page, resident.id, RESIDENT); return true; } catch { await page.waitForTimeout(600); }
+    }
+    return false;
+  };
+  const openHome = async () => {
+    await openGameTab(page, 'Home & vault');
+    const host = page.locator('#home-panel-host');
+    await host.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await page.locator('[data-home-resident] [data-vault-status]').first().waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await page.waitForFunction(() => document.querySelector('[data-home-panel]')?.getAttribute('aria-busy') === 'false', null, { timeout: PAGE_TIMEOUT_MS });
+    return host;
+  };
+  const gardenSwitch = () => page.locator('[data-home-switch$=":garden"]');
+  const cottageSwitch = () => page.locator('[data-home-switch$=":cottage"]');
+  /** The 4.5:1 floor, measured on what the browser drew: text colour against the composited ancestors. */
+  const contrastOf = (selector) => page.evaluate((query) => {
+    const parse = (value) => { const m = /rgba?\(([^)]+)\)/.exec(value); if (!m) return null; const [r, g, b, a = 1] = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r, g, b, a }; };
+    const over = (top, bottom) => ({ r: top.r * top.a + bottom.r * (1 - top.a), g: top.g * top.a + bottom.g * (1 - top.a), b: top.b * top.a + bottom.b * (1 - top.a), a: 1 });
+    const lum = ({ r, g, b }) => { const f = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const results = [];
+    for (const node of document.querySelectorAll(query)) {
+      if (!node.checkVisibility?.() || !node.textContent.trim()) continue;
+      const chain = [];
+      for (let at = node; at; at = at.parentElement) chain.push(at);
+      let background = { r: 5, g: 29, b: 24, a: 1 };
+      for (const link of chain.reverse()) { const paint = parse(getComputedStyle(link).backgroundColor); if (paint && paint.a > 0) background = over(paint, background); }
+      const ink = parse(getComputedStyle(node).color);
+      const text = over(ink, background);
+      const [light, dark] = [lum(text), lum(background)].sort((a, b) => b - a);
+      results.push({ text: node.textContent.trim().slice(0, 40), ratio: Number(((light + 0.05) / (dark + 0.05)).toFixed(2)) });
+    }
+    return results;
+  }, selector);
+
+  await step('a brand-new operator signs up, creates an AI resident and opens Home & vault from the game menu', async () => {
+    await page.goto(baseUrl(), { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    await signUp(page, { name: NAME, email: EMAIL, password: PASSWORD });
+    account = row('SELECT id FROM accounts WHERE email=?', EMAIL);
+    resident = await createResidentThroughInterface(page, RESIDENT);
+    expect(resident.kind === 'agent', 'the created character must be an AI resident', { actual: describe(resident) });
+    expect(await enterTheWorld(), 'the resident must enter the world', { actual: describe(await entryState(page)) });
+    await openHome();
+    const card = page.locator('#world-home-vault-card');
+    expect((await card.locator('h2').first().textContent()).includes('homes'), 'the section must name itself', { actual: await card.textContent() });
+    expect(await card.locator(`[data-home-resident="${resident.id}"]`).count() === 1, 'the section must list the operator’s AI resident', { actual: await card.textContent() });
+    return `account ${account.id} with AI resident ${resident.id}; Home & vault open over the world`;
+  });
+
+  await step('a resident with no vault says so, and the cottage starts closed while the garden is open', async () => {
+    const vault = page.locator(`[data-home-vault="${resident.id}"]`);
+    expect(await vault.getAttribute('data-vault-enrolled') === 'false', 'a fresh resident has no vault', { actual: await vault.textContent() });
+    expect(/no vault yet/i.test(await vault.textContent()), 'the panel must say there is no vault yet', { actual: await vault.textContent() });
+    expect(await page.locator(`[data-home-erase="${resident.id}"]`).isDisabled(), 'there is nothing to erase', { actual: 'Erase is enabled' });
+    const stored = spaces();
+    expect(stored.house === 'private' && stored.home === 'public', 'the server must start the cottage private and the garden public', { actual: describe(stored) });
+    expect(await gardenSwitch().getAttribute('aria-checked') === 'true' && await cottageSwitch().getAttribute('aria-checked') === 'false', 'the switches must show the server’s state', { actual: describe(stored) });
+    const rule = (await page.locator('[data-home-rule]').first().textContent()) || '';
+    expect(/Closing the garden also closes the cottage\./.test(rule) && /Opening the garden does not open the cottage/.test(rule), 'the page must say in words what the garden switch does to the cottage', { actual: rule });
+    return `no vault; garden ${stored.home}, cottage ${stored.house}; the rule is written beside the switches`;
+  });
+
+  await step('the vault shows counts and the server’s own privacy statement, never a note or a slot map', async () => {
+    // The operator's own signed-in page mints the resident's credential, so the browser session is never replaced.
+    runtime = await inPage(page, '/runtime/start', { body: { agent_id: resident.id, minutes: 5, max_calls: 30, scopes: ['read', 'vault'] } });
+    expect(runtime.status === 200 || runtime.status === 201, 'the operator must be able to mint the resident’s own credential', { actual: describe(runtime) });
+    for (const slot of [1, 2, 3]) {
+      const written = await apiRequest('/vault/write', { method: 'POST', token: runtime.body.token, body: { slot, text: `${SECRET} ${slot}` } });
+      expect(written.status === 200, 'the resident’s own credential must write a note', { actual: `HTTP ${written.status} ${written.raw}` });
+    }
+    vaultRequests.length = 0;
+    await openGameTab(page, 'My characters');
+    const host = await openHome();
+    const vault = page.locator(`[data-home-vault="${resident.id}"]`);
+    const text = (await vault.textContent()) || '';
+    expect(/Sealed by the server\. 3 notes, /.test(text), 'the panel must state the key model and the note count', { actual: text });
+    const policy = await inPage(page, `/vault?agent_id=${encodeURIComponent(resident.id)}`, { method: 'GET' });
+    expect(policy.status === 200 && !JSON.stringify(policy.body).includes('moonlight') && !('slots' in policy.body) && !('key_check' in policy.body), 'the operator route must carry no note, slot map or key check', { actual: describe(policy.body) });
+    for (const line of [policy.body.policy.summary, policy.body.policy.sealed, policy.body.policy.effect]) expect(text.includes(line), 'the panel must show the server’s own privacy statement', { expected: line, actual: text });
+    const page_text = await page.locator('body').innerText();
+    expect(!page_text.includes('moonlight') && !page_text.includes(SECRET), 'a note must never reach the operator’s page', { actual: 'note text found on the page' });
+    expect(vaultRequests.every((entry) => !/vault\/notes/.test(entry)) && vaultRequests.some((entry) => entry.startsWith('GET /api/v1/vault')), 'the page must ask only for the counts', { actual: describe(vaultRequests) });
+    await page.screenshot({ path: join(shots, 'desktop-vault.png') });
+    state.notes.push(`home vault: three notes written by the resident's own credential; the operator's page showed "${text.match(/Sealed by the server\. 3 notes, [^.]*/)?.[0]}" and no note text; requests: ${vaultRequests.join(', ')}`);
+    return `3 notes counted, the server's VAULT_POLICY text shown, no note text on the page, requests ${[...new Set(vaultRequests)].join(', ')}`;
+  });
+
+  await step('the cottage and garden switches are independent and show only what the server saved', async () => {
+    await cottageSwitch().click();
+    await page.waitForFunction(() => document.querySelector('[data-home-switch$=":cottage"]')?.getAttribute('aria-checked') === 'true', null, { timeout: PAGE_TIMEOUT_MS });
+    let stored = spaces();
+    expect(stored.house === 'public' && stored.home === 'public', 'opening the cottage must change only the cottage', { actual: describe(stored) });
+    expect(/The server saved it: the garden is open to visitors and the cottage is open to visitors\./.test(await page.locator('[data-home-saved]').textContent()), 'the saved line must be the server’s answer', { actual: await page.locator('[data-home-saved]').textContent() });
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('data-home-switch')?.endsWith(':cottage')), 'focus must stay on the switch that was pressed', { actual: await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 120)) });
+    // Closing the garden also closes the cottage — by the keyboard alone.
+    await gardenSwitch().focus();
+    await page.keyboard.press('Space');
+    await page.waitForFunction(() => document.querySelector('[data-home-switch$=":garden"]')?.getAttribute('aria-checked') === 'false', null, { timeout: PAGE_TIMEOUT_MS });
+    stored = spaces();
+    expect(stored.home === 'private' && stored.house === 'private', 'closing the garden must also close the cottage', { actual: describe(stored) });
+    expect(await cottageSwitch().getAttribute('aria-checked') === 'false', 'the cottage switch must now read Off', { actual: await cottageSwitch().textContent() });
+    // Opening the garden does not open the cottage.
+    await gardenSwitch().focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[data-home-switch$=":garden"]')?.getAttribute('aria-checked') === 'true', null, { timeout: PAGE_TIMEOUT_MS });
+    stored = spaces();
+    expect(stored.home === 'public' && stored.house === 'private', 'opening the garden must not open the cottage', { actual: describe(stored) });
+    expect(await cottageSwitch().getAttribute('aria-checked') === 'false', 'the cottage switch must still read Off', { actual: await cottageSwitch().textContent() });
+    await page.screenshot({ path: join(shots, 'desktop-switches.png') });
+    return 'cottage opened alone; garden closed by the keyboard closed the cottage too; garden opened by the keyboard left the cottage closed';
+  });
+
+  await step('Erase asks first, cancel keeps the vault, and the confirmed erase deletes every note and the key', async () => {
+    const erase = page.locator(`[data-home-erase="${resident.id}"]`);
+    await erase.click();
+    const confirm = page.locator(`[data-home-confirm="${resident.id}"]`);
+    await confirm.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    expect(/Erase Vault resident’s vault and its 3 notes\?/.test(await confirm.textContent()) && /cannot be undone/.test(await confirm.textContent()), 'the confirm must name the resident, the notes and that it cannot be undone', { actual: await confirm.textContent() });
+    expect(count('SELECT COUNT(*) AS n FROM resident_vault WHERE agent_id=?', resident.id) === 3, 'asking must erase nothing', { actual: 'rows changed' });
+    expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-home-confirm-erase')), 'focus must move to the confirm button', { actual: await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 120)) });
+    await page.screenshot({ path: join(shots, 'desktop-erase-confirm.png') });
+    // Escape cancels the armed erase first; the panel itself stays open.
+    await page.keyboard.press('Escape');
+    await confirm.waitFor({ state: 'detached', timeout: PAGE_TIMEOUT_MS });
+    expect(await page.locator('#home-panel-host').isVisible() && count('SELECT COUNT(*) AS n FROM resident_vault WHERE agent_id=?', resident.id) === 3, 'Escape must cancel the erase and leave the panel and the vault alone', { actual: 'the panel closed or the vault changed' });
+    expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-home-erase')), 'focus must return to Erase after Escape', { actual: await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 120)) });
+    await erase.click();
+    await page.locator(`[data-home-cancel="${resident.id}"]`).click();
+    expect(await page.locator(`[data-home-confirm="${resident.id}"]`).count() === 0 && count('SELECT COUNT(*) AS n FROM resident_vault WHERE agent_id=?', resident.id) === 3, 'the Cancel button must keep the vault', { actual: 'the vault changed' });
+    expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-home-erase')), 'focus must return to Erase after Cancel', { actual: await page.evaluate(() => document.activeElement?.outerHTML?.slice(0, 120)) });
+    await erase.click();
+    await page.locator(`[data-home-confirm-erase="${resident.id}"]`).click();
+    await page.waitForFunction(() => document.querySelector('[data-vault-enrolled]')?.getAttribute('data-vault-enrolled') === 'false', null, { timeout: PAGE_TIMEOUT_MS });
+    expect(count('SELECT COUNT(*) AS n FROM resident_vault WHERE agent_id=?', resident.id) === 0 && count('SELECT COUNT(*) AS n FROM resident_vault_keys WHERE agent_id=?', resident.id) === 0, 'the confirmed erase must delete every note and the key', { actual: 'rows remain' });
+    expect(/The server erased the vault: 3 notes and the key were deleted\./.test(await page.locator('[data-home-saved]').textContent()), 'the page must report the server’s own count', { actual: await page.locator('[data-home-saved]').textContent() });
+    expect(count("SELECT COUNT(*) AS n FROM audit WHERE event='vault.erased'") >= 1, 'the server must have audited the erase', { actual: 'no audit row' });
+    return 'Escape and Cancel each kept three notes; the confirmed erase removed them and the key, was audited, and the page reported the count';
+  });
+
+  await step('the passport carries a “Your resident’s home” summary that links to the vault and to the switches', async () => {
+    await openGameTab(page, 'Resident passport');
+    const summary = page.locator('#world-home-summary');
+    await summary.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await page.waitForFunction(() => /garden is open/.test(document.querySelector('#world-home-summary')?.textContent || ''), null, { timeout: PAGE_TIMEOUT_MS });
+    const text = (await summary.textContent()) || '';
+    expect(/Your resident’s home/.test(text) && /The garden is open: anyone can visit it\./.test(text) && /The cottage is closed: only your account and this resident can enter\./.test(text) && /Vault: This resident has no vault yet/.test(text), 'the summary must state the garden, the cottage and the vault', { actual: text });
+    await page.screenshot({ path: join(shots, 'desktop-passport-summary.png') });
+    await summary.getByRole('button', { name: `Open ${RESIDENT}’s vault` }).click();
+    await page.locator(`[data-home-vault="${resident.id}"]`).waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+    await page.waitForFunction(() => document.activeElement?.getAttribute('data-home-anchor')?.endsWith(':vault'), null, { timeout: PAGE_TIMEOUT_MS });
+    await openGameTab(page, 'Resident passport');
+    await page.locator('#world-home-summary').getByRole('button', { name: `Choose who can visit ${RESIDENT}’s garden and cottage` }).click();
+    await page.waitForFunction(() => document.activeElement?.getAttribute('data-home-anchor')?.endsWith(':privacy'), null, { timeout: PAGE_TIMEOUT_MS });
+    return 'the summary states garden, cottage and vault; its two links open Home & vault with the focus on the vault heading and on the visiting heading';
+  });
+
+  await step('a refusal from the server is shown plainly, in its own words, and no success is claimed', async () => {
+    await openHome();
+    const direct = await inPage(page, `/agents/${encodeURIComponent(resident.id)}/home`, { method: 'PATCH', body: { house_visibility: 'everyone' } });
+    expect(direct.status === 400 && typeof direct.body?.error === 'string', 'the server must refuse an unknown visibility', { actual: describe(direct) });
+    // The page asks for a change the server will refuse: the resident now belongs to another operator behind its back.
+    const stranger = row("SELECT id FROM accounts WHERE email='stranger@browser.test'");
+    write('UPDATE agents SET operator_id=? WHERE id=?', stranger.id, resident.id);
+    try {
+      await cottageSwitch().click();
+      const words = page.locator('[data-home-refusal-words]');
+      await words.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
+      const shown = ((await words.textContent()) || '').trim();
+      const server = await inPage(page, `/agents/${encodeURIComponent(resident.id)}/home`, { method: 'PATCH', body: { house_visibility: 'public' } });
+      expect(shown.length > 3 && shown === server.body?.error, 'the page must show the server’s refusal verbatim', { expected: describe(server.body?.error), actual: shown });
+      expect(await words.getAttribute('role') === 'alert' && await page.locator('[data-home-saved]').count() === 0, 'a refusal is an alert and never a success', { actual: await page.locator('[data-home-resident]').first().textContent() });
+      state.notes.push(`home vault: a refused change showed the server's own words: "${shown}"`);
+      return `refusal shown verbatim: "${shown}"`;
+    } finally { write('UPDATE agents SET operator_id=? WHERE id=?', account.id, resident.id); }
+  });
+
+  await step('at 390 px with reduced motion the section fits, every control is 44 px or more and the text clears 4.5:1', async () => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openHome();
+    const colours = await contrastOf('[data-home-panel] p, [data-home-panel] h3, [data-home-panel] h4, [data-home-panel] button:not(:disabled)');
+    const weak = colours.filter((item) => item.ratio < 4.5);
+    expect(colours.length > 8 && weak.length === 0, 'every text on the section must reach 4.5:1 against what is behind it', { expected: 'ratio ≥ 4.5', actual: describe(weak.length ? weak : colours.slice(0, 3)) });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    expect(await enterTheWorld(), 'the resident must enter its world on a phone', { actual: describe(await entryState(page)) });
+    await openHome();
+    await page.locator(`[data-home-erase="${resident.id}"]`).scrollIntoViewIfNeeded().catch(() => {});
+    const measured = await page.evaluate(() => {
+      const root = document.querySelector('[data-home-panel]');
+      const controls = [...root.querySelectorAll('button')].filter((node) => !node.disabled);
+      return {
+        viewport: window.innerWidth, document: document.documentElement.scrollWidth,
+        smallest: Math.min(...controls.map((node) => Math.round(node.getBoundingClientRect().height))),
+        count: controls.length, reduced: root.className.includes('ui-home-reduced'), transition: getComputedStyle(root).transitionDuration,
+        overflow: [...root.querySelectorAll('*')].filter((node) => node.getBoundingClientRect().right > window.innerWidth + 1).length,
+      };
+    });
+    expect(measured.document <= measured.viewport && measured.overflow === 0, 'the section must fit a 390 px phone without horizontal scrolling', { actual: describe(measured) });
+    expect(measured.count >= 3 && measured.smallest >= 44, 'every control must meet the 44 px touch floor', { actual: describe(measured) });
+    expect(measured.reduced && /^0s/.test(measured.transition), 'the panel must drop its transitions under reduced motion', { actual: describe(measured) });
+    await page.screenshot({ path: join(shots, 'phone-home-vault.png') });
+    await page.emulateMedia({ reducedMotion: null });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    state.notes.push(`home vault phone: 390 px, document ${measured.document} px, smallest control ${measured.smallest} px, ${colours.length} text samples all ≥ 4.5:1`);
+    return `390 px: no horizontal scroll, smallest control ${measured.smallest} px, no transition under reduced motion; ${colours.length} desktop text samples all ≥ 4.5:1`;
+  });
+
+  return 'an operator opened Home & vault from the game menu; the vault showed counts and the server’s privacy statement and never a note; the two visiting switches moved independently (by pointer and by keyboard) and matched the saved rows; Erase asked first and then deleted every note and the key; the passport summary linked to both; a server refusal was shown verbatim; the phone layout held at 44 px';
+});
+
 define('hero-introduction-film',async()=>{
   const visitor=await context('film-visitor');await visitor.page.goto(baseUrl(),{waitUntil:'domcontentloaded'});await settle(visitor.page);
   await step('the landing film has an accessible poster and waits for playback intent',async()=>{
@@ -5258,17 +6241,27 @@ define('world-sound-controls', async () => {
     return `mute persisted as ${persisted.pressed}; volume persisted at ${persisted.volume}`;
   });
 
-  await step('leaving the game stops playback and returning keeps sound opt in', async () => {
+  await step('a panel keeps the world and its sound, and leaving the game stops playback and keeps sound opt in', async () => {
+    // Guide is a section of the in-game panel now: the world keeps running and its controls stay.
     await openTab(page, 'Guide');
+    expect(await page.locator('#world').count() === 1, 'a section must open beside the running world, not replace it');
+    await page.locator('#game-menu-button').click();
+    await page.locator('.game-audio-controls').waitFor({ state: 'visible' });
+    expect((await page.locator('.game-audio-controls').getByRole('button').first().textContent())?.trim() === 'Enable sound',
+      'opening a panel must not start sound the visitor had not enabled');
+    await page.keyboard.press('Escape');
+    // Leaving the game is leaving the page: the management interface has no world and no sound controls.
+    await page.goto(`${baseUrl()}/manage`, { waitUntil: 'domcontentloaded' });
     expect(await page.locator('.game-audio-controls').count() === 0, 'leaving the game must remove its live sound controls');
-    await openTab(page, 'Open world');
+    await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
+    await settle(page);
     await page.locator('#game-menu-button').click();
     const controls = page.locator('.game-audio-controls');
     const mute = controls.getByRole('button').first();
     await controls.waitFor({ state: 'visible' });
     expect((await mute.textContent())?.trim() === 'Enable sound',
       'returning to the game must show stopped playback and require opt in again', { actual: (await mute.textContent())?.trim() });
-    return 'Guide stopped playback; returning to the world required an explicit enable click again';
+    return 'a panel left the world and its sound alone; leaving for /manage stopped playback and returning required an explicit enable click again';
   });
 
   return 'world ambience is opt in, keyboard accessible, persistent and stopped when leaving the game';
@@ -5383,12 +6376,14 @@ define('signed-in-game-play', async () => {
       await page.waitForFunction(() => document.querySelector('.sidebar')?.getBoundingClientRect().right <= 2, null, { timeout: 2000 });
       const controls = await page.locator('#game-hud .game-quickbar button').evaluateAll((buttons) => buttons.map((button) => {
         const box = button.getBoundingClientRect();
-        return { label: button.textContent?.trim(), x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), height: Math.round(box.height) };
+        const atCenter = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        const reachable = button === atCenter || button.contains(atCenter), blocker = !reachable && atCenter ? { tag: atCenter.tagName, id: atCenter.id, class: atCenter.getAttribute('class'), rect: atCenter.getBoundingClientRect().toJSON() } : null;
+        return { label: button.textContent?.trim(), x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable, blocker };
       }));
       // The game-experience specification keeps the HUD at five actions: the mode switch moved to
       // the world menu, so the quickbar is Interact, Build, Chat, Places, More.
       expect(controls.length === 5, 'the phone quickbar must carry exactly the five world actions', { actual: describe(controls) });
-      expect(controls.every((control) => control.x >= 0 && control.right <= 390 && control.height >= 40),
+      expect(controls.every((control) => control.x >= 0 && control.right <= 390 && control.y >= 60 && control.bottom <= 844 && control.width >= 44 && control.height >= 44 && control.reachable),
         'every phone quickbar action must fit the screen with a tappable height', { actual: describe(controls) });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
         'the signed-in game must fit a 390px phone without sideways scrolling');
@@ -5396,13 +6391,20 @@ define('signed-in-game-play', async () => {
       await pad.waitFor({ state: 'visible' });
       expect(await page.locator('.world-bottom').isVisible() === false,
         'the compact touch pad must replace, not overlap, the legacy arrow controls');
-      const targets = await pad.locator('button').evaluateAll((buttons) => buttons.map((button) => {
+      const targets = await pad.locator('button').evaluateAll((buttons) => buttons.filter((button) => button.getClientRects().length && getComputedStyle(button).visibility !== 'hidden').map((button) => {
         const box = button.getBoundingClientRect();
         const atCenter = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-        return { label: button.getAttribute('aria-label'), disabled: button.disabled, x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable: button === atCenter || button.contains(atCenter) };
+        const reachable = button === atCenter || button.contains(atCenter), blocker = !reachable && atCenter ? { tag: atCenter.tagName, id: atCenter.id, class: atCenter.getAttribute('class'), rect: atCenter.getBoundingClientRect().toJSON() } : null;
+        return { label: button.getAttribute('aria-label'), disabled: button.disabled, x: Math.round(box.x), right: Math.round(box.right), y: Math.round(box.y), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height), reachable, blocker };
       }));
-      expect(targets.length === 10 && targets.every((target) => target.x >= 0 && target.right <= 390 && target.y >= 60 && target.bottom <= 844 && target.width >= 44 && target.height >= 44),
-        'every phone movement, camera and action target must be visible and tappable', { actual: describe(targets) });
+      expect(targets.length === 6 && targets.every((target) => target.x >= 0 && target.right <= 390 && target.y >= 60 && target.bottom <= 844 && target.width >= 44 && target.height >= 44),
+        'the four movement and two camera targets must be visible and tappable beside the HUD', { actual: describe(targets) });
+      expect(describe(targets.map((target) => target.label).sort()) === describe(['Move up','Move left','Move down','Move right','Turn the camera left','Turn the camera right'].sort()),
+        'the game companion pad must retain every movement and look direction', { actual: describe(targets) });
+      expect(new Set([...targets, ...controls].map((target) => target.label)).size === 11,
+        'the phone must expose eleven distinct movement, look and world actions without duplicates');
+      expect(await pad.locator('.nm-touch-actions').isVisible() === false && await pad.locator('[data-nm-beside="pad"]').isVisible() === false,
+        'the HUD must own the world actions while its companion pad hides their duplicates');
       expect(targets.every((target) => target.reachable), 'no guide, map control or HUD may cover a phone touch target', { actual: describe(targets.filter((target) => !target.reachable)) });
       const bands = await page.evaluate(() => ({ touch: document.querySelector('.nm-touch-floating').getBoundingClientRect().bottom, hud: document.querySelector('.game-hud-bottom').getBoundingClientRect().top }));
       expect(bands.touch < bands.hud, 'the phone touch controls must end above the five-action HUD', { actual: describe(bands) });
@@ -5428,7 +6430,7 @@ define('signed-in-game-play', async () => {
       }
       expect(touchStep, 'one of the four visible phone movement buttons must save exactly one tile', { actual: describe(row('SELECT x,y FROM agents WHERE id=?', player.id)) });
       await page.screenshot({ path: join(RESULTS, 'signed-in-game-play', 'mobile-play.png') });
-      return `five quickbar actions and ten touch targets fit a 390px phone; Look saved yaw ${yawBefore.toFixed(2)} → ${yawAfter.toFixed(2)}, and Move saved ${tileBefore.x},${tileBefore.y} → ${touchStep.x},${touchStep.y}`;
+      return `five quickbar actions and six movement/look targets fit a 390px phone; Look saved yaw ${yawBefore.toFixed(2)} → ${yawAfter.toFixed(2)}, and Move saved ${tileBefore.x},${tileBefore.y} → ${touchStep.x},${touchStep.y}`;
     } finally {
       await page.setViewportSize({ width: 1440, height: 900 });
     }
@@ -5446,7 +6448,9 @@ define('live-observation-readonly', async () => {
   // Put a resident in the Commons where the observer's opening window looks, so "public activity"
   // is a real stored position and not an assumption.
   write('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1 WHERE id=?', 'commons', 11, 7, walker.id);
-  const before = { tile: row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id), blocks: count('SELECT COUNT(*) FROM frontier_blocks'), messages: count('SELECT COUNT(*) FROM messages'), objects: count('SELECT COUNT(*) FROM world_objects') };
+  const messageSequence = row('SELECT COALESCE(MAX(rowid),0) AS n FROM messages').n;
+  const objectSequence=row('SELECT COALESCE(MAX(rowid),0) AS n FROM world_objects').n;
+  const before = { tile: row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id), blocks: count('SELECT COUNT(*) FROM frontier_blocks'), messages: rows('SELECT * FROM messages WHERE rowid<=? ORDER BY rowid',messageSequence), objects: rows('SELECT * FROM world_objects WHERE rowid<=? ORDER BY rowid',objectSequence) };
 
   await step('the anonymous observer enters the Commons through Observe', async () => {
     await page.goto(`${baseUrl()}/`, { waitUntil: 'domcontentloaded' });
@@ -5493,7 +6497,7 @@ define('live-observation-readonly', async () => {
     expect(panned.following === null, 'a pan ends the follow: the camera has one target owner');
     expect(panned.target.x === panned.camera.x && panned.target.y === panned.camera.y, 'with no follow, the camera target is the observer’s own tile', { actual: describe(panned.target) });
 
-    // Eight writes from the observer's own page, including one acting as the resident in the world.
+    // Four writes from the observer's own page, including one acting as the resident in the world.
     const refusals = {};
     for (const [path, body] of [['/move', { agent_id: walker.id, direction: 'right' }], ['/messages', { text: 'a visitor cannot speak for anyone', world_id: 'commons' }], ['/frontier/build', { world_id: 'frontier:0:0', x: 1, y: 1, z: 0, type: 'wood' }], ['/interact', { agent_id: walker.id, x: 11, y: 7, action: 'travel' }]]) {
       refusals[path] = (await inPage(page, path, { body })).status;
@@ -5509,9 +6513,15 @@ define('live-observation-readonly', async () => {
   await step('observation changed nothing in the database', async () => {
     expect(describe(row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id)) === describe(before.tile), 'the watched resident must not move', { expected: describe(before.tile), actual: describe(row('SELECT world_id,x,y FROM agents WHERE id=?', walker.id)) });
     expect(count('SELECT COUNT(*) FROM frontier_blocks') === before.blocks, 'no block may be stored by an observer');
-    expect(count('SELECT COUNT(*) FROM messages') === before.messages, 'no message may be stored by an observer');
-    expect(count('SELECT COUNT(*) FROM world_objects') === before.objects, 'no object may be stored by an observer');
-    return 'resident tile, blocks, messages and objects all unchanged after observation';
+    expect(describe(rows('SELECT * FROM messages WHERE rowid<=? ORDER BY rowid',messageSequence)) === describe(before.messages), 'observation cannot change any existing message');
+    const newMessages=rows('SELECT m.agent_id,m.account_id,m.text,a.operator_id FROM messages m LEFT JOIN agents a ON a.id=m.agent_id WHERE m.rowid>?',messageSequence);
+    const livingIds=new Set(LIVING_ROSTER.map(resident=>resident.id));
+    expect(newMessages.every(message=>livingIds.has(message.agent_id)&&message.account_id===message.operator_id), 'any concurrent message must be attributed to the independent living-world tick, never the anonymous observer');
+    expect(count("SELECT COUNT(*) FROM messages WHERE text='a visitor cannot speak for anyone'")===0,'the refused anonymous message must not be saved');
+    expect(describe(rows('SELECT * FROM world_objects WHERE rowid<=? ORDER BY rowid',objectSequence))===describe(before.objects), 'observation cannot change any existing object');
+    const newObjects=rows('SELECT id,world_id,type,x,y FROM world_objects WHERE rowid>?',objectSequence);
+    expect(newObjects.every(object=>object.id==='lw-aria-farm-3-3'&&object.world_id==='home:lw-aria'&&object.type==='farm'&&object.x===3&&object.y===3),'the only concurrent object allowed is the exact starter farm independently seeded by the living-world tick',{actual:describe(newObjects)});
+    return `resident tile, blocks, prior objects and prior messages unchanged; ${newMessages.length} messages and ${newObjects.length} exact starter farms came only from the server's living-world tick, and the anonymous message was not saved`;
   });
 
   await step('a signed-in observer sees only public conversation and public resident fields', async () => {
@@ -6062,6 +7072,7 @@ const controlKey = (node) => {
   if (node.action) return `action:${node.action}`;
   if (node.guide) return `guide:${node.guide}`;
   if (node.encounter) return `encounter:${node.encounter}`;
+  if (node.tag === 'SUMMARY') return `summary:${node.text}`;
   return String(node.tag || '?');
 };
 
@@ -6085,8 +7096,14 @@ const focusedControl = (page) => page.evaluate(() => {
 const guideControls = (page) => page.evaluate(() => {
   const root = document.querySelector('#game-guide-host .game-guide');
   if (!root) return [];
-  return [...root.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')]
-    .filter((node) => node.getClientRects().length > 0)
+  return [...root.querySelectorAll('button, summary, a[href], input, select, textarea, [tabindex]')]
+    .filter((node) => {
+      if (!node.getClientRects().length) return false;
+      for (let parent=node.parentElement;parent&&parent!==root;parent=parent.parentElement) {
+        if(parent.tagName==='DETAILS'&&!parent.open&&parent.querySelector(':scope > summary')!==node)return false;
+      }
+      return true;
+    })
     .map((node) => ({
       action: node.getAttribute('data-guide-action'),
       guide: node.getAttribute('data-guide'),
@@ -6249,7 +7266,7 @@ async function signUp(page, { name, email, password }) {
         return { signedIn: document.body.classList.contains('signed-in'), notice: notice?.textContent || '', failed: Boolean(notice && !notice.hidden && notice.classList.contains('error')) };
       });
       if (observed.signedIn) { outcome = 'signed-in'; break; }
-      if (/Too many authentication attempts/i.test(observed.notice)) { outcome = 'rate-limited'; break; }
+      if (observed.failed && /Too many authentication attempts/i.test(observed.notice)) { outcome = 'rate-limited'; break; }
       if (observed.failed) { outcome = `refused: ${observed.notice}`; break; }
       await sleep(200);
     }
@@ -6266,7 +7283,8 @@ async function signUp(page, { name, email, password }) {
 
 /** Creates one AI resident through the shipped character form, leaving the calling at its default. */
 async function createResidentThroughInterface(page, name) {
-  const form = page.locator('#view form[data-draft-section="character-create"]');
+  // The creation form opens in the in-game panel while playing and in the view otherwise.
+  const form = page.locator('#view form[data-draft-section="character-create"], #game-panel-body form[data-draft-section="character-create"]').first();
   await form.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
   await form.locator('[aria-label="Character name"]').fill(name);
   await form.getByRole('button', { name: 'Create character', exact: true }).click();
@@ -6359,7 +7377,7 @@ define('first-ten-minutes', async () => {
 
   await step('a calling is chosen through the interface and a calling.selected audit row is written', async () => {
     await openGameTab(page, 'Callings & guilds');
-    const choice = page.locator('#view .calling-choice[data-calling="cultivator"]');
+    const choice = page.locator(':is(#view, #game-panel-body) .calling-choice[data-calling="cultivator"]');
     await choice.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
     await choice.getByRole('button', { name: /^Become/ }).click();
     const audit = await waitForCondition(async () => row("SELECT seq,event,record_id FROM audit WHERE event='calling.selected' AND record_id=?", resident.id), 'the saved calling.selected audit row');
@@ -6556,7 +7574,19 @@ define('first-ten-minutes', async () => {
     // accept a short one, and assert the order it finally reports.
     for (let attempt = 0; attempt < 2 && describe(seen) !== describe(expectedOrder); attempt++) seen = await tabSweepGuide(page);
     expect(describe(seen) === describe(expectedOrder), 'Tab must reach every guide control exactly once, in document order', { expected: describe(expectedOrder), actual: describe(seen) });
-    return `Tab reached ${seen.join(' → ')} (document order, none skipped)`;
+    const summary=await tabToGuideControl(page,node=>node.tag==='SUMMARY'&&node.text==='People & progress','the optional people/progress summary');
+    expect(summary.tag==='SUMMARY','optional records use a native keyboard disclosure');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.querySelector('#game-guide-host details.game-guide-details')?.open===true,null,{timeout:PAGE_TIMEOUT_MS});
+    const expanded=(await guideControls(page)).map(controlKey);
+    expect(expanded.some(key=>key.startsWith('encounter:')),'the expanded disclosure makes the resident encounter controls keyboard-reachable');
+    let expandedSeen=await tabSweepGuide(page);
+    for(let attempt=0;attempt<2&&describe(expandedSeen)!==describe(expanded);attempt++)expandedSeen=await tabSweepGuide(page);
+    expect(describe(expandedSeen)===describe(expanded),'expanded supporting controls retain native document-order focus',{expected:describe(expanded),actual:describe(expandedSeen)});
+    await tabToGuideControl(page,node=>node.tag==='SUMMARY'&&node.text==='People & progress','the open people/progress summary');
+    await page.keyboard.press('Space');
+    await page.waitForFunction(()=>document.querySelector('#game-guide-host details.game-guide-details')?.open===false,null,{timeout:PAGE_TIMEOUT_MS});
+    return `Tab reached ${seen.join(' → ')}; Enter exposed every supporting encounter control and Space closed it again`;
   });
 
   await step('a saved keyboard walk refreshes the guide’s nearby target without a reload', async () => {
@@ -6772,7 +7802,7 @@ define('first-play-solo-ambassador', async () => {
     resident = await createResidentThroughInterface(page, RESIDENT);
     await enterWorldAs(page, resident.id, RESIDENT);
     await openGameTab(page, 'Callings & guilds');
-    const choice = page.locator('#view .calling-choice[data-calling="cultivator"]');
+    const choice = page.locator(':is(#view, #game-panel-body) .calling-choice[data-calling="cultivator"]');
     await choice.waitFor({ state: 'visible', timeout: PAGE_TIMEOUT_MS });
     await choice.getByRole('button', { name: /^Become/ }).click();
     await waitForCondition(async () => row("SELECT seq FROM audit WHERE event='calling.selected' AND record_id=?", resident.id), 'the solo resident’s calling selection to be saved');
@@ -6953,7 +7983,7 @@ define('restoration-two-clients', async () => {
   await step('the garden is opened to visitors and the owner opens one restoration through the interface', async () => {
     await apiPatch(fixtures().owner, `/agents/${gardener.id}/home`, { visibility: 'public' });
     await openApp(owner.page, ACTORS.owner);
-    await selectResident(owner.page, gardener.id, gardener.name);
+    await selectResidentAndSettle(owner.page, gardener.id, gardener.name);
     await openTab(owner.page, 'Open world');
     await owner.page.locator('#view').getByRole('button', { name: 'Go home', exact: true }).first().click();
     await waitForCondition(async () => row('SELECT world_id FROM agents WHERE id=?', gardener.id).world_id === garden ? garden : null, 'the owner’s resident to travel into the garden it will restore');

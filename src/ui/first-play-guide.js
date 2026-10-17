@@ -147,10 +147,10 @@ export function refusalModel(refusal) {
  * send is applied here.
  */
 export function guideModel(snapshot, options = {}) {
-  const { dismissed = false, busy = false, error = null, confirmation = null, reducedMotion = false } = options;
+  const { dismissed = false, busy = false, error = null, confirmation = null, reducedMotion = false, detailsOpen = false, stepDetailsOpen = false } = options;
   const base = {
     ready: Boolean(snapshot && typeof snapshot === 'object'),
-    dismissed: Boolean(dismissed), busy: Boolean(busy), reducedMotion: Boolean(reducedMotion),
+    dismissed: Boolean(dismissed), busy: Boolean(busy), reducedMotion: Boolean(reducedMotion), detailsOpen: Boolean(detailsOpen), stepDetailsOpen: Boolean(stepDetailsOpen),
     worldPaused: snapshot?.world?.paused === true,
     error: error || null, confirmation: confirmation || null,
     progress: null, next: null, encounter: null, restoration: null, resume: null, refusals: Object.freeze([]),
@@ -315,6 +315,21 @@ const progressLine = (progress) => {
   return nodes;
 };
 
+// Opening an existing game panel is a navigation choice. It sends no world action and cannot
+// complete a step. Some server steps intentionally name a target without a write (for example,
+// choosing a calling), so give those steps a visible route into the interface that already owns it.
+export function guideNavigation(next) {
+  if (!next || next.actions?.length) return null;
+  const choices = {
+    enter: { section: 'characters', label: 'Choose a resident' },
+    calling: { section: 'callings', label: 'Choose a calling' },
+    meet: { section: 'list', label: 'See nearby residents' },
+    practice: { section: 'workshop', label: 'Open garden & workshop' },
+    restore: { section: 'restoration', label: 'View shared restoration' },
+  };
+  return choices[next.id] || null;
+}
+
 const nextCard = (model, handlers) => {
   const next = model.next;
   const blocked = next?.blocked || null;
@@ -323,31 +338,37 @@ const nextCard = (model, handlers) => {
     label: action.label || action.id || 'Continue',
     attrs: { 'data-guide-action': action.id || '', ...(blocked ? { disabled: true, 'aria-disabled': 'true' } : {}) },
   }));
+  const navigation = guideNavigation(next);
+  if (navigation && typeof handlers.onNavigate === 'function') actionNodes.push(button(navigation.label, () => handlers.onNavigate(navigation.section), {
+    class: 'game-guide-button game-guide-navigation',
+    attrs: { 'data-guide-navigation': navigation.section, ...(blocked ? { disabled: true, 'aria-disabled': 'true' } : {}) },
+  }));
 
   const live = el('div', { class: 'game-guide-action-line', attrs: { 'data-guide': 'action-line', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' } }, [
     el('h2', { class: 'game-guide-title', text: next?.title || 'No next step right now' }),
     next?.instruction ? el('p', { class: 'game-guide-instruction', text: next.instruction }) : null,
-    next?.reason ? el('p', { class: 'game-guide-reason', text: next.reason }) : null,
   ]);
-
+  const progress=progressLine(model.progress);
   const nodes = [
-    ...progressLine(model.progress),
+    el('div', { class: 'game-guide-heading' }, [progress[0],
+      next?.dismissible === false ? null : button('Dismiss', () => handlers.onDismiss(), {
+        class: 'game-guide-button game-guide-dismiss', label: 'Dismiss the guide; it does not complete any step', attrs: { 'data-guide': 'dismiss' },
+      }),
+    ]),
+    ...progress.slice(1),
     live,
-    next?.target?.line ? el('p', { class: 'game-guide-target', attrs: { 'data-guide': 'target' }, text: next.target.line }) : null,
-    next?.alternative ? el('p', { class: 'game-guide-alternative', attrs: { 'data-guide': 'alternative' }, text: next.alternative }) : null,
+    actionNodes.length ? el('div', { class: 'game-guide-buttons' }, actionNodes) : null,
+    next?.reason || next?.target?.line || next?.alternative ? el('details', { class: 'game-guide-step-details', attrs: { open: model.stepDetailsOpen }, on: { toggle: (event) => handlers.onStepDetailsToggle?.(Boolean(event.currentTarget?.open ?? event.target?.open)) } }, [
+      el('summary', { text: 'Where & why' }),
+      next?.target?.line ? el('p', { class: 'game-guide-target', attrs: { 'data-guide': 'target' }, text: next.target.line }) : null,
+      next?.reason ? el('p', { class: 'game-guide-reason', text: next.reason }) : null,
+      next?.alternative ? el('p', { class: 'game-guide-alternative', attrs: { 'data-guide': 'alternative' }, text: next.alternative }) : null,
+    ]) : null,
     blocked ? el('p', {
       class: 'game-guide-blocked',
       attrs: { 'data-guide': 'blocked', role: 'alert', 'aria-live': 'assertive' },
       text: [blocked.message, blocked.next_step].filter(Boolean).join(' '),
     }) : null,
-    actionNodes.length ? el('div', { class: 'game-guide-buttons' }, actionNodes) : null,
-    el('div', { class: 'game-guide-controls' }, [
-      next?.dismissible === false ? null : button('Dismiss', () => handlers.onDismiss(), {
-        class: 'game-guide-button game-guide-dismiss',
-        label: 'Dismiss the guide; it does not complete any step',
-        attrs: { 'data-guide': 'dismiss' },
-      }),
-    ]),
     model.confirmation ? el('p', { class: 'game-guide-confirmation', attrs: { 'data-guide': 'confirmation', role: 'status' }, text: model.confirmation }) : null,
     model.error ? el('p', { class: 'game-guide-error', attrs: { 'data-guide': 'error', role: 'alert' }, text: model.error.message || 'That action was refused.' }) : null,
   ];
@@ -484,7 +505,16 @@ export function guideCards(model, handlers = {}) {
 /** The full guide as one view tree, for assertion and for a single-host mount. */
 export function guideView(model, handlers = {}) {
   const cards = guideCards(model, handlers);
-  const children = [cards.next, cards.encounter, cards.restoration, cards.resume].filter(Boolean);
+  const supporting = [cards.encounter, cards.restoration, cards.resume].filter(Boolean);
+  const details = supporting.length ? el('details', {
+    class: 'game-guide-details',
+    attrs: { 'data-guide': 'details', open: model.detailsOpen },
+    on: { toggle: (event) => handlers.onDetailsToggle?.(Boolean(event.currentTarget?.open ?? event.target?.open)) },
+  }, [
+    el('summary', { class: 'game-guide-details-summary', text: 'People & progress' }),
+    el('div', { class: 'game-guide-details-body' }, supporting),
+  ]) : null;
+  const children = [cards.next, details].filter(Boolean);
   const classes = ['game-guide'];
   if (model?.reducedMotion) classes.push('game-guide-reduced');
   return el('section', { class: classes.join(' '), attrs: { 'data-guide': 'root', role: 'region', 'aria-label': 'First ten minutes guide' } }, children);
@@ -493,16 +523,19 @@ export function guideView(model, handlers = {}) {
 // ------------------------------------------------------------------------------------------------
 // The controller.
 // ------------------------------------------------------------------------------------------------
-export function createFirstPlayGuide({ transport, document: injectedDocument = null, onAction = null, onCompose = null, onChange = null, onDismiss = null, onResume = null, reducedMotion = false } = {}) {
+export function createFirstPlayGuide({ transport, document: injectedDocument = null, onAction = null, onCompose = null, onNavigate = null, onChange = null, onDismiss = null, onResume = null, reducedMotion = false } = {}) {
   if (typeof transport !== 'function') throw new TypeError('The first-play guide needs an async transport(route, method, body, idempotent) function.');
   const doc = injectedDocument || (typeof globalThis !== 'undefined' ? globalThis.document : null);
-  const state = { snapshot: null, dismissed: false, busy: false, error: null, confirmation: null, flight: null, host: null };
+  const state = { snapshot: null, dismissed: false, busy: false, detailsOpen: false, stepDetailsOpen: false, error: null, confirmation: null, flight: null, host: null };
 
   const handlersFor = () => ({
     onAction: (action) => { void controller.activate(action); },
     onDismiss: () => controller.dismiss(),
     onResume: () => controller.resume(),
     onRecover: (refusal) => { void controller.recover(refusal); },
+    onNavigate: typeof onNavigate === 'function' ? (section) => onNavigate(section) : null,
+    onDetailsToggle: (open) => { state.detailsOpen = open; },
+    onStepDetailsToggle: (open) => { state.stepDetailsOpen = open; },
   });
 
   const blockedNow = () => Boolean(state.snapshot?.world?.paused || state.snapshot?.next_step?.blocked);
@@ -554,7 +587,7 @@ export function createFirstPlayGuide({ transport, document: injectedDocument = n
       return controller.model();
     },
     model() {
-      return guideModel(state.snapshot, { dismissed: state.dismissed, busy: state.busy, error: state.error, confirmation: state.confirmation, reducedMotion: Boolean(reducedMotion) });
+      return guideModel(state.snapshot, { dismissed: state.dismissed, busy: state.busy, detailsOpen: state.detailsOpen, stepDetailsOpen: state.stepDetailsOpen, error: state.error, confirmation: state.confirmation, reducedMotion: Boolean(reducedMotion) });
     },
     view() {
       return guideView(controller.model(), handlersFor());
@@ -644,7 +677,7 @@ export function createFirstPlayGuide({ transport, document: injectedDocument = n
     },
     reset() {
       controller.destroy();
-      state.dismissed = false;
+      state.dismissed = false;state.detailsOpen = false;state.stepDetailsOpen = false;
       return controller;
     },
   };

@@ -1,8 +1,23 @@
-# NemoWorld development handoff — 13 October 2026
+# NemoWorld development handoff
 
-## Current source and evidence
+## Unified release — 15 October 2026
 
-The authoritative development source is this Git checkout (`work/Lucy-repo`). `outputs/Lucy` is the installed local copy, with its own private database and local AI runtime. Implement in the checkout; install reviewed source only after gates and backup. Do not edit an installed copy and assume GitHub has changed.
+The current integration branch is **`integration/nemoworld-unified-2026-10-15`**, in the isolated
+`work/unified` checkout, schema **27**. It combines the installed `27063ae` baseline, reviewed
+Antigravity work, all eight delivered DeepSeek framework waves, the Home/vault interface and phase 2
+of the connected outdoor map. See the [unified release record](docs/handoff/unified-world-2026-10-15.md)
+for exact source commits, independent gate results, data preservation, installation and limits.
+Use `outputs/shared-installed-source.json` to establish the installed version; a branch or passing
+test run alone does not establish that the live installation was upgraded.
+
+The checkpoints below are historical. Do not recreate delivered numbered tasks from those records.
+
+## Historical source and evidence — 13–14 October 2026
+
+At this checkpoint development used `work/Lucy-repo`. The unified release above uses `work/unified`.
+`outputs/Lucy` is the installed local copy, with its own private database and local AI runtime.
+Implement in a source checkout; install reviewed source only after gates and backup. Do not edit
+an installed copy and assume GitHub has changed.
 
 **Measured on 14 October 2026 at `main` `15c5e3d` (schema 24):** syntax check 96 files, 0 failed; `node --test` **1037/1037**; content seal **98 definitions**. Browser, HTTP acceptance, recovery drills and Luanti smokes were not re-run for this line. Where the counts below differ, they are dated historical checkpoints. See `docs/VERIFICATION.md`.
 

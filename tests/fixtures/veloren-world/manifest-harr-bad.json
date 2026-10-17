@@ -1,0 +1,165 @@
+{
+  "format": "veloren-world-v1",
+  "site": "Harr",
+  "area": {
+    "radius": 60.0
+  },
+  "atmosphere": {
+    "time": true,
+    "weather": false,
+    "dawn_hour": 5.0,
+    "day_hour": 8.0,
+    "dusk_hour": 18.0,
+    "night_hour": 21.0,
+    "weather_radius": 200.0
+  },
+  "groups": [
+    {
+      "id": "plaza-meeting-corner",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "note": "A bench and a lantern on the plaza, where the guide stands.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            3,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "foundation",
+          "from": [
+            3,
+            3
+          ],
+          "to": [
+            5,
+            3
+          ],
+          "kind": "Wood",
+          "rgb": [
+            120,
+            88,
+            60
+          ],
+          "depth": 2
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            1
+          ],
+          "sprite": "Water_Spring"
+        }
+      ]
+    },
+    {
+      "id": "field-welcome-sign",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0
+      },
+      "ground_at": [
+        2,
+        2
+      ],
+      "note": "Where the Quiet Survey begins: a lanternpost and a crate of tools.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            3,
+            3,
+            3
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "LanternpostWoodBase"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            3,
+            1
+          ],
+          "sprite": "CrateBlock"
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            0
+          ],
+          "to": [
+            3,
+            3,
+            0
+          ],
+          "kind": "Earth",
+          "rgb": [
+            110,
+            84,
+            60
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            60,
+            60,
+            0
+          ],
+          "to": [
+            61,
+            61,
+            0
+          ],
+          "kind": "Leaves",
+          "rgb": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "op": "teleport",
+          "to": "somewhere"
+        }
+      ]
+    }
+  ],
+  "note": "A world-dressing fixture for Harr: one meeting corner on the plaza and a marked start at the farm field. Written by the world stream to exercise nemo-world-check; not yet shipped as NemoWorld content."
+}

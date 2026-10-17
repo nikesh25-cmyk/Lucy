@@ -1,0 +1,135 @@
+{
+  "format": "nemo-discoveries-v1",
+  "discoveries": [
+    {
+      "id": "meadow-flowers",
+      "landmark_id": "disc-meadow-flowers",
+      "name": "The wildflower meadow",
+      "hint": "about 36 steps east of the plaza",
+      "finding": "Seven kinds of flower grow here in bands by soil. The bees visit the yellow band first, in the cool of the morning.",
+      "notes": [
+        "Soil core sampling reveals high calcium content near the yellow clover zone, explaining why bumblebees cluster there at dawn.",
+        "Purple vetch along the western fringe fixes nitrogen, gradually enriching the subsoil for surrounding grasses.",
+        "Flowering cycles shift precisely with daytime thermal currents, petals folding forty minutes before evening rainfall.",
+        "Seed pods disperse by wind vortexes formed by the ridge contour, scattering seeds thirty metres down-slope."
+      ]
+    },
+    {
+      "id": "boundary-stone",
+      "landmark_id": "disc-boundary-stone",
+      "name": "The old boundary stone",
+      "hint": "about 44 steps north-west of the plaza",
+      "finding": "A worn stone, older than the village. Its lichen grows only on the north face, so it also tells you which way you face.",
+      "notes": [
+        "Petrographic analysis identifies the rock as metamorphic granodiorite, deposited by prehistoric glacial melt.",
+        "Deep horizontal chisel grooves show consistent weathering patina, indicating placement at least three centuries ago.",
+        "The northern lichen crust consists of Xanthoria parietina, whose growth rate measures roughly two millimetres per season.",
+        "Local magnetic deviation near the stone is completely neutral, making it an ideal reference point for triangulation."
+      ]
+    },
+    {
+      "id": "hidden-spring",
+      "landmark_id": "disc-hidden-spring",
+      "name": "The hidden spring",
+      "hint": "about 49 steps north-east of the plaza",
+      "finding": "Cold, clear water rises here all year. It feeds the well by an underground seam: the well is never really empty.",
+      "notes": [
+        "Water temperature stays at a uniform seven degrees Celsius year-round, emerging through a pressurized limestone fissure.",
+        "Mineral filtration through alluvial gravel layers leaves zero detectable turbidity or iron precipitate.",
+        "Subterranean acoustic probes register an underground chamber roughly twelve metres below the outflow pool.",
+        "Freshwater amphipods inhabiting the dark spring pool indicate exceptional dissolved oxygen saturation."
+      ]
+    },
+    {
+      "id": "high-view",
+      "landmark_id": "disc-high-view",
+      "name": "The high view",
+      "hint": "about 52 steps north of the plaza",
+      "finding": "From here the whole valley is a map: fields, the winding road, and where the next cottages could stand.",
+      "notes": [
+        "Panoramic line-of-sight analysis confirms visual contact with both the eastern pass and the southern forest belt.",
+        "Wind speed at the bluff crest averages four metres per second stronger than at the plaza floor.",
+        "Thermal up-drafts along the south-facing rock slope provide effortless lift for soaring raptors every afternoon.",
+        "Bedrock fractures here show stable joint patterns, capable of bearing foundations for an extended survey outpost."
+      ]
+    },
+    {
+      "id": "bee-hollow",
+      "landmark_id": "disc-bee-hollow",
+      "name": "The bee hollow",
+      "hint": "about 46 steps north of the plaza",
+      "finding": "A hollow oak hums with a colony. Keepers note the bees are calm unless smoke is near; the honey feeds the whole village.",
+      "notes": [
+        "Internal hive temperature is regulated at thirty-four degrees through cooperative wing-fanning at the hollow entrance.",
+        "Pollen samples brought into the colony show foraging trips extending up to two kilometres into the clover fields.",
+        "Propolis resin harvested from poplar buds lines the hollow interior, preventing fungal rot in the aged heartwood.",
+        "The colony has wintered safely in this hollow for nine recorded seasons without requiring artificial feeding."
+      ]
+    },
+    {
+      "id": "lichen-wall",
+      "landmark_id": "disc-lichen-wall",
+      "name": "The lichen wall",
+      "hint": "about 44 steps west of the plaza",
+      "finding": "Lichen draws a slow map on the stone. Researchers measure its growth each season; the clean air shows in its colours.",
+      "notes": [
+        "Concentric growth rings on the central thallus suggest continuous symbiotic growth spanning over eighty years.",
+        "Spectroscopic readings show zero sulphur dioxide discoloration, serving as a reliable living barometer of air purity.",
+        "Moisture absorption happens directly through atmospheric condensation without requiring surface runoff.",
+        "Microscopic tardigrades inhabit the damp cushion layer, entering cryptobiosis during dry summer weeks."
+      ]
+    },
+    {
+      "id": "birdsong-grove",
+      "landmark_id": "disc-birdsong-grove",
+      "name": "The birdsong grove",
+      "hint": "about 60 steps north-west of the plaza",
+      "finding": "At dawn eleven species sing in turn. Scholars are keeping a score of the chorus, one new voice a week.",
+      "notes": [
+        "Acoustic frequency analysis reveals the chaffinch chorus peaks at four kilohertz, cutting cleanly through rustling leaves.",
+        "Deciduous canopy layering provides distinct vertical nesting tiers for seven non-competing songbird species.",
+        "Dawn chorus commencement tracks precisely with nautical twilight rather than local sunrise.",
+        "Seed-caching behaviour by nuthatches in oak bark fissures directly contributes to natural sapling regeneration."
+      ]
+    },
+    {
+      "id": "clay-bank",
+      "landmark_id": "disc-clay-bank",
+      "name": "The clay bank",
+      "hint": "about 30 steps north-east of the plaza",
+      "finding": "Fine red clay, good for bricks and pots. Makers dig only what they need and smooth the bank behind them.",
+      "notes": [
+        "Sedimentary stratification displays alternate layers of fine kaolinite clay and water-sorted quartz sand.",
+        "Plasticity testing proves the material can be thrown on a wheel without cracking at twenty percent moisture content.",
+        "High iron oxide content imparts a warm terracotta color upon kiln firing at nine hundred degrees.",
+        "Erosion along the excavated cut stabilizes naturally within three weeks when stepped at a forty-degree incline."
+      ]
+    },
+    {
+      "id": "star-meadow",
+      "landmark_id": "disc-star-meadow",
+      "name": "The star meadow",
+      "hint": "about 46 steps south-east of the plaza",
+      "finding": "The darkest corner of Harr. On clear nights the observatory scholars chart the sky from here before the platform is done.",
+      "notes": [
+        "Atmospheric scintillation measurements show minimal thermal turbulence, yielding Bortle class one sky clarity.",
+        "Surrounding woodland ridges create a natural light basin, shielding the meadow from peripheral ground reflections.",
+        "Nocturnal dew formation peaks before midnight, after which cool mountain breezes keep telescope optics dry.",
+        "Ground radiation cools rapidly after sunset due to low soil moisture and porous gravel underlayment."
+      ]
+    },
+    {
+      "id": "wind-ridge",
+      "landmark_id": "disc-wind-ridge",
+      "name": "The wind ridge",
+      "hint": "about 35 steps south of the plaza",
+      "finding": "A steady breeze crosses this ridge. A small mill here could turn grain for the whole village; the plans are in the library.",
+      "notes": [
+        "Anemometer logs show a continuous laminar airflow originating from the valley pressure gradient.",
+        "Wind vector consistency exceeds eighty percent from the south-southwest between midday and twilight.",
+        "Dwarf juniper shrubs along the crest exhibit flag-form growth, permanently shaped by prevailing air currents.",
+        "Aerodynamic pressure differentials across the saddle create an optimal funnel for small wind turbine placement."
+      ]
+    }
+  ]
+}

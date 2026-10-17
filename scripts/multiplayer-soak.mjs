@@ -54,6 +54,7 @@ import { performance } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
 import { Platform } from '../src/platform.js';
 import { getWorldDefinition, walkable } from '../world.js';
+import { mapDistance } from '../src/global-map.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PASSWORD = 'multiplayer-soak-password-2026';
@@ -94,6 +95,26 @@ export const SOAK_LIMITS = Object.freeze({
   // silently accepted.
   client_buffer_frames: 512,
   process_subscription_ceiling: 64,
+});
+
+/**
+ * The shared-world phase. Two humans and one AI resident cross the Commons/Highlands seam, talk across
+ * it, build, and come back after a real process restart. Every tile here is a plain Commons tile and
+ * the avenue through the join is the one `src/global-map.js` opens, so a step off the north edge is a
+ * step into `district:highlands` at the same global tile.
+ */
+export const SOAK_SEAM = Object.freeze({
+  anchor_world: 'commons',
+  neighbour_world: 'district:highlands',
+  // (25, 1) -> (25, 0) -> the seam -> Highlands (25, 35). All three residents start at the edge.
+  stand: { x: 25, y: 0 },
+  // The three shared-world residents, the index of the AI one, and where each stands at the start.
+  shared: Object.freeze([{ x: 25, y: 1 }, { x: 25, y: 1 }, { x: 25, y: 3 }].map(Object.freeze)),
+  ai_index: 2,
+  // Where a crossing lands: the neighbour's own coordinates for the tile above the seam.
+  landing: { x: 25, y: 35 },
+  // The highest tile of Highlands that is four world-space tiles from the neighbour's landing tile.
+  out_of_range: { x: 25, y: 31 },
 });
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
@@ -380,6 +401,17 @@ async function seed({ writers, others }) {
       account_id: platform.authenticate(account.token).account.id,
       agent: index < writers ? platform.createAgent(platform.authenticate(account.token), { kind: 'human', name: `Soak resident ${index}` }) : null,
     })));
+    // Three residents for the shared-world phase, on the first three observer accounts, standing at the
+    // north seam from the start: no other phase moves an observer's resident, so the crossing they make
+    // is the only thing that moves them. Two are human and one is an AI resident — a resident of kind
+    // 'agent', which is the kind the world issues a runtime credential to.
+    const shared = platform.transaction(() => SOAK_SEAM.shared.map((tile, index) => {
+      const session = platform.authenticate(created[writers + index].token);
+      const kind = index === SOAK_SEAM.ai_index ? 'agent' : 'human';
+      const resident = platform.createAgent(session, { kind, name: kind === 'agent' ? 'Soak AI resident' : `Soak seam resident ${index}` });
+      platform.run('UPDATE agents SET world_id=?,x=?,y=?,z=0,grounded=1,last_move=0,last_seen=0 WHERE id=?', SOAK_SEAM.anchor_world, tile.x, tile.y, resident.id);
+      return { token: created[writers + index].token, account_id: session.account.id, agent_id: resident.id, kind, start: tile };
+    }));
     platform.transaction(() => {
       for (const [index, item] of created.entries()) {
         if (!item.agent) continue;
@@ -392,6 +424,7 @@ async function seed({ writers, others }) {
       writers: created.slice(0, writers).map((item, index) => ({ token: item.token, account_id: item.account_id, agent_id: item.agent.id, seat: seats[index] })),
       others: created.slice(writers),
       seats,
+      shared,
     };
   } finally { platform.close(); }
 }
@@ -408,6 +441,12 @@ function createRecorder() {
     check(condition, message) { if (condition) passed += 1; else failures.push(message); return Boolean(condition); },
     equal(actual, expected, message) { return this.check(Object.is(actual, expected), `${message} (expected ${JSON.stringify(expected)}, saw ${JSON.stringify(actual)})`); },
   };
+}
+
+async function settleUntil(condition, label, timeoutMs = 4000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) { if (condition()) return true; await sleep(15); }
+  throw new Error(`timed out waiting for ${label}`);
 }
 
 const KNOWN_OPTIONS = new Set(['accounts', 'subscriptions', 'duration', 'json', 'keep']);
@@ -438,6 +477,10 @@ async function run() {
   // them; that needs enough account slots to reach 64.
   if (accounts * limits.subscriptions_per_account < ceiling) {
     throw new Error(`Reaching the documented ${ceiling}-subscription ceiling needs at least ${Math.ceil(ceiling / limits.subscriptions_per_account)} accounts; ${accounts} are configured.`);
+  }
+  // The shared-world phase rides on the observer accounts, which own no resident of their own.
+  if (others < SOAK_SEAM.shared.length) {
+    throw new Error(`The shared-world phase needs ${SOAK_SEAM.shared.length} observer accounts; ${others} are configured. Raise --accounts or lower --subscriptions.`);
   }
 
   processState.workspace = await mkdtemp(join(tmpdir(), 'nemoworld-soak-'));
@@ -472,11 +515,16 @@ async function run() {
   const seeded = await seed({ writers, others });
   const base = `http://127.0.0.1:${processState.port}`;
   for (const item of seeded.writers) accepted.set(item.agent_id, []);
+  // Every resident this run follows: the writers the concurrent phase drives, and the three the shared
+  // world crosses the seam with. The restart comparison reads exactly these rows.
+  const trackedAgentIds = () => [...seeded.writers.map((item) => item.agent_id), ...seeded.shared.map((item) => item.agent_id)];
 
   await startServer();
   let restartSnapshot = null;
+  let sharedWorld = null;
   let placed = [];
   let compared = 0;
+  let leftTheWorldCount = 0;
   let phaseElapsedMs = 0;
   let storageBefore = null;
   const defects = [];
@@ -540,7 +588,7 @@ async function run() {
     // ---- Phase 3: convergence, ordering and message delivery ------------------------------------
     const canonical = readCanonical();
     const stored = new Map(canonical.agents.map((row) => [row.id, row]));
-    let orderingViolations = 0, convergenceMismatches = 0, convergences = 0;
+    let orderingViolations = 0, convergenceMismatches = 0, convergences = 0, leftTheWorld = 0;
     for (const client of clients) {
       const view = client.state();
       if (!view.ready) continue;
@@ -552,12 +600,16 @@ async function run() {
           if (orderingViolations <= 3) recorder.failures.push(`${client.name} observed avatar ${agentId} at ${verdict.at.x},${verdict.at.y} after a later accepted tile (stale overwrite or out-of-order frame); observed=${JSON.stringify(client.historyOf(agentId).map((tile) => `${tile.x},${tile.y}`))} accepted=${JSON.stringify(acceptedTiles.map((tile) => `${tile.x},${tile.y}`))}`);
         }
         const row = stored.get(agentId), last = view.residents.get(agentId);
+        // On the global map a step off the edge stores the resident in the neighbouring world, and a
+        // subscriber of the world it left is told it departed: that is a crossing, not a divergence.
+        if (row && row.world_id !== view.worldId && !last) { leftTheWorld += 1; continue; }
         if (row && last && last.x === row.x && last.y === row.y) convergences += 1;
-        else { convergenceMismatches += 1; if (convergenceMismatches <= 3) recorder.failures.push(`${client.name} ended at ${last?.x},${last?.y} for ${agentId} but the stored row is ${row?.x},${row?.y}`); }
+        else { convergenceMismatches += 1; if (convergenceMismatches <= 3) recorder.failures.push(`${client.name} ended at ${last?.x},${last?.y} for ${agentId} but the stored row is ${row?.world_id},${row?.x},${row?.y}`); }
       }
     }
     recorder.equal(orderingViolations, 0, 'no subscriber may observe an avatar tile the server had already superseded');
-    recorder.equal(convergenceMismatches, 0, 'after quiescence every open subscriber must agree with the stored rows');
+    recorder.equal(convergenceMismatches, 0, 'after quiescence every open subscriber must agree with the stored rows, or hold a resident that crossed a seam out of the world it subscribed to');
+    leftTheWorldCount = leftTheWorld;
 
     const openClients = clients.filter((client) => client.state().ready);
     const canonicalIds = canonical.messages.map((row) => row.id);
@@ -669,11 +721,150 @@ async function run() {
     }
     await hostObserver.close();
 
+    // ---- Phase 4c: the shared world across a seam ------------------------------------------------
+    // Two humans and one AI resident walk from the Commons into Highlands with no portal, speak across
+    // the join, build in the AI resident's own garden, and are found again after a real restart. Every
+    // claim is checked against the stored row read from the disposable database, never against what a
+    // response said.
+    sharedWorld = { crossings: [], recipients: [], refused_build: {}, garden: null, stranded: null };
+    {
+      // This phase needs subscriptions of its own. The documented ceiling may already be reached, so
+      // the newest soak subscriptions are released first: their comparisons are done.
+      for (const client of clients.slice(-6)) await client.close();
+      await sleep(250);
+      const [humanA, humanB, aiResident] = seeded.shared;
+      // The credential is issued by the AI resident's own operator session: an agent is issued a runtime
+      // token by the account that owns it.
+      const runtime = await api(aiResident, 'POST', '/runtime/start', { agent_id: aiResident.agent_id, minutes: 20, max_calls: 500, scopes: ['read', 'move', 'chat', 'build'] }, CREATED);
+      recorder.equal(runtime.status, CREATED, `the AI resident's session must be issued: ${JSON.stringify(runtime.payload?.error || '')}`);
+      const ai = { token: runtime.payload?.token, agent_id: aiResident.agent_id };
+      const commonsWatcher = createSoakClient({ base, token: humanA.token, worldId: SOAK_SEAM.anchor_world, name: 'seam-commons' });
+      const highlandsWatcher = createSoakClient({ base, token: humanB.token, worldId: SOAK_SEAM.neighbour_world, name: 'seam-highlands' });
+      recorder.check((await Promise.all([commonsWatcher.connect(), highlandsWatcher.connect()])).every(Boolean), 'both sides of the seam must be observed before the crossing');
+      await sleep(limits.quiesce_ms);
+
+      // One step, paced above the server's own 120 ms movement throttle so a 429 means something else.
+      const walk = async (actor, agentId, direction) => {
+        await sleep(limits.move_pace_ms + 25);
+        return api(actor, 'POST', '/move', { agent_id: agentId, direction });
+      };
+      // Human A: one step to the edge, then the step that leaves the world.
+      recorder.equal((await walk(humanA, humanA.agent_id, 'up')).status, OK, 'the step to the edge must be accepted');
+      const crossed = await walk(humanA, humanA.agent_id, 'up');
+      recorder.equal(crossed.status, OK, `the crossing step must be accepted: ${JSON.stringify(crossed.payload?.error || '')}`);
+      recorder.equal(crossed.payload?.seam, true, 'the crossing step must report the seam it crossed');
+      recorder.equal(crossed.payload?.from_world_id, SOAK_SEAM.anchor_world, 'the crossing must name the world it left');
+      recorder.equal(crossed.payload?.world_id, SOAK_SEAM.neighbour_world, 'the crossing must name the world it entered');
+      const storedA = readAgent(humanA.agent_id);
+      recorder.equal(JSON.stringify({ world_id: storedA.world_id, x: storedA.x, y: storedA.y }),
+        JSON.stringify({ world_id: SOAK_SEAM.neighbour_world, x: SOAK_SEAM.landing.x, y: SOAK_SEAM.landing.y }),
+        "the stored row must be the neighbour's own coordinates after the crossing");
+      sharedWorld.crossings.push({ who: 'human_a', from: crossed.payload?.from_world_id, to: crossed.payload?.world_id, tile: [storedA.x, storedA.y] });
+      // Human B crosses the same seam.
+      await walk(humanB, humanB.agent_id, 'up');
+      await walk(humanB, humanB.agent_id, 'up');
+      const storedB = readAgent(humanB.agent_id);
+      recorder.equal(storedB.world_id, SOAK_SEAM.neighbour_world, 'the second human must cross the same seam');
+      sharedWorld.crossings.push({ who: 'human_b', to: storedB.world_id, tile: [storedB.x, storedB.y] });
+      // The AI resident walks to the edge of the same seam, and its steps are judged by the same rule.
+      recorder.equal((await walk(ai, ai.agent_id, 'up')).status, OK, "the AI resident's step must be accepted");
+      recorder.equal((await walk(ai, ai.agent_id, 'up')).status, OK, "the AI resident's second step must be accepted");
+      recorder.equal((await walk(ai, ai.agent_id, 'up')).status, OK, "the AI resident's third step must be accepted");
+      const aiCrossed = await walk(ai, ai.agent_id, 'up');
+      recorder.equal(aiCrossed.payload?.seam, true, 'the AI resident must cross the seam with the same rule as a human');
+      recorder.equal(readAgent(ai.agent_id).world_id, SOAK_SEAM.neighbour_world, 'and its stored row must move with it');
+      sharedWorld.crossings.push({ who: 'ai', from: aiCrossed.payload?.from_world_id, to: aiCrossed.payload?.world_id, tile: [SOAK_SEAM.landing.x, SOAK_SEAM.landing.y] });
+      // Both sides of the join saw it: the landing world received the arrival, the world left dropped it.
+      await settleUntil(() => highlandsWatcher.state().residents.has(humanA.agent_id), 'the landing side to see the human arrive');
+      await settleUntil(() => !commonsWatcher.state().residents.has(humanA.agent_id), 'the Commons side to drop the human that left');
+      recorder.check(highlandsWatcher.state().residents.get(humanA.agent_id)?.y === SOAK_SEAM.landing.y, 'the arrival frame must carry the stored tile of the world entered');
+
+      // Speaking across the join. Human A is in Highlands; the AI resident is on the other side, one
+      // world-space tile away; human B walks four tiles off the landing tile and must fall out of range.
+      for (let step = 0; step < 4; step++) await walk(humanB, humanB.agent_id, 'up');
+      const storedBfar = readAgent(humanB.agent_id);
+      recorder.equal(storedBfar.y, SOAK_SEAM.out_of_range.y, 'the second human must really be four tiles from the landing tile');
+      recorder.equal(storedBfar.world_id, SOAK_SEAM.neighbour_world, 'and still in the neighbouring world, not across another seam');
+      // Human A stays on the landing tile and the AI resident steps back across the same seam, so the
+      // two are one world-space tile apart with the boundary between them.
+      const backAcross = await walk(ai, ai.agent_id, 'down');
+      recorder.equal(backAcross.payload?.seam, true, 'the AI resident must cross back across the same seam');
+      recorder.equal(readAgent(ai.agent_id).world_id, SOAK_SEAM.anchor_world, 'and its stored row must move back with it');
+      const aiTile = readAgent(ai.agent_id);
+      // Counted in world space, not by subtracting one region's local coordinates from another's.
+      const distance = mapDistance({ world_id: aiTile.world_id, x: aiTile.x, y: aiTile.y }, { world_id: SOAK_SEAM.neighbour_world, x: SOAK_SEAM.landing.x, y: SOAK_SEAM.landing.y });
+      recorder.equal(distance, 1, 'the two are one world-space tile apart across the boundary, though their local coordinates differ by 35');
+      await sleep(1600);
+      const nearby = await api(humanA, 'POST', '/messages', { agent_id: humanA.agent_id, channel: 'nearby', text: 'Seam hello' });
+      recorder.equal(nearby.status, OK, `the nearby message must be accepted: ${JSON.stringify(nearby.payload?.error || '')}`);
+      const recipients = nearby.status === OK ? readRecipients(nearby.payload.id) : [];
+      recorder.check(recipients.includes(ai.agent_id), 'a nearby message from the far side must reach the AI resident on the near side');
+      recorder.check(!recipients.includes(humanB.agent_id), 'and must not reach a resident four world-space tiles away');
+      const aiRead = await api(ai, 'GET', `/world?world_id=${SOAK_SEAM.anchor_world}&x=${aiTile.x}&y=${aiTile.y}`);
+      recorder.check((aiRead.payload?.messages || []).some((item) => item.id === nearby.payload?.id), 'the AI resident must read that message from its own world');
+      sharedWorld.recipients.push({ id: nearby.payload?.id, reached: recipients.length, ai: recipients.includes(ai.agent_id), far: recipients.includes(humanB.agent_id) });
+
+      // Building. The AI resident's own garden accepts a placement; the same call on the map is refused.
+      const refusedOnTheMap = await api(ai, 'POST', `/agents/${ai.agent_id}/build`, { type: 'flowers', x: SOAK_SEAM.landing.x, y: SOAK_SEAM.landing.y }, null);
+      sharedWorld.refused_build.across_the_seam = refusedOnTheMap.status;
+      recorder.check(refusedOnTheMap.status >= 400, "a saved placement must be refused outside the resident's own plot, on the far side of a seam");
+      const gardenId = `home:${ai.agent_id}`;
+      const entered = await api(ai, 'POST', `/agents/${ai.agent_id}/travel`, { world_id: gardenId });
+      recorder.equal(entered.status, OK, `the AI resident must be able to enter its own garden: ${JSON.stringify(entered.payload?.error || '')}`);
+      const garden = getWorldDefinition(gardenId), built = [];
+      for (let y = 0; y < garden.rows && built.length < 3; y++) for (let x = 0; x < garden.columns && built.length < 3; x++) {
+        if (!walkable({ x, y }, garden)) continue;
+        if (Math.abs(x - garden.start.x) + Math.abs(y - garden.start.y) <= 1) continue;
+        if ((garden.portals || []).some((portal) => Math.abs(portal.x - x) + Math.abs(portal.y - y) <= 1)) continue;
+        built.push({ x, y });
+      }
+      recorder.equal(built.length, 3, "the AI resident's garden must offer buildable tiles");
+      for (const [index, tile] of built.entries()) {
+        const result = await api(ai, 'POST', `/agents/${ai.agent_id}/build`, { type: index === 1 ? 'bench' : 'flowers', x: tile.x, y: tile.y }, CREATED);
+        recorder.equal(result.status, CREATED, `the AI resident's placement ${index} must be stored: ${JSON.stringify(result.payload?.error || '')}`);
+      }
+      recorder.equal(readGarden(gardenId).length, 3, "the AI resident's garden must hold exactly the three placements it made");
+      sharedWorld.garden = { world_id: gardenId, built, rows: readGarden(gardenId) };
+      // The same placement is refused once the resident is back on the map: rights follow the stored plot.
+      await sleep(1600);
+      recorder.equal((await api(ai, 'POST', `/agents/${ai.agent_id}/travel`, { world_id: SOAK_SEAM.anchor_world })).status, OK, 'the AI resident must be able to walk back out to the Commons');
+      const refusedAtHome = await api(ai, 'POST', `/agents/${ai.agent_id}/build`, { type: 'flowers', x: built[0].x, y: built[0].y }, null);
+      sharedWorld.refused_build.on_the_map = refusedAtHome.status;
+      recorder.check(refusedAtHome.status >= 400, 'the same placement must be refused once the resident is back on the map');
+
+      // Leave all three on the far side of the seam, and remember the exact stored rows the restart
+      // below must reproduce.
+      for (const [actor, agentId] of [[humanA, humanA.agent_id], [humanB, humanB.agent_id], [ai, ai.agent_id]]) {
+        for (let step = 0; step < 8 && readAgent(agentId).world_id !== SOAK_SEAM.neighbour_world; step++) {
+          await walk(actor, agentId, 'up');
+        }
+      }
+      const stranded = seeded.shared.map((item) => readAgent(item.agent_id)).map((row) => ({ world_id: row.world_id, x: row.x, y: row.y }));
+      sharedWorld.stranded = stranded;
+      recorder.equal(stranded.filter((row) => row.world_id === SOAK_SEAM.neighbour_world).length, 3, 'all three residents must be on the far side of the seam before the restart');
+      await commonsWatcher.close();
+      await highlandsWatcher.close();
+      sharedWorld.residents = seeded.shared.map((item) => item.agent_id);
+      sharedWorld.ai = ai.agent_id;
+    }
+
     // ---- Phase 5: a full process restart --------------------------------------------------------
     restartSnapshot = JSON.stringify(readStored());
     await stopServer();
     await startServer();
     recorder.equal(JSON.stringify(readStored()), restartSnapshot, 'a full process restart must preserve every avatar tile and placed object');
+    if (sharedWorld?.garden) {
+      // The shared world after the restart: the three residents are on the stored tiles they were left
+      // on — on the far side of the seam — and the AI resident's garden still holds its three placements.
+      const after = sharedWorld.residents.map((agentId) => { const row = readAgent(agentId); return { world_id: row.world_id, x: row.x, y: row.y }; });
+      recorder.equal(JSON.stringify(after), JSON.stringify(sharedWorld.stranded),
+        'the restart must leave the three shared-world residents on the stored tiles they were left on');
+      recorder.equal(after.every((row) => row.world_id === SOAK_SEAM.neighbour_world), true,
+        'and all three must still be on the far side of the seam, not returned to the world they started in');
+      const stored = readGarden(sharedWorld.garden.world_id).map((row) => `${row.x},${row.y},${row.type}`).sort();
+      recorder.equal(stored.length, 3, 'the AI resident\'s garden must still hold its three placements after the restart');
+      recorder.equal(JSON.stringify(stored), JSON.stringify(sharedWorld.garden.built.map((tile, index) => `${tile.x},${tile.y},${index === 1 ? 'bench' : 'flowers'}`).sort()), 'and they must be the same three placements, at the same tiles');
+    }
     for (const client of clients) await client.close();
     const revived = clients.slice(0, 2);
     recorder.check((await Promise.all(revived.map((client) => client.reconnect()))).every(Boolean), 'subscriptions must open again against the restarted process');
@@ -753,7 +944,17 @@ async function run() {
       client_buffer_overflows: clients.filter((client) => client.state().bufferOverflowed).length,
       delivery_latency_ms: { samples: allLatency.length, ...Object.fromEntries(['p50', 'p95', 'p99'].map((key, index) => [key, percentile(allLatency, [0.5, 0.95, 0.99][index])])), max: allLatency.length ? Math.max(...allLatency) : null },
       live_at_quiescence: compared,
+      residents_observed_to_leave_the_world: leftTheWorldCount,
     },
+    shared_world: sharedWorld ? {
+      note: 'Two humans and one AI resident crossed the Commons/Highlands seam with no portal, spoke across it, built in the AI resident\'s own garden and were found again after the restart. Every claim was checked against the stored row.',
+      crossings: sharedWorld.crossings,
+      nearby_message: sharedWorld.recipients,
+      refused_placements: sharedWorld.refused_build,
+      garden: sharedWorld.garden ? { world_id: sharedWorld.garden.world_id, placements: sharedWorld.garden.rows.length } : null,
+      stranded_after_restart: sharedWorld.stranded,
+      limits: { anchor_world: SOAK_SEAM.anchor_world, neighbour_world: SOAK_SEAM.neighbour_world, landing: SOAK_SEAM.landing },
+    } : 'not run',
     writes: {
       accepted_steps: [...accepted.values()].reduce((sum, list) => sum + list.length, 0),
       public_messages: messages.length,
@@ -768,6 +969,7 @@ async function run() {
     },
     correctness: {
       subscribers_compared: compared,
+      residents_that_left_the_world: leftTheWorldCount,
       ordering_violations: recorder.failures.filter((line) => line.includes('superseded')).length,
       message_delivery: 'every open subscriber received every stored public message once, in stored order',
       reconnect_divergence: recorder.failures.filter((line) => line.includes('reconciling')).length,
@@ -797,6 +999,10 @@ async function run() {
   console.log(`  requests    ${report.requests.attempts} attempts · ${report.requests.accepted} accepted · ${report.requests.throttled} throttled · ${report.requests.refused} refused`);
   console.log(`  writes      ${report.writes.accepted_steps} accepted steps, ${report.writes.public_messages} public messages, ${report.writes.garden_builds} garden builds over ${report.writes.phase_ms} ms = ${report.writes.per_second} row-writing requests/s`);
   console.log('  channel     server-side hub counters are not exposed on /operations; delivery is counted on the client side');
+  if (report.shared_world && report.shared_world !== 'not run') {
+    console.log(`  shared      ${report.shared_world.crossings.length} seam crossings (${report.shared_world.crossings.map((item) => item.who).join(', ')}), ${report.shared_world.nearby_message.length} nearby message(s), ${report.shared_world.garden?.placements ?? 0} placements in the AI resident's garden`);
+    console.log(`  restart     the three residents were left on ${JSON.stringify(report.shared_world.stranded_after_restart?.[0])} and the restart preserved them`);
+  }
   console.log(`  checks      ${report.correctness.checks_passed} passed, ${report.failures.length} failed`);
   for (const failure of report.failures.slice(0, 12)) console.log(`    FAIL ${failure}`);
   for (const defect of report.defects) console.log(`  DEFECT      ${defect.id}: ${[].concat(defect.evidence).join(' | ')}`);
@@ -807,7 +1013,7 @@ async function run() {
     const reader = new DatabaseSync(processState.database, { readOnly: true });
     try {
       return {
-        agents: reader.prepare('SELECT id,world_id,x,y FROM agents WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id').all(JSON.stringify(seeded.writers.map((item) => item.agent_id))),
+        agents: reader.prepare('SELECT id,world_id,x,y FROM agents WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id').all(JSON.stringify(trackedAgentIds())),
         // Insert order is publish order: the channel publishes inside the same synchronous handler
         // that inserts the row, so `rowid` is the order every subscriber must reproduce.
         messages: reader.prepare("SELECT id FROM messages WHERE world_id='commons' AND channel='public' AND text LIKE 'Soak %' ORDER BY rowid").all(),
@@ -822,11 +1028,15 @@ async function run() {
     const reader = new DatabaseSync(processState.database, { readOnly: true });
     try { return reader.prepare('SELECT world_id,x,y FROM agents WHERE id=?').get(agentId); } finally { reader.close(); }
   }
+  function readRecipients(messageId) {
+    const reader = new DatabaseSync(processState.database, { readOnly: true });
+    try { return JSON.parse(reader.prepare('SELECT recipients FROM messages WHERE id=?').get(messageId)?.recipients || '[]'); } finally { reader.close(); }
+  }
   function readStored() {
     const reader = new DatabaseSync(processState.database, { readOnly: true });
     try {
       return {
-        agents: reader.prepare('SELECT id,world_id,x,y FROM agents WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id').all(JSON.stringify(seeded.writers.map((item) => item.agent_id))),
+        agents: reader.prepare('SELECT id,world_id,x,y FROM agents WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id').all(JSON.stringify(trackedAgentIds())),
         objects: reader.prepare('SELECT world_id,type,x,y FROM world_objects ORDER BY world_id,y,x').all(),
       };
     } finally { reader.close(); }

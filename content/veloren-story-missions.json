@@ -1,0 +1,121 @@
+{
+  "format": "harr-missions-v1",
+  "note": "Twelve small, peaceful missions for Harr, two for each principle of the charter. Each step is one of five recorded facts (resident.met, landmark.visited, pantry.delivered, account.linked, landmark.together) and a count of DISTINCT targets, so the same person or place is never counted twice. Missions only point the way: they give no rewards and no rank, and nobody can miss one. Three are shown each day, in catalogue order, by the host computer's date.",
+  "missions": [
+    {
+      "id": "next-reader", "principle": "scholarship", "title": "A page for the next reader",
+      "blurb": "Write down what you learn so the next person starts further on.",
+      "steps": [
+        { "kind": "landmark.visited", "count": 1, "label": "Stand a few seconds in a discovery place from the library." },
+        { "kind": "resident.met", "count": 2, "label": "Greet two villagers and ask what they are working on." },
+        { "kind": "landmark.visited", "count": 3, "label": "Add two more places to the library." }
+      ]
+    },
+    {
+      "id": "insight-for-all", "principle": "research", "title": "Insight for everyone",
+      "blurb": "Every find teaches the whole village something new.",
+      "steps": [
+        { "kind": "landmark.visited", "count": 2, "label": "Find two places; each one adds insight for all." },
+        { "kind": "landmark.together", "count": 1, "label": "Stand at a building site with neighbours and watch the work." },
+        { "kind": "resident.met", "count": 4, "label": "Ask four different villagers what the village is learning." },
+        { "kind": "landmark.visited", "count": 5, "label": "Bring the library to five places in all." }
+      ]
+    },
+    {
+      "id": "many-hands", "principle": "cooperation", "title": "Many hands",
+      "blurb": "Big works need a crew. Come and stand with it.",
+      "steps": [
+        { "kind": "resident.met", "count": 3, "label": "Meet three builders, makers or neighbours near the plaza." },
+        { "kind": "landmark.together", "count": 1, "label": "Stand with a crew at a building site." },
+        { "kind": "landmark.together", "count": 2, "label": "Visit a second site and stand with its crew too." }
+      ]
+    },
+    {
+      "id": "warm-welcome", "principle": "growth", "title": "A warm welcome",
+      "blurb": "Harr grows when newcomers feel at home.",
+      "steps": [
+        { "kind": "resident.met", "count": 5, "label": "Introduce yourself to five villagers." },
+        { "kind": "pantry.delivered", "count": 1, "label": "Share a first meal from the free pantry." },
+        { "kind": "account.linked", "count": 1, "label": "Keep your progress in NemoWorld by linking your account with Lyra." },
+        { "kind": "landmark.together", "count": 1, "label": "Join neighbours at a place in the village." }
+      ]
+    },
+    {
+      "id": "edge-of-the-valley", "principle": "discovery", "title": "To the edge of the valley",
+      "blurb": "The valley is full of things worth finding.",
+      "steps": [
+        { "kind": "landmark.visited", "count": 1, "label": "Find your first discovery place." },
+        { "kind": "landmark.visited", "count": 4, "label": "Find four places in all, a few steps from the plaza each." },
+        { "kind": "landmark.visited", "count": 7, "label": "Seven places make a studious valley." }
+      ]
+    },
+    {
+      "id": "share-the-table", "principle": "abundance", "title": "Share the table",
+      "blurb": "There is enough. The pantry is open to everyone.",
+      "steps": [
+        { "kind": "pantry.delivered", "count": 1, "label": "Take something from the pantry; ask Selene for an apple." },
+        { "kind": "resident.met", "count": 3, "label": "Tell three villagers what you ate; farmers love to hear." },
+        { "kind": "pantry.delivered", "count": 2, "label": "Come back for a second helping on another visit." }
+      ]
+    },
+    {
+      "id": "catalogue-keeper", "principle": "scholarship", "title": "The catalogue keeper",
+      "blurb": "A good catalogue is a gift to every scholar after you.",
+      "steps": [
+        { "kind": "landmark.visited", "count": 5, "label": "Record five places for the library." },
+        { "kind": "account.linked", "count": 1, "label": "Link your account so your name stays on your pages." },
+        { "kind": "resident.met", "count": 6, "label": "Compare notes with six different villagers." },
+        { "kind": "landmark.visited", "count": 8, "label": "Record eight places in all." }
+      ]
+    },
+    {
+      "id": "field-season", "principle": "research", "title": "Field season",
+      "blurb": "Careful looking, again and again, is how research grows.",
+      "steps": [
+        { "kind": "landmark.visited", "count": 3, "label": "Visit three discovery places and read their field notes." },
+        { "kind": "landmark.together", "count": 2, "label": "Stand with neighbours at two different places." },
+        { "kind": "landmark.visited", "count": 6, "label": "Extend the survey to six places." },
+        { "kind": "resident.met", "count": 8, "label": "Share what you found with eight villagers." }
+      ]
+    },
+    {
+      "id": "good-neighbours", "principle": "cooperation", "title": "Good neighbours",
+      "blurb": "A village is the people who keep each other company.",
+      "steps": [
+        { "kind": "resident.met", "count": 4, "label": "Say hello to four neighbours." },
+        { "kind": "landmark.together", "count": 1, "label": "Stand with others at a shared place." },
+        { "kind": "pantry.delivered", "count": 1, "label": "Share a snack from the pantry beside a neighbour." },
+        { "kind": "landmark.together", "count": 3, "label": "Visit three shared places in the village." }
+      ]
+    },
+    {
+      "id": "rising-harr", "principle": "growth", "title": "Rising Harr",
+      "blurb": "Harr is never finished. Come and see what is rising.",
+      "steps": [
+        { "kind": "resident.met", "count": 2, "label": "Ask two builders what is going up next." },
+        { "kind": "landmark.visited", "count": 2, "label": "Find two places where the next homes could stand." },
+        { "kind": "landmark.together", "count": 2, "label": "Stand at two building sites." },
+        { "kind": "account.linked", "count": 1, "label": "Link your account so the village remembers you." }
+      ]
+    },
+    {
+      "id": "whole-valley", "principle": "discovery", "title": "The whole valley",
+      "blurb": "Ten places, ten pages, one complete catalogue.",
+      "steps": [
+        { "kind": "landmark.visited", "count": 3, "label": "Find three places." },
+        { "kind": "landmark.visited", "count": 6, "label": "Find six places." },
+        { "kind": "landmark.visited", "count": 10, "label": "Complete the catalogue: all ten places." }
+      ]
+    },
+    {
+      "id": "orchard-and-oven", "principle": "abundance", "title": "Orchard and oven",
+      "blurb": "What the fields give, the village shares.",
+      "steps": [
+        { "kind": "pantry.delivered", "count": 2, "label": "Share two helpings from the pantry." },
+        { "kind": "resident.met", "count": 6, "label": "Thank six villagers for the fields, tools and lamps." },
+        { "kind": "pantry.delivered", "count": 3, "label": "Share a third helping with a friend." },
+        { "kind": "account.linked", "count": 1, "label": "Link your account so your meals are kept in your story." }
+      ]
+    }
+  ]
+}

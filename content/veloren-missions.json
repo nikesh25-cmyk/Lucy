@@ -1,0 +1,78 @@
+{
+  "format": "veloren-missions-v1",
+  "note": "Harr's missions. Each one is checked only against facts the game server or NemoWorld recorded for that player: signed events, an acknowledged pantry delivery, the practice quest, or the account link. Practice missions award nothing; nothing here gives coins, items or power. Text stays in the vocabulary of care, study, building and gratitude.",
+  "missions": [
+    {
+      "id": "meet",
+      "title": "Meet five villagers",
+      "short": "Stand beside five villagers around the plaza, the workshop and the fields.",
+      "principle": "cooperation",
+      "purpose": "Knowing your neighbours is the first step to working with them.",
+      "how": "Walk up to the people around the plaza, the workshop and the fields and stand beside them for a moment.",
+      "steps": [{ "kind": "resident.met", "count": 5, "distinct": "resident" }]
+    },
+    {
+      "id": "meal",
+      "title": "Share a meal",
+      "short": "Whisper me: take apple. The pantry is free for everyone.",
+      "principle": "abundance",
+      "purpose": "The pantry is free for everyone; a shared meal is the simplest kind of welcome.",
+      "how": "Whisper Selene: take apple. The pantry is free for everyone.",
+      "steps": [{ "kind": "pantry.taken", "count": 1 }]
+    },
+    {
+      "id": "find",
+      "title": "Find a place for the library",
+      "short": "Whisper me: library, then walk to {place} and stay a few seconds.",
+      "principle": "discovery",
+      "purpose": "Every place recorded is a page the whole village can read.",
+      "how": "Whisper Selene: library, then walk to {place} and stay a few seconds.",
+      "steps": [{ "kind": "landmark.visited", "prefix": "disc-", "count": 1, "distinct": "landmark" }]
+    },
+    {
+      "id": "help",
+      "title": "Lend a hand to the builders",
+      "short": "Whisper me: works, then stand with the builders at a site that waits for a crew.",
+      "principle": "cooperation",
+      "purpose": "A stage is built only while a crew stands at the site; a visitor can be part of that crew.",
+      "how": "Whisper Selene: works. When a stage waits for a crew, stand with the builders at its site until it is built; the village records who helped.",
+      "steps": [{ "kind": "project.helped", "count": 1, "distinct": "landmark" }]
+    },
+    {
+      "id": "survey",
+      "title": "Take the Quiet Survey with Lyra",
+      "short": "Stand beside Lyra at the house and she will walk the survey with you.",
+      "principle": "research",
+      "purpose": "Walking a survey with a scholar is how a practice becomes a record.",
+      "how": "Stand beside Lyra at the house; she will walk the field survey with you. It is a practice and awards nothing.",
+      "steps": [{ "kind": "quest.quiet-survey", "count": 1 }]
+    },
+    {
+      "id": "link",
+      "title": "Keep your progress in NemoWorld",
+      "short": "Whisper Lyra: link my account. She sends a private code.",
+      "principle": "scholarship",
+      "purpose": "A linked character lets the village remember what you did, not only what you said.",
+      "how": "Whisper Lyra: link my account. She sends a private code to enter on the NemoWorld link page.",
+      "steps": [{ "kind": "linked", "count": 1 }]
+    },
+    {
+      "id": "discover3",
+      "title": "Add three pages to the library",
+      "short": "Visit places from the library list; three pages in all.",
+      "principle": "discovery",
+      "purpose": "Every find adds insight for the whole village and brings the next technology closer.",
+      "how": "Whisper Selene: library for hints. Three different places is enough.",
+      "steps": [{ "kind": "landmark.visited", "prefix": "disc-", "count": 3, "distinct": "landmark" }]
+    },
+    {
+      "id": "together",
+      "title": "Walk with a villager to a place",
+      "short": "Stand beside a villager inside a landmark for a few seconds.",
+      "principle": "growth",
+      "purpose": "The village grows by doing things together, not by watching.",
+      "how": "Stand beside a resident inside a landmark for a few seconds; the game records that you were there together.",
+      "steps": [{ "kind": "landmark.together", "count": 1, "distinct": "landmark" }]
+    }
+  ]
+}

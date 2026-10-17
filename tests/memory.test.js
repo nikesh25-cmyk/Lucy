@@ -225,7 +225,7 @@ test('the operator can inspect, correct, export and delete memory', async (t) =>
   const afterDelete = memory(f, agent);
   assert.deepEqual(afterDelete.facts.map((fact) => fact.id), [purpose.fact.id]);
   assert.equal(afterDelete.counts.stored, 1);
-  assert.equal(validateDatabase(f.database).schema_version, 24);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
   assert.equal(verifyMemoryRecords(f.platform.db), true);
 });
 
@@ -254,10 +254,10 @@ test('memory survives a restart and a backup/restore round trip without replayin
 
   const backup = join(f.directory, 'memory-backup.sqlite');
   backupDatabase(restarted.db, backup);
-  assert.equal(validateDatabase(backup).schema_version, 24);
+  assert.equal(validateDatabase(backup).schema_version, 27);
   const restoreTarget = join(f.directory, 'restored.sqlite');
   const restored = restoreDatabase(backup, restoreTarget);
-  assert.equal(restored.schema_version, 24);
+  assert.equal(restored.schema_version, 27);
   const reopened = new Platform(restoreTarget, f.clock); t.after(() => reopened.close());
   assert.equal(reopened.memory(reopened.authenticate(f.credentials.alice.token), { agent_id: agent.id }).counts.active, 2);
   assert.equal(reopened.get('SELECT COUNT(*) AS n FROM frontier_blocks').n, blocks);
@@ -291,13 +291,13 @@ test('a pre-change schema 20 database migrates forward, keeps its records and va
   const legacy = join(f.directory, 'schema-twenty.sqlite');
   backupDatabase(f.platform.db, legacy);
   const older = new Platform(legacy, f.clock);
-  older.db.exec("PRAGMA foreign_keys=OFF; DROP TRIGGER resident_memory_validate_insert; DROP TRIGGER resident_memory_identity_immutable; DROP TABLE resident_memory; PRAGMA user_version=20");
+  older.db.exec("PRAGMA foreign_keys=OFF; DROP VIEW IF EXISTS karma_service_rules; DROP VIEW IF EXISTS karma_source_events; DROP TABLE IF EXISTS karma_receipts; DROP TABLE IF EXISTS karma_purchases; DROP TABLE IF EXISTS shop_purchases; DROP TRIGGER resident_memory_validate_insert; DROP TRIGGER resident_memory_identity_immutable; DROP TABLE resident_memory; PRAGMA user_version=20");
   assert.equal(older.get('PRAGMA user_version').user_version, 20);
   assert.equal(validateDatabase(legacy).schema_version, 20);
   older.close();
   const migrated = new Platform(legacy, f.clock); t.after(() => migrated.close());
-  assert.equal(migrated.get('PRAGMA user_version').user_version, 24);
-  assert.equal(validateDatabase(legacy).schema_version, 24);
+  assert.equal(migrated.get('PRAGMA user_version').user_version, 27);
+  assert.equal(validateDatabase(legacy).schema_version, 27);
   assert.equal(migrated.authenticate(receipt.token, 'read').agent.id, agent.id, 'existing credentials still resolve');
   assert.equal(migrated.memory(migrated.authenticate(f.credentials.alice.token), { agent_id: agent.id }).counts.stored, 0);
   assert.equal(migrated.verifyAudit(), true);
@@ -311,7 +311,7 @@ test('a tampered memory row fails validation instead of passing a backup', async
   const worker = f.platform.authenticate(runtime.token, 'read');
   selectBuilder(f, agent); const [saved] = builderReceipt(f, agent);
   const proposal = f.tx('memoryPropose', worker, { kind: 'activity', attribute: 'calling_objective', value: 'Placed one saved block.' });
-  assert.equal(validateDatabase(f.database).schema_version, 24);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
 
   // A proposal that promotes itself to an approved fact has no operator decision, so it fails.
   f.platform.run("UPDATE resident_memory SET state='active' WHERE id=?", proposal.proposal.id);

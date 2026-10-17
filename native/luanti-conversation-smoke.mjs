@@ -5,18 +5,17 @@
 import {mkdtemp, mkdir, cp, writeFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {spawn} from 'node:child_process';
 import {randomBytes} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {Platform} from '../src/platform.js';
 import {createApp} from '../server.js';
 import {createBridge} from './bridge.mjs';
+import {startLoopbackSmokeEngine} from './smoke-process.mjs';
 
 const binary = process.env.LUANTI_BIN;
 if (!binary) throw new Error('Set LUANTI_BIN to the verified Luanti 5.17.0 executable.');
 const root = await mkdtemp(join(tmpdir(), 'nemo-luanti-talk-'));
 let platform, app, bridge, engine;
-const settle = ms => new Promise(r => setTimeout(r, ms));
 try {
   platform = new Platform(join(root, 'nemo.sqlite'));
   const login = await platform.register({name:'Native talk operator',email:'native-talk@example.org',password:'disposable-password-2026',consent:true});
@@ -50,16 +49,13 @@ try {
   const world = join(user, 'worlds', 'slice'); await mkdir(world, {recursive:true});
   await writeFile(join(world, 'world.mt'), 'gameid = nemoworld\nbackend = sqlite3\nmg_name = singlenode\n');
   const config = join(user, 'minetest.conf');
-  await writeFile(config, `secure.enable_security = true\nsecure.http_mods = nemo\nnemo_bridge_url = ${bridgeUrl}\nnemo_bridge_key = ${modKey}\nmg_name = singlenode\nbind_address = 127.0.0.1\nport = 39336\nserver_announce = false\n`, {mode:0o600});
   const issued = await fetch(bridgeUrl + '/pair/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:login.token, agent_id:human.id})}).then(r => r.json());
   assert.ok(issued.code);
   await writeFile(join(game, 'mods', 'nemo_probe', 'init.lua'), `local code = ${JSON.stringify(issued.code)}\ncore.register_on_mods_loaded(function()\n core.after(1,function() core.registered_chatcommands.nemo_pair.func('Probe',code) end)\n core.after(5,function() core.registered_chatcommands.nemo_chat.func('Probe','') end)\n core.after(8,function() core.registered_chatcommands.nemo_tell.func('Probe',${JSON.stringify(bob.id + ' A private reply from the native client.')}) end)\n core.after(10,function() core.registered_chatcommands.nemo_say.func('Probe','A public hello from the native client.') end)\n core.after(14,function() core.log('action','NEMO_TALK_DONE') end)\nend)\n`);
-  let logs = '';
-  engine = spawn(binary, ['--server','--world',world,'--config',config,'--logfile',''], {env:{...process.env, LUANTI_USER_PATH:user}, stdio:['ignore','pipe','pipe']});
-  engine.stdout.on('data', b => { logs += b.toString(); }); engine.stderr.on('data', b => { logs += b.toString(); });
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline && !logs.includes('NEMO_TALK_DONE')) await settle(100);
-  engine.kill('SIGINT'); await new Promise(r => engine.once('exit', r)); engine = null;
+  engine = await startLoopbackSmokeEngine(binary, ['--server','--world',world,'--config',config,'--logfile',''], {configPath:config,configText:port=>`secure.enable_security = true\nsecure.http_mods = nemo\nnemo_bridge_url = ${bridgeUrl}\nnemo_bridge_key = ${modKey}\nmg_name = singlenode\nbind_address = 127.0.0.1\nport = ${port}\nserver_announce = false\n`,env:{...process.env, LUANTI_USER_PATH:user},secrets:[modKey,login.token,bobLogin.token,issued.code]});
+  await engine.waitForMarker('NEMO_TALK_DONE',{timeoutMs:30000});
+  await engine.stop();
+  const logs=engine.logs; engine=null;
   // A bridge connected to an older account-scoped world API must withhold incoming private
   // messages. The avatar-scoped API explicitly attests its filter before native may show them.
   const scopeView = await fetch(`${api}/api/v1/world?world_id=frontier:0:0&agent_id=${human.id}`, {headers:{Authorization:`Bearer ${login.token}`}}).then(r=>r.json());
@@ -84,7 +80,7 @@ try {
   assert.equal(JSON.stringify(web).includes(bobLogin.token), false, 'no credential appears in the conversation payload');
   process.stdout.write('PASS: real Luanti 5.17 native conversation -> avatar-scoped incoming chat when attested, private reply and public say saved, recipient isolated, no token leaked\n');
 } finally {
-  if (engine) { engine.kill('SIGINT'); await new Promise(r => { if (engine.exitCode !== null) r(); else engine.once('exit', r); }); }
+  if (engine) await engine.stop();
   if (bridge) await new Promise(r => bridge.close(r));
   if (app) { await app.stopWorkers(); await new Promise(r => { app.server.close(r); app.server.closeAllConnections(); }); }
   platform?.close();

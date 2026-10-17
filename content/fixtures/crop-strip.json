@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "id": "crop-strip",
+  "kind": "fixture",
+  "label": "Crop Strip",
+  "since": "1.1.0",
+  "order": 5,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "farm",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "fixtures",
+    "object": "farm",
+    "footprint": "open",
+    "scenery_class": "flat",
+    "blocks_route": false,
+    "arrangement": {
+      "kind": "strip",
+      "axis": "x",
+      "spacing": 2,
+      "count": 4,
+      "from": {
+        "x": 6,
+        "y": 18
+      }
+    },
+    "tiles": [
+      [
+        6,
+        18
+      ],
+      [
+        8,
+        18
+      ],
+      [
+        10,
+        18
+      ],
+      [
+        12,
+        18
+      ]
+    ],
+    "owner": "channel-landing-venue",
+    "placement": {
+      "on": "ground"
+    },
+    "provenance": {
+      "derived_from": "content/furniture/farm.json",
+      "reuse": "the sealed furniture builder is drawn; this fixture adds no asset and no geometry"
+    }
+  },
+  "notes": [
+    "Four raising beds along the south strip. A farm is a flat, so the last bed may stand in the plaza band and stay walkable."
+  ]
+}

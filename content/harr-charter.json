@@ -1,0 +1,22 @@
+{
+  "format": "harr-charter-v1",
+  "name": "The Harr Charter",
+  "purpose": "Harr is a village of scholars, makers and neighbours who show that people can learn together, build together and share what they have. We measure progress in knowledge found, things built, food shared and people welcomed. Nobody here is made to compete, to hurt or to take from another.",
+  "principles": [
+    { "id": "scholarship", "name": "Scholarship", "line": "We write down what we learn so the next person starts further on." },
+    { "id": "research", "name": "Research", "line": "Every find and every finished building teaches the village something. Insight turns into new knowledge for everyone." },
+    { "id": "cooperation", "name": "Cooperation", "line": "Big works need many hands. A stage is built only when a crew stands together." },
+    { "id": "growth", "name": "Growth", "line": "Harr is never finished: new homes, workshops and farms keep rising." },
+    { "id": "discovery", "name": "Discovery", "line": "The valley is full of things worth finding. Finding one adds a page for all." },
+    { "id": "abundance", "name": "Abundance", "line": "There is enough. The pantry is open to everyone and is restocked by the farms." }
+  ],
+  "goals": [
+    { "id": "homes", "title": "A home for every neighbour", "measure": "projects_done_of", "of": ["cottage-1", "cottage-2", "cottage-3"], "why": "Growth and cooperation: three cottages built by a crew." },
+    { "id": "water", "title": "Clear water on the square", "measure": "project_done", "project": "well", "why": "The first public work, and the one everything else grew from." },
+    { "id": "market", "title": "A roofed market for all", "measure": "project_done", "project": "market-hall", "why": "Abundance: a place to share what the village makes." },
+    { "id": "catalogue", "title": "Catalogue the valley", "measure": "places_found", "target": 10, "why": "Discovery: every place recorded in the Harr Library." },
+    { "id": "feast", "title": "A hundred portions shared", "measure": "meals", "target": 100, "why": "Abundance: food given freely from the pantry." },
+    { "id": "rhythm", "title": "Keep the village rhythm", "measure": "events_held", "target": 30, "why": "Community: market hours, story circles and festivals held together." },
+    { "id": "knowledge", "title": "Learn ten new things", "measure": "techs", "target": 10, "why": "Research and innovation: every technology the village has learned." }
+  ]
+}

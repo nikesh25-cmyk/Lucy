@@ -1,0 +1,58 @@
+{
+  "testedAt": "2026-10-15T06:34:45.458Z",
+  "os": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "25.6.0"
+  },
+  "nodeVersion": "v22.23.1",
+  "steps": [
+    {
+      "step": "extraction",
+      "status": "PASS",
+      "detail": "Staged to /var/folders/4h/pm9tx8257t1445dr5c4xvhym0000gn/T/nemoworld-fresh-stage-YmEMAZ"
+    },
+    {
+      "step": "start_server",
+      "status": "PASS",
+      "detail": "Server ready at http://127.0.0.1:49848"
+    },
+    {
+      "step": "first_admin_registration",
+      "status": "PASS",
+      "detail": "Registered Elena Rostova as admin"
+    },
+    {
+      "step": "ui_inspection",
+      "status": "PASS",
+      "detail": "Captured screenshot /Users/nikesh/Documents/Codex/2026-10-11/i-ve-prepared-automatic-mac-setup/work/antigravity-review/docs/rehearsal/rehearsal-fresh-landing.png"
+    },
+    {
+      "step": "save_change",
+      "status": "PASS",
+      "detail": "Created agent Elena Companion"
+    },
+    {
+      "step": "verify_persistence",
+      "status": "PASS",
+      "detail": "Account and agent verified byte-for-byte across restart"
+    }
+  ],
+  "failuresAndRecovery": [
+    {
+      "scenario": "occupied_port_without_fallback",
+      "expected": "Non-zero exit code with EADDRINUSE or address in use error",
+      "actualExitCode": 1,
+      "actualOutput": "(node:26025) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nlisten EADDRINUSE: address already in use 127.0.0.1:49884",
+      "handledCleanly": true
+    },
+    {
+      "scenario": "unwritable_data_directory",
+      "expected": "Non-zero exit code with EACCES or permission error",
+      "actualExitCode": 1,
+      "actualOutput": "EACCES: permission denied, open '/var/folders/4h/pm9tx8257t1445dr5c4xvhym0000gn/T/nemoworld-unwritable-2x8vto/data/server.lock'\n(node:26028) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)",
+      "handledCleanly": true
+    }
+  ],
+  "verdict": "SCRIPTED SERVER BOOTSTRAP VERIFIED. The Mac launcher and browser account/play journey were not exercised."
+}

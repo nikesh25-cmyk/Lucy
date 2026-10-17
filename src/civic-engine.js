@@ -409,7 +409,8 @@ export const civicMethods={
   // each annotated with the replacement country ambassador it is mapped to. New conversations are
   // read from the ambassador store; the historic store is returned separately as legacy_conversations.
   mayors(actor,input={}){
-    this.tickMayors();
+    // Observing a guide must not advance its patrol. The server's scheduled tick owns that write,
+    // including when one stitched-map observation reads several neighbouring worlds.
     const rows=this.all('SELECT * FROM npc_mayors ORDER BY region_id');
     const residents=rows.map(mayor=>{
       const region=REGIONS.find(region=>region.id===mayor.region_id);

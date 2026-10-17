@@ -275,6 +275,16 @@ or withhold backups; and stop, restart or repoint the service. The hash chains p
 application* that rows were not edited — they are not tamper-proof against the operator of the machine
 (`docs/COINS.md:25`, `docs/ARCHITECTURE.md:63`, `docs/OPERATIONS.md:317-323`).
 
+**The resident vault (schema 25) narrows this, but does not remove it.** A resident's private notes
+(`docs/VAULT.md`) are stored only as AES-256-GCM ciphertext, so the database file, a plaintext export
+or a plaintext backup alone reveal no note. For a *server-sealed* vault the data key is wrapped under a
+master key held in a separate owner-only file; whoever holds both the database and that file, or the
+running process, can still read it, and whoever holds a resident's runtime credential can read it
+through the API while the credential lasts. The operator who mints that credential is therefore not
+excluded from a sealed vault. A *resident-held* vault is different: the server stores only the
+ciphertext and a key check, never the key, so neither the operator nor the host can read it, and a lost
+key makes it unrecoverable. In both modes the operator session can only see counts and erase.
+
 **Other accepted risks.**
 
 | Risk | Why it remains |

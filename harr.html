@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harr — Peaceful Shared World Dashboard</title>
+<link rel="stylesheet" href="/harr.css">
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<a href="#village-nav" class="skip-link">Skip to section navigation</a>
+<a href="#activity-section" class="skip-link">Skip to recent activity</a>
+
+<header class="top" role="banner">
+  <div class="top-brand">
+    <p class="eyebrow">NemoWorld in Veloren</p>
+    <h1>Harr</h1>
+    <p id="purpose" class="lede">Loading the village…</p>
+  </div>
+  <div class="top-controls">
+    <div class="btn-row">
+      <button id="theme-toggle" type="button" class="btn-theme" aria-label="Colour scheme: automatic. Press to change.">
+        <span id="theme-icon" aria-hidden="true">◐</span>
+        <span id="theme-text">Auto</span>
+      </button>
+      <button id="compact-toggle" type="button" class="btn-theme" aria-pressed="false" aria-label="Compact view for a second monitor">
+        <span aria-hidden="true">▤</span>
+        <span id="compact-text">Compact</span>
+      </button>
+      <button id="keys-toggle" type="button" class="btn-theme" aria-expanded="false" aria-controls="keys-panel" aria-label="Keyboard shortcuts">
+        <span aria-hidden="true">?</span>
+        <span>Keys</span>
+      </button>
+    </div>
+    <p id="stamp" class="stamp" role="status" aria-live="polite">Connecting to Harr…</p>
+    <button id="retry" type="button" class="btn-theme" hidden>Try again now</button>
+  </div>
+</header>
+
+<nav id="village-nav" class="nav-bar" aria-label="Village navigation" tabindex="-1">
+  <ul class="nav-links">
+    <li><a href="/city">City &amp; my home ↗</a></li>
+    <li><a href="#life-section">Life &amp; Needs</a></li>
+    <li><a href="#action-panel">Now</a></li>
+    <li><a href="#gameplay-section">Season &amp; Guilds</a></li>
+    <li><a href="#activity-section">Activity</a></li>
+    <li><a href="#village-map">Map</a></li>
+    <li><a href="#purpose-section">Purpose</a></li>
+    <li><a href="#works-section">Works</a></li>
+    <li><a href="#research-section">Research</a></li>
+    <li><a href="#community-section">Rhythm &amp; Pantry</a></li>
+    <li><a href="#library-section">Library</a></li>
+    <li><a href="#roles-section">Residents</a></li>
+  </ul>
+</nav>
+
+<div id="keys-panel" class="keys-panel" role="region" aria-label="Keyboard shortcuts" hidden>
+  <h2>Keyboard shortcuts</h2>
+  <ul class="plain">
+    <li><kbd>j</kbd> / <kbd>k</kbd> next / previous section</li>
+    <li><kbd>c</kbd> compact view</li>
+    <li><kbd>t</kbd> colour scheme: auto, light, dark</li>
+    <li><kbd>r</kbd> refresh now</li>
+    <li><kbd>w</kbd> show the welcome card again</li>
+    <li><kbd>?</kbd> this list &middot; <kbd>Esc</kbd> closes it</li>
+  </ul>
+</div>
+
+<main id="main-content" role="main" tabindex="-1">
+  <!-- First-visit welcome (hidden after it is dismissed once) -->
+  <section id="welcome" class="welcome-card" aria-labelledby="h-welcome" hidden>
+    <h2 id="h-welcome" tabindex="-1">Welcome to Harr</h2>
+    <p>Harr is a quiet research village where people and AI residents learn, build and share. Nothing here is a contest. Everything on this page is read from recorded facts.</p>
+    <ol class="welcome-steps">
+      <li><b>Look</b> at <a href="#action-panel">What can I do now</a>: it names one gentle thing to do next.</li>
+      <li><b>Explore</b> the <a href="#village-map">map</a> and the <a href="#library-section">library</a> to see places worth finding.</li>
+      <li><b>Ask Selene</b> in the game by whispering one word: <code>menu</code> lists every word she knows, or press <strong>H</strong> for the in-game panel.</li>
+    </ol>
+    <button id="welcome-dismiss" type="button" class="btn-theme">Got it, thank you</button>
+  </section>
+
+  <!-- Sims-Style Wellbeing Needs & Daily Life -->
+  <section id="life-section" class="life-section" aria-labelledby="h-life">
+    <div class="section-header">
+      <h2 id="h-life" tabindex="-1">Sims-Style Wellbeing &amp; Daily Life</h2>
+      <p class="updated" id="upd-life-section">Synchronizing…</p>
+      <p class="section-sub">5 peaceful wellbeing needs, civic career shifts, academy lectures, and your cottage haven.</p>
+    </div>
+    <div id="sims-needs-grid" class="cards needs-grid"></div>
+    <div id="career-school-grid" class="cards career-school-grid"></div>
+  </section>
+
+  <!-- What Can I Do Now Panel -->
+  <section id="action-panel" class="action-panel" aria-labelledby="h-action">
+    <div class="section-header">
+      <h2 id="h-action" tabindex="-1">What can I do now?</h2>
+      <p class="updated" id="upd-action-panel">Waiting for records…</p>
+      <p class="section-sub">Immediate peaceful opportunities to participate in village life right now.</p>
+    </div>
+    <div id="actions-grid" class="actions-grid">
+      <div class="action-card loading"><p>Gathering village rhythm…</p></div>
+    </div>
+  </section>
+
+  <!-- Season, Village Level, Field Survey, Apprenticeships & Gratitude Wall -->
+  <section id="gameplay-section" class="gameplay-section" aria-labelledby="h-gameplay">
+    <div class="section-header">
+      <h2 id="h-gameplay" tabindex="-1">Season, Field Survey, Apprenticeships &amp; Gratitude</h2>
+      <p class="updated" id="upd-gameplay-section">Waiting for records…</p>
+      <p class="section-sub">Shared milestones, daily paired landmark observations, craft mentorships, and neighbourly thanks.</p>
+    </div>
+    <div id="season-level-grid" class="cards season-level-grid"></div>
+    <div id="gameplay-cards" class="cards gameplay-grid"></div>
+  </section>
+
+  <!-- Activity feed (from the chronicle) -->
+  <section id="activity-section" class="activity-section" aria-labelledby="h-activity">
+    <div class="section-header">
+      <h2 id="h-activity" tabindex="-1">Recent activity</h2>
+      <p class="updated" id="upd-activity-section">Waiting for records…</p>
+      <p class="section-sub">A truthful record of what happened lately, newest first.</p>
+    </div>
+    <ol id="chronicle" class="feed" aria-label="Recent activity in Harr"></ol>
+    <button id="feed-more" type="button" class="btn-theme" aria-expanded="false" hidden>Show earlier activity</button>
+  </section>
+
+  <!-- Top-Down SVG Map of Harr -->
+  <section id="village-map" class="map-section" aria-labelledby="h-map">
+    <div class="section-header">
+      <h2 id="h-map" tabindex="-1">Top-Down Map of Harr</h2>
+      <p class="updated" id="upd-village-map">Waiting for records…</p>
+      <p class="section-sub">Survey the 36 civic buildings, district quarters, and catalogued discoveries across the valley.</p>
+    </div>
+    <div class="map-container">
+      <div class="map-legend" aria-label="Map Legend">
+        <span class="legend-item"><span class="legend-dot status-finished"></span> Built</span>
+        <span class="legend-item"><span class="legend-dot status-crew"></span> Needs Crew / Research</span>
+        <span class="legend-item"><span class="legend-dot status-active"></span> In Progress</span>
+        <span class="legend-item"><span class="legend-dot status-planned"></span> Planned</span>
+        <span class="legend-item"><span class="legend-dot status-discovery"></span> Discovery Place</span>
+      </div>
+      <div id="map-svg-wrap" class="map-svg-wrap">
+        <!-- SVG will be rendered here dynamically -->
+      </div>
+      <div id="map-detail-card" class="map-detail-card" aria-live="polite">
+        <p class="detail-hint">Hover or tap any landmark marker on the map to inspect its coordinates and current stage.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Greater Purpose & Goal Rings -->
+  <section id="purpose-section" class="purpose-section" aria-labelledby="h-goals">
+    <div class="section-header">
+      <h2 id="h-goals" tabindex="-1">Our Greater Purpose &amp; Goals</h2>
+      <p class="updated" id="upd-purpose-section">Waiting for records…</p>
+      <p class="section-sub">Guided by scholarship, cooperation, growth, and shared abundance.</p>
+    </div>
+    <ul id="principles" class="chips" aria-label="Village Principles"></ul>
+    <div id="goals" class="goals-grid" aria-label="Village Goals Progress"></div>
+  </section>
+
+  <!-- Public Works -->
+  <section id="works-section" class="works-section" aria-labelledby="h-works">
+    <div class="section-header">
+      <h2 id="h-works" tabindex="-1">Public Works</h2>
+      <p class="updated" id="upd-works-section">Waiting for records…</p>
+      <p id="works-summary" class="section-sub">Each project is built stage by stage, and only while a crew of two or more stands at the site.</p>
+      <div id="works-filters" class="btn-row works-filters" role="group" aria-label="Filter public works">
+        <button type="button" class="btn-theme" data-filter="buildings" aria-pressed="true">Buildings &amp; Quarters</button>
+        <button type="button" class="btn-theme" data-filter="roads" aria-pressed="false">Roads &amp; Gateways</button>
+        <button type="button" class="btn-theme" data-filter="waiting" aria-pressed="false">Needs Crew / Research</button>
+        <button type="button" class="btn-theme" data-filter="all" aria-pressed="false">All Works</button>
+      </div>
+    </div>
+    <div id="works" class="cards works-grid"></div>
+  </section>
+
+  <!-- Research & Innovation Tree -->
+  <section id="research-section" class="research-section" aria-labelledby="h-research">
+    <div class="section-header">
+      <h2 id="h-research" tabindex="-1">Research &amp; Innovation Tree</h2>
+      <p class="updated" id="upd-research-section">Waiting for records…</p>
+      <p id="research-summary" class="muted"></p>
+    </div>
+    <div id="current" class="current" aria-label="Current Research Focus"></div>
+    <div class="tree-container">
+      <div class="tree-legend">
+        <span class="legend-item"><span class="legend-dot state-learned"></span> Learned</span>
+        <span class="legend-item"><span class="legend-dot state-learning"></span> Now Learning</span>
+        <span class="legend-item"><span class="legend-dot state-queued"></span> Queued</span>
+      </div>
+      <div id="research-tree" class="research-tree" aria-label="Technology Tree Graph"></div>
+    </div>
+    <ol id="techs" class="techs sr-only"></ol>
+  </section>
+
+  <!-- Today in Harr & Pantry -->
+  <section id="community-section" class="community-section" aria-labelledby="h-rhythm">
+    <div class="section-header">
+      <h2 id="h-rhythm" tabindex="-1">Today in Harr &amp; The Free Pantry</h2>
+      <p class="updated" id="upd-community-section">Waiting for records…</p>
+      <p class="section-sub">Community rhythm, gatherings, and shared harvest sustenance.</p>
+    </div>
+    <div class="pantry-card">
+      <h3>The Village Pantry</h3>
+      <p id="pantry" class="pantry-text"></p>
+      <p class="pantry-note">Free for all neighbours and travellers. No coins or trade required; replenished regularly from our vertical farms and fields.</p>
+    </div>
+    <div id="rhythm" class="cards rhythm-grid"></div>
+  </section>
+
+  <!-- The Harr Library -->
+  <section id="library-section" class="library-section" aria-labelledby="h-library">
+    <div class="section-header">
+      <h2 id="h-library" tabindex="-1">The Harr Library: Catalogued Discoveries</h2>
+      <p class="updated" id="upd-library-section">Waiting for records…</p>
+      <p class="section-sub">Field notes and observations catalogued across the valley.</p>
+    </div>
+    <div id="library" class="cards library-grid"></div>
+  </section>
+
+  <!-- Villagers & Roles -->
+  <section id="roles-section" class="roles-section" aria-labelledby="h-roles">
+    <div class="section-header">
+      <h2 id="h-roles" tabindex="-1">What Our People Do</h2>
+      <p class="updated" id="upd-roles-section">Waiting for records…</p>
+      <p class="section-sub">Residents whose daily craft and care keep Harr thriving.</p>
+    </div>
+    <div id="roles" class="cards roles-grid"></div>
+  </section>
+
+</main>
+
+<footer role="contentinfo">
+  <p><a href="#welcome" id="welcome-again">Show the welcome card</a>. Everything here is read from recorded facts. In the game, whisper Selene: <code>tasks</code>, <code>purpose</code>, <code>research</code>, <code>works</code>, <code>library</code>, <code>today</code>, <code>chronicle</code> or <code>pantry</code>, or press <strong>H</strong> for the in-game village panel. Say <code>menu</code> to Selene for every word she knows.</p>
+</footer>
+
+<script src="/harr.js" defer></script>
+</body>
+</html>

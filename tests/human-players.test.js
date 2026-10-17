@@ -110,7 +110,7 @@ test('schema nine migration preserves agent identities, sessions, coin receipt h
   const submission = f.tx('submit', f.actor('alice'), evidence(claim, { artifact: 'Preserve this accepted agent receipt across schema upgrades.' }), 'migration-submit');
   f.tx('review', f.actor('reviewer'), { submission_id: submission.id, decision: 'accepted', reason: 'Independent fixture.' });
   const receipt = { ...f.platform.get('SELECT * FROM coin_rewards') };
-  f.platform.db.exec(`DROP VIEW calling_source_events; DROP VIEW calling_objective_rules; DROP TABLE calling_receipts; DROP TABLE resident_callings;
+  f.platform.db.exec(`DROP VIEW IF EXISTS karma_service_rules; DROP VIEW IF EXISTS karma_source_events; DROP TABLE IF EXISTS karma_receipts; DROP TABLE IF EXISTS karma_purchases; DROP TABLE IF EXISTS shop_purchases; DROP VIEW calling_source_events; DROP VIEW calling_objective_rules; DROP TABLE calling_receipts; DROP TABLE resident_callings;
     DROP TRIGGER agents_kind_immutable; DROP TRIGGER tokens_agent_runtime; DROP TRIGGER tokens_agent_runtime_update; DROP TRIGGER coins_validate_insert; DROP INDEX one_human_avatar;
     DROP TRIGGER land_stewardships_revoke_grants; DROP TABLE plot_grant_events; DROP TABLE plot_grants;
     DROP TABLE land_stewardships; DROP TABLE land_events; DROP TABLE land_parcels;
@@ -120,7 +120,7 @@ test('schema nine migration preserves agent identities, sessions, coin receipt h
   const older = join(f.directory, 'schema-nine.sqlite'); backupDatabase(f.platform.db, older);
   assert.equal(validateDatabase(older).schema_version, 9);
   f.platform.close(); const restarted = new Platform(f.database, f.clock); t.after(() => restarted.close());
-  assert.equal(validateDatabase(f.database).schema_version, 24);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
   assert.equal(restarted.me(restarted.authenticate(f.credentials.alice.token)).agents[0].kind, 'agent');
   assert.equal(restarted.authenticate(session.token, 'read').agent.kind, 'agent');
   assert.deepEqual({ ...restarted.get('SELECT * FROM coin_rewards') }, receipt);
@@ -139,7 +139,7 @@ test('schema ten migration retains legacy frontier geometry and coin receipts wh
   f.tx('review', f.actor('reviewer'), { submission_id: submission.id, decision: 'accepted', reason: 'Independent fixture.' });
   const receipt = { ...f.platform.get('SELECT * FROM coin_rewards') };
   for (const name of ['land_parcels_no_update','land_parcels_no_delete','land_parcels_validate_insert','land_stewardships_validate_insert','land_stewardships_no_update','frontier_sectors_finite_insert','frontier_sectors_identity_immutable','frontier_blocks_plot_insert']) f.platform.db.exec(`DROP TRIGGER ${name}`);
-  f.platform.db.exec('DROP VIEW calling_source_events; DROP VIEW calling_objective_rules; DROP TABLE calling_receipts; DROP TABLE resident_callings; DROP TRIGGER land_stewardships_revoke_grants; DROP TABLE plot_grant_events; DROP TABLE plot_grants; DROP TABLE land_stewardships; DROP TABLE land_events; ALTER TABLE frontier_blocks DROP COLUMN grant_id; ALTER TABLE frontier_blocks DROP COLUMN plot_id; DROP TABLE land_parcels; PRAGMA user_version=10');
+  f.platform.db.exec('DROP VIEW IF EXISTS karma_service_rules; DROP VIEW IF EXISTS karma_source_events; DROP TABLE IF EXISTS karma_receipts; DROP TABLE IF EXISTS karma_purchases; DROP TABLE IF EXISTS shop_purchases; DROP VIEW calling_source_events; DROP VIEW calling_objective_rules; DROP TABLE calling_receipts; DROP TABLE resident_callings; DROP TRIGGER land_stewardships_revoke_grants; DROP TABLE plot_grant_events; DROP TABLE plot_grants; DROP TABLE land_stewardships; DROP TABLE land_events; ALTER TABLE frontier_blocks DROP COLUMN grant_id; ALTER TABLE frontier_blocks DROP COLUMN plot_id; DROP TABLE land_parcels; PRAGMA user_version=10');
   const date = new Date(f.clock()).toISOString();
   f.platform.run("INSERT INTO worlds VALUES(?,?,?,NULL,?,?,?,?)", 'frontier:8:0', 'Preserved legacy area', 'frontier', 'public', 48, 48, date);
   f.platform.run('INSERT INTO frontier_sectors VALUES(?,?,?,?,?,?)', 'frontier:8:0', 8, 0, f.actor('alice').account.id, agent.id, date);
@@ -147,7 +147,7 @@ test('schema ten migration retains legacy frontier geometry and coin receipts wh
   const old = join(f.directory, 'schema-ten.sqlite'); backupDatabase(f.platform.db, old);
   assert.equal(validateDatabase(old).schema_version, 10);
   f.platform.close(); const restarted = new Platform(f.database, f.clock); t.after(() => restarted.close());
-  assert.equal(validateDatabase(f.database).schema_version, 24);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
   assert.equal(restarted.get('SELECT COUNT(*) AS n FROM land_parcels').n, 16384);
   const preserved = restarted.get('SELECT * FROM frontier_blocks WHERE id=?', 'legacy-land-block');
   assert.equal(preserved.world_id, 'frontier:8:0'); assert.equal(preserved.plot_id, null); assert.equal(preserved.type, 'wood');
@@ -187,6 +187,6 @@ test('account removal ends stewardship and redacts land text while preserving sh
   assert.equal(publicPlot.block_count, 1); assert.equal(publicPlot.can_assign, false); assert.equal(publicPlot.purpose, '');
   assert.throws(() => f.tx('landAssign', f.actor('bob'), { plot_id: plotId, purpose: 'Appropriate occupied ground' }), { status: 409 });
   assert.throws(() => f.platform.authenticate(f.credentials.alice.token), { status: 401 });
-  assert.equal(validateDatabase(f.database).schema_version, 24);
+  assert.equal(validateDatabase(f.database).schema_version, 27);
   assert.equal(f.platform.verifyAudit(), true);
 });

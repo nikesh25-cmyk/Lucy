@@ -1,0 +1,202 @@
+{
+  "format": "harr-season-stories-v1",
+  "note": "The turning year in Harr, on the host computer's calendar. Four seasons, each with a short blurb for the three weekly rhythms of the village (ids match content/veloren-events.json) and twelve extra field notes for the library, spread over the ten discovery places (ids match content/veloren-discoveries.json). Everything here is scripted, peaceful and additive: it never replaces the base notes or blurbs.",
+  "seasons": {
+    "spring": {
+      "name": "Spring",
+      "months": [3, 4, 5],
+      "events": [
+        { "event": "market-hour", "blurb": "Seedlings in little clay pots, early greens and bundles of herbs are laid out. Take a pot home and watch it wake up." },
+        { "event": "story-circle", "blurb": "Scholars read the first field notes of the year, and everyone adds what they saw come back to life." },
+        { "event": "festival", "blurb": "The spring festival: round dances on the plaza under blossom, and a long table of everything the fields have started." }
+      ],
+      "notes": [
+        { "discovery": "meadow-flowers", "text": "The yellow clover band is first to open in spring, and the earliest bees arrive within a day of the first petals." },
+        { "discovery": "meadow-flowers", "text": "Counting flowers in a one-metre square each week shows the bands thickening from three kinds in early March to seven by May." },
+        { "discovery": "boundary-stone", "text": "Meltwater darkens the stone's southern face each spring while the north face stays dry, so the lichen colours are easiest to compare now." },
+        { "discovery": "hidden-spring", "text": "Spring rain raises the pool by a hand's width, yet the water stays clear and cold, so the filtering gravel evidently works at any flow." },
+        { "discovery": "high-view", "text": "From the high view, new green spreads up the valley from the river side first, and a scholar can mark the date it reaches each field." },
+        { "discovery": "bee-hollow", "text": "On the first warm morning the colony sends out scouts in large numbers, and the hollow hums noticeably louder by mid-April." },
+        { "discovery": "lichen-wall", "text": "Lichen swells and brightens after spring showers, which is the best week to measure the edge of each patch against the marked stone." },
+        { "discovery": "birdsong-grove", "text": "Spring is when the dawn chorus fills out: chaffinch, blackbird and wren return and the scholars' score gains new lines each week." },
+        { "discovery": "clay-bank", "text": "The bank is soft and easy to work after spring rain, so makers take what they need early and smooth the cut before it dries." },
+        { "discovery": "star-meadow", "text": "Spring nights bring the galaxy season: with the meadow dark, the long band of the Milky Way can be seen climbing after midnight." },
+        { "discovery": "wind-ridge", "text": "Steady spring winds make this the best season to log wind speed for the mill plans kept in the library." },
+        { "discovery": "hidden-spring", "text": "Frogspawn appears in the quiet corner of the spring pool in March, and small tadpoles can be counted from the stepping stones by April." }
+      ]
+    },
+    "summer": {
+      "name": "Summer",
+      "months": [6, 7, 8],
+      "events": [
+        { "event": "market-hour", "blurb": "Berries, cucumbers, lemon balm tea and sun-hats on the stalls. The market hall's shade is the best seat in Harr." },
+        { "event": "story-circle", "blurb": "Long evenings: scholars read aloud in the late light while the fireflies of the field pavilion begin to glow." },
+        { "event": "festival", "blurb": "The midsummer festival: lanterns strung across the plaza, picnic blankets everywhere, and music until the stars come out." }
+      ],
+      "notes": [
+        { "discovery": "meadow-flowers", "text": "At midsummer all seven flower kinds bloom together, and the bands of colour are clearest from the top of the meadow in the morning." },
+        { "discovery": "boundary-stone", "text": "The stone holds the day's warmth long after sunset, which shows that rock this dense stores heat the way a hearth does." },
+        { "discovery": "hidden-spring", "text": "On the hottest afternoons the pool remains cold to the touch, a living reminder that the spring draws from deep underground." },
+        { "discovery": "high-view", "text": "Summer haze softens the far ridges, but at dawn the whole valley is crisp, and the best day for a map-making walk is the first clear morning after rain." },
+        { "discovery": "bee-hollow", "text": "At the height of summer, fanning bees line up at the hollow entrance to cool the hive, a good lesson in cooperation to watch quietly." },
+        { "discovery": "lichen-wall", "text": "In dry summer weeks the lichen shrinks and turns pale grey, then recovers fully within an hour of the next shower." },
+        { "discovery": "birdsong-grove", "text": "By summer the chorus is quieter after dawn, but young birds practise their songs in the grove all afternoon." },
+        { "discovery": "clay-bank", "text": "Dry summer clay is easy to carry home in lumps, and makers who dried it on the bank's sunny shelf report it keeps its colour well." },
+        { "discovery": "star-meadow", "text": "August brings the meteor showers; lying on the meadow grass with a notebook, a scholar can count a shooting star every few minutes." },
+        { "discovery": "wind-ridge", "text": "Afternoon breezes on the ridge rise reliably by two o'clock in summer, a pattern the library's mill plans now rely on." },
+        { "discovery": "meadow-flowers", "text": "Butterflies visit the purple vetch from midday; four kinds have been drawn into the meadow notebook so far." },
+        { "discovery": "birdsong-grove", "text": "Swifts scream high above the grove on summer evenings, chasing insects that rise on the warm air." }
+      ]
+    },
+    "autumn": {
+      "name": "Autumn",
+      "months": [9, 10, 11],
+      "events": [
+        { "event": "market-hour", "blurb": "Apples, squash, jars of jam and bundles of dried herbs. Farmers swap seeds for next year with anyone who asks." },
+        { "event": "story-circle", "blurb": "Scholars read the harvest notes: what grew, what taught us something, and what we will try differently next year." },
+        { "event": "festival", "blurb": "The harvest festival: a long shared table of everything the fields gave, with thanks said to every hand that helped." }
+      ],
+      "notes": [
+        { "discovery": "meadow-flowers", "text": "Seed heads ripen in autumn; collecting a few from each of the seven kinds for the heirloom seed shelf keeps the meadow's bands going." },
+        { "discovery": "boundary-stone", "text": "Fallen leaves gather against the stone's lee side, and the moss beneath keeps the base damp and green long into November." },
+        { "discovery": "hidden-spring", "text": "Autumn leaves drift across the pool and settle in the gravel, and the water stays just as clear, a good sign of a healthy spring." },
+        { "discovery": "high-view", "text": "From the high view autumn paints the valley in bands of amber and copper, and the winding road shows clearly between the colours." },
+        { "discovery": "bee-hollow", "text": "In autumn the colony gathers its last pollen and the hollow smells of honey; the keepers take only a small share and leave plenty for winter." },
+        { "discovery": "lichen-wall", "text": "Autumn mist feeds the lichen directly, and the patches visibly plump up; it is the best season to photograph their colours." },
+        { "discovery": "birdsong-grove", "text": "Autumn brings migrants through the grove for a few days at a time, and scholars add their names to the visitors' list." },
+        { "discovery": "clay-bank", "text": "Autumn is when makers fire their pots in the kilns, and the bank's red clay turns the warm terracotta that matches the leaves." },
+        { "discovery": "star-meadow", "text": "Clear autumn nights are long and crisp, ideal for charting the great square of Pegasus rising above the eastern trees." },
+        { "discovery": "wind-ridge", "text": "Autumn winds are gustier on the ridge, which gives the mill planners useful data on how the sails should handle changing speeds." },
+        { "discovery": "meadow-flowers", "text": "Late asters keep the meadow in colour well into October, and the last bees of the year feed on them in the midday sun." },
+        { "discovery": "clay-bank", "text": "Leaf prints pressed into damp clay make lovely tiles, and the makers' autumn workshop has filled a whole shelf with them." }
+      ]
+    },
+    "winter": {
+      "name": "Winter",
+      "months": [12, 1, 2],
+      "events": [
+        { "event": "market-hour", "blurb": "Warm bread, root vegetables from the cellar, knitted scarves and mugs of hot tea. The stalls glow with lamps from early afternoon." },
+        { "event": "story-circle", "blurb": "Scholars and keepers read by lamplight in the pavilion, and the oldest tales of the valley are told while tea is passed round." },
+        { "event": "festival", "blurb": "The winter festival: a ring of lanterns on the plaza, hot cider, and a promise said together that the light will come back." }
+      ],
+      "notes": [
+        { "discovery": "meadow-flowers", "text": "Under frost the meadow looks asleep, but the rosettes of leaves visible near the ground show that every kind is waiting for spring." },
+        { "discovery": "boundary-stone", "text": "Frost lines etch the stone's surface into delicate patterns, and the north face stays white long after the sun has warmed the south." },
+        { "discovery": "hidden-spring", "text": "On the coldest mornings the spring pool steams softly while the rest of the valley is frozen, because its water stays at seven degrees all year." },
+        { "discovery": "high-view", "text": "In winter the bare trees open long sightlines, and from the high view every future cottage plot can be seen at once." },
+        { "discovery": "bee-hollow", "text": "In winter the colony clusters tightly inside the hollow and keeps warm by taking turns at the cold outer edge; the keepers listen at the bark, never disturbing them." },
+        { "discovery": "lichen-wall", "text": "Lichen keeps growing slowly through winter whenever the day is damp and above freezing, so the measuring stakes are checked even in January." },
+        { "discovery": "birdsong-grove", "text": "Robins and wrens sing through winter mornings, and the quiet grove is the easiest place to learn each voice one at a time." },
+        { "discovery": "clay-bank", "text": "Frost splits the exposed clay face into neat flakes, and makers wait until spring to dig so that the bank can rest." },
+        { "discovery": "star-meadow", "text": "Winter has the longest, darkest nights, and Orion stands bright over the meadow, an easy first constellation for new scholars." },
+        { "discovery": "wind-ridge", "text": "Steady winter winds make the ridge the best place for the village's wind readings, kept in the library for the mill plans." },
+        { "discovery": "birdsong-grove", "text": "Fresh snow shows the tracks of small visitors in the grove, and the scholars sketch each print without disturbing a thing." },
+        { "discovery": "hidden-spring", "text": "Even when ice rims the pool, the water in the middle keeps flowing, and the well downstream stays full all winter." }
+      ]
+    }
+  },
+  "chronicle": {
+    "note": "Twenty milestone phrases the chronicle can use; {project} is a project's name. Then one finishing line for each of the 36 public works, keyed by project id.",
+    "milestones": {
+      "ground-broken": "Ground was marked out for {project}, and the first neighbours came to help.",
+      "first-stage": "The first stage of {project} is up, built by a crew standing together.",
+      "second-stage": "{project} gained its second stage, and the plan took shape.",
+      "halfway": "{project} is halfway built, and the neighbours stopped to admire it.",
+      "last-stage-near": "Only one stage remains of {project}, and a crew is already gathering.",
+      "finished": "{project} was finished, and the whole village came to see.",
+      "first-visit": "The first visitors walked through {project} and said it felt like home.",
+      "opening-day": "{project} was opened with a shared meal and a quiet round of thanks.",
+      "crew-of-two": "Two neighbours stood together at {project}, and the next stage began.",
+      "crew-of-many": "A large crew gathered at {project}, and the work went by like a song.",
+      "first-find": "A new page was written for the library, the first of many.",
+      "fifth-find": "Five places are now in the library, and the valley feels a little smaller.",
+      "tenth-find": "The catalogue is complete: all ten places are written down for all to read.",
+      "first-meal": "The first meal was shared from the pantry, and the farmers smiled.",
+      "hundredth-meal": "A hundred portions have been shared at the pantry table.",
+      "market-held": "Market hour was held on the plaza, and everyone found something to take home.",
+      "circle-held": "Story circle was held, and a new page was added to what the village knows.",
+      "festival-held": "The weekly festival filled the plaza with lamps, music and neighbours.",
+      "tech-learned": "The village learned something new, and the research tower recorded it.",
+      "season-turned": "The season turned, and the village wrote its new field notes."
+    },
+    "projects": {
+      "well": "The Plaza well was finished, and the square had clear water of its own at last.",
+      "market-hall": "The market hall was finished, with a roof for every stall and a lantern for every post.",
+      "cottage-1": "Cottage 1 was finished, and the first new neighbours were handed a key to a home built by all.",
+      "observatory": "The star observatory was finished, and the scholars carried their first charts up the steps.",
+      "lantern-path": "The lantern path was finished, and no one in Harr walks home in the dark.",
+      "cottage-2": "Cottage 2 was finished, with a bright window and a full woodpile from its builders.",
+      "field-pavilion": "The field pavilion was finished, and the first shared meal was eaten in its shade.",
+      "library-annex": "The library annex was finished, and the new shelves were filled by evening.",
+      "cottage-3": "Cottage 3 was finished, completing the first row of homes beside the plaza.",
+      "orchard-gate": "The orchard fence and gate were finished, and the young trees now grow in peace.",
+      "research-tower": "The research tower was finished, and the village's findings now stand in one bright view.",
+      "solar-array": "The solar array was finished, and the lamps now charge by day and shine all night.",
+      "vertical-farm": "The vertical farm was finished, and the first bright rooms of greens were harvested.",
+      "light-fountain": "The light fountain was finished, and neighbours rest beside it after a day's work.",
+      "transit-hub": "The sky transit hub was finished, ready for the quiet trains of the future.",
+      "data-archive": "The open archive was finished, and every finding in Harr is now kept for anyone to read.",
+      "sky-walk": "The sky walk was finished, and neighbours can see the whole village from above.",
+      "glass-garden": "The glass garden was finished, and flowers bloom there in every season.",
+      "schoolhouse": "The Harr schoolhouse was finished, and young and old sat down to learn together.",
+      "seminar-pavilion": "The seminar pavilion was finished, and the first talk was a happy crowd.",
+      "workshop-hall": "The makers' workshop hall was finished, and every bench was in use by noon.",
+      "recycling-garden": "The material recycling garden was finished, and nothing in Harr is wasted now.",
+      "cottage-4": "Cottage 4 was finished, with its skylights catching the first morning sun.",
+      "cottage-5": "Cottage 5 was finished, and a new family hung a lamp at the door.",
+      "cottage-6": "Cottage 6 was finished, and the third eco-cottage was ready for its neighbours.",
+      "cottage-7": "Cottage 7 was finished, its stepped dome ringed with planters in flower.",
+      "cottage-8": "Cottage 8 was finished, and bees found its planters the same afternoon.",
+      "cottage-9": "Cottage 9 was finished, completing the ring of dome cottages.",
+      "guesthouse": "The travellers' guesthouse was finished, with tea on the table for the first guest.",
+      "amphitheatre": "The hillside amphitheatre was finished, and story circle now faces the whole valley.",
+      "festival-lawn": "The festival lawn and lamp arches were finished, and the first round dance began at dusk.",
+      "water-tower": "The elevated water tower was finished, and the irrigation lines ran full for the first time.",
+      "solar-field-2": "The southern solar array was finished, and the night grid grew brighter.",
+      "wind-array": "The quiet ridge wind array was finished, turning gently without a sound.",
+      "canal-bridge": "The canal stone bridge was finished, and the workshops are now a short walk from the plaza.",
+      "tram-halt": "The valley tram halt was finished, with a bench and a timetable waiting for the line."
+    }
+  },
+  "captions": {
+    "note": "One sentence for each public work: what the building is for.",
+    "projects": {
+      "well": "The well gives the whole square fresh water, drawn from the hidden spring.",
+      "market-hall": "The market hall gives makers and farmers a roofed place to share what they have grown and made.",
+      "cottage-1": "Cottage 1 is a home for a newly arrived neighbour, raised by the village together.",
+      "observatory": "The observatory is a raised platform where scholars chart the night sky and write down what they learn.",
+      "lantern-path": "The lantern path lights the way from the plaza to the fields so that no one walks home in the dark.",
+      "cottage-2": "Cottage 2 is a home for a neighbour who has just arrived, built by many hands.",
+      "field-pavilion": "The field pavilion is a shaded place beside the fields for resting, reading and sharing meals.",
+      "library-annex": "The library annex gives the Harr Library more shelves, so that every discovery has a page.",
+      "cottage-3": "Cottage 3 is a home for newcomers, and it completes the first row beside the plaza.",
+      "orchard-gate": "The orchard gate lets everyone walk in to the trees while keeping the saplings safe as they grow.",
+      "research-tower": "The research tower gathers the village's findings into a single view for every scholar to read.",
+      "solar-array": "The solar array turns sunlight into the power that keeps the lamps and paths lit all night.",
+      "vertical-farm": "The vertical farm grows food in stacked, bright rooms so that more people can eat from less land.",
+      "light-fountain": "The light fountain is a quiet place to sit and rest at the end of a day of work.",
+      "transit-hub": "The transit hub is a platform for the quiet trains and landing pads that Harr hopes to have one day.",
+      "data-archive": "The open archive keeps every finding, plan and story where anyone, even a neighbouring village, can read it.",
+      "sky-walk": "The sky walk lifts neighbours above the square to cross it and to see the whole of Harr.",
+      "glass-garden": "The glass garden keeps plants and people warm in every season, with benches among the planters.",
+      "schoolhouse": "The schoolhouse is where young and old villagers learn reading, history and botany side by side.",
+      "seminar-pavilion": "The seminar pavilion is an open ring of columns where scholars talk ideas through and share their research.",
+      "workshop-hall": "The workshop hall is a roomy place where makers of cloth, wood and clay work at shared benches.",
+      "recycling-garden": "The recycling garden sorts spare clay, timber and metal so that it can be used again.",
+      "cottage-4": "Cottage 4 is an eco-cottage with solar skylights, a home for a neighbour who needs one.",
+      "cottage-5": "Cottage 5 is an eco-cottage that is bright and warm, a home for a Harr family.",
+      "cottage-6": "Cottage 6 is a split-level home with skylights, ready for a new resident of Harr.",
+      "cottage-7": "Cottage 7 is a sun-warmed dome home surrounded by planters of flowers.",
+      "cottage-8": "Cottage 8 is a dome home among flowering planters, built for a neighbour who is arriving.",
+      "cottage-9": "Cottage 9 is a stepped dome home that rounds out the ring of cottages around the planters.",
+      "guesthouse": "The guesthouse welcomes travellers and newcomers with clean beds, hot tea and quiet reading rooms.",
+      "amphitheatre": "The amphitheatre is a stone bowl on the hillside where the village gathers for story circle.",
+      "festival-lawn": "The festival lawn is a wide commons under glowing arches, made for shared feasts and round dances.",
+      "water-tower": "The water tower keeps the irrigation lines under steady pressure so that every field is watered.",
+      "solar-field-2": "The southern solar array adds more glass to the sun, so the village's lamps shine through the night.",
+      "wind-array": "The wind array turns the gentle ridge breeze into power, and does it so quietly that the birds are undisturbed.",
+      "canal-bridge": "The canal bridge is a stone footbridge that joins the plaza to the western workshops.",
+      "tram-halt": "The tram halt is a canopy, a bench and a timetable, waiting for the light-rail line to arrive."
+    }
+  }
+}

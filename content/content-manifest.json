@@ -2,13 +2,242 @@
   "schema_version": 1,
   "generated_by": "scripts/seal-content.mjs",
   "kinds": {
+    "activity": 8,
+    "ambient": 6,
     "appearance": 20,
     "block": 9,
     "cosmetic": 32,
     "crop": 6,
-    "furniture": 31
+    "fixture": 12,
+    "furniture": 31,
+    "place": 6,
+    "resident": 6
   },
   "entries": [
+    {
+      "id": "bund-survey",
+      "kind": "activity",
+      "file": "content/activities/bund-survey.json",
+      "sha256": "c804545e56b60dda6d5e9d8e07e59042326f9dad2d01993ee1c4cf8339e313e7",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "channel-navigation",
+      "kind": "activity",
+      "file": "content/activities/channel-navigation.json",
+      "sha256": "0836fc03dd9c532b706aac1f19827aa7a4b3072c681ffcf1dfe6d94ee0852417",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the activity manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An activity is a deterministic schedule, not an implemented simulation loop. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "grove-round",
+      "kind": "activity",
+      "file": "content/activities/grove-round.json",
+      "sha256": "726a8800ed9940ec56598a4598f585e514408be15f1ae02f76a2ba62c496eb60",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the activity manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An activity is a deterministic schedule, not an implemented simulation loop. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "open-desk",
+      "kind": "activity",
+      "file": "content/activities/open-desk.json",
+      "sha256": "edc0fa88a405ec35398869f442e373724123d9ef169d3f045b5a61304408ad3c",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the activity manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An activity is a deterministic schedule, not an implemented simulation loop. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "open-reading",
+      "kind": "activity",
+      "file": "content/activities/open-reading.json",
+      "sha256": "0fb25109b9ee116049ca2d14defb85c4917f85fca60f3b412f75888ef91871ee",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the activity manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An activity is a deterministic schedule, not an implemented simulation loop. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "pond-margin-walk",
+      "kind": "activity",
+      "file": "content/activities/pond-margin-walk.json",
+      "sha256": "84646952a29585707e8c55d29e245fb436dfb690fe136dbf2a451062a99a5f7c",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "seed-swap",
+      "kind": "activity",
+      "file": "content/activities/seed-swap.json",
+      "sha256": "8ec186574e5e4545ecde4c14d4411afbb03b9859bf362292a7c7c1d1012400b0",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the activity manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An activity is a deterministic schedule, not an implemented simulation loop. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "terrace-tending",
+      "kind": "activity",
+      "file": "content/activities/terrace-tending.json",
+      "sha256": "43992c34a1e70034b454aede76256532acefc8ffa5e5c0673feb08268442efbd",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the activity manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An activity is a deterministic schedule, not an implemented simulation loop. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "bund-light",
+      "kind": "ambient",
+      "file": "content/ambient/bund-light.json",
+      "sha256": "6660b528768e8da59068e24eedbcaa5d23400ca984e1d78a65659c775f9da567",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "canopy-shade",
+      "kind": "ambient",
+      "file": "content/ambient/canopy-shade.json",
+      "sha256": "58b86300551ee8ece1e96c833094fb9863df15b26663f2d6f8047b458189cd96",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the ambient manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An ambient profile is authored colour and time data, not sampled audio or a texture. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "highland-morning",
+      "kind": "ambient",
+      "file": "content/ambient/highland-morning.json",
+      "sha256": "24d99da0338d9188ee5112e134be92ce3b08688c7ffe6069bdac1e96178205df",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the ambient manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An ambient profile is authored colour and time data, not sampled audio or a texture. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "lamp-glow",
+      "kind": "ambient",
+      "file": "content/ambient/lamp-glow.json",
+      "sha256": "ecc8b5a30c4058d34de3a65129375bb187ec1fec164e2841ed4dd42f43a2ca7a",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the ambient manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An ambient profile is authored colour and time data, not sampled audio or a texture. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "shore-haze",
+      "kind": "ambient",
+      "file": "content/ambient/shore-haze.json",
+      "sha256": "5161f5f3993395253136526569242c87c25d2a978872ddafdb3ffdf9317cfc3b",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the ambient manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An ambient profile is authored colour and time data, not sampled audio or a texture. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "water-light",
+      "kind": "ambient",
+      "file": "content/ambient/water-light.json",
+      "sha256": "aa0aea2728d43c42104259d218f04867b9c33552210461501c0b9fc8d4ae2b4a",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the ambient manifests in src/content-manifest.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. An ambient profile is authored colour and time data, not sampled audio or a texture. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
     {
       "id": "mayor-1",
       "kind": "appearance",
@@ -1262,6 +1491,198 @@
       "assets": []
     },
     {
+      "id": "bench-ring",
+      "kind": "fixture",
+      "file": "content/fixtures/bench-ring.json",
+      "sha256": "e0b94e4b1ce7b71332d4545ff4bf1393d3d082ef409a7d9750a679b44beb0777",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "bench-row",
+      "kind": "fixture",
+      "file": "content/fixtures/bench-row.json",
+      "sha256": "87d4a6056b36950c6e53626b04df7a9689f261a32dcb2cf3e2b9774d33adb1b4",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "boardwalk-mooring",
+      "kind": "fixture",
+      "file": "content/fixtures/boardwalk-mooring.json",
+      "sha256": "cf9d96f6e7a74842a23d4a687fe765be23e16107a6daa6e91aea778c402f9077",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "bund-bench-row",
+      "kind": "fixture",
+      "file": "content/fixtures/bund-bench-row.json",
+      "sha256": "9199ed706efcdf4e5ca437d3ba33a66500fdaa34a60a755d8b967fdd45bdeb61",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "bund-lantern-line",
+      "kind": "fixture",
+      "file": "content/fixtures/bund-lantern-line.json",
+      "sha256": "ad3bef36f05e9f292cc86c52444a00e883d2fa496d3567080f7d2d7184b9a871",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "crop-strip",
+      "kind": "fixture",
+      "file": "content/fixtures/crop-strip.json",
+      "sha256": "d672ce3256dca7cc95c8ce0d46fe302b98882541dcf2556dc5d2b07bae5a3773",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "open-shelter",
+      "kind": "fixture",
+      "file": "content/fixtures/open-shelter.json",
+      "sha256": "eba20ea5308a21a2dd87d068accc993acdfb205d769a3f68b8dac37748604190",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "plaza-lanterns",
+      "kind": "fixture",
+      "file": "content/fixtures/plaza-lanterns.json",
+      "sha256": "527a68391772a775089c29bb332299a6901b58d4d54e34ffd3025f67e0564d13",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "ring-bench",
+      "kind": "fixture",
+      "file": "content/fixtures/ring-bench.json",
+      "sha256": "27431586dc88155c3bfdeb387cbcd57549301163a67f8ec43774688185e082fc",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "shore-shelter",
+      "kind": "fixture",
+      "file": "content/fixtures/shore-shelter.json",
+      "sha256": "a5961cdd064a3a325caa7717e57e6a959b3e2cd32bebe238856b34d2cc69b303",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "stage-mark",
+      "kind": "fixture",
+      "file": "content/fixtures/stage-mark.json",
+      "sha256": "159e5fad1b29ed4631c79543927163441286f153054f92d5be69a1079d69a876",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "tank-cistern",
+      "kind": "fixture",
+      "file": "content/fixtures/tank-cistern.json",
+      "sha256": "68b0ec91fdf78a092fb53b1641fd24260daaea1ae7073c72055cd96a1cdef6bb",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the fixture manifests in src/content-manifest.js; the drawn rows are the sealed furniture builder named in rules.object",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The rows an object is drawn from are the sealed furniture definition named in rules.object. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
       "id": "bed",
       "kind": "furniture",
       "file": "content/furniture/bed.json",
@@ -1505,7 +1926,7 @@
       "id": "kitchen",
       "kind": "furniture",
       "file": "content/furniture/kitchen.json",
-      "sha256": "4aa066647dfaf011b50812f2666f7911baacfd020adb32c8b8bc7f30257357bf",
+      "sha256": "817099cdebba54d2ead305c8b36db59e9feb0e0198b893fe7d5a5182f2ac007e",
       "license": {
         "spdx": "LicenseRef-NemoWorld-Project-Authored",
         "author": "NemoWorld project contributors",
@@ -1756,6 +2177,198 @@
         "note": "Written for this project; no third-party asset was copied. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
       },
       "assets": []
+    },
+    {
+      "id": "amphitheatre-precinct",
+      "kind": "place",
+      "file": "content/places/amphitheatre-precinct.json",
+      "sha256": "b4ac89213ef29018fd5c09dd2fe489804365269cdb8086a8b66838f34a0b0d52",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "channel-landing-venue",
+      "kind": "place",
+      "file": "content/places/channel-landing-venue.json",
+      "sha256": "c08759e15f332d278068d0581e6f493d014e6eb76fe6b373c0e9a3ce67cb3279",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "coast-landing-district",
+      "kind": "place",
+      "file": "content/places/coast-landing-district.json",
+      "sha256": "69641e371eeb385957f94312b1ce2d6933c3dee0af4602d4b6746327d0f3bfaa",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "grove-ring-venue",
+      "kind": "place",
+      "file": "content/places/grove-ring-venue.json",
+      "sha256": "86726109985cfdca61c1106a4575cf0083771b4c7d34ba132bdd29b85c43ef8a",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "mosaic-field-venue",
+      "kind": "place",
+      "file": "content/places/mosaic-field-venue.json",
+      "sha256": "da9c85ed67f5f59df6fd747129603ccb053516599615ceb2a1f427e6bda97ab7",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "terrace-flight-venue",
+      "kind": "place",
+      "file": "content/places/terrace-flight-venue.json",
+      "sha256": "38000ab8d08d9b33240f891af7031c94cf0f477f1149bb783fb24658a2097ef0",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "district-guide",
+      "kind": "resident",
+      "file": "content/residents/district-guide.json",
+      "sha256": "e4abc73d6cdc4b710813e85cebd88127a09b2224bb0947aa7f9708edf78a8471",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the resident role manifests in src/content-manifest.js; the sprite is the sealed appearance named in rules.appearance",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The sprite is a sealed appearance definition named in rules.appearance. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "field-guide",
+      "kind": "resident",
+      "file": "content/residents/field-guide.json",
+      "sha256": "4994ee0733a9be02536c78f07fa04c0616af353b9e5c55c73949951edf7af8d7",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "grove-host",
+      "kind": "resident",
+      "file": "content/residents/grove-host.json",
+      "sha256": "2058b32706a7ddc9eb9d7a530e020860a5b1a79db93ac4e8ca27b098a68a4d7c",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the resident role manifests in src/content-manifest.js; the sprite is the sealed appearance named in rules.appearance",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The sprite is a sealed appearance definition named in rules.appearance. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "landing-keeper",
+      "kind": "resident",
+      "file": "content/residents/landing-keeper.json",
+      "sha256": "9955a19470477279a9627a3fd6cdc6c505a91937a1470ec23eca5eeb498b57c5",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the resident role manifests in src/content-manifest.js; the sprite is the sealed appearance named in rules.appearance",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The sprite is a sealed appearance definition named in rules.appearance. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "venue-steward",
+      "kind": "resident",
+      "file": "content/residents/venue-steward.json",
+      "sha256": "a8020b7c38390bd426a1aec7fb4e6698e29463920909757f37264700caa86d63",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the resident role manifests in src/content-manifest.js; the sprite is the sealed appearance named in rules.appearance",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The sprite is a sealed appearance definition named in rules.appearance. See content/THIRD_PARTY.md."
+      },
+      "assets": []
+    },
+    {
+      "id": "venue-usher",
+      "kind": "resident",
+      "file": "content/residents/venue-usher.json",
+      "sha256": "48d66d8bb3a181a638ae4e52be5c2a9a269bd69af709231a4d41fa0a82367a59",
+      "license": {
+        "spdx": "LicenseRef-NemoWorld-Project-Authored",
+        "author": "NemoWorld project contributors",
+        "source": "Original NemoWorld authored content: the resident role manifests in src/content-manifest.js; the sprite is the sealed appearance named in rules.appearance",
+        "commit": null,
+        "notice_file": "content/THIRD_PARTY.md",
+        "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+        "note": "Authored for this project; no third-party asset was copied. The sprite is a sealed appearance definition named in rules.appearance. See content/THIRD_PARTY.md."
+      },
+      "assets": []
     }
   ],
   "support": [
@@ -1769,7 +2382,7 @@
     },
     {
       "path": "content/index.js",
-      "sha256": "b4ac55f60cfe05c99579f27a481869c9112d54ede4836ecef454c76923101c85"
+      "sha256": "5f54ce5174ce4078502a58fe02f6124670c6256bae68efeeb5c964a41ca0c0a6"
     }
   ]
 }

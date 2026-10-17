@@ -4,10 +4,26 @@ export const VOXEL_LIMITS = Object.freeze({ radius: 18, cells: 1369, objects: 26
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const finite = (value, fallback) => Number.isFinite(value) ? value : fallback;
 
+// ---------------------------------------------------------------------------------------------
+// The orbiting view's comfortable range. Level (pitch 0) is a real value: the eye sits at the
+// pivot, the horizon runs across the middle of the frame and the sky above it is reachable. A
+// negative pitch keeps tilting the view up, but the eye never follows it below the resident's own
+// footing (`ORBIT_EYE_DROP`) — the boom stops there while the aim point keeps rising — so the
+// camera can never end up inside the terrain under the resident. The distance keeps its shipped
+// 6..32 range. These three numbers are the one place the orbit range is written down; the
+// first-person pitch clamp in src/camera-controls.js is a separate contract and is untouched.
+// ---------------------------------------------------------------------------------------------
+export const ORBIT_PITCH = Object.freeze({ min: -0.9, max: 1.4, default: 0.62 });
+export const ORBIT_DISTANCE = Object.freeze({ min: 6, max: 32, default: 17 });
+export const ORBIT_EYE_DROP = 0.45;
+
+export function clampOrbitPitch(value) { return clamp(finite(value, ORBIT_PITCH.default), ORBIT_PITCH.min, ORBIT_PITCH.max); }
+export function clampOrbitDistance(value) { return clamp(finite(value, ORBIT_DISTANCE.default), ORBIT_DISTANCE.min, ORBIT_DISTANCE.max); }
+
 export function normalizeOrbit(value = {}) {
   const yaw = finite(value.yaw, Math.PI / 4);
   return { yaw: yaw >= -Math.PI && yaw <= Math.PI ? yaw : ((yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI,
-    pitch: clamp(finite(value.pitch, 0.62), 0.3, 1.22), distance: clamp(finite(value.distance, 17), 6, 32) };
+    pitch: clampOrbitPitch(value.pitch), distance: clampOrbitDistance(value.distance) };
 }
 
 const cameraMode = value => value === 'first-person' ? 'first-person' : 'orbit';
@@ -47,9 +63,87 @@ export function firstPersonCamera(position, value = {}) {
 export function orbitCamera(position, value = {}) {
   const orbit = normalizeOrbit(value), x = finite(position?.x, 0) + 0.5, z = finite(position?.y, 0) + 0.5;
   const height = clamp(finite(position?.z, 0), 0, VOXEL_LIMITS.height) + 0.75;
-  const horizontal = Math.cos(orbit.pitch) * orbit.distance;
-  return { target: { x, y: height, z }, eye: { x: x + Math.sin(orbit.yaw) * horizontal,
-    y: height + Math.sin(orbit.pitch) * orbit.distance, z: z + Math.cos(orbit.yaw) * horizontal }, orbit };
+  const horizontal = Math.cos(orbit.pitch) * orbit.distance, lift = Math.sin(orbit.pitch) * orbit.distance;
+  // The boom descends no further than the resident's own footing. When it stops, the aim point rises
+  // by exactly the drop the boom refused, so a continued push still tilts the view up at the sky
+  // instead of dying, and the eye is never below the tile the resident is standing on.
+  const drop = Math.max(lift, -ORBIT_EYE_DROP);
+  return { target: { x, y: height, z }, eye: { x: x + Math.sin(orbit.yaw) * horizontal, y: height + drop, z: z + Math.cos(orbit.yaw) * horizontal },
+    // `look` is what the camera aims along; it differs from `target` only when the boom was floored.
+    look: { x, y: height + (drop - lift), z }, floored: drop > lift, orbit };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Zoom. One clamped number — the boom distance — drives both cameras: the orbiting eye travels
+// along the boom, and the first-person eye narrows its field of view. A wheel turn therefore means
+// "closer" in either view, and the same value survives a view switch. Neither camera reads or
+// writes a position on the server: this is camera geometry only.
+// ---------------------------------------------------------------------------------------------
+
+/** Tiles of boom travel per wheel pixel. A wheel notch of 100 px is a four-tile step. */
+export const WHEEL_TILES_PER_PIXEL = 0.04;
+export const WHEEL_LINE_PIXELS = 16;
+export const WHEEL_PAGE_PIXELS = 320;
+
+/** A wheel delta in CSS pixels, so line-mode and page-mode wheels zoom like a pixel-mode one. */
+export function normalizedWheelDelta(deltaY, deltaMode = 0) {
+  const amount = finite(deltaY, 0);
+  if (deltaMode === 1) return amount * WHEEL_LINE_PIXELS;
+  if (deltaMode === 2) return amount * WHEEL_PAGE_PIXELS;
+  return amount;
+}
+
+/** The distance a wheel asks for, always inside the shipped range. Scrolling down pulls back. */
+export function wheelZoom(distance, pixels) { return clampOrbitDistance(clampOrbitDistance(distance) + finite(pixels, 0) * WHEEL_TILES_PER_PIXEL); }
+
+/** A two-finger pinch: fingers apart (scale > 1) is one step closer, clamped like every other zoom. */
+export function pinchDistance(startDistance, scale) {
+  const factor = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  return clampOrbitDistance(clampOrbitDistance(startDistance) / factor);
+}
+
+// The shipped 48° field of view is what a distance of about 17 asks for; the two ends are the
+// narrowest and widest the first-person view may go, so a zoom can never become a telephoto tube or
+// a fisheye.
+export const FOV_LIMITS = Object.freeze({ min: 30, max: 68, base: 48 });
+
+export function fovForDistance(distance) {
+  const span = ORBIT_DISTANCE.max - ORBIT_DISTANCE.min;
+  return FOV_LIMITS.min + (clampOrbitDistance(distance) - ORBIT_DISTANCE.min) / span * (FOV_LIMITS.max - FOV_LIMITS.min);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Presentation-only easing. The camera glides toward the facing and the distance the shell stored;
+// nothing here writes a position and no server value is ever derived from an eased number. A caller
+// with no animation frame applies one step at rate 1 and gets the stored value exactly.
+// ---------------------------------------------------------------------------------------------
+export const LOOK_EASE = Object.freeze({ rate: 0.3, period: 16.7, epsilon: 0.002 });
+
+/** One step of an exponential approach. It never overshoots and lands exactly on the target. */
+export function approach(current, target, rate = LOOK_EASE.rate, epsilon = LOOK_EASE.epsilon) {
+  const from = finite(current, 0), to = finite(target, from), fraction = clamp(finite(rate, 0), 0, 1);
+  return Math.abs(to - from) <= epsilon ? to : from + (to - from) * fraction;
+}
+
+/** The per-frame fraction for an elapsed time, so a 120 Hz display eases in the same wall time. */
+export function easeRate(elapsedMs, rate = LOOK_EASE.rate, period = LOOK_EASE.period) {
+  const frames = clamp(finite(elapsedMs, period) / period, 0, 8);
+  return 1 - Math.pow(1 - clamp(finite(rate, 0), 0, 1), frames);
+}
+
+/** The shortest signed turn between two yaws, so an eased look never travels the long way round. */
+export function shortestTurn(from, to) {
+  const delta = finite(to, 0) - finite(from, 0);
+  return delta >= -Math.PI && delta <= Math.PI ? delta : ((delta + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+}
+
+/** One easing step of a whole orbit: yaw the short way round, pitch and distance straight. */
+export function approachOrbit(current, target, rate = LOOK_EASE.rate) {
+  const from = normalizeOrbit(current), to = normalizeOrbit(target), fraction = clamp(finite(rate, 0), 0, 1), turn = shortestTurn(from.yaw, to.yaw);
+  const yaw = Math.abs(turn) <= LOOK_EASE.epsilon ? to.yaw : from.yaw + turn * fraction;
+  const pitch = approach(from.pitch, to.pitch, rate), distance = approach(from.distance, to.distance, rate);
+  const settled = yaw === to.yaw && pitch === to.pitch && distance === to.distance;
+  return { yaw: settled ? to.yaw : yaw, pitch, distance, settled };
 }
 
 /** The authored world's own tile bounds, read once for the anchor and the window. */
@@ -273,4 +367,17 @@ export function voxelPick(intersection) {
   const face = normal ? { x: Math.round(normal.x) || 0, y: Math.round(normal.z) || 0, z: Math.round(normal.y) || 0 } : { x: 0, y: 0, z: 1 };
   const z = record.z ?? 0;
   return { ...record, z, face, adjacent: record.type === 'block' ? { x: record.x + face.x, y: record.y + face.y, z: z + face.z } : { x: record.x, y: record.y, z: 0 } };
+}
+
+/**
+ * The identity of a hovered target, for a caller that only wants to redraw its aim line when the
+ * thing under the pointer changed: the same tile, layer, kind, cube face and — where the renderer
+ * knows one — the same named object is the same reading. An empty string is "nothing is hovered",
+ * so a pointer leaving the canvas is the same event as a pointer over empty sky.
+ */
+export function hoverKey(pick) {
+  if (!pick || !Number.isInteger(pick.x) || !Number.isInteger(pick.y)) return '';
+  const face = pick.face || {};
+  const named = pick.block?.id ?? pick.participant?.id ?? pick.portal?.label ?? pick.portal?.name ?? '';
+  return [pick.type || 'tile', pick.x, pick.y, pick.z || 0, Math.round(finite(face.x, 0)), Math.round(finite(face.y, 0)), Math.round(finite(face.z, 0)), named].join(',');
 }

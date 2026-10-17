@@ -1,0 +1,146 @@
+#!/usr/bin/env node
+// Real native server acceptance in an isolated world. No live database/config/credentials are used.
+import { spawn } from 'node:child_process';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, openSync, existsSync, realpathSync, statSync } from 'node:fs';
+import { createConnection } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join, resolve, dirname, basename, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { randomBytes } from 'node:crypto';
+import assert from 'node:assert/strict';
+import { Platform } from '../src/platform.js';
+import { VelorenLink, withConfiguredLandmarks, loadLandmarks } from '../src/veloren-link.js';
+import { createApp } from '../server.js';
+import { loadNativeCityComposition } from '../src/veloren-ext/city-composition.js';
+const source = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const engine = resolve(process.env.NEMO_ENGINE_SOURCE || join(source,'../veloren-integ'));
+const binaries = resolve(process.env.NEMO_ENGINE_BIN || join(engine,'../target/integ/release'));
+const args=process.argv.slice(2);
+if(args.length && (args.length!==2 || args[0]!=='--resume'))throw Error('Usage: native-city-smoke.mjs [--resume DISPOSABLE_TEST_DIRECTORY]');
+let dir;
+if(args.length) {
+  dir=realpathSync(args[1]);const owner=JSON.parse(readFileSync(join(dir,'owner.json'),'utf8'));
+  const rel=relative(realpathSync(tmpdir()),dir);
+  if(rel.startsWith('..') || !basename(dir).startsWith('nemo-native-city-') || !owner.disposable || owner.source!==source)throw Error('Refusing non-probe or production directory');
+  let alive=false;try{process.kill(owner.pid,0);alive=true;}catch{}
+  if(alive)throw Error('Prior disposable probe is still running; stop it gracefully before resume');
+} else dir=mkdtempSync(join(tmpdir(),'nemo-native-city-'));
+for (const folder of ['data','logs','userdata/server/server_config','userdata/server-cli']) mkdirSync(join(dir,folder),{recursive:true});
+const log = (message) => console.log(new Date().toISOString(),message);
+const delay = ms => new Promise(r=>setTimeout(r,ms));
+const json = path => JSON.parse(readFileSync(path,'utf8'));
+const documents=loadNativeCityComposition();
+for (const [key,value] of Object.entries(documents)) writeFileSync(join(dir,`${key}.json`),JSON.stringify(value));
+const keyPath=join(dir,'event-key.bin');
+const key=existsSync(keyPath)?readFileSync(keyPath):randomBytes(32);
+if(key.length!==32)throw Error('Invalid disposable key');
+if(!existsSync(keyPath))writeFileSync(keyPath,key,{flag:'wx',mode:0o600});
+const outbox=join(dir,'data/events.jsonl'),worldRecord=outbox+'.world.json';
+const platform=new Platform(join(dir,'data/world.sqlite'));
+const link=new VelorenLink({dbPath:join(dir,'data/link.sqlite'),eventKey:key,commandsPath:outbox+'.commands.jsonl',landmarks:withConfiguredLandmarks(loadLandmarks(join(source,'content/veloren-landmarks.json')))});
+process.env.NEMO_CITY_ENABLED='1';process.env.NEMO_WORLD_RECORD=worldRecord;
+const app=createApp({platform,velorenLink:link,livingWorld:false});
+await new Promise(r=>app.server.listen(0,'127.0.0.1',r));
+const url=`http://127.0.0.1:${app.server.address().port}`;
+const gamePort=Number(process.env.NEMO_CITY_TEST_PORT||14124);
+writeFileSync(join(dir,'userdata/server/server_config/settings.ron'),`(gameserver_protocols:[Tcp(address:"127.0.0.1:${gamePort}")],query_address:Some("127.0.0.1:${gamePort+2}"),max_players:8,world_seed:130626853,server_name:"Disposable city acceptance",day_length:30.0,map_file:None,max_view_distance:Some(8),max_player_group_size:6,gameplay:(battle_mode:Global(PvE),explosion_burn_marks:true,),world:(start_time:32400.0,))`);
+writeFileSync(join(dir,'userdata/server-cli/settings.ron'),`(update_shutdown_grace_period_secs:2,update_shutdown_message:"Disposable test restart",web_address:"127.0.0.1:${gamePort+1}",web_chat_secret:None,ui_api_secret:None,shutdown_signals:[SIGUSR1],)`);
+const config={server_id:'native-city-disposable',ack_resident:'lw-lyra',outbox,residents:{Theron:'lw-theron'},landmarks:documents.landmarks.landmarks,world:{enabled:true,site:'Harr',path:join(dir,'manifest.json')}};
+writeFileSync(join(dir,'link.json'),JSON.stringify(config));
+let interrupted=false;
+process.once('SIGTERM',()=>{interrupted=true;});process.once('SIGINT',()=>{interrupted=true;});
+writeFileSync(join(dir,'owner.json'),JSON.stringify({pid:process.pid,source,disposable:true}));
+const children=[];
+function run(name,exe,args,env={}) { const child=spawn(exe,args,{cwd:engine,stdio:['ignore',openSync(join(dir,'logs',name+'.log'),'a'),openSync(join(dir,'logs',name+'.log'),'a')],env:{...process.env,...env}});children.push(child);return child; }
+const startServer=()=>run('server',join(binaries,'veloren-server-cli'),['--non-interactive','--no-auth'],{VELOREN_USERDATA:join(dir,'userdata'),NEMO_LINK_CONFIG:join(dir,'link.json'),NEMO_LINK_EVENT_KEY:key.toString('hex'),RUST_LOG:'warn,veloren_server::sys::nemo_city=info'});
+const balances=()=>({coins:platform.get('SELECT COUNT(*) n FROM coin_rewards').n,karma:platform.get('SELECT COUNT(*) n FROM karma_receipts').n,accounts:platform.get('SELECT COUNT(*) n FROM accounts').n});
+const listening=()=>new Promise(resolve=>{const socket=createConnection({host:'127.0.0.1',port:gamePort});let done=false;const finish=value=>{if(done)return;done=true;socket.destroy();resolve(value);};socket.setTimeout(1000);socket.once('connect',()=>finish(true));socket.once('error',()=>finish(false));socket.once('timeout',()=>finish(false));});
+const beforeBalances=balances();
+let native;
+try {
+  const startedAt=Date.now(); native=startServer();
+  log(`EVIDENCE ${dir}`);
+  const relay=link.issueCredential({resident_id:'lw-lyra',scopes:['events'],days:1});
+  run('relay',process.execPath,[join(source,'scripts/veloren-relay.mjs'),'--outbox',outbox,'--url',url,'--resident','lw-lyra'],{NEMO_LINK_TOKEN:relay.token});
+  const deadline=Date.now()+180_000;
+  while(!existsSync(outbox+'.landmarks.json') || statSync(outbox+'.landmarks.json').mtimeMs<startedAt || !await listening()) { if(interrupted)throw Error('Probe interrupted'); if(native.exitCode!==null)throw Error('Native server exited; inspect evidence logs');if(Date.now()>deadline)throw Error('Native startup timed out');await delay(1000); }
+  const credential=link.issueCredential({resident_id:'lw-theron',scopes:['talk','director'],days:1});
+  run('bridge',join(binaries,'nemo-bridge'),['--server',`127.0.0.1:${gamePort}`,'--resident','lw-theron','--roster',join(engine,'nemo-bridge/roster.json'),'--landmarks',outbox+'.landmarks.json','--nemo-url',url],{NEMO_LINK_TOKEN:credential.token,RUST_LOG:'warn,nemo_bridge=info'});
+  // A stand-in human client verifies the native travel half; guest-session ownership is
+  // separately exercised by the HTTP/browser tests. This probe creates no web account.
+  const guestName='NativeCityGuest';
+  const arrival=json(outbox+'.landmarks.json').landmarks.find(l=>l.id==='city-arrival');
+  assert.ok(arrival,'native city arrival landmark resolves');
+  const guestLog=join(dir,'logs/guest.log'),guestOffset=existsSync(guestLog)?statSync(guestLog).size:0;
+  run('guest',join(binaries,'nemo-bridge'),['--server',`127.0.0.1:${gamePort}`,'--probe',guestName,'--goto',`${arrival.x},${arrival.y}`],{RUST_LOG:'warn,nemo_bridge=info'});
+  let ready=false;
+  for(let i=0;i<60;i++) { await delay(1000);if(interrupted)throw Error('Probe interrupted');if(readFileSync(guestLog).subarray(guestOffset).toString().includes('PROBE going to')){ready=true;break;} }
+  assert.ok(ready,'stand-in human enters the real native world');
+  let guestUuid=144066263297769815596495629667062367629n;
+  for(const byte of Buffer.from(guestName))guestUuid=((guestUuid^BigInt(byte))*309485009821345068724781371n)%(1n<<128n);
+  const hex=guestUuid.toString(16).padStart(32,'0'),playerUuid=`${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+  const travel=[];
+  for(const [kind,target] of [['city_visit','city-arrival'],['city_return','lyra-plaza']]) {
+    const command=link.issueCommand({kind,player_uuid:playerUuid,args:{target},ttl_ms:60_000,issuedBy:'disposable-native-city-travel'});
+    let status='pending';for(let i=0;i<30 && status==='pending';i++){await delay(2000);if(interrupted)throw Error('Probe interrupted');status=link.commandStatus(command.cmd_id).status;}
+    assert.equal(status,'applied',`${kind} confirms the real human's observed destination`);travel.push({kind,cmd_id:command.cmd_id,status});
+  }
+  log('PASS native human city visit and return with observed arrival acknowledgements');
+  let last='';
+  const until=Date.now()+Number(process.env.NEMO_CITY_TEST_TIMEOUT_MS||2_700_000);
+  while(Date.now()<until) {
+    await delay(10_000);
+    if(interrupted) throw Error('Probe interrupted');
+    if(native.exitCode!==null) throw Error('Native server exited during city simulation');
+    if(readFileSync(join(dir,'logs/server.log'),'utf8').includes('world dressing cannot start')) throw Error('Native manifest validation refused city; inspect server log');
+    const view=link.nativeCity.overview();
+    let record={},actors={};try{record=json(worldRecord);actors=json(outbox+'.city.json');}catch{}
+    const built=Object.keys(record.groups||{}).filter(id=>id.startsWith('city-'));
+    const summary=JSON.stringify({citizens:view.citizens.length,native_actors:Object.keys(actors).length,arrived:Object.values(actors).filter(a=>a.arrived).length,city_groups:built.length,reports:view.reports.length,harvests:view.harvests.length,marriages:view.marriages.length,births:view.births.length,assessments:view.assessments.length,grown_children:view.citizens.filter(c=>c.stage==='adult'&&view.births.some(b=>b.citizen_id===c.id)).length});
+    if(summary!==last){log(summary);last=summary;writeFileSync(join(dir,'progress.json'),JSON.stringify({view,actors,built},null,2));}
+    if(view.births.length && view.reports.length && view.harvests.length && built.length===documents.manifest.groups.filter(g=>g.id.startsWith('city-')).length && view.citizens.some(c=>c.stage==='adult'&&view.births.some(b=>b.citizen_id===c.id)&&view.reports.some(r=>r.citizen_id===c.id))) {
+      assert.deepEqual(balances(),beforeBalances,'city life grants no currency or accounts');
+      assert.ok(Object.keys(actors).length>=8);assert.ok(built.includes('city-home-1-complete')||built.includes('city-home-2-complete')||built.includes('city-home-3-complete')||built.includes('city-home-4-complete'));
+      const before=view.citizens.map(c=>c.id).sort();
+      const grown=view.citizens.filter(c=>c.stage==='adult'&&view.births.some(b=>b.citizen_id===c.id)).map(c=>c.id);
+      const geometry=Object.fromEntries(built.map(id=>[id,{digest:record.groups[id].digest,ground:record.groups[id].ground,anchor:record.groups[id].anchor}]));
+      const structures=built.filter(id=>/-(foundation|shell)$/.test(id));assert.equal(structures.length,16);
+      native.kill('SIGUSR1');await new Promise(r=>native.once('exit',r));
+      const restartedAt=Date.now(); native=startServer();
+      let rebound=false,resumedWork=false,sceneReady=false;
+      for(let attempt=0;attempt<72;attempt++) {
+        await delay(5000);
+        let restored={};try{restored=json(outbox+'.city.json');}catch{}
+        rebound=before.every(id=>restored[id]?.observed_at>restartedAt);
+        let scene={};try{scene=json(worldRecord);}catch{}
+        const ready=structures.every(id=>scene.groups?.[id]?.applied_at>restartedAt);
+        if(ready&&!sceneReady)log('PASS all eight buildings physically restamped after restart');
+        sceneReady=ready;
+        if(sceneReady) {
+          const sceneAt=Math.max(...structures.map(id=>scene.groups[id].applied_at));
+          const completed=new Set(link.sql.all("SELECT DISTINCT j.citizen_id FROM city_jobs j JOIN link_events e ON e.landmark_id=j.cmd_id WHERE j.state='completed' AND e.kind='command.applied' AND e.occurred_at>?",sceneAt).map(j=>j.citizen_id));
+          resumedWork=grown.every(id=>completed.has(id));
+        }
+        if(rebound&&sceneReady&&resumedWork)break;
+      }
+      assert.ok(rebound,'every prior citizen has a fresh observed native NPC position after restart');
+      assert.ok(sceneReady,'all eight native buildings are physically reconstructed after restart');
+      assert.ok(resumedWork,'every grown child completes another real job after restart, rather than remaining stranded');
+      const restoredRecord=json(worldRecord);
+      assert.deepEqual(Object.fromEntries(built.map(id=>[id,{digest:restoredRecord.groups[id].digest,ground:restoredRecord.groups[id].ground,anchor:restoredRecord.groups[id].anchor}])),geometry,'restart preserves city geometry and base heights');
+      const after=link.nativeCity.overview().citizens.map(c=>c.id);
+      assert.ok(before.every(id=>after.includes(id)),'restart preserves all prior citizens while allowing legitimate new births');
+      log('PASS real native construction/work/family/birth/school/apprenticeship/adult-work and restart');
+      writeFileSync(join(dir,'result.json'),JSON.stringify({passed:true,at:new Date().toISOString(),citizens:before,built,travel,restored_structures:structures,post_restart_workers:grown}));
+      process.exitCode=0;break;
+    }
+  }
+  if(!existsSync(join(dir,'result.json')))throw Error('City acceptance deadline: inspect progress and native waiting records; no success claimed');
+} catch(error) { log(`FAIL ${error.message}`);process.exitCode=1; }
+finally {
+  // Stop only children owned by this isolated probe. Native server gets its configured save signal.
+  if(native?.exitCode===null){native.kill('SIGUSR1');await Promise.race([new Promise(r=>native.once('exit',r)),delay(15_000)]);}
+  for(const child of children)if(child!==native&&child.exitCode===null)child.kill('SIGTERM');
+  await new Promise(r=>app.server.close(r));await app.stopWorkers();platform.close();
+  log(`Artifacts retained at ${dir}`);
+}

@@ -17,7 +17,13 @@
 import bundle from '../content/index.js';
 
 export const SCHEMA_VERSION = 1;
-export const CONTENT_KINDS = Object.freeze(['block', 'furniture', 'crop', 'appearance', 'cosmetic']);
+// The first five kinds are the shipped artwork vocabulary; the last five are the authored content
+// families added by the content-manifest slice. New kinds are appended so entry(id) keeps resolving
+// an ambiguous id to the same kind it always did.
+export const CONTENT_KINDS = Object.freeze(['block', 'furniture', 'crop', 'appearance', 'cosmetic',
+  'place', 'fixture', 'activity', 'resident', 'ambient']);
+/** Directory under content/ and family label for each authored family, keyed by kind. */
+export const CONTENT_FAMILY_OF_KIND = Object.freeze({ place: 'places', fixture: 'fixtures', activity: 'activities', resident: 'residents', ambient: 'ambient' });
 
 const HEX = /^#[a-f\d]{6}$/i;
 const DIGEST = /^[a-f0-9]{64}$/;
@@ -117,6 +123,31 @@ export function validateBundle(input) {
       if (!Array.isArray(rules.roster_roles) || !rules.roster_roles.length || rules.roster_roles.some((role) => typeof role !== 'string' || !role)) fail(`${entry.id}: appearance rules.roster_roles must list at least one role`);
       if (typeof appearance.atlas !== 'string' || !appearance.atlas || typeof appearance.faceset !== 'string' || !appearance.faceset) fail(`${entry.id}: an appearance needs atlas and faceset asset paths`);
       if (!Array.isArray(entry.assets) || !entry.assets.length) fail(`${entry.id}: an appearance must reference its asset files`);
+    }
+    // The five authored families. These are envelope checks only; the deep rules — reference
+    // resolution, footprint and collision, accessibility, determinism — belong to
+    // src/content-manifest.js, which the publication path runs before anything is written.
+    const family = CONTENT_FAMILY_OF_KIND[entry.kind];
+    if (family) {
+      if (rules.family !== family) fail(`${entry.id}: rules.family must be ${family} for kind ${entry.kind}`);
+      if (entry.kind === 'place' && (!rules.site || !rules.structure || typeof rules.site.kind !== 'string' || typeof rules.structure.kind !== 'string')) {
+        fail(`${entry.id}: a place needs rules.site and rules.structure, each with a kind`);
+      }
+      if (entry.kind === 'fixture' && (typeof rules.object !== 'string' || !rules.object || !Number.isInteger(rules.arrangement?.count) || !Array.isArray(rules.tiles))) {
+        fail(`${entry.id}: a fixture needs rules.object, an arrangement count and its tiles`);
+      }
+      if (entry.kind === 'activity' && (!rules.cadence || !Number.isInteger(rules.cadence.interval) || rules.cadence.interval <= 0 || !Number.isInteger(rules.duration_ticks))) {
+        fail(`${entry.id}: an activity needs a positive rules.cadence.interval and rules.duration_ticks`);
+      }
+      if (entry.kind === 'resident' && (typeof rules.role !== 'string' || !rules.role.trim() || typeof rules.appearance !== 'string')) {
+        fail(`${entry.id}: a resident needs rules.role and the rules.appearance it is drawn from`);
+      }
+      if (entry.kind === 'ambient' && (!Array.isArray(rules.layers) || !rules.layers.length || !rules.time_of_day)) {
+        fail(`${entry.id}: an ambient profile needs rules.layers and rules.time_of_day`);
+      }
+      for (const id of [].concat(rules.fixtures || [], rules.activities || [], rules.residents || [])) {
+        if (typeof id !== 'string' || !id) fail(`${entry.id}: a family reference must be a non-empty id`);
+      }
     }
   }
   for (const item of manifest.entries) if (!byKind.get(item.kind)?.has(item.id)) fail(`${item.file}: the manifest indexes a definition that is not in the bundle`);

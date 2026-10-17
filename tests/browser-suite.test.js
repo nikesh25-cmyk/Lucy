@@ -46,8 +46,8 @@ test('a missing database path or workspace is refused rather than guessed', () =
 test('the suite runs its scenarios in order, and a focused run keeps only the named ones', () => {
   const all = selectedScenarios();
   assert.deepEqual(all, SCENARIOS.map((scenario) => scenario.id));
-  assert.equal(all.length, 45);
-  assert.equal(new Set(all).size, 45);
+  assert.equal(all.length, 49);
+  assert.equal(new Set(all).size, 49);
   assert.equal(all[all.length - 1], 'signout-privacy', 'the sign-out scenario stays last');
   for (const id of [
     'hero-introduction-film', 'game-entry-and-observation', 'signed-in-game-play',
@@ -56,7 +56,8 @@ test('the suite runs its scenarios in order, and a focused run keeps only the na
     'cooperative-restoration-two-operators', 'reviewer-workbench', 'review-states-and-refusals', 'world-sound-controls',
     'live-observation-readonly', 'game-shell-entry-and-continue', 'management-interface-and-roles', 'private-memory-and-journal-boundaries',
     'first-ten-minutes', 'first-play-solo-ambassador', 'restoration-two-clients',
-    'phone-conversation', 'mission-quality-advisory-signals',
+    'phone-conversation', 'mission-quality-advisory-signals', 'in-game-command-surface',
+    'shared-world-seam-crossing', 'home-vault-interface',
   ]) assert.ok(all.includes(id), `${id} must remain in the merged browser suite`);
   for (const scenario of SCENARIOS) {
     assert.equal(typeof scenario.title, 'string');
@@ -81,4 +82,17 @@ test('every queue-review correction has a named browser regression scenario', ()
     const covered = SCENARIOS.filter((scenario) => scenario.regression === `queue review correction ${correction}`);
     assert.ok(covered.length >= 1, `correction ${correction} must be encoded as a browser scenario`);
   }
+});
+
+test('CI keeps DOM traces without continuously copying software-rendered GPU frames',async()=>{
+ const {browserTraceOptions}=await import('../scripts/browser-suite.mjs');
+ assert.deepEqual(browserTraceOptions(true,false),{screenshots:false,snapshots:false,sources:false});
+ assert.deepEqual(browserTraceOptions(true,true),{screenshots:true,snapshots:true,sources:false});
+ assert.deepEqual(browserTraceOptions(false),{screenshots:true,snapshots:true,sources:false});
+});
+
+test('a saved walk is progressing only when its actual coordinates change in the same world',async()=>{
+ const {walkHasSavedProgress}=await import('../scripts/browser-suite.mjs');const a={world_id:'frontier:0:0',x:24,y:24};
+ assert.equal(walkHasSavedProgress(a,{...a,x:11,y:5}),true);
+ for(const b of [null,{...a},{...a,x:NaN},{...a,x:11,world_id:'commons'}])assert.equal(walkHasSavedProgress(a,b),false);
 });

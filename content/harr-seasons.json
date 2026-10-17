@@ -1,0 +1,79 @@
+{
+  "format": "harr-seasons-v1",
+  "note": "Harr's slow calendar. The season is a pure function of the host computer's local date (meteorological seasons, three months each). It changes only the pantry's restock RATES (never its caps, never below 0.8 or above 1.5 of the usual), the wording of village events and one library note a day. It does not touch weather, terrain, light, buildings or anything a person owns. `hemisphere` may be north or south.",
+  "hemisphere": "north",
+  "seasons": [
+    {
+      "id": "spring",
+      "name": "Spring",
+      "months": [3, 4, 5],
+      "line": "The fields wake up: seedlings, blossom and the first long evenings.",
+      "pantry": { "apple": 0.9, "carrot": 1.1, "cheese": 1.0, "lettuce": 1.4 },
+      "events": {
+        "market-hour": "In spring the stalls hold seedlings, young lettuce and bunches of blossom.",
+        "story-circle": "Spring stories are about first sprouts, and the keepers read them with the doors open.",
+        "festival": "The spring festival is a seed swap: everyone leaves with something to plant."
+      },
+      "library": [
+        "Spring note: the meadow flowers open in a fixed order, so the same walk looks different every fortnight.",
+        "Spring note: meltwater feeds the hidden spring harder now, and the well runs a little fuller.",
+        "Spring note: birds return to the grove and the first nests are worth recording gently from a distance.",
+        "Spring note: lichen grows fastest in damp weather, so spring is the season to measure the old stone."
+      ]
+    },
+    {
+      "id": "summer",
+      "name": "Summer",
+      "months": [6, 7, 8],
+      "line": "Long days, bright fields and the busiest season on the farms.",
+      "pantry": { "apple": 1.2, "carrot": 1.0, "cheese": 0.9, "lettuce": 1.3 },
+      "events": {
+        "market-hour": "In summer the stalls hold early apples, crisp lettuce and jugs of cold spring water.",
+        "story-circle": "Summer stories are told in the shade of the pavilion, with the long evening still ahead.",
+        "festival": "The summer festival stays on the square until the lanterns are lit."
+      },
+      "library": [
+        "Summer note: bees are busiest at midday, which makes the bee hollow the best place to listen.",
+        "Summer note: from the high view the valley is greenest now; it is a good time to map the fields.",
+        "Summer note: the clay bank dries and cracks in the heat, and the makers collect what flakes off.",
+        "Summer note: the star meadow is at its clearest on short summer nights."
+      ]
+    },
+    {
+      "id": "autumn",
+      "name": "Autumn",
+      "months": [9, 10, 11],
+      "line": "Apples ripen, leaves turn and the farms bring in the big harvest.",
+      "pantry": { "apple": 1.4, "carrot": 1.3, "cheese": 1.0, "lettuce": 0.85 },
+      "events": {
+        "market-hour": "In autumn the stalls hold baskets of apples, fat carrots and jars put up for winter.",
+        "story-circle": "Autumn stories are about journeys and harvests, and the scholars read them by lamplight.",
+        "festival": "The autumn festival is a harvest supper: everyone brings a story and takes a plate."
+      },
+      "library": [
+        "Autumn note: seed pods split open in the wind on the ridge, so the wind ridge is the place to watch seeds travel.",
+        "Autumn note: leaves at the birdsong grove turn in a steady order, oldest trees first.",
+        "Autumn note: the boundary stone is easiest to read in low autumn light, when its grooves cast long shadows.",
+        "Autumn note: the orchards are loaded; the farmers say a ripe apple parts from its branch with a gentle twist."
+      ]
+    },
+    {
+      "id": "winter",
+      "name": "Winter",
+      "months": [12, 1, 2],
+      "line": "Quiet fields, early lamps and warm kitchens; the pantry never closes.",
+      "pantry": { "apple": 0.85, "carrot": 1.1, "cheese": 1.4, "lettuce": 0.8 },
+      "events": {
+        "market-hour": "In winter the stalls hold cheese, stored carrots and warm bread to share.",
+        "story-circle": "Winter stories are read indoors by the lamps, and there is always a seat free.",
+        "festival": "The winter festival is a lantern evening: the square glows from edge to edge."
+      },
+      "library": [
+        "Winter note: the hidden spring stays the same temperature all year, so it steams on the coldest mornings.",
+        "Winter note: bare branches make the high view even wider, and the winding road shows clearly.",
+        "Winter note: the lichen wall stays green when everything else rests; it is the season for close drawings of it.",
+        "Winter note: long nights are the best time at the star meadow, and the scholars bring blankets and tea."
+      ]
+    }
+  ]
+}

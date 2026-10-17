@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Harr world, as a user LaunchAgent (no root). Rendered by install.sh; placeholders are __LIKE_THIS__.
+  harr-run.sh stays in the foreground: it starts the world with play-next.sh, then watches it. If the world falls over
+  it exits non-zero and launchd starts it again (KeepAlive/SuccessfulExit=false), never faster than ThrottleInterval.
+  A clean stop (launchctl bootout, or `launchctl kill TERM`) makes harr-run.sh stop the world and exit 0, so it stays stopped.
+  launchd ends every process in the job's group when the job ends. That is wanted here: no half-started leftovers.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harr.world</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__OPS_DIR__/launchd/harr-run.sh</string>
+__WORLD_ARGS_XML__
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HARR_ROOT</key><string>__ROOT__</string>
+    <key>PATH</key><string>__HOME__/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HARR_STRIKES</key><string>3</string>
+  </dict>
+  <key>WorkingDirectory</key><string>__ROOT__</string>
+  <!-- Off by default: starting a game world at every login on a busy Mac is the owner's choice. install.sh with its run-at-load option turns it on. -->
+  <key>RunAtLoad</key>__RUN_AT_LOAD__
+  <!-- Restart only when harr-run.sh exits with a failure. Exit 0 (a clean stop) stays stopped. -->
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key><false/>
+  </dict>
+  <!-- At most one start per minute, so a world that cannot come up does not spin the CPU. -->
+  <key>ThrottleInterval</key><integer>60</integer>
+  <!-- Time allowed for a clean stop (residents, relays, server, NemoWorld) before launchd kills the group. -->
+  <key>ExitTimeOut</key><integer>60</integer>
+  <!-- The default soft limit of 256 open files is too low for 8 + 24 residents, their relays and the server. -->
+  <key>SoftResourceLimits</key>
+  <dict><key>NumberOfFiles</key><integer>8192</integer></dict>
+  <key>HardResourceLimits</key>
+  <dict><key>NumberOfFiles</key><integer>8192</integer></dict>
+  <!-- Stay out of the way of the owner's apps; children inherit this. -->
+  <key>Nice</key><integer>5</integer>
+  <key>ProcessType</key><string>Standard</string>
+  <key>StandardOutPath</key><string>__ROOT__/play/logs/launchd-world.out.log</string>
+  <key>StandardErrorPath</key><string>__ROOT__/play/logs/launchd-world.err.log</string>
+</dict>
+</plist>

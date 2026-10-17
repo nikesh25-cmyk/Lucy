@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "id": "pond-margin-walk",
+  "kind": "activity",
+  "label": "Pond margin walk",
+  "since": "1.1.0",
+  "order": 7,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "activity-schedule",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "activities",
+    "place": "mosaic-field-venue",
+    "residents": [
+      "field-guide"
+    ],
+    "participants": {
+      "min": 1,
+      "max": 1
+    },
+    "cadence": {
+      "unit": "tick",
+      "interval": 35,
+      "offset": 0,
+      "jitter": 0
+    },
+    "duration_ticks": 5,
+    "relates_to": [
+      "herbs"
+    ],
+    "motion": "none",
+    "reduced_motion": "not-needed",
+    "ordering": "authored",
+    "clock": "tick indices counted from the world boot; no wall-clock time, no date and no generator is read, so two runs of the same world produce the same schedule",
+    "implements": "the living-world resident loop (src/living-world.js) and the venue machinery the place names; this definition records the schedule the loop is expected to keep and is not yet read by it"
+  },
+  "notes": [
+    "The guide walks the pond margin and the west field edge. No crop is harmed and nothing is adopted."
+  ]
+}

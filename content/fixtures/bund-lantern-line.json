@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "id": "bund-lantern-line",
+  "kind": "fixture",
+  "label": "Bund Lantern Line",
+  "since": "1.1.0",
+  "order": 11,
+  "license": {
+    "spdx": "LicenseRef-NemoWorld-Project-Authored",
+    "author": "NemoWorld project contributors",
+    "source": "Original NemoWorld authored content: the place manifests in src/content-manifest.js, validated against the venue machinery in world.js",
+    "commit": null,
+    "notice_file": "content/THIRD_PARTY.md",
+    "notice_sha256": "4a0a390c9d4e1951939e4f9672b103fdf026a574d5566ed6c5e0295636c7bf60",
+    "note": "Authored for this project; no third-party asset was copied. A place declares a space and the machinery it reuses and draws no new geometry. The repository carries no LICENSE file, so redistribution terms are unstated. See content/THIRD_PARTY.md."
+  },
+  "appearance": {
+    "color": null,
+    "geometry": "lantern",
+    "transparent": false,
+    "emissive": null
+  },
+  "rules": {
+    "palettes": [],
+    "family": "fixtures",
+    "object": "lantern",
+    "footprint": "open",
+    "scenery_class": "mass",
+    "blocks_route": true,
+    "arrangement": {
+      "kind": "row",
+      "axis": "x",
+      "spacing": 3,
+      "count": 3,
+      "from": {
+        "x": 28,
+        "y": 6
+      }
+    },
+    "tiles": [
+      [
+        28,
+        6
+      ],
+      [
+        31,
+        6
+      ],
+      [
+        34,
+        6
+      ]
+    ],
+    "owner": "mosaic-field-venue",
+    "placement": {
+      "on": "ground"
+    },
+    "provenance": {
+      "derived_from": "content/furniture/lantern.json",
+      "reuse": "the sealed furniture builder is drawn; this fixture adds no asset and no geometry"
+    }
+  },
+  "notes": [
+    "Three lamps along the eastern field edge, outside the plaza band."
+  ]
+}

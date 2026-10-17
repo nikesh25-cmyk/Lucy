@@ -9,8 +9,10 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID, createHash } from 'node:crypto';
 import { Platform } from './src/platform.js';
 import { acquireProcessLock, backupDatabase, backupInventory, validateDatabase } from './src/recovery.js';
+import { createIncidentLog } from './src/incidents.js';
 import { hostingConfiguration, validateRequestOrigin, createAuthenticationLimiter } from './src/hosting.js';
 import { worldAtmosphere } from './src/atmosphere.js';
+import { mapEnabled, nearbyWorlds } from './src/global-map.js';
 import { runResearch, approvedSource } from './runtime/research-worker.js';
 import { createLocalModel, boundedModel, mayorDraft, mayorCountryDraft, ambassadorCountryDraft } from './runtime/model.js';
 import { mayorModelCountryContext } from './src/mayor-evidence.js';
@@ -21,6 +23,10 @@ import { manifest } from './src/content.js';
 import { serveVideo } from './src/media.js';
 import { ensureTradeMarket } from './src/trade-market.js';
 import { ensureLivingWorld, livingWorldTick } from './src/living-world.js';
+import { goodsPolicyView } from './src/goods-policy.js';
+import { startNativeCity } from './src/veloren-ext/city-runtime.js';
+import { velorenLinkFromEnvironment } from './src/veloren-link.js';
+import { economyProvenance } from './src/economy-provenance.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -76,6 +82,17 @@ const files = new Map([
   ['/assets/fonts/dm-sans-latin-wght-normal.woff2', ['assets/fonts/dm-sans-latin-wght-normal.woff2', 'font/woff2']],
   ['/assets/fonts/space-grotesk-latin-wght-normal.woff2', ['assets/fonts/space-grotesk-latin-wght-normal.woff2', 'font/woff2']],
 ]);
+// The Veloren account-link page (src/veloren-ext/identity.js is its API): one page and its two files.
+files.set('/veloren-link', ['veloren-link.html', 'text/html; charset=utf-8']);
+files.set('/veloren-link.js', ['veloren-link.js', 'text/javascript; charset=utf-8']);
+files.set('/veloren-link.css', ['veloren-link.css', 'text/css; charset=utf-8']);
+// The Harr dashboard: purpose, research, works, pantry, rhythm and chronicle on one page (data: /api/v1/veloren/harr/overview).
+files.set('/harr', ['harr.html', 'text/html; charset=utf-8']);
+files.set('/harr.js', ['harr.js', 'text/javascript; charset=utf-8']);
+files.set('/harr.css', ['harr.css', 'text/css; charset=utf-8']);
+files.set('/city', ['city.html', 'text/html; charset=utf-8']);
+files.set('/city.js', ['city.js', 'text/javascript; charset=utf-8']);
+files.set('/city.css', ['city.css', 'text/css; charset=utf-8']);
 for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout', 'book-open', 'shield-check', 'settings', 'log-in', 'menu', 'clipboard-list', 'sparkles', 'chevron-right', 'x']) {
   files.set(`/assets/icons/${name}.svg`, [`assets/icons/${name}.svg`, 'image/svg+xml']);
 }
@@ -94,21 +111,24 @@ files.set('/src/world-navigation.js', ['src/world-navigation.js', 'text/javascri
 files.set('/src/characters.js', ['src/characters.js', 'text/javascript; charset=utf-8']);
 files.set('/src/character-animation.js', ['src/character-animation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/footprints.js', ['src/footprints.js', 'text/javascript; charset=utf-8']);
+files.set('/src/global-map.js', ['src/global-map.js', 'text/javascript; charset=utf-8']);
+files.set('/src/map-view.js', ['src/map-view.js', 'text/javascript; charset=utf-8']);
 files.set('/src/elevation.js', ['src/elevation.js', 'text/javascript; charset=utf-8']);
 files.set('/src/content.js', ['src/content.js', 'text/javascript; charset=utf-8']);
 files.set('/src/living-world.js', ['src/living-world.js', 'text/javascript; charset=utf-8']);
 // The voxel renderer's scene modules. src/voxel-world.js is a browser module and imports these
 // relatively, so the hand-maintained table has to serve them or the whole client module graph 404s.
 // tests/content-http.test.js walks that graph from /app.js and fails on a missing file.
-for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'blocks', 'parcels', 'sky']) {
+for (const scene of ['batch', 'terrain', 'water', 'vegetation', 'buildings', 'interiors', 'lights', 'blocks', 'parcels', 'sky', 'weather', 'districts', 'architecture']) {
   files.set(`/src/scene/${scene}.js`, [`src/scene/${scene}.js`, 'text/javascript; charset=utf-8']);
 }
 // The interface components of the game shell. Each one is a browser module app.js imports, so the
 // hand-maintained table has to serve it; tests/content-http.test.js walks that graph from /app.js.
-for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls', 'first-play-guide']) {
+for (const component of ['build-interface', 'inventory-panel', 'interaction-prompt', 'spectator', 'touch-controls', 'first-play-guide', 'shop-panel', 'home-panel', 'command-deck']) {
   files.set(`/src/ui/${component}.js`, [`src/ui/${component}.js`, 'text/javascript; charset=utf-8']);
 }
 files.set('/game-mobile.css', ['game-mobile.css', 'text/css; charset=utf-8']);
+files.set('/game-panel.css', ['game-panel.css', 'text/css; charset=utf-8']);
 // The sampled CC0 audio pool (assets/audio). A fixed, server-owned allowlist — never a URL-derived
 // filesystem path — so only the recorded clips can ever be served. Rights: assets/audio/THIRD_PARTY.md.
 for (const clip of ['ui-click', 'ui-confirm', 'ui-close', 'world-step-grass', 'world-step-stone', 'world-place', 'world-remove', 'world-door-open', 'world-door-close', 'world-chop', 'world-coin', 'music-jingle-1', 'music-jingle-2', 'music-jingle-3']) {
@@ -128,6 +148,11 @@ const writes = new Map([
   ['/land/assign',['landAssign',null]], ['/land/release',['landRelease',null]], ['/frontier/expand',['frontierExpand','build']], ['/frontier/build',['frontierBuild','build']], ['/frontier/grant',['plotGrantCreate',null]], ['/frontier/grant/revoke',['plotGrantRevoke',null]], ['/operations/registration',['registrationSettings',null]],
   ['/drafts', ['draftSave', null]], ['/drafts/resume', ['draftResume', null]], ['/drafts/archive', ['draftArchive', null]],
   ['/residents/run', ['residentRun', null]], ['/residents/cancel', ['residentCancel', null]], ['/residents/resume', ['residentResume', null]],
+  // One declared action of one resident, walked through the declared lifecycle and executed once.
+  // The route carries no single scope: the lifecycle checks the action’s own scope against the
+  // credential row it re-reads, so an observe-only credential is refused with a recorded reason
+  // rather than by the generic scope gate.
+  ['/residents/act', ['residentAct', null]],
   ['/research/run', ['researchRun', null]], ['/research/cancel', ['researchCancel', null]], ['/mayors/talk', ['mayorTalk', 'chat']], ['/mayors/control', ['mayorControl', null]], ['/ambassadors/talk', ['ambassadorTalk', 'chat']], ['/ambassadors/control', ['ambassadorControl', null]], ['/research/generate', ['researchGenerate', null]], ['/research/activate', ['researchActivate', null]],
   ['/invites', ['invite', null]], ['/agents', ['createAgent', null]],
   ['/agents/control', ['agentControl', null]], ['/runtime/start', ['runtime', null]],
@@ -163,6 +188,9 @@ const writes = new Map([
   // A resident proposes a bounded memory fact (scope `contribute`, the same scope a resident needs to
   // write its private journal); the owning operator records, decides, corrects and deletes memory.
   ['/memory/propose', ['memoryPropose', 'contribute']], ['/memory/manage', ['memoryManage', null]],
+  // The resident vault: a resident's own private, encrypted notes. Only the resident's own credential,
+  // carrying the operator-granted `vault` scope, enrols, writes or reads; the operator can only erase.
+  ['/vault/enroll', ['vaultEnroll', 'vault']], ['/vault/write', ['vaultWrite', 'vault']], ['/vault/manage', ['vaultManage', null]],
   // One cooperative world restoration event. Opening or reopening one is a human operator decision
   // (no runtime scope); joining, leaving and recording a saved contribution are ordinary community
   // writes; the planned placement needs the same `build` scope the shipped garden build route needs.
@@ -172,8 +200,17 @@ const writes = new Map([
   // The versioned evidence library. A curator capture extends an already-registered host; a reviewer
   // records that a source is withdrawn. Both fail closed on an unapproved host, a bad hash or a quota.
   ['/evidence/capture', ['evidenceCapture', null]], ['/evidence/withdraw', ['evidenceWithdraw', null]],
+  // Karma Coins and the shop. Settling is the one way a resident's saved service becomes currency,
+  // and it is a signed-in human operator action (the `null` scope is what makes the runtime refusal
+  // fire). A purchase spends and grants inside the one request transaction.
+  ['/karma/settle', ['karmaSettle', null]], ['/shop/purchase', ['shopPurchase', null]],
+
+  // The activity pipeline. Authoring a scoped activity task validates it first — a duplicate, a vague
+  // or an unanswerable task is refused — and then delegates to the module that already owns that kind
+  // of write. Checking a task writes nothing. A stage is never set by a request.
+  ['/activity/tasks/check', ['activityTaskCheck', null]], ['/activity/author', ['activityAuthor', null]],
 ]);
-const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status']);
+const gets = new Set(['/callings','/callings/guilds','/quests','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/frontier/grants','/coins','/karma','/shop','/drafts','/workers','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/mayors/triage', '/ambassadors', '/ambassador', '/health', '/bootstrap', '/world', '/worlds', '/map', '/civic', '/missions', '/gallery', '/briefing', '/me', '/history', '/safety', '/operations', '/export', '/runtime/status', '/community', '/journey', '/journey/offers', '/trade/listings', '/events', '/interact', '/memory', '/vault', '/vault/notes', '/first-play', '/restoration', '/evidence', '/evidence/draft', '/review/workbench', '/quality', '/living-world/status', '/residents/declaration', '/activity', '/activity/instance', '/activity/trace', '/economy/goods', '/economy/provenance']);
 
 function headers(response, hosting) {
   if (hosting.publicOrigin) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
@@ -323,6 +360,13 @@ export function createEventHub({ platform, limits = EVENT_LIMITS, clock = Date.n
     return queued;
   }
 
+  /** `publish` to a world and to the worlds of the global map within sight of the tile the change happened on. */
+  function publishNear(worldId, x, y, update = {}) {
+    let queued = publish(worldId, update);
+    if (mapEnabled()) for (const other of nearbyWorlds(worldId, x, y)) queued += publish(other, update);
+    return queued;
+  }
+
   function flush(sub) {
     const p = sub.pending, count = totalPending(sub);
     if (sub.closed || sub.backpressure || (!count && !p.refresh)) return;
@@ -379,11 +423,11 @@ export function createEventHub({ platform, limits = EVENT_LIMITS, clock = Date.n
   }
 
   function closeAll() { retired = true; stop(); for (const sub of [...subscribers]) close(sub, 'server_shutdown', true); }
-  return { subscribe, publish, revalidateNow, closeAll, counts, get size() { return subscribers.size; }, limits };
+  return { subscribe, publish, publishNear, revalidateNow, closeAll, counts, get size() { return subscribers.size; }, limits };
 }
 
 
-export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, residentRunner = runAgent, researchRunner = runResearch, researchConcurrency = 4, modelQueueWait = 8, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null, livingWorld = process.env.LUCY_LIVING_WORLD === 'true' || process.env.LUCY_LIVING_WORLD === '1' } = {}) {
+export function createApp({ platform = new Platform(process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite')), backupDir = join(root, 'data', 'backups'), publicOrigin = process.env.LUCY_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL || '', setupCode = process.env.LUCY_SETUP_CODE, residentRunner = runAgent, researchRunner = runResearch, researchConcurrency = 4, modelQueueWait = 8, mayorModel = process.env.LUCY_MODEL_NAME ? createLocalModel({name:process.env.LUCY_MODEL_NAME,url:process.env.LUCY_MODEL_URL}) : null, velorenLink = velorenLinkFromEnvironment(process.env, process.env.LUCY_DATABASE || join(root, 'data', 'world.sqlite'), join(root, 'content', 'veloren-landmarks.json')), livingWorld = process.env.LUCY_LIVING_WORLD === 'true' || process.env.LUCY_LIVING_WORLD === '1' } = {}) {
   if(!Number.isInteger(researchConcurrency)||researchConcurrency<1||researchConcurrency>8)throw new Error('Research concurrency must be between one and eight.');
   // One local model is one inference at a time. Work beyond this bound is refused instead of being
   // queued without limit, so a burst of requests cannot hold unbounded work outside the model.
@@ -392,6 +436,8 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   const setupRequired = platform.get('SELECT COUNT(*) AS n FROM accounts').n === 0;
   if (hosting.publicOrigin && setupRequired && !hosting.setupCode) throw new Error('Set the private LUCY_SETUP_CODE before starting a public server with no administrator.');
   platform.publicMode = Boolean(hosting.publicOrigin);
+  const stopNativeCity = velorenLink ? startNativeCity(velorenLink, platform, { enabled: process.env.NEMO_CITY_ENABLED === '1', recordPath: process.env.NEMO_WORLD_RECORD }) : () => {};
+  if (velorenLink) velorenLink.platform = platform;   // the account link (veloren-ext/identity.js) reads accounts through it
   platform.setupCode = hosting.setupCode;
   // The trade board's additive tables exist before the first request, and its stored ledger is
   // re-checked as the process starts: a board that cannot balance refuses to serve rather than
@@ -425,6 +471,10 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
     catch (error) { if (/busy/i.test(error?.message || '')) { modelCounters.rejected_saturated += 1; modelCounters.last_saturated_at = new Date().toISOString(); } throw error; }
   } : null;
   const capacityRefusals = { count: 0, last_at: null };
+  // Every request that fails unexpectedly is counted, timestamped and named by route, so the
+  // administrator dashboard can answer "is this process returning 500s, and where?" without an
+  // operator reading a terminal. The record carries no request or failure text by construction.
+  const incidents = createIncidentLog();
   const refuseCapacity = (message) => { capacityRefusals.count += 1; capacityRefusals.last_at = new Date().toISOString(); fail(429, message); };
   const modelDiagnostics = () => {
     const notes = { idle: 'The local model is idle: nothing is running and nothing is waiting.', inferring: 'A working inference run is in flight right now.', inferring_with_queue: 'A working inference run is in flight and further requests are waiting for the single local slot.', queued: 'Requests are waiting; the single local model slot is between inferences.' };
@@ -442,6 +492,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
     model: modelDiagnostics(),
     workers: { research: { active: researchRuns.size, limit: researchConcurrency, available: Math.max(0, researchConcurrency - researchRuns.size) }, resident: { active: residentRuns.size, limit: 1, available: residentRuns.size ? 0 : 1 }, interrupted: platform.get("SELECT COUNT(*) AS n FROM jobs WHERE status='interrupted'").n, capacity_refusals_since_start: capacityRefusals.count, last_capacity_refusal_at: capacityRefusals.last_at },
     events: hub.counts(),
+    incidents: incidents.summary(),
     backups: backupInventory(backupDir),
   });
   const authLimiter = createAuthenticationLimiter({ publicMode: Boolean(hosting.publicOrigin) });
@@ -459,6 +510,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   };
   const server = createServer(async (request, response) => {
     headers(response, hosting);
+    // What the incident record may name about the failing request: the normalised route pattern, never
+    // the raw URL, so no query value (and therefore no token) can ever reach a record.
+    let requestRoute = '';
     try {
       validateRequestOrigin(request, server, hosting);
       const url = new URL(request.url, 'http://localhost');
@@ -474,10 +528,18 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       }
       if (!path.startsWith('/api/v1/')) return json(response, 404, { error: 'Not found.' });
       const route = path.slice(7);
+      // The Veloren link keeps its own routes, credentials and database. It is absent unless the
+      // private event key is configured, so a default install answers these paths with 404.
+      if (route.startsWith('/veloren/')) {
+        requestRoute = route;
+        if (!velorenLink) return json(response, 404, { error: 'Not found.' });
+        return await velorenLink.handle({ request, response, route, url, body, json, tokenFrom, modelCall, platform, fail });
+      }
       const match = /^\/agents\/([^/]+)\/(travel|build|home|heartbeat|posture|look|climb)$/.exec(route);
       let agentId;
       if (match) { try { agentId = decodeURIComponent(match[1]); } catch { fail(400, 'Invalid agent identifier.'); } }
       const dynamic = match ? { id: agentId, action: match[2], method: match[2] === 'home' ? 'PATCH' : 'POST', scope: { travel: 'move', build: 'build', home: 'build', heartbeat: 'read', posture: 'move', look: 'move', climb: 'move' }[match[2]] } : null;
+      requestRoute = dynamic ? `/agents/:id/${dynamic.action}` : route;
       const specialWrite = ['/auth/register', '/auth/login', '/operations/backup'].includes(route);
       if (!gets.has(route) && !writes.has(route) && !specialWrite && !dynamic) return json(response, 404, { error: 'Not found.' });
       if (!(request.method === 'GET' && gets.has(route)) && !(request.method === 'POST' && (writes.has(route) || specialWrite)) && !(request.method === 'DELETE' && route === '/me') && !(dynamic && request.method === dynamic.method)) {
@@ -527,15 +589,19 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         } finally { endAttempt?.(); }
       }
       const token = tokenFrom(request);
-      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/missions', '/gallery', '/briefing', '/community', '/interact', '/first-play', '/restoration', '/living-world/status'].includes(route) && request.method === 'GET';
-      const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : 'read') : dynamic?.scope || writes.get(route)?.[1];
+      const publicRoute = ['/callings/guilds','/quests/catalog','/guilds','/guilds/project','/land','/land/plot','/frontier','/countries', '/country-evidence', '/assembly', '/content', '/research', '/mayors', '/ambassadors', '/ambassador', '/world', '/worlds', '/map', '/missions', '/gallery', '/briefing', '/community', '/interact', '/first-play', '/restoration', '/living-world/status'].includes(route) && request.method === 'GET';
+      const scope = request.method === 'GET' ? (route === '/runtime/status' ? null : route === '/vault/notes' ? 'vault' : 'read') : dynamic?.scope || writes.get(route)?.[1];
       let actor;
       try{actor=token?platform.authenticate(token,scope):publicRoute?null:platform.authenticate(token,scope);}catch(error){
         if(error.status!==401||request.headers.authorization||!token)throw error;
         cookie(response,'',0,hosting);response.setHeader('X-Lucy-Session','expired');
         if(!publicRoute)throw error;actor=null;
       }
-      if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope) || dynamic?.action === 'home' || ['/drafts','/workers', '/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
+      // `/residents/act` is the one runtime write route with no single scope: the declared lifecycle
+      // checks the action's own scope against the credential row itself, and records a refusal with a
+      // reason instead of being turned away by this generic gate. Every other scope-less route stays
+      // a human-operator route.
+      if (actor?.kind === 'runtime' && ((request.method === 'POST' && !scope && route !== '/residents/act') || dynamic?.action === 'home' || ['/drafts','/workers', '/me', '/export', '/operations', '/safety'].includes(route) || request.method === 'DELETE')) fail(403, 'A human operator session is required.');
       if (request.method === 'GET') {
         const result = platform.transaction(() => {
           let value;
@@ -548,12 +614,19 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
             // directory does, so a contribute-scoped resident pays one credential charge for its
             // calling context, its available work and the projects it may join or leave. Only this
             // resident's own read is extended; a session and every other route are unchanged.
-            value.guilds=platform.guildObservation(actor);}}
+            value.guilds=platform.guildObservation(actor);}
+            if(actor?.kind==='runtime'&&JSON.parse(actor.credential.scopes).includes('vault'))value.vault=platform.vaultPrompt(actor);
+            // The resident's own derived declaration rides in the same private read, so the runtime
+            // that acts and the operator who inspects read one object rather than two copies of it.
+            if(actor?.kind==='runtime')value.declaration=platform.residentOwnDeclaration(actor);}
           else if(route==='/callings/guilds')value=platform.callingGuilds(Object.fromEntries(url.searchParams));
           else if(route==='/quests')value=platform.quests(actor,Object.fromEntries(url.searchParams));
           else if(route==='/quests/catalog')value=platform.questCatalog(Object.fromEntries(url.searchParams));
           else if(route==='/guilds')value=platform.guilds(actor,Object.fromEntries(url.searchParams));
           else if(route==='/guilds/project')value=platform.guildProject(actor,Object.fromEntries(url.searchParams));
+          else if(route==='/activity')value=platform.activity(actor,Object.fromEntries(url.searchParams));
+          else if(route==='/activity/instance')value=platform.activityInstance(actor,Object.fromEntries(url.searchParams));
+          else if(route==='/activity/trace')value=platform.traceContribution(actor,Object.fromEntries(url.searchParams));
           else if(route==='/drafts')value={drafts:platform.drafts(actor,{archived:url.searchParams.get('archived')==='1'})};
           else if (route === '/countries') value=platform.countries(actor,Object.fromEntries(url.searchParams));
           else if (route === '/country-evidence') value=platform.countryEvidence(actor,Object.fromEntries(url.searchParams));
@@ -579,13 +652,27 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/frontier') value=platform.frontierMap(actor,Object.fromEntries(url.searchParams));
           else if (route === '/frontier/grants') value=platform.plotGrants(actor,Object.fromEntries(url.searchParams));
           else if (route === '/worlds') value = platform.worldList(actor, Object.fromEntries(url.searchParams));
+          // The bounded viewport read across the map's seams. It is additive: it decides nothing and
+          // writes nothing, and the map owner's `world?map=core` window is untouched.
+          else if (route === '/map') value = platform.mapViewport(actor, Object.fromEntries(url.searchParams));
           else if (route === '/community') value = platform.community(actor, Object.fromEntries(url.searchParams));
           else if(route==='/coins')value=platform.coins(actor,Object.fromEntries(url.searchParams));
+          // Karma Coins and the shop are their own reads: the wallet is a private projection of the
+          // signed-in operator's purse, and the shop is the frozen catalogue with today's allowances.
+          else if (route === '/karma') value = platform.karmaWallet(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/shop') value = platform.shopCatalogue(actor, Object.fromEntries(url.searchParams));
+          // Wave 5: the world's one classification of movable goods, and the provenance of this
+          // operator's own rewards. Both are read-only: `goodsPolicyView` and `economyProvenance`
+          // write nothing, mint nothing and take no amount, no source and no day from the request.
+          else if (route === '/economy/goods') value = goodsPolicyView(platform, actor, Object.fromEntries(url.searchParams));
+          else if (route === '/economy/provenance') value = economyProvenance(platform, actor, Object.fromEntries(url.searchParams));
           else if (route === '/journey') value = platform.journey(actor, Object.fromEntries(url.searchParams));
           else if (route === '/journey/offers') value = platform.resourceOffers(actor, Object.fromEntries(url.searchParams));
           else if (route === '/trade/listings') value = platform.tradeBoard(actor, Object.fromEntries(url.searchParams));
           else if (route === '/interact') value = platform.interactionView(actor, Object.fromEntries(url.searchParams));
           else if (route === '/memory') value = platform.memory(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/vault') value = platform.vaultStatus(actor, Object.fromEntries(url.searchParams));
+          else if (route === '/vault/notes') value = platform.vaultRead(actor, Object.fromEntries(url.searchParams));
           else if (route === '/first-play') value = platform.firstPlay(actor, Object.fromEntries(url.searchParams));
           else if (route === '/restoration') value = platform.restoration(actor, Object.fromEntries(url.searchParams));
           else if (route === '/evidence') value = platform.evidenceLibrary(actor, Object.fromEntries(url.searchParams));
@@ -599,6 +686,11 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
           else if (route === '/briefing') value = platform.deliveryPacket(Object.fromEntries(url.searchParams));
           else if (route === '/export') value = platform.exportAccount(actor);
           else if (route === '/runtime/status') value = platform.runtimeStatus(actor);
+          // The declared lifecycle surface: the declaration, the budget, the current purpose, the
+          // declared action history and every refusal reason, for the operator who owns the resident
+          // and for a moderator. It reads the ledger and the declaration only; the resident’s private
+          // memory, conversations and vault stay out, and an inspection that asks for them is refused.
+          else if (route === '/residents/declaration') value = platform.residentDeclaration(actor, Object.fromEntries(url.searchParams));
           // The administrator dashboard: database counters from the platform, process and model
           // counters from this process. The route keeps its own administrator role check.
           else if (route === '/operations') value = platform.operations(actor, liveDiagnostics);
@@ -631,6 +723,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         }
         if(route==='/research'&&url.searchParams.get('download')==='programme'){if(!result.country_plan)fail(400,'Choose a catalog country for the work programme.');response.setHeader('Content-Disposition',`attachment; filename="lucy-${result.country_plan.country.iso2}-research-programme.json"`);return json(response,200,result.country_plan);}
         if(route==='/country-evidence'&&url.searchParams.get('download')==='1')response.setHeader('Content-Disposition',`attachment; filename="lucy-${result.country.iso3}-${result.sector||'agriculture'}-evidence.json"`);
+        // An inspection that asks for private material is refused by name, with the reason, rather
+        // than quietly returning a smaller object the caller could misread as "nothing is held".
+        if (route === '/residents/declaration' && result?.refused === true) return json(response, result.http_status || 403, { error: result.error, state: 'refused', include: result.include, private_refusals: result.private_refusals });
         return json(response, 200, result);
       }
       if (request.method === 'DELETE') {
@@ -667,7 +762,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         if(agent.status!=='active')fail(409,'Resume this character before running local AI work for it.');
         const minutes=Number(request.minutes??2),calls=Number(request.model_calls??5),permission=request.permission||'explore';
         if(!Number.isInteger(minutes)||minutes<1||minutes>20||!Number.isInteger(calls)||calls<1||calls>20||!['observe','explore','creative'].includes(permission))fail(400,'Choose 1–20 minutes, 1–20 model decisions and a listed permission mode.');
-        const scopes=permission==='observe'?['read']:permission==='explore'?['read','move','chat']:['read','move','chat','contribute','build'];
+        const scopes=permission==='observe'?['read']:permission==='explore'?['read','move','chat']:['read','move','chat','contribute','build','vault'];
         const id=randomUUID(),controller=new AbortController(),resumedFrom=resumePlan?.run_id||null;
         const durationMs=resumePlan?Math.min(minutes*60000,resumePlan.duration_ms):minutes*60000,apiCalls=resumePlan?Math.min(calls*8+4,resumePlan.api_calls_remaining):calls*8+4;
         const credential=platform.transaction(()=>{
@@ -733,11 +828,21 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
         else if (route === '/operations/pause') {
           if (typeof input.paused !== 'boolean') fail(400, 'paused must be a boolean.');
           value = platform.pause(actor, input.paused);
-        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept', '/trade/listings', '/trade/claim'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
+        } else if (['/claims', '/submissions', '/drafts/resume', '/tasks/follow-up', '/quests/join', '/interact', '/journey/offers', '/journey/offers/accept', '/trade/listings', '/trade/claim', '/shop/purchase', '/residents/act'].includes(route)) value = platform[method](actor, input, request.headers['idempotency-key']);
         else value = platform[method](actor, input);
         platform.charge(actor);
         return value;
       });
+      if (route === '/residents/act' && result?.state === 'refused') {
+        // A refused step is committed — its ledger line is durable — and answered with a refusing
+        // status and the reason. A refusal is never answered with a success.
+        return json(response, result.http_status || 409, {
+          error: result.error, state: 'refused', success: false, applied: false,
+          reason: result.reason, reason_note: result.reason_note, detail: result.detail || null,
+          action: result.action, serves: result.serves, intent_id: result.intent_id, key: result.key,
+          recorded: result.recorded, lifecycle: result.lifecycle, next_step: result.next_step || null,
+        });
+      }
       if (route === '/frontier/build') {
         const delta = frontierDelta(result);
         if (delta && delta.length) hub.publish(result.world_id, { blocks: delta });
@@ -772,7 +877,9 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
       if (route === '/auth/logout') cookie(response, '', 0, hosting);
       return json(response, dynamic?.action === 'build' || ['/invites', '/agents', '/runtime/start', '/missions', '/tasks', '/tasks/follow-up', '/claims', '/submissions', '/reviews', '/reports', '/appeals', '/adoptions', '/jobs', '/quests/author', '/quests/join', '/guilds/projects', '/evidence/capture'].includes(route) ? 201 : 200, result);
     } catch (error) {
-      if (!error.status) console.error('HTTP request failed:', error.code || error.name || 'UnknownError');
+      // One structured, counted record per unexpected failure. A refusal the world itself produced
+      // (`error.status`) is an ordinary outcome and is not an incident.
+      if (!error.status) incidents.record({ method: request.method, route: requestRoute, status: 500, error });
       const status = error.status || (error.code === 'ERR_SQLITE_ERROR' && /constraint/i.test(error.message) ? 409 : 500);
       // A refused interaction answers with the same status the world's own rule produced, plus the
       // readable hint and the next usable step. Other refusals keep exactly their original body.
@@ -786,7 +893,7 @@ export function createApp({ platform = new Platform(process.env.LUCY_DATABASE ||
   server.once('close',()=>{clearInterval(mayorTimer);hub.closeAll();for(const run of [...researchRuns.values(),...residentRuns.values()])run.controller.abort();});
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
-  return { server, platform, hub, stopEvents:()=>hub.closeAll(), stopWorkers:async()=>{const runs=[...researchRuns.values(),...residentRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));} };
+  return { server, platform, hub, stopEvents:()=>hub.closeAll(), stopWorkers:async()=>{stopNativeCity();const runs=[...researchRuns.values(),...residentRuns.values()];for(const run of runs)run.controller.abort();await Promise.allSettled(runs.map(run=>run.promise));try{velorenLink?.close();}catch{/* already closed */}}, velorenLink };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

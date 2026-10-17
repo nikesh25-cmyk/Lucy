@@ -1,0 +1,7 @@
+Harr map by open-world minute (works and roads released by then)
+
+  minute  15:  17 of 135 map stages,   8 of 129 work stages
+  minute  45:  74 of 135 map stages,  27 of 129 work stages
+  minute  90: 105 of 135 map stages,  58 of 129 work stages
+  minute 180: 135 of 135 map stages, 122 of 129 work stages
+  minute 360: 135 of 135 map stages, 129 of 129 work stages

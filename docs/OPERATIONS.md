@@ -5,6 +5,10 @@ SQLite database. It covers backup and restore, a schema-migration rehearsal, int
 local model queue, storage limits, and source/archive verification. Every procedure states the exact
 commands, the output to expect, what to check, and how to back out.
 
+Current source: `integration/nemoworld-unified-2026-10-15`, schema **27**. Sections explicitly dated
+14 October or identifying an older branch retain their historical measurements; they are not gate
+results for the current release.
+
 Two rules apply to everything below.
 
 1. **Never rehearse on the installed world.** `outputs/Lucy`, an installed `data/world.sqlite`, its
@@ -62,7 +66,7 @@ Expected output: one JSON line, `{"path":"…/world-<stamp>.sqlite"}`, exit code
 What to check:
 - The command refuses with `The world server or another recovery operation is running. Stop it before recovery.` when the server is up. Stop the server and retry; do not delete `server.lock` by hand.
 - The file mode is `0600`: `ls -l data/backups`.
-- `node scripts/recovery.js verify <backup>` prints `{"schema_version":23,"accounts":N}` for a backup made by this build.
+- `node scripts/recovery.js verify <backup>` prints `{"schema_version":27,"accounts":N}` for a backup made by this build.
 
 Failure path: a backup that fails validation is deleted by `backupDatabase` and the error is raised.
 No partial file is left behind, and the live database is never touched.
@@ -72,6 +76,15 @@ No partial file is left behind, and the live database is never touched.
 Backups live beside the database (`data/backups` locally, `/var/data/backups` on the Render
 blueprint). **They contain credential hashes, contact addresses and private data.** Keep the directory
 private, and encrypt before you move one off the host — see below. Never commit, publish or attach one.
+
+### Resident vault key
+
+Server-sealed resident vault notes (`docs/VAULT.md`) are ciphertext in the database. Their data keys are
+wrapped under a 32-byte master key in `vault.key` beside the database (or the path in
+`LUCY_VAULT_KEY_FILE`), created owner-only on first use. **Back this file up separately from every
+database backup.** A restored database without it opens everything except sealed notes, which fail
+closed with a 503 rather than being re-keyed; restoring the original file restores access. A key file
+that is not owner-only is refused. Resident-held vaults do not use this file.
 
 ### Encrypted off-install export
 
@@ -120,7 +133,7 @@ node scripts/recovery.js restore data/backups/world-<stamp>.sqlite data/world.sq
 Expected output of step 3:
 
 ```json
-{"path":"…/data/world.sqlite","preserved_original":"…/data/world.sqlite.before-restore-<time>-<uuid>/original.sqlite","schema_version":23,"accounts":N}
+{"path":"…/data/world.sqlite","preserved_original":"…/data/world.sqlite.before-restore-<time>-<uuid>/original.sqlite","schema_version":27,"accounts":N}
 ```
 
 What to check:
@@ -162,13 +175,17 @@ Measured result:
 | After the restore | the post-backup record is gone (messages back to 1); every pre-backup account, resident and message is present |
 | Pre-restore bytes preserved | `world.sqlite.before-restore-<time>-<uuid>/original.sqlite` exists beside the restored database |
 
-An off-install backup and a restore from it both work on this tip. The one part of the brief they do
-**not** satisfy is `encrypted`, for the reason stated in §2.
+That historical rehearsal proved an off-install plaintext backup and restore. The current CLI also
+ships `backup-encrypted`, `verify-encrypted` and `restore-encrypted` (§2). A verified encrypted copy
+of the actual installation on independent storage, with its key held separately, has not been
+established by this rehearsal; creating and testing that operational copy remains required.
 
 ## 4. Schema-migration rehearsal
 
-A migration is additive and happens when a `Platform` opens a database whose `PRAGMA user_version` is
-below the current one (22). Rehearse it on a copy, never on the installed world.
+A migration runs when a `Platform` opens a database whose `PRAGMA user_version` is below the current
+version, **27**. Most migrations add tables or columns; schema 27 can rebuild the crop/block tables
+to widen a valid legacy sealed-content list while preserving saved rows and their references.
+Rehearse it on a copy, never on the installed world.
 
 ```sh
 # 1. Stop the world and back it up first.
@@ -181,19 +198,42 @@ node scripts/ops-rehearsal.mjs --drill migration-rehearsal
 
 What to check:
 - Before: `verify` reports the *old* schema version.
-- After opening the restored copy: `verify` reports **23**, and the drill confirms that the account,
+- After opening the restored copy: `verify` reports **27**, and the drill confirms that the account,
   agent, world-object, land, coin, quest and audit counts are exactly what they were before.
-- The drill checks that recreated guild tables begin empty. Schema-23 `Platform` startup separately
+- The drill checks that recreated guild tables begin empty. `Platform` startup separately
   seeds the evidence library from its retained catalog; those source and capture tables are populated
   after startup, without inventing user submissions, reviews or rewards.
 - The audit chain and the coin ledger still verify.
+- `node --test tests/content-schema27.test.js` additionally checks legacy versions 24, 25 and 26
+  with narrower crop/block constraints, including saved crops, guest construction and grants,
+  backup/restore, and rollback after an injected interruption during the real table rebuild. A
+  current-version world with a changed content list is refused; another list change needs another
+  versioned migration.
 
 Failure and rollback path: the pre-migration backup is the rollback. Stop the server, restore it, and
 start again. The migration runs inside one transaction (`BEGIN IMMEDIATE … COMMIT`), so an interrupted
 migration leaves the old version in place rather than a half-migrated database.
 
 Task 27 originally added diagnostics and drills while the schema was version 18. Subsequent integrated
-work added versions 19–23; this runbook now describes the schema-23 build.
+work added versions 19–27; this runbook describes the schema-27 build. To return to older code after
+this upgrade, stop the service, restore the verified pre-upgrade database and install the matching
+old source. Older code cannot open a schema-27 database.
+
+### Local Mac service updates
+
+If launchd owns the world, stopping its child server alone is insufficient: a `KeepAlive` job can
+restart it while files are being copied. Inspect `launchctl print gui/$(id -u)/org.nemoworld.local`
+first. A job submitted directly by `launchctl` may have no plist on disk; save a recoverable plist
+with its program arguments, working directory, logs and settings before unloading it. Then use
+`launchctl bootout gui/$(id -u)/org.nemoworld.local`, wait for the launcher, server and model child
+to exit, and take the stopped-world backup. Do not delete a live `server.lock`.
+
+Install only the reviewed tracked source. Preserve `data/`, `.runtime/`, `node_modules`, private
+configuration and the vault key at its configured path; keep the previous source and source record
+for rollback. Verify the installed tracked files against the release commit before restarting with
+`launchctl bootstrap gui/$(id -u) /absolute/path/to/the-saved-job.plist`. A loaded job can be restarted
+with `launchctl kickstart -k gui/$(id -u)/org.nemoworld.local`; after `bootout` it must be bootstrapped
+again first. Confirm the intended port, health, schema and saved record counts after restart.
 
 ## 5. Interrupted workers
 
@@ -373,13 +413,13 @@ opens the installed world, an installed account or a model weight.
 | --- | --- |
 | `recovery-point` | A backup is taken, the world is mutated, and the restore brings back exactly the world/land/coin/quest/guild records of the backup moment while the post-backup write is correctly lost. |
 | `corrupt-backup` | A garbage file, a damaged file, an empty file and a foreign-but-valid database are all refused by validation and by restore, and the live world stays byte-identical. |
-| `migration-rehearsal` | A disposable fixture is labelled schema 17 after its guild tables are removed; it is validated, backed up, restored, and opened by the schema-23 build. The drill checks selected account, world, land, coin, quest and audit counts, empty recreated guild tables, and audit and coin validation. |
+| `migration-rehearsal` | A disposable fixture is labelled schema 17 after its guild tables are removed; it is validated, backed up, restored, and opened by the current schema-27 build. The drill checks selected account, world, land, coin, quest and audit counts, empty recreated guild tables, and audit and coin validation. |
 | `interrupted-worker` | Two SIGKILL interruptions (after a confirmed action, and inside a model call) are classified, their credentials revoked, their RSVP recorded exactly once, and each resumed explicitly. |
 | `model-queue-saturation` | The queue bound refuses overflowing work at its own boundary and inside the shipped server, where the refused request falls back to published rules and the refusal is counted. |
 | `storage-limit` | A write refused for lack of space rolls back, leaves nothing behind, keeps the world valid and is accepted again once space returns; an unwritable backup destination fails closed with no partial file. |
 | `diagnostics-redaction` | The administrator diagnostics payload exists, is refused to anonymous and non-administrator callers, and carries no planted secret. |
 
-### Measured on this tip (14 October 2026)
+### Historical measurement (14 October 2026)
 
 `node scripts/ops-rehearsal.mjs --keep` on branch `integration/deepseek-master-2026-10-14`, commit
 `7eb03e08d6d8`, schema 22, load average 3.14 at the start. **7/7 drills passed, exit code 0, 9.5 s**,

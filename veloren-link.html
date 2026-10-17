@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#051d18">
+<meta name="description" content="Link your Veloren character to your NemoWorld account with a one-time code.">
+<title>Link your Veloren character · NemoWorld</title>
+<link rel="icon" type="image/svg+xml" href="/assets/nemoworld-mark.svg">
+<link rel="stylesheet" href="/veloren-link.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><a class="brand" href="/" aria-label="NemoWorld home"><img src="/assets/nemoworld-mark.svg" alt="" width="36" height="36"><span>NEMOWORLD</span></a></header>
+<main id="main" tabindex="-1">
+  <h1 id="title" tabindex="-1">Link your Veloren character</h1>
+  <p class="lede">Linking tells NemoWorld which account owns your character in the Veloren game, so your progress there can be shown to you here. It never gives the game any power over your account: purchases, reviews and other account changes stay here, for you to do while signed in.</p>
+
+  <p id="status" role="status" aria-live="polite" class="status" hidden></p>
+
+  <section id="signed-out" aria-labelledby="signed-out-title" hidden>
+    <h2 id="signed-out-title">Sign in first</h2>
+    <p>Open <a href="/">NemoWorld</a>, sign in as yourself, then come back to this page.</p>
+  </section>
+
+  <section id="disabled" aria-labelledby="disabled-title" hidden>
+    <h2 id="disabled-title">Not available</h2>
+    <p>The Veloren link is not switched on in this NemoWorld.</p>
+  </section>
+
+  <section id="linked" aria-labelledby="linked-title" hidden>
+    <h2 id="linked-title" tabindex="-1">Your link</h2>
+    <dl class="facts">
+      <dt>Veloren character</dt><dd id="linked-alias"></dd>
+      <dt>Linked on</dt><dd id="linked-at"></dd>
+    </dl>
+    <div class="actions">
+      <button type="button" id="remove" class="secondary">Remove link</button>
+    </div>
+    <div id="remove-confirm" class="confirm" hidden>
+      <p>Remove this link? Nothing is deleted in the game or here. You can link again later with a new code.</p>
+      <div class="actions">
+        <button type="button" id="remove-yes">Yes, remove the link</button>
+        <button type="button" id="remove-no" class="secondary">Keep it</button>
+      </div>
+    </div>
+    <h2 id="progress-title">The Quiet Survey</h2>
+    <p class="muted">A practice quest with Lyra. It is practice only and awards nothing. Each step is shown only once the game server has observed it.</p>
+    <ol id="progress" class="steps" aria-labelledby="progress-title"></ol>
+    <p id="notes" class="muted"></p>
+  </section>
+
+  <section id="unlinked" aria-labelledby="unlinked-title" hidden>
+    <h2 id="unlinked-title" tabindex="-1">Enter your code</h2>
+    <ol class="how">
+      <li>In Veloren, say to Lyra: <strong>link my account</strong>. You can also send it privately with <code>/tell Lyra link my account</code>.</li>
+      <li>Lyra answers in a private message with a code. It works once and lasts 10 minutes.</li>
+      <li>Type that code below.</li>
+    </ol>
+    <form id="code-form" novalidate>
+      <label for="code">One-time code from Lyra</label>
+      <input id="code" name="code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" aria-describedby="code-help" required>
+      <p id="code-help" class="muted">Ten characters, for example ABCDE-FGHJK. Only enter a code you asked for yourself, in your own game. Never share it.</p>
+      <div class="actions"><button type="submit" id="check">Check code</button></div>
+    </form>
+    <div id="confirm" class="confirm" hidden>
+      <p>This code is for the Veloren character <strong id="confirm-alias"></strong>.</p>
+      <p>Link it to your account only if that is your own character.</p>
+      <div class="actions">
+        <button type="button" id="confirm-yes">Link this character</button>
+        <button type="button" id="confirm-no" class="secondary">Cancel</button>
+      </div>
+    </div>
+  </section>
+</main>
+<script type="module" src="/veloren-link.js"></script>
+</body>
+</html>

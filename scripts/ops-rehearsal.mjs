@@ -120,7 +120,7 @@ async function drillRecoveryPoint(directory) {
   const backup = join(backups, backupName(1700000000000, 1));
   const before = countsFor(platform);
   const written = backupDatabase(platform.db, backup);
-  check(checks, 'a verified backup is written beside the world', validateDatabase(backup).schema_version === 24 && written.path === backup, `${describeCounts(before)} · ${statSync(backup).size} bytes · mode ${(statSync(backup).mode & 0o777).toString(8)}`);
+  check(checks, 'a verified backup is written beside the world', validateDatabase(backup).schema_version === 27 && written.path === backup, `${describeCounts(before)} · ${statSync(backup).size} bytes · mode ${(statSync(backup).mode & 0o777).toString(8)}`);
   // Everything after this line happened after the backup and must be lost by a restore.
   platform.transaction(() => platform.build(seeded.actor('alice'), ids.aliceAgent, { type: 'flowers', x: 5, y: 8 }));
   platform.transaction(() => platform.run("INSERT INTO messages(id,agent_id,account_id,channel,mission_id,recipients,text,status,created_at,world_id) VALUES('post-backup-write',NULL,?, 'public',NULL,'[]','A message written after the backup.','visible',?,'commons')", seeded.actor('alice').account.id, new Date().toISOString()));
@@ -132,7 +132,7 @@ async function drillRecoveryPoint(directory) {
   const counts = countsFor(reopened);
   try {
     check(checks, 'a restore replaces the world atomically and keeps the previous bytes', Boolean(restored.preserved_original) && existsSync(restored.preserved_original), `preserved_original=${Boolean(restored.preserved_original)}`);
-    check(checks, 'the restored world is schema 24 and passes full validation', validateDatabase(database).schema_version === 24);
+    check(checks, 'the restored world is schema 27 and passes full validation', validateDatabase(database).schema_version === 27);
     check(checks, 'work committed after the backup is gone', afterMutation.world_objects > before.world_objects && reopened.get("SELECT COUNT(*) AS n FROM world_objects WHERE x=5 AND y=8").n === 0, `before=${describeCounts(before)} after=${describeCounts(afterMutation)} restored=${describeCounts(counts)}`);
     check(checks, 'every world, land, coin, quest and guild record is preserved', countsMatch(before, counts), describeCounts(counts));
     check(checks, 'the audit chain still verifies after the restore', reopened.verifyAudit());
@@ -177,12 +177,12 @@ async function drillCorruptBackup(directory) {
     const restore = refused(() => restoreDatabase(path, database));
     check(checks, `restoring ${label} is refused`, Boolean(restore), restore ? restore.message : 'the restore unexpectedly succeeded');
   }
-  check(checks, 'the live world was never touched by the refusals', sha256File(database) === digest && validateDatabase(database).schema_version === 24 && countsMatch(counts, countsFor(platform)));
+  check(checks, 'the live world was never touched by the refusals', sha256File(database) === digest && validateDatabase(database).schema_version === 27 && countsMatch(counts, countsFor(platform)));
   check(checks, 'no partial restore file was left behind', readdirSync(directory).every((name) => !name.includes('.restore-')), readdirSync(directory).join(', '));
   const recovery = restoreDatabase(good, database);
   const reopened = new Platform(database);
   try {
-    check(checks, 'failing closed does not damage the recovery path: the good backup still restores', recovery.schema_version === 24 && countsMatch(counts, countsFor(reopened)) && reopened.verifyAudit());
+    check(checks, 'failing closed does not damage the recovery path: the good backup still restores', recovery.schema_version === 27 && countsMatch(counts, countsFor(reopened)) && reopened.verifyAudit());
   } finally { reopened.close(); platform.close(); }
   return { ok: allPassed(checks), checks, detail: `Four invalid backups were refused before any file was touched; the live world stayed byte-identical (sha256 ${digest.slice(0, 12)}…) and the valid backup restored afterwards.` };
 }
@@ -197,7 +197,7 @@ async function drillMigrationRehearsal(directory) {
   // Recreate a schema 17 world by removing the additive guild layer, exactly as a database written
   // before Task 06 looks. Nothing else is changed.
   const legacy = new DatabaseSync(database);
-  legacy.exec('PRAGMA foreign_keys=OFF; DROP TABLE guild_contributions; DROP TABLE guild_participants; DROP TABLE guild_projects; PRAGMA user_version=17;');
+  legacy.exec('PRAGMA foreign_keys=OFF; DROP VIEW IF EXISTS karma_service_rules; DROP VIEW IF EXISTS karma_source_events; DROP TABLE IF EXISTS karma_receipts; DROP TABLE IF EXISTS karma_purchases; DROP TABLE IF EXISTS shop_purchases; DROP TABLE guild_contributions; DROP TABLE guild_participants; DROP TABLE guild_projects; PRAGMA user_version=17;');
   legacy.close();
   const beforeDowngrade = validateDatabase(database);
   check(checks, 'the rehearsal fixture validates as schema 17', beforeDowngrade.schema_version === 17, JSON.stringify(beforeDowngrade));
@@ -212,7 +212,7 @@ async function drillMigrationRehearsal(directory) {
   const upgraded = new Platform(target);
   try {
     const after = countsFor(upgraded);
-    check(checks, 'opening the restored world migrates it to schema 24', validateDatabase(target).schema_version === 24);
+    check(checks, 'opening the restored world migrates it to schema 27', validateDatabase(target).schema_version === 27);
     check(checks, 'the migration is additive: no world, land, coin or quest record changed',
       ['world_objects', 'land_stewardships', 'land_events', 'coin_rewards', 'quest_enrollments', 'accounts', 'agents', 'audit'].every((table) => before[table] === after[table]),
       `before=${describeCounts(before)} after=${describeCounts(after)}`);
@@ -284,7 +284,7 @@ async function interruptedWorkerCase(checks, directory, mode, owner, expectedCla
     platform.get("SELECT COUNT(*) AS n FROM audit WHERE event='resident.run.interrupted'").n === 1
     && platform.get("SELECT COUNT(*) AS n FROM audit WHERE event='event.rsvp'").n === 1
     && after.audit > before.audit, `audit ${before.audit} → ${after.audit}`);
-  check(checks, `${mode}: the world is still valid and the audit chain still verifies`, validateDatabase(database).schema_version === 24 && platform.verifyAudit());
+  check(checks, `${mode}: the world is still valid and the audit chain still verifies`, validateDatabase(database).schema_version === 27 && platform.verifyAudit());
 
   const app = createApp({ platform, mayorModel: async () => '{"action":"wait"}' });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
@@ -387,7 +387,7 @@ async function drillStorageLimit(directory) {
   check(checks, 'a write that needs new space fails with an actionable storage error', Boolean(failure) && /full/i.test(failure.message), failure?.message || 'the write unexpectedly succeeded');
   platform.run('PRAGMA max_page_count=2000000000');
   check(checks, 'the failed write left nothing behind', countsMatch(before, countsFor(platform)));
-  check(checks, 'the world is still valid and its audit chain still verifies after the storage failure', validateDatabase(database).schema_version === 24 && platform.verifyAudit() && platform.integrity().quick_check === 'ok');
+  check(checks, 'the world is still valid and its audit chain still verifies after the storage failure', validateDatabase(database).schema_version === 27 && platform.verifyAudit() && platform.integrity().quick_check === 'ok');
   platform.transaction(() => platform.audit('system', 'rehearsal.storage.recovered'));
   check(checks, 'the world accepts writes again once space is available', platform.get("SELECT COUNT(*) AS n FROM audit WHERE event='rehearsal.storage.recovered'").n === 1);
 
@@ -401,7 +401,7 @@ async function drillStorageLimit(directory) {
   check(checks, 'the failed backup left no partial file', readdirSync(locked).length === 0, readdirSync(locked).join(', '));
   const good = join(directory, 'backups', backupName(1700000004000, 5));
   backupDatabase(platform.db, good);
-  check(checks, 'the world can still be backed up into a writable location afterwards', validateDatabase(good).schema_version === 24);
+  check(checks, 'the world can still be backed up into a writable location afterwards', validateDatabase(good).schema_version === 27);
   const usage = storageUsage(database);
   check(checks, 'storage usage is measured, not guessed', usage.database_bytes > 0 && usage.total_bytes >= usage.database_bytes, JSON.stringify(usage));
   platform.close();
@@ -475,7 +475,7 @@ async function drillSafetyAndPause(directory) {
     check(checks, 'pause and safety decisions survive a real database reopen', platform.get("SELECT value FROM settings WHERE key='paused'").value === 'true' && platform.get('SELECT status FROM reports WHERE id=?', report.id).status === 'overturned' && platform.get('SELECT status FROM appeals WHERE id=?', appeal.id).status === 'overturned' && Boolean(refused(() => tx('message', actor('alice'), { agent_id: seeded.ids.aliceAgent, text: 'Still paused after restart.' }))));
     tx('pause', actor('admin'), false);
     const delivered = tx('message', actor('alice'), { agent_id: seeded.ids.aliceAgent, text: 'The world resumed after the drill.' });
-    check(checks, 'unpause restores ordinary action and the audit chain remains valid', Boolean(delivered.id) && platform.verifyAudit() && validateDatabase(seeded.database).schema_version === 24);
+    check(checks, 'unpause restores ordinary action and the audit chain remains valid', Boolean(delivered.id) && platform.verifyAudit() && validateDatabase(seeded.database).schema_version === 27);
   } finally { platform.close(); }
   return { ok: allPassed(checks), checks, detail: 'An independent suspension and appeal, runtime revocation, durable pause and explicit recovery were exercised on a disposable world.' };
 }

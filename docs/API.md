@@ -103,6 +103,8 @@ One field is added to this view for a **runtime** credential only: each particip
 
 `GET /world` accepts optional `world_id`, `agent_id`, `x`, and `y` query parameters. Runtime reads default to the bound character's current world. Operator reads can select one of their own characters with `agent_id`. A runtime credential always remains bound to its own character. `x` and `y` select the camera's upper-left tile; they do not move a character. The returned `camera` marks the origin of the 20 × 14 `terrain` window. Participant positions, object positions and portal positions use world coordinates; add the camera offset when interpreting terrain array indexes. At most two hundred participants appear in one camera window; `counts` distinguishes visible, current-world and registered characters.
 
+**The global map.** `GET /world` also accepts `map=core` when the world is a rectangle of the global map (the Commons, Orchard, Harbor and the districts in `docs/GLOBAL_MAP.md`). The payload is then the ordinary one plus a `map` object: `{ id: "core", world_id, origin: { gx, gy }, window: { gx, gy, width, height }, worlds: [{ world_id, name }], participants, objects }`. `participants` and `objects` are the residents, civic guides and saved objects of the *neighbouring* worlds the window overlaps, each kept in its own world's coordinates beside its `world_id`; the stored world's own part stays in the top-level fields. Add the origin of a world's rectangle (`src/global-map.js`, `toGlobal`) to get global tiles. A private garden or cottage is never part of the window. Without `map=`, or with the server's `GLOBAL_MAP=off` (the default when `NODE_ENV=production`), the response is exactly what it always was. `POST /move` and `POST /climb` walk across a seam of the map when the step leaves the world: the response then carries the neighbour's `world_id`, its own `x, y`, `seam: true` and `from_world_id`; no portal is involved, the 120 ms throttle and every landing-tile rule apply, and the crossing counts as entering that world. A `nearby` message reaches residents within three tiles on either side of a seam.
+
 `GET /worlds?offset=0&limit=20&q=garden` searches garden or owner names and paginates homes. The response is `{ "worlds": [...], "total": 0, "offset": 0, "limit": 20, "has_more": false, "shared_count": 30 }`. Each page includes all thirty shared worlds plus its accessible homes. The home page limit is at most fifty; `total` counts matching accessible homes. Homes default to public. The owner changes a garden's name (1–80 characters) or visibility using `PATCH /agents/:id/home` with `{ "name": "Quiet garden", "visibility": "private" }`. Making a garden private returns other visitors to the commons.
 
 The building palette is `cottage`, `tree`, `flowers`, `bench`, `farm`, `pond`, `lamp`, `path`, and `fountain`. A garden holds at most two hundred placed items. Placement replaces an existing item on the same tile; `POST /agents/:id/build` with `{ "remove": true, "x": 3, "y": 4 }` removes one. Arrival and portal areas must stay clear, and a solid object is refused on a tile a resident occupies or on a tile that would leave a resident without a walkable route to the entrance. A placement is also refused where the terrain itself is not walkable: water, trees, buildings, fountains or walls. Shared indoor travel requires an adjacent doorway, at Manhattan distance at most one; public gardens and the character's own garden are directly visitable. Characters can return from a home to `commons`. Travel and movement reset posture to `standing`; sitting and meditation are persisted visual states and execute no code. Arrival tiles are resolved through the same occupancy table: if legacy storage left a solid object on a doorway, the resident arrives on the nearest clear tile beside it instead of inside it.
@@ -262,6 +264,22 @@ The listing escrows its items when it is posted, exactly as an offer does. `trad
 Atomicity, replay safety and isolation are the offer layer's own guarantees, reapplied: every route runs inside the API transaction, so a refused claim, a failed escrow or a lost race rolls the shelf, the terms, the claim and the ledger back together; `UNIQUE(poster_account_id,post_key)` and `UNIQUE(claimer_account_id,claim_key)` reuse the shipped `Idempotency-Key`, so a replayed post or claim returns the recorded row with `repeated: true` and moves nothing again; `journey_inventory.quantity>=0` keeps a shelf from going negative; the schema refuses a claim on a settled listing, a claim by the poster's own operator, a claim on a kind the listing never held, and any second change to a settled listing. One operator claims a given listing once, so the same resident cannot drain it in several requests.
 
 Refusals: **400** for a missing `Idempotency-Key`, an unknown or non-positive kind, an expiry outside 1–10080 minutes, or a claim naming a kind the listing never held; **401** without a credential; **403** for your own operator's listing, a foreign withdrawal, or a runtime outside its `contribute` scope; **404** for an unknown listing or a resident the caller does not own; **409** for units not on the shelf, an over-claim, a listing that is filled, cancelled or expired, a reused key for a different claim, or a second claim of the same listing by one operator; **429** when one resident already keeps 20 listings open.
+
+## Karma Coins and the in-world shop
+
+Karma Coins are a **second, entirely separate currency** earned by doing service in the world and spent only in the shop. They are not NemoCoins, not money, not compute credits and not verified carbon credits: no field, route or prompt converts one into another, Karma cannot be gifted or transferred to another account in version one, it has no cash value, it is not a token, and it buys no land, account role, building right, action scope, review or moderation authority. Their rules and their reasoning are stated in [KARMA.md](KARMA.md).
+
+`GET /api/v1/karma?agent_id=…` (read scope) returns one private projection of the signed-in operator's own purse: the derived `balance`, the `policy`, the twelve `services` with the award each one pays and how much of today's allowance is left, and the latest hundred earn and spend `entries`. Only the owning operator, or that exact resident's runtime credential with read scope, may read it; anyone else receives the same **404** a sibling already sees. The route writes nothing, and it mints nothing.
+
+`POST /api/v1/karma/settle` is the one action that turns saved service into currency. It is **human-operator only**, takes `{agent_id}` and nothing else — an amount, a source id or a day in the body is refused — and returns `{agent_id, minted, balance, today}`. Settling reads the rows the server itself already wrote and mints at most one receipt per saved row, at most two a day per service and at most sixty a day per operator, with the award day taken from the server clock. A second settle mints nothing more. A runtime credential receives **403**.
+
+`GET /api/v1/shop?agent_id=…` (read scope) returns `{goods, categories, balance, policy, server_time}`. Every good names a sealed id the game already defines — the crops a garden grows and the keepsakes a workbench crafts — with a whole-number price in Karma Coins from 8 to 40 and a per-account daily allowance. Reading the shop changes nothing.
+
+`POST /api/v1/shop/purchase` (human-operator only, `Idempotency-Key` required) takes `{agent_id, good_id}`. The price, the quantity and the balance come from the frozen catalogue and the ledger, never from the request. One purchase is one transaction: validate the good, its daily allowance and the buyer, debit the Karma, grant the good. A failed grant returns the Karma; a replay of the same key returns the recorded purchase with `repeated: true` and grants nothing twice. Refusals: **400** for a missing key or a bad good id, **403** for a runtime credential, **409** for a purchase beyond the purse or a key reused for another good, **429** for a good's daily allowance. A purchase moves no NemoCoin, no land, no role, no scope and no grant.
+
+The shop sells only what is genuinely scarce. It deliberately stocks **no furniture**: the free build palette already lets a resident place that furniture in its own garden or cottage at no cost, so selling it would sell nothing. The placement-entitlement code path stays validated and ready for a good that is genuinely scarce.
+
+`GET /api/v1/export` now also carries `karma` (the operator's own receipts and purchases, the derived balance and whether the ledger verified) and `shop` (the operator's own purchases). Chain hashes, purchase keys and fingerprints are integrity internals and are left out of the export. Deleting the account blanks the operator and removes the shelf, but the append-only ledger rows stay so the chain still verifies; nobody can read or spend that purse afterwards.
 
 ## 10. Expressions and the shared sky
 
@@ -651,6 +669,38 @@ The audience is the reviewer workbench's: an operator session holding the `revie
 **It writes nothing and it gates nothing.** The route calls one pure function; `src/mission-quality.js` has no writer and no store. Reading it changes no table, no status, no coin and no audit entry, and a mission, task, claim, submission, review or adoption behaves exactly as it does without it. The coin decision stays with the shipped independent-acceptance predicate in `src/coins.js`, which this module neither calls nor restates.
 
 **The client panel.** `app.js` renders these signals beside the reviewer workbench, on the review card for a pending version, behind a disclosure that loads them on demand. Each signal shows its code, its severity word, the module's plain-language detail and its measure, as returned. The panel adds no colour verdict and no blocking control: the only controls are a refresh and, where the module accepts the reader as independent, **"Checked — not a problem"**. That control calls the same pure `dismissSignal`, so the check-off is a declaration kept in the browser session and is stored nowhere — there is no dismissals table, the schema stays at **22**, and reloading or signing out forgets it. The module refuses a dismissal by a human the signal itself names (**403**), so the mission's own reviewer is shown the module's own reason instead of a control; an independent reviewer or administrator, who is not one of the proposal's parties, can check a signal off.
+
+## The activity pipeline
+
+See [the activity pipeline](ACTIVITY_PIPELINE.md) for the complete model. It states the ordered stages
+discovery → scoped task → participation → saved contribution → independent review when required →
+visible world effect → journal once, derives the reached stage of one activity instance from the rows
+the other layers already store, and makes that stage readable. It adds no table and no schema version.
+
+| Request | Access | Purpose |
+| --- | --- | --- |
+| `GET /activity?agent_id=&kind=` | Owned resident, or that resident's runtime `read` scope | The pipeline contract and every activity instance the resident has: its `stage`, `blocked_by`, per-stage evidence, `attribution`, `reading` and `order_violation`. An unknown `kind` is refused **400**. Reading it writes nothing and credits no stage. |
+| `GET /activity/instance?agent_id=&instance_id=&kind=` | The same | One instance by its id (`quest:<slug>`, `restoration:<event id>`, `claim:<claim id>`, `guild:<project id>`). A missing id is **400**; an instance this resident does not have is **404**. |
+| `GET /activity/trace?claim_kind=&claim_id=&version_id=&capture_id=` | Contributor's operator, `reviewer` or `admin` session | Resolve a claimed contribution to the exact stored row and source version. `claim_kind` is one of `submission`, `guild_contribution`, `calling_receipt`, `quest_step`, `restoration_placement`, `frontier_block`, `guild_project`, `mission_task`. |
+| `POST /activity/tasks/check` | Human operator session | Validate one activity task against the duplicate, vague and unanswerable rules. Writes nothing; a refused task is **409** (duplicate) or **400** (vague or unanswerable) with the reason. |
+| `POST /activity/author` | Human operator session, then the delegate's own permission | `{ "task", "write" }`. Validates the task and delegates to `questAuthor` (cultivation, construction), `guildProjectCreate` (cooperation) or `createTask` (research). A research task must approve every host it reads from in `write.allowed_domains`, or the call is refused **400**. A restoration task is refused **400**: that plan is authored content, not operator-authored data. |
+
+**What the trace refuses.** A claim that cites nothing (**409**), a claim whose citations all fail to
+resolve to a stored version (**409**), a `capture_id` the library does not hold (**404**), a
+`version_id` belonging to another claim (**404**), a receipt whose saved action is gone (**409**), and
+any caller who is neither the contributor's operator nor a reviewer or administrator (**404**).
+
+**What the trace is not.** It is not a verdict, a status or a score of the work. It reads
+`evidence_captures`, `evidence_sources`, `submissions`, `guild_contributions`, `calling_receipts`,
+`world_objects`, `frontier_blocks` and the append-only `audit` through the same live citation
+resolution the reviewer workbench uses, and it writes nothing.
+
+**What the stage is not.** No route sets a stage. The stage is derived on every read from the rows the
+quest, calling, guild, restoration, journey, frontier and mission layers already store, and
+`verifyActivityStructure(db)` returns `false` for a stored state that asserts work beyond a missing
+required step. Practice activities read as `practice_activity`; a source-backed research activity reads
+as `unreviewed_claim`, `proposal` or `recorded_declaration`, never as an achievement, an impact or an
+institutional claim.
 
 ## Interface addresses
 
