@@ -7,8 +7,9 @@ import {join} from 'node:path';
 import {VelorenLink, signEvent, velorenLinkFromEnvironment} from '../src/veloren-link.js';
 import {EXTENSIONS} from '../src/veloren-ext/index.js';
 import {pantryLines, shelfNow, take} from '../src/veloren-ext/pantry.js';
-import {chronicleLines, loadEvents, observe, resetObserver} from '../src/veloren-ext/village.js';
+import {chronicleLines, loadEvents, observe, resetObserver, validateEvents} from '../src/veloren-ext/village.js';
 import {loadDiscoveries, worksLines} from '../src/veloren-ext/world-life.js';
+import {overviewExtension} from '../src/veloren-ext/overview.js';
 
 const KEY = Buffer.from('nemo-test-key-nemo-test-key-1234');
 const ALICE = '11111111-1111-4111-8111-111111111111';
@@ -128,4 +129,55 @@ test('QA-08 a stage in the chronicle is dated when the server built it, not when
   observe(s.link, T0, path);
   assert.equal(s.link.sql.get("SELECT at FROM village_marks WHERE key='stage:well-1'").at, built);
   resetObserver();
+});
+
+test('QA-09 a pantry gift whose acknowledgement arrives after the wait is still settled (the food did reach the bag)', (t) => {
+  const s = setup(t);
+  pantryLines(s.link, ALICE);
+  assert.equal(take(s.link, {player_uuid: ALICE, item: 'carrot', alias: 'Alice'}).issued, true);
+  const [command] = commandsIn(s);
+  s.clock.now += 5 * 60_000;                     // the relay was down; the command's minute has long passed
+  pantryLines(s.link, ALICE);
+  assert.equal(s.link.sql.get('SELECT state FROM pantry_takes WHERE cmd_id=?', command.cmd_id).state, 'unconfirmed');
+  assert.equal(ingest(s, event(s, 'command.applied', {landmark_id: command.cmd_id}))[0].status, 'accepted');
+  pantryLines(s.link, ALICE);
+  assert.equal(s.link.sql.get('SELECT state FROM pantry_takes WHERE cmd_id=?', command.cmd_id).state, 'delivered');
+  const used = s.link.sql.get("SELECT COUNT(*) AS n FROM pantry_takes WHERE player_uuid=? AND state IN ('pending','delivered')", ALICE).n;
+  assert.equal(used, 1, 'and it counts toward the daily share');
+});
+
+test('QA-10 the unauthenticated dashboard document is computed once per few seconds, not once per request', (t) => {
+  const s = setup(t);
+  const ask = () => {
+    let body = null;
+    const ctx = {route: '/veloren/harr/overview', request: {method: 'GET'}, response: {}, json: (_response, _status, value) => { body = value; }};
+    return overviewExtension.handle(s.link, ctx).then(() => body);
+  };
+  return (async () => {
+    const first = await ask();
+    s.clock.now += 1_000;
+    const second = await ask();
+    assert.equal(second.generated_at, first.generated_at, 'served from the last computation');
+    s.clock.now += 10_000;
+    const third = await ask();
+    assert.equal(third.generated_at, s.clock.now);
+  })();
+});
+
+test('QA-11 two links in one process do not share the chronicle observer clock', (t) => {
+  const a = setup(t);
+  const b = setup(t);
+  resetObserver();
+  const path = join(a.directory, 'world.json');
+  writeFileSync(path, JSON.stringify({groups: {'well-1': {applied_at: T0 - 1000}}}));
+  observe(a.link, T0, path);
+  observe(b.link, T0 + 1000, path);
+  for (const s of [a, b]) assert.ok(s.link.sql.get("SELECT at FROM village_marks WHERE key='stage:well-1'"), 'both links noticed the stage');
+  resetObserver();
+});
+
+test('QA-12 a weekly event that would run past midnight is refused, because the clock would cut it off at midnight', () => {
+  const event = (start, length) => ({id: 'late-fete', title: 'Late fete', place: 'Plaza', landmark_id: 'lyra-plaza', blurb: 'Music.', when: {every: 'week', weekday: 5, start, length}, who: {all: true}});
+  assert.equal(validateEvents({format: 'nemo-village-events-v1', events: [event('22:00', 120)]}).length, 1);
+  assert.throws(() => validateEvents({format: 'nemo-village-events-v1', events: [event('23:30', 60)]}), /before midnight/);
 });

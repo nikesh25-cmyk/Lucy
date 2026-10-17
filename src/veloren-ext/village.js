@@ -34,6 +34,8 @@ export function validateEvents(doc) {
     if (w.every === 'hour') { if (!Number.isInteger(w.minute) || w.minute < 0 || w.minute > 59 || w.minute + w.length > 60) throw new Error(`${e.id}: an hourly event must fit inside its hour.`); }
     else if (w.every === 'week') {
       if (!Number.isInteger(w.weekday) || w.weekday < 0 || w.weekday > 6 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(w.start || '')) throw new Error(`${e.id}: a weekly event needs a weekday 0-6 and a start HH:MM.`);
+      // activeSlot looks at one calendar day only, so an event running past midnight would stop at midnight.
+      if (Number(w.start.slice(0, 2)) * 60 + Number(w.start.slice(3)) + w.length > 24 * 60) throw new Error(`${e.id}: a weekly event must end before midnight.`);
     } else throw new Error(`${e.id}: every must be hour or week.`);
     const who = e.who || {};
     if (!who.all && !(Array.isArray(who.roles) && who.roles.length) && !(Array.isArray(who.ids) && who.ids.length)) throw new Error(`${e.id}: says nobody goes.`);
@@ -120,13 +122,16 @@ export const villageSchema = {
         CREATE INDEX village_marks_at ON village_marks(at);`,
 };
 
-let lastObserved = 0;
-export const resetObserver = () => { lastObserved = 0; };
+// When each link last looked at the game server's record. Per link, not per process: two links (tests, a second world)
+// must not make each other skip their look.
+let observedAt = new WeakMap();
+export const resetObserver = () => { observedAt = new WeakMap(); };
 
 /** Record new facts the chronicle will tell: stages and finished projects in the game server's record. At most every 30 s. */
 export function observe(link, now = link.clock(), recordPath = process.env.NEMO_WORLD_RECORD) {
+  const lastObserved = observedAt.get(link) ?? 0;
   if (now - lastObserved < 30_000 && now >= lastObserved) return;
-  lastObserved = now;
+  observedAt.set(link, now);
   const record = loadRecord(recordPath);
   if (!record?.groups) return;
   let projects;

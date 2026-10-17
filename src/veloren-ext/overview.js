@@ -48,12 +48,25 @@ export function buildOverview(link, now = link.clock()) {
   };
 }
 
+// The document needs no credential, so anybody who can reach the page can ask for it as often as the hourly cap allows;
+// it is computed from the database, the content files and the server's record, so it is kept for a few seconds.
+const OVERVIEW_TTL_MS = 5_000;
+const overviewCache = new WeakMap();
+function cachedOverview(link) {
+  const now = link.clock();
+  const hit = overviewCache.get(link);
+  if (hit && now >= hit.at && now - hit.at < OVERVIEW_TTL_MS) return hit.value;
+  const value = buildOverview(link, now);
+  overviewCache.set(link, { at: now, value });
+  return value;
+}
+
 export const overviewExtension = {
   name: 'overview',
   async handle(link, ctx) {
     if (ctx.route === '/veloren/harr/overview' && ctx.request.method === 'GET') {
       spendRate(link, '*overview', { gapMs: 0, perHour: 7200 });
-      ctx.json(ctx.response, 200, buildOverview(link));
+      ctx.json(ctx.response, 200, cachedOverview(link));
       return true;
     }
     if (ctx.route === '/veloren/harr/tasks' && ctx.request.method === 'GET') {

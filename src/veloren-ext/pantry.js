@@ -80,7 +80,10 @@ export function shelfNow(sql, key, now, fx = { pantry_rate: 1, pantry_cap: 0 }) 
 export function settle(link) {
   const sql = link.sql;
   const fx = effectsOf(link);
-  for (const take of sql.all("SELECT cmd_id, item, qty FROM pantry_takes WHERE state='pending' LIMIT 100")) {
+  // A take given up as "unconfirmed" (the answer was late: a relay down, NemoWorld restarted) is looked at again for a
+  // day: the game may well have delivered it, and then it belongs on the shelf count and the player's daily share.
+  const recent = link.clock() - 86_400_000;
+  for (const take of sql.all("SELECT cmd_id, item, qty FROM pantry_takes WHERE state='pending' OR (state='unconfirmed' AND created_at>=?) ORDER BY created_at LIMIT 100", recent)) {
     const { status } = link.commandStatus(take.cmd_id);
     if (status === 'applied') {
       sql.tx(() => {
@@ -89,7 +92,7 @@ export function settle(link) {
         sql.run("UPDATE pantry_takes SET state='delivered' WHERE cmd_id=?", take.cmd_id);
       });
     } else if (status === 'rejected' || status === 'expired_unconfirmed' || status === 'unknown') {
-      sql.run("UPDATE pantry_takes SET state=? WHERE cmd_id=?", status === 'rejected' ? 'rejected' : 'unconfirmed', take.cmd_id);
+      sql.run("UPDATE pantry_takes SET state=? WHERE cmd_id=? AND state<>?", status === 'rejected' ? 'rejected' : 'unconfirmed', take.cmd_id, status === 'rejected' ? 'rejected' : 'unconfirmed');
     }
   }
 }
