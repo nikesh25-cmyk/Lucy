@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { identityFor, setIdentityProvider } from './identity.js';
 import { pantryLines } from './pantry.js';
 import { chronicleLines, loadEvents, todayLines } from './village.js';
+import { purposeLines, researchLines } from './research.js';
+import { tasksLines } from './tasks.js';
 import { findsFrom, libraryLines, loadDiscoveries, loadRecord, loadWorks, worksLines } from './world-life.js';
 
 // ---- The in-game interface (HUD) ---------------------------------------------------------------
@@ -50,10 +52,10 @@ export const HUD_POLICY = Object.freeze({
 // instance Lyra's) is refused even though it carries the same `director` scope.
 export const GUIDE_RESIDENTS = Object.freeze(['lw-selene']);
 
-export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle']);
-const OPEN_TITLES = { works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle' };
+export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research']);
+const OPEN_TITLES = { works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle', tasks: 'Your tasks', purpose: 'Harr Charter', research: 'Research' };
 // Open pages: about the village, not about an account, so they need no link. They still need a player id.
-export const OPEN_PAGES = Object.freeze(['works', 'library', 'pantry', 'today', 'chronicle']);
+export const OPEN_PAGES = Object.freeze(['works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research']);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const enc = new TextEncoder();
@@ -197,7 +199,7 @@ export function helpLines() {
   return [
     'I am Selene, a scripted guide: I only read and tell. I cannot give, buy, approve or change anything for you.',
     'Say or whisper: start, passport, journal, calling, quests, next, community, karma. Add a number for more, like quests 2.',
-    'For the village itself, ask for works (what is being built), library (places to discover) pantry (free food), today (market hour, story circle, festival) or chronicle (what happened). They need no account.',
+    'For the village itself, ask for works (what is being built), library (places to discover) pantry (free food), today (market hour, story circle, festival) or chronicle (what happened), tasks (your next steps), purpose (why Harr exists) or research (what we are learning). They need no account.',
     'Say track to mark your current step on your map. Say more for the next page of the last answer.',
     'My answers come to you privately by /tell. Your real progress lives in NemoWorld and only the world can change it.',
   ];
@@ -377,7 +379,13 @@ export function buildView({ link, platform, player_uuid, name, page = 1 }) {
           ? todayLines(loadEvents(), link.clock())
           : name === 'chronicle'
             ? chronicleLines(link, loadEvents(), link.clock(), (alias) => plain(alias, 24))
-            : libraryLines(loadDiscoveries(), findsFrom(link.sql, loadDiscoveries()), player_uuid, (alias) => plain(alias, 24));
+            : name === 'tasks'
+              ? tasksLines(link, player_uuid)
+              : name === 'purpose'
+                ? purposeLines(link)
+                : name === 'research'
+                  ? researchLines(link)
+                  : libraryLines(loadDiscoveries(), findsFrom(link.sql, loadDiscoveries()), player_uuid, (alias) => plain(alias, 24));
     const paged = paginate(lines, page);
     return fitResponse({
       linked: false, open: true, command: name, title: OPEN_TITLES[name], page: paged.page, pages: paged.pages,

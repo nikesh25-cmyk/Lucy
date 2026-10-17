@@ -85,6 +85,10 @@ const files = new Map([
 files.set('/veloren-link', ['veloren-link.html', 'text/html; charset=utf-8']);
 files.set('/veloren-link.js', ['veloren-link.js', 'text/javascript; charset=utf-8']);
 files.set('/veloren-link.css', ['veloren-link.css', 'text/css; charset=utf-8']);
+// The Harr dashboard: purpose, research, works, pantry, rhythm and chronicle on one page (data: /api/v1/veloren/harr/overview).
+files.set('/harr', ['harr.html', 'text/html; charset=utf-8']);
+files.set('/harr.js', ['harr.js', 'text/javascript; charset=utf-8']);
+files.set('/harr.css', ['harr.css', 'text/css; charset=utf-8']);
 for (const name of ['compass', 'map', 'earth', 'users-round', 'house', 'sprout', 'book-open', 'shield-check', 'settings', 'log-in', 'menu', 'clipboard-list', 'sparkles', 'chevron-right', 'x']) {
   files.set(`/assets/icons/${name}.svg`, [`assets/icons/${name}.svg`, 'image/svg+xml']);
 }

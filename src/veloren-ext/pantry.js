@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GUIDE_RESIDENTS, plain, spendRate } from './view.js';
+import { effectsOf } from './research.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const PANTRY_PATH = join(here, '..', '..', 'content', 'veloren-pantry.json');
@@ -58,8 +59,9 @@ export const pantrySchema = {
 const dayOf = (ms) => new Date(ms).toISOString().slice(0, 10);
 
 /** Bring one shelf up to date: restock for the time passed, never above the cap, never before it existed. */
-export function shelfNow(sql, key, now) {
-  const rule = PANTRY_POLICY.restock[key];
+export function shelfNow(sql, key, now, fx = { pantry_rate: 1, pantry_cap: 0 }) {
+  const base = PANTRY_POLICY.restock[key];
+  const rule = { per_hour: base.per_hour * fx.pantry_rate, cap: base.cap + fx.pantry_cap };
   const row = sql.get('SELECT units, as_of FROM pantry_shelf WHERE item=?', key);
   if (!row) {
     const units = Math.floor(rule.cap / 2);
@@ -75,11 +77,12 @@ export function shelfNow(sql, key, now) {
 /** Settle takes the game has answered: delivered ones leave the shelf, rejected or lost ones simply stop reserving. */
 export function settle(link) {
   const sql = link.sql;
+  const fx = effectsOf(link);
   for (const take of sql.all("SELECT cmd_id, item, qty FROM pantry_takes WHERE state='pending' LIMIT 100")) {
     const { status } = link.commandStatus(take.cmd_id);
     if (status === 'applied') {
       sql.tx(() => {
-        const units = shelfNow(sql, take.item, link.clock());
+        const units = shelfNow(sql, take.item, link.clock(), fx);
         sql.run('UPDATE pantry_shelf SET units=? WHERE item=?', Math.max(0, units - take.qty), take.item);
         sql.run("UPDATE pantry_takes SET state='delivered' WHERE cmd_id=?", take.cmd_id);
       });
@@ -93,11 +96,19 @@ function reserved(sql, key) {
   return sql.get("SELECT COALESCE(SUM(qty),0) AS n FROM pantry_takes WHERE item=? AND state='pending'", key).n;
 }
 
+/** A short plain description of the shelves, for villagers to speak from. */
+export function shelfSummary(link) {
+  const now = link.clock();
+  const fx = effectsOf(link);
+  return [...PANTRY.items.values()].map((i) => `${Math.max(0, Math.floor(shelfNow(link.sql, i.key, now, fx) - reserved(link.sql, i.key)))} ${i.key === 'cheese' ? 'cheese' : `${i.key}s`}`).join(', ');
+}
+
 export function pantryLines(link, player_uuid, clean = plain) {
   settle(link);
   const now = link.clock();
   const sql = link.sql;
-  const shelves = [...PANTRY.items.values()].map((i) => `${Math.max(0, Math.floor(shelfNow(sql, i.key, now) - reserved(sql, i.key)))} ${i.key === 'cheese' ? 'cheese' : `${i.key}s`}`);
+  const fx = effectsOf(link);
+  const shelves = [...PANTRY.items.values()].map((i) => `${Math.max(0, Math.floor(shelfNow(sql, i.key, now, fx) - reserved(sql, i.key)))} ${i.key === 'cheese' ? 'cheese' : `${i.key}s`}`);
   const used = sql.get("SELECT COUNT(*) AS n FROM pantry_takes WHERE player_uuid=? AND day=? AND state IN ('pending','delivered')", player_uuid, dayOf(now)).n;
   const left = Math.max(0, PANTRY_POLICY.per_player_per_day - used);
   const out = [
@@ -124,7 +135,7 @@ export function take(link, { player_uuid, item, alias = '' }) {
   const day = dayOf(now);
   const used = sql.get("SELECT COUNT(*) AS n FROM pantry_takes WHERE player_uuid=? AND day=? AND state IN ('pending','delivered')", player_uuid, day).n;
   if (used >= PANTRY_POLICY.per_player_per_day) return { issued: false, lines: ['You have taken your share for today. Come back tomorrow; the farms restock all day.'] };
-  const available = shelfNow(sql, entry.key, now) - reserved(sql, entry.key);
+  const available = shelfNow(sql, entry.key, now, effectsOf(link)) - reserved(sql, entry.key);
   if (available < entry.qty) return { issued: false, lines: [`The ${entry.key} shelf is empty for now. The farms restock it through the day; try something else or come back soon.`] };
   const order = randomUUID();
   const command = link.issueCommand({ kind: 'pantry_give', player_uuid, args: { order, item: entry.key, qty: entry.qty }, ttl_ms: PANTRY_POLICY.command_ttl_ms, issuedBy: 'pantry' });

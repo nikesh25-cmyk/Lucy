@@ -79,6 +79,94 @@
       "radius": 9
     },
     {
+      "id": "site-tower",
+      "label": "Research Tower Site",
+      "name": "The research tower site",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 37,
+      "dy": 21,
+      "radius": 10
+    },
+    {
+      "id": "site-solar",
+      "label": "Solar Array Site",
+      "name": "The solar array site",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 30,
+      "dy": -26,
+      "radius": 10
+    },
+    {
+      "id": "site-vfarm",
+      "label": "Vertical Farm Site",
+      "name": "The vertical farm site",
+      "site": "Harr",
+      "plot": "FarmField",
+      "nth": 1,
+      "dx": -27,
+      "dy": 11,
+      "radius": 9
+    },
+    {
+      "id": "site-fountain",
+      "label": "Fountain Site",
+      "name": "The light fountain site",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": -2,
+      "dy": -24,
+      "radius": 9
+    },
+    {
+      "id": "site-transit",
+      "label": "Transit Hub Site",
+      "name": "The sky transit hub site",
+      "site": "Harr",
+      "plot": "Workshop",
+      "nth": 0,
+      "dx": -27,
+      "dy": -6,
+      "radius": 11
+    },
+    {
+      "id": "site-archive",
+      "label": "Archive Site",
+      "name": "The open archive site",
+      "site": "Harr",
+      "plot": "Workshop",
+      "nth": 0,
+      "dx": -2,
+      "dy": 25,
+      "radius": 10
+    },
+    {
+      "id": "site-skywalk",
+      "label": "Sky Walk Site",
+      "name": "The sky walk site",
+      "site": "Harr",
+      "plot": "Plaza",
+      "nth": 0,
+      "dx": 20,
+      "dy": 31,
+      "radius": 13
+    },
+    {
+      "id": "site-garden",
+      "label": "Glass Garden Site",
+      "name": "The glass garden site",
+      "site": "Harr",
+      "plot": "House",
+      "nth": 0,
+      "dx": 26,
+      "dy": -28,
+      "radius": 11
+    },
+    {
       "id": "disc-meadow-flowers",
       "label": "The wildflower meadow",
       "name": "The wildflower meadow",

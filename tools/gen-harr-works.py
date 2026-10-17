@@ -12,7 +12,9 @@ root = pathlib.Path(__file__).resolve().parent.parent
 mpath = root / 'content' / 'veloren-world-harr.json'
 GAP = 10  # minutes between the stages of one project
 CREW = 2  # cooperation: from its second stage on, a project is built only while this many people stand at the site
-STONE = [150, 142, 128]; ROOF = [104, 96, 86]; WOOD = [120, 88, 60]; EARTH = [110, 84, 60]; PALE = [196, 188, 170]
+# Harr's new look: bright composite walls, teal roofs, steel floors, pale paving, dark-blue solar glass.
+STONE = [226, 232, 240]; ROOF = [44, 150, 160]; WOOD = [96, 108, 128]; EARTH = [110, 84, 60]; PALE = [205, 220, 236]
+GLASS = [150, 214, 234]; SOLAR = [28, 44, 92]; TEAL = [40, 200, 190]; STEEL = [150, 160, 176]
 
 
 def fill(a, b, kind, rgb): return {'op': 'fill', 'from': a, 'to': b, 'kind': kind, 'rgb': rgb}
@@ -102,8 +104,75 @@ projects.append(('orchard-gate', 'The orchard fence and gate', 'A low fence and 
     ('The east fence and the gate', [spr([x, 0, 1], 'FenceWoodWoodland') for x in range(7, 13)] + [spr([6, 0, 1], 'FenceWoodGateWoodland'), spr([6, -1, 1], 'Sign'), spr([5, -1, 1], 'Lantern'), spr([7, -1, 1], 'Lantern')]),
 ]))
 
+# ---- the innovation district: tall, bright and calm. Every project is additive and peaceful. ----
+def ring(x0, y0, x1, y1, z0, z1, kind, rgb):
+    return [fill([x0, y0, z0], [x1, y0, z1], kind, rgb), fill([x0, y1, z0], [x1, y1, z1], kind, rgb),
+            fill([x0, y0, z0], [x0, y1, z1], kind, rgb), fill([x1, y0, z0], [x1, y1, z1], kind, rgb)]
+
+
+# the research tower: seven by seven, eighteen high, where scholars read the village's findings
+projects.append(('research-tower', 'The research tower', 'A slim glass-banded tower where scholars gather the village\'s findings into one view.', 20, {'plot': 'Plaza', 'nth': 0, 'dx': 34, 'dy': 18}, [3, 3], [
+    ('Raising the platform', [clear([0, 0, 1], [6, 6, 20]), found([0, 0], [6, 6], 'Rock', STONE, 6), fill([0, 0, 0], [6, 6, 0], 'Rock', STEEL)]),
+    ('The lower shaft', ring(0, 0, 6, 6, 1, 8, 'Rock', STONE) + [clear([3, 0, 1], [3, 0, 2])] + [spr([x, y, z], 'Window3') for (x, y) in ((2, 0), (4, 0), (2, 6), (4, 6), (0, 3), (6, 3)) for z in (4, 6)] + [fill([0, 0, 4], [6, 6, 4], 'Rock', STEEL)]),
+    ('The upper shaft and the cap', ring(0, 0, 6, 6, 9, 16, 'Rock', STONE) + [spr([x, y, z], 'Window4') for (x, y) in ((2, 0), (4, 0), (2, 6), (4, 6), (0, 3), (6, 3)) for z in (11, 13)] + [fill([0, 0, 8], [6, 6, 8], 'Rock', STEEL), fill([0, 0, 17], [6, 6, 17], 'Rock', ROOF)]),
+    ('The crown and the star glass', [fill([3, 3, 18], [3, 3, 22], 'Rock', TEAL), spr([0, 0, 18], 'Lantern'), spr([6, 0, 18], 'Lantern'), spr([0, 6, 18], 'Lantern'), spr([6, 6, 18], 'Lantern'),
+                                       spr([3, 3, 1], 'CrystalBall'), spr([1, 5, 1], 'BookshelfMiddle'), spr([5, 5, 1], 'BookshelfMiddle'), spr([3, -1, 1], 'Sign')]),
+]))
+
+# solar array: three rows of dark-blue glass on slim posts, so the lamps never go out
+projects.append(('solar-array', 'The solar array', 'Rows of solar glass that charge the village lamps by day and light the paths all night.', 40, {'plot': 'Plaza', 'nth': 0, 'dx': 24, 'dy': -30}, [5, 4], [
+    ('Levelling and paving', [clear([0, 0, 1], [12, 8, 4]), found([0, 0], [12, 8], 'Rock', PALE, 3)]),
+    ('The first two rows', [fill([x, y, 1], [x, y, 1], 'Rock', STEEL) for y in (1, 4) for x in (1, 5, 9)] + [fill([x - 1, y - 1, 2], [x + 1, y + 1, 2], 'Rock', SOLAR) for y in (1, 4) for x in (1, 5, 9)]),
+    ('The last row and the lamps', [fill([x, 7, 1], [x, 7, 1], 'Rock', STEEL) for x in (1, 5, 9)] + [fill([x - 1, 6, 2], [x + 1, 8, 2], 'Rock', SOLAR) for x in (1, 5, 9)] + [spr([0, 0, 1], 'StreetLamp'), spr([12, 0, 1], 'StreetLamp'), spr([6, -1, 1], 'Sign')]),
+]))
+
+# vertical farm: a stacked greenhouse tower that feeds more people from less land
+projects.append(('vertical-farm', 'The vertical farm', 'A stacked greenhouse tower where crops grow in bright rooms, feeding more people from less land.', 75, {'plot': 'FarmField', 'nth': 1, 'dx': -30, 'dy': 8}, [3, 3], [
+    ('Foundation and the first floor', [clear([0, 0, 1], [6, 6, 14]), found([0, 0], [6, 6], 'Rock', PALE, 5), fill([0, 0, 0], [6, 6, 0], 'Rock', STEEL)]),
+    ('The first two levels', ring(0, 0, 6, 6, 1, 3, 'Rock', GLASS) + [clear([3, 0, 1], [3, 0, 2]), fill([0, 0, 4], [6, 6, 4], 'Rock', STEEL)] + ring(0, 0, 6, 6, 5, 7, 'Rock', GLASS) + [fill([0, 0, 8], [6, 6, 8], 'Rock', STEEL)] + [spr([x, 2, 1], 'Planter') for x in (2, 3, 4)] + [spr([x, 2, 5], 'Planter') for x in (2, 3, 4)]),
+    ('The upper levels', ring(0, 0, 6, 6, 9, 11, 'Rock', GLASS) + [fill([0, 0, 12], [6, 6, 12], 'Rock', ROOF)] + [spr([x, 4, 9], 'Planter') for x in (2, 3, 4)] + [spr([x, y, 2], 'Window2') for (x, y) in ((1, 0), (5, 0), (0, 3), (6, 3))]),
+    ('Lamps, hanging gardens and the sign', [spr([1, 1, 1], 'Lantern'), spr([5, 5, 5], 'Lantern'), spr([1, 1, 9], 'Lantern'), spr([3, 5, 1], 'HangingBasket'), spr([3, -1, 1], 'Sign')]),
+]))
+
+# the light fountain: a teal basin ringed with lamps, in the open north of the square
+projects.append(('light-fountain', 'The light fountain', 'A basin of light and lamps where neighbours rest after a day of work.', 60, {'plot': 'Plaza', 'nth': 0, 'dx': -6, 'dy': -28}, [4, 4], [
+    ('Laying the basin', [clear([0, 0, 1], [8, 8, 6]), found([0, 0], [8, 8], 'Rock', PALE, 3), fill([0, 0, 0], [8, 8, 0], 'Rock', PALE)] + ring(0, 0, 8, 8, 1, 1, 'Rock', TEAL)),
+    ('The inner ring and the pillar', ring(2, 2, 6, 6, 1, 2, 'Rock', STONE) + [fill([4, 4, 1], [4, 4, 5], 'Rock', STONE)]),
+    ('The crown and the lamps', [fill([4, 4, 6], [4, 4, 6], 'Rock', TEAL), spr([4, 4, 7], 'Lantern')] + [spr([x, y, 2], 'Lantern') for (x, y) in ((0, 0), (8, 0), (0, 8), (8, 8))] + [spr([x, 9, 1], 'BenchWoodWoodland') for x in (2, 6)]),
+]))
+
+# the sky transit hub: a quiet landing platform where the wider world will one day arrive
+projects.append(('transit-hub', 'The sky transit hub', 'A pale platform with a canopy and lamps, ready for the quiet light-rail and landing pads of the future.', 105, {'plot': 'Workshop', 'nth': 0, 'dx': -34, 'dy': -10}, [7, 4], [
+    ('Levelling the platform', [clear([0, 0, 1], [14, 8, 6]), found([0, 0], [14, 8], 'Rock', PALE, 4), fill([0, 0, 0], [14, 8, 0], 'Rock', PALE)]),
+    ('Pillars and the canopy', [fill([c[0], c[1], 1], [c[0], c[1], 4], 'Rock', STEEL) for c in ([1, 1], [13, 1], [1, 7], [13, 7], [7, 1], [7, 7])] + [fill([0, 0, 5], [14, 8, 5], 'Rock', ROOF)]),
+    ('Benches, lamps and the landing ring', [spr([x, 4, 1], 'BenchWoodWoodland') for x in (3, 4, 10, 11)] + [spr([x, y, 4], 'Lantern') for (x, y) in ((1, 1), (13, 1), (1, 7), (13, 7))] + ring(5, 2, 9, 6, 1, 1, 'Rock', TEAL) + [spr([7, -1, 1], 'Sign')]),
+]))
+
+# the open archive: a long low glass hall where every finding is kept
+projects.append(('data-archive', 'The open archive', 'A long glass hall where every finding, plan and story is kept for anyone to read, and for other villages to learn from.', 150, {'plot': 'Workshop', 'nth': 0, 'dx': -8, 'dy': 22}, [6, 3], [
+    ('Foundation and floor', [clear([0, 0, 1], [12, 5, 6]), found([0, 0], [12, 5], 'Rock', PALE, 4), fill([0, 0, 0], [12, 5, 0], 'Rock', STEEL)]),
+    ('Glass walls and the doors', ring(0, 0, 12, 5, 1, 3, 'Rock', GLASS) + [clear([6, 0, 1], [6, 0, 2])] + [spr([x, 0, 2], 'Window1') for x in (2, 4, 8, 10)] + [spr([x, 5, 2], 'Window1') for x in (2, 4, 8, 10)]),
+    ('Roof, shelves and reading lamps', [fill([0, 0, 4], [12, 5, 4], 'Rock', ROOF)] + [spr([x, 4, 1], 'BookshelfMiddle') for x in (1, 2, 3, 4, 8, 9, 10, 11)] + [spr([x, 2, 1], 'TableWoodFancyWoodlandBody') for x in (4, 8)] + [spr([6, 3, 3], 'Lantern'), spr([6, -1, 1], 'Sign')]),
+]))
+
+# the sky walk: a raised promenade across the north of the square
+projects.append(('sky-walk', 'The sky walk', 'A raised promenade with lamps, so neighbours can cross the square and see the whole village.', 130, {'plot': 'Plaza', 'nth': 0, 'dx': 8, 'dy': 30}, [12, 1], [
+    ('The pillars', [fill([x, y, 0], [x, y, 5], 'Rock', STEEL) for x in (0, 8, 16, 24) for y in (0, 2)]),
+    ('The deck', [fill([0, 0, 6], [24, 2, 6], 'Rock', PALE)]),
+    ('The rails and the lamps', [fill([0, 0, 7], [24, 0, 7], 'Rock', TEAL), fill([0, 2, 7], [24, 2, 7], 'Rock', TEAL)] + [spr([x, 1, 7], 'StreetLamp') for x in (2, 10, 18, 24)]),
+]))
+
+# the glass garden: a stepped dome of light over a garden everyone may walk in
+projects.append(('glass-garden', 'The glass garden', 'A stepped glass dome over a garden of planters and benches, warm in every season.', 180, {'plot': 'House', 'nth': 0, 'dx': 20, 'dy': -34}, [6, 6], [
+    ('Foundation and floor', [clear([0, 0, 1], [12, 12, 9]), found([0, 0], [12, 12], 'Rock', PALE, 4), fill([0, 0, 0], [12, 12, 0], 'Rock', STEEL)]),
+    ('The ring wall and the door', ring(0, 0, 12, 12, 1, 3, 'Rock', GLASS) + [clear([6, 0, 1], [6, 0, 2])] + [spr([x, 0, 2], 'Window1') for x in (2, 4, 8, 10)]),
+    ('The stepped dome', [fill([1, 1, 4], [11, 11, 4], 'Rock', GLASS), fill([2, 2, 5], [10, 10, 5], 'Rock', GLASS), fill([3, 3, 6], [9, 9, 6], 'Rock', GLASS), fill([4, 4, 7], [8, 8, 7], 'Rock', GLASS), fill([5, 5, 8], [7, 7, 8], 'Rock', ROOF)]),
+    ('Planters, benches and lamps', [spr([x, y, 1], 'Planter') for (x, y) in ((3, 3), (9, 3), (3, 9), (9, 9), (6, 6))] + [spr([x, 6, 1], 'BenchWoodWoodland') for x in (2, 10)] + [spr([6, 2, 1], 'Lantern'), spr([6, 10, 1], 'Lantern'), spr([6, -1, 1], 'Sign')]),
+]))
+
 manifest = json.loads(mpath.read_text())
 manifest['groups'] = [g for g in manifest['groups'] if not g.get('project')]
+manifest['area']['radius'] = 100  # the innovation district reaches further than the first hamlet
 catalogue = []
 for pid, name, purpose, start, anchor, ground_at, stages in projects:
     catalogue.append({'id': pid, 'name': name, 'purpose': purpose, 'stages': len(stages), 'first_stage_minutes': start})

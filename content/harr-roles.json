@@ -1,0 +1,92 @@
+{
+  "format": "harr-roles-v1",
+  "note": "What each kind of villager does and how it feeds the village. This is the village's job logic: scripted, labelled, and grounded in the same facts the dashboard shows. `topics` are words that make a villager of that role answer from live facts.",
+  "roles": {
+    "builder": {
+      "title": "Builders",
+      "purpose": "Raise the public works with a crew.",
+      "daily": "Dawn at the market hall and the well, by day at the cottages and the annex, at dusk at the orchard gate and the observatory.",
+      "gives": "A stage is built only while two or more people, builders included, stand at its site.",
+      "topics": [
+        "build",
+        "work",
+        "project",
+        "crew",
+        "stage",
+        "cottage",
+        "well"
+      ]
+    },
+    "farmer": {
+      "title": "Farmers",
+      "purpose": "Grow the food the pantry shares.",
+      "daily": "Dawn at the vertical farm and the solar array, dusk in the glass garden; market hour at the plaza.",
+      "gives": "Their harvest is why the pantry is restocked; soil science and vertical farming raise the yield.",
+      "topics": [
+        "food",
+        "harvest",
+        "pantry",
+        "crop",
+        "field",
+        "farm",
+        "eat",
+        "hungry"
+      ]
+    },
+    "maker": {
+      "title": "Makers",
+      "purpose": "Craft tools, furniture and lamps for the village.",
+      "daily": "By day at the field pavilion; market hour at the plaza.",
+      "gives": "They stand with the pavilion crew and lay out their craft at market hour.",
+      "topics": [
+        "make",
+        "craft",
+        "tool",
+        "market",
+        "lamp"
+      ]
+    },
+    "scholar": {
+      "title": "Scholars",
+      "purpose": "Record discoveries and push the research queue forward.",
+      "daily": "Dawn at the research tower, dusk at the observatory; story circle on the half hour.",
+      "gives": "Insight comes from the facts they write down: places found, stages built, events held.",
+      "topics": [
+        "research",
+        "study",
+        "learn",
+        "discover",
+        "insight",
+        "science",
+        "tech"
+      ]
+    },
+    "courier": {
+      "title": "Couriers",
+      "purpose": "Carry news between places so no one is left out.",
+      "daily": "By day they walk the sky walk and carry news; market hour at the plaza.",
+      "gives": "They bring the day's chronicle to whoever asks.",
+      "topics": [
+        "news",
+        "chronicle",
+        "happened",
+        "today",
+        "message"
+      ]
+    },
+    "keeper": {
+      "title": "Keepers",
+      "purpose": "Host gatherings and look after the shared spaces.",
+      "daily": "Dawn at the transit hub, by day at the open archive, dusk at the light fountain; they lead the story circle.",
+      "gives": "They know the schedule of market hour, story circle and the weekly festival.",
+      "topics": [
+        "event",
+        "story",
+        "festival",
+        "schedule",
+        "circle",
+        "gather"
+      ]
+    }
+  }
+}

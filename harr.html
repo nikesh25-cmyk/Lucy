@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harr — the village at a glance</title>
+<link rel="stylesheet" href="/harr.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <p class="eyebrow">NemoWorld in Veloren</p>
+    <h1>Harr</h1>
+    <p id="purpose" class="lede">Loading the village…</p>
+  </div>
+  <p id="stamp" class="stamp" aria-live="polite"></p>
+</header>
+<main>
+  <section aria-labelledby="h-goals"><h2 id="h-goals">Our greater purpose</h2>
+    <ul id="principles" class="chips"></ul>
+    <div id="goals" class="cards"></div></section>
+  <section aria-labelledby="h-research"><h2 id="h-research">Research &amp; innovation</h2>
+    <p id="research-summary" class="muted"></p>
+    <div id="current" class="current"></div>
+    <ol id="techs" class="techs"></ol></section>
+  <section aria-labelledby="h-works"><h2 id="h-works">Public works</h2>
+    <p class="muted">Each project is built stage by stage, and only while a crew of two or more stands at the site.</p>
+    <div id="works" class="cards"></div></section>
+  <section aria-labelledby="h-rhythm"><h2 id="h-rhythm">Today in Harr</h2>
+    <div id="rhythm" class="cards"></div>
+    <p id="pantry" class="pantry"></p></section>
+  <section aria-labelledby="h-chronicle"><h2 id="h-chronicle">The chronicle</h2>
+    <ul id="chronicle" class="plain"></ul></section>
+  <section aria-labelledby="h-library"><h2 id="h-library">The library: places to discover</h2>
+    <div id="library" class="cards"></div></section>
+  <section aria-labelledby="h-roles"><h2 id="h-roles">What our people do</h2>
+    <div id="roles" class="cards"></div></section>
+</main>
+<footer><p>Everything here is read from recorded facts. Scripted behaviour is labelled. In the game, whisper Selene: tasks, purpose, research, works, library, today, chronicle or pantry.</p></footer>
+<script src="/harr.js" defer></script>
+</body>
+</html>

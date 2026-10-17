@@ -103,7 +103,7 @@ test('the works board names a stage that waits for a crew, and every crewed site
   const manifest = JSON.parse(readFileSync(new URL('../content/veloren-world-harr.json', import.meta.url), 'utf8'));
   const villagers = JSON.parse(readFileSync(new URL('../content/veloren-villagers.json', import.meta.url), 'utf8')).residents;
   const extra = JSON.parse(readFileSync(new URL('../content/veloren-landmarks-extra.json', import.meta.url), 'utf8')).landmarks;
-  const siteOf = {well: 'Well Site', 'market-hall': 'Market Hall Site', 'cottage-1': 'Cottage Row', 'cottage-2': 'Cottage Row', 'cottage-3': 'Cottage Row', observatory: 'Observatory Site', 'field-pavilion': 'Pavilion Site', 'library-annex': 'Annex Site', 'orchard-gate': 'Orchard Gate'};
+  const siteOf = {well: 'Well Site', 'market-hall': 'Market Hall Site', 'cottage-1': 'Cottage Row', 'cottage-2': 'Cottage Row', 'cottage-3': 'Cottage Row', observatory: 'Observatory Site', 'field-pavilion': 'Pavilion Site', 'library-annex': 'Annex Site', 'orchard-gate': 'Orchard Gate', 'research-tower': 'Research Tower Site', 'solar-array': 'Solar Array Site', 'vertical-farm': 'Vertical Farm Site', 'light-fountain': 'Fountain Site', 'transit-hub': 'Transit Hub Site', 'data-archive': 'Archive Site', 'sky-walk': 'Sky Walk Site', 'glass-garden': 'Glass Garden Site'};
   const crewed = new Map();
   for (const g of manifest.groups) if (g.crew) crewed.set(g.project, Math.max(crewed.get(g.project) || 0, g.crew));
   for (const [project, crew] of crewed) {

@@ -2,7 +2,7 @@
   "format": "veloren-world-v1",
   "site": "Harr",
   "area": {
-    "radius": 60.0
+    "radius": 100
   },
   "atmosphere": {
     "time": true,
@@ -843,9 +843,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ],
           "depth": 3
         },
@@ -863,9 +863,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         }
       ]
@@ -902,9 +902,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -921,9 +921,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -940,9 +940,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -959,9 +959,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         }
       ]
@@ -1102,9 +1102,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         }
       ]
@@ -1141,9 +1141,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         },
         {
@@ -1160,9 +1160,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         },
         {
@@ -1179,9 +1179,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         },
         {
@@ -1198,9 +1198,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         },
         {
@@ -1217,9 +1217,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         },
         {
@@ -1236,9 +1236,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         }
       ]
@@ -1481,9 +1481,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         }
       ]
@@ -1520,9 +1520,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -1539,9 +1539,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -1558,9 +1558,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -1577,9 +1577,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -1665,9 +1665,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            104,
-            96,
-            86
+            44,
+            150,
+            160
           ]
         }
       ]
@@ -1815,9 +1815,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ],
           "depth": 6
         },
@@ -1835,9 +1835,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         }
       ]
@@ -1874,9 +1874,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            196,
-            188,
-            170
+            205,
+            220,
+            236
           ]
         },
         {
@@ -1893,9 +1893,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            196,
-            188,
-            170
+            205,
+            220,
+            236
           ]
         },
         {
@@ -1912,9 +1912,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            196,
-            188,
-            170
+            205,
+            220,
+            236
           ]
         },
         {
@@ -1931,9 +1931,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            196,
-            188,
-            170
+            205,
+            220,
+            236
           ]
         },
         {
@@ -2054,9 +2054,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            196,
-            188,
-            170
+            205,
+            220,
+            236
           ],
           "depth": 2
         },
@@ -2118,9 +2118,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            196,
-            188,
-            170
+            205,
+            220,
+            236
           ],
           "depth": 2
         },
@@ -2173,9 +2173,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            196,
-            188,
-            170
+            205,
+            220,
+            236
           ],
           "depth": 2
         },
@@ -2261,9 +2261,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         }
       ]
@@ -2300,9 +2300,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -2319,9 +2319,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -2338,9 +2338,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -2357,9 +2357,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -2445,9 +2445,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            104,
-            96,
-            86
+            44,
+            150,
+            160
           ]
         }
       ]
@@ -2615,9 +2615,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         }
       ]
@@ -2654,9 +2654,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         },
         {
@@ -2673,9 +2673,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         },
         {
@@ -2692,9 +2692,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         },
         {
@@ -2711,9 +2711,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         },
         {
@@ -2891,9 +2891,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         }
       ]
@@ -2930,9 +2930,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -2949,9 +2949,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -2968,9 +2968,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -2987,9 +2987,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -3075,9 +3075,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            104,
-            96,
-            86
+            44,
+            150,
+            160
           ]
         }
       ]
@@ -3254,9 +3254,9 @@
           ],
           "kind": "Wood",
           "rgb": [
-            120,
-            88,
-            60
+            96,
+            108,
+            128
           ]
         }
       ]
@@ -3293,9 +3293,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -3312,9 +3312,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -3331,9 +3331,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -3350,9 +3350,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            150,
-            142,
-            128
+            226,
+            232,
+            240
           ]
         },
         {
@@ -3438,9 +3438,9 @@
           ],
           "kind": "Rock",
           "rgb": [
-            104,
-            96,
-            86
+            44,
+            150,
+            160
           ]
         }
       ]
@@ -3726,6 +3726,3613 @@
             1
           ],
           "sprite": "Lantern"
+        }
+      ]
+    },
+    {
+      "id": "research-tower-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 34,
+        "dy": 18
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "research-tower",
+      "title": "Raising the platform",
+      "release_after_minutes": 20,
+      "note": "The research tower, stage 1 of 4: Raising the platform.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            20
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ],
+          "depth": 6
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "research-tower-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 34,
+        "dy": 18
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "research-tower",
+      "title": "The lower shaft",
+      "release_after_minutes": 30,
+      "crew": 2,
+      "note": "The research tower, stage 2 of 4: The lower shaft.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            4
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            6
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            0,
+            4
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            0,
+            6
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            6,
+            4
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            6,
+            6
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            6,
+            4
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            6,
+            6
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            4
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            6
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            4
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            6
+          ],
+          "sprite": "Window3"
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            6,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "research-tower-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 34,
+        "dy": 18
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "research-tower",
+      "title": "The upper shaft and the cap",
+      "release_after_minutes": 40,
+      "crew": 2,
+      "note": "The research tower, stage 3 of 4: The upper shaft and the cap.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            9
+          ],
+          "to": [
+            6,
+            0,
+            16
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            9
+          ],
+          "to": [
+            6,
+            6,
+            16
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            9
+          ],
+          "to": [
+            0,
+            6,
+            16
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            9
+          ],
+          "to": [
+            6,
+            6,
+            16
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            11
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            13
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            0,
+            11
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            0,
+            13
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            6,
+            11
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            6,
+            13
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            6,
+            11
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            6,
+            13
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            11
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            13
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            11
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            13
+          ],
+          "sprite": "Window4"
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            8
+          ],
+          "to": [
+            6,
+            6,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            17
+          ],
+          "to": [
+            6,
+            6,
+            17
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "id": "research-tower-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 34,
+        "dy": 18
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "research-tower",
+      "title": "The crown and the star glass",
+      "release_after_minutes": 50,
+      "crew": 2,
+      "note": "The research tower, stage 4 of 4: The crown and the star glass.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            3,
+            3,
+            18
+          ],
+          "to": [
+            3,
+            3,
+            22
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            18
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            0,
+            18
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            6,
+            18
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            6,
+            18
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            3,
+            1
+          ],
+          "sprite": "CrystalBall"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            5,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            5,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "solar-array-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 24,
+        "dy": -30
+      },
+      "ground_at": [
+        5,
+        4
+      ],
+      "project": "solar-array",
+      "title": "Levelling and paving",
+      "release_after_minutes": 40,
+      "note": "The solar array, stage 1 of 3: Levelling and paving.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            8,
+            4
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            12,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        }
+      ]
+    },
+    {
+      "id": "solar-array-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 24,
+        "dy": -30
+      },
+      "ground_at": [
+        5,
+        4
+      ],
+      "project": "solar-array",
+      "title": "The first two rows",
+      "release_after_minutes": 50,
+      "crew": 2,
+      "note": "The solar array, stage 2 of 3: The first two rows.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            1,
+            1,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            1,
+            1
+          ],
+          "to": [
+            5,
+            1,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            9,
+            1,
+            1
+          ],
+          "to": [
+            9,
+            1,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            4,
+            1
+          ],
+          "to": [
+            1,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            4,
+            1
+          ],
+          "to": [
+            5,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            9,
+            4,
+            1
+          ],
+          "to": [
+            9,
+            4,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            2
+          ],
+          "to": [
+            2,
+            2,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            0,
+            2
+          ],
+          "to": [
+            6,
+            2,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            0,
+            2
+          ],
+          "to": [
+            10,
+            2,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            3,
+            2
+          ],
+          "to": [
+            2,
+            5,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            3,
+            2
+          ],
+          "to": [
+            6,
+            5,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            3,
+            2
+          ],
+          "to": [
+            10,
+            5,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        }
+      ]
+    },
+    {
+      "id": "solar-array-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 24,
+        "dy": -30
+      },
+      "ground_at": [
+        5,
+        4
+      ],
+      "project": "solar-array",
+      "title": "The last row and the lamps",
+      "release_after_minutes": 60,
+      "crew": 2,
+      "note": "The solar array, stage 3 of 3: The last row and the lamps.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            7,
+            1
+          ],
+          "to": [
+            1,
+            7,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            7,
+            1
+          ],
+          "to": [
+            5,
+            7,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            9,
+            7,
+            1
+          ],
+          "to": [
+            9,
+            7,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            2
+          ],
+          "to": [
+            2,
+            8,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            6,
+            2
+          ],
+          "to": [
+            6,
+            8,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            6,
+            2
+          ],
+          "to": [
+            10,
+            8,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            28,
+            44,
+            92
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            12,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "vertical-farm-1",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": -30,
+        "dy": 8
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "vertical-farm",
+      "title": "Foundation and the first floor",
+      "release_after_minutes": 75,
+      "note": "The vertical farm, stage 1 of 4: Foundation and the first floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            14
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 5
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            6,
+            6,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "vertical-farm-2",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": -30,
+        "dy": 8
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "vertical-farm",
+      "title": "The first two levels",
+      "release_after_minutes": 85,
+      "crew": 2,
+      "note": "The vertical farm, stage 2 of 4: The first two levels.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            3,
+            0,
+            1
+          ],
+          "to": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            6,
+            6,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            5
+          ],
+          "to": [
+            6,
+            0,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            5
+          ],
+          "to": [
+            6,
+            6,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            5
+          ],
+          "to": [
+            0,
+            6,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            5
+          ],
+          "to": [
+            6,
+            6,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            8
+          ],
+          "to": [
+            6,
+            6,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            2,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            2,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            2,
+            5
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            2,
+            5
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            2,
+            5
+          ],
+          "sprite": "Planter"
+        }
+      ]
+    },
+    {
+      "id": "vertical-farm-3",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": -30,
+        "dy": 8
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "vertical-farm",
+      "title": "The upper levels",
+      "release_after_minutes": 95,
+      "crew": 2,
+      "note": "The vertical farm, stage 3 of 4: The upper levels.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            9
+          ],
+          "to": [
+            6,
+            0,
+            11
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            6,
+            9
+          ],
+          "to": [
+            6,
+            6,
+            11
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            9
+          ],
+          "to": [
+            0,
+            6,
+            11
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            0,
+            9
+          ],
+          "to": [
+            6,
+            6,
+            11
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            12
+          ],
+          "to": [
+            6,
+            6,
+            12
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            9
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            9
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            9
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            0,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            0,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            2
+          ],
+          "sprite": "Window2"
+        }
+      ]
+    },
+    {
+      "id": "vertical-farm-4",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": -30,
+        "dy": 8
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "project": "vertical-farm",
+      "title": "Lamps, hanging gardens and the sign",
+      "release_after_minutes": 105,
+      "crew": 2,
+      "note": "The vertical farm, stage 4 of 4: Lamps, hanging gardens and the sign.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            5,
+            5
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            9
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            5,
+            1
+          ],
+          "sprite": "HangingBasket"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "light-fountain-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -6,
+        "dy": -28
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "project": "light-fountain",
+      "title": "Laying the basin",
+      "release_after_minutes": 60,
+      "note": "The light fountain, stage 1 of 3: Laying the basin.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            8,
+            6
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            8,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 3
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            8,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            0,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            8,
+            1
+          ],
+          "to": [
+            8,
+            8,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            8,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            0,
+            1
+          ],
+          "to": [
+            8,
+            8,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        }
+      ]
+    },
+    {
+      "id": "light-fountain-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -6,
+        "dy": -28
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "project": "light-fountain",
+      "title": "The inner ring and the pillar",
+      "release_after_minutes": 70,
+      "crew": 2,
+      "note": "The light fountain, stage 2 of 3: The inner ring and the pillar.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            1
+          ],
+          "to": [
+            6,
+            2,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            6,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            1
+          ],
+          "to": [
+            2,
+            6,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            2,
+            1
+          ],
+          "to": [
+            6,
+            6,
+            2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            4,
+            1
+          ],
+          "to": [
+            4,
+            4,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            226,
+            232,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "light-fountain-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -6,
+        "dy": -28
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "project": "light-fountain",
+      "title": "The crown and the lamps",
+      "release_after_minutes": 80,
+      "crew": 2,
+      "note": "The light fountain, stage 3 of 3: The crown and the lamps.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            4,
+            4,
+            6
+          ],
+          "to": [
+            4,
+            4,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            7
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            0,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            8,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            8,
+            2
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            9,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            9,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        }
+      ]
+    },
+    {
+      "id": "transit-hub-1",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -34,
+        "dy": -10
+      },
+      "ground_at": [
+        7,
+        4
+      ],
+      "project": "transit-hub",
+      "title": "Levelling the platform",
+      "release_after_minutes": 105,
+      "note": "The sky transit hub, stage 1 of 3: Levelling the platform.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            14,
+            8,
+            6
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            14,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            14,
+            8,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transit-hub-2",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -34,
+        "dy": -10
+      },
+      "ground_at": [
+        7,
+        4
+      ],
+      "project": "transit-hub",
+      "title": "Pillars and the canopy",
+      "release_after_minutes": 115,
+      "crew": 2,
+      "note": "The sky transit hub, stage 2 of 3: Pillars and the canopy.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            1
+          ],
+          "to": [
+            1,
+            1,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            13,
+            1,
+            1
+          ],
+          "to": [
+            13,
+            1,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            1,
+            7,
+            1
+          ],
+          "to": [
+            1,
+            7,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            13,
+            7,
+            1
+          ],
+          "to": [
+            13,
+            7,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            1,
+            1
+          ],
+          "to": [
+            7,
+            1,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            7,
+            1
+          ],
+          "to": [
+            7,
+            7,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            5
+          ],
+          "to": [
+            14,
+            8,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transit-hub-3",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -34,
+        "dy": -10
+      },
+      "ground_at": [
+        7,
+        4
+      ],
+      "project": "transit-hub",
+      "title": "Benches, lamps and the landing ring",
+      "release_after_minutes": 125,
+      "crew": 2,
+      "note": "The sky transit hub, stage 3 of 3: Benches, lamps and the landing ring.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            4,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            4,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            4
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            13,
+            1,
+            4
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            7,
+            4
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            13,
+            7,
+            4
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            2,
+            1
+          ],
+          "to": [
+            9,
+            2,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            6,
+            1
+          ],
+          "to": [
+            9,
+            6,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            2,
+            1
+          ],
+          "to": [
+            5,
+            6,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            9,
+            2,
+            1
+          ],
+          "to": [
+            9,
+            6,
+            1
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "data-archive-1",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -8,
+        "dy": 22
+      },
+      "ground_at": [
+        6,
+        3
+      ],
+      "project": "data-archive",
+      "title": "Foundation and floor",
+      "release_after_minutes": 150,
+      "note": "The open archive, stage 1 of 3: Foundation and floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            5,
+            6
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            12,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            12,
+            5,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data-archive-2",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -8,
+        "dy": 22
+      },
+      "ground_at": [
+        6,
+        3
+      ],
+      "project": "data-archive",
+      "title": "Glass walls and the doors",
+      "release_after_minutes": 160,
+      "crew": 2,
+      "note": "The open archive, stage 2 of 3: Glass walls and the doors.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            5,
+            1
+          ],
+          "to": [
+            12,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            12,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            5,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            5,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            5,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            5,
+            2
+          ],
+          "sprite": "Window1"
+        }
+      ]
+    },
+    {
+      "id": "data-archive-3",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -8,
+        "dy": 22
+      },
+      "ground_at": [
+        6,
+        3
+      ],
+      "project": "data-archive",
+      "title": "Roof, shelves and reading lamps",
+      "release_after_minutes": 170,
+      "crew": 2,
+      "note": "The open archive, stage 3 of 3: Roof, shelves and reading lamps.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            4
+          ],
+          "to": [
+            12,
+            5,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            4,
+            1
+          ],
+          "sprite": "BookshelfMiddle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            2,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandBody"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            2,
+            1
+          ],
+          "sprite": "TableWoodFancyWoodlandBody"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            3
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "sky-walk-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 8,
+        "dy": 30
+      },
+      "ground_at": [
+        12,
+        1
+      ],
+      "project": "sky-walk",
+      "title": "The pillars",
+      "release_after_minutes": 130,
+      "note": "The sky walk, stage 1 of 3: The pillars.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            2,
+            0
+          ],
+          "to": [
+            0,
+            2,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            0,
+            0
+          ],
+          "to": [
+            8,
+            0,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            2,
+            0
+          ],
+          "to": [
+            8,
+            2,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            0,
+            0
+          ],
+          "to": [
+            16,
+            0,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            16,
+            2,
+            0
+          ],
+          "to": [
+            16,
+            2,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            24,
+            0,
+            0
+          ],
+          "to": [
+            24,
+            0,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            24,
+            2,
+            0
+          ],
+          "to": [
+            24,
+            2,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sky-walk-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 8,
+        "dy": 30
+      },
+      "ground_at": [
+        12,
+        1
+      ],
+      "project": "sky-walk",
+      "title": "The deck",
+      "release_after_minutes": 140,
+      "crew": 2,
+      "note": "The sky walk, stage 2 of 3: The deck.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            6
+          ],
+          "to": [
+            24,
+            2,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sky-walk-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 8,
+        "dy": 30
+      },
+      "ground_at": [
+        12,
+        1
+      ],
+      "project": "sky-walk",
+      "title": "The rails and the lamps",
+      "release_after_minutes": 150,
+      "crew": 2,
+      "note": "The sky walk, stage 3 of 3: The rails and the lamps.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            7
+          ],
+          "to": [
+            24,
+            0,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            2,
+            7
+          ],
+          "to": [
+            24,
+            2,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            40,
+            200,
+            190
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            7
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            1,
+            7
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            18,
+            1,
+            7
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            24,
+            1,
+            7
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "glass-garden-1",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 20,
+        "dy": -34
+      },
+      "ground_at": [
+        6,
+        6
+      ],
+      "project": "glass-garden",
+      "title": "Foundation and floor",
+      "release_after_minutes": 180,
+      "note": "The glass garden, stage 1 of 4: Foundation and floor.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            12,
+            9
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            12,
+            12
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 4
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            12,
+            12,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            160,
+            176
+          ]
+        }
+      ]
+    },
+    {
+      "id": "glass-garden-2",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 20,
+        "dy": -34
+      },
+      "ground_at": [
+        6,
+        6
+      ],
+      "project": "glass-garden",
+      "title": "The ring wall and the door",
+      "release_after_minutes": 190,
+      "crew": 2,
+      "note": "The glass garden, stage 2 of 4: The ring wall and the door.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            0,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            12,
+            1
+          ],
+          "to": [
+            12,
+            12,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            12,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            12,
+            0,
+            1
+          ],
+          "to": [
+            12,
+            12,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "clear",
+          "from": [
+            6,
+            0,
+            1
+          ],
+          "to": [
+            6,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            0,
+            2
+          ],
+          "sprite": "Window1"
+        }
+      ]
+    },
+    {
+      "id": "glass-garden-3",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 20,
+        "dy": -34
+      },
+      "ground_at": [
+        6,
+        6
+      ],
+      "project": "glass-garden",
+      "title": "The stepped dome",
+      "release_after_minutes": 200,
+      "crew": 2,
+      "note": "The glass garden, stage 3 of 4: The stepped dome.",
+      "ops": [
+        {
+          "op": "fill",
+          "from": [
+            1,
+            1,
+            4
+          ],
+          "to": [
+            11,
+            11,
+            4
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            2,
+            5
+          ],
+          "to": [
+            10,
+            10,
+            5
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            3,
+            6
+          ],
+          "to": [
+            9,
+            9,
+            6
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            4,
+            7
+          ],
+          "to": [
+            8,
+            8,
+            7
+          ],
+          "kind": "Rock",
+          "rgb": [
+            150,
+            214,
+            234
+          ]
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            5,
+            8
+          ],
+          "to": [
+            7,
+            7,
+            8
+          ],
+          "kind": "Rock",
+          "rgb": [
+            44,
+            150,
+            160
+          ]
+        }
+      ]
+    },
+    {
+      "id": "glass-garden-4",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 20,
+        "dy": -34
+      },
+      "ground_at": [
+        6,
+        6
+      ],
+      "project": "glass-garden",
+      "title": "Planters, benches and lamps",
+      "release_after_minutes": 210,
+      "crew": 2,
+      "note": "The glass garden, stage 4 of 4: Planters, benches and lamps.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            3,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            3,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            9,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            9,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            6,
+            1
+          ],
+          "sprite": "Planter"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            6,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            6,
+            1
+          ],
+          "sprite": "BenchWoodWoodland"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            2,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            10,
+            1
+          ],
+          "sprite": "Lantern"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            -1,
+            1
+          ],
+          "sprite": "Sign"
         }
       ]
     }

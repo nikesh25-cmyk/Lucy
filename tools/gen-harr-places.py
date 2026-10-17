@@ -19,6 +19,15 @@ SITES = [  # id, label, name, plot, nth, dx, dy, radius
     ('site-pavilion', 'Pavilion Site', 'the field pavilion site', 'FarmField', 0, 18, 3, 9),
     ('site-annex', 'Annex Site', 'the library annex site', 'House', 0, 13, 2, 9),
     ('site-orchard-gate', 'Orchard Gate', 'the orchard gate', 'FarmField', 1, 6, -6, 9),
+    # the innovation district
+    ('site-tower', 'Research Tower Site', 'the research tower site', 'Plaza', 0, 37, 21, 10),
+    ('site-solar', 'Solar Array Site', 'the solar array site', 'Plaza', 0, 30, -26, 10),
+    ('site-vfarm', 'Vertical Farm Site', 'the vertical farm site', 'FarmField', 1, -27, 11, 9),
+    ('site-fountain', 'Fountain Site', 'the light fountain site', 'Plaza', 0, -2, -24, 9),
+    ('site-transit', 'Transit Hub Site', 'the sky transit hub site', 'Workshop', 0, -27, -6, 11),
+    ('site-archive', 'Archive Site', 'the open archive site', 'Workshop', 0, -2, 25, 10),
+    ('site-skywalk', 'Sky Walk Site', 'the sky walk site', 'Plaza', 0, 20, 31, 13),
+    ('site-garden', 'Glass Garden Site', 'the glass garden site', 'House', 0, 26, -28, 11),
 ]
 
 # Every place is an offset (east, north) from the plaza's centre; the hint is computed from it, so it is always true.
@@ -80,14 +89,26 @@ BUILDERS = {  # id -> (dawn, day, dusk)
     'lw-hollis': ('Well Site', 'Annex Site', 'Observatory Site'),
     'lw-pelham': ('Well Site', 'Annex Site', 'Observatory Site'),
 }
+seen = {}
 for r in v['residents']:
     d = r['destinations']
+    k = seen.get(r['role'], 0); seen[r['role']] = k + 1
     if r['id'] in BUILDERS:
         for phase, label in zip(('dawn', 'day', 'dusk'), BUILDERS[r['id']]):
             d[phase]['label'] = label
     elif r['role'] == 'maker':
         d['day']['label'] = 'Pavilion Site'
     elif r['role'] == 'scholar':
+        d['dawn']['label'] = 'Research Tower Site'
         d['dusk']['label'] = 'Observatory Site'
+    elif r['role'] == 'courier':
+        d['day']['label'] = 'Sky Walk Site'
+    elif r['role'] == 'keeper':
+        d['dawn']['label'] = 'Transit Hub Site'
+        d['day']['label'] = 'Archive Site'
+        d['dusk']['label'] = 'Fountain Site'
+    elif r['role'] == 'farmer':
+        d['dawn']['label'] = 'Vertical Farm Site' if k < 3 else 'Solar Array Site'
+        d['dusk']['label'] = 'Glass Garden Site'
 (C / 'veloren-villagers.json').write_text(json.dumps(v, indent=2) + '\n')
 print(len(SITES), 'sites,', len(cat), 'discoveries')

@@ -1,0 +1,17 @@
+{
+  "format": "harr-research-v1",
+  "note": "Harr's research queue. The village earns INSIGHT from recorded facts (places found, stages built, projects finished, events held). Technologies are learned in this order as insight accumulates. Effects are small, scripted and listed here; they change only the pantry today. Unlocking a technology never gives coins, items or power over anyone.",
+  "insight": { "per_find": 2, "per_stage": 1, "per_project": 3, "per_event": 1 },
+  "techs": [
+    { "id": "field-notes", "name": "Field notes", "cost": 6, "needs": [], "text": "Scholars sketch and label every find, so each page in the Library is richer.", "effects": { "insight_per_find": 1 } },
+    { "id": "soil-science", "name": "Soil science", "cost": 12, "needs": ["field-notes"], "text": "Farmers learn which soils suit which crops.", "effects": { "pantry_rate": 1.25 } },
+    { "id": "clean-water", "name": "Clean water works", "cost": 20, "needs": [], "text": "The well is lined and the spring is tapped; the pantry kitchen has water at hand.", "effects": { "pantry_cap": 6 } },
+    { "id": "solar-lanterns", "name": "Solar lanterns", "cost": 30, "needs": [], "text": "Lamps charge by day and light the paths all night. Next stop: a lit, walkable village.", "effects": {} },
+    { "id": "composting", "name": "Composting", "cost": 45, "needs": ["soil-science"], "text": "Nothing is wasted; scraps become rich soil.", "effects": { "pantry_rate": 1.25 } },
+    { "id": "glasswork", "name": "Glasswork", "cost": 60, "needs": ["solar-lanterns"], "text": "Clear panes make bright, warm greenhouses and observatory domes possible.", "effects": {} },
+    { "id": "vertical-farming", "name": "Vertical farming", "cost": 80, "needs": ["glasswork", "composting"], "text": "Crops grown in stacked light-filled rooms feed more people from less land.", "effects": { "pantry_rate": 1.5, "pantry_cap": 12 } },
+    { "id": "valley-mapping", "name": "Valley mapping", "cost": 100, "needs": ["field-notes"], "text": "Every discovered place is drawn on a shared map that anyone can read.", "effects": {} },
+    { "id": "open-archive", "name": "The open archive", "cost": 130, "needs": ["valley-mapping"], "text": "All findings are kept in a public archive that other villages can learn from.", "effects": { "insight_per_find": 1 } },
+    { "id": "sky-transit", "name": "Sky transit", "cost": 170, "needs": ["glasswork", "open-archive"], "text": "Quiet light-rail and landing pads join Harr to the wider world.", "effects": {} }
+  ]
+}

@@ -71,6 +71,62 @@
       "purpose": "A low fence and a welcoming gate so the orchard can grow in peace.",
       "stages": 2,
       "first_stage_minutes": 140
+    },
+    {
+      "id": "research-tower",
+      "name": "The research tower",
+      "purpose": "A slim glass-banded tower where scholars gather the village's findings into one view.",
+      "stages": 4,
+      "first_stage_minutes": 20
+    },
+    {
+      "id": "solar-array",
+      "name": "The solar array",
+      "purpose": "Rows of solar glass that charge the village lamps by day and light the paths all night.",
+      "stages": 3,
+      "first_stage_minutes": 40
+    },
+    {
+      "id": "vertical-farm",
+      "name": "The vertical farm",
+      "purpose": "A stacked greenhouse tower where crops grow in bright rooms, feeding more people from less land.",
+      "stages": 4,
+      "first_stage_minutes": 75
+    },
+    {
+      "id": "light-fountain",
+      "name": "The light fountain",
+      "purpose": "A basin of light and lamps where neighbours rest after a day of work.",
+      "stages": 3,
+      "first_stage_minutes": 60
+    },
+    {
+      "id": "transit-hub",
+      "name": "The sky transit hub",
+      "purpose": "A pale platform with a canopy and lamps, ready for the quiet light-rail and landing pads of the future.",
+      "stages": 3,
+      "first_stage_minutes": 105
+    },
+    {
+      "id": "data-archive",
+      "name": "The open archive",
+      "purpose": "A long glass hall where every finding, plan and story is kept for anyone to read, and for other villages to learn from.",
+      "stages": 3,
+      "first_stage_minutes": 150
+    },
+    {
+      "id": "sky-walk",
+      "name": "The sky walk",
+      "purpose": "A raised promenade with lamps, so neighbours can cross the square and see the whole village.",
+      "stages": 3,
+      "first_stage_minutes": 130
+    },
+    {
+      "id": "glass-garden",
+      "name": "The glass garden",
+      "purpose": "A stepped glass dome over a garden of planters and benches, warm in every season.",
+      "stages": 4,
+      "first_stage_minutes": 180
     }
   ]
 }
