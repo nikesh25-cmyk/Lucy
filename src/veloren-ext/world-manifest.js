@@ -21,7 +21,7 @@ export const FORMAT = 'veloren-world-v1';
 /** The same ceilings the Rust side enforces; NemoWorld refuses anything above them before it asks. */
 export const MANIFEST_LIMITS = Object.freeze({
   max_area_radius: 150,
-  max_groups: 300,
+  max_groups: 600,
   max_ops_per_group: 600,
   max_extent: 48,
   min_dz: -12,

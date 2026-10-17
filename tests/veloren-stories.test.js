@@ -7,7 +7,7 @@ import {loadDiscoveries} from '../src/veloren-ext/world-life.js';
 const load = (rel) => JSON.parse(readFileSync(new URL(rel, import.meta.url), 'utf8'));
 const raw = () => load('../content/harr-season-stories.json');
 const doc = loadStories();
-const projects = load('../content/veloren-projects.json').projects;
+const projects = load('../content/veloren-projects.json').projects.filter((p) => !p.id.startsWith('map-'));
 const at = (y, mo, d) => new Date(y, mo - 1, d, 12).getTime();
 
 test('seasons: 4 seasons x 3 event blurbs x 12 field notes, covering all 10 places each season', () => {

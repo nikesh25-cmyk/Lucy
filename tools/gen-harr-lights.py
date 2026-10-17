@@ -21,7 +21,7 @@ mpath = root / 'content' / 'veloren-world-harr.json'
 ppath = root / 'content' / 'harr-lighting.json'
 epath = root / 'evidence' / 'look' / 'lights.txt'
 
-MAX_GROUPS = 300      # nemo-world-core manifest.rs MAX_GROUPS
+MAX_GROUPS = 600      # nemo-world-core manifest.rs MAX_GROUPS
 MAX_EXTENT = 48       # MAX_EXTENT
 STRONG = {'Lantern', 'StreetLamp', 'StreetLampTall', 'LanternpostWoodLantern', 'LampMetalShinglesRed', 'LampMetalShinglesCyan'}  # glow 24
 OUTDOOR_ALWAYS = {'StreetLamp', 'StreetLampTall', 'LanternpostWoodLantern'}

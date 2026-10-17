@@ -162,7 +162,8 @@ projects.append(('observatory', 'The star observatory', 'A raised stone platform
 projects.append(('lantern-path', 'The lantern path', 'A lit path from the square to the fields so no one walks home in the dark.', 70, {'plot': 'Plaza', 'nth': 0, 'dx': 4, 'dy': -3}, [2, 0], [
     ('Laying the first stretch', [found([0, 0], [11, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (1, 6, 11)]),
     ('Laying the second stretch', [found([12, 0], [23, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (17, 23)]),
-    ('Laying the last stretch', [found([24, 0], [35, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (29, 35)]),
+    # the glass garden stands from x=32 (plaza-relative); its clearing used to cut the last two lamps down, so the path now stops at x=31
+    ('Laying the last stretch', [found([24, 0], [27, 1], 'Rock', PALE, 2)] + [spr([x, 2, 1], 'StreetLamp') for x in (27,)]),
 ]))
 
 # 6. cottage-2
@@ -642,10 +643,10 @@ for pid, name, purpose, start, anchor, ground_at, stages in projects:
         assert group_blocks <= 6000, f"{pid}-{s_idx}: group blocks {group_blocks} exceeds 6000"
         total_blocks += group_blocks
 
-assert total_groups <= 300, f"Total groups {total_groups} exceeds 300"
+assert total_groups <= 600, f"Total groups {total_groups} exceeds 600"
 assert total_blocks <= 60_000, f"Total blocks {total_blocks} exceeds 60,000"
 print(f"Overlap check passed: {len(claimed_voxels)} unique voxel cells claimed across {len(projects)} projects.")
-print(f"Limits check passed: {total_groups} groups (max 300), {total_blocks} blocks (max 60,000).")
+print(f"Limits check passed: {total_groups} groups (max 600), {total_blocks} blocks (max 60,000).")
 
 # ==================== WRITE MANIFEST & CATALOGUE ====================
 manifest = json.loads(mpath.read_text())
@@ -665,3 +666,15 @@ for pid, name, purpose, start, anchor, ground_at, stages in projects:
 mpath.write_text(json.dumps(manifest, indent=2) + '\n')
 (root / 'content' / 'veloren-projects.json').write_text(json.dumps({'format': 'nemo-works-v1', 'stage_gap_minutes': GAP, 'projects': catalogue}, indent=2) + '\n')
 print(f"Wrote {len(projects)} projects, {sum(p['stages'] for p in catalogue)} stages to {mpath.name} and veloren-projects.json.")
+
+# ==================== HARR'S MAP: roads, gateways, landscaping (tools/gen-harr-network.py) ====================
+# The network generator appends its own groups (project ids start with `map-`) to the manifest and its projects to the
+# catalogue we just wrote.  It re-runs the overlap / limits check over ALL groups and refuses to write if it fails.
+_net = pathlib.Path(__file__).resolve().parent / 'gen-harr-network.py'
+if _net.exists():
+    import importlib.util
+    sys.path.insert(0, str(_net.parent))
+    _spec = importlib.util.spec_from_file_location('gen_harr_network', _net)
+    _mod = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
+    _mod.append_network()

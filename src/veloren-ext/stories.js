@@ -16,7 +16,7 @@ export const MILESTONE_KEYS = Object.freeze(['ground-broken', 'first-stage', 'se
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
 const idsOf = (rel, key) => readJson(join(CONTENT, rel))[key].map((x) => x.id);
 
-export function validateStories(doc, { events = idsOf('veloren-events.json', 'events'), discoveries = idsOf('veloren-discoveries.json', 'discoveries'), projects = idsOf('veloren-projects.json', 'projects') } = {}) {
+export function validateStories(doc, { events = idsOf('veloren-events.json', 'events'), discoveries = idsOf('veloren-discoveries.json', 'discoveries'), projects = idsOf('veloren-projects.json', 'projects').filter((id) => !id.startsWith('map-')) } = {}) {
   if (!doc || doc.format !== 'harr-season-stories-v1' || !doc.seasons || !doc.chronicle || !doc.captions) throw new Error('Bad seasons file.');
   if (JSON.stringify(Object.keys(doc.seasons)) !== JSON.stringify(SEASON_IDS)) throw new Error('Seasons must be spring, summer, autumn, winter in order.');
   const months = new Set();
