@@ -840,16 +840,26 @@ function renderEntryControls(hero){
   hero.append(link,note);
 }
 function renderSession() {
-  const node=$('#session-bar');node.replaceChildren();const hero=$('#hero-actions');hero.replaceChildren();
+  const node=$('#session-bar');const hero=$('#hero-actions');hero.replaceChildren();
+  const headerKey=JSON.stringify([state.account?.id,state.account?.name,state.account?.role,state.setup,state.gamePresentation,state.sessionEpoch||0]);
+  if(node.dataset.sessionRenderKey!==headerKey||!node.firstChild){
+  node.replaceChildren();node.dataset.sessionRenderKey=headerKey;
   node.append(button('Watch introduction',()=>{$('#hero-introduction')?.pause();$('#introduction-dialog').showModal();},'secondary small'));
   if(state.account){const profile=element('div',null,'session-profile');append(profile,element('span',state.account.name.slice(0,1).toUpperCase(),'profile-avatar'),append(element('span',null,'session-label'),element('strong',state.account.name),element('small',state.account.role)));node.append(profile,button('Sign out',async()=>{try{await api('/auth/logout','POST',{});}catch(error){if(error.status!==401)throw error;}clearBrowserOperator();if(state.gamePresentation)setTab('world');await refresh(false);render();notice('Signed out. Your agents and their world positions are saved.');},'secondary small'));}
   else {node.append(button('Sign in',()=>openAuth('login'),'secondary small'),button(state.setup?'Create first account':'Create account',()=>openAuth('register'),'small'));}
   if(!state.gamePresentation)node.append(button('Back to game',()=>{location.href='/';},'secondary small'));
+  }
   if(state.gamePresentation)renderEntryControls(hero);
   else hero.append(button(state.account?'Play in the world':'Create account & play',()=>state.account?playAsHuman():openAuth('register')),button('Explore the world',()=>{setTab('world');renderTabs();renderView();$('#pixel-world-heading')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}),button('Find useful work',()=>browseResearch(),'secondary'),button(state.account?'Manage my characters':'Make a character',()=>state.account?openSection('characters'):openAuth('register'),'secondary'));
 }
 function renderAuth() {
-  const node = $('#auth-area'); node.replaceChildren(); if (state.account) { finishAuth(); return; }
+  const node = $('#auth-area');
+  if(state.account){node.replaceChildren();delete node.dataset.authRenderKey;finishAuth();return;}
+  const authKey=JSON.stringify([state.authMode,state.setup,state.setupCodeRequired,state.registrationOpen,state.sessionEpoch||0]);
+  // A background render must not replace an open form while a person is typing.
+  // Closing/reopening, switching mode or changing the session always creates fresh inputs.
+  if($('#auth-dialog').open&&node.dataset.authRenderKey===authKey&&node.firstChild)return;
+  node.replaceChildren();node.dataset.authRenderKey=authKey;
   $('#auth-title').textContent=state.authMode==='login'?'Welcome back':state.setup?'Plant the first seed':'Make yourself at home';const tabs=$('#auth-tabs');tabs.replaceChildren();for(const [mode,label]of[['login','Sign in'],['register',state.setup?'Create first account':'Create account']]){const item=button(label,()=>{state.authMode=mode;renderAuth();});item.setAttribute('aria-pressed',String(state.authMode===mode));tabs.append(item);}
   const grid = element('div', null, 'auth-panels'); const login = card('Welcome back', 'OPERATOR ACCESS'); login.append(paragraph('Sign in to manage your agents and oversee their time in the world.', 'muted'));
   const inputs = form(login, 'Sign in', async (data, node) => { const result = await api('/auth/login', 'POST', data); node.reset();state.sessionEpoch=(state.sessionEpoch||0)+1; state.account = result.account; finishAuth(); await refresh(); render(); notice('Welcome back. Choose a character to enter the world.'); });

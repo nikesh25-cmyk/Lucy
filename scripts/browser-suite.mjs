@@ -651,7 +651,7 @@ async function runScenario(definition) {
     if (error.detail) console.log(`        detail    ${String(error.detail).split('\n').slice(0, 12).join('\n                  ')}`);
     if (saved.length) console.log(`        evidence  ${saved.join(', ')}`);
     const pageLog = state.scenarioLogs || [];
-    for (const line of pageLog.slice(0, 6)) console.log(`        page      ${line}`);
+    for (const line of [...pageLog.slice(0,2),...pageLog.slice(-10)]) console.log(`        page      ${line}`);
     return false;
   } finally {
     // Keep reusable operators' exact DOM and browser-local choices; unload one-off scenes, keeping
@@ -959,6 +959,9 @@ define('accounts-and-switching', async () => {
         visibility: document.visibilityState,
         signedIn: document.body.classList.contains('signed-in'),
         notice: document.querySelector('#auth-notice')?.textContent?.slice(0, 240),
+        globalNotice: document.querySelector('#notice')?.textContent?.slice(0,240),
+        dialogOpen: document.querySelector('#auth-dialog')?.open,
+        profile: document.querySelector('.session-profile')?.textContent?.slice(0,80),
         invalidFields: [...document.querySelectorAll('#auth-area input, #auth-area select')].filter(e => !e.validity.valid).map(e => ({name:e.name, type:e.type, missing:e.validity.valueMissing, mismatch:e.validity.typeMismatch})),
       })).catch(e => ({evaluationFailed:e.message}));
       console.log('  signup diagnostic '+JSON.stringify({...diagnostic, storedOwner: Boolean(row('SELECT id FROM accounts WHERE email=?', ACTORS.owner.email))}));
