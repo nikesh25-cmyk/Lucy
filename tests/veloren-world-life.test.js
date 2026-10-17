@@ -54,7 +54,7 @@ test('the works board reports built, building, planned and finished projects fro
     {id: 'c', name: 'Gate', purpose: 'Orchard.', stages: [{id: 'c-1', title: 'Fence', release_after_minutes: 1}]},
   ];
   const now = T0;
-  const record = {works_started_ms: now - 10 * 60_000, groups: {'a-1': {}, 'c-1': {}}};
+  const record = {works_started_ms: now - 99 * 60_000, works_elapsed_ms: 10 * 60_000, groups: {'a-1': {}, 'c-1': {}}};
   const status = worksStatus(projects, record, now);
   assert.deepEqual(status.map((s) => [s.id, s.done, s.complete]), [['a', 1, false], ['b', 0, false], ['c', 1, true]]);
   assert.equal(Math.round(status[0].next.minutes), 5);

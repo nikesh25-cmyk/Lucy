@@ -98,7 +98,7 @@ test('restocking is capped and never replays absence', (t) => {
 
 test('the works board names a stage that waits for a crew, and every crewed site has a crew at some hour of the day', () => {
   const projects = [{id: 'a', name: 'Well', purpose: 'Water.', stages: [{id: 'a-1', title: 'Base', release_after_minutes: 5}, {id: 'a-2', title: 'Ring', release_after_minutes: 15}]}];
-  const record = {works_started_ms: T0 - 30 * 60_000, groups: {'a-1': {}}, waiting: {'a-2': 'needs a crew: 1 of 2 nearby'}};
+  const record = {works_started_ms: T0 - 30 * 60_000, works_elapsed_ms: 30 * 60_000, groups: {'a-1': {}}, waiting: {'a-2': 'needs a crew: 1 of 2 nearby'}};
   assert.match(worksLines(projects, record, T0).join('\n'), /waits for a crew \(1 of 2 nearby\)\. Join the builders/);
   const manifest = JSON.parse(readFileSync(new URL('../content/veloren-world-harr.json', import.meta.url), 'utf8'));
   const villagers = JSON.parse(readFileSync(new URL('../content/veloren-villagers.json', import.meta.url), 'utf8')).residents;

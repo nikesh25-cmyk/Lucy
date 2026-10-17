@@ -61,13 +61,14 @@ const minutesText = (minutes) => {
 /** Status of every project, from the schedule and the server's record. Pure. */
 export function worksStatus(projects, record, now) {
   const started = Number(record?.works_started_ms) || 0;
+  const elapsed = Number(record?.works_elapsed_ms) || 0; // minutes of open-world time, not calendar time
   const built = new Set(Object.keys(record?.groups || {}));
   return projects.map((project) => {
     let done = 0;
     let next = null;
     for (const stage of project.stages) {
       if (built.has(stage.id)) { done += 1; continue; }
-      if (!next) next = { ...stage, waiting: String(record?.waiting?.[stage.id] || ''), minutes: started ? Math.max(0, (started + stage.release_after_minutes * 60_000 - now) / 60_000) : null };
+      if (!next) next = { ...stage, waiting: String(record?.waiting?.[stage.id] || ''), minutes: started ? Math.max(0, (stage.release_after_minutes * 60_000 - elapsed) / 60_000) : null };
     }
     return { id: project.id, name: project.name, purpose: project.purpose, total: project.stages.length, done, next, complete: done === project.stages.length && project.stages.length > 0 };
   });
