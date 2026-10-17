@@ -1,4 +1,4 @@
-# Native AI city — integration candidate
+# Native AI city — verified release
 
 Extends Node `1e247c1` and native `622dfde` on `feat/native-ai-city-2026-10-17` in the existing integration worktrees. No main database migration; main schema remains27. City history uses additive link extension `city_life` version1.
 
@@ -12,15 +12,16 @@ Extends Node `1e247c1` and native `622dfde` on `feat/native-ai-city-2026-10-17` 
 - Four preapproved fictional households; marriage requires both adults' recorded visits; children require completed native homes. Children stay home, become students after10 open-world minutes, then need assessed school/university visits and work records. No offline ageing, coins, accounts, credentials or inherited authority.
 - `/city` guest directory/home requests and native travel with signed arrival confirmation. Families target their own completed home interior; office, farm and classroom work also requires completed interiors. `/tell Selene city` exposes the public city guide.
 
-## Verification so far
+## Verification
 
 - Final application suite:1,837 passing,0 failing,0 skipped (160.6seconds).
 - End-to-end:20 steps passed.
 - Focused real Chrome:9/9 city scenarios, including saved city changes appearing without a page reload. Cottage ACKs there are signed fixtures, not native building evidence.
 - Seal:136 definitions,42 referenced notices/assets.
-- Native protocol:33 passing; world-core release tests24 passing; four targeted native movement helper regressions passed; server release check passed. Final CLI release build passed in8m11seconds.
-- Real native probe1 refused oversized clearing, correctly and before applying city geometry. Probe2 spawned8 actual residents and saved23 public groups and one marriage, but exposed canopy spawning and flat-road ledges. Those are regression findings, not acceptance passes.
-- Real native runs have observed completed homes/office/school/university, two fictional births,12 assessed classroom visits and both children becoming adult office workers. Native human city visit and return passed with observed arrival ACKs. A blocked builder was reproduced against a measured wooden corner, then fixed using actual capsule clearance and checked timber support. The final all-buildings/farm/restart gate remains pending. GUI playthrough unavailable while Mac is locked.
+- Native protocol:33 passing; world-core release tests24 passing; eight exact-source native recovery helper regressions passed; server release check passed. Final CLI release build passed in6m06seconds at native commit `81fa016`.
+- Real native acceptance passed at2026-10-17T14:21:36Z:55 city groups;12 actual NPC citizens; four households and four births; farm harvests; school/university assessments; two children grown into office workers; signed native human travel in both directions. After a real restart, all16 foundation/shell groups were physically restamped with unchanged geometry and all prior citizens returned. Both grown children completed another native-confirmed job after reconstruction.
+- Recovery regressions found during acceptance were fixed: canopy spawning, terrain ledges, wooden corners and saved roof-edge positions. Bounded recovery waits for actual restored homes, chooses a checked nearby floor, and resets arrival/dwell rather than granting work credit.
+- Real Chrome also verified grown children remain household members rather than appearing as additional partners. Desktop and390px captures are retained. Native GUI playthrough remains unavailable while the Mac is locked.
 
 The launcher now uses the native save signal, recognizes both actual relative and absolute launch forms, canonicalizes the Node path, and refuses unrelated/reused PIDs. Four disposable launcher tests cover saving, relays, the wrapper and another stack's identical command. The installed source was byte-identical across1,651 tracked files before shutdown. An encrypted offline rollback archive passed authenticated decryption and byte equality; key material is kept separately.
 

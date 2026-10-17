@@ -6,6 +6,8 @@ The city direction is **AI residents do the work; humans are guests**. Human gue
 
 Open `/city` on the Harr web service (local installation: `http://127.0.0.1:3100/city`). The journal at `/harr` links to it.
 
+The packaged local installation also provides **Start NemoWorld City.command** beside `play.sh`. Double-click it to start the saved stack when needed, open the city page and bring up the existing game application. It keeps model inference off and reuses the same account/character data.
+
 1. Browse the existing AI roles, configured residents, saved public works and research.
 2. Sign into your existing NemoWorld account. If needed, use the existing `/veloren-link` flow to associate your current human game character once.
 3. In **My home**, choose a supported available Commons plot and a roof style. **Ask Rowan to build my home** explicitly requests the free plot and cottage.

@@ -104,25 +104,34 @@ try {
       const before=view.citizens.map(c=>c.id).sort();
       const grown=view.citizens.filter(c=>c.stage==='adult'&&view.births.some(b=>b.citizen_id===c.id)).map(c=>c.id);
       const geometry=Object.fromEntries(built.map(id=>[id,{digest:record.groups[id].digest,ground:record.groups[id].ground,anchor:record.groups[id].anchor}]));
+      const structures=built.filter(id=>/-(foundation|shell)$/.test(id));assert.equal(structures.length,16);
       native.kill('SIGUSR1');await new Promise(r=>native.once('exit',r));
       const restartedAt=Date.now(); native=startServer();
-      let rebound=false,resumedWork=false;
-      for(let attempt=0;attempt<60;attempt++) {
+      let rebound=false,resumedWork=false,sceneReady=false;
+      for(let attempt=0;attempt<72;attempt++) {
         await delay(5000);
         let restored={};try{restored=json(outbox+'.city.json');}catch{}
         rebound=before.every(id=>restored[id]?.observed_at>restartedAt);
-        const completed=new Set(link.sql.all("SELECT DISTINCT j.citizen_id FROM city_jobs j JOIN link_events e ON e.landmark_id=j.cmd_id WHERE j.state='completed' AND e.kind='command.applied' AND e.occurred_at>?",restartedAt).map(j=>j.citizen_id));
-        resumedWork=grown.every(id=>completed.has(id));
-        if(rebound&&resumedWork)break;
+        let scene={};try{scene=json(worldRecord);}catch{}
+        const ready=structures.every(id=>scene.groups?.[id]?.applied_at>restartedAt);
+        if(ready&&!sceneReady)log('PASS all eight buildings physically restamped after restart');
+        sceneReady=ready;
+        if(sceneReady) {
+          const sceneAt=Math.max(...structures.map(id=>scene.groups[id].applied_at));
+          const completed=new Set(link.sql.all("SELECT DISTINCT j.citizen_id FROM city_jobs j JOIN link_events e ON e.landmark_id=j.cmd_id WHERE j.state='completed' AND e.kind='command.applied' AND e.occurred_at>?",sceneAt).map(j=>j.citizen_id));
+          resumedWork=grown.every(id=>completed.has(id));
+        }
+        if(rebound&&sceneReady&&resumedWork)break;
       }
       assert.ok(rebound,'every prior citizen has a fresh observed native NPC position after restart');
+      assert.ok(sceneReady,'all eight native buildings are physically reconstructed after restart');
       assert.ok(resumedWork,'every grown child completes another real job after restart, rather than remaining stranded');
       const restoredRecord=json(worldRecord);
       assert.deepEqual(Object.fromEntries(built.map(id=>[id,{digest:restoredRecord.groups[id].digest,ground:restoredRecord.groups[id].ground,anchor:restoredRecord.groups[id].anchor}])),geometry,'restart preserves city geometry and base heights');
       const after=link.nativeCity.overview().citizens.map(c=>c.id);
       assert.ok(before.every(id=>after.includes(id)),'restart preserves all prior citizens while allowing legitimate new births');
       log('PASS real native construction/work/family/birth/school/apprenticeship/adult-work and restart');
-      writeFileSync(join(dir,'result.json'),JSON.stringify({passed:true,at:new Date().toISOString(),citizens:before,built,travel}));
+      writeFileSync(join(dir,'result.json'),JSON.stringify({passed:true,at:new Date().toISOString(),citizens:before,built,travel,restored_structures:structures,post_restart_workers:grown}));
       process.exitCode=0;break;
     }
   }

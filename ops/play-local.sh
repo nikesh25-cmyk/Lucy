@@ -104,6 +104,8 @@ PYLOCAL
     # Snapshot the programs so later work in the worktrees cannot change what you play.
     cp -f "$BUILD/veloren-server-cli" "$BUILD/nemo-bridge" "$P/bin/"
     rm -rf "$P/nemoworld" && mkdir -p "$P/nemoworld" && git -C "$ROOT/nemoworld" archive integration/all | tar -x -C "$P/nemoworld"
+    cp "$P/nemoworld/ops/start-city.command" "$P/Start NemoWorld City.command"
+    chmod +x "$P/Start NemoWorld City.command"
     [ -f "$P/secrets/event.key" ] || { head -c 32 /dev/urandom | xxd -p -c 64 > "$P/secrets/event.key"; chmod 600 "$P/secrets/event.key"; }
     # Veloren settings on the default ports, same world seed as the tested world (so Harr is where it was).
     mkdir -p "$P/userdata/server/server_config" "$P/userdata/server-cli"
