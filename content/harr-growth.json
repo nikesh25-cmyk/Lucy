@@ -1,0 +1,13 @@
+{
+  "format": "harr-growth-v1",
+  "note": "How Harr grows. The village level is computed, never awarded: it is the highest level whose every requirement is met by recorded facts (finished projects from the game server's record, technologies learned from the research queue, kinds of villagers at work from the roster, people welcomed from signed events). It only describes the village; it unlocks nothing and gives nothing to anyone. `min_per_role` is how many villagers a kind needs to count as established.",
+  "min_per_role": 2,
+  "levels": [
+    { "level": 1, "name": "Hamlet", "needs": { "projects": 0, "techs": 0, "roles": 0, "people": 0 }, "text": "A few homes and a well in a green valley." },
+    { "level": 2, "name": "Village", "needs": { "projects": 2, "techs": 2, "roles": 3, "people": 1 }, "text": "The first public works stand and neighbours know each other by name." },
+    { "level": 3, "name": "Large village", "needs": { "projects": 6, "techs": 6, "roles": 5, "people": 2 }, "text": "Every craft has a home and the market has a roof." },
+    { "level": 4, "name": "Market town", "needs": { "projects": 12, "techs": 12, "roles": 6, "people": 4 }, "text": "Visitors come to learn, and there is always something new to see." },
+    { "level": 5, "name": "Learned town", "needs": { "projects": 24, "techs": 20, "roles": 6, "people": 6 }, "text": "Research, teaching and building feed one another." },
+    { "level": 6, "name": "Harr in full bloom", "needs": { "projects": 36, "techs": 30, "roles": 6, "people": 10 }, "text": "Everything in the plan is built and learned, and the plan is ready for its next chapter." }
+  ]
+}

@@ -10,6 +10,7 @@ import { shelfSummary } from './pantry.js';
 import { chronicleLines, loadEvents, todayLines } from './village.js';
 import { VILLAGERS } from './villagers.js';
 import { conversationReply } from './conversations.js';
+import { mentorReply } from './apprenticeship.js';
 
 const roleOf = (resident) => resident?.role || null;
 const cut = (text, n = 240) => (text.length <= n ? text : `${text.slice(0, n - 1).replace(/[\s,;:.-]+\S*$/, '')}…`);
@@ -53,6 +54,7 @@ export function replyFor(link, resident, lower) {
   const has = (words) => words.some((w) => lower.includes(w));
   try {
     if (has(['purpose', 'why harr', 'why are we', 'charter', 'what is harr', 'greater'])) return cut(loadCharter().purpose);
+    if (has(['apprentice', 'mentor', 'teach me', 'learn from you'])) { const m = mentorReply(link, resident); if (m) return cut(m); }
     if (!role || !roles[role] || !FACTS[role]) return null;
     if (has(['what are you doing', 'your work', 'what do you do', 'your job', ...roles[role].topics])) {
       return cut(`${roles[role].purpose} ${FACTS[role](link)}`);

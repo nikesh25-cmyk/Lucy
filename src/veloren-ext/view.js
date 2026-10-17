@@ -4,6 +4,8 @@ import { pantryLines } from './pantry.js';
 import { chronicleLines, loadEvents, todayLines } from './village.js';
 import { purposeLines, researchLines } from './research.js';
 import { recommendNext, tasksLines } from './tasks.js';
+import { GAMEPLAY_PAGES, GAMEPLAY_TITLES } from './gameplay-pages.js';
+import { gameplayPageLines, seasonalBlurb, withLevel, withSeasonNote } from './gameplay.js';
 import { findsFrom, libraryLines, loadDiscoveries, loadRecord, loadWorks, worksLines } from './world-life.js';
 
 // ---- The in-game interface (HUD) ---------------------------------------------------------------
@@ -52,10 +54,10 @@ export const HUD_POLICY = Object.freeze({
 // instance Lyra's) is refused even though it carries the same `director` scope.
 export const GUIDE_RESIDENTS = Object.freeze(['lw-selene']);
 
-export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research', 'menu']);
-const OPEN_TITLES = { menu: 'Menu', help: 'Help', works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle', tasks: 'Your tasks', purpose: 'Harr Charter', research: 'Research' };
+export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research', 'menu', ...GAMEPLAY_PAGES]);
+const OPEN_TITLES = { ...GAMEPLAY_TITLES, menu: 'Menu', help: 'Help', works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle', tasks: 'Your tasks', purpose: 'Harr Charter', research: 'Research' };
 // Open pages: about the village, not about an account, so they need no link. They still need a player id.
-export const OPEN_PAGES = Object.freeze(['menu', 'help', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research']);
+export const OPEN_PAGES = Object.freeze(['menu', 'help', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research', ...GAMEPLAY_PAGES]);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const enc = new TextEncoder();
@@ -201,6 +203,7 @@ export function helpLines({ recommend } = {}) {
     'I cannot give, buy, approve or change anything for you. Your real progress lives in NemoWorld and only the world can change it.',
     recommend ? `Your one next step: ${plain(recommend.title, 50)}. ${plain(recommend.short, 110)}` : 'Your one next step: say tasks.',
     'To ask, whisper me one word. Say menu to see every word I know, and more for the next page of an answer.',
+    'Newer pages: thanks (the gratitude board), apprentice (learn a craft from a mentor), survey (today\'s field survey), season (the time of year) and level (how far Harr has grown).',
   ];
 }
 
@@ -212,6 +215,8 @@ export const MENU_ENTRIES = Object.freeze([
   ['tasks', 'a gentle checklist'], ['works', 'what the builders are making'], ['library', 'places to discover'],
   ['pantry', 'free food for all'], ['today', 'market hour, story circle, festival'], ['chronicle', 'what happened lately'],
   ['purpose', 'why Harr exists'], ['research', 'what the village is learning'], ['track', 'mark your current step on your map'],
+  ['thanks', 'the gratitude board'], ['apprentice', 'learn a craft from a mentor'], ['survey', 'today\'s field survey'],
+  ['season', 'the time of year'], ['level', 'how far Harr has grown'],
 ]);
 
 export function menuLines({ word, recommend } = {}) {
@@ -225,6 +230,7 @@ export function menuLines({ word, recommend } = {}) {
   out.push(`And also about you: ${say(['quests', 'karma', 'community'])}.`);
   out.push(`About Harr, for everyone: ${say(['works', 'library', 'pantry', 'today'])}.`);
   out.push(`And: ${say(['chronicle', 'purpose', 'research', 'track'])}.`);
+  out.push(`Life in Harr: ${say(['thanks', 'apprentice', 'survey', 'season', 'level'])}.`);
   out.push('Other residents: Vaelen, places or travel to a place. Rowan, build my home, enter, leave. Kael, the shop: what is for sale, my balance. Lyra: link my account.');
   if (recommend) out.push(`Not sure where to begin? ${plain(recommend.title, 50)}. ${plain(recommend.short, 100)}`);
   return out;
@@ -282,6 +288,11 @@ export const FOOTERS = Object.freeze({
   community: 'Next: say today for the market hour and story circle.',
   karma: 'Next: say community to see what neighbours are planning.',
   works: 'Next: say research to see what the village is learning.',
+  thanks: 'Next: say tasks for a small step you can take today.',
+  apprentice: 'Next: say survey for today\'s field survey.',
+  survey: 'Next: say library for places to discover.',
+  season: 'Next: say today for market hour and story circle.',
+  level: 'Next: say purpose to see the village\'s goals.',
   library: 'Next: say tasks for a small step toward the next find.',
   pantry: 'Next: say today to see when the market hour begins.',
   today: 'Next: say chronicle to hear what happened lately.',
@@ -470,16 +481,18 @@ export function buildView({ link, platform, player_uuid, name, page = 1, word = 
       : name === 'pantry'
         ? pantryLines(link, player_uuid)
         : name === 'today'
-          ? todayLines(loadEvents(), link.clock())
+          ? todayLines(loadEvents().map((e) => ({ ...e, blurb: seasonalBlurb(e, link.clock()) })), link.clock())
           : name === 'chronicle'
-            ? chronicleLines(link, loadEvents(), link.clock(), (alias) => plain(alias, 24))
+            ? withLevel(chronicleLines(link, loadEvents(), link.clock(), (alias) => plain(alias, 24)), link)
             : name === 'tasks'
               ? tasksLines(link, player_uuid)
               : name === 'purpose'
                 ? purposeLines(link)
                 : name === 'research'
                   ? researchLines(link)
-                  : libraryLines(loadDiscoveries(), findsFrom(link.sql, loadDiscoveries()), player_uuid, (alias) => plain(alias, 24));
+                  : GAMEPLAY_PAGES.includes(name)
+                    ? gameplayPageLines(name, link, player_uuid, (alias) => plain(alias, 24))
+                    : withSeasonNote(libraryLines(loadDiscoveries(), findsFrom(link.sql, loadDiscoveries()), player_uuid, (alias) => plain(alias, 24)), link.clock());
     const paged = paginate(withFooter(lines), page);
     return fitResponse({
       linked: false, open: true, command: name, title: OPEN_TITLES[name], page: paged.page, pages: paged.pages,

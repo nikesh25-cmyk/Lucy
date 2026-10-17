@@ -112,7 +112,7 @@ test('the dashboard overview carries everything in one document and no private d
   const s = setup(t);
   send(s, 'landmark.visited', {landmark_id: discoveries[1].landmark_id});
   const o = buildOverview(s.link, T0);
-  assert.deepEqual(Object.keys(o).sort(), ['chronicle', 'generated_at', 'library', 'pantry', 'purpose', 'research', 'rhythm', 'roles', 'works']);
+  assert.deepEqual(Object.keys(o).sort(), ['chronicle', 'gameplay', 'generated_at', 'library', 'pantry', 'purpose', 'research', 'rhythm', 'roles', 'works']);
   assert.equal(o.purpose.principles.length, 6);
   assert.equal(o.library.length, discoveries.length);
   assert.equal(o.library.filter((l) => l.found).length, 1);

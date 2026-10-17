@@ -11,6 +11,7 @@ import { shelfSummary } from './pantry.js';
 import { spendRate } from './view.js';
 import { VILLAGERS } from './villagers.js';
 import { tasksFor, tasksLines } from './tasks.js';
+import { gameplayOverview, seasonalBlurb, withLevel } from './gameplay.js';
 
 export function buildOverview(link, now = link.clock()) {
   const charter = loadCharter();
@@ -40,10 +41,11 @@ export function buildOverview(link, now = link.clock()) {
     pantry: { shelves: shelfSummary(link) },
     rhythm: events.map((e) => {
       const slot = activeSlot(e, now);
-      return { id: e.id, title: e.title, place: e.place, blurb: e.blurb, on_now: slot !== null, minutes: slot !== null ? Math.max(1, Math.ceil((slot + e.when.length * 60_000 - now) / 60_000)) : minutesToNext(e, now) };
+      return { id: e.id, title: e.title, place: e.place, blurb: seasonalBlurb(e, now), on_now: slot !== null, minutes: slot !== null ? Math.max(1, Math.ceil((slot + e.when.length * 60_000 - now) / 60_000)) : minutesToNext(e, now) };
     }),
-    chronicle: chronicleLines(link, events, now, () => 'a visitor').slice(1, -1),
+    chronicle: withLevel(chronicleLines(link, events, now, () => 'a visitor'), link).slice(1, -1),
     roles: Object.entries(roles).map(([id, r]) => ({ id, title: r.title, purpose: r.purpose, daily: r.daily, gives: r.gives, count: counts.get(id) || 0 })),
+    gameplay: gameplayOverview(link, now),
     library: loadDiscoveries().map((d) => ({ name: d.name, hint: d.hint, found: found.has(d.landmark_id), finding: found.has(d.landmark_id) ? d.finding : '' })),
   };
 }

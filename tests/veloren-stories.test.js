@@ -5,7 +5,7 @@ import {MILESTONE_KEYS, SEASON_IDS, captionFor, finishedPhrase, loadStories, mil
 import {loadDiscoveries} from '../src/veloren-ext/world-life.js';
 
 const load = (rel) => JSON.parse(readFileSync(new URL(rel, import.meta.url), 'utf8'));
-const raw = () => load('../content/harr-seasons.json');
+const raw = () => load('../content/harr-season-stories.json');
 const doc = loadStories();
 const projects = load('../content/veloren-projects.json').projects;
 const at = (y, mo, d) => new Date(y, mo - 1, d, 12).getTime();
@@ -78,7 +78,7 @@ test('the validator refuses bad files', () => {
 });
 
 test('peaceful vocabulary: nothing violent, competitive, scarce, monetary or linked in the new writing', () => {
-  const text = readFileSync(new URL('../content/harr-seasons.json', import.meta.url), 'utf8').toLowerCase();
+  const text = readFileSync(new URL('../content/harr-season-stories.json', import.meta.url), 'utf8').toLowerCase();
   const banned = /\b(?:kill|fight|attack|slay|weapon|enemy|battle|blood|dungeon|loot|raid|war|steal|theft|hunt\w*|danger\w*|scarc\w*|debt|conquer\w*|conquest|compet\w*|rival\w*|prey|predator\w*|coins?|money|gold|price|cost|pay|buy|purchase)(?:s|ed|ing|er|ers)?\b/;
   assert.equal(text.match(banned), null, text.match(banned)?.[0]);
   assert.equal(text.match(/https?:\/\/|www\.|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/), null);

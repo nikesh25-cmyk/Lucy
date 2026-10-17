@@ -1,4 +1,4 @@
-// Seasonal and festival writing, chronicle milestone phrases and building captions (content/harr-seasons.json).
+// Seasonal and festival writing, chronicle milestone phrases and building captions (content/harr-season-stories.json).
 //
 // Data only and ADDITIVE: nothing here replaces the base library notes (veloren-discoveries.json), the event blurbs
 // (veloren-events.json) or the project catalogue (veloren-projects.json). Callers ask for the extra text and fall
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const CONTENT = join(here, '..', '..', 'content');
-export const SEASONS_PATH = join(CONTENT, 'harr-seasons.json');
+export const SEASONS_PATH = join(CONTENT, 'harr-season-stories.json');
 export const SEASON_IDS = Object.freeze(['spring', 'summer', 'autumn', 'winter']);
 export const MILESTONE_KEYS = Object.freeze(['ground-broken', 'first-stage', 'second-stage', 'halfway', 'last-stage-near', 'finished', 'first-visit', 'opening-day', 'crew-of-two', 'crew-of-many', 'first-find', 'fifth-find', 'tenth-find', 'first-meal', 'hundredth-meal', 'market-held', 'circle-held', 'festival-held', 'tech-learned', 'season-turned']);
 
@@ -17,7 +17,7 @@ const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
 const idsOf = (rel, key) => readJson(join(CONTENT, rel))[key].map((x) => x.id);
 
 export function validateStories(doc, { events = idsOf('veloren-events.json', 'events'), discoveries = idsOf('veloren-discoveries.json', 'discoveries'), projects = idsOf('veloren-projects.json', 'projects') } = {}) {
-  if (!doc || doc.format !== 'harr-seasons-v1' || !doc.seasons || !doc.chronicle || !doc.captions) throw new Error('Bad seasons file.');
+  if (!doc || doc.format !== 'harr-season-stories-v1' || !doc.seasons || !doc.chronicle || !doc.captions) throw new Error('Bad seasons file.');
   if (JSON.stringify(Object.keys(doc.seasons)) !== JSON.stringify(SEASON_IDS)) throw new Error('Seasons must be spring, summer, autumn, winter in order.');
   const months = new Set();
   const everyNote = new Set();
