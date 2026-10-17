@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # play-next.sh: a proposal for the next play.sh. Same world, same files, same pid and log names, so it can run
-# next to the old launcher (stop with either). Review it, then copy the contents of ops/ into play/:
-#   cp ops/play-next.sh play/ && cp -R ops/lib play/      (play-next.sh finds lib/harr_ops.py next to itself)
+# next to the old launcher (stop with either). Review it, then copy the ops folder into play/:
+#   cp -R ops play/ops        (the scripts find the Harr folder by looking upward for play/play.sh)
 #
 #   play-next.sh preflight [flags]     check the Mac (disk, memory, swap, load, compilers, ports); changes nothing
 #   play-next.sh start [flags]         pre-flight, then a staged start with a readiness check per stage and a summary
@@ -22,7 +22,15 @@
 # Exit codes: 0 ok, 1 a stage failed, 2 refused by pre-flight, 64 bad usage.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="${HARR_ROOT:-$(cd "$HERE/.." && pwd)}"
+find_root() { # the folder that contains play/play.sh: this script's own parents, whether it lives in ops/ or in play/ops/ or play/
+  local d="$1"
+  while [ "$d" != / ]; do
+    [ -f "$d/play/play.sh" ] && { echo "$d"; return; }
+    [ -f "$d/play.sh" ] && [ -d "$d/bin" ] && { dirname "$d"; return; }
+    d="$(dirname "$d")"
+  done
+}
+ROOT="${HARR_ROOT:-$(find_root "$HERE")}"
 P="$ROOT/play"
 LIB="$HERE/lib/harr_ops.py"; [ -f "$LIB" ] || LIB="$P/lib/harr_ops.py"
 export HARR_ROOT="$ROOT"
@@ -71,8 +79,11 @@ spawn() {
     shift
   done
   shift
-  if [ "$DRY" = 1 ]; then local line="  [dry-run] $name: cd ${cwd#"$ROOT"/} && ${envs[*]} $* > ${logf#"$ROOT"/}"; say "${line//"$ROOT"/\$ROOT}"; return 0; fi
-  ( cd "$cwd" && exec nohup env "${envs[@]}" "$@" < /dev/null > "$logf" 2>&1 ) & echo $! > "$pidf"; disown
+  if [ "$DRY" = 1 ]; then local line="  [dry-run] $name: cd ${cwd#"$ROOT"/} && ${envs[*]} $* >> ${logf#"$ROOT"/}"; say "${line//"$ROOT"/\$ROOT}"; return 0; fi
+  # Logs are opened in append mode (>>) so hygiene.sh can rotate a running world's logs safely (copy and truncate).
+  # The previous run's log is kept as NAME.log.prev, so readiness checks never see an old "ready to accept".
+  [ -s "$logf" ] && mv -f "$logf" "$logf.prev"
+  ( cd "$cwd" && exec nohup env "${envs[@]}" "$@" < /dev/null >> "$logf" 2>&1 ) & echo $! > "$pidf"; disown
 }
 
 load1() { python3 -c "import os;print('%.1f'%os.getloadavg()[0])"; }
@@ -99,7 +110,7 @@ server_ready() { grep -q "ready to accept" "$P/logs/server.log" 2>/dev/null; }
 
 do_stop() {
   for f in "$P"/pids/res-* "$P"/pids/relay-*; do [ -e "$f" ] && stop_pid "$f"; done
-  stop_pid "$P/pids/veloren"; stop_pid "$P/pids/nemo"; rm -f "$P/pids/mode.json"; sleep 1; say "stopped"
+  stop_pid "$P/pids/veloren"; stop_pid "$P/pids/nemo"; rm -f "$P/pids/mode.json" "$P/pids/.append-logs"; sleep 1; say "stopped"
 }
 
 fail_stage() { # message, log
@@ -129,6 +140,7 @@ cmd_start() {
   say "mode: $label"
   [ "$DRY" = 1 ] || printf '{"label": "%s", "model": "%s", "village": "%s", "light": %s, "started": %s}\n' "$label" "$model" "${VILLAGE:-all}" "$([ "$LIGHT" = 1 ] && echo true || echo false)" "$(date +%s)" > "$P/pids/mode.json"
   local t0 id
+  [ "$DRY" = 1 ] || : > "$P/pids/.append-logs"
 
   say ""; say "== 2/6 NemoWorld =="
   t0=$(date +%s)

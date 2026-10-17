@@ -13,7 +13,15 @@
 # Environment: HARR_ROOT (folder containing play/), NEMO_PORT, HARR_VEL_PORT, HARR_GUIDE_TOKEN_FILE (default play/secrets/bridge-lw-selene.token).
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="${HARR_ROOT:-$(cd "$HERE/.." && pwd)}"
+find_root() { # the folder that contains play/play.sh: this script's own parents, whether it lives in ops/ or in play/ops/ or play/
+  local d="$1"
+  while [ "$d" != / ]; do
+    [ -f "$d/play/play.sh" ] && { echo "$d"; return; }
+    [ -f "$d/play.sh" ] && [ -d "$d/bin" ] && { dirname "$d"; return; }
+    d="$(dirname "$d")"
+  done
+}
+ROOT="${HARR_ROOT:-$(find_root "$HERE")}"
 P="$ROOT/play"
 LIB="$HERE/lib/harr_ops.py"; [ -f "$LIB" ] || LIB="$P/lib/harr_ops.py"
 NEMO="http://127.0.0.1:${NEMO_PORT:-3100}"; VEL="${HARR_VEL_PORT:-14004}"

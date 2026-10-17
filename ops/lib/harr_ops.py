@@ -21,10 +21,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def find_root():
+    """The folder that contains play/play.sh, found by walking up from this file (works from ops/, play/ops/ or a worktree)."""
     if os.environ.get("HARR_ROOT"):
         return os.environ["HARR_ROOT"]
-    d = os.path.dirname(HERE)            # ops/ or play/
-    return os.path.dirname(d)
+    d = HERE
+    while d != os.path.dirname(d):
+        if os.path.isfile(os.path.join(d, "play", "play.sh")):
+            return d
+        d = os.path.dirname(d)
+    return os.path.dirname(os.path.dirname(HERE))
 
 
 ROOT = find_root()

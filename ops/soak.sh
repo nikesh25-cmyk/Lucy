@@ -13,7 +13,16 @@
 # Environment: HARR_ROOT. For tests: SOAK_DRY=1 prints the plan only, SOAK_SECONDS=N counts seconds instead of minutes.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="${HARR_ROOT:-$(cd "$HERE/.." && pwd)}"; P="$ROOT/play"
+find_root() { # the folder that contains play/play.sh: this script's own parents, whether it lives in ops/ or in play/ops/ or play/
+  local d="$1"
+  while [ "$d" != / ]; do
+    [ -f "$d/play/play.sh" ] && { echo "$d"; return; }
+    [ -f "$d/play.sh" ] && [ -d "$d/bin" ] && { dirname "$d"; return; }
+    d="$(dirname "$d")"
+  done
+}
+ROOT="${HARR_ROOT:-$(find_root "$HERE")}"
+P="$ROOT/play"
 LIB="$HERE/lib/harr_ops.py"; [ -f "$LIB" ] || LIB="$P/lib/harr_ops.py"
 export HARR_ROOT="$ROOT"
 MIN=30; EVERY=30; OUT=""
@@ -34,7 +43,6 @@ echo "soak: $ROWS samples, one every ${EVERY}s over ${TOTAL}s -> $OUT"
 [ "${SOAK_DRY:-0}" = 1 ] && { python3 "$LIB" sample --header; echo "(dry run: nothing sampled)"; exit 0; }
 python3 "$LIB" sample --header > "$OUT" || exit 1
 export HARR_SOAK_START="$(date +%s)"
-python3 "$LIB" watch-line >/dev/null 2>&1      # record log positions so old errors are not counted
 trap 'echo; echo "interrupted; summarising what was sampled"; summarise; exit 0' INT TERM
 summarise() {
   python3 - "$OUT" <<'PY'
