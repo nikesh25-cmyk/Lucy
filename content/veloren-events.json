@@ -1,0 +1,24 @@
+{
+  "format": "nemo-village-events-v1",
+  "note": "The rhythm of Harr, on the host computer's clock. Scripted: at these times NemoWorld's director sends the listed residents to the listed place, and the chronicle records that it did. Nothing here is a fight, a hunt or a contest. `landmark_id` is a place the game server knows.",
+  "events": [
+    {
+      "id": "market-hour", "title": "Market hour", "landmark_id": "harr-central-plaza", "place": "the plaza",
+      "when": { "every": "hour", "minute": 0, "length": 12 },
+      "who": { "roles": ["maker", "farmer", "courier"] },
+      "blurb": "Makers, farmers and couriers lay out what they have grown and made. Everyone may look, ask and share."
+    },
+    {
+      "id": "story-circle", "title": "Story circle", "landmark_id": "site-pavilion", "place": "the field pavilion",
+      "when": { "every": "hour", "minute": 30, "length": 12 },
+      "who": { "roles": ["keeper", "scholar"], "ids": ["lw-lyra"] },
+      "blurb": "Keepers and scholars read aloud what the village has learned and listen to anyone who wants to add a page."
+    },
+    {
+      "id": "festival", "title": "Harr festival", "landmark_id": "harr-central-plaza", "place": "the plaza",
+      "when": { "every": "week", "weekday": 0, "start": "15:00", "length": 60 },
+      "who": { "all": true },
+      "blurb": "Once a week the whole village gathers in the square to celebrate what has been built and found."
+    }
+  ]
+}

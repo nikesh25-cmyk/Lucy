@@ -420,6 +420,14 @@ export class VelorenLink {
         break;
       }
     }
+    // Nothing else is asking for her: the village's own rhythm (market hour, story circle...) may.
+    if (result.mode === 'schedule') {
+      for (const extension of this.extensions) {
+        if (typeof extension.director !== 'function') continue;
+        const hint = extension.director(this, resident_id);
+        if (hint) { result = { ...result, ...hint }; break; }
+      }
+    }
     // Announcements are handed over once: delivery is recorded as they are read.
     const pending = this.#all('SELECT id,player_uuid,text FROM announcements WHERE resident_id=? AND delivered_at IS NULL ORDER BY created_at LIMIT 5', resident_id);
     for (const item of pending) this.#run('UPDATE announcements SET delivered_at=? WHERE id=?', this.clock(), item.id);

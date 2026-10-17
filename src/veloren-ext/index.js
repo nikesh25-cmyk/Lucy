@@ -15,5 +15,6 @@ import { hudExtension } from './view.js';
 import homeExtension from './home.js';
 import atlasExtension from './atlas.js';
 import { pantryExtension } from './pantry.js';
+import { villageExtension } from './village.js';
 
-export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension];
+export const EXTENSIONS = [identityExtension, shopExtension, hudExtension, homeExtension, atlasExtension, pantryExtension, villageExtension];
