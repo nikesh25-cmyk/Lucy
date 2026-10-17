@@ -964,7 +964,7 @@
     },
     {
       "id": "lw-anselm",
-      "name": "Anselm Placeholder",
+      "name": "Anselm Stonehand",
       "calling": "builder",
       "role": "builder",
       "capabilities": "A peaceful builder who raises the village with others.",
@@ -1004,7 +1004,7 @@
     },
     {
       "id": "lw-briony",
-      "name": "Briony Placeholder",
+      "name": "Briony Fieldwright",
       "calling": "cultivator",
       "role": "farmer",
       "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
@@ -1044,7 +1044,7 @@
     },
     {
       "id": "lw-cassian",
-      "name": "Cassian Placeholder",
+      "name": "Cassian Quillmark",
       "calling": "researcher",
       "role": "scholar",
       "capabilities": "A peaceful researcher who turns every find into a page in the library.",
@@ -1084,7 +1084,7 @@
     },
     {
       "id": "lw-delia",
-      "name": "Delia Placeholder",
+      "name": "Delia Swiftpath",
       "calling": "explorer",
       "role": "courier",
       "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
@@ -1124,7 +1124,7 @@
     },
     {
       "id": "lw-eamon",
-      "name": "Eamon Placeholder",
+      "name": "Eamon Hearthstone",
       "calling": "steward",
       "role": "keeper",
       "capabilities": "A peaceful steward who keeps the library and stores open to all.",
@@ -1164,7 +1164,7 @@
     },
     {
       "id": "lw-fable",
-      "name": "Fable Placeholder",
+      "name": "Fable Loomwright",
       "calling": "artisan",
       "role": "maker",
       "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
@@ -1204,7 +1204,7 @@
     },
     {
       "id": "lw-galen",
-      "name": "Galen Placeholder",
+      "name": "Galen Beamwright",
       "calling": "builder",
       "role": "builder",
       "capabilities": "A peaceful builder who raises the village with others.",
@@ -1244,7 +1244,7 @@
     },
     {
       "id": "lw-hana",
-      "name": "Hana Placeholder",
+      "name": "Hana Greenfurrow",
       "calling": "cultivator",
       "role": "farmer",
       "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
@@ -1284,7 +1284,7 @@
     },
     {
       "id": "lw-isolde",
-      "name": "Isolde Placeholder",
+      "name": "Isolde Starwell",
       "calling": "researcher",
       "role": "scholar",
       "capabilities": "A peaceful researcher who turns every find into a page in the library.",
@@ -1324,7 +1324,7 @@
     },
     {
       "id": "lw-jarek",
-      "name": "Jarek Placeholder",
+      "name": "Jarek Larkstep",
       "calling": "explorer",
       "role": "courier",
       "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
@@ -1364,7 +1364,7 @@
     },
     {
       "id": "lw-kalen",
-      "name": "Kalen Placeholder",
+      "name": "Kalen Lanternson",
       "calling": "steward",
       "role": "keeper",
       "capabilities": "A peaceful steward who keeps the library and stores open to all.",
@@ -1404,7 +1404,7 @@
     },
     {
       "id": "lw-leena",
-      "name": "Leena Placeholder",
+      "name": "Leena Kilnwood",
       "calling": "artisan",
       "role": "maker",
       "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
@@ -1444,7 +1444,7 @@
     },
     {
       "id": "lw-maren",
-      "name": "Maren Placeholder",
+      "name": "Maren Mortar",
       "calling": "builder",
       "role": "builder",
       "capabilities": "A peaceful builder who raises the village with others.",
@@ -1484,7 +1484,7 @@
     },
     {
       "id": "lw-nestor",
-      "name": "Nestor Placeholder",
+      "name": "Nestor Dewmeadow",
       "calling": "cultivator",
       "role": "farmer",
       "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
@@ -1524,7 +1524,7 @@
     },
     {
       "id": "lw-oriel",
-      "name": "Oriel Placeholder",
+      "name": "Oriel Inkwell",
       "calling": "researcher",
       "role": "scholar",
       "capabilities": "A peaceful researcher who turns every find into a page in the library.",
@@ -1564,7 +1564,7 @@
     },
     {
       "id": "lw-petra",
-      "name": "Petra Placeholder",
+      "name": "Petra Wayfarer",
       "calling": "explorer",
       "role": "courier",
       "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
@@ -1604,7 +1604,7 @@
     },
     {
       "id": "lw-quinlan",
-      "name": "Quinlan Placeholder",
+      "name": "Quinlan Evenfall",
       "calling": "steward",
       "role": "keeper",
       "capabilities": "A peaceful steward who keeps the library and stores open to all.",
@@ -1644,7 +1644,7 @@
     },
     {
       "id": "lw-renata",
-      "name": "Renata Placeholder",
+      "name": "Renata Lathe",
       "calling": "artisan",
       "role": "maker",
       "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
@@ -1684,7 +1684,7 @@
     },
     {
       "id": "lw-soren",
-      "name": "Soren Placeholder",
+      "name": "Soren Trusswell",
       "calling": "builder",
       "role": "builder",
       "capabilities": "A peaceful builder who raises the village with others.",
@@ -1724,7 +1724,7 @@
     },
     {
       "id": "lw-talia",
-      "name": "Talia Placeholder",
+      "name": "Talia Oatley",
       "calling": "cultivator",
       "role": "farmer",
       "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
@@ -1764,7 +1764,7 @@
     },
     {
       "id": "lw-ursa",
-      "name": "Ursa Placeholder",
+      "name": "Ursa Lensfield",
       "calling": "researcher",
       "role": "scholar",
       "capabilities": "A peaceful researcher who turns every find into a page in the library.",
@@ -1804,7 +1804,7 @@
     },
     {
       "id": "lw-viola",
-      "name": "Viola Placeholder",
+      "name": "Viola Satchel",
       "calling": "explorer",
       "role": "courier",
       "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
@@ -1844,7 +1844,7 @@
     },
     {
       "id": "lw-wendel",
-      "name": "Wendel Placeholder",
+      "name": "Wendel Welcomeby",
       "calling": "steward",
       "role": "keeper",
       "capabilities": "A peaceful steward who keeps the library and stores open to all.",
@@ -1884,7 +1884,7 @@
     },
     {
       "id": "lw-xanthe",
-      "name": "Xanthe Placeholder",
+      "name": "Xanthe Threadgood",
       "calling": "artisan",
       "role": "maker",
       "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
@@ -1924,7 +1924,7 @@
     },
     {
       "id": "lw-yorick",
-      "name": "Yorick Placeholder",
+      "name": "Yorick Plumbline",
       "calling": "builder",
       "role": "builder",
       "capabilities": "A peaceful builder who raises the village with others.",
@@ -1964,7 +1964,7 @@
     },
     {
       "id": "lw-zelda",
-      "name": "Zelda Placeholder",
+      "name": "Zelda Brookfield",
       "calling": "cultivator",
       "role": "farmer",
       "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
@@ -2004,7 +2004,7 @@
     },
     {
       "id": "lw-adair",
-      "name": "Adair Placeholder",
+      "name": "Adair Folio",
       "calling": "researcher",
       "role": "scholar",
       "capabilities": "A peaceful researcher who turns every find into a page in the library.",
@@ -2044,7 +2044,7 @@
     },
     {
       "id": "lw-beatrix",
-      "name": "Beatrix Placeholder",
+      "name": "Beatrix Roadwise",
       "calling": "explorer",
       "role": "courier",
       "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
