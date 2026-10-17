@@ -81,7 +81,7 @@ test('facts are gathered from stored events only, and the research page and pant
 test('a newcomer gets a short task list with exactly one next step, derived from facts', (t) => {
   const s = setup(t);
   let tasks = tasksFor(s.link, ALICE);
-  assert.equal(tasks.length, 7);
+  assert.equal(tasks.length, 8);
   assert.ok(tasks.some((x) => x.id === 'help'));
   assert.equal(tasks.filter((x) => x.done).length, 0);
   assert.match(tasksLines(s.link, ALICE)[1], /^Next: Meet five villagers \(0 of 5\)/);
