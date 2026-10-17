@@ -108,6 +108,7 @@ function evaluate(link, def, step, player, since, now, mentorId) {
 
 /** One role's chain for one person: { role, title, mentor, steps: [{ id, text, state, at }], done, total, started, complete }. */
 export function chainFor(link, role, player, now = link.clock(), roles = loadApprenticeship()) {
+  player = typeof player === 'string' ? player : '';
   const def = roles[role];
   const mentorName = def.mentor.name;
   let since = null;

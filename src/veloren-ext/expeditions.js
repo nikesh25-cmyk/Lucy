@@ -85,6 +85,7 @@ function rowsSince(sql, from, now) {
 
 /** Today's sheet and what one person has recorded on it. */
 export function surveyFor(link, player_uuid, now = link.clock()) {
+  player_uuid = typeof player_uuid === 'string' ? player_uuid : '';
   const sheet = sheetFor(now);
   const mine = recordsOnSheet(sheet, rowsSince(link.sql, sheet.day_start, now)).get(player_uuid) || new Map();
   const done = finishedAt(mine, sheet.need) !== null;

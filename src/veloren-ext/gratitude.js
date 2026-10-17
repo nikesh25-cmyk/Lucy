@@ -166,6 +166,7 @@ export function wallEntries(link, now = link.clock(), clean = (s) => s, size = G
 }
 
 export function gratitudeLines(link, player_uuid, now = link.clock(), clean = (s) => s) {
+  player_uuid = typeof player_uuid === 'string' ? player_uuid : '';
   const wall = wallEntries(link, now, clean);
   const out = ['The Gratitude board in the square: the newest thanks, with nobody counted or ranked.'];
   if (wall.length) for (const e of wall.slice(0, 5)) out.push(e.text);
