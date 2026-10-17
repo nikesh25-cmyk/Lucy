@@ -12,6 +12,7 @@ import { spendRate } from './view.js';
 import { VILLAGERS } from './villagers.js';
 import { tasksFor, tasksLines } from './tasks.js';
 import { gameplayOverview, seasonalBlurb, withLevel } from './gameplay.js';
+import { buildPlayerSim } from './player-sim.js';
 
 export function buildOverview(link, now = link.clock()) {
   const charter = loadCharter();
@@ -71,11 +72,22 @@ export const overviewExtension = {
       ctx.json(ctx.response, 200, cachedOverview(link));
       return true;
     }
+    if (ctx.route === '/veloren/harr/player' && ctx.request.method === 'GET') {
+      spendRate(link, '*overview', { gapMs: 0, perHour: 7200 });
+      const url = new URL(ctx.request.url, 'http://127.0.0.1');
+      const alias = url.searchParams.get('alias') || 'anonymous';
+      const uuid = url.searchParams.get('uuid') || null;
+      ctx.json(ctx.response, 200, buildPlayerSim(link, uuid || alias));
+      return true;
+    }
     if (ctx.route === '/veloren/harr/tasks' && ctx.request.method === 'GET') {
       spendRate(link, '*overview', { gapMs: 0, perHour: 7200 });
+      const url = new URL(ctx.request.url, 'http://127.0.0.1');
+      const alias = url.searchParams.get('alias') || 'anonymous';
       ctx.json(ctx.response, 200, {
-        tasks: tasksFor(link, 'anonymous'),
-        lines: tasksLines(link, 'anonymous'),
+        tasks: tasksFor(link, alias),
+        lines: tasksLines(link, alias),
+        player_sim: buildPlayerSim(link, alias),
       });
       return true;
     }
