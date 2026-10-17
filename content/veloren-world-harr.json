@@ -1688,7 +1688,7 @@
       "title": "Furnishing the home",
       "release_after_minutes": 65,
       "crew": 2,
-      "note": "Cottage 1, stage 4 of 4: Furnishing the home.",
+      "note": "Cottage 1, stage 4 of 4: Furnishing the home. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -1770,6 +1770,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -2468,7 +2504,7 @@
       "title": "Furnishing the home",
       "release_after_minutes": 115,
       "crew": 2,
-      "note": "Cottage 2, stage 4 of 4: Furnishing the home.",
+      "note": "Cottage 2, stage 4 of 4: Furnishing the home. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -2550,6 +2586,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -3098,7 +3170,7 @@
       "title": "Shelves, desks and reading lamps",
       "release_after_minutes": 140,
       "crew": 2,
-      "note": "The library annex, stage 4 of 4: Shelves, desks and reading lamps.",
+      "note": "The library annex, stage 4 of 4: Shelves, desks and reading lamps. 3 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -3207,6 +3279,33 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -3479,7 +3578,7 @@
       "title": "Furnishing the home",
       "release_after_minutes": 155,
       "crew": 2,
-      "note": "Cottage 3, stage 4 of 4: Furnishing the home.",
+      "note": "Cottage 3, stage 4 of 4: Furnishing the home. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -3561,6 +3660,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -4310,7 +4445,7 @@
       "title": "The crown, telescope optics and research folios",
       "release_after_minutes": 50,
       "crew": 2,
-      "note": "The research tower, stage 4 of 4: The crown, telescope optics and research folios.",
+      "note": "The research tower, stage 4 of 4: The crown, telescope optics and research folios. 12 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "fill",
@@ -4438,6 +4573,114 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            5,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            5,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            9
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -5440,7 +5683,7 @@
       "title": "Lamps, hanging gardens and the sign",
       "release_after_minutes": 110,
       "crew": 2,
-      "note": "The vertical farm, stage 4 of 4: Lamps, hanging gardens and the sign.",
+      "note": "The vertical farm, stage 4 of 4: Lamps, hanging gardens and the sign. 3 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -5486,6 +5729,33 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -6516,7 +6786,7 @@
       "title": "Roof, shelves, archive folios and reading lamps",
       "release_after_minutes": 170,
       "crew": 2,
-      "note": "The open archive, stage 3 of 3: Roof, shelves, archive folios and reading lamps.",
+      "note": "The open archive, stage 3 of 3: Roof, shelves, archive folios and reading lamps. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "fill",
@@ -6662,6 +6932,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            1,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -7314,7 +7620,7 @@
       "title": "Planters, benches and lamps",
       "release_after_minutes": 205,
       "crew": 2,
-      "note": "The glass garden, stage 4 of 4: Planters, benches and lamps.",
+      "note": "The glass garden, stage 4 of 4: Planters, benches and lamps. 3 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -7405,6 +7711,33 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            1,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -7734,7 +8067,7 @@
       "title": "Study desks, botanical planters and library shelves",
       "release_after_minutes": 40,
       "crew": 2,
-      "note": "The Harr schoolhouse, stage 4 of 4: Study desks, botanical planters and library shelves.",
+      "note": "The Harr schoolhouse, stage 4 of 4: Study desks, botanical planters and library shelves. 3 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -7852,6 +8185,33 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            1,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -9134,7 +9494,7 @@
       "title": "Living amenities and balcony lamp",
       "release_after_minutes": 105,
       "crew": 2,
-      "note": "Cottage 4, stage 4 of 4: Living amenities and balcony lamp.",
+      "note": "Cottage 4, stage 4 of 4: Living amenities and balcony lamp. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -9207,6 +9567,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -9517,7 +9913,7 @@
       "title": "Living amenities and balcony lamp",
       "release_after_minutes": 130,
       "crew": 2,
-      "note": "Cottage 5, stage 4 of 4: Living amenities and balcony lamp.",
+      "note": "Cottage 5, stage 4 of 4: Living amenities and balcony lamp. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -9590,6 +9986,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -9900,7 +10332,7 @@
       "title": "Living amenities and balcony lamp",
       "release_after_minutes": 185,
       "crew": 2,
-      "note": "Cottage 6, stage 4 of 4: Living amenities and balcony lamp.",
+      "note": "Cottage 6, stage 4 of 4: Living amenities and balcony lamp. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -9973,6 +10405,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -10264,7 +10732,7 @@
       "title": "Interior furnishings and garden box",
       "release_after_minutes": 145,
       "crew": 2,
-      "note": "Cottage 7, stage 4 of 4: Interior furnishings and garden box.",
+      "note": "Cottage 7, stage 4 of 4: Interior furnishings and garden box. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -10337,6 +10805,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -10628,7 +11132,7 @@
       "title": "Interior furnishings and garden box",
       "release_after_minutes": 175,
       "crew": 2,
-      "note": "Cottage 8, stage 4 of 4: Interior furnishings and garden box.",
+      "note": "Cottage 8, stage 4 of 4: Interior furnishings and garden box. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -10701,6 +11205,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -10992,7 +11532,7 @@
       "title": "Interior furnishings and garden box",
       "release_after_minutes": 195,
       "crew": 2,
-      "note": "Cottage 9, stage 4 of 4: Interior furnishings and garden box.",
+      "note": "Cottage 9, stage 4 of 4: Interior furnishings and garden box. 4 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -11065,6 +11605,42 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -11375,7 +11951,7 @@
       "title": "Welcoming hearth, guest beds, dining table and warm lanterns",
       "release_after_minutes": 85,
       "crew": 2,
-      "note": "The travellers' guesthouse, stage 4 of 4: Welcoming hearth, guest beds, dining table and warm lanterns.",
+      "note": "The travellers' guesthouse, stage 4 of 4: Welcoming hearth, guest beds, dining table and warm lanterns. 2 lit windows (a candle just inside the glass).",
       "ops": [
         {
           "op": "sprite",
@@ -11511,6 +12087,24 @@
             1
           ],
           "sprite": "Sign"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            4,
+            1
+          ],
+          "sprite": "Candle"
         }
       ]
     },
@@ -13722,6 +14316,4318 @@
             1
           ],
           "sprite": "Sign"
+        }
+      ]
+    },
+    {
+      "id": "lights-avenue-west-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -14,
+        "dy": -3
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The west avenue: 2 street lamps, about 9 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            -9,
+            3,
+            1
+          ],
+          "to": [
+            -9,
+            3,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -9,
+            3
+          ],
+          "to": [
+            -9,
+            3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            -9,
+            3,
+            0
+          ],
+          "to": [
+            -9,
+            3,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -9,
+            3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-avenue-west-2",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -26,
+        "dy": -18
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The west avenue: 1 street lamp, about 9 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-north-road-1",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": 8,
+        "dy": -5
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The north road: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            -4,
+            10,
+            1
+          ],
+          "to": [
+            -4,
+            10,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -4,
+            10
+          ],
+          "to": [
+            -4,
+            10
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            -4,
+            10,
+            0
+          ],
+          "to": [
+            -4,
+            10,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -4,
+            10,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-north-road-2",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": -10,
+        "dy": 3
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The north road: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            -2,
+            10,
+            1
+          ],
+          "to": [
+            -2,
+            10,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -2,
+            10
+          ],
+          "to": [
+            -2,
+            10
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            -2,
+            10,
+            0
+          ],
+          "to": [
+            -2,
+            10,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -2,
+            10,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-north-road-3",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": -16,
+        "dy": 5
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The north road: 1 street lamp, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-south-road-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 6,
+        "dy": -13
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The south road: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            2,
+            -10,
+            1
+          ],
+          "to": [
+            2,
+            -10,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            2,
+            -10
+          ],
+          "to": [
+            2,
+            -10
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            -10,
+            0
+          ],
+          "to": [
+            2,
+            -10,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            -10,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-south-road-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 4,
+        "dy": -33
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The south road: 1 street lamp, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-west-lane-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -32,
+        "dy": -26
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The cottage lane: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            4,
+            10,
+            1
+          ],
+          "to": [
+            4,
+            10,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            4,
+            10
+          ],
+          "to": [
+            4,
+            10
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            10,
+            0
+          ],
+          "to": [
+            4,
+            10,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            10,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-west-lane-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -30,
+        "dy": -6
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The cottage lane: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            2,
+            10,
+            1
+          ],
+          "to": [
+            2,
+            10,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            2,
+            10
+          ],
+          "to": [
+            2,
+            10
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            10,
+            0
+          ],
+          "to": [
+            2,
+            10,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            10,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-east-lane-1",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": 9,
+        "dy": -15
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The east cottage lane: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            10,
+            -2,
+            1
+          ],
+          "to": [
+            10,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            10,
+            -2
+          ],
+          "to": [
+            10,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            -2,
+            0
+          ],
+          "to": [
+            10,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-east-lane-2",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": 29,
+        "dy": -15
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The east cottage lane: 1 street lamp, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-field-road-1",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 3,
+        "dy": 6
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The field road: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            2,
+            10,
+            1
+          ],
+          "to": [
+            2,
+            10,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            2,
+            10
+          ],
+          "to": [
+            2,
+            10
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            2,
+            10,
+            0
+          ],
+          "to": [
+            2,
+            10,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            10,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-field-road-2",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": 13,
+        "dy": 10
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The field road: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            10,
+            -2,
+            1
+          ],
+          "to": [
+            10,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            10,
+            -2
+          ],
+          "to": [
+            10,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            10,
+            -2,
+            0
+          ],
+          "to": [
+            10,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            10,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-workshop-lane-1",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -1,
+        "dy": 0
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The workshop lane: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            -3,
+            12,
+            1
+          ],
+          "to": [
+            -3,
+            12,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -3,
+            12
+          ],
+          "to": [
+            -3,
+            12
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            -3,
+            12,
+            0
+          ],
+          "to": [
+            -3,
+            12,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -3,
+            12,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-workshop-lane-2",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": -18,
+        "dy": 8
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The workshop lane: 1 street lamp, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-transit-lane-1",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -10,
+        "dy": -6
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The transit lane: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            -10,
+            -2,
+            1
+          ],
+          "to": [
+            -10,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -10,
+            -2
+          ],
+          "to": [
+            -10,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            -10,
+            -2,
+            0
+          ],
+          "to": [
+            -10,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -10,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-library-lane-1",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 8,
+        "dy": -9
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The library lane: 1 street lamp, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-solar-lane-1",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": 8,
+        "dy": -21
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The solar lane: 2 street lamps, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "clear",
+          "from": [
+            -1,
+            -9,
+            1
+          ],
+          "to": [
+            -1,
+            -9,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            -1,
+            -9
+          ],
+          "to": [
+            -1,
+            -9
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            -1,
+            -9,
+            0
+          ],
+          "to": [
+            -1,
+            -9,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            -1,
+            -9,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-solar-lane-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 23,
+        "dy": -34
+      },
+      "ground_at": [
+        0,
+        0
+      ],
+      "note": "The solar lane: 1 street lamp, about 10 blocks apart, so the road is lit from pool to pool all night.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            0,
+            0,
+            1
+          ],
+          "to": [
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            0,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-cottage-1",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 2
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for cottage-1: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-observatory",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -4,
+        "dy": -18
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "note": "Night lighting for observatory: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            8,
+            -2,
+            1
+          ],
+          "to": [
+            8,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            8,
+            -2
+          ],
+          "to": [
+            8,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            8,
+            -2,
+            0
+          ],
+          "to": [
+            8,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-cottage-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -26,
+        "dy": 14
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for cottage-2: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-field-pavilion",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": 14,
+        "dy": 0
+      },
+      "ground_at": [
+        4,
+        3
+      ],
+      "note": "Night lighting for field-pavilion: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            4,
+            -2,
+            1
+          ],
+          "to": [
+            4,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            4,
+            -2
+          ],
+          "to": [
+            4,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            -2,
+            0
+          ],
+          "to": [
+            4,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-library-annex",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 10,
+        "dy": 0
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for library-annex: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            2,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-cottage-3",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -12,
+        "dy": 22
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for cottage-3: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-research-tower",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 34,
+        "dy": 18
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "note": "Night lighting for research-tower: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            3,
+            -2,
+            1
+          ],
+          "to": [
+            3,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            3,
+            -2
+          ],
+          "to": [
+            3,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            -2,
+            0
+          ],
+          "to": [
+            3,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            5,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            5,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            5,
+            9
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            9
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-solar-array",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 24,
+        "dy": -30
+      },
+      "ground_at": [
+        5,
+        4
+      ],
+      "note": "Night lighting for solar-array: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            6,
+            -2,
+            1
+          ],
+          "to": [
+            6,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            6,
+            -2
+          ],
+          "to": [
+            6,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            -2,
+            0
+          ],
+          "to": [
+            6,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-vertical-farm",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 1,
+        "dx": -30,
+        "dy": 8
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "note": "Night lighting for vertical-farm: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-light-fountain",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -6,
+        "dy": -28
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "note": "Night lighting for light-fountain: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            4,
+            -2,
+            1
+          ],
+          "to": [
+            4,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            4,
+            -2
+          ],
+          "to": [
+            4,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            -2,
+            0
+          ],
+          "to": [
+            4,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-transit-hub",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -36,
+        "dy": -10
+      },
+      "ground_at": [
+        7,
+        4
+      ],
+      "note": "Night lighting for transit-hub: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            7,
+            -2,
+            1
+          ],
+          "to": [
+            7,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            7,
+            -2
+          ],
+          "to": [
+            7,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            7,
+            -2,
+            0
+          ],
+          "to": [
+            7,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-data-archive",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -8,
+        "dy": 22
+      },
+      "ground_at": [
+        6,
+        3
+      ],
+      "note": "Night lighting for data-archive: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            11,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-glass-garden",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": 20,
+        "dy": -34
+      },
+      "ground_at": [
+        6,
+        6
+      ],
+      "note": "Night lighting for glass-garden: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            8,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-schoolhouse",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -20,
+        "dy": 18
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "note": "Night lighting for schoolhouse: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            4,
+            -2,
+            1
+          ],
+          "to": [
+            4,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            4,
+            -2
+          ],
+          "to": [
+            4,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            -2,
+            0
+          ],
+          "to": [
+            4,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-seminar-pavilion",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": -34,
+        "dy": 20
+      },
+      "ground_at": [
+        4,
+        4
+      ],
+      "note": "Night lighting for seminar-pavilion: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            4,
+            -2,
+            1
+          ],
+          "to": [
+            4,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            4,
+            -2
+          ],
+          "to": [
+            4,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            -2,
+            0
+          ],
+          "to": [
+            4,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-workshop-hall",
+      "anchor": {
+        "plot": "Workshop",
+        "nth": 0,
+        "dx": 14,
+        "dy": -6
+      },
+      "ground_at": [
+        5,
+        0
+      ],
+      "note": "Night lighting for workshop-hall: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            9,
+            -2,
+            1
+          ],
+          "to": [
+            9,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            9,
+            -2
+          ],
+          "to": [
+            9,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            9,
+            -2,
+            0
+          ],
+          "to": [
+            9,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            9,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-cottage-4",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -8
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for cottage-4: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-cottage-5",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -16
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for cottage-5: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-cottage-6",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -38,
+        "dy": -24
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for cottage-6: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            3,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-cottage-7",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 22,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for cottage-7: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            3,
+            -2,
+            1
+          ],
+          "to": [
+            3,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            3,
+            -2
+          ],
+          "to": [
+            3,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            -2,
+            0
+          ],
+          "to": [
+            3,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-cottage-8",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 30,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for cottage-8: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            3,
+            -2,
+            1
+          ],
+          "to": [
+            3,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            3,
+            -2
+          ],
+          "to": [
+            3,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            -2,
+            0
+          ],
+          "to": [
+            3,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-cottage-9",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 38,
+        "dy": -18
+      },
+      "ground_at": [
+        3,
+        0
+      ],
+      "note": "Night lighting for cottage-9: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            3,
+            -2,
+            1
+          ],
+          "to": [
+            3,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            3,
+            -2
+          ],
+          "to": [
+            3,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            -2,
+            0
+          ],
+          "to": [
+            3,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            2,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            1,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            2,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-guesthouse",
+      "anchor": {
+        "plot": "House",
+        "nth": 0,
+        "dx": -10,
+        "dy": 14
+      },
+      "ground_at": [
+        4,
+        0
+      ],
+      "note": "Night lighting for guesthouse: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            4,
+            -3,
+            1
+          ],
+          "to": [
+            4,
+            -3,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            4,
+            -3
+          ],
+          "to": [
+            4,
+            -3
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            4,
+            -3,
+            0
+          ],
+          "to": [
+            4,
+            -3,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            4,
+            -3,
+            1
+          ],
+          "sprite": "StreetLamp"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            1,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        },
+        {
+          "op": "sprite",
+          "at": [
+            7,
+            4,
+            1
+          ],
+          "sprite": "Candle"
+        }
+      ]
+    },
+    {
+      "id": "lights-amphitheatre",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -20,
+        "dy": -32
+      },
+      "ground_at": [
+        5,
+        4
+      ],
+      "note": "Night lighting for amphitheatre: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            5,
+            -2,
+            1
+          ],
+          "to": [
+            5,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            5,
+            -2
+          ],
+          "to": [
+            5,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            -2,
+            0
+          ],
+          "to": [
+            5,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-festival-lawn",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -20,
+        "dy": -44
+      },
+      "ground_at": [
+        6,
+        4
+      ],
+      "note": "Night lighting for festival-lawn: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            6,
+            -2,
+            1
+          ],
+          "to": [
+            6,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            6,
+            -2
+          ],
+          "to": [
+            6,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            -2,
+            0
+          ],
+          "to": [
+            6,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-water-tower",
+      "anchor": {
+        "plot": "FarmField",
+        "nth": 0,
+        "dx": -10,
+        "dy": 10
+      },
+      "ground_at": [
+        3,
+        3
+      ],
+      "note": "Night lighting for water-tower: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            3,
+            -2,
+            1
+          ],
+          "to": [
+            3,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            3,
+            -2
+          ],
+          "to": [
+            3,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            -2,
+            0
+          ],
+          "to": [
+            3,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-solar-field-2",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 22,
+        "dy": -42
+      },
+      "ground_at": [
+        6,
+        3
+      ],
+      "note": "Night lighting for solar-field-2: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            6,
+            -2,
+            1
+          ],
+          "to": [
+            6,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            6,
+            -2
+          ],
+          "to": [
+            6,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            6,
+            -2,
+            0
+          ],
+          "to": [
+            6,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            6,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-wind-array",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": 4,
+        "dy": -44
+      },
+      "ground_at": [
+        5,
+        2
+      ],
+      "note": "Night lighting for wind-array: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            5,
+            -2,
+            1
+          ],
+          "to": [
+            5,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            5,
+            -2
+          ],
+          "to": [
+            5,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            5,
+            -2,
+            0
+          ],
+          "to": [
+            5,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            5,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
+        }
+      ]
+    },
+    {
+      "id": "lights-tram-halt",
+      "anchor": {
+        "plot": "Plaza",
+        "nth": 0,
+        "dx": -3,
+        "dy": -6
+      },
+      "ground_at": [
+        3,
+        2
+      ],
+      "note": "Night lighting for tram-halt: a street lamp at the door, lit from the first evening so the way to the site is never dark.",
+      "ops": [
+        {
+          "op": "clear",
+          "from": [
+            3,
+            -2,
+            1
+          ],
+          "to": [
+            3,
+            -2,
+            2
+          ]
+        },
+        {
+          "op": "foundation",
+          "from": [
+            3,
+            -2
+          ],
+          "to": [
+            3,
+            -2
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ],
+          "depth": 2
+        },
+        {
+          "op": "fill",
+          "from": [
+            3,
+            -2,
+            0
+          ],
+          "to": [
+            3,
+            -2,
+            0
+          ],
+          "kind": "Rock",
+          "rgb": [
+            205,
+            220,
+            236
+          ]
+        },
+        {
+          "op": "sprite",
+          "at": [
+            3,
+            -2,
+            1
+          ],
+          "sprite": "StreetLamp"
         }
       ]
     }
