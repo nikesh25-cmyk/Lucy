@@ -28,6 +28,26 @@ SITES = [  # id, label, name, plot, nth, dx, dy, radius
     ('site-archive', 'Archive Site', 'the open archive site', 'Workshop', 0, -2, 25, 10),
     ('site-skywalk', 'Sky Walk Site', 'the sky walk site', 'Plaza', 0, 20, 31, 13),
     ('site-garden', 'Glass Garden Site', 'the glass garden site', 'House', 0, 26, -28, 11),
+    # the learning quarter
+    ('site-schoolhouse', 'Schoolhouse Site', 'the schoolhouse site', 'Workshop', 0, -20, 18, 9),
+    ('site-seminar', 'Seminar Pavilion Site', 'the seminar pavilion site', 'Workshop', 0, -34, 20, 9),
+    # the making quarter
+    ('site-workshop', 'Workshop Hall Site', 'the makers workshop hall site', 'Workshop', 0, 14, -6, 9),
+    ('site-recycling', 'Recycling Garden Site', 'the recycling garden site', 'Workshop', 0, 14, 4, 9),
+    # the living quarter
+    ('site-cottages-north', 'North Cottage Row', 'the north cottage row', 'Plaza', 0, -38, -16, 12),
+    ('site-cottages-east', 'East Cottage Row', 'the east cottage row', 'Plaza', 0, 30, -18, 12),
+    ('site-guesthouse', 'Guesthouse Site', 'the travellers guesthouse site', 'House', 0, -10, 14, 9),
+    # the gathering quarter
+    ('site-amphitheatre', 'Amphitheatre Site', 'the hillside amphitheatre site', 'Plaza', 0, -20, -32, 10),
+    ('site-festival-lawn', 'Festival Lawn Site', 'the festival lawn site', 'Plaza', 0, -20, -44, 11),
+    # the water and energy quarter
+    ('site-water-tower', 'Water Tower Site', 'the water tower site', 'FarmField', 0, -10, 10, 9),
+    ('site-solar-2', 'Second Solar Field', 'the southern solar field site', 'Plaza', 0, 22, -42, 10),
+    ('site-wind-array', 'Wind Array Site', 'the quiet wind array site', 'Plaza', 0, 4, -44, 10),
+    # the transport quarter
+    ('site-bridge', 'Canal Bridge Site', 'the canal stone bridge site', 'Plaza', 0, -8, 10, 8),
+    ('site-tram-halt', 'Tram Halt Site', 'the valley tram halt site', 'Plaza', 0, -3, -6, 8),
 ]
 
 # Every place is an offset (east, north) from the plaza's centre; the hint is computed from it, so it is always true.
@@ -55,6 +75,69 @@ DISCOVERIES = [  # id, name, dx, dy, finding
 ]
 
 
+DISCOVERY_NOTES = {
+    'meadow-flowers': [
+        'Soil core sampling reveals high calcium content near the yellow clover zone, explaining why bumblebees cluster there at dawn.',
+        'Purple vetch along the western fringe fixes nitrogen, gradually enriching the subsoil for surrounding grasses.',
+        'Flowering cycles shift precisely with daytime thermal currents, petals folding forty minutes before evening rainfall.',
+        'Seed pods disperse by wind vortexes formed by the ridge contour, scattering seeds thirty metres down-slope.',
+    ],
+    'boundary-stone': [
+        'Petrographic analysis identifies the rock as metamorphic granodiorite, deposited by prehistoric glacial melt.',
+        'Deep horizontal chisel grooves show consistent weathering patina, indicating placement at least three centuries ago.',
+        'The northern lichen crust consists of Xanthoria parietina, whose growth rate measures roughly two millimetres per season.',
+        'Local magnetic deviation near the stone is completely neutral, making it an ideal reference point for triangulation.',
+    ],
+    'hidden-spring': [
+        'Water temperature stays at a uniform seven degrees Celsius year-round, emerging through a pressurized limestone fissure.',
+        'Mineral filtration through alluvial gravel layers leaves zero detectable turbidity or iron precipitate.',
+        'Subterranean acoustic probes register an underground chamber roughly twelve metres below the outflow pool.',
+        'Freshwater amphipods inhabiting the dark spring pool indicate exceptional dissolved oxygen saturation.',
+    ],
+    'high-view': [
+        'Panoramic line-of-sight analysis confirms visual contact with both the eastern pass and the southern forest belt.',
+        'Wind speed at the bluff crest averages four metres per second stronger than at the plaza floor.',
+        'Thermal up-drafts along the south-facing rock slope provide effortless lift for soaring raptors every afternoon.',
+        'Bedrock fractures here show stable joint patterns, capable of bearing foundations for an extended survey outpost.',
+    ],
+    'bee-hollow': [
+        'Internal hive temperature is regulated at thirty-four degrees through cooperative wing-fanning at the hollow entrance.',
+        'Pollen samples brought into the colony show foraging trips extending up to two kilometres into the clover fields.',
+        'Propolis resin harvested from poplar buds lines the hollow interior, preventing fungal rot in the aged heartwood.',
+        'The colony has wintered safely in this hollow for nine recorded seasons without requiring artificial feeding.',
+    ],
+    'lichen-wall': [
+        'Concentric growth rings on the central thallus suggest continuous symbiotic growth spanning over eighty years.',
+        'Spectroscopic readings show zero sulphur dioxide discoloration, serving as a reliable living barometer of air purity.',
+        'Moisture absorption happens directly through atmospheric condensation without requiring surface runoff.',
+        'Microscopic tardigrades inhabit the damp cushion layer, entering cryptobiosis during dry summer weeks.',
+    ],
+    'birdsong-grove': [
+        'Acoustic frequency analysis reveals the chaffinch chorus peaks at four kilohertz, cutting cleanly through rustling leaves.',
+        'Deciduous canopy layering provides distinct vertical nesting tiers for seven non-competing songbird species.',
+        'Dawn chorus commencement tracks precisely with nautical twilight rather than local sunrise.',
+        'Seed-caching behaviour by nuthatches in oak bark fissures directly contributes to natural sapling regeneration.',
+    ],
+    'clay-bank': [
+        'Sedimentary stratification displays alternate layers of fine kaolinite clay and water-sorted quartz sand.',
+        'Plasticity testing proves the material can be thrown on a wheel without cracking at twenty percent moisture content.',
+        'High iron oxide content imparts a warm terracotta color upon kiln firing at nine hundred degrees.',
+        'Erosion along the excavated cut stabilizes naturally within three weeks when stepped at a forty-degree incline.',
+    ],
+    'star-meadow': [
+        'Atmospheric scintillation measurements show minimal thermal turbulence, yielding Bortle class one sky clarity.',
+        'Surrounding woodland ridges create a natural light basin, shielding the meadow from peripheral ground reflections.',
+        'Nocturnal dew formation peaks before midnight, after which cool mountain breezes keep telescope optics dry.',
+        'Ground radiation cools rapidly after sunset due to low soil moisture and porous gravel underlayment.',
+    ],
+    'wind-ridge': [
+        'Anemometer logs show a continuous laminar airflow originating from the valley pressure gradient.',
+        'Wind vector consistency exceeds eighty percent from the south-southwest between midday and twilight.',
+        'Dwarf juniper shrubs along the crest exhibit flag-form growth, permanently shaped by prevailing air currents.',
+        'Aerodynamic pressure differentials across the saddle create an optimal funnel for small wind turbine placement.',
+    ],
+}
+
 def compass(dx, dy):
     names = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east']
     return names[int(((math.degrees(math.atan2(dy, dx)) + 22.5) % 360) // 45)]
@@ -71,7 +154,7 @@ for i, (id_, name, dx, dy, finding) in enumerate(DISCOVERIES):
         assert math.hypot(dx - other[2], dy - other[3]) >= 2 * RADIUS + 2, f'{id_} overlaps {other[0]}'
     hint = f'about {round(math.hypot(dx, dy))} steps {compass(dx, dy)} of the plaza'
     extra.append({'id': lid, 'label': name, 'name': name, 'site': 'Harr', 'plot': 'Plaza', 'nth': 0, 'dx': dx, 'dy': dy, 'radius': RADIUS, 'discovery': True})
-    cat.append({'id': id_, 'landmark_id': lid, 'name': name, 'hint': hint, 'finding': finding})
+    cat.append({'id': id_, 'landmark_id': lid, 'name': name, 'hint': hint, 'finding': finding, 'notes': DISCOVERY_NOTES.get(id_, [])})
 (C / 'veloren-landmarks-extra.json').write_text(json.dumps({'format': 'nemo-landmarks-extra-v1', 'landmarks': extra}, indent=2) + '\n')
 (C / 'veloren-discoveries.json').write_text(json.dumps({'format': 'nemo-discoveries-v1', 'discoveries': cat}, indent=2) + '\n')
 
@@ -82,45 +165,17 @@ lm['landmarks'] = [l for l in lm['landmarks'] if not l['id'].startswith('disc-')
 v = json.loads((C / 'veloren-villagers.json').read_text())
 # Cooperation: every work site gets a crew of two or more at some hour of the day, so the village really builds
 # together, one site at a time. Builders rotate; makers lend a hand at the pavilion; scholars chart the sky at dusk.
-BUILDERS = {  # id -> (dawn, day, dusk)
-    'lw-ignatius': ('Market Hall Site', 'Cottage Row', 'Orchard Gate'),
-    'lw-fenwick': ('Market Hall Site', 'Cottage Row', 'Orchard Gate'),
-    'lw-casimir': ('Market Hall Site', 'Cottage Row', 'Orchard Gate'),
-    'lw-hollis': ('Well Site', 'Annex Site', 'Observatory Site'),
-    'lw-pelham': ('Well Site', 'Annex Site', 'Observatory Site'),
-}
-seen = {}
-for r in v['residents']:
+site_names = [s[1] for s in SITES]
+dawn_sites = site_names[0:10]
+day_sites = site_names[10:20]
+dusk_sites = site_names[20:29]
+
+night_places = ['Meeting Hall', 'Cottage Row', 'Library', 'Guesthouse Site']
+for i, r in enumerate(v['residents']):
     d = r['destinations']
-    k = seen.get(r['role'], 0); seen[r['role']] = k + 1
-    if r['id'] in BUILDERS:
-        for phase, label in zip(('dawn', 'day', 'dusk'), BUILDERS[r['id']]):
-            d[phase]['label'] = label
-    elif r['role'] == 'maker':
-        d['day']['label'] = 'Pavilion Site'
-    elif r['role'] == 'scholar':
-        d['dawn']['label'] = 'Research Tower Site'
-        d['dusk']['label'] = 'Observatory Site'
-    elif r['role'] == 'courier':
-        d['day']['label'] = 'Sky Walk Site'
-    elif r['role'] == 'keeper':
-        d['dawn']['label'] = 'Transit Hub Site'
-        d['day']['label'] = 'Archive Site'
-        d['dusk']['label'] = 'Fountain Site'
-    elif r['role'] == 'farmer':
-        d['dawn']['label'] = 'Vertical Farm Site' if k < 3 else 'Solar Array Site'
-        d['dusk']['label'] = 'Glass Garden Site'
-NIGHT_BUILDERS = {'lw-ignatius': 'Market Hall Site', 'lw-fenwick': 'Market Hall Site', 'lw-casimir': 'Well Site', 'lw-hollis': 'Well Site', 'lw-pelham': 'Cottage Row'}
-# Night is long in Harr (the village day follows NemoWorld's clock, where night is about half of every cycle), so
-# the village works a lamp-lit night shift: everyone with a work site stays at their day or dawn site rather than
-# gathering idle, otherwise the public works would stand still half the time.
-for r in v['residents']:
-    d = r['destinations']
-    if r['role'] in ('builder', 'maker', 'courier', 'keeper', 'scholar'):
-        d['night']['label'] = d['day']['label'] if r['role'] != 'scholar' else d['dawn']['label']
-    elif r['role'] == 'farmer':
-        d['night']['label'] = d['dawn']['label']
-    if r['id'] in NIGHT_BUILDERS:
-        d['night']['label'] = NIGHT_BUILDERS[r['id']]
+    d['dawn']['label'] = dawn_sites[i // 2] if i < 20 else dawn_sites[(i - 20) % len(dawn_sites)]
+    d['day']['label'] = day_sites[i // 2] if i < 20 else day_sites[(i - 20) % len(day_sites)]
+    d['dusk']['label'] = dusk_sites[i // 2] if i < 18 else dusk_sites[(i - 18) % len(dusk_sites)]
+    d['night']['label'] = night_places[i % len(night_places)]
 (C / 'veloren-villagers.json').write_text(json.dumps(v, indent=2) + '\n')
 print(len(SITES), 'sites,', len(cat), 'discoveries')

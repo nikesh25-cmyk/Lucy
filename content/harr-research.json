@@ -1,17 +1,361 @@
 {
   "format": "harr-research-v1",
   "note": "Harr's research queue. The village earns INSIGHT from recorded facts (places found, stages built, projects finished, events held). Technologies are learned in this order as insight accumulates. Effects are small, scripted and listed here; they change only the pantry today. Unlocking a technology never gives coins, items or power over anyone.",
-  "insight": { "per_find": 2, "per_stage": 1, "per_project": 3, "per_event": 1 },
+  "insight": {
+    "per_find": 2,
+    "per_stage": 1,
+    "per_project": 3,
+    "per_event": 1
+  },
   "techs": [
-    { "id": "field-notes", "name": "Field notes", "cost": 6, "needs": [], "text": "Scholars sketch and label every find, so each page in the Library is richer.", "effects": { "insight_per_find": 1 } },
-    { "id": "soil-science", "name": "Soil science", "cost": 12, "needs": ["field-notes"], "text": "Farmers learn which soils suit which crops.", "effects": { "pantry_rate": 1.25 } },
-    { "id": "clean-water", "name": "Clean water works", "cost": 20, "needs": [], "text": "The well is lined and the spring is tapped; the pantry kitchen has water at hand.", "effects": { "pantry_cap": 6 } },
-    { "id": "solar-lanterns", "name": "Solar lanterns", "cost": 30, "needs": [], "text": "Lamps charge by day and light the paths all night. Next stop: a lit, walkable village.", "effects": {} },
-    { "id": "composting", "name": "Composting", "cost": 45, "needs": ["soil-science"], "text": "Nothing is wasted; scraps become rich soil.", "effects": { "pantry_rate": 1.25 } },
-    { "id": "glasswork", "name": "Glasswork", "cost": 60, "needs": ["solar-lanterns"], "text": "Clear panes make bright, warm greenhouses and observatory domes possible.", "effects": {} },
-    { "id": "vertical-farming", "name": "Vertical farming", "cost": 80, "needs": ["glasswork", "composting"], "text": "Crops grown in stacked light-filled rooms feed more people from less land.", "effects": { "pantry_rate": 1.5, "pantry_cap": 12 } },
-    { "id": "valley-mapping", "name": "Valley mapping", "cost": 100, "needs": ["field-notes"], "text": "Every discovered place is drawn on a shared map that anyone can read.", "effects": {} },
-    { "id": "open-archive", "name": "The open archive", "cost": 130, "needs": ["valley-mapping"], "text": "All findings are kept in a public archive that other villages can learn from.", "effects": { "insight_per_find": 1 } },
-    { "id": "sky-transit", "name": "Sky transit", "cost": 170, "needs": ["glasswork", "open-archive"], "text": "Quiet light-rail and landing pads join Harr to the wider world.", "effects": {} }
+    {
+      "id": "field-notes",
+      "name": "Field notes",
+      "cost": 6,
+      "needs": [],
+      "text": "Scholars sketch and label every find, so each page in the Library is richer.",
+      "effects": {
+        "insight_per_find": 1
+      }
+    },
+    {
+      "id": "soil-science",
+      "name": "Soil science",
+      "cost": 12,
+      "needs": [
+        "field-notes"
+      ],
+      "text": "Farmers learn which soils suit which crops.",
+      "effects": {
+        "pantry_rate": 1.25
+      }
+    },
+    {
+      "id": "clean-water",
+      "name": "Clean water works",
+      "cost": 20,
+      "needs": [],
+      "text": "The well is lined and the spring is tapped; the pantry kitchen has water at hand.",
+      "effects": {
+        "pantry_cap": 6
+      }
+    },
+    {
+      "id": "solar-lanterns",
+      "name": "Solar lanterns",
+      "cost": 30,
+      "needs": [],
+      "text": "Lamps charge by day and light the paths all night. Next stop: a lit, walkable village.",
+      "effects": {}
+    },
+    {
+      "id": "composting",
+      "name": "Composting",
+      "cost": 45,
+      "needs": [
+        "soil-science"
+      ],
+      "text": "Nothing is wasted; scraps become rich soil.",
+      "effects": {
+        "pantry_rate": 1.25
+      }
+    },
+    {
+      "id": "glasswork",
+      "name": "Glasswork",
+      "cost": 60,
+      "needs": [
+        "solar-lanterns"
+      ],
+      "text": "Clear panes make bright, warm greenhouses and observatory domes possible.",
+      "effects": {}
+    },
+    {
+      "id": "vertical-farming",
+      "name": "Vertical farming",
+      "cost": 80,
+      "needs": [
+        "glasswork",
+        "composting"
+      ],
+      "text": "Crops grown in stacked light-filled rooms feed more people from less land.",
+      "effects": {
+        "pantry_rate": 1.5,
+        "pantry_cap": 12
+      }
+    },
+    {
+      "id": "valley-mapping",
+      "name": "Valley mapping",
+      "cost": 100,
+      "needs": [
+        "field-notes"
+      ],
+      "text": "Every discovered place is drawn on a shared map that anyone can read.",
+      "effects": {}
+    },
+    {
+      "id": "open-archive",
+      "name": "The open archive",
+      "cost": 130,
+      "needs": [
+        "valley-mapping"
+      ],
+      "text": "All findings are kept in a public archive that other villages can learn from.",
+      "effects": {
+        "insight_per_find": 1
+      }
+    },
+    {
+      "id": "sky-transit",
+      "name": "Sky transit",
+      "cost": 170,
+      "needs": [
+        "glasswork",
+        "open-archive"
+      ],
+      "text": "Quiet light-rail and landing pads join Harr to the wider world.",
+      "effects": {}
+    },
+    {
+      "id": "rainwater-cisterns",
+      "name": "Rainwater cisterns",
+      "cost": 210,
+      "needs": [
+        "clean-water"
+      ],
+      "text": "Deep tiled basins capture hill runoff, keeping kitchen sinks flowing even through dry spells.",
+      "effects": {
+        "pantry_cap": 8
+      }
+    },
+    {
+      "id": "herbal-remedies",
+      "name": "Herbal cultivation",
+      "cost": 250,
+      "needs": [
+        "field-notes",
+        "soil-science"
+      ],
+      "text": "Terraced chamomile and mint beds yield soothing teas that lift spirits after long building days.",
+      "effects": {
+        "insight_per_find": 1
+      }
+    },
+    {
+      "id": "timber-joinery",
+      "name": "Timber joinery",
+      "cost": 300,
+      "needs": [
+        "clean-water"
+      ],
+      "text": "Interlocking mortise joints let carpenters frame expansive halls without relying on scarce metal bolts.",
+      "effects": {}
+    },
+    {
+      "id": "natural-dyes",
+      "name": "Natural dye vats",
+      "cost": 360,
+      "needs": [
+        "herbal-remedies"
+      ],
+      "text": "Marigold and madder extracts give festival banners and cottage awnings warm, cheerful hues.",
+      "effects": {}
+    },
+    {
+      "id": "cold-storage",
+      "name": "Root cellar vaults",
+      "cost": 420,
+      "needs": [
+        "clean-water",
+        "composting"
+      ],
+      "text": "Subterranean stone pantries keep winter squashes and cheeses fresh for months without spoilage.",
+      "effects": {
+        "pantry_cap": 14
+      }
+    },
+    {
+      "id": "solar-paving",
+      "name": "Solar ground paving",
+      "cost": 490,
+      "needs": [
+        "solar-lanterns",
+        "glasswork"
+      ],
+      "text": "Walkway tiles absorb midday heat and radiate a gentle guiding luminescence through dark evenings.",
+      "effects": {}
+    },
+    {
+      "id": "aquaponics",
+      "name": "Aquaponic basins",
+      "cost": 570,
+      "needs": [
+        "vertical-farming",
+        "rainwater-cisterns"
+      ],
+      "text": "Closed-loop water tanks nurture fresh greens and pond fish together with zero chemical runoff.",
+      "effects": {
+        "pantry_rate": 1.3
+      }
+    },
+    {
+      "id": "acoustic-shells",
+      "name": "Acoustic amphitheatre",
+      "cost": 650,
+      "needs": [
+        "timber-joinery"
+      ],
+      "text": "Curved cedar sound reflectors carry storytellers quietest whispers to the very top terrace.",
+      "effects": {}
+    },
+    {
+      "id": "mycology-guild",
+      "name": "Mushroom cultivation",
+      "cost": 740,
+      "needs": [
+        "cold-storage"
+      ],
+      "text": "Fanned oak log racks in shaded caverns produce rich edible fungi that replenish pantry shelves.",
+      "effects": {
+        "pantry_rate": 1.25,
+        "pantry_cap": 10
+      }
+    },
+    {
+      "id": "wind-turbines",
+      "name": "Quiet wind array",
+      "cost": 840,
+      "needs": [
+        "solar-paving"
+      ],
+      "text": "Vertical-axis spiral vanes spin silently on the ridge, providing steady power during overcast days.",
+      "effects": {}
+    },
+    {
+      "id": "ecological-surveys",
+      "name": "Ecological surveys",
+      "cost": 950,
+      "needs": [
+        "valley-mapping",
+        "herbal-remedies"
+      ],
+      "text": "Systematic habitat notes record migratory bird flocks and pollinator pathways across every meadow.",
+      "effects": {
+        "insight_per_find": 1
+      }
+    },
+    {
+      "id": "ceramic-kilns",
+      "name": "Continuous ceramic kilns",
+      "cost": 1070,
+      "needs": [
+        "glasswork",
+        "natural-dyes"
+      ],
+      "text": "Even heat distribution produces durable glazed roof tiles and food-safe pantry containers.",
+      "effects": {}
+    },
+    {
+      "id": "seed-sanctuary",
+      "name": "Heirloom seed sanctuary",
+      "cost": 1200,
+      "needs": [
+        "aquaponics",
+        "cold-storage"
+      ],
+      "text": "Carefully catalogued grain and vegetable varieties safeguard regional food diversity for future decades.",
+      "effects": {
+        "pantry_rate": 1.2,
+        "pantry_cap": 12
+      }
+    },
+    {
+      "id": "sky-walkways",
+      "name": "Elevated skywalk network",
+      "cost": 1350,
+      "needs": [
+        "sky-transit",
+        "timber-joinery"
+      ],
+      "text": "Canopy-level timber boardwalks let residents stroll between quarters while preserving ground flora.",
+      "effects": {}
+    },
+    {
+      "id": "optical-refinement",
+      "name": "Optical lens grinding",
+      "cost": 1520,
+      "needs": [
+        "glasswork",
+        "open-archive"
+      ],
+      "text": "Precision ground crystal lenses reveal fine cellular structures in mosses and distant lunar craters.",
+      "effects": {
+        "insight_per_find": 1
+      }
+    },
+    {
+      "id": "spectroscopy",
+      "name": "Stellar spectroscopy",
+      "cost": 1710,
+      "needs": [
+        "optical-refinement"
+      ],
+      "text": "Prism split light patterns reveal mineral compositions of distant stars from the observatory dome.",
+      "effects": {}
+    },
+    {
+      "id": "biopolymer-weaving",
+      "name": "Plant fibre biopolymers",
+      "cost": 1920,
+      "needs": [
+        "ceramic-kilns",
+        "mycology-guild"
+      ],
+      "text": "Flexible woven composites made from hemp and mycelium replace brittle metal fasteners across construction.",
+      "effects": {}
+    },
+    {
+      "id": "geothermal-loops",
+      "name": "Geothermal heating loops",
+      "cost": 2150,
+      "needs": [
+        "wind-turbines",
+        "rainwater-cisterns"
+      ],
+      "text": "Circulating groundwater warms greenhouse soil in winter and cools dwelling floors through midsummer.",
+      "effects": {
+        "pantry_rate": 1.25
+      }
+    },
+    {
+      "id": "universal-lexicon",
+      "name": "The universal lexicon",
+      "cost": 2400,
+      "needs": [
+        "ecological-surveys",
+        "spectroscopy"
+      ],
+      "text": "A unified open encyclopaedia harmonizes botanical, architectural, and astronomical terms for all researchers.",
+      "effects": {
+        "insight_per_find": 2
+      }
+    },
+    {
+      "id": "harmonic-community",
+      "name": "Harmonic village commons",
+      "cost": 2700,
+      "needs": [
+        "sky-walkways",
+        "biopolymer-weaving",
+        "geothermal-loops",
+        "universal-lexicon"
+      ],
+      "text": "With clean energy, shared abundance, and living scholarship fully realized, Harr thrives in lasting harmony.",
+      "effects": {
+        "pantry_cap": 25,
+        "pantry_rate": 1.2
+      }
+    }
   ]
 }

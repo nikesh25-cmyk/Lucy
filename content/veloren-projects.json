@@ -14,7 +14,7 @@
       "name": "The market hall",
       "purpose": "A roofed hall where makers and farmers share what they have grown and made.",
       "stages": 4,
-      "first_stage_minutes": 20
+      "first_stage_minutes": 15
     },
     {
       "id": "cottage-1",
@@ -35,14 +35,14 @@
       "name": "The lantern path",
       "purpose": "A lit path from the square to the fields so no one walks home in the dark.",
       "stages": 3,
-      "first_stage_minutes": 65
+      "first_stage_minutes": 70
     },
     {
       "id": "cottage-2",
       "name": "Cottage 2",
       "purpose": "A new home for the neighbours who are arriving; each cottage is built by the village together.",
       "stages": 4,
-      "first_stage_minutes": 80
+      "first_stage_minutes": 85
     },
     {
       "id": "field-pavilion",
@@ -91,7 +91,7 @@
       "name": "The vertical farm",
       "purpose": "A stacked greenhouse tower where crops grow in bright rooms, feeding more people from less land.",
       "stages": 4,
-      "first_stage_minutes": 75
+      "first_stage_minutes": 80
     },
     {
       "id": "light-fountain",
@@ -126,7 +126,133 @@
       "name": "The glass garden",
       "purpose": "A stepped glass dome over a garden of planters and benches, warm in every season.",
       "stages": 4,
-      "first_stage_minutes": 180
+      "first_stage_minutes": 175
+    },
+    {
+      "id": "schoolhouse",
+      "name": "The Harr schoolhouse",
+      "purpose": "A two-storey house of study where young and old villagers learn reading, history and botany together.",
+      "stages": 4,
+      "first_stage_minutes": 10
+    },
+    {
+      "id": "seminar-pavilion",
+      "name": "The seminar pavilion",
+      "purpose": "An open circular colonnade for philosophical discussion and research presentations.",
+      "stages": 3,
+      "first_stage_minutes": 30
+    },
+    {
+      "id": "workshop-hall",
+      "name": "The makers' workshop hall",
+      "purpose": "A spacious open hall with visible forge-free craft benches for textile, wood, and ceramic artisans.",
+      "stages": 4,
+      "first_stage_minutes": 45
+    },
+    {
+      "id": "recycling-garden",
+      "name": "The material recycling garden",
+      "purpose": "Tidy stone sorting bays where unused clay, timber trimmings and metal offcuts are sorted for reuse.",
+      "stages": 3,
+      "first_stage_minutes": 65
+    },
+    {
+      "id": "cottage-4",
+      "name": "Cottage 4",
+      "purpose": "A modern split-level eco-cottage with solar skylights for Harr residents.",
+      "stages": 4,
+      "first_stage_minutes": 75
+    },
+    {
+      "id": "cottage-5",
+      "name": "Cottage 5",
+      "purpose": "A modern split-level eco-cottage with solar skylights for Harr residents.",
+      "stages": 4,
+      "first_stage_minutes": 100
+    },
+    {
+      "id": "cottage-6",
+      "name": "Cottage 6",
+      "purpose": "A modern split-level eco-cottage with solar skylights for Harr residents.",
+      "stages": 4,
+      "first_stage_minutes": 155
+    },
+    {
+      "id": "cottage-7",
+      "name": "Cottage 7",
+      "purpose": "A sun-warmed stepped dome cottage surrounded by flowering planters.",
+      "stages": 4,
+      "first_stage_minutes": 115
+    },
+    {
+      "id": "cottage-8",
+      "name": "Cottage 8",
+      "purpose": "A sun-warmed stepped dome cottage surrounded by flowering planters.",
+      "stages": 4,
+      "first_stage_minutes": 145
+    },
+    {
+      "id": "cottage-9",
+      "name": "Cottage 9",
+      "purpose": "A sun-warmed stepped dome cottage surrounded by flowering planters.",
+      "stages": 4,
+      "first_stage_minutes": 165
+    },
+    {
+      "id": "guesthouse",
+      "name": "The travellers' guesthouse",
+      "purpose": "A warm and restful lodge welcoming newcomers with clean beds, hot tea and quiet reading rooms.",
+      "stages": 4,
+      "first_stage_minutes": 55
+    },
+    {
+      "id": "amphitheatre",
+      "name": "The hillside amphitheatre",
+      "purpose": "A tiered open-air stone bowl facing the valley where residents gather for story circle.",
+      "stages": 3,
+      "first_stage_minutes": 90
+    },
+    {
+      "id": "festival-lawn",
+      "name": "The festival lawn and lamp arches",
+      "purpose": "A wide grass commons framed by glowing lamp arches for communal feasts and holiday round dances.",
+      "stages": 3,
+      "first_stage_minutes": 120
+    },
+    {
+      "id": "water-tower",
+      "name": "The elevated water tower",
+      "purpose": "A stone and steel reservoir tower providing hydrostatic pressure to Harr's irrigation network.",
+      "stages": 4,
+      "first_stage_minutes": 105
+    },
+    {
+      "id": "solar-field-2",
+      "name": "The southern solar array",
+      "purpose": "An expanded field of high-efficiency solar glass charging the nocturnal grid.",
+      "stages": 3,
+      "first_stage_minutes": 135
+    },
+    {
+      "id": "wind-array",
+      "name": "The quiet ridge wind array",
+      "purpose": "Three vertical-axis spiral turbines that harness gentle ridge winds without noise.",
+      "stages": 3,
+      "first_stage_minutes": 160
+    },
+    {
+      "id": "canal-bridge",
+      "name": "The canal stone bridge",
+      "purpose": "An arched stone footbridge connecting the central plaza to the western workshops.",
+      "stages": 3,
+      "first_stage_minutes": 25
+    },
+    {
+      "id": "tram-halt",
+      "name": "The valley tram halt",
+      "purpose": "A passenger halt with canopy and timetable for the future light-rail connection.",
+      "stages": 3,
+      "first_stage_minutes": 170
     }
   ]
 }
