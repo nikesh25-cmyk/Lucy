@@ -11,6 +11,7 @@ import json, pathlib
 root = pathlib.Path(__file__).resolve().parent.parent
 mpath = root / 'content' / 'veloren-world-harr.json'
 GAP = 10  # minutes between the stages of one project
+CREW = 2  # cooperation: from its second stage on, a project is built only while this many people stand at the site
 STONE = [150, 142, 128]; ROOF = [104, 96, 86]; WOOD = [120, 88, 60]; EARTH = [110, 84, 60]; PALE = [196, 188, 170]
 
 
@@ -110,6 +111,7 @@ for pid, name, purpose, start, anchor, ground_at, stages in projects:
         manifest['groups'].append({
             'id': f'{pid}-{i}', 'anchor': anchor, 'ground_at': ground_at, 'project': pid, 'title': title,
             'release_after_minutes': start + (i - 1) * GAP,
+            **({'crew': CREW} if i >= 2 and pid != 'lantern-path' else {}),
             'note': f'{name}, stage {i} of {len(stages)}: {title}.', 'ops': ops})
 mpath.write_text(json.dumps(manifest, indent=2) + '\n')
 (root / 'content' / 'veloren-projects.json').write_text(json.dumps({'format': 'nemo-works-v1', 'stage_gap_minutes': GAP, 'projects': catalogue}, indent=2) + '\n')

@@ -71,11 +71,23 @@ lm['landmarks'] = [l for l in lm['landmarks'] if not l['id'].startswith('disc-')
 (C / 'veloren-landmarks.json').write_text(json.dumps(lm, indent=2) + '\n')
 
 v = json.loads((C / 'veloren-villagers.json').read_text())
-day = {'lw-ignatius': 'Market Hall Site', 'lw-fenwick': 'Cottage Row', 'lw-casimir': 'Market Hall Site', 'lw-hollis': 'Well Site', 'lw-pelham': 'Observatory Site'}
+# Cooperation: every work site gets a crew of two or more at some hour of the day, so the village really builds
+# together, one site at a time. Builders rotate; makers lend a hand at the pavilion; scholars chart the sky at dusk.
+BUILDERS = {  # id -> (dawn, day, dusk)
+    'lw-ignatius': ('Market Hall Site', 'Cottage Row', 'Orchard Gate'),
+    'lw-fenwick': ('Market Hall Site', 'Cottage Row', 'Orchard Gate'),
+    'lw-casimir': ('Market Hall Site', 'Cottage Row', 'Orchard Gate'),
+    'lw-hollis': ('Well Site', 'Annex Site', 'Observatory Site'),
+    'lw-pelham': ('Well Site', 'Annex Site', 'Observatory Site'),
+}
 for r in v['residents']:
-    if r['id'] in day:
-        r['destinations']['day']['label'] = day[r['id']]
-    if r['calling'] == 'scholar':
-        r['destinations']['dusk']['label'] = 'Observatory Site'
+    d = r['destinations']
+    if r['id'] in BUILDERS:
+        for phase, label in zip(('dawn', 'day', 'dusk'), BUILDERS[r['id']]):
+            d[phase]['label'] = label
+    elif r['role'] == 'maker':
+        d['day']['label'] = 'Pavilion Site'
+    elif r['role'] == 'scholar':
+        d['dusk']['label'] = 'Observatory Site'
 (C / 'veloren-villagers.json').write_text(json.dumps(v, indent=2) + '\n')
 print(len(SITES), 'sites,', len(cat), 'discoveries')

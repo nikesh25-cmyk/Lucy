@@ -67,7 +67,7 @@ export function worksStatus(projects, record, now) {
     let next = null;
     for (const stage of project.stages) {
       if (built.has(stage.id)) { done += 1; continue; }
-      if (!next) next = { ...stage, minutes: started ? Math.max(0, (started + stage.release_after_minutes * 60_000 - now) / 60_000) : null };
+      if (!next) next = { ...stage, waiting: String(record?.waiting?.[stage.id] || ''), minutes: started ? Math.max(0, (started + stage.release_after_minutes * 60_000 - now) / 60_000) : null };
     }
     return { id: project.id, name: project.name, purpose: project.purpose, total: project.stages.length, done, next, complete: done === project.stages.length && project.stages.length > 0 };
   });
@@ -82,7 +82,13 @@ export function worksLines(projects, record, now) {
   if (!record || !record.works_started_ms) out.push('The works begin as soon as the village wakes. Come back in a few minutes.');
   const building = status.filter((p) => !p.complete && p.done > 0);
   const queued = status.filter((p) => !p.complete && p.done === 0);
-  for (const p of building) out.push(`${p.name}: stage ${p.done} of ${p.total} built. Next, ${p.next.title.toLowerCase()}, ${p.next.minutes === null ? 'soon' : p.next.minutes <= 0 ? 'any moment' : `in about ${minutesText(p.next.minutes)}`}.`);
+  const when = (n) => (n.minutes === null ? 'soon' : n.minutes <= 0 ? 'any moment' : `in about ${minutesText(n.minutes)}`);
+  for (const p of building) {
+    const crew = p.next.waiting.startsWith('needs a crew') ? p.next.waiting.replace('needs a crew: ', '') : '';
+    out.push(crew
+      ? `${p.name}: stage ${p.done} of ${p.total} built. Next, ${p.next.title.toLowerCase()}, is ready and waits for a crew (${crew}). Join the builders at the site and lend a hand.`
+      : `${p.name}: stage ${p.done} of ${p.total} built. Next, ${p.next.title.toLowerCase()}, ${when(p.next)}.`);
+  }
   for (const p of queued) out.push(`${p.name}: planned. Stage 1 (${p.next.title.toLowerCase()}) ${p.next.minutes === null ? 'soon' : p.next.minutes <= 0 ? 'any moment' : `in about ${minutesText(p.next.minutes)}`}.`);
   for (const p of status.filter((s) => s.complete)) out.push(`${p.name}: finished. ${p.purpose}`);
   out.push('Builders gather at the sites by day. The schedule is scripted; the stages are built by the game server and survive restarts.');

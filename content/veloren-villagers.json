@@ -237,17 +237,17 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Workshop"
+          "label": "Market Hall Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Market Hall Site"
+          "label": "Cottage Row"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Central Plaza"
+          "label": "Orchard Gate"
         },
         "night": {
           "x": 0,
@@ -274,7 +274,7 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Workshop"
+          "label": "Market Hall Site"
         },
         "day": {
           "x": 0,
@@ -284,7 +284,7 @@
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Central Plaza"
+          "label": "Orchard Gate"
         },
         "night": {
           "x": 0,
@@ -311,17 +311,17 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Workshop"
+          "label": "Market Hall Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Market Hall Site"
+          "label": "Cottage Row"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Central Plaza"
+          "label": "Orchard Gate"
         },
         "night": {
           "x": 0,
@@ -348,17 +348,17 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Workshop"
+          "label": "Well Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Well Site"
+          "label": "Annex Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Central Plaza"
+          "label": "Observatory Site"
         },
         "night": {
           "x": 0,
@@ -385,17 +385,17 @@
         "dawn": {
           "x": 0,
           "y": 0,
-          "label": "Workshop"
+          "label": "Well Site"
         },
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Observatory Site"
+          "label": "Annex Site"
         },
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Central Plaza"
+          "label": "Observatory Site"
         },
         "night": {
           "x": 0,
@@ -427,7 +427,7 @@
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Central Plaza"
+          "label": "Pavilion Site"
         },
         "dusk": {
           "x": 0,
@@ -464,7 +464,7 @@
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Central Plaza"
+          "label": "Pavilion Site"
         },
         "dusk": {
           "x": 0,
@@ -501,7 +501,7 @@
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Central Plaza"
+          "label": "Pavilion Site"
         },
         "dusk": {
           "x": 0,
@@ -538,7 +538,7 @@
         "day": {
           "x": 0,
           "y": 0,
-          "label": "Central Plaza"
+          "label": "Pavilion Site"
         },
         "dusk": {
           "x": 0,
@@ -580,7 +580,7 @@
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Observatory Site"
         },
         "night": {
           "x": 0,
@@ -617,7 +617,7 @@
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Observatory Site"
         },
         "night": {
           "x": 0,
@@ -654,7 +654,7 @@
         "dusk": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Observatory Site"
         },
         "night": {
           "x": 0,

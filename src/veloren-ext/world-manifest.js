@@ -95,6 +95,7 @@ export function validateManifest(manifest, places = PLACES, limits = MANIFEST_LI
     if (group.release_after_minutes !== undefined && !inRange(group.release_after_minutes, 0, 7 * 24 * 60)) bad(`${where}: release_after_minutes must be 0 to ${7 * 24 * 60}`);
     if (group.project !== undefined && (typeof group.project !== 'string' || !SLUG.test(group.project))) bad(`${where}: project must be a short lower-case slug`);
     if (group.title !== undefined && !isText(group.title, 80)) bad(`${where}: title must be short plain text`);
+    if (group.crew !== undefined && (!inRange(group.crew, 0, 8) || (group.crew > 0 && !group.project))) bad(`${where}: crew is 0 to 8 and only for a stage of a project`);
     if ((group.release_after_minutes || 0) > 0 && !group.project) bad(`${where}: a staged group needs a project`);
     if (!Array.isArray(group.ops) || !group.ops.length) { bad(`${where}: needs ops`); continue; }
     if (group.ops.length > limits.max_ops_per_group) bad(`${where}: at most ${limits.max_ops_per_group} ops`);
