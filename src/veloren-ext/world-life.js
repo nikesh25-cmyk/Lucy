@@ -90,7 +90,8 @@ export function worksLines(projects, record, now) {
       ? `${p.name}: stage ${p.done} of ${p.total} built. Next, ${p.next.title.toLowerCase()}, is ready and waits for a crew (${crew}). Join the builders at the site and lend a hand.`
       : `${p.name}: stage ${p.done} of ${p.total} built. Next, ${p.next.title.toLowerCase()}, ${when(p.next)}.`);
   }
-  for (const p of queued) out.push(`${p.name}: planned. Stage 1 (${p.next.title.toLowerCase()}) ${p.next.minutes === null ? 'soon' : p.next.minutes <= 0 ? 'any moment' : `in about ${minutesText(p.next.minutes)}`}.`);
+  for (const p of queued.filter((q) => !q.next)) out.push(`${p.name}: planned.`);
+  for (const p of queued.filter((q) => q.next)) out.push(`${p.name}: planned. Stage 1 (${p.next.title.toLowerCase()}) ${p.next.minutes === null ? 'soon' : p.next.minutes <= 0 ? 'any moment' : `in about ${minutesText(p.next.minutes)}`}.`);
   for (const p of status.filter((s) => s.complete)) out.push(`${p.name}: finished. ${p.purpose}`);
   out.push('Builders gather at the sites by day. The schedule is scripted; the stages are built by the game server and survive restarts.');
   return out;

@@ -70,7 +70,9 @@ export function shelfNow(sql, key, now, fx = { pantry_rate: 1, pantry_cap: 0 }) 
   }
   const hours = Math.max(0, now - row.as_of) / 3_600_000;
   const units = Math.min(rule.cap, row.units + hours * rule.per_hour);
-  if (units !== row.units) sql.run('UPDATE pantry_shelf SET units=?, as_of=? WHERE item=?', units, now, key);
+  // A shelf that sits at its cap must still move `as_of` forward: otherwise the next take is "restocked" at once
+  // for all the time the shelf spent full, and a full shelf could never be emptied.
+  if (units !== row.units || (units >= rule.cap && now > row.as_of)) sql.run('UPDATE pantry_shelf SET units=?, as_of=? WHERE item=?', units, now, key);
   return units;
 }
 
