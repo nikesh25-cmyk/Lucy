@@ -255,13 +255,14 @@ function renderActionPanel(overview, tasksData) {
   }
 
   // Today's Field Survey
-  if (overview.gameplay && overview.gameplay.survey) {
+  if (overview.gameplay && overview.gameplay.survey && Array.isArray(overview.gameplay.survey.places)) {
     const sv = overview.gameplay.survey;
+    const placeNames = sv.places.slice(0, 2).map((p) => p.name).join(' ↔ ');
     const card = el('div', 'action-card task-card');
     card.append(
       el('span', 'action-badge', 'Daily Field Survey'),
-      el('h3', '', `${sv.place_a.name} ↔ ${sv.place_b.name}`),
-      el('p', '', `${sv.question} Walk between both places today, or whisper Selene: survey.`),
+      el('h3', '', sv.title || 'Field Survey'),
+      el('p', '', `Visit ${placeNames} before ${sv.closes_at_hour || 18}:00 (${sv.places.map((p) => `${p.name}: ${p.hint}`).slice(0, 2).join('; ')}). Whisper Selene: survey.`),
     );
     actions.push(card);
   }
@@ -310,12 +311,15 @@ function renderGameplay(gp) {
   if (gp.season) {
     const s = gp.season;
     const c = el('div', 'card');
+    const rates = s.pantry_rates
+      ? Object.entries(s.pantry_rates).map(([k, v]) => `${k} ×${v}`).join(', ')
+      : '';
     c.append(
       el('h3', '', `Season: ${s.name}`),
-      el('span', 'tag on', `Day ${s.day} of ${s.length} · ${s.days_left}d remaining`),
+      el('span', 'tag on', `Day ${s.day} of ${s.length} · Next: ${s.next || ''}`),
       bar(s.day, s.length),
-      el('p', '', s.blurb),
-      el('p', 'muted', `${s.focus} ${s.pantry_note || ''}`),
+      el('p', '', s.line || ''),
+      el('p', 'muted', rates ? `Seasonal harvest rates: ${rates}` : ''),
     );
     topCards.push(c);
   }
@@ -323,13 +327,16 @@ function renderGameplay(gp) {
   if (gp.village_level) {
     const vl = gp.village_level;
     const c = el('div', 'card');
-    const nextNeed = vl.next ? vl.next.need : vl.score;
+    const f = vl.facts || {};
+    const missingText = vl.next && Array.isArray(vl.next.missing) && vl.next.missing.length
+      ? `Next: Level ${vl.next.level} (${vl.next.name}) — needs ${vl.next.missing.map((m) => `${m.what} ${m.have}/${m.need}`).join(', ')}`
+      : 'Highest village milestone reached together!';
     c.append(
       el('h3', '', `Village Milestone: ${vl.name}`),
-      el('span', 'tag ok', `Level ${vl.level} of ${vl.of} · ${vl.score} pts`),
-      bar(vl.score, nextNeed || 1),
-      el('p', '', vl.summary),
-      el('p', 'muted', vl.next ? `Next milestone: ${vl.next.name} (${vl.next.remaining} more points — ${vl.next.summary})` : 'Highest village milestone reached together.'),
+      el('span', 'tag ok', `Level ${vl.level} of ${vl.of}`),
+      bar(vl.level, vl.of || 6),
+      el('p', '', vl.text || ''),
+      el('p', 'muted', `${f.projects || 0} works · ${f.techs || 0} techs · ${f.residents || 52} villagers · ${missingText}`),
     );
     topCards.push(c);
   }
@@ -338,29 +345,37 @@ function renderGameplay(gp) {
   const gpCards = [];
   if (gp.survey) {
     const sv = gp.survey;
+    const td = (sv.village && sv.village.today) || {};
     const c = el('div', 'card');
     c.append(
       el('h3', '', `Today's Field Survey (${sv.day})`),
-      el('span', 'tag on', `${sv.total_completed || 0} surveys completed`),
-      el('p', '', `Pair: ${sv.place_a.name} and ${sv.place_b.name}`),
-      el('p', '', sv.question),
-      el('small', 'muted', 'Walk to both places in one day to log an observation for the library. Whisper Selene: survey.'),
+      el('span', 'tag on', `${td.completed || 0} of ${td.goal || 6} surveys today`),
+      el('p', '', `${sv.title || 'Daily survey'}: visit any ${sv.need || 2} of today's places before ${sv.closes_at_hour || 18}:00.`),
     );
+    if (Array.isArray(sv.places)) {
+      const list = el('ul', 'plain guild-list');
+      for (const p of sv.places) {
+        const li = el('li', '');
+        li.append(el('b', '', `${p.name}: `), document.createTextNode(p.hint || ''));
+        list.append(li);
+      }
+      c.append(list);
+    }
     gpCards.push(c);
   }
 
-  if (gp.apprenticeship) {
-    const ap = gp.apprenticeship;
+  if (Array.isArray(gp.apprenticeship)) {
+    const totalDone = gp.apprenticeship.reduce((acc, a) => acc + (a.completed || 0), 0);
     const c = el('div', 'card');
     c.append(
       el('h3', '', 'Craft Apprenticeships & Guilds'),
-      el('span', 'tag ok', `${ap.total_practices || 0} shared practices`),
+      el('span', 'tag ok', `${gp.apprenticeship.length} guilds · ${totalDone} completed`),
       el('p', '', 'Practise alongside any village mentor to learn their craft — no ranks or rivalries, only shared skill:'),
     );
     const list = el('ul', 'plain guild-list');
-    for (const g of (ap.guilds || [])) {
+    for (const g of gp.apprenticeship) {
       const li = el('li', '');
-      li.append(el('b', '', `${g.title}: `), document.createTextNode(`${g.summary} (Mentors: ${(g.mentors || []).slice(0, 3).join(', ')})`));
+      li.append(el('b', '', `${g.title}: `), document.createTextNode(`Mentor ${g.mentor} (${g.steps} steps)`));
       list.append(li);
     }
     c.append(list);
@@ -369,17 +384,17 @@ function renderGameplay(gp) {
 
   if (gp.gratitude) {
     const gr = gp.gratitude;
+    const wall = gr.wall || [];
     const c = el('div', 'card');
     c.append(
       el('h3', '', 'The Gratitude Wall'),
-      el('span', 'tag ok', `${gr.total || 0} thank-you notes`),
+      el('span', 'tag ok', `${wall.length} recent notes (${gr.days || 7}d)`),
     );
-    const wall = gr.wall || [];
     if (wall.length) {
       const list = el('ul', 'plain gratitude-list');
       for (const item of wall.slice(0, 5)) {
         const li = el('li', '');
-        li.append(el('b', '', `${item.from} → ${item.to}: `), document.createTextNode(`"${item.note}"`));
+        li.append(el('b', '', `[${item.source || 'village'}] `), document.createTextNode(item.text || ''));
         list.append(li);
       }
       c.append(list);
