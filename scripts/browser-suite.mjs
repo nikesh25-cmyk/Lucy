@@ -351,8 +351,9 @@ function write(sql, ...params) {
 // ---------------------------------------------------------------------------------------------
 
 // Continuous trace screenshots force GPU readback on every animated frame.
-// CI retains DOM/network traces plus every explicit acceptance/failure screenshot.
-export function browserTraceOptions(ci=Boolean(process.env.CI)){return {screenshots:!ci,snapshots:true,sources:false};}
+// CI keeps action traces and explicit acceptance/failure screenshots. Set
+// LUCY_BROWSER_TRACE=1 for full DOM/network/frame diagnostics in a disposable rerun.
+export function browserTraceOptions(ci=Boolean(process.env.CI),full=process.env.LUCY_BROWSER_TRACE==='1'){return {screenshots:!ci||full,snapshots:!ci||full,sources:false};}
 
 async function launchBrowser() {
   let chromium;
@@ -1705,6 +1706,8 @@ export const throttleRefusal = (notice) => MOVEMENT_THROTTLE.test(String(notice 
  * by the documented movement throttle is resumed from where the resident stands, instead of letting
  * the whole scenario collapse because one step was refused.
  */
+export function walkHasSavedProgress(before,after){return Boolean(before&&after&&before.world_id===after.world_id&&[before.x,before.y,after.x,after.y].every(Number.isFinite)&&(before.x!==after.x||before.y!==after.y));}
+
 async function walkIntoPlot(page, agentId, plotId, parcel, { timeout = 100_000 } = {}) {
   const deadline = Date.now() + timeout;
   const inside = (position) => Boolean(position) && position.x >= parcel.x && position.x < parcel.x + parcel.width && position.y >= parcel.y && position.y < parcel.y + parcel.height;
@@ -1726,10 +1729,17 @@ async function walkIntoPlot(page, agentId, plotId, parcel, { timeout = 100_000 }
       }
       movementThrottle = false;
       await page.locator('#plot-detail').getByRole('button', { name: 'Walk to plot', exact: true }).click();
-      const reached = await waitForCondition(() => {
-        if (movementThrottle) return 'movement-throttle';
-        return inside(row('SELECT x,y,world_id FROM agents WHERE id=?', agentId)) ? 'inside' : null;
-      }, 'the resident to step into the plot', { timeout: Math.min(30_000, Math.max(2000, deadline - Date.now())) }).catch(() => null);
+      let reached=null,observed=row('SELECT x,y,world_id FROM agents WHERE id=?',agentId);
+      do {
+        reached=await waitForCondition(()=>{
+          if(movementThrottle)return 'movement-throttle';
+          return inside(row('SELECT x,y,world_id FROM agents WHERE id=?',agentId))?'inside':null;
+        },'the resident to step into the plot',{timeout:Math.min(30_000,Math.max(2000,deadline-Date.now()))}).catch(()=>null);
+        if(reached||Date.now()>=deadline)break;
+        const latest=row('SELECT x,y,world_id FROM agents WHERE id=?',agentId);
+        if(!walkHasSavedProgress(observed,latest))break;
+        observed=latest; // Still walking: observe within the existing deadline; do not click again.
+      } while(Date.now()<deadline);
       if (reached === 'inside') {
         const position = await waitForResidentToSettle(agentId);
         if (inside(position)) {

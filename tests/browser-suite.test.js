@@ -86,6 +86,13 @@ test('every queue-review correction has a named browser regression scenario', ()
 
 test('CI keeps DOM traces without continuously copying software-rendered GPU frames',async()=>{
  const {browserTraceOptions}=await import('../scripts/browser-suite.mjs');
- assert.deepEqual(browserTraceOptions(true),{screenshots:false,snapshots:true,sources:false});
+ assert.deepEqual(browserTraceOptions(true,false),{screenshots:false,snapshots:false,sources:false});
+ assert.deepEqual(browserTraceOptions(true,true),{screenshots:true,snapshots:true,sources:false});
  assert.deepEqual(browserTraceOptions(false),{screenshots:true,snapshots:true,sources:false});
+});
+
+test('a saved walk is progressing only when its actual coordinates change in the same world',async()=>{
+ const {walkHasSavedProgress}=await import('../scripts/browser-suite.mjs');const a={world_id:'frontier:0:0',x:24,y:24};
+ assert.equal(walkHasSavedProgress(a,{...a,x:11,y:5}),true);
+ for(const b of [null,{...a},{...a,x:NaN},{...a,x:11,world_id:'commons'}])assert.equal(walkHasSavedProgress(a,b),false);
 });
