@@ -55,6 +55,69 @@ DISCOVERIES = [  # id, name, dx, dy, finding
 ]
 
 
+DISCOVERY_NOTES = {
+    'meadow-flowers': [
+        'Soil core sampling reveals high calcium content near the yellow clover zone, explaining why bumblebees cluster there at dawn.',
+        'Purple vetch along the western fringe fixes nitrogen, gradually enriching the subsoil for surrounding grasses.',
+        'Flowering cycles shift precisely with daytime thermal currents, petals folding forty minutes before evening rainfall.',
+        'Seed pods disperse by wind vortexes formed by the ridge contour, scattering seeds thirty metres down-slope.',
+    ],
+    'boundary-stone': [
+        'Petrographic analysis identifies the rock as metamorphic granodiorite, deposited by prehistoric glacial melt.',
+        'Deep horizontal chisel grooves show consistent weathering patina, indicating placement at least three centuries ago.',
+        'The northern lichen crust consists of Xanthoria parietina, whose growth rate measures roughly two millimetres per season.',
+        'Local magnetic deviation near the stone is completely neutral, making it an ideal reference point for triangulation.',
+    ],
+    'hidden-spring': [
+        'Water temperature stays at a uniform seven degrees Celsius year-round, emerging through a pressurized limestone fissure.',
+        'Mineral filtration through alluvial gravel layers leaves zero detectable turbidity or iron precipitate.',
+        'Subterranean acoustic probes register an underground chamber roughly twelve metres below the outflow pool.',
+        'Freshwater amphipods inhabiting the dark spring pool indicate exceptional dissolved oxygen saturation.',
+    ],
+    'high-view': [
+        'Panoramic line-of-sight analysis confirms visual contact with both the eastern pass and the southern forest belt.',
+        'Wind speed at the bluff crest averages four metres per second stronger than at the plaza floor.',
+        'Thermal up-drafts along the south-facing rock slope provide effortless lift for soaring raptors every afternoon.',
+        'Bedrock fractures here show stable joint patterns, capable of bearing foundations for an extended survey outpost.',
+    ],
+    'bee-hollow': [
+        'Internal hive temperature is regulated at thirty-four degrees through cooperative wing-fanning at the hollow entrance.',
+        'Pollen samples brought into the colony show foraging trips extending up to two kilometres into the clover fields.',
+        'Propolis resin harvested from poplar buds lines the hollow interior, preventing fungal rot in the aged heartwood.',
+        'The colony has wintered safely in this hollow for nine recorded seasons without requiring artificial feeding.',
+    ],
+    'lichen-wall': [
+        'Concentric growth rings on the central thallus suggest continuous symbiotic growth spanning over eighty years.',
+        'Spectroscopic readings show zero sulphur dioxide discoloration, serving as a reliable living barometer of air purity.',
+        'Moisture absorption happens directly through atmospheric condensation without requiring surface runoff.',
+        'Microscopic tardigrades inhabit the damp cushion layer, entering cryptobiosis during dry summer weeks.',
+    ],
+    'birdsong-grove': [
+        'Acoustic frequency analysis reveals the chaffinch chorus peaks at four kilohertz, cutting cleanly through rustling leaves.',
+        'Deciduous canopy layering provides distinct vertical nesting tiers for seven non-competing songbird species.',
+        'Dawn chorus commencement tracks precisely with nautical twilight rather than local sunrise.',
+        'Seed-caching behaviour by nuthatches in oak bark fissures directly contributes to natural sapling regeneration.',
+    ],
+    'clay-bank': [
+        'Sedimentary stratification displays alternate layers of fine kaolinite clay and water-sorted quartz sand.',
+        'Plasticity testing proves the material can be thrown on a wheel without cracking at twenty percent moisture content.',
+        'High iron oxide content imparts a warm terracotta color upon kiln firing at nine hundred degrees.',
+        'Erosion along the excavated cut stabilizes naturally within three weeks when stepped at a forty-degree incline.',
+    ],
+    'star-meadow': [
+        'Atmospheric scintillation measurements show minimal thermal turbulence, yielding Bortle class one sky clarity.',
+        'Surrounding woodland ridges create a natural light basin, shielding the meadow from peripheral ground reflections.',
+        'Nocturnal dew formation peaks before midnight, after which cool mountain breezes keep telescope optics dry.',
+        'Ground radiation cools rapidly after sunset due to low soil moisture and porous gravel underlayment.',
+    ],
+    'wind-ridge': [
+        'Anemometer logs show a continuous laminar airflow originating from the valley pressure gradient.',
+        'Wind vector consistency exceeds eighty percent from the south-southwest between midday and twilight.',
+        'Dwarf juniper shrubs along the crest exhibit flag-form growth, permanently shaped by prevailing air currents.',
+        'Aerodynamic pressure differentials across the saddle create an optimal funnel for small wind turbine placement.',
+    ],
+}
+
 def compass(dx, dy):
     names = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east']
     return names[int(((math.degrees(math.atan2(dy, dx)) + 22.5) % 360) // 45)]
@@ -71,7 +134,7 @@ for i, (id_, name, dx, dy, finding) in enumerate(DISCOVERIES):
         assert math.hypot(dx - other[2], dy - other[3]) >= 2 * RADIUS + 2, f'{id_} overlaps {other[0]}'
     hint = f'about {round(math.hypot(dx, dy))} steps {compass(dx, dy)} of the plaza'
     extra.append({'id': lid, 'label': name, 'name': name, 'site': 'Harr', 'plot': 'Plaza', 'nth': 0, 'dx': dx, 'dy': dy, 'radius': RADIUS, 'discovery': True})
-    cat.append({'id': id_, 'landmark_id': lid, 'name': name, 'hint': hint, 'finding': finding})
+    cat.append({'id': id_, 'landmark_id': lid, 'name': name, 'hint': hint, 'finding': finding, 'notes': DISCOVERY_NOTES.get(id_, [])})
 (C / 'veloren-landmarks-extra.json').write_text(json.dumps({'format': 'nemo-landmarks-extra-v1', 'landmarks': extra}, indent=2) + '\n')
 (C / 'veloren-discoveries.json').write_text(json.dumps({'format': 'nemo-discoveries-v1', 'discoveries': cat}, indent=2) + '\n')
 

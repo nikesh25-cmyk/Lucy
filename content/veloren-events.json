@@ -1,6 +1,6 @@
 {
   "format": "nemo-village-events-v1",
-  "note": "The rhythm of Harr, on the host computer's clock. Scripted: at these times NemoWorld's director sends the listed residents to the listed place, and the chronicle records that it did. Nothing here is a fight, a hunt or a contest. `landmark_id` is a place the game server knows.",
+  "note": "The rhythm of Harr, on the host computer's clock. Scripted: at these times NemoWorld's director sends the listed residents to the listed place, and the chronicle records that it did. Every gathering is peaceful, cooperative and open to all. `landmark_id` is a place the game server knows.",
   "events": [
     {
       "id": "market-hour", "title": "Market hour", "landmark_id": "harr-central-plaza", "place": "the plaza",
