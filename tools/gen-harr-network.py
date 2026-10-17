@@ -96,7 +96,7 @@ EX_LAMPS = []
 for _g in EX_GROUPS:
     _bx, _by = H.base_of(_g['anchor'])
     for _op in _g['ops']:
-        if _op['op'] == 'sprite' and H.sprite_base(_op['sprite']) in H.LIGHTS:
+        if _op['op'] == 'sprite' and H.sprite_base(_op['sprite']) in ('StreetLamp', 'StreetLampTall') and _op['at'][2] <= 3:
             EX_LAMPS.append((_bx + _op['at'][0], _by + _op['at'][1]))
 START_OF = {}
 for _g in EX_GROUPS:
@@ -366,7 +366,7 @@ def build_spurs(router):
             continue
         built = path[::-1]   # from the network out to the site
         # the first cell is on the network; keep it so the stage joins the road, but it is already owned
-        proj = new_project(f'map-path-{p}', f'the way to the {NAMES[p]}', f'A paved, lit path to the {NAMES[p]}, tinted for {DISTRICTS[d][2][4:]}.', d, 0)
+        proj = new_project(f'map-path-{p}', f'the way to the {NAMES[p]}', f'A paved, lit path to the {NAMES[p]}, tinted for the {DISTRICTS[d][2][4:]}.', d, 0)
         proj.site = p
         proj.join = built[0]
         proj.dest = built[-1]
@@ -443,22 +443,48 @@ def lamps():
     for pth in PATHS:
         cells = pth['cells']
         side = 1
-        for i in range(2, len(cells) - 1, LAMP_EVERY):
-            a, b = cells[i - 1], cells[i + 1]
-            dx, dy = b[0] - a[0], b[1] - a[1]
-            if dx and dy:
-                continue
-            perp = (0, 1) if dx else (1, 0)
-            for s in (side, -side):
-                c = (cells[i][0] + perp[0] * 2 * s, cells[i][1] + perp[1] * 2 * s)
-                if c in KERBS and c not in SPR and c not in RESERVED and far(c):
-                    st = KERBS[c]
-                    st.sprites.append((c[0], c[1], 1, 'StreetLamp'))
-                    st.clears.append((c[0], c[1], 1, c[0], c[1], 1))
-                    RESERVED.add(c)
-                    LAMPS.append(c)
-                    side = -s
-                    break
+        for i0 in range(2, len(cells) - 1, LAMP_EVERY):
+            done = False
+            for off in (0, 1, -1, 2, -2, 3, -3):
+                i = i0 + off
+                if done or not (1 <= i < len(cells) - 1):
+                    continue
+                a, b = cells[i - 1], cells[i + 1]
+                dx, dy = b[0] - a[0], b[1] - a[1]
+                if dx and dy:
+                    continue
+                perp = (0, 1) if dx else (1, 0)
+                for s_ in (side, -side):
+                    c = (cells[i][0] + perp[0] * 2 * s_, cells[i][1] + perp[1] * 2 * s_)
+                    if c in KERBS and c not in SPR and c not in RESERVED and far(c):
+                        st = KERBS[c]
+                        st.sprites.append((c[0], c[1], 1, 'StreetLamp'))
+                        st.clears.append((c[0], c[1], 1, c[0], c[1], 1))
+                        RESERVED.add(c)
+                        LAMPS.append(c)
+                        side = -s_
+                        done = True
+                        break
+    # fill any stretch the regular spacing left dark: the farthest paved cell more than 9 blocks from a light gets one
+    kerb_list = sorted(KERBS)
+    for _ in range(200):
+        worst, wc = 0.0, None
+        for c in sorted(ROAD):
+            d = min((math.hypot(c[0] - l[0], c[1] - l[1]) for l in LAMPS), default=99)
+            if d > worst:
+                worst, wc = d, c
+        if worst <= 9.0:
+            break
+        opts = sorted((k for k in kerb_list if max(abs(k[0] - wc[0]), abs(k[1] - wc[1])) <= 3 and k not in SPR and k not in RESERVED),
+                      key=lambda k: (math.hypot(k[0] - wc[0], k[1] - wc[1]), k))
+        if not opts:
+            break
+        k = opts[0]
+        st = KERBS[k]
+        st.sprites.append((k[0], k[1], 1, 'StreetLamp'))
+        st.clears.append((k[0], k[1], 1, k[0], k[1], 1))
+        RESERVED.add(k)
+        LAMPS.append(k)
     # plaza lamps around the square, on the kerb ring
     x0, y0, x1, y1 = PLAZA
     for c in [(x0 - 1, y0 + 3), (x0 - 1, y1 - 3), (x1 + 1, y0 + 3), (x1 + 1, y1 - 3), (-2, y1 + 1), (6, y1 + 1), (-2, y0 - 1)]:
@@ -498,6 +524,11 @@ def planters_and_signs():
 
 
 # ---- gateways: stone arches of Rock at each district entrance
+GATE_TARGET = {  # the point of the quarter's road each gateway should stand nearest to (plaza-relative)
+    'learning': (-6, 31), 'making': (22, 10), 'living': (-30, -14), 'gathering': (7, -12), 'energy': (10, -30), 'transport': (-30, 8),
+}
+
+
 def build_gates():
     for d in ('learning', 'making', 'living', 'gathering', 'energy', 'transport'):
         pave, accent, title = DISTRICTS[d]
@@ -510,7 +541,7 @@ def build_gates():
                     continue
                 a, c3 = cells[i - 3], cells[i + 3]
                 if (a[0] == b[0] == c3[0]) or (a[1] == b[1] == c3[1]):
-                    dist = math.hypot(b[0] - CIVIC_CENTRE[0], b[1] - CIVIC_CENTRE[1])
+                    dist = math.hypot(b[0] - GATE_TARGET[d][0], b[1] - GATE_TARGET[d][1])
                     cand.append((dist, pth['pid'], i, pth))
         cand.sort(key=lambda t: (t[0], t[1], t[2]))
         for _, _, i, pth in cand:
@@ -526,9 +557,9 @@ def build_gates():
             # the road under the arch must be only this road (no side street through the span)
             if any(x in ROAD for x in span[:1] + span[-1:]):
                 continue
-            proj = new_project(f'map-gate-{d}', f'the gate to {title[4:]}', f'A stone arch marks the way into {title[4:]}; its paving and its arch share one colour.', d, 0)
-            st1 = Stage(proj.pid, f'Raising the pillars of the gate to {title[4:]}')
-            st2 = Stage(proj.pid, f'Setting the lintel of the gate to {title[4:]}')
+            proj = new_project(f'map-gate-{d}', f'the gate to the {title[4:]}', f'A stone arch marks the way into the {title[4:]}; its paving and its arch share one colour.', d, 0)
+            st1 = Stage(proj.pid, f'Raising the pillars of the gate to the {title[4:]}')
+            st2 = Stage(proj.pid, f'Setting the lintel of the gate to the {title[4:]}')
             for p in pillars:
                 st1.fills.append((p[0], p[1], 1, p[0], p[1], 4, 'Rock', accent))
                 RESERVED.add(p)
@@ -596,6 +627,7 @@ def build_landscape():
         st1.fills.append((c[0], c[1], 0, c[0], c[1], 1, 'Rock', STONE))
     for c in [(bx, by + 3), (bx, by - 3), (bx + 3, by), (bx - 3, by)]:   # four steps into the basin
         st1.fills.append((c[0], c[1], 0, c[0], c[1], 0, 'Rock', PALE))
+    st1.found.append((bx - 3, by - 3, bx + 3, by + 3, 'Earth', EARTH, 2))
     st1.anchor = (bx, by - 4)
     st2 = Stage(proj.pid, 'Setting the lamp and benches by the basin')
     st2.fills.append((bx, by, 1, bx, by, 1, 'Rock', STONE))
@@ -626,18 +658,18 @@ def build_landscape():
         placed = []   # (centre, radius)
         pave, accent, title = DISTRICTS[d]
         for r in (3, 2):
-            for ring_r in range(0, 46, 2):
+            for ring_r in range(0, 27, 2):
                 for ang in range(0, 360, 20):
                     c = (int(round(sx + ring_r * math.cos(math.radians(ang)))), int(round(sy + ring_r * math.sin(math.radians(ang)))))
                     if len(placed) >= 3:
                         break
                     if (all(max(abs(c[0] - p[0][0]), abs(c[1] - p[0][1])) >= 8 for p in placed) and mound_free(c, r)
-                            and near_road(c, r + 2, 12) and district_at(c) in (d, 'civic')):
+                            and near_road(c, r + 2, 12)):
                         placed.append((c, r))
         if len(placed) < 2:
             print(f'  ! only {len(placed)} lawn sites in {d}', file=sys.stderr)
             continue
-        lp = new_project(f'map-land-{d}', f'the {title[4:]} lawns', f'Grass mounds and a stone planter soften {title[4:]}.', d, 40)
+        lp = new_project(f'map-land-{d}', f'the lawns of the {title[4:]}', f'Grass mounds and a stone planter soften the {title[4:]}.', d, 40)
         for k, (c, r) in enumerate(placed):
             st = Stage(lp.pid, f'Raising a grass mound ({k + 1} of {len(placed)})')
             mound(st, c, r)
@@ -717,6 +749,9 @@ def emit(st):
     for (xa, ya, xb, yb) in rects(cells):
         a, b = L(xa, ya), L(xb, yb)
         ops.append({'op': 'foundation', 'from': [a[0], a[1]], 'to': [b[0], b[1]], 'kind': 'Earth', 'rgb': EARTH, 'depth': 2})
+    for (xa, ya, xb, yb, kind, rgb, depth) in st.found:
+        a, b = L(xa, ya), L(xb, yb)
+        ops.append({'op': 'foundation', 'from': [a[0], a[1]], 'to': [b[0], b[1]], 'kind': kind, 'rgb': list(rgb), 'depth': depth})
     # headroom: two blocks of air above the paving, except where a standing sprite already is
     clear_cells = {c for c in st.pave if c not in SPR}
     for (xa, ya, xb, yb) in rects(clear_cells):
@@ -786,24 +821,48 @@ def build_all():
     # a stage can end up with no work (all its cells already paved by an earlier road): drop it
     for p in PROJECTS:
         p.stages = [s for s in p.stages if s.pave or s.fills or s.sprites or s.kerb]
+        if p.pid.startswith('map-path-') or p.pid.startswith('map-road-'):
+            for k, st in enumerate(p.stages):
+                st.title = f'Paving {p.name}' + (f' (part {k + 1} of {len(p.stages)})' if len(p.stages) > 1 else '')
     schedule()
+
+
+def split_stage(p):
+    """A one-stage project becomes two: the furniture (lamps, signs, planters) is set after the paving; a project with
+    no furniture splits its paving in half instead."""
+    first = p.stages[0]
+    second = Stage(p.pid, 'Setting the lamps and planters' if (first.sprites or first.fills) else f'{first.title} (second half)')
+    second.release = first.release + GAPM
+    if first.sprites or first.fills:
+        second.sprites, second.fills, second.clears = first.sprites, first.fills, first.clears
+        first.sprites, first.fills, first.clears = [], [], []
+        second.anchor = first.anchor
+        if not (first.pave or first.kerb):   # nothing is left in the first stage: keep the project as it is
+            first.sprites, first.fills, first.clears = second.sprites, second.fills, second.clears
+            return
+        if not first.anchor:
+            second.anchor = pick_anchor(first)
+    else:
+        cells = sorted(first.pave, key=lambda c: (c[1], c[0]))
+        half = set(cells[len(cells) // 2:])
+        if not half or len(cells) < 2:
+            return
+        for c in half:
+            second.pave[c] = first.pave.pop(c)
+            ROAD[c] = second
+        for c in [k for k in first.kerb if (k[1], k[0]) >= (cells[len(cells) // 2][1], cells[len(cells) // 2][0])]:
+            second.kerb[c] = first.kerb.pop(c)
+            KERBS[c] = second
+    p.stages.append(second)
 
 
 def groups_and_catalogue():
     groups, cat = [], []
     for p in PROJECTS:
-        if len(p.stages) < 2:   # the works board and tests want every project to have at least two stages
-            if not p.stages:
-                continue
-            first = p.stages[0]
-            second = Stage(p.pid, f'{first.title} (finishing touches)')
-            second.anchor = pick_anchor(first)
-            lamp_cell = None
-            second.sprites.append((second.anchor[0], second.anchor[1], 1, 'Lantern')) if second.anchor not in HARD and second.anchor not in SPR and second.anchor not in RESERVED else None
-            if not second.sprites:
-                continue
-            p.stages.append(second)
-            second.release = first.release + GAPM
+        if p.stages and len(p.stages) < 2:   # the works board and tests want every project to have at least two stages
+            split_stage(p)
+        if len(p.stages) < 2:
+            continue
         cat.append({'id': p.pid, 'name': p.name[:1].upper() + p.name[1:], 'purpose': p.purpose, 'stages': len(p.stages), 'first_stage_minutes': p.stages[0].release})
         for i, st in enumerate(p.stages, 1):
             g = emit(st)

@@ -313,308 +313,315 @@
     {
       "id": "map-path-tram-halt",
       "name": "The way to the tram halt",
-      "purpose": "A paved, lit path to the tram halt, tinted for transport quarter.",
+      "purpose": "A paved, lit path to the tram halt, tinted for the transport quarter.",
       "stages": 2,
       "first_stage_minutes": 165
     },
     {
       "id": "map-path-canal-bridge",
       "name": "The way to the canal bridge",
-      "purpose": "A paved, lit path to the canal bridge, tinted for transport quarter.",
+      "purpose": "A paved, lit path to the canal bridge, tinted for the transport quarter.",
       "stages": 2,
       "first_stage_minutes": 20
     },
     {
       "id": "map-path-well",
       "name": "The way to the plaza well",
-      "purpose": "A paved, lit path to the plaza well, tinted for gathering quarter.",
+      "purpose": "A paved, lit path to the plaza well, tinted for the gathering quarter.",
       "stages": 2,
       "first_stage_minutes": 13
     },
     {
       "id": "map-path-workshop-hall",
       "name": "The way to the makers workshop hall",
-      "purpose": "A paved, lit path to the makers workshop hall, tinted for making quarter.",
+      "purpose": "A paved, lit path to the makers workshop hall, tinted for the making quarter.",
       "stages": 2,
       "first_stage_minutes": 40
     },
     {
       "id": "map-path-observatory",
       "name": "The way to the star observatory",
-      "purpose": "A paved, lit path to the star observatory, tinted for learning quarter.",
+      "purpose": "A paved, lit path to the star observatory, tinted for the learning quarter.",
       "stages": 2,
       "first_stage_minutes": 45
     },
     {
       "id": "map-path-market-hall",
       "name": "The way to the market hall",
-      "purpose": "A paved, lit path to the market hall, tinted for gathering quarter.",
+      "purpose": "A paved, lit path to the market hall, tinted for the gathering quarter.",
       "stages": 2,
       "first_stage_minutes": 14
     },
     {
       "id": "map-path-vertical-farm",
       "name": "The way to the vertical farm",
-      "purpose": "A paved, lit path to the vertical farm, tinted for living quarter.",
+      "purpose": "A paved, lit path to the vertical farm, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 75
     },
     {
       "id": "map-path-cottage-1",
       "name": "The way to the cottage 1",
-      "purpose": "A paved, lit path to the cottage 1, tinted for living quarter.",
+      "purpose": "A paved, lit path to the cottage 1, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 30
     },
     {
       "id": "map-path-cottage-3",
       "name": "The way to the cottage 3",
-      "purpose": "A paved, lit path to the cottage 3, tinted for living quarter.",
+      "purpose": "A paved, lit path to the cottage 3, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 120
     },
     {
       "id": "map-path-cottage-2",
       "name": "The way to the cottage 2",
-      "purpose": "A paved, lit path to the cottage 2, tinted for living quarter.",
+      "purpose": "A paved, lit path to the cottage 2, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 80
     },
     {
       "id": "map-path-light-fountain",
       "name": "The way to the light fountain",
-      "purpose": "A paved, lit path to the light fountain, tinted for gathering quarter.",
+      "purpose": "A paved, lit path to the light fountain, tinted for the gathering quarter.",
       "stages": 2,
       "first_stage_minutes": 55
     },
     {
       "id": "map-path-sky-walk",
       "name": "The way to the sky walk",
-      "purpose": "A paved, lit path to the sky walk, tinted for transport quarter.",
+      "purpose": "A paved, lit path to the sky walk, tinted for the transport quarter.",
       "stages": 2,
       "first_stage_minutes": 125
     },
     {
       "id": "map-path-cottage-7",
       "name": "The way to the cottage 7",
-      "purpose": "A paved, lit path to the cottage 7, tinted for living quarter.",
+      "purpose": "A paved, lit path to the cottage 7, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 110
     },
     {
       "id": "map-path-amphitheatre",
       "name": "The way to the amphitheatre",
-      "purpose": "A paved, lit path to the amphitheatre, tinted for gathering quarter.",
+      "purpose": "A paved, lit path to the amphitheatre, tinted for the gathering quarter.",
       "stages": 2,
       "first_stage_minutes": 85
     },
     {
       "id": "map-path-cottage-4",
       "name": "The way to the cottage 4",
-      "purpose": "A paved, lit path to the cottage 4, tinted for living quarter.",
+      "purpose": "A paved, lit path to the cottage 4, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 70
     },
     {
       "id": "map-path-transit-hub",
       "name": "The way to the sky transit hub",
-      "purpose": "A paved, lit path to the sky transit hub, tinted for transport quarter.",
+      "purpose": "A paved, lit path to the sky transit hub, tinted for the transport quarter.",
       "stages": 2,
       "first_stage_minutes": 100
     },
     {
       "id": "map-path-glass-garden",
       "name": "The way to the glass garden",
-      "purpose": "A paved, lit path to the glass garden, tinted for gathering quarter.",
+      "purpose": "A paved, lit path to the glass garden, tinted for the gathering quarter.",
       "stages": 2,
       "first_stage_minutes": 170
     },
     {
       "id": "map-path-cottage-8",
       "name": "The way to the cottage 8",
-      "purpose": "A paved, lit path to the cottage 8, tinted for living quarter.",
+      "purpose": "A paved, lit path to the cottage 8, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 140
     },
     {
       "id": "map-path-library-annex",
       "name": "The way to the library annex",
-      "purpose": "A paved, lit path to the library annex, tinted for learning quarter.",
+      "purpose": "A paved, lit path to the library annex, tinted for the learning quarter.",
       "stages": 2,
       "first_stage_minutes": 105
     },
     {
       "id": "map-path-cottage-5",
       "name": "The way to the cottage 5",
-      "purpose": "A paved, lit path to the cottage 5, tinted for living quarter.",
+      "purpose": "A paved, lit path to the cottage 5, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 95
     },
     {
       "id": "map-path-data-archive",
       "name": "The way to the open archive",
-      "purpose": "A paved, lit path to the open archive, tinted for learning quarter.",
+      "purpose": "A paved, lit path to the open archive, tinted for the learning quarter.",
       "stages": 2,
       "first_stage_minutes": 145
     },
     {
       "id": "map-path-research-tower",
       "name": "The way to the research tower",
-      "purpose": "A paved, lit path to the research tower, tinted for learning quarter.",
+      "purpose": "A paved, lit path to the research tower, tinted for the learning quarter.",
       "stages": 2,
       "first_stage_minutes": 22
     },
     {
       "id": "map-path-solar-array",
       "name": "The way to the solar array",
-      "purpose": "A paved, lit path to the solar array, tinted for water and energy quarter.",
+      "purpose": "A paved, lit path to the solar array, tinted for the water and energy quarter.",
       "stages": 2,
       "first_stage_minutes": 35
     },
     {
       "id": "map-path-schoolhouse",
       "name": "The way to the schoolhouse",
-      "purpose": "A paved, lit path to the schoolhouse, tinted for learning quarter.",
+      "purpose": "A paved, lit path to the schoolhouse, tinted for the learning quarter.",
       "stages": 2,
       "first_stage_minutes": 21
     },
     {
       "id": "map-path-cottage-6",
       "name": "The way to the cottage 6",
-      "purpose": "A paved, lit path to the cottage 6, tinted for living quarter.",
+      "purpose": "A paved, lit path to the cottage 6, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 150
     },
     {
       "id": "map-path-guesthouse",
       "name": "The way to the guesthouse",
-      "purpose": "A paved, lit path to the guesthouse, tinted for living quarter.",
+      "purpose": "A paved, lit path to the guesthouse, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 50
     },
     {
       "id": "map-path-cottage-9",
       "name": "The way to the cottage 9",
-      "purpose": "A paved, lit path to the cottage 9, tinted for living quarter.",
+      "purpose": "A paved, lit path to the cottage 9, tinted for the living quarter.",
       "stages": 2,
       "first_stage_minutes": 160
     },
     {
       "id": "map-path-wind-array",
       "name": "The way to the wind array",
-      "purpose": "A paved, lit path to the wind array, tinted for water and energy quarter.",
+      "purpose": "A paved, lit path to the wind array, tinted for the water and energy quarter.",
       "stages": 2,
       "first_stage_minutes": 155
     },
     {
       "id": "map-path-solar-field-2",
       "name": "The way to the southern solar field",
-      "purpose": "A paved, lit path to the southern solar field, tinted for water and energy quarter.",
+      "purpose": "A paved, lit path to the southern solar field, tinted for the water and energy quarter.",
       "stages": 2,
       "first_stage_minutes": 130
     },
     {
       "id": "map-path-field-hut",
       "name": "The way to the field hut",
-      "purpose": "A paved, lit path to the field hut, tinted for gathering quarter.",
+      "purpose": "A paved, lit path to the field hut, tinted for the gathering quarter.",
       "stages": 2,
       "first_stage_minutes": 55
     },
     {
       "id": "map-path-seminar-pavilion",
       "name": "The way to the seminar pavilion",
-      "purpose": "A paved, lit path to the seminar pavilion, tinted for learning quarter.",
+      "purpose": "A paved, lit path to the seminar pavilion, tinted for the learning quarter.",
       "stages": 2,
       "first_stage_minutes": 25
     },
     {
       "id": "map-path-water-tower",
       "name": "The way to the water tower",
-      "purpose": "A paved, lit path to the water tower, tinted for water and energy quarter.",
+      "purpose": "A paved, lit path to the water tower, tinted for the water and energy quarter.",
       "stages": 2,
       "first_stage_minutes": 100
     },
     {
       "id": "map-path-field-pavilion",
       "name": "The way to the field pavilion",
-      "purpose": "A paved, lit path to the field pavilion, tinted for gathering quarter.",
+      "purpose": "A paved, lit path to the field pavilion, tinted for the gathering quarter.",
       "stages": 2,
       "first_stage_minutes": 87
     },
     {
       "id": "map-gate-learning",
-      "name": "The gate to learning quarter",
-      "purpose": "A stone arch marks the way into learning quarter; its paving and its arch share one colour.",
+      "name": "The gate to the learning quarter",
+      "purpose": "A stone arch marks the way into the learning quarter; its paving and its arch share one colour.",
       "stages": 2,
       "first_stage_minutes": 33
     },
     {
       "id": "map-gate-making",
-      "name": "The gate to making quarter",
-      "purpose": "A stone arch marks the way into making quarter; its paving and its arch share one colour.",
+      "name": "The gate to the making quarter",
+      "purpose": "A stone arch marks the way into the making quarter; its paving and its arch share one colour.",
       "stages": 2,
       "first_stage_minutes": 52
     },
     {
       "id": "map-gate-living",
-      "name": "The gate to living quarter",
-      "purpose": "A stone arch marks the way into living quarter; its paving and its arch share one colour.",
+      "name": "The gate to the living quarter",
+      "purpose": "A stone arch marks the way into the living quarter; its paving and its arch share one colour.",
       "stages": 2,
       "first_stage_minutes": 42
     },
     {
       "id": "map-gate-gathering",
-      "name": "The gate to gathering quarter",
-      "purpose": "A stone arch marks the way into gathering quarter; its paving and its arch share one colour.",
+      "name": "The gate to the gathering quarter",
+      "purpose": "A stone arch marks the way into the gathering quarter; its paving and its arch share one colour.",
       "stages": 2,
       "first_stage_minutes": 25
     },
     {
       "id": "map-gate-energy",
-      "name": "The gate to water and energy quarter",
-      "purpose": "A stone arch marks the way into water and energy quarter; its paving and its arch share one colour.",
+      "name": "The gate to the water and energy quarter",
+      "purpose": "A stone arch marks the way into the water and energy quarter; its paving and its arch share one colour.",
       "stages": 2,
       "first_stage_minutes": 47
     },
     {
       "id": "map-gate-transport",
-      "name": "The gate to transport quarter",
-      "purpose": "A stone arch marks the way into transport quarter; its paving and its arch share one colour.",
+      "name": "The gate to the transport quarter",
+      "purpose": "A stone arch marks the way into the transport quarter; its paving and its arch share one colour.",
       "stages": 2,
       "first_stage_minutes": 32
     },
     {
       "id": "map-land-learning",
-      "name": "The learning quarter lawns",
-      "purpose": "Grass mounds and a stone planter soften learning quarter.",
+      "name": "The lawns of the learning quarter",
+      "purpose": "Grass mounds and a stone planter soften the learning quarter.",
       "stages": 3,
       "first_stage_minutes": 41
     },
     {
+      "id": "map-land-making",
+      "name": "The lawns of the making quarter",
+      "purpose": "Grass mounds and a stone planter soften the making quarter.",
+      "stages": 3,
+      "first_stage_minutes": 60
+    },
+    {
       "id": "map-land-living",
-      "name": "The living quarter lawns",
-      "purpose": "Grass mounds and a stone planter soften living quarter.",
+      "name": "The lawns of the living quarter",
+      "purpose": "Grass mounds and a stone planter soften the living quarter.",
       "stages": 3,
       "first_stage_minutes": 50
     },
     {
       "id": "map-land-gathering",
-      "name": "The gathering quarter lawns",
-      "purpose": "Grass mounds and a stone planter soften gathering quarter.",
+      "name": "The lawns of the gathering quarter",
+      "purpose": "Grass mounds and a stone planter soften the gathering quarter.",
       "stages": 3,
       "first_stage_minutes": 33
     },
     {
       "id": "map-land-energy",
-      "name": "The water and energy quarter lawns",
-      "purpose": "Grass mounds and a stone planter soften water and energy quarter.",
+      "name": "The lawns of the water and energy quarter",
+      "purpose": "Grass mounds and a stone planter soften the water and energy quarter.",
       "stages": 3,
       "first_stage_minutes": 55
     },
     {
       "id": "map-land-transport",
-      "name": "The transport quarter lawns",
-      "purpose": "Grass mounds and a stone planter soften transport quarter.",
+      "name": "The lawns of the transport quarter",
+      "purpose": "Grass mounds and a stone planter soften the transport quarter.",
       "stages": 2,
       "first_stage_minutes": 40
     }

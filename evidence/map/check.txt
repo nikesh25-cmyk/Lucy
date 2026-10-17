@@ -1,0 +1,8 @@
+HARR MANIFEST CHECK (all groups, works and map together)
+
+groups 264 (max 300), projects 93
+blocks 34336 of 60000 (cells incl. air + foundation columns; map share 9590)
+largest group glass-garden-1: 1859 (max 6000)
+claimed voxels 24373, cross-project overlaps 0, shared foundation columns 91
+errors 0
+
