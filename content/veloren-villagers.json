@@ -30,7 +30,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Vertical Farm Site"
         }
       },
       "barks": [
@@ -67,7 +67,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Vertical Farm Site"
         }
       },
       "barks": [
@@ -104,7 +104,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Vertical Farm Site"
         }
       },
       "barks": [
@@ -141,7 +141,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Solar Array Site"
         }
       },
       "barks": [
@@ -178,7 +178,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Solar Array Site"
         }
       },
       "barks": [
@@ -215,7 +215,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Solar Array Site"
         }
       },
       "barks": [
@@ -252,7 +252,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Market Hall Site"
         }
       },
       "barks": [
@@ -289,7 +289,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Market Hall Site"
         }
       },
       "barks": [
@@ -326,7 +326,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Well Site"
         }
       },
       "barks": [
@@ -363,7 +363,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Well Site"
         }
       },
       "barks": [
@@ -400,7 +400,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Cottage Row"
         }
       },
       "barks": [
@@ -437,7 +437,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Pavilion Site"
         }
       },
       "barks": [
@@ -474,7 +474,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Pavilion Site"
         }
       },
       "barks": [
@@ -511,7 +511,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Pavilion Site"
         }
       },
       "barks": [
@@ -548,7 +548,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Pavilion Site"
         }
       },
       "barks": [
@@ -585,7 +585,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Research Tower Site"
         }
       },
       "barks": [
@@ -622,7 +622,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Research Tower Site"
         }
       },
       "barks": [
@@ -659,7 +659,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Library"
+          "label": "Research Tower Site"
         }
       },
       "barks": [
@@ -696,7 +696,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Sky Walk Site"
         }
       },
       "barks": [
@@ -733,7 +733,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Sky Walk Site"
         }
       },
       "barks": [
@@ -770,7 +770,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Peace Pavilion"
+          "label": "Sky Walk Site"
         }
       },
       "barks": [
@@ -807,7 +807,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Archive Site"
         }
       },
       "barks": [
@@ -844,7 +844,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Archive Site"
         }
       },
       "barks": [
@@ -881,7 +881,7 @@
         "night": {
           "x": 0,
           "y": 0,
-          "label": "Meeting Hall"
+          "label": "Archive Site"
         }
       },
       "barks": [

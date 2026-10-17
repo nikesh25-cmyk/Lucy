@@ -110,5 +110,17 @@ for r in v['residents']:
     elif r['role'] == 'farmer':
         d['dawn']['label'] = 'Vertical Farm Site' if k < 3 else 'Solar Array Site'
         d['dusk']['label'] = 'Glass Garden Site'
+NIGHT_BUILDERS = {'lw-ignatius': 'Market Hall Site', 'lw-fenwick': 'Market Hall Site', 'lw-casimir': 'Well Site', 'lw-hollis': 'Well Site', 'lw-pelham': 'Cottage Row'}
+# Night is long in Harr (the village day follows NemoWorld's clock, where night is about half of every cycle), so
+# the village works a lamp-lit night shift: everyone with a work site stays at their day or dawn site rather than
+# gathering idle, otherwise the public works would stand still half the time.
+for r in v['residents']:
+    d = r['destinations']
+    if r['role'] in ('builder', 'maker', 'courier', 'keeper', 'scholar'):
+        d['night']['label'] = d['day']['label'] if r['role'] != 'scholar' else d['dawn']['label']
+    elif r['role'] == 'farmer':
+        d['night']['label'] = d['dawn']['label']
+    if r['id'] in NIGHT_BUILDERS:
+        d['night']['label'] = NIGHT_BUILDERS[r['id']]
 (C / 'veloren-villagers.json').write_text(json.dumps(v, indent=2) + '\n')
 print(len(SITES), 'sites,', len(cat), 'discoveries')
