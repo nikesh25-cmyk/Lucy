@@ -952,7 +952,18 @@ define('accounts-and-switching', async () => {
     expect(await inviteField.count() === 1, 'ordinary signup must offer the optional invitation field', { actual: 'no invitation field was rendered' });
     await form.locator('input[name="consent"]').check();
     await form.getByRole('button', { name: 'Create account', exact: true }).click();
-    await owner.page.waitForFunction(() => document.body.classList.contains('signed-in'), null, { timeout: PAGE_TIMEOUT_MS });
+    try {
+      await owner.page.waitForFunction(() => document.body.classList.contains('signed-in'), null, { timeout: PAGE_TIMEOUT_MS });
+    } catch (error) {
+      const diagnostic = await owner.page.evaluate(() => ({
+        visibility: document.visibilityState,
+        signedIn: document.body.classList.contains('signed-in'),
+        notice: document.querySelector('#auth-notice')?.textContent?.slice(0, 240),
+        invalidFields: [...document.querySelectorAll('#auth-area input, #auth-area select')].filter(e => !e.validity.valid).map(e => ({name:e.name, type:e.type, missing:e.validity.valueMissing, mismatch:e.validity.typeMismatch})),
+      })).catch(e => ({evaluationFailed:e.message}));
+      console.log('  signup diagnostic '+JSON.stringify({...diagnostic, storedOwner: Boolean(row('SELECT id FROM accounts WHERE email=?', ACTORS.owner.email))}));
+      throw error;
+    }
     await settle(owner.page);
     const account = row('SELECT id,role FROM accounts WHERE email=?', ACTORS.owner.email);
     expect(account?.role === 'member', 'open signup must create an ordinary member', { expected: 'a stored member account', actual: describe(account) });

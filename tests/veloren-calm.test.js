@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { LIVING_ROSTER } from '../src/living-world.js';
 import assert from 'node:assert';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
@@ -11,7 +12,6 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const CONTENT = join(here, '..', 'content');
-const ROSTER = join(here, '..', '..', 'veloren-people', 'nemo-bridge', 'roster.json');
 
 const BANNED = [
   'kill', 'fight', 'attack', 'slay', 'weapon', 'enemy', 'battle',
@@ -51,7 +51,8 @@ function walk(value, where, key = '') {
 }
 
 test('every Harr content string a player reads is free of violent vocabulary', () => {
-  const files = [...jsonFiles(CONTENT), ROSTER];
+  const files = jsonFiles(CONTENT);
+  walk(LIVING_ROSTER, 'src/living-world.js:LIVING_ROSTER');
   assert.ok(files.length > 10, 'the content directory has files to check');
   for (const file of files) {
     const rel = relative(join(here, '..'), file).split(sep).join('/');

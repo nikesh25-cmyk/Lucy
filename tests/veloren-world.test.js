@@ -8,14 +8,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MANIFEST_LIMITS, PLACES, checkManifestFile, loadPlaces, validateManifest } from '../src/veloren-ext/world-manifest.js';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
-const EVIDENCE = join(here, '..', '..', 'evidence', 'world');
+const EVIDENCE = join(here, 'fixtures', 'veloren-world');
 const FIXTURE = join(EVIDENCE, 'manifest-harr-plaza.json');
 const BAD = join(EVIDENCE, 'manifest-harr-bad.json');
 /** The checker (`nemo-world-check`, from `nemo-world-core`) from THIS stream's build first, falling back to the
@@ -28,7 +28,7 @@ const CHECKER = [
 ].find((path) => path && existsSync(path)) || null;
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
-const fixture = () => JSON.parse(JSON.stringify(JSON.parse(execFileSync('cat', [FIXTURE], { encoding: 'utf8' }))));
+const fixture = () => JSON.parse(readFileSync(FIXTURE, 'utf8'));
 
 test('NemoWorld may only dress the places it knows, and a broken places file is refused', (t) => {
   assert.ok(PLACES.sites.get('Harr').includes('Plaza'));
