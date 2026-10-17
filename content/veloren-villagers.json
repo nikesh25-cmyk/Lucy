@@ -967,8 +967,8 @@
       "name": "Anselm Stonehand",
       "calling": "builder",
       "role": "builder",
-      "capabilities": "A peaceful builder who raises the village with others.",
-      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "capabilities": "Carves granite risers, levels plaza flagstones, and sets dry-stone retaining terraces.",
+      "limitations": "Shapes stone for steps, benches, and courtyards; never erects walls that bar a neighbour.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -994,12 +994,12 @@
         }
       },
       "barks": [
-        "Today I am on the stone steps; slow, careful work, and a second pair of hands is always welcome.",
-        "The trick with stone steps is to check them twice and set them once.",
-        "Nobody raises stone steps alone in Harr. Stand with the crew and the stage goes up.",
-        "I measure the stone steps with the same cord my teacher used. It has never been wrong.",
-        "When the stone steps are finished, I will walk past them every evening just to look.",
-        "Mind the fresh mortar near the stone steps; by dusk it will be firm enough to lean on."
+        "Every step up toward the observatory should feel gentle under tired evening boots.",
+        "Granite has a quiet grain; tap with a wooden mallet and the stone tells you where it rests best.",
+        "When two or three neighbours stand by the mason bench, the heavy risers slide into place like music.",
+        "I left a wide landing halfway up the terrace so elders and apprentices can pause and admire the valley.",
+        "Fresh lime mortar needs a calm afternoon to cure before the market carts roll across the square.",
+        "Run your palm along this coping stone; rain and patient chiselling made it smooth as river glass."
       ]
     },
     {
@@ -1007,8 +1007,8 @@
       "name": "Briony Fieldwright",
       "calling": "cultivator",
       "role": "farmer",
-      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
-      "limitations": "Shares a harvest rather than selling it dear.",
+      "capabilities": "Tends climbing runner beans, nitrogen-fixing clover cover crops, and terraced vegetable beds.",
+      "limitations": "Grows open-pollinated crops for the shared pantry; never locks away seed stock.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1034,12 +1034,12 @@
         }
       },
       "barks": [
-        "The bean rows drank well last night; the leaves stand up straight this morning.",
-        "I tend the bean rows. Pick a little if you are hungry; the pantry has plenty more.",
-        "Weeding the bean rows is quiet work. It leaves plenty of room for thinking.",
-        "Mulch the bean rows before the dry week and they will thank you all season.",
-        "We share seed from the bean rows with anyone who wants to start a bed of their own.",
-        "Sit by the bean rows a while; the bees do most of the work for us here."
+        "Scarlet runner beans climb the cedar trellises near the pavilion almost an inch every sunny day.",
+        "Planting clover beneath the taller stalks keeps the soil cool and rich without any harsh treatments.",
+        "Fill your apron pocket with snap peas before you climb toward the observatory ridge.",
+        "Notice how the bumblebees hum lower when the afternoon dew settles on the blossom rows.",
+        "Good soil smells like autumn rain and cedar needles; treat it kindly and it feeds the whole valley.",
+        "I saved a jar of speckled bean seeds for anyone starting a new terrace bed near the annex."
       ]
     },
     {
@@ -1047,8 +1047,8 @@
       "name": "Cassian Quillmark",
       "calling": "researcher",
       "role": "scholar",
-      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
-      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "capabilities": "Analyzes valley geology, river pebble strata, and alluvial mineral deposits for the archive.",
+      "limitations": "Studies stones to understand watershed history; never strips stream beds or quarries hillsides.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1074,12 +1074,12 @@
         }
       },
       "barks": [
-        "I am cataloguing the river stones. Every page is open for anyone to read.",
-        "The river stones tell a longer story than any of us; I only write it down.",
-        "If you find something new near the river stones, tell me and we will add a page together.",
-        "My notes on the river stones are half questions. That is how a good notebook should look.",
-        "Comparing this year's river stones with last year's is my favourite kind of afternoon.",
-        "The library keeps a whole shelf for the river stones, and it is still growing."
+        "This banded pebble from the orchard brook carries three distinct eras of mountain snowmelt.",
+        "Water polishes quartz with infinite patience; our research tower works the very same way.",
+        "If you spot a mica-flecked stone near the solar array, sketch its location before moving it.",
+        "My field ledger has more open questions than conclusions, which means tomorrow will be exciting.",
+        "We arranged the geology tray in the library so apprentices can touch every specimen safely.",
+        "Comparing pebble density along the vertical farm channel helps us predict spring runoff."
       ]
     },
     {
@@ -1087,8 +1087,8 @@
       "name": "Delia Swiftpath",
       "calling": "explorer",
       "role": "courier",
-      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
-      "limitations": "Goes on foot; never in haste and never into danger.",
+      "capabilities": "Walks the northern ridge paths, carries archive dispatches, and checks footbridge planks.",
+      "limitations": "Travels on foot at a sustainable pace; never rushes a companion or cuts across fragile moss.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1114,12 +1114,12 @@
         }
       },
       "barks": [
-        "I just walked the north trail; the way is clear and the views are lovely.",
-        "Letters from the north trail are in my satchel. Good news travels on foot here.",
-        "Take the north trail at dawn if you can; the light makes the whole valley glow.",
-        "I mark the north trail with small cairns so nobody wanders off it after dark.",
-        "Someone left fresh water by the north trail for travellers. That is Harr all over.",
-        "Ask me about the north trail; I know every bend and every resting stone."
+        "The north trail from the vertical farm is dry and fragrant with pine needles this morning.",
+        "I have three bound notebooks in my satchel heading straight from the transit hub to the archive.",
+        "If you walk the ridge at sunrise, the fountain spray down in the plaza catches a tiny rainbow.",
+        "I stacked three flat slate markers at the trail fork so evening strollers can find the lantern path.",
+        "Someone refilled the cedar dipper by the north steps; small kindnesses make every mile feel short.",
+        "Ask me before you set out toward the northern overlook; I checked every footbridge plank at dawn."
       ]
     },
     {
@@ -1127,8 +1127,8 @@
       "name": "Eamon Hearthstone",
       "calling": "steward",
       "role": "keeper",
-      "capabilities": "A peaceful steward who keeps the library and stores open to all.",
-      "limitations": "Keeps nothing back; the stores are shared.",
+      "capabilities": "Curates the heirloom seed library, labels germination jars, and coordinates seasonal swaps.",
+      "limitations": "Stewards the seed drawers in trust for all residents; never charges fees or restricts varieties.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1154,12 +1154,12 @@
         }
       },
       "barks": [
-        "I keep the seed library. Take what you need and bring it back when you are done.",
-        "The seed library are counted every evening, not to guard them but to know what to make next.",
-        "Everything on the seed library was made or mended by someone in the village.",
-        "If the seed library run low, we tell the makers and the shelves fill again.",
-        "A tidy seed library is a kindness to whoever comes looking tomorrow.",
-        "Sign the little book by the seed library so the next person knows what is new."
+        "The seed library drawers in the archive are arranged by season, sunlight needs, and soil depth.",
+        "Every packet you borrow asks only one promise: bring back a handful of fresh seed after harvest.",
+        "I dried wildflower heads from the meadow on linen screens so next spring will be twice as bright.",
+        "Check the germination log beside the glass garden; our heirloom winter squash sprouted in four days.",
+        "A neat label with the date and terrace name turns a simple jar of seeds into living history.",
+        "Walking the sky walk at dusk lets me see which rooftop planters need fresh marigold seed."
       ]
     },
     {
@@ -1167,8 +1167,8 @@
       "name": "Fable Loomwright",
       "calling": "artisan",
       "role": "maker",
-      "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
-      "limitations": "Makes for use and giving, not for hoarding.",
+      "capabilities": "Plaits supple willow baskets, reed harvesting panniers, and woven rush floor mats.",
+      "limitations": "Harvests only pruned willow shoots that regrow each spring; never clear-cuts a riverbank.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1194,12 +1194,12 @@
         }
       },
       "barks": [
-        "These willow baskets are for the pantry and the market hall; nobody pays for them.",
-        "Making willow baskets takes patient hands and a good story to pass the time.",
-        "I can show you how the willow baskets are made. Sit beside me and watch for a while.",
-        "Every one of these willow baskets is a little different. That is the part I love.",
-        "The willow baskets from last season are still in use. Good work lasts.",
-        "If you want to learn, start with the willow baskets; they forgive a beginner's mistakes."
+        "Soaking peeled willow rods in the hidden spring makes them supple enough to bend without a crack.",
+        "These wide panniers are bound for the berry pickers up near the wildflower meadow.",
+        "Pull up a stone by the old boundary marker and I will teach you the three-rod wale weave.",
+        "Every basket carries the thumbprint of its maker around the rim; no two are ever identical.",
+        "A well-woven rush mat warms a stone cottage floor and smells faintly of summer marsh grass.",
+        "From the high view you can trace the willow coppice by its silver leaves shimmering in the breeze."
       ]
     },
     {
@@ -1207,8 +1207,8 @@
       "name": "Galen Beamwright",
       "calling": "builder",
       "role": "builder",
-      "capabilities": "A peaceful builder who raises the village with others.",
-      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "capabilities": "Joins timber roof trusses, carves mortise-and-tenon rafters, and raises laminated arches.",
+      "limitations": "Uses seasoned windfall and coppiced timber; never fells an old-growth tree.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1234,12 +1234,12 @@
         }
       },
       "barks": [
-        "Today I am on the roof beams; slow, careful work, and a second pair of hands is always welcome.",
-        "The trick with roof beams is to check them twice and set them once.",
-        "Nobody raises roof beams alone in Harr. Stand with the crew and the stage goes up.",
-        "I measure the roof beams with the same cord my teacher used. It has never been wrong.",
-        "When the roof beams are finished, I will walk past them every evening just to look.",
-        "Mind the fresh mortar near the roof beams; by dusk it will be firm enough to lean on."
+        "A pegged mortise-and-tenon joint settles tighter with every season instead of pulling apart.",
+        "Raising a long ridge beam takes six steady shoulders and one clear voice calling the lift.",
+        "Up near the high view you can see how our curved timber roofs echo the roll of the hills.",
+        "I rubbed beeswax from the bee hollow into the oak pins so they slide home without splitting.",
+        "Pause under the birdsong grove and look up; branches taught carpenters everything about load arches.",
+        "Measure with a seasoned ash rod twice before you cut; wood remembers every mark of the saw."
       ]
     },
     {
@@ -1247,8 +1247,8 @@
       "name": "Hana Greenfurrow",
       "calling": "cultivator",
       "role": "farmer",
-      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
-      "limitations": "Shares a harvest rather than selling it dear.",
+      "capabilities": "Cultivates winter squash mounds, sweet pumpkin vines, and companion marigold borders.",
+      "limitations": "Nurtures open beds that feed neighbours and pollinators alike; never uses synthetic sprays.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1274,12 +1274,12 @@
         }
       },
       "barks": [
-        "The squash beds drank well last night; the leaves stand up straight this morning.",
-        "I tend the squash beds. Pick a little if you are hungry; the pantry has plenty more.",
-        "Weeding the squash beds is quiet work. It leaves plenty of room for thinking.",
-        "Mulch the squash beds before the dry week and they will thank you all season.",
-        "We share seed from the squash beds with anyone who wants to start a bed of their own.",
-        "Sit by the squash beds a while; the bees do most of the work for us here."
+        "Broad squash leaves shade the clay bank soil so the roots stay moist through the warmest noon.",
+        "Take a roasted pumpkin slice from the basket; the flesh is sweet as chestnut honey this autumn.",
+        "Tending the vines near the star meadow at twilight is peaceful work after the heat fades.",
+        "Planting bright marigolds around the squash hills invites hoverflies and keeps the beds thriving.",
+        "Even on the breezy wind ridge, low trailing gourds shelter nicely behind a dry-stone windbreak.",
+        "Listen near the birdsong grove at dawn: the finches always tell us when the morning dew is heavy."
       ]
     },
     {
@@ -1287,8 +1287,8 @@
       "name": "Isolde Starwell",
       "calling": "researcher",
       "role": "scholar",
-      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
-      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "capabilities": "Charts historical valley footpaths, compares surveyor maps, and drafts topographic overlays.",
+      "limitations": "Draws maps to connect and inform the village; never marks private claims or closed borders.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1314,12 +1314,12 @@
         }
       },
       "barks": [
-        "I am cataloguing the old maps. Every page is open for anyone to read.",
-        "The old maps tell a longer story than any of us; I only write it down.",
-        "If you find something new near the old maps, tell me and we will add a page together.",
-        "My notes on the old maps are half questions. That is how a good notebook should look.",
-        "Comparing this year's old maps with last year's is my favourite kind of afternoon.",
-        "The library keeps a whole shelf for the old maps, and it is still growing."
+        "Laying last season's map over today's survey shows how thoughtfully our footpaths have grown.",
+        "From the wind ridge you can align the compass rule with both the well house and the market hall.",
+        "Old parchment maps aren't dusty relics; they tell us where ancient springs still run underground.",
+        "If you notice a new shortcut worn across the grass near cottage row, tell me so I can ink it in.",
+        "Every contour line on my drawing represents ten paces of gentle climb above the valley floor.",
+        "A map in the library belongs to every pair of boots that walks the valley."
       ]
     },
     {
@@ -1327,8 +1327,8 @@
       "name": "Jarek Larkstep",
       "calling": "explorer",
       "role": "courier",
-      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
-      "limitations": "Goes on foot; never in haste and never into danger.",
+      "capabilities": "Inspects stepping-stone fords, carries instruments to the observatory, and logs stream height.",
+      "limitations": "Crosses streams only where the water runs shallow and calm; never takes reckless shortcuts.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1354,12 +1354,12 @@
         }
       },
       "barks": [
-        "I just walked the river ford; the way is clear and the views are lovely.",
-        "Letters from the river ford are in my satchel. Good news travels on foot here.",
-        "Take the river ford at dawn if you can; the light makes the whole valley glow.",
-        "I mark the river ford with small cairns so nobody wanders off it after dark.",
-        "Someone left fresh water by the river ford for travellers. That is Harr all over.",
-        "Ask me about the river ford; I know every bend and every resting stone."
+        "The stepping stones across the lower ford are dry and level all the way to the annex.",
+        "I carried a crate of polished lenses up to the observatory without a single rattle in the straw.",
+        "Morning mist over the brook lifts first near the pavilion; that is always the warmest walk.",
+        "I notched a cedar gauge post by the ford so scholars can read the stream depth at a glance.",
+        "Leave your boots on the sunny stone by cottage row if they caught a splash at the crossing.",
+        "Good news feels lighter in the satchel when you hear larks singing above the meadow."
       ]
     },
     {
@@ -1367,8 +1367,8 @@
       "name": "Kalen Lanternson",
       "calling": "steward",
       "role": "keeper",
-      "capabilities": "A peaceful steward who keeps the library and stores open to all.",
-      "limitations": "Keeps nothing back; the stores are shared.",
+      "capabilities": "Maintains the communal tool crib, sharpens chisels, and oils wooden plane bodies.",
+      "limitations": "Lends every craft tool freely on trust; never keeps a lock on the workshop doors.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1394,12 +1394,12 @@
         }
       },
       "barks": [
-        "I keep the tool shelf. Take what you need and bring it back when you are done.",
-        "The tool shelf are counted every evening, not to guard them but to know what to make next.",
-        "Everything on the tool shelf was made or mended by someone in the village.",
-        "If the tool shelf run low, we tell the makers and the shelves fill again.",
-        "A tidy tool shelf is a kindness to whoever comes looking tomorrow.",
-        "Sign the little book by the tool shelf so the next person knows what is new."
+        "A honed chisel and an oiled mallet make an hour of joinery at the annex feel like play.",
+        "We count the saws and levels at sundown only to see which blades need a touch on the whetstone.",
+        "Every tool on the rack was forged, handled, or tuned by a friend right here in Harr.",
+        "If the auger bits wear smooth, I leave a note for the makers and fresh ones appear by midweek.",
+        "Wiping linseed oil onto a beechwood plane handle is a small gift to tomorrow's carpenter.",
+        "Jot your name on the slate by the solar array crib if you borrow the long surveyor tape."
       ]
     },
     {
@@ -1407,8 +1407,8 @@
       "name": "Leena Kilnwood",
       "calling": "artisan",
       "role": "maker",
-      "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
-      "limitations": "Makes for use and giving, not for hoarding.",
+      "capabilities": "Fires stoneware teacups, slip-trailed pitchers, and porous terracotta self-watering spikes.",
+      "limitations": "Fires shared kiln batches for kitchen and garden use; never wastes fuel on idle trinkets.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1434,12 +1434,12 @@
         }
       },
       "barks": [
-        "These clay cups are for the pantry and the market hall; nobody pays for them.",
-        "Making clay cups takes patient hands and a good story to pass the time.",
-        "I can show you how the clay cups are made. Sit beside me and watch for a while.",
-        "Every one of these clay cups is a little different. That is the part I love.",
-        "The clay cups from last season are still in use. Good work lasts.",
-        "If you want to learn, start with the clay cups; they forgive a beginner's mistakes."
+        "These speckled stoneware cups hold heat wonderfully when you take morning tea by the fountain.",
+        "Unglazed terracotta cones buried in the vertical farm beds release water straight to the roots.",
+        "Sit by the kiln near the transit hub and watch the peephole glow from cherry red to warm amber.",
+        "I press a tiny fern leaf into the base of every pitcher before the clay dries leather-hard.",
+        "Our wood-ash glaze uses siftings from the bakehouse hearth, so nothing good is ever wasted.",
+        "If a handle chips during harvest week, bring the mug back and I will grind the rim smooth."
       ]
     },
     {
@@ -1447,8 +1447,8 @@
       "name": "Maren Mortar",
       "calling": "builder",
       "role": "builder",
-      "capabilities": "A peaceful builder who raises the village with others.",
-      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "capabilities": "Mixes breathable lime mortar, points brick garden arches, and lays permeable courtyard pavers.",
+      "limitations": "Builds low, welcoming garden enclosures with arched openings; never raises barrier walls.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1474,12 +1474,12 @@
         }
       },
       "barks": [
-        "Today I am on the garden walls; slow, careful work, and a second pair of hands is always welcome.",
-        "The trick with garden walls is to check them twice and set them once.",
-        "Nobody raises garden walls alone in Harr. Stand with the crew and the stage goes up.",
-        "I measure the garden walls with the same cord my teacher used. It has never been wrong.",
-        "When the garden walls are finished, I will walk past them every evening just to look.",
-        "Mind the fresh mortar near the garden walls; by dusk it will be firm enough to lean on."
+        "Lime mortar breathes with the seasons; it lets rain evaporate so the brick never crumbles.",
+        "The arched walls around the glass garden hold the afternoon sun and shelter tender figs.",
+        "Pointing joints along the sky walk parapet is steady work when a friend hands up the trowel.",
+        "My mentor taught me to tap each brick with the trowel handle until it sings a clear note.",
+        "By dusk the mortar along the archive steps will set firm enough for evening readers to sit.",
+        "Look how the permeable pavers at the transit hub let rainwater soak straight back to the roots."
       ]
     },
     {
@@ -1487,8 +1487,8 @@
       "name": "Nestor Dewmeadow",
       "calling": "cultivator",
       "role": "farmer",
-      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
-      "limitations": "Shares a harvest rather than selling it dear.",
+      "capabilities": "Grafts heritage pear saplings, prunes orchard espaliers, and tends blossom shelter hedges.",
+      "limitations": "Shares every bough of fruit with passersby; never fences off an orchard lane.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1514,12 +1514,12 @@
         }
       },
       "barks": [
-        "The pear saplings drank well last night; the leaves stand up straight this morning.",
-        "I tend the pear saplings. Pick a little if you are hungry; the pantry has plenty more.",
-        "Weeding the pear saplings is quiet work. It leaves plenty of room for thinking.",
-        "Mulch the pear saplings before the dry week and they will thank you all season.",
-        "We share seed from the pear saplings with anyone who wants to start a bed of their own.",
-        "Sit by the pear saplings a while; the bees do most of the work for us here."
+        "The espaliered pear saplings along the glass garden wall drank deeply from last night's rain.",
+        "Grafting a sweet conference pear onto hardy rootstock takes a steady wrist and clean beeswax.",
+        "Walk past the old boundary stone in spring and the pear blossoms scent the whole hillside.",
+        "A deep ring of leaf mulch around each young trunk keeps the roots cool through July.",
+        "We bundle pruned scion wood by the hidden spring for anyone planting a cottage fruit tree.",
+        "Sit beneath the orchard boughs for five quiet minutes; you can hear the mason bees at work."
       ]
     },
     {
@@ -1527,8 +1527,8 @@
       "name": "Oriel Inkwell",
       "calling": "researcher",
       "role": "scholar",
-      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
-      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "capabilities": "Logs cloud formations, measures barometric pressure trends, and sketches atmospheric halos.",
+      "limitations": "Forecasts weather from empirical sky observations; never peddles omens or superstitions.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1554,12 +1554,12 @@
         }
       },
       "barks": [
-        "I am cataloguing the cloud records. Every page is open for anyone to read.",
-        "The cloud records tell a longer story than any of us; I only write it down.",
-        "If you find something new near the cloud records, tell me and we will add a page together.",
-        "My notes on the cloud records are half questions. That is how a good notebook should look.",
-        "Comparing this year's cloud records with last year's is my favourite kind of afternoon.",
-        "The library keeps a whole shelf for the cloud records, and it is still growing."
+        "High mare's-tail cirrus clouds above the high view usually promise a gentle breeze by noon.",
+        "My weather ledger in the archive tracks every morning fog and evening rainbow across the valley.",
+        "If you see a silver halo around the moon near the lichen wall, jot the hour in my field book.",
+        "Comparing barometric glass readings with the bees' flight at the hollow is remarkably accurate.",
+        "The air near the hidden spring stays three degrees cooler at midday than the central plaza.",
+        "Clouds write the sky's diary in water vapour; I simply copy their sentences onto paper."
       ]
     },
     {
@@ -1567,8 +1567,8 @@
       "name": "Petra Wayfarer",
       "calling": "explorer",
       "role": "courier",
-      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
-      "limitations": "Goes on foot; never in haste and never into danger.",
+      "capabilities": "Walks the outer nature loop, delivers clay and pigment samples, and checks resting benches.",
+      "limitations": "Leaves only footprints along the meadow tracks; never disturbs nesting birds or wild burrows.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1594,12 +1594,12 @@
         }
       },
       "barks": [
-        "I just walked the orchard lane; the way is clear and the views are lovely.",
-        "Letters from the orchard lane are in my satchel. Good news travels on foot here.",
-        "Take the orchard lane at dawn if you can; the light makes the whole valley glow.",
-        "I mark the orchard lane with small cairns so nobody wanders off it after dark.",
-        "Someone left fresh water by the orchard lane for travellers. That is Harr all over.",
-        "Ask me about the orchard lane; I know every bend and every resting stone."
+        "The path linking the lichen wall to the birdsong grove is shaded and cool all afternoon.",
+        "I have three wrapped packets of river clay in my bag for the potters down at the workshop.",
+        "Walk out toward the star meadow just before dusk and watch the swifts skimming the tall grass.",
+        "I brushed the fallen pine cones off the clay bank bench so travellers have a clean seat.",
+        "Someone tucked a bundle of dried lavender beside the trail marker; the whole lane smells sweet.",
+        "Ask me if you are looking for smooth ochre pebbles; the clay bank bend uncovered dozens."
       ]
     },
     {
@@ -1607,8 +1607,8 @@
       "name": "Quinlan Evenfall",
       "calling": "steward",
       "role": "keeper",
-      "capabilities": "A peaceful steward who keeps the library and stores open to all.",
-      "limitations": "Keeps nothing back; the stores are shared.",
+      "capabilities": "Refills solar battery cells, presses flaxseed lamp oil, and maintains twilight pathway beacons.",
+      "limitations": "Keeps path lighting warm and low to protect night skies; never installs glaring floodlights.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1634,12 +1634,12 @@
         }
       },
       "barks": [
-        "I keep the lamp oil stores. Take what you need and bring it back when you are done.",
-        "The lamp oil stores are counted every evening, not to guard them but to know what to make next.",
-        "Everything on the lamp oil stores was made or mended by someone in the village.",
-        "If the lamp oil stores run low, we tell the makers and the shelves fill again.",
-        "A tidy lamp oil stores is a kindness to whoever comes looking tomorrow.",
-        "Sign the little book by the lamp oil stores so the next person knows what is new."
+        "Our pathway beacons use amber lenses so stargazers in the star meadow keep their dark-adapted eyes.",
+        "Every evening I check the charge meters on the wind ridge and top up the reserve lantern flasks.",
+        "Pressed flaxseed oil burns with a clean, nutty scent when the market hall gathers after rain.",
+        "If a path lantern flickers near the well site, turn its brass collar half a notch to the right.",
+        "Well-tended lamps mean nobody ever stumbles carrying soup bowls home at twilight.",
+        "Leave your hand lantern on the charging shelf at dawn and it will be brimming by supper."
       ]
     },
     {
@@ -1647,8 +1647,8 @@
       "name": "Renata Lathe",
       "calling": "artisan",
       "role": "maker",
-      "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
-      "limitations": "Makes for use and giving, not for hoarding.",
+      "capabilities": "Turns wooden spindles on a treadle lathe, knits merino scarves, and carves weaving shuttles.",
+      "limitations": "Crafts cozy garments and workshop bobbins for neighbours; never charges for winter warmth.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1674,12 +1674,12 @@
         }
       },
       "barks": [
-        "These wool scarves are for the pantry and the market hall; nobody pays for them.",
-        "Making wool scarves takes patient hands and a good story to pass the time.",
-        "I can show you how the wool scarves are made. Sit beside me and watch for a while.",
-        "Every one of these wool scarves is a little different. That is the part I love.",
-        "The wool scarves from last season are still in use. Good work lasts.",
-        "If you want to learn, start with the wool scarves; they forgive a beginner's mistakes."
+        "These soft merino scarves are stacked in the market hall basket before the mountain breeze turns crisp.",
+        "Pumping the foot treadle on my wood lathe sets a rhythm that makes carving bobbins effortless.",
+        "Sit on the cottage row porch and I will show you how to cast on a ribbed collar stitch.",
+        "Every wooden shuttle I polish with walnut oil glides through the loom warp without snagging a thread.",
+        "The scarves we knitted last autumn are still keeping the night observers warm up at the dome.",
+        "Start with a simple garter stitch square; wool is forgiving and unravels cleanly if you daydream."
       ]
     },
     {
@@ -1687,8 +1687,8 @@
       "name": "Soren Trusswell",
       "calling": "builder",
       "role": "builder",
-      "capabilities": "A peaceful builder who raises the village with others.",
-      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "capabilities": "Erects steel-and-timber lamp posts, wires low-voltage solar conduits, and bolts pergola frames.",
+      "limitations": "Builds safe, human-scale civic structures; never runs overhead cables across scenic sightlines.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1714,12 +1714,12 @@
         }
       },
       "barks": [
-        "Today I am on the lamp posts; slow, careful work, and a second pair of hands is always welcome.",
-        "The trick with lamp posts is to check them twice and set them once.",
-        "Nobody raises lamp posts alone in Harr. Stand with the crew and the stage goes up.",
-        "I measure the lamp posts with the same cord my teacher used. It has never been wrong.",
-        "When the lamp posts are finished, I will walk past them every evening just to look.",
-        "Mind the fresh mortar near the lamp posts; by dusk it will be firm enough to lean on."
+        "Today we are setting the arched lamp posts between the pavilion and the research tower.",
+        "A plumb bob and a spirit level ensure every post stands true against the mountain skyline.",
+        "Two pairs of hands make bolting the solar bracket at the orchard gate twice as swift and safe.",
+        "We tuck the copper conduit neatly under the stone coping so the pathway looks timeless.",
+        "When the twilight sensors click on along the annex walk, the whole row glows like fireflies.",
+        "Mind the fresh grout around the base plate; by morning you could moor a airship to that post."
       ]
     },
     {
@@ -1727,8 +1727,8 @@
       "name": "Talia Oatley",
       "calling": "cultivator",
       "role": "farmer",
-      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
-      "limitations": "Shares a harvest rather than selling it dear.",
+      "capabilities": "Grows hulless barley strips, malting grains, and golden oat rows for the bakehouse and pantry.",
+      "limitations": "Leaves a wide headland strip of grain standing for winter songbirds; never harvests bare.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1754,12 +1754,12 @@
         }
       },
       "barks": [
-        "The barley strips drank well last night; the leaves stand up straight this morning.",
-        "I tend the barley strips. Pick a little if you are hungry; the pantry has plenty more.",
-        "Weeding the barley strips is quiet work. It leaves plenty of room for thinking.",
-        "Mulch the barley strips before the dry week and they will thank you all season.",
-        "We share seed from the barley strips with anyone who wants to start a bed of their own.",
-        "Sit by the barley strips a while; the bees do most of the work for us here."
+        "The golden barley strips below the solar array ripple like pond water whenever the breeze shifts.",
+        "Rub a ripe oat head between your palms; the grain is plump and ready for the bakehouse mill.",
+        "Walking the narrow paths between the grain rows at the vertical farm is wonderfully calming.",
+        "Undersowing white clover beneath the barley keeps weeds down and feeds the soil naturally.",
+        "We save our tallest, sturdiest oat stalks as seed stock for anyone planting a sunny slope.",
+        "Rest by the fountain wall and watch the goldfinches sway on the outer barley stalks."
       ]
     },
     {
@@ -1767,8 +1767,8 @@
       "name": "Ursa Lensfield",
       "calling": "researcher",
       "role": "scholar",
-      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
-      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "capabilities": "Studies bryophytes and mosses, monitors water-filtration beds, and lenses microscopic flora.",
+      "limitations": "Takes only tiny pinch samples that regrow within days; never peels moss mats from rocks.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1794,12 +1794,12 @@
         }
       },
       "barks": [
-        "I am cataloguing the moss samples. Every page is open for anyone to read.",
-        "The moss samples tell a longer story than any of us; I only write it down.",
-        "If you find something new near the moss samples, tell me and we will add a page together.",
-        "My notes on the moss samples are half questions. That is how a good notebook should look.",
-        "Comparing this year's moss samples with last year's is my favourite kind of afternoon.",
-        "The library keeps a whole shelf for the moss samples, and it is still growing."
+        "Under a ten-power hand lens, a tiny cushion of fountain moss looks like an emerald forest.",
+        "Mosses have no roots, yet they filter rainwater along the sky walk better than any machine.",
+        "If you spot velvety spore capsules near the transit hub shade wall, come fetch me and my notebook.",
+        "Our archive herbarium keeps pressed moss cards beside pencil drawings of their cell structure.",
+        "Comparing damp stone mosses with dry ridge lichens shows how life adapts to every microclimate.",
+        "The living bio-filter bed near the fountain owes half its clarity to humble sphagnum moss."
       ]
     },
     {
@@ -1807,8 +1807,8 @@
       "name": "Viola Satchel",
       "calling": "explorer",
       "role": "courier",
-      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
-      "limitations": "Goes on foot; never in haste and never into danger.",
+      "capabilities": "Carries botanical pressings, links the glass garden with outlying meadows, and maps berry brambles.",
+      "limitations": "Walks lightly with a canvas satchel; never tramples wild orchids or meadow nests.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1834,12 +1834,12 @@
         }
       },
       "barks": [
-        "I just walked the hill path; the way is clear and the views are lovely.",
-        "Letters from the hill path are in my satchel. Good news travels on foot here.",
-        "Take the hill path at dawn if you can; the light makes the whole valley glow.",
-        "I mark the hill path with small cairns so nobody wanders off it after dark.",
-        "Someone left fresh water by the hill path for travellers. That is Harr all over.",
-        "Ask me about the hill path; I know every bend and every resting stone."
+        "The elevated sky walk gives you a bird's-eye view right into the glass garden canopy.",
+        "My canvas satchel is full of pressed clover blossoms heading from the wildflower meadow to the lab.",
+        "Walk out to the old boundary stone in the early morning; the spiderwebs look like beaded lace.",
+        "I tied a pale linen ribbon by the bramble bend so berry pickers can find the sweetest blackberries.",
+        "Someone placed a carved wooden cup by the meadow spring; cool water tastes best from cedar.",
+        "Ask me which meadow wildflowers are blooming this week; I walk that loop every single day."
       ]
     },
     {
@@ -1847,8 +1847,8 @@
       "name": "Wendel Welcomeby",
       "calling": "steward",
       "role": "keeper",
-      "capabilities": "A peaceful steward who keeps the library and stores open to all.",
-      "limitations": "Keeps nothing back; the stores are shared.",
+      "capabilities": "Airs and mends guest blankets, stocks the wayfarer shelter chests, and tends cedar linen closets.",
+      "limitations": "Offers dry blankets and warm cloaks unconditionally; never asks a traveller for collateral.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1874,12 +1874,12 @@
         }
       },
       "barks": [
-        "I keep the mended blankets. Take what you need and bring it back when you are done.",
-        "The mended blankets are counted every evening, not to guard them but to know what to make next.",
-        "Everything on the mended blankets was made or mended by someone in the village.",
-        "If the mended blankets run low, we tell the makers and the shelves fill again.",
-        "A tidy mended blankets is a kindness to whoever comes looking tomorrow.",
-        "Sign the little book by the mended blankets so the next person knows what is new."
+        "Freshly aired wool blankets are folded in the cedar chest for anyone staying past starlight.",
+        "I tuck dried lavender sprigs from the bee hollow between the quilts so they smell like summer.",
+        "Every darning stitch on a well-loved blanket is a small badge of care from a village tailor.",
+        "If the mountain breeze turns chilly up at the high view, wrap one of the grey shawls around your shoulders.",
+        "Air your quilt on the sunny rail by the hidden spring and the wool puffs right back up.",
+        "Leave a note on the slate if a blanket hem comes loose; mending by the hearth is my evening joy."
       ]
     },
     {
@@ -1887,8 +1887,8 @@
       "name": "Xanthe Threadgood",
       "calling": "artisan",
       "role": "maker",
-      "capabilities": "A peaceful artisan who turns wood and fibre into things the village uses.",
-      "limitations": "Makes for use and giving, not for hoarding.",
+      "capabilities": "Carves cherrywood soup spoons, honey dippers, and smooth salad tongs from pruned orchard branches.",
+      "limitations": "Carves only pruned fruitwood and fallen birch; never cuts a healthy living branch.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1914,12 +1914,12 @@
         }
       },
       "barks": [
-        "These wooden spoons are for the pantry and the market hall; nobody pays for them.",
-        "Making wooden spoons takes patient hands and a good story to pass the time.",
-        "I can show you how the wooden spoons are made. Sit beside me and watch for a while.",
-        "Every one of these wooden spoons is a little different. That is the part I love.",
-        "The wooden spoons from last season are still in use. Good work lasts.",
-        "If you want to learn, start with the wooden spoons; they forgive a beginner's mistakes."
+        "Cherrywood spoons carved from orchard prunings turn a deeper honey gold every time they stir soup.",
+        "Whittling a spiral honey dipper near the bee hollow is the most peaceful way to spend an afternoon.",
+        "Sit on the log by the birdsong grove and I will show you the safe thumb grip for a hook knife.",
+        "Every spoon bowl is shaped to fit the curve of our potters' soup crocks without scraping.",
+        "A rubbing of pure beeswax and flax oil makes the wood grain gleam and keeps water out.",
+        "Beginners always start with a flat butter spreader; birch wood parts like butter under a sharp blade."
       ]
     },
     {
@@ -1927,8 +1927,8 @@
       "name": "Yorick Plumbline",
       "calling": "builder",
       "role": "builder",
-      "capabilities": "A peaceful builder who raises the village with others.",
-      "limitations": "Never builds over anything living; asks before changing a plot.",
+      "capabilities": "Frames double-glazed casement windows, fits skylight vents, and seals draft-free thresholds.",
+      "limitations": "Designs windows for natural light and fresh air; never builds shuttered or sunless rooms.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1954,12 +1954,12 @@
         }
       },
       "barks": [
-        "Today I am on the window frames; slow, careful work, and a second pair of hands is always welcome.",
-        "The trick with window frames is to check them twice and set them once.",
-        "Nobody raises window frames alone in Harr. Stand with the crew and the stage goes up.",
-        "I measure the window frames with the same cord my teacher used. It has never been wrong.",
-        "When the window frames are finished, I will walk past them every evening just to look.",
-        "Mind the fresh mortar near the window frames; by dusk it will be firm enough to lean on."
+        "A well-balanced casement window opens at the touch of a finger and seals out the ridge draft.",
+        "Setting double panes of clear glass keeps our cottages cozy while letting in all the winter sun.",
+        "Hold the sash frame steady for a moment while I drive the brass corner pins home.",
+        "My plumb line and framing square have trued every window from the well site to the wind ridge.",
+        "At sunset the skylights along the star meadow shelters catch the first evening planets.",
+        "Notice how the angled cedar sill sheds rainwater cleanly away from the clay bank foundation."
       ]
     },
     {
@@ -1967,8 +1967,8 @@
       "name": "Zelda Brookfield",
       "calling": "cultivator",
       "role": "farmer",
-      "capabilities": "A peaceful cultivator who tends food beds and herbs for everyone.",
-      "limitations": "Shares a harvest rather than selling it dear.",
+      "capabilities": "Tends spiral herb gardens, dries chamomile and peppermint teas, and distills rosemary hydrosols.",
+      "limitations": "Grows culinary and soothing herbs for every kitchen; never claims secret or exclusive remedies.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -1994,12 +1994,12 @@
         }
       },
       "barks": [
-        "The herb spirals drank well last night; the leaves stand up straight this morning.",
-        "I tend the herb spirals. Pick a little if you are hungry; the pantry has plenty more.",
-        "Weeding the herb spirals is quiet work. It leaves plenty of room for thinking.",
-        "Mulch the herb spirals before the dry week and they will thank you all season.",
-        "We share seed from the herb spirals with anyone who wants to start a bed of their own.",
-        "Sit by the herb spirals a while; the bees do most of the work for us here."
+        "A stone herb spiral lets sun-loving thyme thrive at the peak while cool mint drinks at the base.",
+        "Pinch a leaf of lemon verbena as you pass the well site; the scent stays on your fingers for hours.",
+        "Tying bundles of chamomile to dry under the market hall eaves fills the whole square with sweetness.",
+        "A warm mug of peppermint and fennel tea settles the mind wonderfully before an evening at the observatory.",
+        "Take a rooted cutting of creeping rosemary for your cottage window box; it loves the mountain sun.",
+        "Sit by the thyme border at noon and watch ten different kinds of friendly bees share the blossoms."
       ]
     },
     {
@@ -2007,8 +2007,8 @@
       "name": "Adair Folio",
       "calling": "researcher",
       "role": "scholar",
-      "capabilities": "A peaceful researcher who turns every find into a page in the library.",
-      "limitations": "Records honestly; never claims a fact the records do not hold.",
+      "capabilities": "Plots seasonal star charts, calculates equinox alignments, and maintains the observatory planisphere.",
+      "limitations": "Studies astronomy and orbital mathematics; never practices astrology or fortune-telling.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -2034,12 +2034,12 @@
         }
       },
       "barks": [
-        "I am cataloguing the star charts. Every page is open for anyone to read.",
-        "The star charts tell a longer story than any of us; I only write it down.",
-        "If you find something new near the star charts, tell me and we will add a page together.",
-        "My notes on the star charts are half questions. That is how a good notebook should look.",
-        "Comparing this year's star charts with last year's is my favourite kind of afternoon.",
-        "The library keeps a whole shelf for the star charts, and it is still growing."
+        "I am updating the autumn star chart at the observatory so visitors can find the Swan constellation.",
+        "The stars keep an ancient, steady clockwork; our Brass Planisphere simply mirrors their dance.",
+        "If you spot a bright meteor streak above the orchard gate, note the compass bearing and tell me.",
+        "Good astronomy begins with patient eyes and a warm mug of tea on the observatory terrace.",
+        "Comparing our pavilion sundial shadow with the meridian transit takes less than two minutes at noon.",
+        "Every star chart in the annex drawer is printed with pale ink that reads easily under red lantern light."
       ]
     },
     {
@@ -2047,8 +2047,8 @@
       "name": "Beatrix Roadwise",
       "calling": "explorer",
       "role": "courier",
-      "capabilities": "A peaceful explorer who walks the far paths and carries word back.",
-      "limitations": "Goes on foot; never in haste and never into danger.",
+      "capabilities": "Paces the eastern meadow circuit, relays solar array telemetry notes, and guides new arrivals.",
+      "limitations": "Walks open public trails at a conversational stride; never hurries a guest or blocks a path.",
       "startX": 0,
       "startY": 0,
       "destinations": {
@@ -2074,12 +2074,12 @@
         }
       },
       "barks": [
-        "I just walked the east meadow; the way is clear and the views are lovely.",
-        "Letters from the east meadow are in my satchel. Good news travels on foot here.",
-        "Take the east meadow at dawn if you can; the light makes the whole valley glow.",
-        "I mark the east meadow with small cairns so nobody wanders off it after dark.",
-        "Someone left fresh water by the east meadow for travellers. That is Harr all over.",
-        "Ask me about the east meadow; I know every bend and every resting stone."
+        "The eastern loop from the orchard gate to the solar array is level, dry, and bordered with clover.",
+        "I have the morning generation readings from the solar field tucked safely in my dispatch pouch.",
+        "Walk the east meadow path just after sunrise when the dew turns every cobweb into silver thread.",
+        "I set three carved cedar mile-posts along the vertical farm lane so newcomers know every distance.",
+        "Someone left a basket of windfall apples by the meadow stile; help yourself as you walk past.",
+        "If you are looking for the quickest stroll between the research tower and the gardens, walk with me."
       ]
     }
   ]

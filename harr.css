@@ -836,3 +836,28 @@ body.compact .goal-card p { font-size: 0.75rem; }
 body.compact .goals-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
 body.compact .goal-card h3 { font-size: 0.8rem; }
 body.compact .goal-card p, body.compact .goal-card .tag, body.compact .goal-card span.goal-count { font-size: 0.7rem; }
+
+/* Season, Level, Works Filters & Tree Prerequisites */
+.works-filters { margin-top: 0.85rem; }
+.season-level-grid { margin-bottom: 1rem; }
+@media (min-width: 768px) {
+  .season-level-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.guild-list, .gratitude-list {
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+}
+.guild-list b, .gratitude-list b { color: var(--text-main); }
+.tree-reqs {
+  display: block;
+  margin-top: 0.2rem;
+  padding-top: 0.25rem;
+  border-top: 1px dashed var(--border-subtle);
+  color: var(--color-accent) !important;
+  font-weight: 600;
+}
+

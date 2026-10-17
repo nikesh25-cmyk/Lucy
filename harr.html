@@ -40,6 +40,7 @@
 <nav id="village-nav" class="nav-bar" aria-label="Village navigation" tabindex="-1">
   <ul class="nav-links">
     <li><a href="#action-panel">Now</a></li>
+    <li><a href="#gameplay-section">Season &amp; Guilds</a></li>
     <li><a href="#activity-section">Activity</a></li>
     <li><a href="#village-map">Map</a></li>
     <li><a href="#purpose-section">Purpose</a></li>
@@ -71,7 +72,7 @@
     <ol class="welcome-steps">
       <li><b>Look</b> at <a href="#action-panel">What can I do now</a>: it names one gentle thing to do next.</li>
       <li><b>Explore</b> the <a href="#village-map">map</a> and the <a href="#library-section">library</a> to see places worth finding.</li>
-      <li><b>Ask Selene</b> in the game by whispering one word: <code>menu</code> lists every word she knows.</li>
+      <li><b>Ask Selene</b> in the game by whispering one word: <code>menu</code> lists every word she knows, or press <strong>H</strong> for the in-game panel.</li>
     </ol>
     <button id="welcome-dismiss" type="button" class="btn-theme">Got it, thank you</button>
   </section>
@@ -86,6 +87,17 @@
     <div id="actions-grid" class="actions-grid">
       <div class="action-card loading"><p>Gathering village rhythm…</p></div>
     </div>
+  </section>
+
+  <!-- Season, Village Level, Field Survey, Apprenticeships & Gratitude Wall -->
+  <section id="gameplay-section" class="gameplay-section" aria-labelledby="h-gameplay">
+    <div class="section-header">
+      <h2 id="h-gameplay" tabindex="-1">Season, Field Survey, Apprenticeships &amp; Gratitude</h2>
+      <p class="updated" id="upd-gameplay-section">Waiting for records…</p>
+      <p class="section-sub">Shared milestones, daily paired landmark observations, craft mentorships, and neighbourly thanks.</p>
+    </div>
+    <div id="season-level-grid" class="cards season-level-grid"></div>
+    <div id="gameplay-cards" class="cards gameplay-grid"></div>
   </section>
 
   <!-- Activity feed (from the chronicle) -->
@@ -104,12 +116,12 @@
     <div class="section-header">
       <h2 id="h-map" tabindex="-1">Top-Down Map of Harr</h2>
       <p class="updated" id="upd-village-map">Waiting for records…</p>
-      <p class="section-sub">Survey the village squares, districts, public work sites, and catalogued discoveries.</p>
+      <p class="section-sub">Survey the 36 civic buildings, district quarters, and catalogued discoveries across the valley.</p>
     </div>
     <div class="map-container">
       <div class="map-legend" aria-label="Map Legend">
         <span class="legend-item"><span class="legend-dot status-finished"></span> Built</span>
-        <span class="legend-item"><span class="legend-dot status-crew"></span> Needs a Crew</span>
+        <span class="legend-item"><span class="legend-dot status-crew"></span> Needs Crew / Research</span>
         <span class="legend-item"><span class="legend-dot status-active"></span> In Progress</span>
         <span class="legend-item"><span class="legend-dot status-planned"></span> Planned</span>
         <span class="legend-item"><span class="legend-dot status-discovery"></span> Discovery Place</span>
@@ -139,7 +151,13 @@
     <div class="section-header">
       <h2 id="h-works" tabindex="-1">Public Works</h2>
       <p class="updated" id="upd-works-section">Waiting for records…</p>
-      <p class="section-sub">Each project is built stage by stage, and only while a crew of two or more stands at the site.</p>
+      <p id="works-summary" class="section-sub">Each project is built stage by stage, and only while a crew of two or more stands at the site.</p>
+      <div id="works-filters" class="btn-row works-filters" role="group" aria-label="Filter public works">
+        <button type="button" class="btn-theme" data-filter="buildings" aria-pressed="true">Buildings &amp; Quarters</button>
+        <button type="button" class="btn-theme" data-filter="roads" aria-pressed="false">Roads &amp; Gateways</button>
+        <button type="button" class="btn-theme" data-filter="waiting" aria-pressed="false">Needs Crew / Research</button>
+        <button type="button" class="btn-theme" data-filter="all" aria-pressed="false">All Works</button>
+      </div>
     </div>
     <div id="works" class="cards works-grid"></div>
   </section>

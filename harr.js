@@ -62,6 +62,13 @@ const SITES_MAP = [
   { id: 'site-wind-array', label: 'Wind Array Site', plot: 'Plaza:0', dx: 4, dy: -44, project: 'wind-array' },
   { id: 'site-bridge', label: 'Canal Bridge Site', plot: 'Plaza:0', dx: -8, dy: 10, project: 'canal-bridge' },
   { id: 'site-tram-halt', label: 'Tram Halt Site', plot: 'Plaza:0', dx: -3, dy: -6, project: 'tram-halt' },
+  { id: 'site-greenhouse-dome', label: 'Greenhouse Dome Site', plot: 'FarmField:0', dx: -24, dy: -6, project: 'greenhouse-dome' },
+  { id: 'site-seed-vault', label: 'Seed Vault Site', plot: 'FarmField:1', dx: 18, dy: 12, project: 'seed-vault' },
+  { id: 'site-bakery', label: 'Bakery & Hearth Site', plot: 'Plaza:0', dx: 14, dy: 10, project: 'bakery' },
+  { id: 'site-kiln-pottery', label: 'Kiln & Pottery Site', plot: 'Workshop:0', dx: -14, dy: -16, project: 'kiln-pottery' },
+  { id: 'site-loom-house', label: 'Loom & Dye House Site', plot: 'Workshop:0', dx: 2, dy: -18, project: 'loom-house' },
+  { id: 'site-lantern-foundry', label: 'Lantern Foundry Site', plot: 'Workshop:0', dx: 18, dy: -18, project: 'lantern-foundry' },
+  { id: 'site-weather-spire', label: 'Weather Spire Site', plot: 'Plaza:0', dx: 42, dy: 4, project: 'weather-spire' },
 ];
 
 // Discovery Places Coordinates (dx, dy from Plaza[0])
@@ -247,6 +254,18 @@ function renderActionPanel(overview, tasksData) {
     actions.push(card);
   }
 
+  // Today's Field Survey
+  if (overview.gameplay && overview.gameplay.survey) {
+    const sv = overview.gameplay.survey;
+    const card = el('div', 'action-card task-card');
+    card.append(
+      el('span', 'action-badge', 'Daily Field Survey'),
+      el('h3', '', `${sv.place_a.name} ↔ ${sv.place_b.name}`),
+      el('p', '', `${sv.question} Walk between both places today, or whisper Selene: survey.`),
+    );
+    actions.push(card);
+  }
+
   // Work site needing a crew
   const crewNeeded = overview.works.find((w) => w.next && w.next.waiting && w.next.waiting.startsWith('needs a crew'));
   if (crewNeeded) {
@@ -275,12 +294,101 @@ function renderActionPanel(overview, tasksData) {
     card.append(
       el('span', 'action-badge', 'Research'),
       el('h3', '', `Studying: ${cur.name}`),
-      el('p', '', `${cur.progress} of ${cur.cost} insight accumulated. Every discovery you record adds insight for the whole village!`),
+      el('p', '', `${cur.progress} of ${cur.cost} insight accumulated. Every discovery and crew help adds insight for the whole village!`),
     );
     actions.push(card);
   }
 
   fill('actions-grid', actions);
+}
+
+// 1b. Render Season, Village Level, Field Survey, Apprenticeships & Gratitude Wall
+function renderGameplay(gp) {
+  if (!gp) return;
+
+  const topCards = [];
+  if (gp.season) {
+    const s = gp.season;
+    const c = el('div', 'card');
+    c.append(
+      el('h3', '', `Season: ${s.name}`),
+      el('span', 'tag on', `Day ${s.day} of ${s.length} · ${s.days_left}d remaining`),
+      bar(s.day, s.length),
+      el('p', '', s.blurb),
+      el('p', 'muted', `${s.focus} ${s.pantry_note || ''}`),
+    );
+    topCards.push(c);
+  }
+
+  if (gp.village_level) {
+    const vl = gp.village_level;
+    const c = el('div', 'card');
+    const nextNeed = vl.next ? vl.next.need : vl.score;
+    c.append(
+      el('h3', '', `Village Milestone: ${vl.name}`),
+      el('span', 'tag ok', `Level ${vl.level} of ${vl.of} · ${vl.score} pts`),
+      bar(vl.score, nextNeed || 1),
+      el('p', '', vl.summary),
+      el('p', 'muted', vl.next ? `Next milestone: ${vl.next.name} (${vl.next.remaining} more points — ${vl.next.summary})` : 'Highest village milestone reached together.'),
+    );
+    topCards.push(c);
+  }
+  fill('season-level-grid', topCards);
+
+  const gpCards = [];
+  if (gp.survey) {
+    const sv = gp.survey;
+    const c = el('div', 'card');
+    c.append(
+      el('h3', '', `Today's Field Survey (${sv.day})`),
+      el('span', 'tag on', `${sv.total_completed || 0} surveys completed`),
+      el('p', '', `Pair: ${sv.place_a.name} and ${sv.place_b.name}`),
+      el('p', '', sv.question),
+      el('small', 'muted', 'Walk to both places in one day to log an observation for the library. Whisper Selene: survey.'),
+    );
+    gpCards.push(c);
+  }
+
+  if (gp.apprenticeship) {
+    const ap = gp.apprenticeship;
+    const c = el('div', 'card');
+    c.append(
+      el('h3', '', 'Craft Apprenticeships & Guilds'),
+      el('span', 'tag ok', `${ap.total_practices || 0} shared practices`),
+      el('p', '', 'Practise alongside any village mentor to learn their craft — no ranks or rivalries, only shared skill:'),
+    );
+    const list = el('ul', 'plain guild-list');
+    for (const g of (ap.guilds || [])) {
+      const li = el('li', '');
+      li.append(el('b', '', `${g.title}: `), document.createTextNode(`${g.summary} (Mentors: ${(g.mentors || []).slice(0, 3).join(', ')})`));
+      list.append(li);
+    }
+    c.append(list);
+    gpCards.push(c);
+  }
+
+  if (gp.gratitude) {
+    const gr = gp.gratitude;
+    const c = el('div', 'card');
+    c.append(
+      el('h3', '', 'The Gratitude Wall'),
+      el('span', 'tag ok', `${gr.total || 0} thank-you notes`),
+    );
+    const wall = gr.wall || [];
+    if (wall.length) {
+      const list = el('ul', 'plain gratitude-list');
+      for (const item of wall.slice(0, 5)) {
+        const li = el('li', '');
+        li.append(el('b', '', `${item.from} → ${item.to}: `), document.createTextNode(`"${item.note}"`));
+        list.append(li);
+      }
+      c.append(list);
+    } else {
+      c.append(el('p', '', 'No thank-you notes posted yet today. Whisper Selene "thank <neighbour> <reason>" in the game to leave the first note on the village wall!'));
+    }
+    gpCards.push(c);
+  }
+  fill('gameplay-cards', gpCards);
 }
 
 // 2. Render Top-Down SVG Map of Harr
@@ -368,6 +476,10 @@ function renderSvgMap(overview) {
         fillCol = '#fbbf24';
         statusClass = 'status-crew';
         statusText = 'Needs a Crew';
+      } else if (w.next && w.next.waiting && w.next.waiting.startsWith('waiting for research')) {
+        fillCol = '#fbbf24';
+        statusClass = 'status-crew';
+        statusText = 'Waiting for Research';
       } else if (w.done > 0) {
         fillCol = '#38bdf8';
         statusClass = 'status-active';
@@ -504,6 +616,9 @@ function renderResearchTree(research) {
   const container = $('research-tree');
   if (!container) return;
 
+  const techNameById = new Map();
+  for (const t of research.techs) techNameById.set(t.id, t.name);
+
   // Partition techs into tiers by cost
   const tiers = [
     { name: 'Foundational Knowledge (10-25 Insight)', maxCost: 25, techs: [] },
@@ -533,6 +648,10 @@ function renderResearchTree(research) {
         el('span', `tag ${t.state === 'learned' ? 'ok' : t.state === 'learning' ? 'on' : ''}`, `${t.state.toUpperCase()} · ${t.cost} Insight`),
         el('small', '', t.text),
       );
+      if (t.needs && t.needs.length) {
+        const reqNames = t.needs.map((id) => techNameById.get(id) || id).join(', ');
+        node.append(el('small', 'tree-reqs', `Requires: ${reqNames}`));
+      }
       tierDiv.append(node);
     }
     wrap.append(tierDiv);
@@ -540,6 +659,63 @@ function renderResearchTree(research) {
   });
 
   fill('research-tree', tierEls);
+}
+
+// 5. Public Works with Category Filter
+let currentWorksFilter = 'buildings';
+function renderWorksList(works) {
+  const buildings = works.filter((w) => !w.id.startsWith('map-'));
+  const roads = works.filter((w) => w.id.startsWith('map-'));
+  const waiting = works.filter((w) => !w.complete && w.next && w.next.waiting);
+
+  const bDone = buildings.filter((w) => w.complete).length;
+  const rDone = roads.filter((w) => w.complete).length;
+  const summaryEl = $('works-summary');
+  if (summaryEl) {
+    summaryEl.textContent = `${bDone} of ${buildings.length} civic buildings complete · ${rDone} of ${roads.length} road & gateway segments complete. Each stage advances while a crew of two or more stands at the site.`;
+  }
+
+  const filterWrap = $('works-filters');
+  if (filterWrap) {
+    const counts = {
+      buildings: `Buildings & Quarters (${bDone}/${buildings.length})`,
+      roads: `Roads & Gateways (${rDone}/${roads.length})`,
+      waiting: `Needs Crew / Research (${waiting.length})`,
+      all: `All Works (${works.length})`,
+    };
+    filterWrap.querySelectorAll('button[data-filter]').forEach((btn) => {
+      const f = btn.getAttribute('data-filter');
+      if (counts[f]) btn.textContent = counts[f];
+      btn.setAttribute('aria-pressed', String(f === currentWorksFilter));
+    });
+  }
+
+  const filtered = currentWorksFilter === 'buildings' ? buildings
+    : currentWorksFilter === 'roads' ? roads
+    : currentWorksFilter === 'waiting' ? waiting
+    : works;
+
+  fill('works', filtered.length ? filtered.map((w) => {
+    const c = el('div', 'card');
+    const waitLabel = w.next && w.next.waiting
+      ? (w.next.waiting.startsWith('waiting for research') ? 'waiting for research' : 'needs a crew')
+      : '';
+    c.append(
+      el('h3', '', w.name),
+      w.complete ? el('span', 'tag ok', 'finished') : waitLabel ? el('span', 'tag warn', waitLabel) : el('span', 'tag on', `${w.done} of ${w.total} stages`),
+      bar(w.done, w.total),
+      el('p', '', w.purpose),
+    );
+    if (w.next) {
+      const hint = w.next.waiting
+        ? (w.next.waiting.startsWith('waiting for research')
+          ? `${w.next.waiting} (unlocked via village research)`
+          : `${w.next.waiting}. Stand at the site with a neighbour to help build.`)
+        : `in about ${mins(w.next.minutes)}`;
+      c.append(el('p', '', `Next: ${w.next.title.toLowerCase()} — ${hint}.`));
+    }
+    return c;
+  }) : [empty(currentWorksFilter === 'waiting' ? 'Every unlocked stage has a crew right now!' : 'No public works in this category.')]);
 }
 
 // ---- sections: each one redraws only when its own data changed, and says when -------------------
@@ -598,29 +774,20 @@ function render(d, tasksData, now = Date.now()) {
     else fill('goals', [empty('No goals have been set yet. They will appear here once the village charter lists them.')]);
   }, now);
 
-  section('action-panel', [d.rhythm, d.works, d.pantry, d.research.current, tasksData], () => renderActionPanel(d, tasksData), now);
+  section('action-panel', [d.rhythm, d.works, d.pantry, d.research.current, d.gameplay && d.gameplay.survey, tasksData], () => renderActionPanel(d, tasksData), now);
+  section('gameplay-section', d.gameplay, () => renderGameplay(d.gameplay), now);
   section('village-map', [d.works, d.library], () => renderSvgMap(d), now);
 
   section('research-section', d.research, () => {
     const r = d.research;
-    $('research-summary').textContent = `${r.insight} insight earned from ${r.sources.finds} finds, ${r.sources.stages} building stages, ${r.sources.projects} finished projects and ${r.sources.events} village events. ${r.learned} of ${r.total} technologies learned.`;
+    $('research-summary').textContent = `${r.insight} insight earned from ${r.sources.finds} finds, ${r.sources.stages} building stages, ${r.sources.projects} finished projects, ${r.sources.helped || 0} crew helps and ${r.sources.events} village events. ${r.learned} of ${r.total} technologies learned.`;
     fill('current', r.current
       ? [el('h3', '', `Now learning: ${r.current.name}`), el('p', 'muted', r.current.text), bar(r.current.progress, r.current.cost), el('small', 'muted', `${r.current.progress} of ${r.current.cost} insight`)]
       : [el('p', '', r.total ? 'Everything in the current research queue has been learned.' : 'No research is queued yet. The first find in the library starts it.')]);
     renderResearchTree(r);
   }, now);
 
-  section('works-section', d.works, () => fill('works', d.works.length ? d.works.map((w) => {
-    const c = el('div', 'card');
-    c.append(
-      el('h3', '', w.name),
-      w.complete ? el('span', 'tag ok', 'finished') : w.next && w.next.waiting ? el('span', 'tag warn', 'needs a crew') : el('span', 'tag on', `${w.done} of ${w.total} stages`),
-      bar(w.done, w.total),
-      el('p', '', w.purpose),
-    );
-    if (w.next) c.append(el('p', '', `Next: ${w.next.title.toLowerCase()} — ${w.next.waiting ? `${w.next.waiting}. Join the builders to help.` : `in about ${mins(w.next.minutes)}`}.`));
-    return c;
-  }) : [empty('No public works have been planned yet. Check back once the builders have a plan.')]), now);
+  section('works-section', [d.works, currentWorksFilter], () => renderWorksList(d.works), now);
 
   section('community-section', [d.rhythm, d.pantry], () => {
     fill('rhythm', d.rhythm.length ? d.rhythm.map((e) => {
@@ -691,6 +858,15 @@ function setupFeed() {
   });
   const retry = $('retry');
   if (retry) retry.addEventListener('click', () => { setStatus('Trying again…'); load(); });
+  const filterWrap = $('works-filters');
+  if (filterWrap) {
+    filterWrap.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-filter]');
+      if (!btn) return;
+      currentWorksFilter = btn.getAttribute('data-filter') || 'buildings';
+      if (lastOverview) section('works-section', [lastOverview.works, currentWorksFilter], () => renderWorksList(lastOverview.works), Date.now());
+    });
+  }
 }
 
 setupTheme();
