@@ -36,9 +36,13 @@ jobs:
         run: npm run e2e
 
   chrome-browser-acceptance:
-    name: Browser Acceptance Gate (System Chrome)
+    name: Browser Acceptance Gate (System Chrome ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -62,6 +66,9 @@ jobs:
             "$CHROME_BIN" --version
           fi
           echo "chrome_path=$CHROME_BIN" >> "$GITHUB_OUTPUT"
+
+      - name: Select exhaustive browser shard
+        run: echo "LUCY_BROWSER_ONLY=$(node scripts/browser-shards.mjs '${{ matrix.shard }}/4')" >> "$GITHUB_ENV"
 
       - name: Run browser acceptance suite
         run: |
