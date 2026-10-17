@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>NemoWorld — A city with a calling</title>
+  <link rel="stylesheet" href="/city.css">
+  <script type="module" src="/city.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the city</a>
+  <header><a class="brand" href="/city">N<span aria-hidden="true">◈</span> NemoWorld</a><nav aria-label="City navigation"><a href="#home">My home</a><a href="#residents">Meet the residents</a><a href="/harr">World journal ↗</a></nav></header>
+  <main id="main">
+    <section class="hero" aria-labelledby="city-title">
+      <div class="hero-copy"><p class="eyebrow">A peaceful world, shared with AI</p><h1 id="city-title">A city with<br>a calling.</h1><p class="intro">Come as a guest. Meet the residents who build, learn and care for this place. Ask for a home, follow their work, and stay a while.</p><div class="actions"><a class="button primary" href="#home">Find a home</a><a class="button" href="#district">Explore city life <span aria-hidden="true">↓</span></a></div><p class="quiet">Harr is the first neighbourhood. The modern city is being developed around its saved world.</p></div>
+      <div class="city-art" aria-hidden="true"><div class="sun"></div><div class="tower tower-a"></div><div class="tower tower-b"></div><div class="tower tower-c"></div><div class="tower tower-d"></div><div class="skywalk"></div><div class="trees">✦ &nbsp; ✦ &nbsp; ✦</div><div class="art-label">CITY VISION · ILLUSTRATION</div></div>
+    </section>
+    <p id="connection" role="status" aria-live="polite">Connecting to the world…</p>
+    <section id="district" aria-labelledby="district-title"><div class="section-head"><div><p class="eyebrow">The city’s purpose</p><h2 id="district-title">Everyone has something to give.</h2></div><p>AI residents do the work. Humans explore, converse and request a place to stay.</p></div><div id="offices" class="cards"></div><p id="execution" class="note"></p></section>
+    <section id="home" class="home-section" aria-labelledby="home-title">
+      <div><p class="eyebrow">A place of your own</p><h2 id="home-title">Tell Rowan.<br>Make yourself at home.</h2><p>Choose a free plot and an existing cottage style. Rowan’s scripted AI service asks the game server to build it. Your claim and confirmed construction stay saved.</p><p class="note">This release builds a fixed cottage. Freeform AI-designed homes are a later step. Plots are virtual stewardship, with no purchase or resale.</p><p><a href="/">Sign in to NemoWorld ↗</a> · <a href="/veloren-link">Link your game character ↗</a></p></div>
+      <div class="home-card"><p class="eyebrow">Rowan · scripted home keeper</p><h3>Your guest home</h3><p id="home-status" role="status" aria-live="polite">Checking your session…</p><dl id="home-details" hidden></dl><p id="metrics" class="note" hidden></p>
+        <form id="home-form" hidden>
+          <label for="plot">Available plot</label><select id="plot" name="plot" required></select>
+          <label for="style">Roof style</label><select id="style" name="style"><option value="0">Blue</option><option value="1">Green</option><option value="2">Red</option><option value="3">Gold</option><option value="4">Purple</option><option value="5">Orange</option><option value="6">Grey</option><option value="7">White</option></select>
+          <p class="note">Confirming claims this plot if needed and asks Rowan to build. No payment, coin award or model call. The server may refuse unsuitable ground.</p>
+          <button id="request-home" class="button primary" type="submit">Ask Rowan to build my home</button>
+        </form>
+        <div class="actions"><button id="enter-home" class="button" type="button" hidden>Ask Rowan to let me in</button><button id="leave-home" class="button" type="button" hidden>Step outside</button><button id="refresh-home" class="button subtle" type="button">Refresh status</button></div>
+        <p id="home-feedback" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+    <section aria-labelledby="work-title"><div class="section-head"><div><p class="eyebrow">From the saved world</p><h2 id="work-title">Work you can follow.</h2></div><p id="research"></p></div><div id="works" class="cards"></div><p id="rewards" class="note"></p></section>
+    <section id="residents" aria-labelledby="residents-title"><div class="section-head"><div><p class="eyebrow">Your neighbours</p><h2 id="residents-title">Meet the residents.</h2></div><p>Configured city characters, not a count of connected players or running models.</p></div><div id="people" class="people"></div></section>
+    <section class="future"><p class="eyebrow">What comes next</p><h2>Schools, careers and generations.</h2><p id="learning"></p><p id="lifecycle"></p><p>The next stages connect useful office work, assessed learning and persistent household life. They are not presented as completed gameplay here.</p></section>
+  </main>
+  <footer><a class="brand" href="/city">NemoWorld</a><p>A peaceful city where AI contribute and humans are welcome.</p><a href="/harr">Open the world journal ↗</a></footer>
+</body>
+</html>

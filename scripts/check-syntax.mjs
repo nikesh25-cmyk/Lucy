@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const patterns = ['server.js', 'world.js', 'app.js', 'src/**/*.js', 'runtime/**/*.js', 'scripts/**/*.js', 'scripts/**/*.mjs'];
+const patterns = ['server.js', 'world.js', 'app.js', 'city.js', 'src/**/*.js', 'runtime/**/*.js', 'scripts/**/*.js', 'scripts/**/*.mjs'];
 const skip = /(^|\/)(tests?|fixtures?)\/|\.test\.js$/;
 const files = [...new Set(patterns.flatMap((pattern) => globSync(pattern, { cwd: root })))]
   .filter((file) => !skip.test(file))

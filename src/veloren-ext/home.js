@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { identityFor } from './identity.js';
+import { nativeHomePlot, groundReport, defaultPlotsPath } from './home-site.js';
 
 // Cottages and the vault, as a Veloren link extension: the in-game side of "a claimed plot with a
 // cottage the player can enter".
@@ -86,11 +87,12 @@ export function parseIntent(raw) {
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 export class HomeService {
-  constructor(link, platform, { policy = HOME_POLICY, identity = identityFor } = {}) {
+  constructor(link, platform, { policy = HOME_POLICY, identity = identityFor, plotsPath = defaultPlotsPath() } = {}) {
     this.link = link;
     this.platform = platform;
     this.policy = policy;
     this.identity = identity;
+    this.plotsPath = plotsPath;
     this.sql = link.sql;
   }
 
@@ -255,7 +257,14 @@ export class HomeService {
   }
 
   #build(who, plot, player_uuid, style) {
+    this.platform.active();
+    this.#activeAvatar(who);
     if (!plot) return { intent: 'build', lines: ['You do not steward a plot yet. In NemoWorld open Land and claim one available plot, then whisper me again.'] };
+    if (!nativeHomePlot(plot.id)) fail(409, 'This plot is outside the native cottage layout. Your claim is preserved; review supported Commons plots in City & my home.');
+    if (plot.block_count) fail(409, 'Your plot contains saved construction. It is preserved; no native cottage command was issued.');
+    const ground = groundReport(this.plotsPath);
+    if (ground.state === 'unavailable') fail(503, 'The game’s plot survey is unavailable. Refresh after the native server starts.');
+    if (ground.suitable && ground.suitable.get(plot.id) !== true) fail(409, 'The game’s ground survey marks this plot unsuitable. Your claim is preserved.');
     const state = this.buildState(plot.id, player_uuid);
     if (state.status === 'built') return { intent: 'build', lines: [`Your cottage already stands at ${plot.id}. Whisper me enter to step inside, or leave to step out.`] };
     if (state.status === 'building') return { intent: 'build', lines: ['I have already asked the world to build it; I will tell you when the world confirms.'] };
@@ -267,6 +276,8 @@ export class HomeService {
   }
 
   #enter(who, plot, player_uuid) {
+    this.platform.active();
+    this.#activeAvatar(who);
     if (!plot) return { intent: 'enter', lines: ['You have no plot, so there is no cottage to enter. Claim one in NemoWorld first.'] };
     const state = this.buildState(plot.id, player_uuid);
     if (state.status !== 'built') return { intent: 'enter', lines: ['No cottage stands there yet. Whisper me build my home first, and wait for my word that the world has built it.'] };
@@ -285,6 +296,11 @@ export class HomeService {
     if (last && this.now - last.issued_at < this.policy.enter_gap_ms) fail(429, 'You have just stepped in or out; give it a moment.');
     this.#issue('home_leave', { player_uuid, plot_id: plot.id, ttl_ms: this.policy.command_ttl_ms }, `home:${who.account_id}`.slice(0, 60));
     return { intent: 'leave', lines: ['Asking the world to set you down at your doorstep.'] };
+  }
+
+  #activeAvatar(who) {
+    const avatar = this.platform.get('SELECT status FROM agents WHERE id=? AND operator_id=?', who.agent_id, who.account_id);
+    if (!avatar || avatar.status !== 'active') fail(409, 'An active linked avatar is required for new construction or entry. Leaving remains available.');
   }
 
   /** The player's own view of their cottage, for tests and for a future page. Read-only. */

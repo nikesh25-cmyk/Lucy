@@ -67,7 +67,7 @@ async function world(t) {
   const commands = () => link.sql.all('SELECT * FROM home_commands ORDER BY issued_at');
   // Asking the keeper what he has to say is also what writes a player's notice, so this calls him.
   const notices = () => home.notices();
-  const availablePlot = () => f.platform.land(f.actor('alice'), { status: 'available', limit: 1 }).plots[0];
+  const availablePlot = () => f.platform.land(f.actor('alice'), { world_id: 'frontier:0:0', status: 'available', limit: 1 }).plots[0];
   const claim = (plot_id) => f.tx('landAssign', f.actor('alice'), { plot_id, purpose: 'My cottage', description: '' });
   return { f, link, home, server, credential, keeper, relay, aliceAvatar, bobAvatar, ask, askNow, commands, notices, availablePlot, claim };
 }
@@ -202,6 +202,35 @@ test('a world that refuses the build is reported honestly and cannot be entered'
   const enter = w.ask('enter');
   assert.match(enter.reply, /no cottage stands there/i);
   assert.equal(w.commands().some((row) => row.kind === 'home_enter'), false);
+});
+
+test('the in-game keeper also refuses paused work and native-incompatible plots before command issuance', async t => {
+  const w = await world(t);
+  const outside = w.f.platform.land(w.f.actor('alice'), { world_id: 'frontier:1:0', status: 'available', limit: 1 }).plots[0];
+  w.claim(outside.id);
+  assert.throws(() => w.ask('build my home'), refused(409));
+  assert.equal(w.commands().length, 0);
+  w.f.tx('pause', w.f.actor('admin'), true);
+  assert.throws(() => w.ask('build my home'), refused(503));
+  assert.equal(w.commands().length, 0);
+});
+
+test('the in-game keeper cannot stamp a cottage over saved browser construction', async t => {
+  const w = await world(t);
+  w.claim('plot:0:0:5:5');
+  w.f.platform.run('UPDATE agents SET world_id=?,x=32,y=35,z=0,grounded=1 WHERE id=?', 'frontier:0:0', w.aliceAvatar.id);
+  w.f.tx('frontierBuild', w.f.actor('alice'), w.aliceAvatar.id, { world_id: 'frontier:0:0', action: 'place', type: 'wood', x: 33, y: 35, z: 0 });
+  assert.throws(() => w.ask('build my home'), refused(409));
+  assert.equal(w.commands().length, 0);
+  assert.equal(w.f.platform.landPlot(w.f.actor('alice'), { plot_id: 'plot:0:0:5:5' }).plot.block_count, 1);
+});
+
+test('the in-game keeper refuses new construction for a paused linked avatar', async t => {
+  const w = await world(t);
+  w.claim(w.availablePlot().id);
+  w.f.platform.run("UPDATE agents SET status='paused' WHERE id=?", w.aliceAvatar.id);
+  assert.throws(() => w.ask('build my home'), refused(409));
+  assert.equal(w.commands().length, 0);
 });
 
 test('the keeper paces a player, and every answer stays inside the chat limits', async (t) => {
