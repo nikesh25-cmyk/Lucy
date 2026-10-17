@@ -1,0 +1,61 @@
+{
+  "format": "harr-apprenticeship-v1",
+  "note": "A short, peaceful chain for each kind of villager: a newcomer learns a craft beside a named mentor. Every step is checked from recorded facts about that one person (signed meetings and visits, delivered pantry portions, stages the game server built, thanks on the wall, field surveys), and each step counts only what happened AFTER the step before it. Finishing grants a title of recognition and nothing else: no coins, no items, no Karma. {mentor} is replaced by the mentor's name.",
+  "roles": {
+    "builder": {
+      "title": "Apprentice builder",
+      "mentor": "lw-ignatius",
+      "steps": [
+        { "id": "meet", "kind": "meet_mentor", "text": "Meet {mentor} at the building sites and say hello." },
+        { "id": "shadow", "kind": "shadow_stage", "role": "builder", "within_minutes": 30, "text": "Shadow a builder for one stage: stand with a builder, and a stage is finished within half an hour." },
+        { "id": "report", "kind": "report_back", "text": "Tell {mentor} how it went by standing beside them again." }
+      ]
+    },
+    "farmer": {
+      "title": "Apprentice farmer",
+      "mentor": "lw-marisol",
+      "steps": [
+        { "id": "meet", "kind": "meet_mentor", "text": "Meet {mentor} among the beds and say hello." },
+        { "id": "meal", "kind": "meals", "count": 1, "text": "Taste the harvest: take a portion from the pantry (whisper take apple)." },
+        { "id": "thanks", "kind": "thanked", "thanks": "meal", "text": "Thank the farmers on the Gratitude board (whisper thank meal)." },
+        { "id": "report", "kind": "report_back", "text": "Tell {mentor} what you tasted by standing beside them again." }
+      ]
+    },
+    "maker": {
+      "title": "Apprentice maker",
+      "mentor": "lw-imara",
+      "steps": [
+        { "id": "meet", "kind": "meet_mentor", "text": "Meet {mentor} at the workshop and say hello." },
+        { "id": "clay", "kind": "finds", "count": 1, "landmarks": ["disc-clay-bank"], "text": "Visit the clay bank, where makers find their clay, and stay a few seconds." },
+        { "id": "report", "kind": "report_back", "text": "Show {mentor} what you saw by standing beside them again." }
+      ]
+    },
+    "scholar": {
+      "title": "Apprentice scholar",
+      "mentor": "lw-mirela",
+      "steps": [
+        { "id": "meet", "kind": "meet_mentor", "text": "Meet {mentor} at the workshop hall and say hello." },
+        { "id": "pages", "kind": "finds", "count": 3, "text": "Add three pages to the library by visiting three different places." },
+        { "id": "report", "kind": "report_back", "text": "Read your pages to {mentor} by standing beside them again." }
+      ]
+    },
+    "courier": {
+      "title": "Apprentice courier",
+      "mentor": "lw-wren",
+      "steps": [
+        { "id": "meet", "kind": "meet_mentor", "text": "Meet {mentor} on the cottage row and say hello." },
+        { "id": "greet", "kind": "meet_residents", "count": 3, "text": "Carry greetings: meet three other villagers." },
+        { "id": "report", "kind": "report_back", "text": "Tell {mentor} who you met by standing beside them again." }
+      ]
+    },
+    "keeper": {
+      "title": "Apprentice keeper",
+      "mentor": "lw-lucia",
+      "steps": [
+        { "id": "meet", "kind": "meet_mentor", "text": "Meet {mentor} at the transit hub and say hello." },
+        { "id": "survey", "kind": "survey", "text": "Take part in a field survey: finish a day's survey sheet (whisper survey)." },
+        { "id": "report", "kind": "report_back", "text": "Share what you recorded with {mentor} by standing beside them again." }
+      ]
+    }
+  }
+}

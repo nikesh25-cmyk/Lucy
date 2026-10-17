@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GUIDE_RESIDENTS, plain, spendRate } from './view.js';
 import { effectsOf } from './research.js';
+import { pantryRate } from './seasons.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const PANTRY_PATH = join(here, '..', '..', 'content', 'veloren-pantry.json');
@@ -61,7 +62,8 @@ const dayOf = (ms) => new Date(ms).toISOString().slice(0, 10);
 /** Bring one shelf up to date: restock for the time passed, never above the cap, never before it existed. */
 export function shelfNow(sql, key, now, fx = { pantry_rate: 1, pantry_cap: 0 }) {
   const base = PANTRY_POLICY.restock[key];
-  const rule = { per_hour: base.per_hour * fx.pantry_rate, cap: base.cap + fx.pantry_cap };
+  // The season turns the MIX (rates only, 0.8x to 1.5x); the cap is never touched, so no shelf can be starved.
+  const rule = { per_hour: base.per_hour * fx.pantry_rate * pantryRate(key, now), cap: base.cap + fx.pantry_cap };
   const row = sql.get('SELECT units, as_of FROM pantry_shelf WHERE item=?', key);
   if (!row) {
     const units = Math.floor(rule.cap / 2);

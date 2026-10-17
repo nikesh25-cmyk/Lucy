@@ -1,0 +1,14 @@
+{
+  "format": "harr-expeditions-v1",
+  "note": "Daily field surveys for Harr. Each local day the village posts a sheet of places from the discovery catalogue and a gentle goal ('record two places before dusk'). Which places and which goal is a pure function of the date. A record is a signed landmark.visited event at a place on the sheet, made before dusk (host local time). Nobody is ranked: the village counter only adds up records. Finishing a survey gives recognition and a line in the chronicle, never coins or items.",
+  "dusk_hour": 18,
+  "stride": 3,
+  "village_goal_per_day": 6,
+  "history_days": 30,
+  "templates": [
+    { "id": "two-places", "title": "Record two places before dusk", "need": 2, "offer": 3, "blurb": "Walk two of today's three places and stay a few seconds at each." },
+    { "id": "one-quiet", "title": "One quiet find before dusk", "need": 1, "offer": 2, "blurb": "A slow day: choose either place and take your time there." },
+    { "id": "three-pages", "title": "Three pages before dusk", "need": 3, "offer": 4, "blurb": "A long walk: three of today's four places make a full survey sheet." },
+    { "id": "pair-walk", "title": "A pair of places before dusk", "need": 2, "offer": 4, "blurb": "Any two of four places. Go alone or bring a friend; each of you records your own." }
+  ]
+}
