@@ -3,7 +3,7 @@ import { identityFor, setIdentityProvider } from './identity.js';
 import { pantryLines } from './pantry.js';
 import { chronicleLines, loadEvents, todayLines } from './village.js';
 import { purposeLines, researchLines } from './research.js';
-import { tasksLines } from './tasks.js';
+import { recommendNext, tasksLines } from './tasks.js';
 import { findsFrom, libraryLines, loadDiscoveries, loadRecord, loadWorks, worksLines } from './world-life.js';
 
 // ---- The in-game interface (HUD) ---------------------------------------------------------------
@@ -52,10 +52,10 @@ export const HUD_POLICY = Object.freeze({
 // instance Lyra's) is refused even though it carries the same `director` scope.
 export const GUIDE_RESIDENTS = Object.freeze(['lw-selene']);
 
-export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research']);
-const OPEN_TITLES = { works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle', tasks: 'Your tasks', purpose: 'Harr Charter', research: 'Research' };
+export const HUD_PAGES = Object.freeze(['help', 'start', 'passport', 'journal', 'calling', 'quests', 'next', 'community', 'karma', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research', 'menu']);
+const OPEN_TITLES = { menu: 'Menu', help: 'Help', works: 'Public works', library: 'Harr Library', pantry: 'Village pantry', today: 'Harr today', chronicle: 'Harr chronicle', tasks: 'Your tasks', purpose: 'Harr Charter', research: 'Research' };
 // Open pages: about the village, not about an account, so they need no link. They still need a player id.
-export const OPEN_PAGES = Object.freeze(['works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research']);
+export const OPEN_PAGES = Object.freeze(['menu', 'help', 'works', 'library', 'pantry', 'today', 'chronicle', 'tasks', 'purpose', 'research']);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const enc = new TextEncoder();
@@ -195,17 +195,103 @@ export function trackerTarget(link, player_uuid) {
 // Each takes plain data already read from the platform and returns an array of lines. Pure, so they
 // are unit tested without a database.
 
-export function helpLines() {
+export function helpLines({ recommend } = {}) {
   return [
-    'I am Selene, a scripted guide: I only read and tell. I cannot give, buy, approve or change anything for you.',
-    'Say or whisper: start, passport, journal, calling, quests, next, community, karma. Add a number for more, like quests 2.',
-    'For the village itself, ask for works (what is being built), library (places to discover) pantry (free food), today (market hour, story circle, festival) or chronicle (what happened), tasks (your next steps), purpose (why Harr exists) or research (what we are learning). They need no account.',
-    'Say track to mark your current step on your map. Say more for the next page of the last answer.',
-    'My answers come to you privately by /tell. Your real progress lives in NemoWorld and only the world can change it.',
+    'Welcome to Harr, a quiet village where people and AI residents learn, build and share. I am Selene, a scripted guide: I only read and tell.',
+    'I cannot give, buy, approve or change anything for you. Your real progress lives in NemoWorld and only the world can change it.',
+    recommend ? `Your one next step: ${plain(recommend.title, 50)}. ${plain(recommend.short, 110)}` : 'Your one next step: say tasks.',
+    'To ask, whisper me one word. Say menu to see every word I know, and more for the next page of an answer.',
   ];
 }
 
-export function unlinkedLines(reason = 'not_linked') {
+// Every word Selene understands, one short meaning each. Kept in step with HUD_PAGES by a test.
+export const MENU_ENTRIES = Object.freeze([
+  ['start', 'your first ten minutes'], ['help', 'what Harr is and how to ask'], ['next', 'the one best thing to do now'],
+  ['passport', 'your badges and skills'], ['journal', 'how many entries you have written'], ['calling', 'your calling and today'],
+  ['quests', 'your longer journeys'], ['karma', 'your Karma Coins'], ['community', 'gatherings and circles'],
+  ['tasks', 'a gentle checklist'], ['works', 'what the builders are making'], ['library', 'places to discover'],
+  ['pantry', 'free food for all'], ['today', 'market hour, story circle, festival'], ['chronicle', 'what happened lately'],
+  ['purpose', 'why Harr exists'], ['research', 'what the village is learning'], ['track', 'mark your current step on your map'],
+]);
+
+export function menuLines({ word, recommend } = {}) {
+  const out = [];
+  const guess = word ? didYouMean(word) : null;
+  if (word) out.push(guess ? `I did not catch "${plain(word, 16)}". Did you mean ${guess}?` : `I did not catch "${plain(word, 16)}". Here is everything I know.`);
+  out.push('Whisper me one word. Add a number for more of a long answer, like quests 2, or say more.');
+  const say = (names) => names.map((name) => `${name} (${MENU_ENTRIES.find((entry) => entry[0] === name)[1]})`).join(', ');
+  out.push(`Begin: ${say(['start', 'help', 'next', 'tasks'])}.`);
+  out.push(`About you, with a linked account: ${say(['passport', 'journal', 'calling'])}.`);
+  out.push(`And also about you: ${say(['quests', 'karma', 'community'])}.`);
+  out.push(`About Harr, for everyone: ${say(['works', 'library', 'pantry', 'today'])}.`);
+  out.push(`And: ${say(['chronicle', 'purpose', 'research', 'track'])}.`);
+  out.push('Other residents: Vaelen, places or travel to a place. Rowan, build my home, enter, leave. Kael, the shop: what is for sale, my balance. Lyra: link my account.');
+  if (recommend) out.push(`Not sure where to begin? ${plain(recommend.title, 50)}. ${plain(recommend.short, 100)}`);
+  return out;
+}
+
+const ALIASES = Object.freeze({
+  quest: 'quests', task: 'tasks', todo: 'tasks', pass: 'passport', profile: 'passport', hello: 'help', hi: 'help', hey: 'help', what: 'help',
+  commands: 'menu', command: 'menu', options: 'menu', list: 'menu', words: 'menu', coins: 'karma', coin: 'karma', work: 'works', build: 'works',
+  books: 'library', book: 'library', discover: 'library', food: 'pantry', meal: 'pantry', events: 'today', event: 'today', market: 'today',
+  history: 'chronicle', story: 'chronicle', learn: 'research', science: 'research', goals: 'purpose', goal: 'purpose', why: 'purpose',
+  gatherings: 'community', circle: 'community', diary: 'journal', notes: 'journal', callings: 'calling', guild: 'calling', begin: 'start', first: 'start',
+});
+
+function editDistance(a, b) {
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const keep = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = keep;
+    }
+  }
+  return row[b.length];
+}
+
+/** The page a near-miss word probably meant, or null. Only returns real page names (or track). */
+export function didYouMean(word) {
+  const w = String(word ?? '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 16);
+  if (w.length < 2) return null;
+  const names = [...HUD_PAGES, 'track'];
+  if (names.includes(w)) return w;
+  if (ALIASES[w]) return ALIASES[w];
+  let best = null;
+  let bestDistance = Infinity;
+  for (const name of names) {
+    const d = editDistance(w, name);
+    if (d < bestDistance) { best = name; bestDistance = d; }
+  }
+  const allowed = w.length <= 4 ? 1 : 2;
+  return bestDistance <= allowed ? best : null;
+}
+
+/** One short line pointing at the next sensible command, added to the end of a page. */
+export const FOOTERS = Object.freeze({
+  help: 'Next: say menu to see every word I know.',
+  menu: 'Next: say next, and I will name the one thing to do now.',
+  start: 'Next: say next whenever you want the one best thing to do.',
+  passport: 'Next: say next for your one best step, or calling for today.',
+  journal: 'Next: say calling to see what today asks of you.',
+  calling: 'Next: say quests for longer journeys, or next for the one best step.',
+  quests: 'Next: say next for the one best step right now.',
+  next: 'Next: say track to mark it on your map, or tasks for the checklist.',
+  community: 'Next: say today for the market hour and story circle.',
+  karma: 'Next: say community to see what neighbours are planning.',
+  works: 'Next: say research to see what the village is learning.',
+  library: 'Next: say tasks for a small step toward the next find.',
+  pantry: 'Next: say today to see when the market hour begins.',
+  today: 'Next: say chronicle to hear what happened lately.',
+  chronicle: 'Next: say works to see what the builders are making.',
+  tasks: 'Next: say library, pantry or next whenever you are ready.',
+  purpose: 'Next: say research to see how we learn toward it.',
+  research: 'Next: say library; every find adds insight for everyone.',
+});
+
+export function unlinkedLines(reason = 'not_linked', { recommend } = {}) {
   if (reason === 'inactive') {
     return [
       'Your NemoWorld character is paused or unavailable, so I cannot read it.',
@@ -213,9 +299,10 @@ export function unlinkedLines(reason = 'not_linked') {
     ];
   }
   return [
-    'Welcome to Harr! I am Selene, the host. I cannot see a passport for you yet because this character is not linked to a NemoWorld account.',
-    'Link first: sign in to NemoWorld in a browser and link this Veloren character to your account there.',
-    'Then whisper help to me again. Until then you can still walk around and meet Lyra Scrollkeeper nearby.',
+    'Welcome to Harr, a quiet village where people and AI residents learn, build and share. I am Selene, the host.',
+    recommend ? `Your one next step: ${plain(recommend.title, 50)}. ${plain(recommend.short, 100)}` : 'Your one next step: say tasks.',
+    'To keep your progress, link this character: whisper Lyra "link my account", then enter her code in NemoWorld.',
+    'Ask me one word at a time. Say menu for all of them; tasks, library, pantry and today need no account.',
   ];
 }
 
@@ -286,8 +373,9 @@ export function questLines({ quests, tracker }) {
   return out;
 }
 
-export function nextLines({ tracker, calling, quests, firstPlay }) {
+export function nextLines({ tracker, calling, quests, firstPlay, recommend }) {
   const out = [];
+  if (recommend && !recommend.all_done) out.push(`Best next step: ${plain(recommend.title, 50)}. ${plain(recommend.short, 100)}`);
   if (tracker && !tracker.complete) out.push(`Here in Veloren: ${plain(tracker.instruction, 150)}${tracker.landmark_name ? ' Say track and I will mark it on your map.' : ''}`);
   const objective = calling?.current_objective;
   if (objective) out.push(`In NemoWorld, your daily objective: ${plain(objective.title, 70)}. ${plain(objective.instructions, 90)}`);
@@ -301,7 +389,7 @@ export function nextLines({ tracker, calling, quests, firstPlay }) {
 
 export function startLines({ firstPlay, tracker }) {
   const steps = firstPlay?.steps || [];
-  const out = ['Welcome. Your first ten minutes have five small steps. The world checks each one from saved facts, so doing them is what counts.'];
+  const out = ['Welcome. Your first ten minutes are five small steps. The world checks each from saved facts, so doing them is what counts.'];
   for (const step of steps) out.push(`Step ${num(step.ordinal)}, ${step.done ? 'done' : 'to do'}: ${plain(step.title, 70)}.`);
   const next = firstPlay?.next_step;
   if (steps.length) out.push(next ? `Next, step ${num(next.ordinal)}: ${plain(next.instruction, 150)}` : 'All five steps are done. Well begun.');
@@ -361,17 +449,23 @@ function gather(readers, who, name, tracker) {
   return data;
 }
 
-const BUILDERS = { help: () => helpLines(), start: startLines, passport: passportLines, journal: journalLines, calling: callingLines, quests: questLines, next: nextLines, community: communityLines, karma: karmaLines };
-const TITLES = { help: 'Help', start: 'First ten minutes', passport: 'Passport', journal: 'Journal', calling: 'Calling', quests: 'Quests', next: 'Next step', community: 'Community', karma: 'Karma' };
+const BUILDERS = { start: startLines, passport: passportLines, journal: journalLines, calling: callingLines, quests: questLines, next: nextLines, community: communityLines, karma: karmaLines };
+const TITLES = { start: 'First ten minutes', passport: 'Passport', journal: 'Journal', calling: 'Calling', quests: 'Quests', next: 'Next step', community: 'Community', karma: 'Karma' };
 
 /**
  * The reply for one command. Pure apart from the platform reads. Exported for tests.
  * Always returns a bounded object; an unlinked player gets the pointer and nothing else.
  */
-export function buildView({ link, platform, player_uuid, name, page = 1 }) {
+export function buildView({ link, platform, player_uuid, name, page = 1, word = null }) {
   if (!HUD_PAGES.includes(name)) throw Object.assign(new Error('Unknown page.'), { status: 404 });
+  const withFooter = (lines) => (FOOTERS[name] ? [...lines, FOOTERS[name]] : lines);
   if (OPEN_PAGES.includes(name)) {
-    const lines = name === 'works'
+    const recommend = name === 'help' || name === 'menu' ? safeRecommend(link, player_uuid) : null;
+    const lines = name === 'help'
+      ? helpLines({ recommend })
+      : name === 'menu'
+        ? menuLines({ word, recommend })
+        : name === 'works'
       ? worksLines(loadWorks(), loadRecord(process.env.NEMO_WORLD_RECORD), link.clock())
       : name === 'pantry'
         ? pantryLines(link, player_uuid)
@@ -386,7 +480,7 @@ export function buildView({ link, platform, player_uuid, name, page = 1 }) {
                 : name === 'research'
                   ? researchLines(link)
                   : libraryLines(loadDiscoveries(), findsFrom(link.sql, loadDiscoveries()), player_uuid, (alias) => plain(alias, 24));
-    const paged = paginate(lines, page);
+    const paged = paginate(withFooter(lines), page);
     return fitResponse({
       linked: false, open: true, command: name, title: OPEN_TITLES[name], page: paged.page, pages: paged.pages,
       lines: paged.out_of_range ? [line(`There is no page ${page}.`)] : paged.lines, more: !paged.out_of_range && paged.page < paged.pages, source: 'scripted',
@@ -394,13 +488,14 @@ export function buildView({ link, platform, player_uuid, name, page = 1 }) {
   }
   const who = resolveViewer(link, platform, player_uuid);
   if (!who.linked) {
-    const paged = paginate(unlinkedLines(who.reason), 1);
+    const paged = paginate(unlinkedLines(who.reason, { recommend: safeRecommend(link, player_uuid) }), 1);
     return { linked: false, reason: who.reason, command: name, title: 'Link first', page: 1, pages: 1, lines: paged.lines, more: false, source: 'scripted' };
   }
   const tracker = ['passport', 'quests', 'next', 'start'].includes(name) ? trackerTarget(link, player_uuid) : null;
   const data = platform.transaction(() => gather(readOnly(platform), who, name, tracker));
+  if (name === 'next') data.recommend = safeRecommend(link, player_uuid);
   const lines = BUILDERS[name]({ ...data, name: who.name });
-  const paged = paginate(lines, page);
+  const paged = paginate(withFooter(lines), page);
   const extra = paged.out_of_range ? [`There is no page ${page}; ${TITLES[name]} has ${plural(paged.pages, 'page')}.`] : [];
   const reply = {
     linked: true, command: name, title: TITLES[name], page: paged.page, pages: paged.pages,
@@ -410,6 +505,10 @@ export function buildView({ link, platform, player_uuid, name, page = 1 }) {
     source: 'scripted',
   };
   return fitResponse(reply);
+}
+
+function safeRecommend(link, player_uuid) {
+  try { return recommendNext(link, player_uuid); } catch { return null; }
 }
 
 /** Last line of defence for "oversized replies": shrink until the JSON fits. */
@@ -468,7 +567,10 @@ export const hudExtension = {
     if (viewMatch && method === 'GET') {
       guide(link, ctx);
       const name = viewMatch[1];
-      if (!HUD_PAGES.includes(name)) ctx.fail(404, 'Unknown page.');
+      if (!HUD_PAGES.includes(name)) {
+        const guess = didYouMean(name);
+        ctx.fail(404, guess ? `Unknown page. Did you mean ${guess}?` : 'Unknown page. Say menu to see what I know.');
+      }
       const player = playerParam(ctx, url.searchParams);
       const raw = url.searchParams.get('page');
       let page = 1;
@@ -476,10 +578,13 @@ export const hudExtension = {
         if (!/^\d{1,2}$/.test(raw) || Number(raw) < 1) ctx.fail(400, 'Choose a page number from 1 to 99.');
         page = Number(raw);
       }
+      // An optional near-miss word (letters only) that the menu page answers with "did you mean".
+      const wordRaw = url.searchParams.get('word');
+      const word = typeof wordRaw === 'string' && /^[A-Za-z]{1,16}$/.test(wordRaw) ? wordRaw : null;
       spendRate(link, '*', { gapMs: 0, perHour: HUD_POLICY.view_all_per_hour });
       spendRate(link, `view:${player}`, { gapMs: HUD_POLICY.view_gap_ms, perHour: HUD_POLICY.view_per_hour });
       if (!platform) ctx.fail(503, 'NemoWorld is not ready.');
-      ctx.json(ctx.response, 200, buildView({ link, platform, player_uuid: player, name, page }));
+      ctx.json(ctx.response, 200, buildView({ link, platform, player_uuid: player, name, page, word }));
       return true;
     }
 
