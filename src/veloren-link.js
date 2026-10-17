@@ -191,10 +191,11 @@ export class VelorenLink {
 
   // What is known about a command: `applied`, `rejected`, `expired_unconfirmed` or `pending`.
   commandStatus(cmd_id) {
-    const ack = this.#get("SELECT kind, occurred_at FROM link_events WHERE landmark_id=? AND kind IN ('command.applied','command.rejected')", cmd_id);
-    if (ack) return { status: ack.kind === 'command.applied' ? 'applied' : 'rejected', at: ack.occurred_at };
-    const issued = this.#get('SELECT expires_at FROM link_commands WHERE cmd_id=?', cmd_id);
+    const issued = this.#get('SELECT player_uuid,issued_at,expires_at FROM link_commands WHERE cmd_id=?', cmd_id);
     if (!issued) return { status: 'unknown' };
+    const ack = this.#get("SELECT kind, occurred_at FROM link_events WHERE landmark_id=? AND player_uuid=? AND occurred_at>=? AND kind IN ('command.applied','command.rejected') ORDER BY received_at,event_id LIMIT 1",
+      cmd_id, issued.player_uuid, issued.issued_at - LINK_POLICY.future_skew_ms);
+    if (ack) return { status: ack.kind === 'command.applied' ? 'applied' : 'rejected', at: ack.occurred_at };
     return { status: issued.expires_at < this.clock() ? 'expired_unconfirmed' : 'pending' };
   }
 
@@ -380,6 +381,16 @@ export class VelorenLink {
     if (typeof e.sig !== 'string' || !/^[a-f0-9]{64}$/.test(e.sig)) return 'bad_signature';
     const expected = Buffer.from(signEvent(this.eventKey, e), 'hex');
     if (!timingSafeEqual(expected, Buffer.from(e.sig, 'hex'))) return 'bad_signature';
+    if (ACK_KINDS.includes(e.kind)) {
+      const issued = this.#get('SELECT player_uuid,issued_at FROM link_commands WHERE cmd_id=?', e.landmark_id);
+      if (!issued) return 'unknown_command';
+      if (issued.player_uuid !== e.player_uuid) return 'command_player_mismatch';
+      // Use the existing five-minute skew allowance for the two process clocks.
+      if (e.occurred_at < issued.issued_at - LINK_POLICY.future_skew_ms) return 'command_before_issue';
+      const previous = this.#get("SELECT kind FROM link_events WHERE landmark_id=? AND player_uuid=? AND occurred_at>=? AND kind IN ('command.applied','command.rejected') ORDER BY received_at,event_id LIMIT 1",
+        e.landmark_id, issued.player_uuid, issued.issued_at - LINK_POLICY.future_skew_ms);
+      if (previous && previous.kind !== e.kind) return 'command_outcome_conflict';
+    }
     return null;
   }
 

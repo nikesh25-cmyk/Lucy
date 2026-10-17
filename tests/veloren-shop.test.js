@@ -41,20 +41,22 @@ function freeTiles(worldId, taken = []) {
 function makeServer(link, relayCredential) {
   let seq = 5000;
   // An order is answered for the player the command names. A signature-valid acknowledgement naming
-  // somebody else (a bug, or a relay key misused) is recorded but must never count as this order's.
+  // somebody else is refused at ingestion and must never count as this order's.
   const answered = new Set();
   for (const row of link.sql.all("SELECT landmark_id, player_uuid FROM link_events WHERE kind IN ('command.applied','command.rejected')")) {
     answered.add(`${row.landmark_id}/${row.player_uuid}`);
   }
   const commands = () => link.sql.all("SELECT cmd_id, player_uuid, kind FROM link_commands WHERE kind='grant_item' ORDER BY issued_at");
   return {
-    outstanding(player_uuid) {
-      return commands().filter((cmd) => !answered.has(`${cmd.cmd_id}/${player_uuid || cmd.player_uuid}`));
+    outstanding() {
+      // Select a genuinely unanswered command for its actual owner before testing
+      // a mismatched acknowledgement. Otherwise an old preflight is selected.
+      return commands().filter((cmd) => !answered.has(`${cmd.cmd_id}/${cmd.player_uuid}`));
     },
     answered(cmd_id, player_uuid) { answered.add(`${cmd_id}/${player_uuid}`); },
     /** Answer at most `only` unanswered commands. `apply(cmd)` decides applied vs rejected. */
     answer({ apply = () => true, only = 1, player_uuid } = {}) {
-      const taken = this.outstanding(player_uuid).slice(0, only);
+      const taken = this.outstanding().slice(0, only);
       for (const cmd of taken) {
         const who = player_uuid || cmd.player_uuid;
         const event = {
@@ -64,7 +66,11 @@ function makeServer(link, relayCredential) {
         };
         event.sig = signEvent(KEY, event);
         const [result] = link.ingest(relayCredential, [event]);
-        if (result.status !== 'accepted') throw new Error(`the simulated server could not report ${cmd.cmd_id}: ${result.reason}`);
+        if (who !== cmd.player_uuid) {
+          assert.equal(result.status, 'rejected');
+          assert.equal(result.reason, 'command_player_mismatch');
+          assert.equal(link.commandStatus(cmd.cmd_id).status, 'pending');
+        } else if (result.status !== 'accepted') throw new Error(`the simulated server could not report ${cmd.cmd_id}: ${result.reason}`);
         answered.add(`${cmd.cmd_id}/${who}`);
       }
       return taken.length;

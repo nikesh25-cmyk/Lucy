@@ -56,7 +56,7 @@ test('QA-02 a command acknowledgement (which carries no alias) does not erase th
   const s = setup(t);
   ingest(s, event(s, 'landmark.visited', {landmark_id: discoveries[0].landmark_id}));
   assert.equal(s.link.sql.get('SELECT alias FROM link_players WHERE player_uuid=?', ALICE).alias, 'Alice');
-  const cmd_id = '33333333-3333-4333-8333-333333333333';
+  const { cmd_id } = s.link.issueCommand({ kind: 'echo', player_uuid: ALICE });
   assert.equal(ingest(s, event(s, 'command.applied', {player_alias: '', landmark_id: cmd_id}))[0].status, 'accepted');
   assert.equal(s.link.sql.get('SELECT alias FROM link_players WHERE player_uuid=?', ALICE).alias, 'Alice');
 });

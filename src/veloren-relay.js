@@ -7,6 +7,7 @@ import { closeSync, existsSync, openSync, readSync, readFileSync, renameSync, st
 // once. The relay holds a link credential but never the event key, so it cannot create events.
 
 export const RELAY_BATCH = 20;
+export const RELAY_READ_BYTES = 64 * 1024;
 
 function loopbackHttp(url) {
   const host = url.hostname;
@@ -38,18 +39,22 @@ function readLines(outbox, offset) {
   if (!existsSync(outbox)) return { lines: [], size: 0 };
   const size = statSync(outbox).size;
   if (size <= offset) return { lines: [], size };
-  const buffer = Buffer.alloc(size - offset);
+  const buffer = Buffer.alloc(Math.min(size - offset, RELAY_READ_BYTES));
   const fd = openSync(outbox, 'r');
-  try { readSync(fd, buffer, 0, buffer.length, offset); } finally { closeSync(fd); }
+  let bytes;
+  try { bytes = readSync(fd, buffer, 0, buffer.length, offset); } finally { closeSync(fd); }
   const lines = [];
   let start = 0;
-  for (let index = 0; index < buffer.length; index++) {
+  for (let index = 0; index < bytes; index++) {
     if (buffer[index] === 0x0a) {
       lines.push({ text: buffer.subarray(start, index).toString('utf8'), end: offset + index + 1 });
       start = index + 1;
+      if (lines.length === RELAY_BATCH) break;
     }
   }
-  return { lines, size };
+  // A normal partial last line waits for its writer. An unbroken full-size
+  // record blocks explicitly, without allocating the rest or silently dropping it.
+  return { lines, size, oversized: lines.length === 0 && bytes === RELAY_READ_BYTES };
 }
 
 /**
@@ -67,7 +72,8 @@ export async function relayOnce({ outbox, offsetFile, url, token, resident = nul
   const stats = { sent: 0, accepted: 0, duplicate: 0, rejected: 0, malformed: 0, skipped: 0, failed: 0 };
   let offset = readOffset(offsetFile);
   for (;;) {
-    const { lines } = readLines(outbox, offset);
+    const { lines, oversized } = readLines(outbox, offset);
+    if (oversized) { stats.failed += 1; log(`Outbox record exceeds ${RELAY_READ_BYTES} bytes; cursor preserved, repair the oversized record before retrying`); return stats; }
     if (!lines.length) return stats;
     const batch = lines.slice(0, RELAY_BATCH);
     const events = [];
@@ -90,9 +96,27 @@ export async function relayOnce({ outbox, offsetFile, url, token, resident = nul
       } catch (error) { stats.failed += 1; log(`NemoWorld unreachable: ${error.message}`); return stats; }
       if (response.status === 401 || response.status === 403) { stats.failed += 1; log(`NemoWorld refused the link credential (${response.status}); fix or reissue it`); return stats; }
       if (!response.ok) { stats.failed += 1; log(`NemoWorld answered ${response.status}; will retry`); return stats; }
-      const data = await response.json();
+      let data;
+      try { data = await response.json(); }
+      catch { stats.failed += 1; log('NemoWorld acknowledgement is not JSON; will retry'); return stats; }
+      // HTTP success alone does not acknowledge the batch. Require one terminal answer
+      // for each exact event before advancing the durable cursor. Resending is safe.
+      const expected = new Map();
+      for (const event of events) {
+        const id = typeof event?.server_id === 'string' ? `${event.server_id}:${event.seq}` : null;
+        expected.set(id, (expected.get(id) || 0) + 1);
+      }
+      const results = data?.results;
+      const valid = Array.isArray(results) && results.length === events.length && results.every(result => {
+        if (!result || !['accepted', 'duplicate', 'rejected'].includes(result.status)
+          || !(expected.get(result.event_id) > 0)
+          || (result.event_id === null && result.status !== 'rejected')) return false;
+        expected.set(result.event_id, expected.get(result.event_id) - 1);
+        return true;
+      }) && [...expected.values()].every(count => count === 0);
+      if (!valid) { stats.failed += 1; log('NemoWorld acknowledgement is incomplete or mismatched; will retry'); return stats; }
       stats.sent += events.length;
-      for (const result of data.results || []) {
+      for (const result of results) {
         stats[result.status] = (stats[result.status] || 0) + 1;
         if (result.status === 'rejected') log(`event ${result.event_id} rejected: ${result.reason}`);
       }
