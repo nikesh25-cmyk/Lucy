@@ -577,6 +577,73 @@ function renderSvgMap(overview) {
   wrap.replaceChildren(svg);
 }
 
+// Sims Needs & Daily Life
+function renderLife(sim, now) {
+  if (!sim) {
+    fill('sims-needs-grid', [empty('Personal wellbeing records synchronizing with village...')]);
+    fill('career-school-grid', []);
+    return;
+  }
+
+  // 1. Render 5 Wellbeing Needs
+  const needsGrid = $('sims-needs-grid');
+  if (needsGrid && sim.simsNeeds) {
+    const needCards = Object.entries(sim.simsNeeds).map(([key, item]) => {
+      const c = el('div', 'need-card');
+      const header = el('div', 'need-header');
+      header.append(el('span', 'need-label', item.label), el('span', 'need-val', `${item.value}%`));
+
+      const meterBg = el('div', 'need-meter-bg');
+      const meterFill = el('div', 'need-meter-fill');
+      meterFill.style.width = `${item.value}%`;
+      meterFill.style.background = item.value >= 75 ? 'var(--color-success)' : item.value >= 50 ? 'var(--color-accent)' : item.value >= 30 ? '#e5a50a' : '#e05353';
+      meterBg.append(meterFill);
+
+      const status = el('span', 'need-status', `${item.status} · ${item.hint}`);
+      c.append(header, meterBg, status);
+      return c;
+    });
+    fill('sims-needs-grid', needCards);
+  }
+
+  // 2. Render Career, School & Cottage
+  const lifeGrid = $('career-school-grid');
+  if (lifeGrid) {
+    const cards = [];
+    if (sim.career) {
+      const c = el('div', 'life-card');
+      c.append(
+        el('span', 'badge', sim.career.onShift ? 'Shift Active (8:00 - 16:00)' : 'Civic Vocation'),
+        el('h3', '', sim.career.title),
+        el('p', '', `Duty: ${sim.career.duty}`),
+        el('p', '', `Workplace: ${sim.career.office} at (${sim.career.coords.x}, ${sim.career.coords.y}) · In-game: /tell Rowan shift`)
+      );
+      cards.push(c);
+    }
+    if (sim.school) {
+      const c = el('div', 'life-card');
+      c.append(
+        el('span', 'badge', 'Academy & University'),
+        el('h3', '', `Daily Lecture: ${sim.school.subject}`),
+        el('p', '', `Inquiry: ${sim.school.question}`),
+        el('p', '', `Location: ${sim.school.place} at (${sim.school.coords.x}, ${sim.school.coords.y}) · In-game: /tell Selene library`)
+      );
+      cards.push(c);
+    }
+    if (sim.home) {
+      const c = el('div', 'life-card');
+      c.append(
+        el('span', 'badge', 'Cottage Living'),
+        el('h3', '', sim.home.assigned ? `My Cottage (${sim.home.plotId})` : 'Cottage Haven in Harr'),
+        el('p', '', sim.home.assigned ? 'Your personal residence in Cottage Row. Rest inside to completely restore Comfort to 100%.' : 'Choose and claim any open cottage plot in Cottage Row with Rowan.'),
+        el('p', '', `Location: Cottage Row at (${sim.home.coords.x}, ${sim.home.coords.y}) · In-game: /tell Rowan my plot`)
+      );
+      cards.push(c);
+    }
+    fill('career-school-grid', cards);
+  }
+}
+
 // 3. Render Circular Goal Rings
 function renderGoalRings(goals) {
   const container = $('goals');
@@ -789,6 +856,7 @@ function render(d, tasksData, now = Date.now()) {
     else fill('goals', [empty('No goals have been set yet. They will appear here once the village charter lists them.')]);
   }, now);
 
+  section('life-section', [tasksData && tasksData.player_sim], () => renderLife(tasksData && tasksData.player_sim, now), now);
   section('action-panel', [d.rhythm, d.works, d.pantry, d.research.current, d.gameplay && d.gameplay.survey, tasksData], () => renderActionPanel(d, tasksData), now);
   section('gameplay-section', d.gameplay, () => renderGameplay(d.gameplay), now);
   section('village-map', [d.works, d.library], () => renderSvgMap(d), now);
