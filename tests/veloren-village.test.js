@@ -82,7 +82,7 @@ test('the director sends a free resident to the event, a quest keeps priority, a
   s.link.director(maker); s.link.director(maker);
   assert.equal(s.link.sql.get('SELECT COUNT(*) AS n FROM village_attendance').n, 1);
   s.clock.now = at(2026, 10, 14, 10, 20);
-  assert.equal(s.link.director(maker).mode, 'schedule', 'after the slot the resident returns to the routine');
+  assert.equal(s.link.director(maker).mode, 'work', 'after the slot a maker returns to the active works site, then the routine');
   // Lyra with an active quest keeps her quest order even when her story circle starts
   const cred = s.link.issueCredential({resident_id: 'lw-lyra', scopes: ['events'], days: 1});
   s.clock.now = at(2026, 10, 14, 10, 31);
